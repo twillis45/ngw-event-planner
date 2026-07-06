@@ -24,6 +24,8 @@
 // src/lib/vendorQuestions.js. No AI, no fake scoring.
 
 import { useState, useEffect, useMemo, useContext, useRef } from 'react';
+import { fetchVendorConfirmations } from '../lib/api/vendorBrief';
+import { latestConfirmationFor, describeConfirmation } from '../lib/vendorBriefConfirm';
 import { AuthCtx } from '../contexts/AuthContext';
 // UX-SAAS (host de-cockpit): the SAME signal the L3 nav uses to reveal this tab
 // to a host (flag-gated audience persona). When true, this surface speaks plain
@@ -110,6 +112,40 @@ const P = {
   steelBlue: '#4E6877',
 };
 const FF = type.family;
+
+// ─── Vendor Brief confirm-back read-back (Phase 2A — display only) ────────────
+// Shows the vendor's latest confirm-back from the public brief link:
+//   "Vendor confirmed — Dana, (301) 555-0134 — Jul 6"
+//   "Vendor reported an issue — gate code changed — Jul 6"
+// Fetched from the planner-auth endpoint on view; renders NOTHING when the API
+// is unconfigured, unauthorized, or there is no confirmation — no fake "not
+// confirmed yet" alarm. Vendor-entered text renders as plain text only.
+// Slice 2A: display only — no status write, no log append, no attention item.
+function VendorConfirmationNote({ eventId, vendorId }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!eventId) return undefined;
+    fetchVendorConfirmations(eventId).then(r => { if (!cancelled) setRows(r); });
+    return () => { cancelled = true; };
+  }, [eventId]);
+  const latest = latestConfirmationFor(rows || [], vendorId);
+  const desc = describeConfirmation(latest);
+  if (!desc) return null;
+  const tone = desc.kind === 'issue' ? P.amber : P.green;
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
+      marginTop: 10, padding: '10px 14px', borderRadius: 10,
+      background: `${tone}12`, border: `1px solid ${tone}38`,
+    }}>
+      <span style={{ fontSize: type.size['sm'], fontWeight: 700, color: tone, fontFamily: FF }}>{desc.label}</span>
+      {desc.detail && (
+        <span style={{ fontSize: type.size['sm'], color: P.textSecondary, fontFamily: FF }}>{desc.detail}</span>
+      )}
+    </div>
+  );
+}
 
 // Studio Matte: the ONE steel-blue gradient used by primary CTAs in this
 // workspace. Previously hardcoded as three separate `linear-gradient(...)`
@@ -1865,6 +1901,11 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
             )}
           </div>
         </div>
+
+        {/* Vendor Brief confirm-back read-back (Phase 2A — DISPLAY ONLY).
+            Server-fetched, never written into the event blob, never mutates
+            vendor status/log — those host actions are Slice 2B. */}
+        <VendorConfirmationNote eventId={event?.id} vendorId={vendor.id} />
 
         {/* Next action card — embedded, not floating. Sprint 56c: CTA wires
             the suggested follow-up to a one-click execution. */}

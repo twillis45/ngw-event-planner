@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, createContext, useContext, useMemo, Compon
 import { createPortal } from 'react-dom';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, isEmailConfigured } from './lib/commApi';
 import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
-import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode } from './lib/api/vendorBrief';
+import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from './lib/api/vendorBrief';
+import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -7751,7 +7752,7 @@ function ClientProposalView({ proposal }) {
 
 // ─── Vendor Brief View (public page for vendors) ──────────────────────────────
 
-function VendorBriefView({ brief }) {
+function VendorBriefView({ brief, briefCode = null }) {
   const [copied, setCopied] = useState(false);
   // Brand accent — planner's brandColor drives the whole page, falls back to steel blue
   const accent = (brief.brandColor && /^#[0-9a-fA-F]{3,8}$/.test(brief.brandColor)) ? brief.brandColor : defaultBrandColor;
@@ -7893,10 +7894,104 @@ function VendorBriefView({ brief }) {
           </div>
         )}
 
+        {/* ── Confirm-back (Phase 2A) — tokenized briefs only ── */}
+        {briefCode && (
+          <VendorBriefConfirmBlock
+            briefCode={briefCode}
+            contactName={brief.contactName || ''}
+            priorState={brief.confirmState || null}
+            LC={LC}
+            cardStyle={cardStyle}
+          />
+        )}
+
         {/* ── Brand footer ── */}
         <div style={{ textAlign: 'center', marginTop: 28, fontSize: T.secondary, color: LC.muted }}>
           {brandName ? `Coordinated by ${brandName}` : 'Coordinated by your event planner'}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Vendor Brief confirm block (Phase 2A — capture only) ─────────────────────
+// Lives on the PUBLIC brief page for tokenized links. Submits to the server
+// keyed by the brief code; idempotent, so retries and changed answers update
+// one row. Slice 2A: this never mutates the event, vendor status, or logs.
+function VendorBriefConfirmBlock({ briefCode, contactName, priorState, LC, cardStyle }) {
+  const T = useType();
+  const [mode, setMode]         = useState('idle');   // idle | form | submitting | done | error
+  const [state, setState]       = useState('confirmed');
+  const [name, setName]         = useState(contactName || '');
+  const [phone, setPhone]       = useState('');
+  const [note, setNote]         = useState('');
+  const [doneState, setDoneState] = useState(priorState);
+
+  const startForm = (s) => { setState(s); setMode('form'); };
+  const submit = async () => {
+    setMode('submitting');
+    try {
+      await submitVendorBriefConfirmation(
+        briefCode,
+        buildConfirmationPayload(vendorBriefIdempotencyKey(briefCode), state, { onSiteName: name, onSitePhone: phone, note }),
+      );
+      setDoneState(state);
+      setMode('done');
+    } catch {
+      setMode('error');
+    }
+  };
+
+  const inputStyle = { width: '100%', boxSizing: 'border-box', padding: '10px 12px', borderRadius: 8, border: `1px solid ${LC.border}`, fontSize: T.body, color: LC.text, background: LC.bg, marginTop: 8 };
+  const btnStyle = (bg, fg, solid) => ({ flex: 1, padding: '11px 14px', borderRadius: 9, border: solid ? 'none' : `1px solid ${LC.border}`, background: solid ? bg : LC.surface, color: solid ? fg : LC.text, fontSize: T.body, fontWeight: FW.semibold, cursor: 'pointer' });
+
+  // Resting confirmed / issue-noted state (prior answer or just submitted)
+  if (mode === 'done' || (mode === 'idle' && doneState)) {
+    const confirmed = doneState === 'confirmed';
+    return (
+      <div style={{ ...cardStyle, borderLeft: `3px solid ${confirmed ? LC.success : '#d97706'}` }}>
+        <div style={{ fontSize: T.body, fontWeight: FW.bold, color: LC.text }}>
+          {confirmed ? "You're confirmed — thanks." : 'Your note was sent to the planner.'}
+        </div>
+        <button onClick={() => setMode('form')} style={{ marginTop: 10, background: 'none', border: 'none', padding: 0, color: LC.muted, fontSize: T.secondary, cursor: 'pointer', textDecoration: 'underline' }}>
+          Update your response
+        </button>
+      </div>
+    );
+  }
+
+  if (mode === 'idle') {
+    return (
+      <div style={cardStyle}>
+        <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: LC.muted, letterSpacing: '0.08em', marginBottom: 10 }}>CONFIRM WITH THE PLANNER</div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => startForm('confirmed')} style={btnStyle(LC.accent, '#fff', true)}>All good — I'm confirmed</button>
+          <button onClick={() => startForm('issue_reported')} style={btnStyle(null, null, false)}>Something's off</button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={cardStyle}>
+      <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: LC.muted, letterSpacing: '0.08em' }}>
+        {state === 'confirmed' ? 'CONFIRM YOUR DETAILS' : "TELL THE PLANNER WHAT'S OFF"}
+      </div>
+      <input style={inputStyle} placeholder="On-site contact name" value={name} onChange={e => setName(e.target.value)} />
+      <input style={inputStyle} placeholder="On-site phone" value={phone} onChange={e => setPhone(e.target.value)} />
+      <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
+        placeholder={state === 'confirmed' ? 'Anything the planner should know (optional)' : "What's off?"}
+        value={note} onChange={e => setNote(e.target.value)} />
+      {mode === 'error' && (
+        <div style={{ marginTop: 8, fontSize: T.secondary, color: '#b91c1c' }}>
+          That didn't go through. Check your connection and try again.
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
+        <button onClick={submit} disabled={mode === 'submitting'} style={{ ...btnStyle(LC.accent, '#fff', true), opacity: mode === 'submitting' ? 0.6 : 1 }}>
+          {mode === 'submitting' ? 'Sending…' : 'Send to planner'}
+        </button>
+        <button onClick={() => { setMode(doneState ? 'done' : 'idle'); }} style={btnStyle(null, null, false)}>Cancel</button>
       </div>
     </div>
   );
@@ -30961,7 +31056,10 @@ function PublicVendorBriefRoute({ token }) {
   }, [token, isCode]);
 
   const brief = legacyBrief || resolved;
-  if (brief) return <VendorBriefView brief={brief} />;
+  // Phase 2A: the confirm block exists ONLY for tokenized (server-resolved)
+  // briefs — a legacy base64 brief has no server code to post against, so it
+  // renders exactly as before, with no form.
+  if (brief) return <VendorBriefView brief={brief} briefCode={legacyBrief ? null : token} />;
 
   if (isCode && resolved === undefined) {
     return (

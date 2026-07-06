@@ -67,6 +67,60 @@ export async function fetchPublicVendorBrief(code) {
   }
 }
 
+// ── Public: submit a vendor confirmation (Phase 2A) ───────────────────────────
+// THROWS on failure / non-2xx (mirrors submitRsvp) so the confirm block can show
+// an honest retry state instead of a fake success. Idempotent on the key.
+export async function submitVendorBriefConfirmation(code, payload) {
+  if (!BASE) throw new Error('Vendor brief API not configured');
+  const res = await fetch(`${BASE}/api/public/vendor-brief/${encodeURIComponent(code)}/confirm`, {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    const e = new Error(err.detail || `submitVendorBriefConfirmation ${res.status}`);
+    e.status = res.status;
+    throw e;
+  }
+  return res.json(); // { ok, submitted_at }
+}
+
+// ── Planner: confirmation read-back (display only) ────────────────────────────
+// Returns the array of confirmation rows (newest first), or [] when not
+// configured / unauthorized / errored. NEVER throws — the cockpit simply shows
+// nothing, exactly like an event with no confirmations.
+export async function fetchVendorConfirmations(eventId) {
+  if (!BASE || !eventId) return [];
+  try {
+    const res = await fetch(`${BASE}/api/events/${encodeURIComponent(eventId)}/vendor-confirmations`, {
+      headers: await authHeaders(),
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch {
+    return [];
+  }
+}
+
+// ── Idempotency key: stable per brief code ────────────────────────────────────
+// Mirrors rsvpIdempotencyKey: minted once per code, persisted, so a retry /
+// reload / double-tap UPDATES the same server row instead of duplicating. A
+// vendor changing their answer reuses the key and flips the row in place.
+export function vendorBriefIdempotencyKey(code) {
+  const storeKey = `ngw-vbrief-idemp-${code}`;
+  try {
+    const existing = localStorage.getItem(storeKey);
+    if (existing) return existing;
+  } catch {}
+  let key;
+  try { key = (crypto && crypto.randomUUID) ? crypto.randomUUID() : null; } catch { key = null; }
+  if (!key) key = `idk-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  try { localStorage.setItem(storeKey, key); } catch {}
+  return key;
+}
+
 // ── Token shape discrimination ────────────────────────────────────────────────
 // A legacy link carries the whole base64-encoded JSON payload (hundreds to
 // thousands of chars). A tokenized link carries a ~22-char urlsafe random code.

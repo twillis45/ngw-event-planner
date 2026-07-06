@@ -31,9 +31,10 @@ Phase 1 guardrails (do NOT extend without a new mandate):
 
 See supabase/migrations/013_vendor_brief_links.sql for the table.
 """
+import os
 import secrets
 import time
-from typing import Optional
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -49,10 +50,23 @@ MAX_CODE = 80
 # never resolve a brief. Minted codes are 22+ chars (token_urlsafe(16)).
 MIN_CODE_LEN = 16
 
+# ── Field caps (defense against abuse / oversized writes) ──────────────────────
+MAX_NAME  = 120
+MAX_PHONE = 40
+MAX_NOTE  = 1000
+MAX_KEY   = 120
+
 # ── In-memory sliding-window rate limiter (mirrors routers/rsvp.py) ────────────
 BRIEF_RATE_WINDOW = 60   # seconds
 BRIEF_IP_MAX      = 30   # public resolves per IP per window
+CONFIRM_CODE_MAX  = 20   # confirm POSTs per code per window
 _rate: dict[str, list] = {}
+
+# Lifetime confirmation ceiling per code (mirrors RSVP_CODE_MAX_TOTAL): bounds
+# the absolute rows one leaked link can accumulate, even low-and-slow. Legit
+# re-submits/edits reuse their idempotency_key and UPDATE in place, so only a
+# brand-new row counts against the cap. Env-overridable.
+CONFIRM_CODE_MAX_TOTAL = int(os.environ.get("VENDOR_CONFIRM_CODE_MAX_TOTAL", "200"))
 
 
 def _rate_check(bucket: str, limit: int):
@@ -137,6 +151,31 @@ class MintRequest(BaseModel):
     vendor_id: str = Field(..., min_length=1, max_length=120)
 
 
+class ConfirmSubmit(BaseModel):
+    idempotency_key: str = Field(..., min_length=1, max_length=120)
+    state: Literal["confirmed", "issue_reported"]
+    on_site_name: Optional[str] = None
+    on_site_phone: Optional[str] = None
+    note: Optional[str] = None
+
+
+def _clip(v: Optional[str], n: int) -> Optional[str]:
+    if v is None:
+        return None
+    v = str(v).strip()
+    return v[:n] if v else None
+
+
+async def _resolve_active_link(conn, code: str):
+    """Active (non-revoked) link row for a code, or None. Entropy floor applied
+    upstream by callers; this is just the shared lookup."""
+    return await conn.fetchrow(
+        """select event_id, vendor_id from public.vendor_brief_links
+           where code=$1 and revoked_at is null""",
+        code,
+    )
+
+
 # ── 1. POST /api/events/{event_id}/vendor-brief-links — planner mint-or-reuse ──
 @router.post("/api/events/{event_id}/vendor-brief-links")
 async def mint_vendor_brief_link(
@@ -211,11 +250,7 @@ async def public_vendor_brief(code: str, request: Request):
 
     pool = await get_pool()
     async with pool.acquire() as conn:
-        link = await conn.fetchrow(
-            """select event_id, vendor_id from public.vendor_brief_links
-               where code=$1 and revoked_at is null""",
-            code,
-        )
+        link = await _resolve_active_link(conn, code)
         if not link:
             raise HTTPException(404, "brief not found")
         row = await conn.fetchrow(
@@ -227,4 +262,112 @@ async def public_vendor_brief(code: str, request: Request):
         vendor = _find_vendor(data, link["vendor_id"])
         if not vendor:
             raise HTTPException(404, "brief not found")
-        return {"ok": True, "brief": build_vendor_brief_payload(vendor, link["event_id"], data)}
+        payload = build_vendor_brief_payload(vendor, link["event_id"], data)
+        # Phase 2A: let a returning vendor see their own prior answer ("You're
+        # confirmed"). This is the vendor's OWN submission state for THIS code —
+        # no event/host data, so the whitelist is untouched.
+        latest = await conn.fetchrow(
+            """select state from public.vendor_brief_confirmations
+               where code=$1
+               order by coalesce(updated_at, submitted_at) desc limit 1""",
+            code,
+        )
+        payload["confirmState"] = latest["state"] if latest else None
+        return {"ok": True, "brief": payload}
+
+
+# ── 3. POST /api/public/vendor-brief/{code}/confirm — PUBLIC confirm-back ──────
+@router.post("/api/public/vendor-brief/{code}/confirm")
+async def public_vendor_brief_confirm(code: str, payload: ConfirmSubmit, request: Request):
+    """Vendor confirm-back (Phase 2A). No auth — the unguessable code is the only
+    credential; event/vendor identity comes from the SERVER's link row, never the
+    client. Idempotent on (code, idempotency_key): a retry / double-tap / changed
+    answer UPDATES the same row. Returns only { ok, submitted_at } — never event
+    data. Opaque 404 for anything that doesn't resolve.
+
+    Slice 2A: capture only. Nothing here mutates the event blob, vendor status,
+    vendor logs, or any attention surface — that is Slice 2B, not started.
+    """
+    code = (code or "")[:MAX_CODE]
+    ip = _client_ip(request)
+    ok, retry = _rate_check(f"ip:{ip}", BRIEF_IP_MAX)
+    if not ok:
+        raise HTTPException(429, "Too many requests — try again shortly",
+                            headers={"Retry-After": str(retry)})
+    ok, retry = _rate_check(f"confirm:{code}", CONFIRM_CODE_MAX)
+    if not ok:
+        raise HTTPException(429, "Too many requests for this brief — try again shortly",
+                            headers={"Retry-After": str(retry)})
+    if len(code) < MIN_CODE_LEN:
+        raise HTTPException(404, "brief not found")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        link = await _resolve_active_link(conn, code)
+        if not link:
+            raise HTTPException(404, "brief not found")
+
+        # Lifetime ceiling per code (mirrors the RSVP total cap). A re-submit on
+        # an existing idempotency_key updates in place and is never blocked.
+        idk = _clip(payload.idempotency_key, MAX_KEY)
+        existing = await conn.fetchrow(
+            """select count(*) as n,
+                      bool_or(idempotency_key = $2) as is_resubmit
+                 from public.vendor_brief_confirmations
+                where code = $1""",
+            code, idk,
+        )
+        if existing and not existing["is_resubmit"] and existing["n"] >= CONFIRM_CODE_MAX_TOTAL:
+            raise HTTPException(429, "This brief has reached its response limit — contact the planner.")
+
+        row = await conn.fetchrow(
+            """
+            insert into public.vendor_brief_confirmations
+              (code, event_id, vendor_id, idempotency_key, state,
+               on_site_name, on_site_phone, note)
+            values ($1,$2,$3,$4,$5,$6,$7,$8)
+            on conflict (code, idempotency_key) do update set
+              state         = excluded.state,
+              on_site_name  = excluded.on_site_name,
+              on_site_phone = excluded.on_site_phone,
+              note          = excluded.note,
+              updated_at    = now()
+            returning submitted_at
+            """,
+            code,
+            link["event_id"],
+            link["vendor_id"],
+            idk,
+            payload.state,
+            _clip(payload.on_site_name, MAX_NAME),
+            _clip(payload.on_site_phone, MAX_PHONE),
+            _clip(payload.note, MAX_NOTE),
+        )
+    return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
+
+
+# ── 4. GET /api/events/{event_id}/vendor-confirmations — planner read-back ─────
+@router.get("/api/events/{event_id}/vendor-confirmations")
+async def list_vendor_confirmations(
+    event_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """All vendor confirm-backs for an event, newest first. Authenticated planner
+    only, studio-scoped (same gate as the RSVP host read-back). Returns only the
+    confirmation's own fields — no event or vendor-record data. Display only on
+    the client (Slice 2A): reading this never mutates anything.
+    """
+    principal = await require_planner(authorization, x_planner_token)
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        await _assert_event_studio_read(conn, event_id, principal)
+        rows = await conn.fetch(
+            """select vendor_id, state, on_site_name, on_site_phone, note,
+                      submitted_at, updated_at
+               from public.vendor_brief_confirmations
+               where event_id = $1
+               order by coalesce(updated_at, submitted_at) desc""",
+            event_id,
+        )
+        return [dict(r) for r in rows]
