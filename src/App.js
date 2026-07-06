@@ -37575,15 +37575,34 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
   const [modalId, setModalId] = useState(null);
   const modalTask = timeline.find(t => t.id === modalId);
 
-  const toggle   = (id) => setTimeline(t => t.map(r => r.id === id ? { ...r, done: !r.done } : r));
-  const toggleSubtask = (taskId, subId) => setTimeline(prev => prev.map(r => {
-    if (r.id !== taskId) return r;
-    const updated = { ...r, subtasks: (r.subtasks || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) };
-    const visibleSubs = (updated.subtasks || []).filter(s => !subtaskSkipped(s, foodChoices));
-    if (visibleSubs.length > 0 && visibleSubs.every(s => s.done)) updated.done = true;
-    if (visibleSubs.some(s => !s.done)) updated.done = false;
-    return updated;
-  }));
+  // Day-of completion feedback: the SEAL fires exactly once, on the transition
+  // where the LAST remaining day task flips done (via either the task toggle or
+  // a subtask completing its parent). Computed OUTSIDE the state updater so
+  // StrictMode's double-invoke can't fire it twice; per-task toggles stay
+  // silent (minor actions), only finishing the whole day earns the moment.
+  // Same feedbackSeal() Focus mode's "Mark it done" uses — all existing gates
+  // (reduced-motion, ngw-sounds, gesture-resumed audio) apply inside it.
+  const fireIfDayJustCompleted = (prevList, nextList) => {
+    const allDone = (l) => l.length > 0 && l.every(t => t.done);
+    if (!allDone(prevList) && allDone(nextList)) { try { feedbackSeal(); } catch {} }
+  };
+  const toggle   = (id) => {
+    const next = timeline.map(r => r.id === id ? { ...r, done: !r.done } : r);
+    fireIfDayJustCompleted(timeline, next);
+    setTimeline(next);
+  };
+  const toggleSubtask = (taskId, subId) => {
+    const next = timeline.map(r => {
+      if (r.id !== taskId) return r;
+      const updated = { ...r, subtasks: (r.subtasks || []).map(s => s.id === subId ? { ...s, done: !s.done } : s) };
+      const visibleSubs = (updated.subtasks || []).filter(s => !subtaskSkipped(s, foodChoices));
+      if (visibleSubs.length > 0 && visibleSubs.every(s => s.done)) updated.done = true;
+      if (visibleSubs.some(s => !s.done)) updated.done = false;
+      return updated;
+    });
+    fireIfDayJustCompleted(timeline, next);
+    setTimeline(next);
+  };
   const upd      = (id, key, val) => setTimeline(t => t.map(r => r.id === id ? { ...r, [key]: val } : r));
   const del      = (id) => { setTimeline(t => t.filter(r => r.id !== id)); setModalId(null); };
   const isOverdue = (task) => isTaskOverdue(task, eventDate, eventType);
