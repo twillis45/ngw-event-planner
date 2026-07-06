@@ -25,7 +25,7 @@
 
 import { useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { fetchVendorConfirmations } from '../lib/api/vendorBrief';
-import { latestConfirmationFor, describeConfirmation } from '../lib/vendorBriefConfirm';
+import { latestConfirmationFor, describeConfirmation, confirmationActionsFor, contactLogEntry, MARK_CONFIRMED_LOG, issueLogEntry } from '../lib/vendorBriefConfirm';
 import { AuthCtx } from '../contexts/AuthContext';
 // UX-SAAS (host de-cockpit): the SAME signal the L3 nav uses to reveal this tab
 // to a host (flag-gated audience persona). When true, this surface speaks plain
@@ -120,28 +120,69 @@ const FF = type.family;
 // Fetched from the planner-auth endpoint on view; renders NOTHING when the API
 // is unconfigured, unauthorized, or there is no confirmation — no fake "not
 // confirmed yet" alarm. Vendor-entered text renders as plain text only.
-// Slice 2A: display only — no status write, no log append, no attention item.
-function VendorConfirmationNote({ eventId, vendorId }) {
+//
+// Slice 2B-1: the row offers EXPLICIT host/planner actions, each writing
+// through the cockpit's EXISTING paths (onPatchVendor / onAddLog) — the same
+// setVendors wrapper as the edit modal, so sync, readiness, first-value and
+// Decision Memory hooks all behave like a manual edit. The vendor's click
+// alone still never mutates anything. Which actions show is recomputed from
+// current vendor state every render (confirmationActionsFor), so an applied
+// action disappears — no double-writes. No attention/Command items (2B-2).
+function VendorConfirmationNote({ eventId, vendor, onPatchVendor, onAddLog }) {
   const [rows, setRows] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [issueLogged, setIssueLogged] = useState(false);
   useEffect(() => {
     let cancelled = false;
     if (!eventId) return undefined;
     fetchVendorConfirmations(eventId).then(r => { if (!cancelled) setRows(r); });
     return () => { cancelled = true; };
   }, [eventId]);
-  const latest = latestConfirmationFor(rows || [], vendorId);
+  const latest = latestConfirmationFor(rows || [], vendor && vendor.id);
   const desc = describeConfirmation(latest);
   if (!desc) return null;
   const tone = desc.kind === 'issue' ? P.amber : P.green;
+
+  const canWrite = Boolean(onPatchVendor && onAddLog);
+  const actions = canWrite ? confirmationActionsFor(latest, vendor) : confirmationActionsFor(null, vendor);
+  const act = (fn) => { if (busy) return; setBusy(true); try { fn(); } finally { setBusy(false); } };
+
+  const actionBtn = (label, onClick) => (
+    <button key={label} type="button" disabled={busy} onClick={() => act(onClick)}
+      style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textPrimary,
+        background: 'none', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm,
+        padding: '4px 12px', cursor: busy ? 'default' : 'pointer', fontFamily: FF, opacity: busy ? 0.6 : 1 }}>
+      {label}
+    </button>
+  );
+
+  const buttons = [];
+  if (actions.saveContact) buttons.push(actionBtn(actions.saveContactLabel, () => {
+    onPatchVendor(vendor.id, { onSiteContactName: latest.on_site_name || '', onSitePhone: latest.on_site_phone || '' });
+    onAddLog(vendor.id, contactLogEntry(latest));
+  }));
+  if (actions.markConfirmed) buttons.push(actionBtn('Mark confirmed', () => {
+    onPatchVendor(vendor.id, { status: 'Confirmed' });
+    onAddLog(vendor.id, MARK_CONFIRMED_LOG);
+  }));
+  if (actions.addIssueToLog && !issueLogged) buttons.push(actionBtn('Add to vendor log', () => {
+    onAddLog(vendor.id, issueLogEntry(latest));
+    setIssueLogged(true); // log entries aren't diffable against the row — hide after one write
+  }));
+
   return (
     <div style={{
-      display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap',
       marginTop: 10, padding: '10px 14px', borderRadius: 10,
       background: `${tone}12`, border: `1px solid ${tone}38`,
     }}>
-      <span style={{ fontSize: type.size['sm'], fontWeight: 700, color: tone, fontFamily: FF }}>{desc.label}</span>
-      {desc.detail && (
-        <span style={{ fontSize: type.size['sm'], color: P.textSecondary, fontFamily: FF }}>{desc.detail}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: type.size['sm'], fontWeight: 700, color: tone, fontFamily: FF }}>{desc.label}</span>
+        {desc.detail && (
+          <span style={{ fontSize: type.size['sm'], color: P.textSecondary, fontFamily: FF }}>{desc.detail}</span>
+        )}
+      </div>
+      {buttons.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>{buttons}</div>
       )}
     </div>
   );
@@ -1905,7 +1946,7 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
         {/* Vendor Brief confirm-back read-back (Phase 2A — DISPLAY ONLY).
             Server-fetched, never written into the event blob, never mutates
             vendor status/log — those host actions are Slice 2B. */}
-        <VendorConfirmationNote eventId={event?.id} vendorId={vendor.id} />
+        <VendorConfirmationNote eventId={event?.id} vendor={vendor} onPatchVendor={onPatchVendor} onAddLog={onAddLog} />
 
         {/* Next action card — embedded, not floating. Sprint 56c: CTA wires
             the suggested follow-up to a one-click execution. */}

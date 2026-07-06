@@ -2,7 +2,8 @@
 // Capture + display only: these helpers never touch vendor status, vendor.log,
 // on-site vendor fields, or attention feeds (Slice 2B, not started).
 
-import { buildConfirmationPayload, latestConfirmationFor, describeConfirmation, CONFIRM_STATES } from '../vendorBriefConfirm';
+import { buildConfirmationPayload, latestConfirmationFor, describeConfirmation, CONFIRM_STATES,
+  confirmationActionsFor, contactLogEntry, MARK_CONFIRMED_LOG, issueLogEntry } from '../vendorBriefConfirm';
 import { submitVendorBriefConfirmation, fetchVendorConfirmations, vendorBriefIdempotencyKey } from '../api/vendorBrief';
 
 describe('buildConfirmationPayload', () => {
@@ -76,5 +77,73 @@ describe('vendorBriefIdempotencyKey', () => {
     const b  = vendorBriefIdempotencyKey('codeB-1234567890abcdef');
     expect(a1).toBe(a2);
     expect(b).not.toBe(a1);
+  });
+});
+
+// ── Slice 2B-1 — host/planner actions (explicit, never automatic) ─────────────
+describe('confirmationActionsFor', () => {
+  const confirmedRow = { state: 'confirmed', on_site_name: 'Dana', on_site_phone: '(301) 555-0134' };
+
+  test('no row (or no vendor) → no actions', () => {
+    const none = { markConfirmed: false, saveContact: false, saveContactLabel: null, addIssueToLog: false };
+    expect(confirmationActionsFor(null, { id: 'v1' })).toEqual(none);
+    expect(confirmationActionsFor(confirmedRow, null)).toEqual(none);
+  });
+
+  test('confirmed row + unconfirmed vendor offers markConfirmed', () => {
+    expect(confirmationActionsFor(confirmedRow, { status: 'Considering' }).markConfirmed).toBe(true);
+  });
+
+  test('confirmed row + already-Confirmed vendor does NOT offer markConfirmed', () => {
+    expect(confirmationActionsFor(confirmedRow, { status: 'Confirmed' }).markConfirmed).toBe(false);
+  });
+
+  test('row with contact info offers saveContact with Save label when vendor has none', () => {
+    const a = confirmationActionsFor(confirmedRow, { status: 'Considering' });
+    expect(a.saveContact).toBe(true);
+    expect(a.saveContactLabel).toBe('Save on-site contact');
+  });
+
+  test('row matching existing vendor contact does NOT offer saveContact', () => {
+    const a = confirmationActionsFor(confirmedRow,
+      { status: 'Confirmed', onSiteContactName: 'Dana', onSitePhone: '(301) 555-0134' });
+    expect(a.saveContact).toBe(false);
+  });
+
+  test('row differing from existing vendor contact labels honestly as Replace', () => {
+    const a = confirmationActionsFor(confirmedRow,
+      { status: 'Confirmed', onSiteContactName: 'Marcus', onSitePhone: '(555) 000-0000' });
+    expect(a.saveContact).toBe(true);
+    expect(a.saveContactLabel).toBe('Replace on-site contact');
+  });
+
+  test('confirmed row with NO contact info offers no saveContact', () => {
+    const a = confirmationActionsFor({ state: 'confirmed' }, { status: 'Considering' });
+    expect(a.saveContact).toBe(false);
+    expect(a.markConfirmed).toBe(true);
+  });
+
+  test('issue row with a note offers addIssueToLog; stage action never offered', () => {
+    const a = confirmationActionsFor({ state: 'issue_reported', note: 'Gate code changed' }, { status: 'Considering' });
+    expect(a.addIssueToLog).toBe(true);
+    expect(a.markConfirmed).toBe(false);
+  });
+
+  test('issue row without a note offers no useless log action', () => {
+    expect(confirmationActionsFor({ state: 'issue_reported', note: '  ' }, { status: 'Considering' }).addIssueToLog).toBe(false);
+  });
+});
+
+describe('2B-1 log string builders — plain host-readable strings', () => {
+  test('contact log names what was saved', () => {
+    expect(contactLogEntry({ on_site_name: 'Dana', on_site_phone: '(301) 555-0134' }))
+      .toBe('Saved on-site contact from brief confirmation — Dana, (301) 555-0134');
+  });
+  test('mark-confirmed log is fixed copy', () => {
+    expect(MARK_CONFIRMED_LOG).toBe('Marked confirmed after brief confirmation');
+  });
+  test('issue log carries the vendor note verbatim as plain text', () => {
+    expect(issueLogEntry({ note: 'Gate code changed' }))
+      .toBe('Vendor reported via brief link: Gate code changed');
   });
 });
