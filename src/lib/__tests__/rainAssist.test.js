@@ -91,3 +91,46 @@ describe('guestRainMessage (GUEST-RAIN-2)', () => {
     expect(m).not.toMatch(INTERNAL);
   });
 });
+
+// ── Rain WINDOW (times) — real hourly data only, never invented ────────────────
+import { computeRainWindow } from '../weather';
+
+describe('computeRainWindow + timed guest message', () => {
+  // OpenWeather-shaped hourly fixture: event date 2026-07-08, tz UTC (offset 0),
+  // rain (pop>=0.4) from 14:00 through 17:00 local.
+  const day = '2026-07-08';
+  const dt = (h) => Math.floor(Date.parse(`${day}T${String(h).padStart(2,'0')}:00:00Z`) / 1000);
+  const hourly = [
+    { dt: dt(10), pop: 0.1 }, { dt: dt(12), pop: 0.2 },
+    { dt: dt(14), pop: 0.55 }, { dt: dt(15), pop: 0.7 },
+    { dt: dt(16), pop: 0.6 }, { dt: dt(17), pop: 0.45 },
+    { dt: dt(19), pop: 0.1 },
+  ];
+
+  test('extracts the real rain span as a readable label', () => {
+    const w = computeRainWindow(hourly, day, 0);
+    expect(w.startHour).toBe(14);
+    expect(w.endHour).toBe(17);
+    expect(w.label).toBe('2 PM–6 PM');
+  });
+
+  test('single rainy hour reads as "around"', () => {
+    expect(computeRainWindow([{ dt: dt(15), pop: 0.8 }], day, 0).label).toBe('around 3 PM');
+  });
+
+  test('no hourly coverage for the date → null (times are never invented)', () => {
+    expect(computeRainWindow(hourly, '2026-07-20', 0)).toBeNull();
+    expect(computeRainWindow(null, day, 0)).toBeNull();
+    expect(computeRainWindow([{ dt: dt(15), pop: 0.2 }], day, 0)).toBeNull();
+  });
+
+  test('guest message includes the window only when the forecast carries it', () => {
+    const { guestRainMessage } = require('../weather');
+    const withWx = guestRainMessage({ name: 'Cookout', venue: 'Fort Ward Park' },
+      { rainWindow: computeRainWindow(hourly, day, 0) });
+    expect(withWx).toContain('If rain comes through (looks most likely 2 PM–6 PM):');
+    const withoutWx = guestRainMessage({ name: 'Cookout', venue: 'Fort Ward Park' });
+    expect(withoutWx).toContain('If rain comes through:');
+    expect(withoutWx).not.toMatch(/most likely/);
+  });
+});

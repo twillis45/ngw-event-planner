@@ -37252,7 +37252,7 @@ function WeatherAlert({ event, onNavTo }) {
   // structured plain text with light icons, no internal logistics. The host's
   // authored rainPlan/contingency stays host-side; it previously pasted
   // verbatim into the guest message (vendor load-in etc. leaked to guests).
-  const weatherPlanMessage = guestRainMessage(event);
+  const weatherPlanMessage = guestRainMessage(event, wx);
   const textGuestsThePlan = async () => {
     const r = await shareOrCopy({ title: event?.name ? `${event.name} — weather plan` : 'Weather plan', text: weatherPlanMessage });
     if (r === 'shared') setShareStatus('Shared');

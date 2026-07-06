@@ -83,7 +83,7 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
   try {
     const res = PROXY
       ? await fetch(`${PROXY}/api/weather/onecall?lat=${lat}&lon=${lon}`)
-      : await fetch(`${BASE}?lat=${lat}&lon=${lon}&exclude=current,minutely,hourly,alerts&units=imperial&appid=${API_KEY}`);
+      : await fetch(`${BASE}?lat=${lat}&lon=${lon}&exclude=current,minutely,alerts&units=imperial&appid=${API_KEY}`);
     if (!res.ok) return null;
     const data = await res.json();
 
@@ -165,6 +165,11 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
         return `${h}:${String(m).padStart(2, '0')} ${ap}`;
       })(),
       disclaimer: 'Weather forecast — accuracy decreases beyond 7 days.',
+      // Rain WINDOW (real hours, never fabricated): derived from the hourly
+      // forecast when the event day is inside the API's 48h hourly horizon.
+      // Beyond that, hourly is absent for the date and this stays null — the
+      // guest message then simply omits the timing line.
+      rainWindow: computeRainWindow(data.hourly, eventDateIso, data.timezone_offset || 0),
     };
   } catch {
     return null;
@@ -286,7 +291,7 @@ export function suggestRainPlan(event) {
 // note with line breaks and light icons — no markdown, no weather certainty,
 // no invented details. Parking uses the host-authored guest parking note when
 // present (the same field the public invite shows), else a safe fallback.
-export function guestRainMessage(event) {
+export function guestRainMessage(event, wx) {
   const ev = event || {};
   const name = String(ev.name || '').trim();
   const venue = String(ev.venue || '').trim();
@@ -302,16 +307,48 @@ export function guestRainMessage(event) {
     ? `Parking: ${parkingNote}`
     : 'Parking stays the same unless we send a change';
 
+  // Timing line: ONLY when the forecast genuinely carries hourly data for the
+  // event date (computeRainWindow) — times are never invented, and the voice
+  // stays hedged ("looks most likely").
+  const windowLabel = wx && wx.rainWindow && wx.rainWindow.label ? wx.rainWindow.label : null;
+
   return [
     `☔ Weather update for ${name || 'our event'}`,
     '',
     "We're still on.",
     '',
-    'If rain comes through:',
+    windowLabel
+      ? `If rain comes through (looks most likely ${windowLabel}):`
+      : 'If rain comes through:',
     `📍 ${where}`,
     `🚗 ${parking}`,
     `👀 Follow signs or staff direction`,
     '',
     "We'll send another update if anything changes.",
   ].join('\n');
+}
+
+// ─── computeRainWindow — real rain hours from the hourly forecast ─────────────
+// Pure + exported for tests. Scans the hourly array (OpenWeather One Call) for
+// hours ON the event's local date with precipitation probability >= 40%, and
+// returns the span as a host-readable label ("2 PM–6 PM", or "around 3 PM" for
+// a single hour). Returns null when hourly data doesn't cover the date — the
+// caller must NOT invent times.
+export function computeRainWindow(hourly, eventDateIso, tzOffsetSec) {
+  if (!Array.isArray(hourly) || !hourly.length || !eventDateIso) return null;
+  const off = Number(tzOffsetSec) || 0;
+  const hrs = [];
+  for (const h of hourly) {
+    if (!h || !h.dt) continue;
+    const local = new Date((h.dt + off) * 1000);
+    if (local.toISOString().slice(0, 10) !== eventDateIso) continue;
+    if ((Number(h.pop) || 0) >= 0.4) hrs.push(local.getUTCHours());
+  }
+  if (!hrs.length) return null;
+  const fmtH = (h) => `${h % 12 || 12} ${h >= 12 ? 'PM' : 'AM'}`;
+  const start = Math.min(...hrs), end = Math.max(...hrs);
+  return {
+    startHour: start, endHour: end,
+    label: start === end ? `around ${fmtH(start)}` : `${fmtH(start)}\u2013${fmtH(end + 1)}`,
+  };
 }
