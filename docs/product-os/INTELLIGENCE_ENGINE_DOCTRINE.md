@@ -158,10 +158,29 @@ verdict. Do not invent scores — every score carries a one-line rationale with
 evidence (file/helper reference, test reference, visible surface behavior, or
 an explicit "unknown").
 
-**Scale (0–10):** 0 absent · 1–2 broken/misleading/unsafe · 3–4 partial/
-fragile/local only · 5–6 functional, needs tightening · 7–8 strong, mostly
-safe to build on · 9–10 canonical, tested, trustworthy, reusable,
-product-grade.
+**Scale (10+ world-class model):** 0 absent · 1–2 broken/unsafe/misleading ·
+3–4 partial/fragile · 5–6 functional but not strong · 7–8 strong and useful ·
+9 excellent/production-grade · 10 world-class baseline for the current
+product stage · **10+** exceptional, moat-level: highly reusable, highly
+trusted, commercially powerful, clearly above normal SaaS/app execution.
+
+**10+ is not math — it is a product-standard override.** An average of 9.0
+does not confer it. Do not hand out 10+ casually: it requires evidence the
+engine materially differentiates NGW, satisfying most or all of: canonical
+source of truth · strong test coverage · production/runtime verification ·
+mobile/demo quality · no fatal flaws · audience-safe behavior · strong
+applicability handling · high commercial value · strong reuse across
+surfaces · clear user-trust impact · hard to copy (moat) · visible
+"No Guesswork" wow · supports engine expansion without rework · avoids fake
+certainty · improves user BEHAVIOR, not just UI copy.
+
+Every scorecard carries a **10+ Potential** column: No / Possible / Yes /
+Proven. Every full audit includes a **10+ Candidates** section (engine, why,
+evidence, missing proof, what would make it truly 10+, verdict
+proven/possible/not yet). Calibration anchors: an engine that only lives on
+one surface is not 10+ however clean; a CTA engine with any broken, stale, or
+wrong-screen CTA anywhere visible is not 10+; Heart cannot be 10+ until it
+visibly changes the user experience rather than doctrine language.
 
 **Dimensions:** 1 Truthfulness · 2 Source-of-truth clarity · 3 Reusability/
 engine quality · 4 Test coverage · 5 CTA/action reliability · 6 State-
