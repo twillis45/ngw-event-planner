@@ -4,6 +4,7 @@ import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, 
 import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
 import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from './lib/api/vendorBrief';
 import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
+import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -22803,14 +22804,18 @@ function AssembleReveal({ ev, profile, onDone, onPatchEvent = null, onRoute = nu
   );
 }
 
-function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent, onPatchProfile = () => {} }) {
+function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent, onPatchProfile = () => {}, allowFocusTakeover = true }) {
   const C = useT();
   const T = useType();
   const isMobile = useContext(BpCtx) === 'mobile';
   const [setupOpen, setSetupOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false); // host event switcher (bottom sheet)
   const [focusExpanded, setFocusExpanded] = useState(false); // Focus mode: collapsed (default) ↔ "whole day"
-  const [focusDismissed, setFocusDismissed] = useState(false); // ‹ on the day-of FOCUS takeover dismisses it → the normal portfolio home (isFocus is DATE-based, so clearing activeId alone just re-shows it)
+  // ‹ on the day-of FOCUS takeover dismisses it → the normal portfolio home (isFocus is
+  // DATE-based, so clearing activeId alone just re-shows it). Slice D-1: when the host
+  // arrived here via EXPLICIT back-navigation (allowFocusTakeover=false), start dismissed —
+  // "‹ Your events" must land on the events overview, never re-enter today's takeover.
+  const [focusDismissed, setFocusDismissed] = useState(!allowFocusTakeover);
   const [focusHc, setFocusHc] = useState(''); // Focus card inline headcount draft (set a count without the roster)
   const [draftSheet, setDraftSheet] = useState(null);  // "do it for me" hand-off: { title, intro, draft, shareTitle }
   // The host's focus event. A real (user-created) event ALWAYS outranks a sample/demo
@@ -44233,6 +44238,11 @@ export default function App() {
   const [clientAutoIntake, setClientAutoIntake] = useState(false); // auto-open discovery intake for a new prospect
   const [activeId,       setActiveId]       = useState(null);
   const [initialNav,     setInitialNav]     = useState(null);
+  // Slice D-1: HOW the host reached home. Explicit back-navigation ('back')
+  // suppresses HostHome's day-of FOCUS auto-takeover (see lib/homeNav.js) so
+  // "‹ Your events" always lands on the events overview, never inside the
+  // today-dated event. Fresh open stays 'fresh' → takeover behavior unchanged.
+  const [homeArrival,    setHomeArrival]    = useState(HOME_ARRIVAL.FRESH);
   // Magic Moment M2 — events whose Editorial Cover has been opened this session.
   const [coverSeen,      setCoverSeen]      = useState(() => new Set());
   // Return-to-last-event: remember the event the user was in, and reopen it when
@@ -45214,8 +45224,8 @@ export default function App() {
             hasOtherEvents={events.filter(e => { try { return hostNavActive(e); } catch { return false; } }).length > 1}
             onOpen={() => setCoverSeen(s => new Set(s).add(activeEvent.id))}
             onShare={() => { setCoverSeen(s => new Set(s).add(activeEvent.id)); setInitialNav({ tab: 'Guests' }); }}
-            onBackToEvents={() => { setActiveId(null); setInitialNav(null); }}
-            onNew={() => { setActiveId(null); setInitialNav(null); setShowNew(true); }} />
+            onBackToEvents={() => { setHomeArrival(HOME_ARRIVAL.BACK); setActiveId(null); setInitialNav(null); }}
+            onNew={() => { setHomeArrival(HOME_ARRIVAL.BACK); setActiveId(null); setInitialNav(null); setShowNew(true); }} />
         </div>
       );
     }
@@ -45242,7 +45252,7 @@ export default function App() {
           allEvents={events}
           initialNav={initialNav}
           profile={profile}
-          onBack={() => { setActiveId(null); setInitialNav(null); }}
+          onBack={() => { setHomeArrival(HOME_ARRIVAL.BACK); setActiveId(null); setInitialNav(null); }}
           backLabel={activeClient ? `← ${activeClient.name}` : '← Home'}
           onSaveVendorToBank={saveVendorToBank}
           onOpenConnections={() => setShowProfile(true)}
@@ -45258,8 +45268,8 @@ export default function App() {
         team={team}
         setTeam={setTeam}
         allEvents={events}
-        onBack={() => { setActiveId(null); setInitialNav(null); }}
-        onOpenClient={activeClient ? () => { setActiveId(null); setInitialNav(null); setActiveClientId(activeClient.id); } : undefined}
+        onBack={() => { setHomeArrival(HOME_ARRIVAL.BACK); setActiveId(null); setInitialNav(null); }}
+        onOpenClient={activeClient ? () => { setHomeArrival(HOME_ARRIVAL.BACK); setActiveId(null); setInitialNav(null); setActiveClientId(activeClient.id); } : undefined}
         backLabel={activeClient ? `← ${activeClient.name}` : '← Home'}
         initialNav={initialNav}
         profile={profile}
@@ -45361,6 +45371,7 @@ export default function App() {
           onProfile={() => setShowProfile(true)}
           onPatchEvent={(id, patch) => setEvents(evs => evs.map(e => e.id === id ? { ...e, ...patch } : e))}
           onPatchProfile={(fn) => setProfile(fn)}
+          allowFocusTakeover={focusTakeoverAllowed(homeArrival)}
         />
       ) : (
       <MainDashboard
