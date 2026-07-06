@@ -5,6 +5,7 @@ import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rs
 import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode, submitVendorBriefConfirmation, vendorBriefIdempotencyKey } from './lib/api/vendorBrief';
 import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
 import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
+import { withDemoSeeded, withDemoRemoved, isDemoEvent } from './lib/demoSeed';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -22804,6 +22805,57 @@ function AssembleReveal({ ev, profile, onDone, onPatchEvent = null, onRoute = nu
   );
 }
 
+// ─── Demo tools (D-2 §9) — seed/reset the flagship demo in one tap ────────────
+// Gated by localStorage['ngw-demo-tools']==='1' (arm with ?demo=1, disarm with
+// ?demo=0). Operates ONLY on demo-prefixed events in the signed-in account:
+// "Seed fresh demo" replaces any prior demo event with a brand-new one (fresh
+// ids → fresh brief code → clean confirmation state, no SQL reset needed);
+// "Remove demo data" deletes them. Real events are never touched.
+// Arm/disarm at MODULE scope — the app consumes+strips URL params early in its
+// lifecycle, so a render-time read of ?demo=1 loses the race. Module init runs
+// before any of that.
+(() => {
+  try {
+    const p = new URLSearchParams(window.location.search).get('demo');
+    if (p === '1') localStorage.setItem('ngw-demo-tools', '1');
+    if (p === '0') localStorage.removeItem('ngw-demo-tools');
+  } catch {}
+})();
+function demoToolsOn() {
+  try { return localStorage.getItem('ngw-demo-tools') === '1'; } catch { return false; }
+}
+
+function DemoToolsBar({ events, setEvents, onOpen }) {
+  const C = useT();
+  const T = useType();
+  const hasDemo = (events || []).some(isDemoEvent);
+  const btn = (label, onClick, solid) => (
+    <button type="button" onClick={onClick}
+      style={{ fontSize: T.caption, fontWeight: FW.bold, padding: '5px 10px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', border: solid ? 'none' : `1px solid ${C.border}`, background: solid ? C.accent : 'transparent', color: solid ? '#fff' : C.muted }}>
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ position: 'fixed', bottom: 14, left: 14, zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '7px 10px', boxShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>
+      <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.08em', color: C.muted }}>DEMO TOOLS</span>
+      {btn(hasDemo ? 'Reset demo (fresh seed)' : 'Seed demo event', () => {
+        const { events: next, removed } = withDemoSeeded(events);
+        setEvents(next);
+        const seeded = next[next.length - 1];
+        try { localStorage.setItem('ngw-last-event', seeded.id); } catch {}
+        if (onOpen) onOpen(seeded.id);
+        // removed ids flow through the existing sync effect -> cloud delete
+        void removed;
+      }, true)}
+      {hasDemo && btn('Remove demo data', () => {
+        const { events: next } = withDemoRemoved(events);
+        setEvents(next);
+        try { localStorage.removeItem('ngw-last-event'); } catch {}
+      }, false)}
+    </div>
+  );
+}
+
 function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfile, onPatchEvent, onPatchProfile = () => {}, allowFocusTakeover = true }) {
   const C = useT();
   const T = useType();
@@ -45410,6 +45462,10 @@ export default function App() {
 
   return gated(
     <>
+      {demoToolsOn() && (
+        <DemoToolsBar events={events} setEvents={setEvents}
+          onOpen={(evId) => { setCoverSeen(s => new Set(s).add(evId)); setActiveId(evId); }} />
+      )}
       {showWelcome ? (
         // First-run: ask account type instead of inferring it (audit's onboarding move).
         <WelcomeOnboarding onChoose={chooseAccountType} />
