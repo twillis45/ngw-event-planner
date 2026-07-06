@@ -1,0 +1,40 @@
+# Deploys the gh-pages branch to GitHub Pages via the workflow path.
+#
+# WHY: the repo previously used Pages' LEGACY branch-build pipeline, which
+# repeatedly hung in "building" for 20-30+ minutes and then errored (three
+# consecutive hangs on 2026-07-06, plus one on the first deploy). This workflow
+# bypasses that pipeline: `npm run deploy` still builds and pushes the gh-pages
+# branch exactly as before, and this action publishes the branch content
+# directly. Repo Pages setting is build_type=workflow (flip back to legacy to
+# roll back).
+name: Deploy Pages
+
+on:
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4
