@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, createContext, useContext, useMemo, Compon
 import { createPortal } from 'react-dom';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, isEmailConfigured } from './lib/commApi';
 import { isRsvpApiConfigured, fetchPublicInvite, submitRsvp, fetchEventRsvps, rsvpIdempotencyKey, flushRsvpOutbox, purgeStaleOutbox } from './lib/api/rsvp';
+import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief, looksLikeBriefCode } from './lib/api/vendorBrief';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -7917,7 +7918,19 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
   // construction. Vendor-facing copy comes from vendor.briefNote alone.
   const brief = buildVendorBriefPayload(vendor, event, ros, profile);
 
-  const token    = b64encode(JSON.stringify(brief));
+  // Vendor Brief v2 Phase 1: prefer a SHORT server-resolvable code (the backend
+  // rebuilds the brief from current event data on every open, so the link never
+  // goes stale and the QR stays scannable). When minting fails or the API isn't
+  // configured, keep the legacy frozen base64 snapshot — sharing never breaks.
+  const [briefCode, setBriefCode] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isVendorBriefApiConfigured() || !event?.id || !vendor?.id) return undefined;
+    mintVendorBriefLink(event.id, vendor.id).then(code => { if (!cancelled && code) setBriefCode(code); });
+    return () => { cancelled = true; };
+  }, [event?.id, vendor?.id]);
+
+  const token    = briefCode || b64encode(JSON.stringify(brief));
   const briefUrl = `${window.location.origin}${window.location.pathname}?vendor=${token}`;
 
   const copyUrl  = () => navigator.clipboard?.writeText(briefUrl).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
@@ -30913,6 +30926,62 @@ function RSVPFormView({ event, onSubmit, onClose, guestMode = false, onSetStyle 
 // the server. It resolves { delivered: true } only on a 2xx — otherwise the form
 // shows the truthful "saved, we'll send it when you're online" state. The
 // idempotency_key is generated ONCE per (event, code) and reused on every retry.
+// ─── Public Vendor Brief route (?vendor=TOKEN) ────────────────────────────────
+// Vendor Brief v2 Phase 1. Two token shapes, handled in order:
+//   1. SHORT server code (~22 chars) → resolve the CURRENT brief from the backend
+//      (fetchPublicVendorBrief; opaque 404 server-side for revoked/missing).
+//   2. Legacy base64 snapshot (hundreds+ chars) → decode locally, exactly as
+//      before. Also the fallback when a short code fails to resolve (offline /
+//      API not configured) — a legacy-shaped token can still render offline.
+function PublicVendorBriefRoute({ token }) {
+  const T = useType();
+
+  // Legacy decode is synchronous and side-effect free — try it up front so a
+  // base64 link renders immediately with no loading state (unchanged behavior).
+  const legacyBrief = useMemo(() => {
+    try {
+      let b;
+      try { b = JSON.parse(b64decode(token)); }
+      catch { b = JSON.parse(atob(token)); } // older ASCII-only links
+      return (b && b.vendorName) ? b : null;
+    } catch { return null; }
+  }, [token]);
+
+  const isCode = !legacyBrief && looksLikeBriefCode(token);
+  // undefined = resolving, null = not found, object = the live brief
+  const [resolved, setResolved] = useState(isCode ? undefined : null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!isCode) return undefined;
+    (async () => {
+      const brief = isVendorBriefApiConfigured() ? await fetchPublicVendorBrief(token) : null;
+      if (!cancelled) setResolved(brief && brief.vendorName ? brief : null);
+    })();
+    return () => { cancelled = true; };
+  }, [token, isCode]);
+
+  const brief = legacyBrief || resolved;
+  if (brief) return <VendorBriefView brief={brief} />;
+
+  if (isCode && resolved === undefined) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+        <div style={{ fontSize: T.body, color: '#888' }}>Loading vendor brief…</div>
+      </div>
+    );
+  }
+
+  // Invalid, revoked, or corrupt token — show friendly error
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+      <div style={{ textAlign: 'center', maxWidth: 380 }}>
+        <div style={{ fontSize: T.title, fontWeight: FW.bold, marginBottom: 8 }}>Link expired or invalid</div>
+        <div style={{ fontSize: T.body, color: '#888' }}>This vendor brief link is no longer valid. Ask your event planner to share a fresh link.</div>
+      </div>
+    </div>
+  );
+}
+
 function PublicRsvpRoute({ code, localEvent }) {
   // 'resolving' until we know; then the resolved event, or null = not found.
   const [resolved, setResolved] = useState(localEvent ? { event: localEvent } : undefined);
@@ -44993,23 +45062,11 @@ export default function App() {
   }
 
   // ── Public Vendor Brief route: ?vendor=TOKEN ──
+  // TOKEN is either a short server-resolvable code (Vendor Brief v2 — resolved
+  // live so the brief always shows current data) or a legacy frozen base64
+  // snapshot of the whole payload. PublicVendorBriefRoute handles both.
   if (vendorCode) {
-    try {
-      let brief;
-      try { brief = JSON.parse(b64decode(vendorCode)); }
-      catch { brief = JSON.parse(atob(vendorCode)); } // fallback for older ASCII-only links
-      if (brief && brief.vendorName) return providers(<VendorBriefView brief={brief} />);
-    } catch {}
-    // Invalid or corrupt token — show friendly error
-    return providers(
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-        <div style={{ textAlign: 'center', maxWidth: 380 }}>
-          <div style={{ fontSize: T.display, marginBottom: 16 }}>🔗</div>
-          <div style={{ fontSize: T.title, fontWeight: FW.bold, marginBottom: 8 }}>Link expired or invalid</div>
-          <div style={{ fontSize: T.body, color: '#888' }}>This vendor brief link is no longer valid. Ask your event planner to share a fresh link.</div>
-        </div>
-      </div>
-    );
+    return providers(<PublicVendorBriefRoute token={vendorCode} />);
   }
 
   // ── Sprint 66: Public Client Portal route: ?portal=TOKEN ──
