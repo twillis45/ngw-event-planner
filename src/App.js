@@ -41,7 +41,7 @@ import { isSentryConfigured, captureError } from './lib/sentry';
 import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet, saveVersion as dvSave, renameVersion as dvRename, deleteVersion as dvDelete, setActiveVersion as dvSetActive, updateActiveVersion as dvUpdateActive } from './lib/draftVersions';
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
-import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary } from './lib/weather';
+import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary, suggestRainPlan, guestRainMessage } from './lib/weather';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
@@ -37248,16 +37248,11 @@ function WeatherAlert({ event, onNavTo }) {
   // group-chat draft — "Text guests the plan →" — not "Review vendors". Build a
   // short, honest message from the REAL forecast (summary + what changes + the
   // authored move). Never fabricated: it only assembles signals already shown.
-  const weatherPlanMessage = (() => {
-    const lines = [];
-    const name = (event?.name || '').trim();
-    lines.push(name ? `Heads up for ${name}:` : 'Heads up for today:');
-    if (wx.summary) lines.push(wx.summary);
-    if (contingency?.plan) lines.push(contingency.plan);
-    else if (adjustments.length) lines.push(adjustments.map(a => a.text.replace(/\s*\([^)]*\)/g, '')).slice(0, 2).join(' '));
-    lines.push("We're covered either way — see you there.");
-    return lines.filter(Boolean).join('\n\n');
-  })();
+  // GUEST-RAIN-2: the guest draft is the GUEST-SAFE helper (lib/weather.js) —
+  // structured plain text with light icons, no internal logistics. The host's
+  // authored rainPlan/contingency stays host-side; it previously pasted
+  // verbatim into the guest message (vendor load-in etc. leaked to guests).
+  const weatherPlanMessage = guestRainMessage(event);
   const textGuestsThePlan = async () => {
     const r = await shareOrCopy({ title: event?.name ? `${event.name} — weather plan` : 'Weather plan', text: weatherPlanMessage });
     if (r === 'shared') setShareStatus('Shared');
@@ -40728,6 +40723,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             as guests-entry. The focus effect scrolls this into view. */}
         <div id="rain-plan" style={{ marginBottom: 10, scrollMarginTop: 16 }}>
           <EDTField C={C} s={s} label="Rain plan"        value={event.rainPlan} onChange={v => upd('rainPlan', v)} textarea placeholder={vph.rainPlan} />
+          {/* RAIN-2: "Do it for me" — inserts a deterministic starter plan the host
+              edits. Hidden the moment the field has ANY text, so an existing plan
+              can never be overwritten silently. Save/clear behavior unchanged. */}
+          {!String(event.rainPlan || '').trim() && (
+            <button type="button" onClick={() => upd('rainPlan', suggestRainPlan(event))}
+              style={{ marginTop: 6, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, padding: '6px 12px' }}>
+              Suggest a rain plan
+            </button>
+          )}
         </div>
         {/* Insurance / COI is vendor paperwork. Hide it for a self-host UNTIL they
             actually add a vendor — a backyard host collecting COIs from nobody is

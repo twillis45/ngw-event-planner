@@ -261,3 +261,57 @@ export function rainAwareSummary(summary, hasPlan) {
     .replace(/— rain plan required/i, '— your rain plan is on file')
     .replace(/— monitor and prepare a rain plan/i, '— monitor; your rain plan is on file');
 }
+
+// ─── RAIN-2: "Suggest a rain plan" — deterministic starter templates ──────────
+// The app detects a missing rain plan and routes the host to the field; this
+// closes the last step by DRAFTING one. No AI, no forecast claims — a plain
+// starter the host edits. Callers must never overwrite an existing plan
+// silently (the UI hides the action once event.rainPlan has text).
+export function suggestRainPlan(event) {
+  const ev = event || {};
+  const venue = String(ev.venue || '').trim();
+  const atHome = ev.venueKind === 'home';
+  if (atHome) {
+    return 'If weather turns, move food, seating, and the key moments to your covered or indoor backup spot. Keep power, sound, and setup protected, and send guests an updated entrance and parking note before they arrive.';
+  }
+  if (venue) {
+    return `If weather turns, move guests and the key activities indoors at ${venue}. Confirm the venue's indoor backup space and vendor load-in path, and send guests the final arrival instructions before the event.`;
+  }
+  return 'If weather turns, move guests and the key activities under cover. Confirm your indoor or covered backup, keep vendor setup protected, and send guests the final arrival instructions before the event.';
+}
+
+// ─── GUEST-RAIN-2: guest-facing rain message (plain text, SMS-safe) ───────────
+// The guest message is NOT the host's rain plan. The host plan carries internal
+// logistics (vendors, load-in, power); guests get a calm, structured plain-text
+// note with line breaks and light icons — no markdown, no weather certainty,
+// no invented details. Parking uses the host-authored guest parking note when
+// present (the same field the public invite shows), else a safe fallback.
+export function guestRainMessage(event) {
+  const ev = event || {};
+  const name = String(ev.name || '').trim();
+  const venue = String(ev.venue || '').trim();
+  const atHome = ev.venueKind === 'home';
+  const parkingNote = String(ev.parkingNotes || ev.parking || '').trim();
+
+  const where = atHome
+    ? 'Head inside when you arrive'
+    : venue
+      ? `Head indoors at ${venue}`
+      : 'Head to the covered area when you arrive';
+  const parking = parkingNote
+    ? `Parking: ${parkingNote}`
+    : 'Parking stays the same unless we send a change';
+
+  return [
+    `☔ Weather update for ${name || 'our event'}`,
+    '',
+    "We're still on.",
+    '',
+    'If rain comes through:',
+    `📍 ${where}`,
+    `🚗 ${parking}`,
+    `👀 Follow signs or staff direction`,
+    '',
+    "We'll send another update if anything changes.",
+  ].join('\n');
+}
