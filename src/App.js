@@ -30,6 +30,7 @@ import { resolveEventIdentity } from './lib/eventIdentityEngine';
 import { buildExperienceContext } from './lib/experienceContext';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
+import { budgetHeroCopy } from './lib/budgetCopy';
 import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape, monoSvg } from './glassIcons';
 import { getFoodPriceFactor, isFoodPricesConfigured } from './lib/foodPrices';
@@ -9600,7 +9601,7 @@ function PlanBudgetRollup({ event = {}, profile = null, isMobile = false, onNav 
         style={{ width: '100%', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, background: 'none', border: 'none', borderTop: `1px solid ${C.border}`, padding: '18px 2px 4px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: 'block', fontSize: T.secondary, color: C.muted }}>Everything so far · food + supplies</span>
-          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>~{est} {verdict ? <span style={{ fontSize: T.caption, fontWeight: FW.semibold, color: verdict.c }}>· {verdict.t} your {money(total)} budget</span> : <span style={{ fontSize: T.caption, fontWeight: FW.regular, color: C.muted }}>estimate</span>}</span>
+          <span style={{ display: 'block', fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: 2 }}>~{est} {verdict ? <span style={{ fontSize: T.caption, fontWeight: FW.semibold, color: verdict.c }}>· {verdict.t} your {money(total)} budget</span> : <span style={{ fontSize: T.caption, fontWeight: FW.regular, color: C.muted }}>so far</span>}</span>
         </span>
         <span style={{ flexShrink: 0, fontSize: T.secondary, color: steel, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>{total > 0 ? 'See over/under →' : 'Budget →'}</span>
       </button>
@@ -27186,7 +27187,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(totalLow, totalHigh)}</div>}
         style={{ marginBottom: 16 }}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0 }}>
-          Estimated for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
+          Sized for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
           {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{money(spentSoFar)}</span> spent so far</> : null}
         </div>
         {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
@@ -27268,7 +27269,7 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
         right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>{money(foodLow, foodHigh)}</div>}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
           {foodPlan
-            ? (<>Estimated from your menu for {foodPlan.guests} guests.
+            ? (<>Sized from your menu for {foodPlan.guests} guests.
                 {foodPlan.lockedTotal > 0 ? <> <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.lockedTotal)}</span> locked in ({foodPlan.lockedCount} item{foodPlan.lockedCount === 1 ? '' : 's'}).</> : null}
                 {foodSpent > 0
                   ? <> You've bought <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodSpent)}</span> ({foodPlan.boughtCount} of {foodPlan.itemCount} items).</>
@@ -41555,25 +41556,36 @@ function pickDroppableBudgetRow(event, priceFactor) {
 
 function budgetHeroContent(event, C, steel, priceFactor) {
   try {
-    const sp = hostSpending(event, priceFactor);
-    const total = sp.total;
-    const spent = sp.spent;            // rows' actual + food bought
-    const committed = sp.committed;    // spent + still-planned food
-    // No real budget yet → no honest hero. Stay silent rather than invent.
-    if (total <= 0 && committed <= 0) return null;
-    if (total <= 0) return null; // can't judge over/under without a ceiling
-    const delta = committed - total;        // >0 = over, <0 = under (food-inclusive)
+    // BUD-1: all copy comes from the pure helper (lib/budgetCopy.js) so the
+    // host-friendly language rules are testable — this wrapper only maps state
+    // → eyebrow/color/liveness and keeps the swap-to-save override for the
+    // over state (one droppable row genuinely clears the overage).
+    const copy = budgetHeroCopy(event, priceFactor);
+    if (!copy) return null;
     const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
-    // The supporting line shows what's gone (spent) of the total — and, when the
-    // food plan adds still-planned cost on top of what's bought, names the committed
-    // figure too so the host sees both ("$420 spent · $980 committed of $1,200").
-    const committedTail = committed > spent
-      ? <> · <span style={{ fontWeight: FW.bold }}>{fmt(committed)} spoken for</span></>
-      : null;
-    if (delta > 0) {
-      // Swap-to-save (Figma 1296:25): when one discretionary row genuinely clears the
-      // overage, name it in the headline + offer a one-tap drop. Otherwise keep the
-      // honest passive "trim a category" line (no single row fixes it).
+    const caveatTail = copy.caveat ? <> {copy.caveat}</> : null;
+
+    if (copy.state === 'unset') {
+      return {
+        state: 'unset', live: true,
+        eyebrow: 'NEEDS YOU', eyebrowColor: steel,
+        title: copy.title, line: copy.line,
+        cta: 'Set budget', ctaTab: 'Budget',
+      };
+    }
+    if (copy.state === 'waiting') {
+      return {
+        state: 'waiting', live: false,
+        eyebrow: 'ON TRACK', eyebrowColor: steel,
+        title: copy.title, line: <span>{copy.line}{caveatTail}</span>,
+        cta: 'Open budget', ctaTab: 'Budget',
+      };
+    }
+    if (copy.state === 'over') {
+      // Swap-to-save (Figma 1296:25): when one discretionary row genuinely
+      // clears the overage, name it + offer a one-tap drop. Otherwise the
+      // helper's honest over copy stands.
+      const delta = copy.numbers.committed - copy.numbers.total;
       const pick = pickDroppableBudgetRow(event, priceFactor);
       const dropLabel = pick ? String(pick.row.category || pick.row.label || 'that line').trim() : null;
       return {
@@ -41581,35 +41593,27 @@ function budgetHeroContent(event, C, steel, priceFactor) {
         eyebrow: 'NEEDS YOU', eyebrowColor: steel,
         title: pick
           ? `${fmt(delta)} over — drop ${dropLabel} to get back on plan?`
-          : `${fmt(delta)} over — trim a line to get back on plan?`,
+          : copy.title,
         line: pick
           ? <span>One swap clears it — dropping <span style={{ fontWeight: FW.bold }}>{dropLabel}</span> ({fmt(pick.drop)}) gets you back on track. Everything else is within plan.</span>
-          : <span>{fmt(spent)} spent of <span style={{ fontWeight: FW.bold }}>{fmt(total)}</span>{committedTail} · <span style={{ color: C.danger, fontWeight: FW.bold }}>{fmt(delta)} over</span></span>,
+          : <span>{copy.line}{caveatTail}</span>,
         cta: 'Open budget', ctaTab: 'Budget',
-        // The drop target threads to PlanNowHero's inline buttons (onDropBudgetRow).
         dropRow: pick ? { id: pick.row.id, label: dropLabel, amount: pick.drop } : null,
       };
     }
-    const under = -delta;
-    // Well under (>15% headroom) and money actually committed (bought or planned)
-    // → the exhale.
-    if (committed > 0 && under >= total * 0.15) {
+    if (copy.state === 'near') {
       return {
-        state: 'allset', live: false,
-        eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
-        title: `Budget's in great shape · ${fmt(spent)} of ${fmt(total)}`,
-        line: <span>{fmt(under)} still in reserve — you've got room.{committedTail && <> ({fmt(committed)} committed.)</>}</span>,
+        state: 'near', live: false,
+        eyebrow: 'ON TRACK', eyebrowColor: steel,
+        title: copy.title, line: <span>{copy.line}{caveatTail}</span>,
         cta: 'Open budget', ctaTab: 'Budget',
       };
     }
-    // On plan — within range, under the ceiling.
+    // under — the exhale.
     return {
-      state: 'onplan', live: false,
-      eyebrow: 'ON TRACK', eyebrowColor: steel,
-      title: `Budget's on plan · ${fmt(spent)} of ${fmt(total)}`,
-      line: under > 0
-        ? <span>{fmt(under)} left before you reach your total.{committedTail && <> ({fmt(committed)} committed.)</>}</span>
-        : `Right at your total — keep an eye on new costs.`,
+      state: 'allset', live: false,
+      eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
+      title: copy.title, line: <span>{copy.line}{caveatTail}</span>,
       cta: 'Open budget', ctaTab: 'Budget',
     };
   } catch { return null; }
