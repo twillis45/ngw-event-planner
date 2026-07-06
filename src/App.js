@@ -6,6 +6,7 @@ import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief
 import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
 import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from './lib/demoSeed';
+import { normalizeEventTabRoute, resolveShellTab } from './lib/shellTabs';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
 import ExportMenu         from './components/ExportMenu';
@@ -38070,21 +38071,9 @@ const TAB_LABELS = { 'Communication': 'Messages', 'Command': 'Overview', 'Event 
 // sentinel. Returns: { tab, planningView, openId } — planningView is null
 // for non-Planning targets.
 const PLANNING_VIEWS = ['list', 'timeline', 'checklist'];
-const normalizeEventTabRoute = (rawTab, itemId) => {
-  if (rawTab === 'Overview')        return { tab: 'Command',  planningView: null,        openId: null };
-  // Legacy/dead alias: 'Details' has no render branch — the tab's real id is
-  // 'Event Details' (host label "Where & when"). Routes emitting 'Details'
-  // (e.g. older CommandCenter foundation routes) resolve instead of dead-ending.
-  if (rawTab === 'Details')         return { tab: 'Event Details', planningView: null, openId: null };
-  // Legacy alias: the day-of tab's route key was renamed 'Run of Show' →
-  // 'Event Day Schedule' to match the UI. Persisted sessions / deep links / old
-  // initialNav may still emit 'Run of Show' — resolve it to the new key.
-  if (rawTab === 'Run of Show')     return { tab: 'Event Day Schedule', planningView: null, openId: itemId || null };
-  if (rawTab === 'Planning Tasks')  return { tab: 'Planning', planningView: 'list',      openId: itemId || null };
-  if (rawTab === 'Timeline')        return { tab: 'Planning', planningView: 'timeline',  openId: itemId || null };
-  if (rawTab === 'Checklist')       return { tab: 'Planning', planningView: 'checklist', openId: itemId || null };
-  return { tab: rawTab, planningView: null, openId: itemId || null };
-};
+// normalizeEventTabRoute moved to lib/shellTabs.js (CTA-REPAIR-1) so the
+// routing contract is pure + testable alongside the shell tab sets.
+
 
 // Field-level deep-link lander for HostEventShell. EventPlanner uses a
 // state-driven effect for this (Board #15, openFocusField); the host shell's
@@ -42194,12 +42183,15 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     setDecPrompt(null);
   };
   const wrap = (field) => (fn) => setEvent(e => ({ ...e, [field]: typeof fn === 'function' ? fn(e[field]) : fn }));
+  // CTA-REPAIR-1: the host shell renders EXACTLY these tabs. Any route outside
+  // this set previously set a tab with no render branch — a BLANK content area
+  // behind a working-looking CTA (engine routes to 'Decisions' and
+  // 'Communication' both did this). Resolver rules: host-specific remaps first
+  // (Decisions live on the host's Plan tab; hosts have no comms surface), then
+  // a hard guarantee that anything unknown lands on Command — a CTA may be
+  // broad, but it may never be blank.
   const go = (newTab, itemId, opts) => {
-    // Host has no 'Timeline' tab — the run-of-show IS the host's timeline. Map legacy
-    // 'Timeline' routes (e.g. the "Review readiness" attention CTA) onto it so they
-    // resolve instead of dead-ending. Planner keeps its own Timeline tab (its own router).
-    if (newTab === 'Timeline') newTab = 'Event Day Schedule';
-    const norm = normalizeEventTabRoute(newTab, itemId);
+    const norm = resolveShellTab('host', newTab, itemId);
     setOpenTaskId(norm.planningView === 'list' ? (norm.openId || null) : null);
     setOpenTimelineId(norm.planningView === 'timeline' ? (norm.openId || null) : null);
     focusFood(norm.tab === 'Planning' && opts && opts.foodFocus ? opts.foodFocus : null);
@@ -42217,7 +42209,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   };
   useEffect(() => {
     if (!initialNav) return;
-    if (initialNav.tab) { const n = normalizeEventTabRoute(initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
+    if (initialNav.tab) { const n = resolveShellTab('host', initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
     if (initialNav.foodFocus) focusFood(initialNav.foodFocus);
     // POP-1 continuity: an inbound route carrying focusField (e.g. the Reveal
     // blocker's "Handle it now") lands ON the field — parity with go()'s
@@ -42236,7 +42228,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
     ...(has('vendors')   ? [{ id: 'Vendors',       label: 'People you’re hiring' }] : []),
     // Docs only with a vendor AND docs (matches presentationNav.hostNav — one rule).
     ...(has('documents') && has('vendors') ? [{ id: 'Documents',     label: 'Files' }] : []),
-    ...((has('commClient') || has('messages')) ? [{ id: 'Communication', label: 'Messages' }] : []),
+    // CTA-REPAIR-1: 'Messages' removed — the host shell has NO Communication
+    // render branch, so this nav entry opened a blank surface. Hosts message
+    // through the compose flows on Command, not a tab.
+
   ];
   const NAV = [
     { id: 'Command',            label: 'Your event', icon: 'zap' },
@@ -42619,7 +42614,9 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     // view; everything else passes through.
     // Sprint 60.B: optional opts.vendorSection lands the planner in a
     // specific section inside the Vendor cockpit.
-    const norm = normalizeEventTabRoute(newTab, itemId);
+    // CTA-REPAIR-1: one routing contract (lib/shellTabs.js) — normalize +
+    // clamp to this shell's real tab set; unknown tabs land on Command.
+    const norm = resolveShellTab('planner', newTab, itemId);
     const resolvedTab  = norm.tab;
     const resolvedView = norm.planningView;
     // Lightweight tab-open instrumentation so the deferred tab cuts (Calendar /
