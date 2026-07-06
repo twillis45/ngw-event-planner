@@ -27177,10 +27177,15 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
           never hidden. Open until a budget is set, then it collapses with a green done-dot. */}
       <CollapsibleCard id="bud-plan" isMobile={isMobile} defaultCollapsed forceOpen={!(budgetSet && Number(budgetDraft) > 0)} done={!!(budgetSet && Number(budgetDraft) > 0)} autoCollapseWhenDone={!!(budgetSet && Number(budgetDraft) > 0)}
         title="Your budget"
-        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(totalLow, totalHigh)}</div>}
+        /* Copy rule (user, 2026-07-06): once the host SETS a budget, THEIR number
+           is the hero — the plan estimate demotes to the support line. Before a
+           budget exists, the estimate range is the only honest number to show. */
+        right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{(budgetSet && Number(budgetDraft) > 0) ? money(Math.round(Number(budgetDraft))) : money(totalLow, totalHigh)}</div>}
         style={{ marginBottom: 16 }}>
         <div style={{ fontSize: T.body, color: C.muted, marginTop: 0 }}>
-          Sized for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests
+          {(budgetSet && Number(budgetDraft) > 0)
+            ? <>Your budget · plan tracking {money(totalLow, totalHigh)} for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests</>
+            : <>Sized for {plannedGuests || (foodPlan ? foodPlan.guests : 0) || 0} guests</>}
           {spentSoFar > 0 ? <> · <span style={{ color: C.success, fontWeight: FW.bold }}>{money(spentSoFar)}</span> spent so far</> : null}
         </div>
         {/* Obvious budget entry — "Set budget" lands here, so give a clear number field.
