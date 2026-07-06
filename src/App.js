@@ -45,6 +45,7 @@ import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet,
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary, suggestRainPlan, guestRainMessage } from './lib/weather';
+import { derivePlaceIntelligence } from './lib/placeIntelligence';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
@@ -40530,48 +40531,53 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
 
       <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
         <EDTSectionHead C={C}label={detailsIsHost ? 'Where it’s happening' : 'Venue'} hint={detailsIsHost ? 'The place, the address, and any notes for the day — parking, where to set up, a rain plan if it’s outside.' : 'Where it happens. Address, contact, and the operational notes the team will need on event day.'} />
-        {/* Sprint 60: Venue logistics gaps. Surfaces only when a real gap
-            applies — outdoor events without rain plan, near-event events
-            without a venue contact, COI required but not on file. Quiet
-            until there's something actionable. */}
+        {/* LOCATION-VENUE-1 — Place Intelligence Card ("Location check").
+            Replaces the old text-only Missing-logistics list: same spot, same
+            restrained shell, but every gap now has a state and a real in-tab
+            focus CTA. All rules live in lib/placeIntelligence.js (the one
+            Place Core) — this block only renders. Not-applicable sections
+            (venue-only fields at home, load-in with no vendors) are hidden,
+            never shown as failures. */}
         {(() => {
-          const days = event?.date ? daysUntil(event.date) : null;
-          const isUpcoming = typeof days === 'number' && days >= 0 && days <= 90;
-          const venueKind = event?.venueKind || 'home';
-          // Board #11 — weight gaps by the SHAPE of the event. A backyard host IS the
-          // venue contact and the load-in crew, so those nags are noise for them; an
-          // outdoor event genuinely needs a rain + parking plan.
-          const isHomeish = venueKind === 'home';
-          const outdoors = venueKind === 'outdoor' || event?.indoorOutdoor === 'outdoor' || event?.indoorOutdoor === 'both';
-          const gaps = [];
-          // POP-1 rain-plan continuity: the rain item now comes from the SAME
-          // rainPlanGap() helper the weather surface reasons with — one rule,
-          // one message, one resolution (fill event.rainPlan below).
-          const rpGap = rainPlanGap(event, { outdoors });
-          if (rpGap) gaps.push(rpGap.message);
-          if (outdoors && !event?.parkingNotes) gaps.push('No parking plan for an outdoor event');
-          if (isUpcoming && !isHomeish && !event?.venueContact) gaps.push('No venue contact for day-of');
-          if (isUpcoming && !isHomeish && !event?.loadInNotes) gaps.push('No load-in notes for vendors');
-          if (event?.coiNeeded === 'required') gaps.push('COI required — collect from vendors');
-          // Honest, non-specific permit heads-up. Public or large outdoor gatherings
-          // commonly need a city/park permit — but the specific permit varies by city,
-          // so we only nudge them to check, never assert a form or requirement.
-          if (outdoors && (Number(event?.guestCount) >= 50 || Number(event?.guestEstimate) >= 50 || venueKind === 'outdoor')) gaps.push('Public or large outdoor events often need a city or park permit — check with your city');
-          if (gaps.length === 0) return null;
+          const pi = derivePlaceIntelligence(event);
+          const visible = pi.sections.filter(x => x.state !== 'na');
+          const stateWord = { handled: 'Handled', needs: 'Needs info', risk: 'At risk' };
+          const stateColor = { handled: C.muted, needs: C.muted, risk: (C.danger || '#e0746a') };
           return (
-            // Sprint 60.L F15: heads-up tag 10.5 → 12, items 11.5 → 14
-            // for grandmother-readable phone brightness.
-            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, ...metalEdge(C), borderLeft: `3px solid ${C.muted}` }}>
-              <div style={{ fontSize: T.secondary, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>
-                Heads up · Missing logistics
+            <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, ...metalEdge(C), borderLeft: `3px solid ${pi.status === 'handled' ? C.border : C.muted}` }}>
+              <div style={{ fontSize: T.secondary, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
+                Location check
               </div>
-              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {gaps.map(g => (
-                  <li key={g} style={{ fontSize: T.body, color: C.text, lineHeight: 1.5 }}>
-                    <span style={{ color: C.muted, marginRight: 8 }}>•</span>{g}
+              <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, marginBottom: visible.length ? 10 : 0 }}>
+                {pi.headline}
+              </div>
+              <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {visible.map(x => (
+                  <li key={x.key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, fontSize: T.secondary, lineHeight: 1.5 }}>
+                    <span style={{ fontWeight: FW.semibold, color: C.text, minWidth: 118 }}>{x.label}</span>
+                    <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.08em', textTransform: 'uppercase', color: stateColor[x.state] }}>{stateWord[x.state]}</span>
+                    <span style={{ color: C.muted, flex: '1 1 100%' }}>
+                      {x.detail}
+                      {x.action && (
+                        <button type="button"
+                          onClick={() => scrollFocusFieldWithRetry(x.action.route.focusField)}
+                          style={{ marginLeft: 8, background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, padding: '3px 10px' }}>
+                          {x.action.label}
+                        </button>
+                      )}
+                    </span>
                   </li>
                 ))}
               </ul>
+              {pi.notes.length > 0 && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                  {pi.notes.map(n => (
+                    <div key={n} style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5 }}>
+                      <span style={{ marginRight: 6 }}>•</span>{n}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })()}
@@ -40753,10 +40759,14 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             </div>
           );
         })()}
+        {/* id="venue-contact": Place Intelligence CTA anchor (same wrapper
+            pattern as rain-plan / event-date). */}
+        <div id="venue-contact" style={{ scrollMarginTop: 16 }}>
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Venue contact name" value={event.venueContact} onChange={v => upd('venueContact', v)} placeholder="Day-of point of contact" />
           <EDTField C={C} s={s} label="Phone"              value={event.venuePhone}   onChange={v => upd('venuePhone', v)} type="tel" placeholder="(555) 555-0100" />
         </EDTRow>
+        </div>
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Email"              value={event.venueEmail}   onChange={v => upd('venueEmail', v)} type="email" placeholder="venue@example.com" />
           <EDTField C={C} s={s}
@@ -40771,13 +40781,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             ]}
           />
         </EDTRow>
-        <div style={{ marginBottom: 10 }}>
+        {/* id anchors below: Place Intelligence CTA landing targets
+            (lib/placeIntelligence.js PLACE_TARGETS — keep ids in sync). */}
+        <div id="loadin-notes" style={{ marginBottom: 10, scrollMarginTop: 16 }}>
           <EDTField C={C} s={s} label="Load-in notes"    value={event.loadInNotes} onChange={v => upd('loadInNotes', v)} textarea placeholder={vph.loadIn} />
         </div>
-        <div style={{ marginBottom: 10 }}>
+        <div id="parking-notes" style={{ marginBottom: 10, scrollMarginTop: 16 }}>
           <EDTField C={C} s={s} label="Parking"          value={event.parkingNotes} onChange={v => upd('parkingNotes', v)} textarea placeholder={vph.parking} />
         </div>
-        <div style={{ marginBottom: 10 }}>
+        <div id="house-rules" style={{ marginBottom: 10, scrollMarginTop: 16 }}>
           <EDTField C={C} s={s} label="House rules"      value={event.houseRules} onChange={v => upd('houseRules', v)} textarea placeholder={vph.houseRules} />
         </div>
         {/* POP-1 rain-plan continuity: id="rain-plan" is the deep-link landing
