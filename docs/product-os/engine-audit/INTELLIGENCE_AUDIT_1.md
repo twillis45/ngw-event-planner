@@ -1,9 +1,9 @@
 # INTELLIGENCE-AUDIT-1 — Engine Scorecards (2026-07-06)
 
-Scoring model: Intelligence Engine Doctrine §6 (15 dimensions, 0–5, fatal-flaw
+Scoring model: Intelligence Engine Doctrine §6 (15 dimensions, 0–10, fatal-flaw
 override, verdict labels). Evidence = file/helper, test suite, or live-verified
 surface behavior from shipped slices; **unk** = not enough evidence, excluded
-from the average. Regression dimension: 5 = LOW risk.
+from the average. Regression dimension: 10 = LOW risk.
 
 Column key: Truth · Source · Reuse · Tests · CTA · State · Audience · Applic ·
 Clarity · Value · Arch · Regr · Mob/Demo · Heart · Evidence.
@@ -12,24 +12,24 @@ Clarity · Value · Arch · Regr · Mob/Demo · Heart · Evidence.
 
 | Engine (maturity) | T | S | Ru | Te | C | St | Au | Ap | Cl | V | Ar | Rg | M | H | Ev | **Avg** | Verdict |
 |---|--|--|--|--|--|--|--|--|--|--|--|--|--|--|--|---|---|
-| Event Readiness Core (shipped) | 5 | 5 | 5 | 5 | 4 | 5 | 4 | 5 | 4 | 5 | 5 | 4 | 4 | 2 | 5 | **4.5** | **Build on** |
-| Action Router / CTA Core (shipped) | 5 | 5 | 5 | 5 | 5 | 5 | 4 | 4 | 4 | 5 | 5 | 4 | 5 | 2 | 5 | **4.5** | **Build on** |
-| Progress Source-of-Truth (shipped) | 5 | 5 | 5 | 5 | unk | 5 | 4 | 5 | 4 | 4 | 5 | 5 | 4 | 1 | 5 | **4.4** | **Build on** |
-| Vendor Confirmation Intelligence (shipped) | 5 | 5 | 4 | 5 | 5 | 5 | 5 | 4 | 4 | 4 | 5 | 4 | 4 | 3 | 5 | **4.5** | **Build on** |
-| Vendor Brief Intelligence (shipped) | 5 | 5 | 4 | 5 | 4 | 4 | 5 | 4 | 4 | 5 | 5 | 4 | 4 | 3 | 5 | **4.4** | **Build on** |
-| Audience / Privacy Filter (shipped-partial) | 5 | 4 | 4 | 5 | unk | 4 | 5 | 5 | 4 | 5 | 4 | 4 | 4 | 3 | 5 | **4.4** | **Build on** |
-| Weather / Contingency Core (shipped) | 5 | 5 | 4 | 5 | 5 | 4 | 5 | 4 | 4 | 4 | 5 | 4 | 4 | 3 | 5 | **4.4** | **Build on** |
-| Place Intelligence Core (shipped, LOCATION-VENUE-1) | 5 | 5 | 4 | 5 | 5 | 5 | 4 | 5 | 4 | 4 | 5 | 4 | 5 | 2 | 5 | **4.5** | **Build on** |
-| Budget / Money Core (shipped) | 5 | 4 | 4 | 5 | 4 | 4 | 4 | 4 | 5 | 5 | 4 | 3 | 4 | 2 | 5 | **4.1** | Tighten |
-| Guest Intelligence Core (shipped-partial) | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 5 | 4 | 4 | 4 | 3 | 4 | **4.0** | Tighten |
-| Task / Checklist Core (shipped) | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 4 | 2 | 4 | **3.9** | Tighten |
-| Planning Health / Applicability (shipped) | 5 | 3 | 4 | 4 | 4 | 4 | 4 | 5 | 4 | 4 | 4 | 4 | 4 | 2 | 4 | **3.9** | Tighten |
-| Decision Memory Core (partial) | 5 | 4 | 4 | 4 | 3 | 4 | 4 | 4 | 3 | 4 | 4 | 4 | 4 | 4 | 4 | **3.9** | Tighten |
-| Vendor Intelligence Core (partial) | 4 | 4 | 4 | 4 | 4 | 4 | 3 | 4 | 3 | 4 | 4 | 3 | 4 | 2 | 4 | **3.7** | Tighten |
-| Timeline / Day-Of Ops Core (partial) | 4 | 4 | 4 | 3 | 4 | 4 | 3 | 4 | 3 | 4 | 4 | 3 | 4 | 3 | 4 | **3.7** | Tighten |
-| Human / Heart / Moment Core (partial) | 4 | 3 | 3 | 3 | 3 | 3 | 4 | 4 | 3 | 5 | 4 | 4 | 4 | 5 | 3 | **3.7** | Tighten |
-| Communication Core (partial, planner-only) | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | **2.9** | Local only |
-| Admin / Fleet Core (partial) | 3 | 3 | 3 | 2 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 1 | 3 | **2.8** | Kill/Park (expansion) |
+| Event Readiness Core (shipped) | 10 | 10 | 10 | 10 | 8 | 10 | 8 | 10 | 8 | 10 | 10 | 8 | 8 | 4 | 10 | **9.0** | **Build on** |
+| Action Router / CTA Core (shipped) | 10 | 10 | 10 | 10 | 10 | 10 | 8 | 8 | 8 | 10 | 10 | 8 | 10 | 4 | 10 | **9.0** | **Build on** |
+| Progress Source-of-Truth (shipped) | 10 | 10 | 10 | 10 | unk | 10 | 8 | 10 | 8 | 8 | 10 | 10 | 8 | 2 | 10 | **8.8** | **Build on** |
+| Vendor Confirmation Intelligence (shipped) | 10 | 10 | 8 | 10 | 10 | 10 | 10 | 8 | 8 | 8 | 10 | 8 | 8 | 6 | 10 | **9.0** | **Build on** |
+| Vendor Brief Intelligence (shipped) | 10 | 10 | 8 | 10 | 8 | 8 | 10 | 8 | 8 | 10 | 10 | 8 | 8 | 6 | 10 | **8.8** | **Build on** |
+| Audience / Privacy Filter (shipped-partial) | 10 | 8 | 8 | 10 | unk | 8 | 10 | 10 | 8 | 10 | 8 | 8 | 8 | 6 | 10 | **8.8** | **Build on** |
+| Weather / Contingency Core (shipped) | 10 | 10 | 8 | 10 | 10 | 8 | 10 | 8 | 8 | 8 | 10 | 8 | 8 | 6 | 10 | **8.8** | **Build on** |
+| Place Intelligence Core (shipped, LOCATION-VENUE-1) | 10 | 10 | 8 | 10 | 10 | 10 | 8 | 10 | 8 | 8 | 10 | 8 | 10 | 4 | 10 | **9.0** | **Build on** |
+| Budget / Money Core (shipped) | 10 | 8 | 8 | 10 | 8 | 8 | 8 | 8 | 10 | 10 | 8 | 6 | 8 | 4 | 10 | **8.2** | Tighten |
+| Guest Intelligence Core (shipped-partial) | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 10 | 8 | 8 | 8 | 6 | 8 | **8.0** | Tighten |
+| Task / Checklist Core (shipped) | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 8 | 4 | 8 | **7.8** | Tighten |
+| Planning Health / Applicability (shipped) | 10 | 6 | 8 | 8 | 8 | 8 | 8 | 10 | 8 | 8 | 8 | 8 | 8 | 4 | 8 | **7.8** | Tighten |
+| Decision Memory Core (partial) | 10 | 8 | 8 | 8 | 6 | 8 | 8 | 8 | 6 | 8 | 8 | 8 | 8 | 8 | 8 | **7.8** | Tighten |
+| Vendor Intelligence Core (partial) | 8 | 8 | 8 | 8 | 8 | 8 | 6 | 8 | 6 | 8 | 8 | 6 | 8 | 4 | 8 | **7.4** | Tighten |
+| Timeline / Day-Of Ops Core (partial) | 8 | 8 | 8 | 6 | 8 | 8 | 6 | 8 | 6 | 8 | 8 | 6 | 8 | 6 | 8 | **7.4** | Tighten |
+| Human / Heart / Moment Core (partial) | 8 | 6 | 6 | 6 | 6 | 6 | 8 | 8 | 6 | 10 | 8 | 8 | 8 | 10 | 6 | **7.4** | Tighten |
+| Communication Core (partial, planner-only) | 6 | 6 | 6 | 4 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | **5.8** | Local only |
+| Admin / Fleet Core (partial) | 6 | 6 | 6 | 4 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 6 | 2 | 6 | **5.6** | Kill/Park (expansion) |
 
 **Fatal-flaw sweep: none open.** The historical fatal flaws (blank-tab CTAs,
 duplicate risk engine, wrong Budget render branch, ungated AI budget write,
@@ -37,24 +37,24 @@ pricing drift) were fixed and test-locked in CTA-REPAIR-1, PC-2, and HQ-2.
 
 ## Per-engine evidence and next slice
 
-- **Event Readiness Core** — `getEventReadiness` + `wholeEventReadinessScore`; progressDoctrine + progressReadiness suites. Heart 2: axes are purely logistical. Next: none required; consumes future Heart signals only by annotation (DL-008).
+- **Event Readiness Core** — `getEventReadiness` + `wholeEventReadinessScore`; progressDoctrine + progressReadiness suites. Heart 4: axes are purely logistical. Next: none required; consumes future Heart signals only by annotation (DL-008).
 - **Action Router / CTA Core** — `eventPlan`/`selectEventNextAction` + `resolveShellTab`; shellTabs (10) + ctaDeepLinks (8) + ctaStateTransitions (11) suites; mobile live-verified in CTA-REPAIR-1. Next: keep the maintenance rule (new tab ⇒ tab sets).
-- **Progress SoT** — doctrine-as-tests (progressDoctrine.test.js). CTA unk (emits none by design). Heart 1: a bar can't carry meaning. Next: none.
+- **Progress SoT** — doctrine-as-tests (progressDoctrine.test.js). CTA unk (emits none by design). Heart 2: a bar can't carry meaning. Next: none.
 - **Vendor Confirmation** — confirm-back capture, idempotent server rows, `confirmationActionsFor` self-clearing actions; 22 lib tests + live-verified 2B-1. Next: 2B-2 attention chip only if demo feedback demands it (parked).
 - **Vendor Brief** — audited whitelist both sides + tokenized resolve; backend 97/97; mint happy-path prod verify pending a signed-in session. Next: close that verification.
-- **Audience/Privacy** — whitelists by construction (vendorBrief, RSVP PUBLIC_EVENT_FIELDS, guestRainMessage internal-terms test-ban). Not yet one module (Source 4). Next: only generalize behind a §7 audit.
+- **Audience/Privacy** — whitelists by construction (vendorBrief, RSVP PUBLIC_EVENT_FIELDS, guestRainMessage internal-terms test-ban). Not yet one module (Source 8). Next: only generalize behind a §7 audit.
 - **Weather/Contingency** — rainPlanStatus/Gap single rule, computeRainWindow real-forecast-only, suggest/guest split; 17 rainAssist tests, live + prod verified. Next: none.
-- **Place Intelligence** — NEW: `derivePlaceIntelligence` one Place Core, 15 contract tests, live-verified home/venue/CTA/state-transition/mobile. Reuse 4: one surface so far. Heart 2: logistics-only copy. Next: consider Command health-row consumption (single source already).
-- **Budget/Money** — actuals-only "spent" test-pinned (budgetCopy 8 + BUD-1 heroes). Regr 3: money copy spans many surfaces. Next: unify remaining estimate-vs-actual seams (HQ-2 deferred P1s).
+- **Place Intelligence** — NEW: `derivePlaceIntelligence` one Place Core, 15 contract tests, live-verified home/venue/CTA/state-transition/mobile. Reuse 8: one surface so far. Heart 4: logistics-only copy. Next: consider Command health-row consumption (single source already).
+- **Budget/Money** — actuals-only "spent" test-pinned (budgetCopy 8 + BUD-1 heroes). Regr 6: money copy spans many surfaces. Next: unify remaining estimate-vs-actual seams (HQ-2 deferred P1s).
 - **Guest** — count/roster/RSVP modes, attendanceBand; D-1C zero-state fix. Next: reply-nudge loop depth (commercial value is already top-tier).
 - **Task/Checklist** — `effectiveDone` engine-satisfaction; regression risk lives in playbook authoring. Next: overdue surfacing consistency.
 - **Planning Health/Applicability** — suppression correct but lives in two places (health rows + score exclusions). Next slice: unify applicability predicates into one set.
 - **Decision Memory** — capture + prompt live-verified; payoff (rationale resurfacing) partially wired (Big Move H). Next slice: visible-payoff loop.
 - **Vendor Intelligence** — readiness rollup + cockpit; zero cross-vendor sequencing (flagship audit); military categories missing. Next: ctx into Vendors + seed expansion (already queued).
-- **Timeline/Day-Of** — effectiveRos solid; three sibling day-of surfaces await convergence review (parked ticket). Tests 3: thinner than CTA suites.
-- **Human/Heart** — heart tier + experienceContext; only 7/11 proposed fields actually supported (ET-1) — Evidence 3. Next: expression-before-expansion annotations (DL-008), no new engine.
-- **Communication** — planner-shell only; host shell intentionally has no comms tab (clamp). Tests 2. Verdict Local only until a host-facing comms need is proven.
-- **Admin/Fleet** — cross-event attention works at 3 clients; scale unverified (HQ-3), Heart 1, Tests 2. Park expansion pending Planner Pro validation.
+- **Timeline/Day-Of** — effectiveRos solid; three sibling day-of surfaces await convergence review (parked ticket). Tests 6: thinner than CTA suites.
+- **Human/Heart** — heart tier + experienceContext; only 7/11 proposed fields actually supported (ET-1) — Evidence 6. Next: expression-before-expansion annotations (DL-008), no new engine.
+- **Communication** — planner-shell only; host shell intentionally has no comms tab (clamp). Tests 4. Verdict Local only until a host-facing comms need is proven.
+- **Admin/Fleet** — cross-event attention works at 3 clients; scale unverified (HQ-3), Heart 2, Tests 4. Park expansion pending Planner Pro validation.
 
 ## Rollups
 

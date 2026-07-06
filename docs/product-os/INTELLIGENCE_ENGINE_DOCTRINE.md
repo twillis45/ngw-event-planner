@@ -158,15 +158,16 @@ verdict. Do not invent scores — every score carries a one-line rationale with
 evidence (file/helper reference, test reference, visible surface behavior, or
 an explicit "unknown").
 
-**Scale (0–5):** 0 absent · 1 broken/misleading/unsafe · 2 partial/fragile/
-local only · 3 functional, needs tightening · 4 strong, mostly safe to build
-on · 5 canonical, tested, trustworthy, reusable, product-grade.
+**Scale (0–10):** 0 absent · 1–2 broken/misleading/unsafe · 3–4 partial/
+fragile/local only · 5–6 functional, needs tightening · 7–8 strong, mostly
+safe to build on · 9–10 canonical, tested, trustworthy, reusable,
+product-grade.
 
 **Dimensions:** 1 Truthfulness · 2 Source-of-truth clarity · 3 Reusability/
 engine quality · 4 Test coverage · 5 CTA/action reliability · 6 State-
 transition reliability · 7 Audience safety · 8 Applicability handling ·
 9 User clarity · 10 Commercial/product value · 11 Architecture fit ·
-12 Regression risk (5 = low risk) · 13 Mobile/demo quality · 14 Human/Heart
+12 Regression risk (10 = low risk) · 13 Mobile/demo quality · 14 Human/Heart
 quality · 15 Evidence depth (concrete event data vs hardcoded copy).
 
 **Overall:** simple average across scored dimensions — but the average never
@@ -179,7 +180,7 @@ fake weather/location/venue fact · not-applicable work counted as failure ·
 local progress shown as whole-event readiness · untested canonical engine
 affecting major surfaces.
 
-**Verdicts:** Build on (avg ≥ 4.2, no fatal flaw) · Tighten (3.4–4.1 or minor
+**Verdicts:** Build on (avg ≥ 8.4, no fatal flaw) · Tighten (6.8–8.3 or minor
 architecture/test gaps) · Local only (useful, not engine-grade) · Repair
 (trust issue, broken CTA, misleading source, weak tests) · Kill/Park (low
 value, duplicate, fake-smart, not commercially useful now).
