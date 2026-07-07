@@ -36,6 +36,7 @@ import { hostSpending } from './lib/hostSpending';
 import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { showsReplyTracking } from './lib/guestMode';
 import { eventContextNudge } from './lib/eventContextNudges';
+import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount } from './lib/crabPlan';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -9382,6 +9383,113 @@ function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ── CrabPlanCard — CRAB-PRICING-1 ────────────────────────────────────────────
+// Maryland crab ordering: mixed sizes and units (dozen / half-bushel / bushel),
+// host-entered prices only, live coverage ("about N crabs per person"), and a
+// bushel nudge that talks coverage, never price claims. Renders only for crab
+// events (or once a crab plan exists). Green dot follows buildCrabPlan.handled.
+function CrabPlanCard({ event, onPatchEvent, isMobile = false }) {
+  const C = useT();
+  const T = useType();
+  const plan = (() => { try { return buildCrabPlan(event); } catch { return { relevant: false }; } })();
+  if (!plan.relevant) return null;
+  const cp = (event.crabPlan && typeof event.crabPlan === 'object') ? event.crabPlan : { lines: [] };
+  const patch = (next) => onPatchEvent && onPatchEvent({ crabPlan: { ...cp, ...next } });
+  const patchLine = (id, key, val) => patch({ lines: (cp.lines || []).map(l => l && l.id === id ? { ...l, [key]: val } : l) });
+  const addLine = () => patch({ lines: [ ...(cp.lines || []), { id: `cl-${Date.now().toString(36)}`, size: 'large', unit: 'dozen', quantity: 1, estimatedCountPerUnit: null, pricePerUnit: null, bought: false } ] });
+  const removeLine = (id) => patch({ lines: (cp.lines || []).filter(l => l && l.id !== id) });
+  const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontFamily: 'inherit', padding: '7px 9px', outline: 'none', boxSizing: 'border-box' };
+  const sel = { ...inp, minHeight: 38 };
+  const statusColor = plan.coverageStatus === 'covered' ? (C.success || C.accent)
+    : plan.coverageStatus === 'under' ? (C.warn || C.accent) : C.muted;
+  return (
+    <div id="crab-plan" style={{ scrollMarginTop: 16 }}>
+    <CollapsibleCard id={`crab-plan-${event.id}`} isMobile={isMobile} defaultCollapsed={false} title="The crabs"
+      done={typeof plan.handled === 'boolean' ? plan.handled : undefined}
+      right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{plan.totalEstimatedCrabs > 0 ? `~${plan.totalEstimatedCrabs} crabs` : '—'}</div>}
+      style={{ marginBottom: 16 }}>
+      {/* headcount + coverage summary */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '4px 0 12px' }}>
+        <label htmlFor="crab-headcount" style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Crab eaters</label>
+        <input id="crab-headcount" type="number" inputMode="numeric" min="0" style={{ ...inp, width: 74 }}
+          value={cp.crabEatingHeadcount ?? ''} placeholder={String(plan.crabEatingHeadcount || '')}
+          onChange={(e) => patch({ crabEatingHeadcount: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
+        <span style={{ fontSize: T.caption, color: C.muted }}>aiming for about {plan.targetCrabsPerPerson} crabs per person</span>
+      </div>
+      {plan.coverageCopy && (
+        <div data-testid="crab-coverage" style={{ fontSize: T.secondary, color: statusColor, fontWeight: FW.semibold, lineHeight: 1.5, paddingBottom: 10 }}>{plan.coverageCopy}</div>
+      )}
+      {plan.mixedSummary && <div style={{ fontSize: T.caption, color: C.muted, paddingBottom: 10 }}>Your order: {plan.mixedSummary}</div>}
+      {plan.bushelExplanation && (
+        <div data-testid="crab-bushel-hint" style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5, paddingBottom: 10 }}>{plan.bushelExplanation}</div>
+      )}
+      {/* lines */}
+      {(cp.lines || []).filter(Boolean).map((l) => (
+        <div key={l.id} style={{ borderTop: `1px solid ${C.border}`, padding: '11px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input aria-label="quantity" type="number" inputMode="numeric" min="0" style={{ ...inp, width: 56 }} value={l.quantity ?? ''}
+              onChange={(e) => patchLine(l.id, 'quantity', Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+            <select aria-label="unit" style={sel} value={l.unit} onChange={(e) => patchLine(l.id, 'unit', e.target.value)}>
+              {CRAB_UNITS.map(u => <option key={u} value={u}>{UNIT_LABEL[u]}</option>)}
+            </select>
+            <select aria-label="size" style={sel} value={l.size} onChange={(e) => patchLine(l.id, 'size', e.target.value)}>
+              {CRAB_SIZES.map(z => <option key={z} value={z}>{SIZE_LABEL[z]}</option>)}
+            </select>
+            <button type="button" aria-label="remove line" onClick={() => removeLine(l.id)}
+              style={{ marginLeft: 'auto', background: 'none', border: 'none', color: C.muted, cursor: 'pointer', fontSize: T.body, padding: '0 4px' }}>✕</button>
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <span style={{ fontSize: T.caption, color: C.muted }}>crabs per {UNIT_LABEL[l.unit]}</span>
+            <input id={`crabline-${l.id}-count`} type="number" inputMode="numeric" min="0" style={{ ...inp, width: 64, scrollMarginTop: 90 }}
+              value={l.estimatedCountPerUnit ?? ''} placeholder={defaultCountPerUnit(l.size, l.unit) != null ? `~${defaultCountPerUnit(l.size, l.unit)}` : 'ask vendor'}
+              onChange={(e) => patchLine(l.id, 'estimatedCountPerUnit', e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+            <span style={{ fontSize: T.caption, color: C.muted }}>price per {UNIT_LABEL[l.unit]}</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              <span style={{ color: C.muted, fontSize: T.secondary }}>$</span>
+              <input id={`crabline-${l.id}-price`} type="number" inputMode="numeric" min="0" style={{ ...inp, width: 70, scrollMarginTop: 90 }}
+                value={l.pricePerUnit ?? ''} placeholder="quote"
+                onChange={(e) => patchLine(l.id, 'pricePerUnit', e.target.value === '' ? null : Math.max(0, Math.round(Number(e.target.value) || 0)))} />
+            </span>
+            <span style={{ fontSize: T.caption, color: C.muted }}>{lineCrabCount(l) != null ? `≈ ${lineCrabCount(l)} crabs` : ''}</span>
+            <button type="button" data-testid={`crab-bought-${l.id}`} onClick={() => patchLine(l.id, 'bought', !l.bought)}
+              style={{ marginLeft: 'auto', minHeight: 34, padding: '0 12px', borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold,
+                border: `1px solid ${l.bought ? (C.success || C.accent) : C.border}`,
+                background: l.bought ? `${C.success || C.accent}1f` : 'transparent',
+                color: l.bought ? (C.success || C.accent) : C.text }}>
+              {l.bought ? '✓ Bought' : 'Mark bought'}
+            </button>
+          </div>
+        </div>
+      ))}
+      <button type="button" id="crab-add-line" onClick={addLine}
+        style={{ marginTop: 10, minHeight: 40, padding: '0 14px', borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: T.secondary, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
+        + Add crabs (size &amp; unit)
+      </button>
+      {/* money — explicit prices only */}
+      {(plan.totalEstimatedCost != null || plan.boughtCost > 0) && (
+        <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 12, paddingTop: 10, fontSize: T.secondary, color: C.text, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {plan.totalEstimatedCost != null && <div>Estimated crab order: <span style={{ fontWeight: FW.bold }}>${plan.totalEstimatedCost.toLocaleString()}</span>{!plan.costComplete && <span style={{ color: C.muted }}> · some lines still need a price</span>}</div>}
+          {plan.costPerPerson != null && <div style={{ fontSize: T.caption, color: C.muted }}>about ${plan.costPerPerson} per crab eater — from your entered prices</div>}
+          {plan.boughtCost > 0 && <div style={{ fontSize: T.caption, color: C.success || C.text }}>${plan.boughtCost.toLocaleString()} bought so far</div>}
+        </div>
+      )}
+      {/* issues — each routes to its exact field */}
+      {plan.issues.length > 0 && (
+        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {plan.issues.map(iss => (
+            <button key={iss.type + (iss.lineId || '')} type="button" data-testid={`crab-issue-${iss.type}`}
+              onClick={() => { const el = document.getElementById(iss.route.focusField); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus(); } catch {} } }}
+              style={{ textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, color: C.accent, fontWeight: FW.semibold }}>
+              {iss.copy} →
+            </button>
+          ))}
+        </div>
+      )}
+    </CollapsibleCard>
     </div>
   );
 }
@@ -42914,6 +43022,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
               <ContextNudgeCard event={event} surface="food" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} />
+              <CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
               <div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
@@ -42924,7 +43033,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
-          <div className="hp-recede"><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
+          <div className="hp-recede"><CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} /><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>

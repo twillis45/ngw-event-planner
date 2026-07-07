@@ -22,6 +22,7 @@
 
 import { hostSpending } from './hostSpending';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
+import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -142,6 +143,34 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
       });
     });
   } catch { /* no food plan */ }
+
+  // ── crab order (CRAB-PRICING-1): unbought priced lines are a TRADEOFF only
+  //    (crabs are usually the point of the party); bought lines are protected.
+  try {
+    if (ev.crabPlan) {
+      const crab = buildCrabPlan(ev);
+      if (crab && crab.relevant) {
+        const unboughtPriced = (crab.lines || []).filter(l => l && !l.bought && Number(l.quantity) > 0 && Number(l.pricePerUnit) > 0);
+        unboughtPriced.slice(0, 1).forEach(l => {
+          suggestions.push({
+            id: `crab-${l.id}`,
+            class: 'tradeoff',
+            label: `Rethink ${l.quantity} ${UNIT_LABEL[l.unit] || l.unit} ${SIZE_LABEL[l.size] || ''} crabs`.trim(),
+            why: 'Not bought yet. Trimming the crab order reduces what each person gets — weigh it carefully if crabs are the main event.',
+            estimatedSavings: Math.round(Number(l.quantity) * Number(l.pricePerUnit)),
+            savingsConfidence: 'host-entered-price',
+            source: 'crab plan (unbought line, your price)',
+            actionLabel: 'Open the crab plan',
+            route: { tab: 'Planning', focusField: 'crab-plan' },
+            risk: 'guest-experience',
+          });
+        });
+        (crab.lines || []).filter(l => l && l.bought === true).forEach(l => {
+          protectedItems.push({ id: `crab-bought-${l.id}`, label: `Crabs (${l.quantity} ${UNIT_LABEL[l.unit] || l.unit})`, why: 'Already bought — this is already committed. Protect this.' });
+        });
+      }
+    }
+  } catch { /* no crab plan */ }
 
   // ── safe_cut · guest-count right-sizing — only with a real count AND a live
   //    roster showing fewer yeses than the number the plan is sized for.

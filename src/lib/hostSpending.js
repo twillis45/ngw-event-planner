@@ -25,6 +25,7 @@
 // is clamped at ≥ 0).
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
+import { buildCrabPlan } from './crabPlan';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -92,16 +93,32 @@ export function hostSpending(event, priceFactor) {
   const capacityEstimate = cap ? mid(cap.costLow, cap.costHigh) : 0;
   const capacityBought = cap ? mid(cap.boughtLow, cap.boughtHigh) : 0;
 
+  // CRAB-PRICING-1: the host's explicit crab order (event.crabPlan) is real
+  // planned money — from THEIR entered prices only, never a market estimate.
+  // Bought-marked lines are spent; priced-but-unbought lines are committed.
+  // No crabPlan → both terms 0 (byte-identical to before).
+  let crabEstimate = 0; let crabBought = 0;
+  try {
+    if (ev.crabPlan) {
+      const crab = buildCrabPlan(ev);
+      if (crab && crab.relevant) {
+        crabEstimate = num(crab.totalEstimatedCost);
+        crabBought = num(crab.boughtCost);
+      }
+    }
+  } catch (_e) { /* honest zero */ }
+
   // Spent = manual actuals + everything actually bought/checked off.
-  const spent = Math.max(0, Math.round(rowsActual + foodBought + suppliesBought + capacityBought));
+  const spent = Math.max(0, Math.round(rowsActual + foodBought + suppliesBought + capacityBought + crabBought));
   // Committed adds what's still PLANNED but not yet bought (each term clamped —
   // over-buying an estimate never becomes a credit).
   const foodRemaining = Math.max(0, foodEstimate - foodBought);
   const suppliesRemaining = Math.max(0, suppliesEstimate - suppliesBought);
   const capacityRemaining = Math.max(0, capacityEstimate - capacityBought);
-  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining));
+  const crabRemaining = Math.max(0, crabEstimate - crabBought);
+  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining));
 
-  return { total: Math.round(total), spent, committed, foodEstimate, foodBought, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost) };
+  return { total: Math.round(total), spent, committed, foodEstimate, foodBought, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;
