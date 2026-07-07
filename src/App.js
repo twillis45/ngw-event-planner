@@ -33,6 +33,7 @@ import { resolveEventIdentity } from './lib/eventIdentityEngine';
 import { buildExperienceContext } from './lib/experienceContext';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
+import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -27283,7 +27284,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, capacity = null, eventId = null, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '', ctx = null }) {
+function HostSpendingPlan({ foodPlan, capacity = null, eventId = null, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '', ctx = null, event = null }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -27356,6 +27357,54 @@ function HostSpendingPlan({ foodPlan, capacity = null, eventId = null, spending 
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 4 }}>Spend where it serves this.</div>
         </div>
       )}
+      {/* BUDGET-RECOVERY-1 — "Ways to get back on plan". Renders ONLY when the
+          committed plan genuinely exceeds the host's set budget. Every suggestion
+          re-derives from source data (buy/skip an item and it clears itself — no
+          stored recovery state, no fake "recovered"). Paid money, signed vendors,
+          rain backup, and honoree moments are named as protected, never as cuts. */}
+      {event && (() => {
+        let plan = null;
+        try { plan = buildBudgetRecoveryPlan(event); } catch { plan = null; }
+        if (!plan || plan.status !== 'recovery_available') return null;
+        const CLASS_LABEL = { safe_cut: 'SAFE TO ADJUST', tradeoff: 'TRADEOFF', ask: 'WORTH ASKING' };
+        return (
+          <div data-testid="budget-recovery-card" style={{ ...card, borderLeft: `3px solid ${C.warn || C.accent}` }}>
+            <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.warn || C.accent }}>Budget recovery</div>
+            <div style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, marginTop: 4 }}>{plan.headline}</div>
+            <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{plan.summary}</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              {plan.suggestions.map((sg) => (
+                <div key={sg.id} data-testid={`recovery-${sg.id}`} style={{ paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: T.micro, fontWeight: FW.heavy, letterSpacing: '0.08em', color: sg.class === 'safe_cut' ? (C.success || C.accent) : C.muted }}>{CLASS_LABEL[sg.class] || 'CHECK'}</span>
+                    {sg.estimatedSavings != null && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>~${Math.round(sg.estimatedSavings).toLocaleString()}</span>}
+                  </div>
+                  <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, marginTop: 2 }}>{sg.label}</div>
+                  <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2, lineHeight: 1.45 }}>{sg.why}</div>
+                  {sg.route && onNav && (
+                    <button type="button" data-testid={`recovery-cta-${sg.id}`}
+                      onClick={() => onNav(sg.route.tab, sg.route.vendorId || null, sg.route.focusField ? { focusField: sg.route.focusField } : undefined)}
+                      style={{ marginTop: 6, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 8, padding: '5px 10px', color: C.text, fontSize: T.caption, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit' }}>
+                      {sg.actionLabel} →
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+            {plan.protectedItems.length > 0 && (
+              <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
+                <div style={{ fontSize: T.micro, fontWeight: FW.heavy, letterSpacing: '0.08em', color: C.muted }}>NOT ON THE TABLE</div>
+                <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
+                  {plan.protectedItems.map(pi => pi.label).join(' · ')} — paid, committed, or the point of the party. Recovery never touches these.
+                </div>
+              </div>
+            )}
+            {plan.missingData.length > 0 && (
+              <div style={{ fontSize: T.caption, color: C.muted, marginTop: 10 }}>Missing: {plan.missingData.join(' ')}</div>
+            )}
+          </div>
+        );
+      })()}
       {/* One accordion across all four budget homes (Your budget · Food · Supplies · Other) — one open. */}
       <AccordionProvider>
       {/* "Your budget" home (board verdict) — the spine PlanNowHero is the ONE hero; this is a collapsible
@@ -27927,6 +27976,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
         onSetTotalBudget={onSetTotalBudget}
         mustHave={event ? event.must_have_moment : ''}
         ctx={ctx}
+        event={event}
       />
     );
   }
