@@ -239,6 +239,20 @@ stale-state behavior (clears/advances on resolution) · disabled/hidden rule ·
 broad-label fallback when precise focus is impossible · test coverage** (route
 payload pinned in the CTA contract suites).
 
+**Deep-link rule (CTA-DEEPLINK-1): a CTA never leaves the user guessing.** It
+deep-links to the exact field (focusField anchor) or row (vendorId/decisionId/
+taskId/foodFocus) where the action resolves. A bare tab route is allowed ONLY
+for provably whole-surface actions (View Event Day, Open the event) — and the
+label must say the surface, not a specific action.
+
+**Consumer rule (CTA-REPAIR-2): a route contract is not enough — every
+deep-linkable id must have a CONSUMER on its destination surface.** When a
+surface is shed or redesigned, audit which open-item states it orphaned
+(planv2 shedding the task list orphaned openTaskId, stranding every
+correctly-routed task CTA on the Plan overview — the Crab Feast trust bug).
+Sentinel ids (e.g. `__compressed__`) must render the thing they promise, not
+nothing.
+
 ## 9 · Human / Heart WOW rule
 
 Human Intelligence is not decorative copy. **It protects why the event
