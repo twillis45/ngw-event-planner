@@ -34000,7 +34000,11 @@ function HostRunOfShowTimeline({ event, profile, ctx = null, onNav = null }) {
     <div style={{ padding: '0 20px 32px', position: 'relative' }}>
       {/* Command hero (parity) — The Day now leads with a proper hero CARD like every other host tab:
           state eyebrow · the date headline · the start + cue-count context (was a bare eyebrow line). */}
-      <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
+      {/* id="ros-now" fallback: before a cue is LIVE the Happening-now card doesn't
+          exist, so the day hero itself is the ros-now landing — the anchor always
+          mounts and the day-of CTA never silently no-ops. When a cue goes live the
+          NOW card (which also carries id="ros-now") takes over as the landing. */}
+      <div id={nowCueId ? undefined : 'ros-now'} style={{ scrollMarginTop: 16, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 14, padding: isMobile ? '14px 16px' : '16px 18px', marginBottom: 22, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.13em', color: eyebrowColor, textTransform: 'uppercase' }}>{eyebrow}</div>
           <div style={{ fontSize: T.section, fontWeight: FW.heavy, color: textPrimary, marginTop: 7, lineHeight: 1.2 }}>{dateLine || 'The day'}</div>
