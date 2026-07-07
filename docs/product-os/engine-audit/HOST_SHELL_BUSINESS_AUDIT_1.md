@@ -1,71 +1,68 @@
 # HOST-SHELL-BUSINESS-AUDIT-1 — Psychology, Conversion, Retention, Business Impact
+## v2 — post-cleanup (supersedes the same-day v1 that recommended PHASE-HERO-1 + ONE-TELLING-1)
 
-Date: 2026-07-07 · AUDIT ONLY — zero code changed · Evidence: live walkthroughs this session at 360/390/393/430/desktop across new, partial, day-before, live, and post-event states (screenshots in session), plus the day's brutal-testing record.
+Date: 2026-07-07 · AUDIT ONLY — zero code changed · Evidence: fresh 390×844 walkthroughs after PHASE-HERO-1/ONE-TELLING-1 landed (prod main.e0153776.js), plus the day's full brutal-testing record across new/partial/day-before/live/post-event states and 360–430 viewports.
 
 ## 1. Executive verdict
-The shell's bones are genuinely strong — the create flow, the head-start reveal, the phase-aware header, and the DIFM "Ready to send" drafts are a real, differentiated first-session win that a checklist app cannot fake. The commercial weaknesses are not missing features; they are **one message told three times** (the same next step appears on HostHome, the event card, AND Command), **a hero that goes stale after the event** (observed live: "One call to make: Set date, headcount, menu" on a finished event), and **no visible reason to return between planning bursts**. Verdict: the shell is strong enough to demo and trial today; it is not yet tight enough to defend $59–79 unsupervised. The fix is subtraction and phase truth, not addition.
+The v1 audit's top two commercial defects are FIXED AND VERIFIED: the hero and header now share one phase engine (post-event shows wrap-up, never stale planning), and the next step is told once per screen (the duplicate Next Up row and its empty section are gone). With those closed, the shell now passes trust, mobile, and first-session tests convincingly. **The weakest remaining pillar is RETENTION**: the shell changes by phase but never narrates change — nothing tells a returning host what moved since last visit. Everything else left is polish-sized. Verdict: **strong enough to trial with real hosts now**; run the vendor-brief trial and one small retention slice before judging conversion further from the armchair.
 
-## 2. Host Shell Business Audit Matrix
-| Surface | Psychology | Conversion | Retention | Trust risk | Cog-load risk | Mobile | Verdict |
-|---|---|---|---|---|---|---|---|
-| Create flow ("What are we planning? Tell me the occasion. I'll take it from there.") | High calm, promise in one line | High — the promise IS the pitch | — | Low | Low (one field) | Pass | **Execute: keep; protect from growth** |
-| Head-start reveal / HostHome "I've made a head start… invite's written, food's sized, day's sketched" | High relief — the aha | **High — this is the paywall moment candidate** | Med | Low (all claims real) | Low | Pass | **Execute: keep; this is the first-session win** |
-| "Ready to send" DIFM rows (invite / shopping list / guest brief) | High — visible done-for-me | High | High (drafts change with the event) | Low (editable, never auto-sent) | Low | Pass | **Execute: keep** |
-| Phase progress line + one cue ("Planning readiness: 2 of 5 · Add the location →") | Med-High momentum | Med | **High — the return-reason machinery** | Low (counts honest) | Low | Pass (12px gap fixed) | **Execute: keep** |
-| NEXT STEP hero (Command) | High when right | High | Med | **Med — goes STALE post-event (observed)** | Low | Pass | **Execute repair: PHASE-HERO-1** |
-| Same next step duplicated on HostHome hero + event card + Command hero | — | **Negative — reads as one-trick** | — | Med (repetition ≈ staleness) | **High — 3 tellings of one fact** | Fail (mobile scroll burden) | **Execute repair: dedupe to ONE telling per screen** |
-| Next Up timeline rows | Med | Med | Med | Low (now actionable) | Med | Pass | Keep |
-| What to settle panel | Med | Med | Med | Low | Med — competes with hero when both visible | Pass | **Test: collapse by default when a hero is present** |
-| Day-before compression card | **High — peak-stress relief** | High ("this is why you pay") | High (appears exactly when needed) | Low | Low | Pass | **Execute: keep; candidate for marketing screenshot** |
-| Weather phase copy + rain CTA | High | Med | High (changes daily near event) | Low | Low | Pass | Keep |
-| Budget recovery card | High (calm money help) | **High — pricing-power surface** | Med | Low | Low (only when over) | Pass | Keep |
-| Context nudges ("If it fits your event") | Med warm | Med (proves "knows my event") | Low | Low (dismissible) | Low (1/surface, cap 3) | Pass | Keep; watch alpha reaction |
-| Crab plan card | High for the wedge audience | High for crab-feast wedge | Med | Low | Med (long card) | Pass | Keep |
-| Bottom nav (6 tabs) | Neutral | — | — | Low | Low | Pass | Keep |
-| Stored old-copy tasks in existing events ("lock the final headcount" visible in heroes) | Low | — | — | **Med — undermines the language doctrine for existing users** | — | — | **Test: one-time seed-task copy migration for known template strings** |
-| DEMO TOOLS floating pill | — | **Negative in demos — overlaps primary CTA (observed over the create-flow button)** | — | — | — | Fail in demo mode | **Execute repair: dock it, don't float it** |
+## 2. Host Shell Business Audit Matrix (deltas from v1 in bold)
+| Surface | Current behavior | Psych | Conv | Ret | Trust | Cog-load | Mobile | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| Create flow | one question, promise in a line | High | High | — | Low | Low | Pass | Keep; protect from growth |
+| Head-start reveal + Ready-to-send | aha above the fold (verified at 390: head-start + shopping list visible pre-scroll) | High | **High — the paywall moment** | Med | Low | Low | Pass | Keep |
+| Phase progress line + cue | "Planning readiness: 2 of 5 · Add the location →" | Med-High | Med | High | Low | Low | Pass | Keep |
+| Hero (phase-gated) | **pre: ladder · live: day cue · post: wrap-up · all-wrapped: none** — verified | High | High | **High (post-event no longer dead-ends)** | **Low (was Med)** | Low | Pass | **Fixed — keep** |
+| Next Up after dedupe | drops the hero's row; hides when emptied — verified told-once | — | — | — | Low | **Low (was High)** | Pass | **Fixed — keep** |
+| Cue vs hero naming two DIFFERENT steps (cue: location · hero: caterer, observed simultaneously) | deliberate hierarchy (nearest-finishable vs highest-leverage) | Med — mild competition | — | — | Low | Med | Pass | **Watch — revisit only if real hosts report confusion** |
+| "The step you tapped" focus card | can mirror the hero's exact task when its openTaskId IS the hero task (observed via stale session state) | Low | — | — | Low | **Med — residual duplicate telling** | Pass | **Execute (micro): yield when identical to the hero** |
+| Day-before card / weather phase copy / budget recovery / crab plan | unchanged, phase-relevant | High | High | High | Low | Med near event (defensible) | Pass | Keep |
+| Scroll burden | Command 1.6 screens · event home 1.2 · portfolio 1.9 (390×844) | — | — | — | — | **Low (measured, was suspected-High)** | Pass | No action |
+| DEMO TOOLS floating pill | still overlaps content incl. the create-flow CTA | — | Negative in demos | — | — | — | Fail (demo mode) | **Execute (micro): dock it** |
+| Stored old-copy tasks in existing events | "lock the final headcount" still visible in saved events' heroes/rows | Low | — | — | Med | — | — | **Test: one-time template-string migration** |
+| Return-session narration | absent — phase machinery changes silently | — | Med | **High gap — now the #1 weakness** | Low | Low (one line) | — | **Test: RETURN-NARRATION-1 (one line, no feed)** |
 
-## 3. First 5-second clarity — PASS with one caveat
-New host: one question, one promise, zero fields to fear. Post-create: the head-start reveal answers "what does this app do" by having already done it. Caveat: on a PARTIAL event, the first 5 seconds show the same caterer task twice before the fold (HostHome hero + event card NEXT) — a returning host reads "it's still saying the same thing," which is the exact opposite of the retention message.
+## 3. First 5-second clarity — PASS
+390×844, partial event: identity → "Planning readiness: 2 of 5 essentials handled · Add the location →" → hero with one CTA, all above the fold. New host path (create → head-start) unchanged and strong.
 
 ## 4–5. Psychology & cognitive load
-Calm is mostly real: red is budgeted (one critical per region), optional things read optional, warnings route to fixes. The load problem is REPETITION, not card count: one unfinished decision currently powers the HostHome hero, the event-card NEXT line, the Command hero, the Next Up row, and the What-to-settle row — five surfaces, one fact. Each is individually justified; together they make the product feel smaller than it is. Near-event density (weather + day-before + hero + settle + nudge) is high but defensible because each card is phase-relevant.
+The repetition complaint from v1 is materially resolved; measured scroll burden is modest everywhere. Remaining load items are edge-class: the tapped-step card mirroring the hero, and the cue/hero occasionally naming two different next steps (an intentional hierarchy that reads fine to us — real-host check needed before touching it). Red remains budgeted; optional reads optional.
 
 ## 6. Conversion
-The aha is real and early (head-start + Ready-to-send). What's missing is the BRIDGE from aha to payment: nothing in the shell marks which of these wins are the paid product vs. free trial surface (deliberately unbuilt — D-2 gates). The demo path is strong; the "why pay" story writes itself from the day-before card + budget recovery + DIFM drafts.
+Aha intact and early. The bridge from aha to payment remains deliberately unbuilt (D-2 gates). Nothing in the shell now undermines the pitch — the demo path is clean end-to-end except the floating demo pill, which in demo contexts covers the primary CTA (observed over "Choose the occasion").
 
-## 7. Retention
-Phase machinery (progress line, day-before, weather, phase heroes) is the return-reason engine and it now exists — but the shell doesn't SURFACE change since last visit ("2 RSVPs came in; your count tightened"). Decision memory exists (DM-PAYOFF) but is vendor-detail-only. Biggest retention bug: the post-event shell still sells planning (stale hero) — the one moment a delighted host would write a review or book the next event, and we show them a to-do they can't do.
+## 7. Retention — the weakest pillar
+Machinery: phase heroes, phase progress, day-before, weather — all real and now truthful through post-event. Missing: narration of change ("2 yeses came in · forecast now clear · Wrap-up: 1 thing left"). Decision memory still vendor-detail-only. This is the one place a small addition (one line, diffed from existing sources + a lastOpenedAt stamp) plausibly moves a business metric; everything else additive should stay parked.
 
-## 8. Business impact & 11. pricing power
-Willing-to-pay surfaces, ranked: day-before compression · DIFM drafts · budget recovery · weather phase intelligence · crab/domain depth. Commercially weak but kept-cheap: context nudges, moment lines (low cost, low risk). The $59–79 test fails today only on polish debt: stale post-event hero, triple-told next step, and old-copy stored tasks — all subtraction-class fixes.
+## 8–9. Business impact & trust
+Willingness-to-pay ranking unchanged: day-before compression · DIFM drafts · budget recovery · weather phase intelligence · domain depth (crabs). Trust: no fake states found in this pass; the two v1 trust dents (stale hero, triple telling) verified gone; remaining dent = stored old-copy tasks for existing events.
 
-## 9. Trust — PASS
-Today's doctrine sweep holds on the shell: no fake sends, no percentages, no counted suppressed workflows, honest denominators, actionable rows. The two trust dents are the stale hero (phase lie by omission) and stored old-copy tasks.
+## 10. Mobile-first — PASS
+No overflow at 360/390/393/430; first card clears header+cue line (12px); bottom nav safe-area'd; app-shell fullscreen by layout (no API hacks); editorial fits.
 
-## 10. Mobile-first — PASS (post MOBILE-LAYOUT-REPAIR-1)
-No overflow at any target width; first card clears the header; bottom nav safe-area'd; above-the-fold on Command = identity + progress + cue + first decision (right content). Scroll burden on HostHome is the duplication problem, not a layout problem.
-
-## 12. Template-app risk — LOW
-A Notion board cannot: pre-write the invite/brief/shopping list, compress the day-before, phase the header, price crabs by the bushel, or protect the honoree's moment. The shell escapes template feel EXCEPT when the triple-told next step makes it read like a task dashboard.
+## 11–12. Pricing power & template risk
+The $59–79 story is now coherent through the whole lifecycle — pre (head-start + drafts), week-of (day-before + weather), during (day flow), after (wrap-up). Template-app risk LOW; the shell reads as a phase-aware partner. The gap between "coherent" and "convincing" is now evidence, not features: it needs real hosts (vendor-brief trial packet is ready and still waiting on links).
 
 ## 13–14. First-session win / return reason
-Win: real (head-start + one obvious next step + a sendable invite). Return reason: structurally present (phase machinery) but not yet NARRATED — nothing says "since you were here last…".
+Win: real, verified, above the fold. Return reason: structurally present, still un-narrated (see §7).
 
-## 15–18. Verdicts
-**Execute (next slice, tightly scoped):** (a) PHASE-HERO-1 — Command/HostHome heroes consume deriveEventPhaseProgress so post-event and live states never show pre-event tasks; (b) ONE-TELLING-1 — when HostHome's hero and the event card carry the same next step, the card drops its NEXT line; Command keeps the hero, Next Up drops the duplicate row (first-row-if-same rule); (c) dock the demo-tools pill.
-**Test:** collapse What-to-settle by default when a hero is present; one-time template-string copy migration for stored tasks; a "since last visit" line on HostHome (needs a lastSeen stamp — smallest possible: one line, no feed).
-**Park:** payment/paywall surfaces (D-2 gates unmet), streak/gamification anything, cross-event portfolio metrics for hosts.
-**Kill:** nothing new — and specifically do NOT add more cards to the shell; the audit's whole finding is subtraction.
+## 15. Parked-item reassessment (no auto-promotion)
+- Settle-panel default collapse → **PARK**: observed collapsed-by-default in current states; no evidence of harm.
+- Stored-task copy migration → **TEST**: one-time mapping of known template strings; touches user data, so behind care + backup, not a casual slice.
+- "Since last visit" line → **TEST (promoted to top candidate)**: one line on the event home, diffed from real sources; hard cap one line, no feed, no notifications.
+- Demo-pill docking → **EXECUTE (micro)**: it covers CTAs in the exact contexts Todd demos in.
 
-## 19. Highest-leverage next slice
-**PHASE-HERO-1 + ONE-TELLING-1 as one slice**: make the hero phase-true and told once. It touches the exact surfaces a paying host sees most, uses machinery that already shipped today (deriveEventPhaseProgress), and is subtraction — low risk, direct trust/retention payoff.
+## 16–19. Verdicts
+**Execute (one micro-slice, SHELL-POLISH-1):** dock the demo pill · tapped-step card yields when identical to the hero. **Test:** RETURN-NARRATION-1 · stored-task migration. **Park:** settle-collapse, portfolio metrics, any new shell cards. **Kill:** nothing — and keep killing additions by default; the shell's remaining risk is re-crowding what today's work uncluttered.
 
-## 20–21. Evidence
-Live walkthroughs this session: create flow (screenshot), HostHome head-start (screenshot), Command partial event 390px (screenshot), day-before card, post-event stale hero (screenshot), crab card mobile, budget recovery mobile, all viewport probes (0 overflow, 12px gaps). No fabricated metrics anywhere in this report; every claim traces to an observed screen.
+## 20. Highest-leverage next slice
+**SHELL-POLISH-1 (micro) + RETURN-NARRATION-1 (test-framed)** — then STOP shell work and get real-host evidence: send the vendor-brief trial links; the next audit should cite host behavior, not reviewer judgment.
 
-## 22. Risks
-This audit is one experienced reviewer + doctrine, not user research — the conversion/retention judgments need real host sessions (the vendor-brief trial packet is the nearest instrument). The duplication finding especially deserves a real-host check before deleting anything.
+## 21–22. Evidence
+Fresh this pass (390×844): Command fold text incl. cue+hero+focus-card duplicate; event home 1.2 screens; portfolio 1.9 screens with head-start above fold; plus the day's screenshot record (create flow, post-event wrap-up hero verified live, dedupe verified told-once). No invented metrics; every claim traces to an observed screen.
 
-## 23. Recommendation
-Accept the audit; run PHASE-HERO-1 + ONE-TELLING-1 next; hold all additive shell work until after it.
+## 23. Risks
+Single-reviewer audit; the retention judgment especially is a hypothesis until hosts return (or don't). The cue/hero two-steps tension might be a strength (breadth) — don't fix it on theory.
+
+## 24. Recommendation
+Accept. Ship SHELL-POLISH-1, build RETURN-NARRATION-1 behind its one-line cap, then pause shell work for real-host evidence.
