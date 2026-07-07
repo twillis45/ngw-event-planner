@@ -54,3 +54,6 @@ Persisted old-copy task text in existing events (cosmetic, self-heals on reseed)
 
 ## 23. Recommendation
 Accept. Lock-language rule now enforced app-wide by tests, not convention.
+
+## Addendum — budget recovery language (folded into this audit, 2026-07-07)
+The budget-recovery card speaks calm budget help, not collections/accounting: banned-word test extended in budgetRecovery.test.js (cut/cancel/recover/overpriced/unpaid/owed/locked in host-visible strings); preferred phrases adopted (get back on plan, still flexible, already committed, protect this, ask before changing).

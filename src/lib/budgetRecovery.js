@@ -84,7 +84,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
         class: i.lockedPrice ? 'ask' : 'safe_cut',
         label: i.lockedPrice ? `Rethink "${i.name || i.label || i.key}" — you priced it at ${money(i.saving)}` : `Skip or trim "${i.name || i.label || i.key}"`,
         why: i.lockedPrice
-          ? 'You locked a price on this but haven’t bought it — a deliberate call, so unlocking it is your decision, not ours.'
+          ? 'You set an exact price on this but haven’t bought it — a deliberate call, so changing it is yours to make.'
           : 'Not bought yet and fully in your hands — skipping or reducing it changes nothing already committed.',
         estimatedSavings: i.saving,
         savingsConfidence: i.lockedPrice ? 'locked-price' : 'estimate-range',
@@ -132,7 +132,7 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
         label: `Trim or swap "${i.short || i.item || i.id}" on the spread`,
         why: boughtCount > 0
           ? `Not bought yet. The spread already has ${boughtCount} item${boughtCount === 1 ? '' : 's'} covered — fewer options is the tradeoff, not an empty table.`
-          : 'Not bought yet. Cutting food thins the spread — a real tradeoff for your guests, so weigh it before skipping.',
+          : 'Not bought yet. Trimming food thins the spread — a real tradeoff for your guests, so weigh it before skipping for now.',
         estimatedSavings: i.saving,
         savingsConfidence: 'estimate-range',
         source: 'playbookFoodPlan (unbought line)',
@@ -189,8 +189,8 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
       id: `vendor-protected-${v.id}`,
       label: v.name,
       why: v.depositPaid || v.balancePaid
-        ? 'Money is already paid here. Keep this — recovery never assumes paid money comes back.'
-        : 'This booking is committed (signed or confirmed). Changing it is a conversation with the vendor, not a line to cut.',
+        ? 'Money is already paid here — this is already committed. Protect this; we never assume paid money comes back.'
+        : 'This booking is already committed (signed or confirmed). Ask before changing anything — it’s a conversation, not a line item.',
     });
   });
   if (String(ev.rainPlan || '').trim()) {
@@ -198,13 +198,13 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
   }
   const honoree = String(ev.honoree || '').trim();
   if (honoree) {
-    protectedItems.push({ id: 'honoree-moment', label: `${honoree}’s moment`, why: 'Keep this. It’s the reason for the event — recovery never touches it.' });
+    protectedItems.push({ id: 'honoree-moment', label: `${honoree}’s moment`, why: 'Keep this. It’s the reason for the event — it stays exactly as planned.' });
   }
 
   const safeCount = suggestions.filter(s => s.class === 'safe_cut' || s.class === 'tradeoff').length;
   const headline = `You’re ${money(over)} over your current plan.`;
   const summary = safeCount > 0
-    ? 'Start with unbought items you can still adjust — they change nothing already committed.'
+    ? 'Here’s how to get back on plan: start with what’s still flexible — unbought items you can adjust without touching anything already committed.'
     : 'The remaining costs look committed or protected. Don’t assume savings without checking with the people involved.';
 
   return {

@@ -120,6 +120,13 @@ test('15+16 · banned language: no refund/cancel/negotiate/overpriced/guaranteed
   }));
   const all = JSON.stringify(p);
   expect(all).not.toMatch(/refund|cancel|renegotiat|overpriced|savings guaranteed|fully recovered|you owe|owed|collections/i);
+  // Host-friendly budget language rule (2026-07-07): calm help, not accounting.
+  // "cut"/"locked"/"unpaid" never appear in host-visible copy (class names are
+  // internal); "recover" never appears as host copy either.
+  const visible = [p.headline, p.summary,
+    ...p.suggestions.flatMap(x => [x.label, x.why, x.actionLabel]),
+    ...p.protectedItems.flatMap(x => [x.label, x.why])].filter(Boolean).join(' ');
+  expect(visible).not.toMatch(/\bcut\b|\bcancel|\bunpaid\b|\bowed\b|\block(ed)?\b|overpriced|recover/i);
   expect(all).not.toMatch(/spent so far.*estimate/i);
 });
 

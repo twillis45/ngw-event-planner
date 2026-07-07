@@ -27395,7 +27395,7 @@ function HostSpendingPlan({ foodPlan, capacity = null, eventId = null, spending 
               <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: T.micro, fontWeight: FW.heavy, letterSpacing: '0.08em', color: C.muted }}>NOT ON THE TABLE</div>
                 <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
-                  {plan.protectedItems.map(pi => pi.label).join(' · ')} — paid, committed, or the point of the party. Recovery never touches these.
+                  {plan.protectedItems.map(pi => pi.label).join(' · ')} — already committed, or the point of the party. Protect these; they stay as they are.
                 </div>
               </div>
             )}

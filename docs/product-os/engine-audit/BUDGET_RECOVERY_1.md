@@ -62,3 +62,6 @@ Sourcing/BYOB tradeoff deltas (playbook factors exist but extracting an honest p
 
 ## 26. Recommendation
 Accept. Narrow, source-backed, protective — matches the audit's Outcome B scope exactly.
+
+## Addendum — host-friendly budget language rule (2026-07-07)
+Host-visible recovery copy now test-bans: "cut", "cancel", "recover", "overpriced", "guaranteed savings", "unpaid", "owed", "locked" (unless truly contracted), "final" (unless actually final). Preferred vocabulary: get back on plan · adjust · trim · skip for now · still flexible · already committed · protect this · ask before changing. Copy updated: summary leads with "get back on plan / still flexible"; locked-price why says "set an exact price… changing it is yours to make"; protected lines say "already committed / protect this / stays exactly as planned"; card protected footer says "Protect these; they stay as they are." Internal class names (safe_cut, do_not_cut) unchanged — they never render.
