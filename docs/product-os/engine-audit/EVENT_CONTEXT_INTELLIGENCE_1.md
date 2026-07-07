@@ -30,3 +30,10 @@ Broad context expansion (prove the pattern first); decor/timeline as distinct su
 
 ## 8. Recommendation
 Accept, watch alpha reaction, then expand contexts one at a time with the same test harness.
+
+## Addendum — full-spec pass (same day)
+- `deriveEventContextNudges(event)` aggregate added per spec shape: `{eventContext, source: event_type|event_name|host_entered_context|unknown, nudges (HARD CAP 3, each dismissible+low priority), suppressed}` — the no-overload cap is now structural, not just editorial.
+- 5 spec tests added: 3-nudge cap + source naming; cross-context isolation (birthday/retirement/graduation/baby shower never receive Juneteenth copy); memorial calm-tone sweep; unknown context returns nothing fabricated; **host meaning fields never flip the context engine** — "Celebrate Black history and family" in must_have_moment protects the moment via MOMENT-PROTECT but does NOT trigger cultural nudges (that would be inference).
+- Place-fit nudges: PARKED — Place Intelligence already carries arrival/parking guidance (PLACE-DIFM-1); a context-flavored duplicate would violate no-duplicate-surfaces. Decor surface: parked with it.
+- No red/urgent/green-dot impact is structural: ContextNudgeCard renders no severity color, no done prop, no alert tier.
+Totals after addendum: 12 context tests · suites 2090/2090 frontend · 97/97 backend · build clean.

@@ -157,3 +157,28 @@ export function eventContextNudge(event, surface) {
     : n.route.focusField;
   return { id, context: ctxDef.key, surface, text: n.text, why: n.why, actionLabel: n.actionLabel, route: { tab: n.route.tab, focusField } };
 }
+
+// Aggregate view (spec shape): the whole event's context in one call, hard-
+// capped at THREE active nudges app-wide (no-overload doctrine). `source`
+// names which explicit host field matched — never anything inferred.
+export function deriveEventContextNudges(event) {
+  const ev = event || {};
+  const t = contextText(ev);
+  const ctxDef = t ? CONTEXTS.find(c => c.re.test(t)) : null;
+  if (!ctxDef) {
+    return { eventContext: 'unknown', source: 'unknown', nudges: [], suppressed: [] };
+  }
+  const source = ctxDef.re.test(String(ev.type || '') + ' ' + String(ev.secondaryType || '')) ? 'event_type'
+    : ctxDef.re.test(String(ev.name || '')) ? 'event_name'
+    : 'host_entered_context'; // theme — still explicit host text
+  const all = Object.keys(ctxDef.nudges)
+    .map(surface => eventContextNudge(ev, surface))
+    .filter(Boolean)
+    .map(n => ({ ...n, dismissible: true, priority: 'low', source }));
+  return {
+    eventContext: ctxDef.key,
+    source,
+    nudges: all.slice(0, 3), // hard cap: max three active context nudges
+    suppressed: all.slice(3).map(n => n.id),
+  };
+}

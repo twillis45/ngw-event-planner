@@ -65,3 +65,43 @@ test('7 · every nudge is action-linked to a real route', () => {
     expect(n.actionLabel).toBeTruthy();
   }));
 });
+
+// ── Full-spec additions ───────────────────────────────────────────────────────
+import { deriveEventContextNudges } from '../eventContextNudges';
+
+test('8 · aggregate caps at three active nudges app-wide, names its explicit source', () => {
+  const all = deriveEventContextNudges({ id: 'e1', type: 'juneteenth' });
+  expect(all.eventContext).toBe('juneteenth');
+  expect(all.source).toBe('event_type');
+  expect(all.nudges.length).toBeLessThanOrEqual(3);
+  all.nudges.forEach(n => { expect(n.dismissible).toBe(true); expect(n.priority).toBe('low'); });
+  expect(deriveEventContextNudges({ id: 'e2', type: 'cookout', name: 'Juneteenth Jam' }).source).toBe('event_name');
+});
+
+test('9 · cross-context isolation: birthday/retirement/graduation never receive Juneteenth copy', () => {
+  ['birthday', 'retirement', 'graduation', 'baby shower'].forEach(type => {
+    const all = deriveEventContextNudges({ id: 'e', type });
+    const text = JSON.stringify(all.nudges);
+    expect(text).not.toMatch(/juneteenth|red foods|Black-owned/i);
+  });
+});
+
+test('10 · memorial tone is calm — no party-pressure copy', () => {
+  const all = deriveEventContextNudges({ id: 'e', type: 'celebration of life' });
+  const text = JSON.stringify(all.nudges);
+  expect(text).not.toMatch(/get the party started|so much fun|exciting|celebrate hard|turn up|hype/i);
+  expect(text).toMatch(/tone|remembrance/i);
+});
+
+test('11 · unknown context: aggregate returns nothing, never a fabricated context', () => {
+  const all = deriveEventContextNudges({ id: 'e', type: 'team offsite' });
+  expect(all).toEqual({ eventContext: 'unknown', source: 'unknown', nudges: [], suppressed: [] });
+});
+
+test('12 · host meaning fields never create identity-based context (explicit descriptors only)', () => {
+  // "Celebrate Black history and family" in the host's own meaning field is
+  // used by MOMENT-PROTECT to protect the moment — it must NOT flip the
+  // context engine into cultural nudges (that would be inference).
+  const all = deriveEventContextNudges({ id: 'e', type: 'cookout', must_have_moment: 'Celebrate Black history and family', meaning_why: 'Honor my dad' });
+  expect(all.eventContext).toBe('unknown');
+});
