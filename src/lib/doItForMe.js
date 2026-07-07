@@ -727,6 +727,47 @@ export function draftToast(event, profile) {
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
 // Returns 'shared' | 'copied' | 'cancelled' | 'failed' so the caller can confirm
 // honestly ("Shared" vs "Copied — paste it anywhere").
+// ── PAY-COPY-1 — vendor payment-details reminder (explicit data ONLY) ─────────
+// Money copy is higher-risk than any other DIFM output, so this helper is
+// deliberately narrow: it produces an amount-bearing reminder ONLY when the
+// vendor is booked (contract signed or a booked-tier status) AND the explicit
+// payment fields support it (depositAmt/depositPaid/balancePaid/cost/
+// payDueDate). Estimates and considering/quoted vendors NEVER produce owed
+// language — they get the confirm-the-details ask instead. Framing is always
+// "our notes show … can you confirm this is still correct" — a question, not
+// a status claim. The words paid/unpaid/overdue never appear (test-banned).
+// No collections tone. Editable before copy; never sent; never public.
+export function draftVendorPaymentReminder(event, vendor) {
+  const v = vendor || {};
+  const name = String(v.name || '').trim();
+  const evName = String((event && event.name) || '').trim() || 'our event';
+  const booked = !!v.contractSigned || /contracted|confirmed|booked|deposit paid/i.test(String(v.status || ''));
+  const dep = Number(v.depositAmt) || 0;
+  const cost = Number(v.cost) || 0;
+  const due = String(v.payDueDate || v.depositDueDate || '').trim();
+  const dueStr = due ? (() => { try { return fmtLongDate(due) || due; } catch { return due; } })() : '';
+  const money = (n) => '$' + Math.round(n).toLocaleString();
+  const greeting = `Hi ${name || 'there'} — I’m confirming payment details for ${evName}.`;
+  const closer = 'Can you confirm this is still correct and let us know the preferred payment method?';
+  // Amount-bearing reminder: explicit pending deposit, or explicit remaining
+  // balance (cost minus deposit — both host-entered fields), booked only.
+  if (booked && dep > 0 && v.depositPaid !== true) {
+    return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a deposit of ${money(dep)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.'].join('\n') };
+  }
+  if (booked && cost > 0 && v.depositPaid === true && v.balancePaid !== true) {
+    const bal = Math.max(0, cost - dep);
+    if (bal > 0) {
+      return { subject: `Payment details — ${evName}`, body: [greeting, '', `Our notes show a remaining balance of ${money(bal)}${dueStr ? ` due by ${dueStr}` : ''}.`, '', closer, '', 'Thanks.'].join('\n') };
+    }
+  }
+  // Everything else — including estimate-only and unbooked vendors — asks
+  // instead of asserting.
+  return {
+    subject: `Payment details — ${evName}`,
+    body: [greeting, '', 'Can you confirm:', '', '- Any deposit or balance due', '- Due date', '- Preferred payment method', '- Any invoice or document we should have on file', '', 'Thanks.'].join('\n'),
+  };
+}
+
 // ── BRIEF-ASSIST-1 — vendor-category ask for missing brief details ────────────
 // The brief share panel can SEE what's missing (arrival, on-site contact,
 // vendor-facing note); this turns that gap into a short, editable, vendor-safe

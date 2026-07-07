@@ -56,6 +56,7 @@ import {
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
 import { memoryOn, latestRationaleForSubject, decisionPayoffSummary } from '../lib/decisionMemory';
+import { draftVendorPaymentReminder } from '../lib/doItForMe';
 // Sprint 58G — Event Memory: the private per-vendor track record, surfaced at the pick.
 import { vendorMemoryFor, summarizeVendorMemory } from '../lib/eventMemory';
 import {
@@ -1389,6 +1390,9 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
 // ── Payment flow — actually go pay (or copy info, or mark sent) ─────────────
 function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
   const [confirming, setConfirming] = useState(false);
+  // PAY-COPY-1: local editable payment-details note (null = not started).
+  const [payDraft, setPayDraft] = useState(null);
+  const payRef = useRef(null);
   const [method, setMethod] = useState(getSuggestedPayMethod(vendor));
   const amt = step.amount || 0;
   const link = useMemo(() => buildPayLink(method, vendor, amt), [method, vendor, amt]);
@@ -1532,6 +1536,36 @@ function PaymentFlow({ vendor, step, accent, onCancel, onConfirmSent }) {
           )}
         </div>
       )}
+
+      {/* PAY-COPY-1 — draft a payment-details note to the vendor. Explicit
+          fields only (the helper refuses owed language for estimates/unbooked);
+          "our notes show … can you confirm" framing; local editable box +
+          explicit Copy — never sent, never public, no overwrite possible. */}
+      <div style={{ marginBottom: space[3] }}>
+        {!payDraft ? (
+          <button type="button" data-testid="draft-payment-note"
+            onClick={() => { const d = draftVendorPaymentReminder(null, vendor); setPayDraft(d.body); setTimeout(() => { try { payRef.current && payRef.current.focus(); } catch (e) {} }, 120); }}
+            style={{ padding: '7px 13px', borderRadius: radius.sm, border: `1px solid ${P.borderDef}`, cursor: 'pointer', background: 'none', color: P.textSecondary, fontSize: type.size['sm'], fontWeight: type.weight.semibold, fontFamily: FF }}>
+            Draft payment note
+          </button>
+        ) : (
+          <div>
+            <textarea ref={payRef} value={payDraft} onChange={(e) => setPayDraft(e.target.value)} rows={7}
+              style={{ width: '100%', boxSizing: 'border-box', fontFamily: FF, fontSize: type.size['sm'], lineHeight: 1.5, color: P.textPrimary, background: P.base, border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: '10px 12px', resize: 'vertical' }} />
+            <div style={{ display: 'flex', gap: space[2], marginTop: space[2] }}>
+              <button type="button" onClick={() => { try { navigator.clipboard?.writeText(payDraft); } catch (e) {} }}
+                style={{ padding: '7px 14px', borderRadius: radius.sm, border: `1px solid ${accent}`, cursor: 'pointer', background: 'none', color: accent, fontSize: type.size['sm'], fontWeight: type.weight.semibold, fontFamily: FF }}>
+                Copy note
+              </button>
+              <button type="button" onClick={() => setPayDraft(null)}
+                style={{ padding: '7px 12px', borderRadius: radius.sm, border: `1px solid ${P.borderDef}`, cursor: 'pointer', background: 'none', color: P.textTertiary, fontSize: type.size['sm'], fontWeight: type.weight.semibold, fontFamily: FF }}>
+                Discard
+              </button>
+            </div>
+            <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontFamily: FF, marginTop: 6 }}>Send it however you normally reach them — the app never sends for you.</div>
+          </div>
+        )}
+      </div>
 
       {/* "I sent it" confirmation — two-step so a paid mark is never accidental */}
       {confirming ? (
