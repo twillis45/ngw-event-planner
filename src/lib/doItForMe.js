@@ -727,6 +727,47 @@ export function draftToast(event, profile) {
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
 // Returns 'shared' | 'copied' | 'cancelled' | 'failed' so the caller can confirm
 // honestly ("Shared" vs "Copied — paste it anywhere").
+// ── BRIEF-ASSIST-1 — vendor-category ask for missing brief details ────────────
+// The brief share panel can SEE what's missing (arrival, on-site contact,
+// vendor-facing note); this turns that gap into a short, editable, vendor-safe
+// ask grounded in the accountability playbooks' authored question style.
+// ASK-ONLY discipline: it asks for what's missing, it never asserts anything —
+// no invented times, staff, power, load-in, payment, insurance, or "you
+// confirmed" claims (test-banned). Internal draft copy; never enters the
+// public brief payload; never auto-sends.
+export function draftVendorBriefAsk(event, vendor) {
+  const v = vendor || {};
+  const name = String(v.name || '').trim();
+  const cat = String(v.category || '').toLowerCase();
+  const bullets = [];
+  // The brief's own basics — asked only when actually missing.
+  if (!String(v.arrivalTime || '').trim()) bullets.push('Your arrival/setup time');
+  if (!String(v.onSiteContactName || '').trim() && !String(v.onSitePhone || '').trim()) bullets.push('The best on-site contact and phone number for the day');
+  // Category-grounded asks (playbook question style — questions, never claims).
+  if (/cater|food|bbq|chef|bake|dessert|cake/.test(cat)) {
+    bullets.push('The final guest count or serving count you’re planning for');
+    bullets.push('Any setup, table, or service-timing needs we should know');
+  } else if (/photo|video|film|media/.test(cat)) {
+    bullets.push('Any shot list, timeline, or location details you need from us');
+  } else if (/dj|entertain|music|band|mc\b/.test(cat)) {
+    bullets.push('Your power and setup-space needs, and when you want the run of the day');
+  } else if (/venue|hall|post|club|logistic/.test(cat)) {
+    bullets.push('Load-in access — what time and through which entrance');
+    bullets.push('Any vendor access rules or curfew we should pass along');
+  } else if (/rental|tent|decor|linen|equipment/.test(cat)) {
+    bullets.push('Delivery and pickup windows, and where things should be staged');
+  }
+  bullets.push('Anything you need from the venue or host before event day');
+  const lines = [
+    `Hi ${name || 'there'} — I’m getting the event brief ready. Can you confirm:`,
+    '',
+    ...bullets.map((b) => `- ${b}`),
+    '',
+    'Thanks.',
+  ];
+  return { subject: `Event brief details${name ? ` — ${name}` : ''}`, body: lines.join('\n').trim() };
+}
+
 // ── GUEST-UPDATE-1 — guest-safe "something changed" update drafts ─────────────
 // The host needs to tell guests about a change (parking, rain, time, location)
 // without leaking internal logistics or overclaiming. Deterministic templates

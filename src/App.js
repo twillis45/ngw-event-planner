@@ -62,7 +62,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestUpdate, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestUpdate, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, draftVendorBriefAsk, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
 // FOOD-2B — the shopping list's shopItems now come through the Effective Item seam
 // (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
 // mapping; see src/lib/__tests__/shoppingEffectiveItemsParity.test.js.
@@ -8010,6 +8010,9 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
   const T = useType();
   const s = makeS(C);
   const [copied, setCopied] = useState(false);
+  // BRIEF-ASSIST-1: local editable ask draft (null = not started).
+  const [askDraft, setAskDraft] = useState(null);
+  const askRef = useRef(null);
 
   const vendorRos = vendorRosSlice(ros, vendor);
 
@@ -8106,6 +8109,50 @@ function VendorBriefModal({ vendor, event, ros, profile, onClose }) {
             <div style={{ fontSize: T.caption, fontWeight: FW.bold, color: C.danger, marginBottom: 4 }}>NOT shared with vendor</div>
             <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5 }}>Budget, payments, deposits, your private notes, other vendors, guest list</div>
           </div>
+
+          {/* BRIEF-ASSIST-1 — turn missing brief details into a vendor-safe ASK.
+              Shown only when the brief is genuinely missing basics (arrival /
+              on-site contact / vendor-facing note). The draft is a LOCAL
+              editable box + explicit Copy — never sent by the app, never part
+              of the public payload, hidden once the host starts a draft so
+              nothing can be overwritten. */}
+          {(() => {
+            const missing = [
+              !String(vendor.arrivalTime || '').trim() && 'arrival time',
+              !String(vendor.onSiteContactName || '').trim() && !String(vendor.onSitePhone || '').trim() && 'on-site contact',
+              !String(vendor.briefNote || '').trim() && 'a note for the day',
+            ].filter(Boolean);
+            if (!missing.length) return null;
+            return (
+              <div style={{ marginBottom: 20, padding: '12px 14px', border: `1px solid ${C.border}`, borderRadius: 10 }}>
+                <div style={{ fontSize: T.caption, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.muted, marginBottom: 6 }}>Still missing from this brief</div>
+                <div style={{ fontSize: T.secondary, color: C.text, lineHeight: 1.5 }}>{missing.join(' · ')}</div>
+                {!askDraft ? (
+                  <button type="button" data-testid="draft-vendor-ask"
+                    onClick={() => { const d = draftVendorBriefAsk(event, vendor); setAskDraft(d.body); setTimeout(() => { try { askRef.current && askRef.current.focus(); } catch (e) {} }, 120); }}
+                    style={{ marginTop: 10, background: 'none', border: `1px solid ${C.border}`, borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, padding: '8px 13px', minHeight: 40 }}>
+                    Ask for missing details
+                  </button>
+                ) : (
+                  <div style={{ marginTop: 10 }}>
+                    <textarea ref={askRef} value={askDraft} onChange={(e) => setAskDraft(e.target.value)} rows={7}
+                      style={{ width: '100%', boxSizing: 'border-box', fontFamily: 'inherit', fontSize: T.secondary, lineHeight: 1.5, color: C.text, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: '10px 12px', resize: 'vertical' }} />
+                    <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                      <button type="button" onClick={() => { try { navigator.clipboard?.writeText(askDraft); } catch (e) {} }}
+                        style={{ background: 'none', border: `1px solid ${C.accent}`, borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: C.accent, padding: '8px 14px' }}>
+                        Copy ask
+                      </button>
+                      <button type="button" onClick={() => setAskDraft(null)}
+                        style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, padding: '8px 12px' }}>
+                        Discard
+                      </button>
+                    </div>
+                    <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6 }}>Send it however you normally reach them — the app never sends for you.</div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Share link */}
           <div>
