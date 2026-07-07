@@ -13,6 +13,7 @@
 // final-details message is LINKED, never embedded (host plan ≠ guest copy).
 import { playbookFoodPlan, playbookCapacity, effectiveRos } from './playbooks';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
+import { deriveHelperResponsibilities } from './helperResponsibility';
 
 const daysTo = (dateStr, now = new Date()) => {
   if (!dateStr) return null;
@@ -112,6 +113,25 @@ export function buildDayBeforePlan(event, now = new Date()) {
       route: { tab: 'Event Day Schedule', focusField: 'ros-now' },
       cta: 'See the whole day',
     }] : []),
+    // HELPER-RESPONSIBILITY-1: people bringing things. Assigned is not
+    // handled — the day before is exactly when "Confirm Marcus is still
+    // bringing ice" matters. Explicit owner data only; section hidden when
+    // nobody is helping.
+    ...((() => {
+      let resp = [];
+      try { resp = deriveHelperResponsibilities(ev).responsibilities; } catch (e) { resp = []; }
+      if (!resp.length) return [];
+      const unconfirmed = resp.filter(r => r.status === 'assigned');
+      const first = unconfirmed[0];
+      return [{
+        key: 'helpers', label: 'People bringing things', open: unconfirmed.length,
+        detail: first
+          ? `Confirm ${first.helperName} is still bringing ${first.label}${unconfirmed.length > 1 ? ` — and ${unconfirmed.length - 1} more to confirm` : ''}.`
+          : 'Everyone who’s bringing something has confirmed — mark items brought as they land.',
+        route: first ? first.route : { tab: 'Planning', focusField: 'food-plan' },
+        cta: first ? `Confirm with ${first.helperName}` : 'See the list',
+      }];
+    })()),
     {
       key: 'guests', label: 'Tell your guests', open: 0,
       detail: 'A final-details note is written for you — where, when, what to bring.',

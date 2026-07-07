@@ -124,7 +124,22 @@ export function buildBudgetRecoveryPlan(event, priceFactor) {
         risk: 'low',
       });
     });
-    const unbought = priced.filter(i => i.group !== 'Supplies');
+    // HELPER-RESPONSIBILITY-1: assigned is not savings. A dish someone is
+    // BRINGING is not a line the host can trim — and until the helper
+    // confirms, the host's own backup must not be removed either. Helper-
+    // assigned dishes never enter the savings pool; an unconfirmed one gets
+    // an explicit protect note instead.
+    const helperConf = (ev.helperConfirmed && typeof ev.helperConfirmed === 'object') ? ev.helperConfirmed : {};
+    const isHelper = (i) => i.added && String(i.owner || '').trim() && !/^(host|you|yours|me|myself|self)$/i.test(String(i.owner).trim());
+    const assignedUnconfirmed = priced.filter(i => isHelper(i) && helperConf[i.id] !== true);
+    assignedUnconfirmed.slice(0, 1).forEach(i => {
+      protectedItems.push({
+        id: `helper-${i.id}`,
+        label: i.short || i.item || i.id,
+        why: `Assigned to ${String(i.owner).trim()}, but not confirmed. Do not remove the backup yet — confirm with ${String(i.owner).trim()} first.`,
+      });
+    });
+    const unbought = priced.filter(i => i.group !== 'Supplies' && !isHelper(i));
     const boughtCount = list.filter(i => i && got[i.id]).length;
     unbought.slice(0, 1).forEach(i => {
       suggestions.push({

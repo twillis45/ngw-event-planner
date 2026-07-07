@@ -11041,7 +11041,14 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       <span aria-hidden style={{ flexShrink: 0, width: 18, height: 18, borderRadius: '50%', marginTop: 1, border: `1.5px solid ${got ? steel : C.border}`, background: got ? steel : 'transparent', color: '#fff', fontSize: T.caption, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{got ? '✓' : ''}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ fontSize: T.body, fontWeight: FW.bold, color: C.text, textDecoration: (got || skipped) ? 'line-through' : 'none' }}>{i.short || i.item}</span>
-                        {i.added && i.owner && <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, marginLeft: 7 }}>· {i.owner}</span>}
+                        {/* HELPER-RESPONSIBILITY-1: assigned ≠ handled. The name alone read
+                            as "covered" — now the row says which it is: assigned (backup
+                            still needed), confirmed (covered), or brought. */}
+                        {i.added && i.owner && (() => {
+                          const conf = (event.helperConfirmed || {})[i.id] === true;
+                          const txt = got ? `${i.owner} brought it` : conf ? `Covered by ${i.owner}` : `Assigned to ${i.owner} · not confirmed`;
+                          return <span data-testid={`helper-status-${i.id}`} style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: (got || conf) ? steel : C.muted, marginLeft: 7 }}>· {txt}</span>;
+                        })()}
                         {i.added && !i.owner && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}
                         {!i.essential && !i.added && <span style={{ fontSize: T.secondary, color: C.muted, marginLeft: 7 }}>optional</span>}
                         {i.forgotten && <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: steel, marginLeft: 7, letterSpacing: '0.03em' }}>· often forgotten</span>}
@@ -11081,6 +11088,17 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                     {!skipped && !i.added && (
                       <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Set the exact cost" aria-label="Set the exact cost"
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: T.body, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
+                    )}
+                    {/* HELPER-RESPONSIBILITY-1: one-tap confirm — "Confirm with {name}"
+                        is the host's real next action on an assigned dish (calling/
+                        texting happens off-app; this records the answer). */}
+                    {i.added && i.owner && !got && (event.helperConfirmed || {})[i.id] !== true && (
+                      <button type="button" data-testid={`helper-confirm-${i.id}`}
+                        title={`Confirm with ${i.owner} — they're still bringing it`}
+                        onClick={() => onPatch({ helperConfirmed: { ...(event.helperConfirmed || {}), [i.id]: true } })}
+                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 9px', whiteSpace: 'nowrap' }}>
+                        Confirmed?
+                      </button>
                     )}
                     {i.added ? (
                       <>
@@ -38626,7 +38644,10 @@ const calmLandTop = (el) => {
     const cur = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
     if (cur < LAND_TOP_MARGIN) el.style.scrollMarginTop = LAND_TOP_MARGIN + 'px';
   } catch (e) { /* style-locked — scroll still lands */ }
-  try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* older browsers */ }
+  // Hidden documents pause rAF, so a smooth scroll never runs — land instantly
+  // instead (background tabs shouldn't animate anyway).
+  const behavior = (typeof document !== 'undefined' && document.visibilityState === 'hidden') ? 'auto' : 'smooth';
+  try { el.scrollIntoView({ behavior, block: 'start' }); } catch (e) { /* older browsers */ }
 };
 
 const calmFocusEl = (el) => {
@@ -38654,8 +38675,30 @@ const calmFocusId = (id, tries = 10) => {
   setTimeout(tick, 80);
 };
 
+// Focus-field broadcast — a deep link may target a field inside a collapsed
+// CollapsibleCard, whose children are unmounted until it opens. The retry
+// loop alone can never find them, so every focus request is (a) recorded for
+// components that mount AFTER the request (tab switch) and (b) dispatched for
+// components already mounted. useFocusFieldForceOpen() consumes both.
+let _pendingFocusField = null;
+let _pendingFocusFieldAt = 0;
+function useFocusFieldForceOpen(ids) {
+  const [hit, setHit] = useState(() =>
+    ids.includes(_pendingFocusField) && (Date.now() - _pendingFocusFieldAt) < 5000);
+  useEffect(() => {
+    const on = (e) => { if (ids.includes(e.detail)) setHit(true); };
+    window.addEventListener('ngw-focus-field', on);
+    return () => window.removeEventListener('ngw-focus-field', on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return hit;
+}
+
 const scrollFocusFieldWithRetry = (fieldId, tries = 12) => {
   if (!fieldId) return;
+  _pendingFocusField = fieldId;
+  _pendingFocusFieldAt = Date.now();
+  try { window.dispatchEvent(new CustomEvent('ngw-focus-field', { detail: fieldId })); } catch (e) { /* non-fatal */ }
   const esc = (v) => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/"/g, '\\"');
   const tick = (n) => {
     const el = document.getElementById(fieldId) || document.querySelector(`[data-focus-field="${esc(fieldId)}"]`);
@@ -38664,6 +38707,16 @@ const scrollFocusFieldWithRetry = (fieldId, tries = 12) => {
       const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)
         ? el : (el.querySelector('input, textarea, select') || el);
       try { focusTarget.focus({ preventScroll: true }); if (focusTarget.select) focusTarget.select(); } catch (e) { /* non-fatal */ }
+      // Post-settle re-anchor — a force-opened CollapsibleCard's body animates in
+      // AFTER the first scroll (and a tab switch can remount the node entirely),
+      // shifting or detaching the target. Re-resolve by id — the closure node
+      // may be stale — and correct once layout settles.
+      setTimeout(() => {
+        try {
+          const cur = document.getElementById(fieldId) || document.querySelector(`[data-focus-field="${esc(fieldId)}"]`);
+          if (cur && Math.abs(cur.getBoundingClientRect().top - LAND_TOP_MARGIN) > 60) calmLandTop(cur);
+        } catch (e) { /* non-fatal */ }
+      }, 900);
       return;
     }
     if (n > 0) setTimeout(() => tick(n - 1), 80);
@@ -41008,14 +41061,8 @@ function EventDocumentsTab({ event, isMobile, onBack, onOpenVendor }) {
 // React saw a different type, unmounted and remounted every <input> on each
 // keystroke — and the input lost focus + the character. Hoisting gives them
 // a stable reference so React preserves the input across renders.
-function EDTSectionHead({ C, label, hint }) {
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted, marginBottom: 4 }}>{label}</div>
-      {hint && <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5 }}>{hint}</div>}
-    </div>
-  );
-}
+// (EDTSectionHead retired — Where & when condensing replaced the flat section
+// heads with CollapsibleCard sections, matching the Plan/Budget grammar.)
 function EDTRow({ isMobile, children }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>{children}</div>
@@ -41148,6 +41195,12 @@ function HybridTemplateMerge({ C, s, event, setEvent }) {
   );
 }
 
+// Where & when condensing — deep-link anchors that live inside each collapsed
+// section (the focus broadcast force-opens the card holding the target).
+const EDT_BASICS_IDS = ['event-date'];
+const EDT_VENUE_IDS = ['event-venue'];
+const EDT_DAYOF_IDS = ['venue-contact', 'loadin-notes', 'parking-notes', 'house-rules', 'rain-plan'];
+
 function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const C = useT();
   const T = useType();
@@ -41159,6 +41212,14 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const [showTouches, setShowTouches] = useState(!!(event.honoree || event.theme || event.honoreeSong || event.honoreeDrink));
   const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
   const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
+  // Condensing doctrine: settled sections start collapsed; a deep link into a
+  // collapsed section force-opens it (durable — CollapsibleCard keeps it open).
+  const basicsFocus = useFocusFieldForceOpen(EDT_BASICS_IDS);
+  const venueFocus  = useFocusFieldForceOpen(EDT_VENUE_IDS);
+  const dayofFocus  = useFocusFieldForceOpen(EDT_DAYOF_IDS);
+  const basicsDone  = !!(String(event.name || '').trim() && String(event.type || '').trim() && String(event.date || '').trim());
+  const locDone     = (() => { try { return eventLocationStatus(event) !== 'missing'; } catch { return false; } })();
+  const dayofFilled = ['parkingNotes', 'loadInNotes', 'houseRules', 'rainPlan', 'venueContact'].filter(k => String(event[k] || '').trim()).length;
   // Location default (#55): the app remembers the host's city across events so location
   // questions (pricing, weather, stores) have a sensible default. If this host event has
   // no city yet, seed it from the last city they used.
@@ -41195,8 +41256,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           the form readable on wide monitors instead of stretching to
           1700px-wide single inputs. */}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      <div style={{ padding: sectionPad }}>
-        <EDTSectionHead C={C}label={detailsIsHost ? 'The basics' : 'Identity'} hint="The basics — what the event is called, when it happens, and what kind of event it is." />
+      <div style={{ padding: sectionPad, display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <CollapsibleCard id={`edt-basics-${event.id}`} isMobile={isMobile}
+          title={detailsIsHost ? 'The basics' : 'Identity'}
+          subtitle={basicsDone
+            ? [...new Set([event.name, event.type].map(v => String(v || '').trim()).filter(Boolean))]
+                .concat((() => { try { const d = new Date(String(event.date) + 'T00:00:00'); return isNaN(d) ? [event.date] : [d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })]; } catch { return [event.date]; } })())
+                .join(' · ')
+            : 'Name, type, date, and start time'}
+          done={basicsDone} defaultCollapsed={basicsDone} forceOpen={basicsFocus}>
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="Event name"   value={event.name}      onChange={v => upd('name', v)} placeholder="Wedding · Birthday · Corporate offsite" />
           <EDTField C={C} s={s} label="Event type"   value={event.type}      onChange={v => upd('type', v)} options={EVT_TYPES.map(t => ({ value: t, label: t }))} />
@@ -41265,10 +41333,14 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           <button type="button" onClick={() => setShowTouches(true)}
             style={{ background: 'transparent', border: `1px dashed ${C.border}`, color: C.accent, fontWeight: FW.bold, fontSize: T.secondary, cursor: 'pointer', padding: '9px 14px', borderRadius: 9, fontFamily: 'inherit' }}>+ Add personal touches (guest of honor, theme, song, drink)</button>
         )}
-      </div>
+        </CollapsibleCard>
 
-      <div style={{ ...sectionPad === 'string' ? {} : {}, padding: sectionPad, borderTop: `1px solid ${C.border}` }}>
-        <EDTSectionHead C={C}label={detailsIsHost ? 'Where it’s happening' : 'Venue'} hint={detailsIsHost ? 'The place, the address, and any notes for the day — parking, where to set up, a rain plan if it’s outside.' : 'Where it happens. Address, contact, and the operational notes the team will need on event day.'} />
+        <CollapsibleCard id={`edt-venue-${event.id}`} isMobile={isMobile}
+          title={detailsIsHost ? 'Where it’s happening' : 'Venue'}
+          subtitle={locDone
+            ? [event.venue, event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Location on file'
+            : 'Add the place so weather, pricing, and directions can work'}
+          done={locDone} defaultCollapsed={locDone} forceOpen={venueFocus}>
         {/* LOCATION-VENUE-1 — Place Intelligence Card ("Location check").
             Replaces the old text-only Missing-logistics list: same spot, same
             restrained shell, but every gap now has a state and a real in-tab
@@ -41514,6 +41586,12 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             </div>
           );
         })()}
+        </CollapsibleCard>
+
+        <CollapsibleCard id={`edt-dayof-${event.id}`} isMobile={isMobile}
+          title="Day-of notes"
+          subtitle={dayofFilled > 0 ? `${dayofFilled} of 5 noted — parking, load-in, rain plan, house rules, who to call` : 'Parking, load-in, rain plan, house rules, and who to call'}
+          defaultCollapsed forceOpen={dayofFocus}>
         {/* id="venue-contact": Place Intelligence CTA anchor (same wrapper
             pattern as rain-plan / event-date). */}
         <div id="venue-contact" style={{ scrollMarginTop: 16 }}>
@@ -41583,10 +41661,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         <div style={{ fontSize: T.caption, color: C.muted, marginTop: 14, lineHeight: 1.55, maxWidth: 560 }}>
           Day-of view reads these notes on event day. Vendors check this for load-in instructions. Keep them short and explicit.
         </div>
-        {/* Sprint 58E — Outcome Capture (1-tap; completes the loop) */}
-        <OutcomeCapture event={event} setEvent={setEvent} />
-        {/* Sprint 58C — Decision Memory read surface (now shows derived/captured outcomes) */}
-        <DecisionHistory event={event} />
+        </CollapsibleCard>
+
+        <CollapsibleCard id={`edt-history-${event.id}`} isMobile={isMobile}
+          title="How it went" subtitle="Outcomes and decision history" defaultCollapsed>
+          {/* Sprint 58E — Outcome Capture (1-tap; completes the loop) */}
+          <OutcomeCapture event={event} setEvent={setEvent} />
+          {/* Sprint 58C — Decision Memory read surface (now shows derived/captured outcomes) */}
+          <DecisionHistory event={event} />
+        </CollapsibleCard>
       </div>
       </div>
     </>
@@ -43487,6 +43570,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   // page top). Retries briefly while the destination tab mounts; clears after firing.
   useEffect(() => {
     if (!openFocusField) return undefined;
+    // Broadcast so collapsed CollapsibleCards holding the target force-open
+    // (same contract as scrollFocusFieldWithRetry — see useFocusFieldForceOpen).
+    _pendingFocusField = openFocusField;
+    _pendingFocusFieldAt = Date.now();
+    try { window.dispatchEvent(new CustomEvent('ngw-focus-field', { detail: openFocusField })); } catch (e) { /* non-fatal */ }
     let tries = 0, timer = null;
     const esc = (v) => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/"/g, '\\"');
     const tick = () => {
@@ -43498,6 +43586,15 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)
           ? el : (el.querySelector('input, textarea, select') || el);
         try { focusTarget.focus({ preventScroll: true }); if (focusTarget.select) focusTarget.select(); } catch (e) { /* non-fatal */ }
+        // Post-settle re-anchor (same drift class as scrollFocusFieldWithRetry):
+        // a force-opened section's body animates in after the first scroll, and a
+        // remount can detach the node — re-resolve by id before correcting.
+        setTimeout(() => {
+          try {
+            const cur = document.getElementById(openFocusField) || document.querySelector(`[data-focus-field="${esc(openFocusField)}"]`);
+            if (cur && Math.abs(cur.getBoundingClientRect().top - LAND_TOP_MARGIN) > 60) calmLandTop(cur);
+          } catch (err) { /* non-fatal */ }
+        }, 900);
         setOpenFocusField(null);
         return;
       }
