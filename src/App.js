@@ -35,6 +35,7 @@ import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCo
 import { hostSpending } from './lib/hostSpending';
 import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { showsReplyTracking } from './lib/guestMode';
+import { eventContextNudge } from './lib/eventContextNudges';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -9380,6 +9381,39 @@ function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
             )}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// ── ContextNudgeCard — EVENT-CONTEXT-INTELLIGENCE-1 ─────────────────────────
+// ONE optional, dismissible context nudge per surface, in "many hosts / if it
+// fits" language, action-linked to an existing control. Renders nothing when
+// no safe context matches or the host dismissed it. No dot, no completion
+// pressure, never blocks anything.
+function ContextNudgeCard({ event, surface, onPatchEvent = null, onNavTo = null, isMobile = false }) {
+  const C = useT();
+  const T = useType();
+  const [whyOpen, setWhyOpen] = useState(false);
+  const n = (() => { try { return eventContextNudge(event, surface); } catch { return null; } })();
+  if (!n) return null;
+  const dismiss = () => { if (onPatchEvent) onPatchEvent({ contextNudges: { ...(event.contextNudges || {}), [n.id]: 'dismissed' } }); };
+  return (
+    <div data-testid={`context-nudge-${n.id}`} style={{ ...metalEdge(C), borderRadius: 12, padding: isMobile ? '13px 14px' : '14px 18px', marginBottom: 14, maxWidth: 760, marginLeft: 'auto', marginRight: 'auto' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.muted }}>If it fits your event</div>
+          <div style={{ fontSize: T.secondary, color: C.text, marginTop: 5, lineHeight: 1.5 }}>{n.text}</div>
+          {whyOpen && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{n.why}</div>}
+          <div style={{ display: 'flex', gap: 14, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {onNavTo && (
+              <button type="button" data-testid={`context-nudge-cta-${n.id}`} onClick={() => onNavTo(n.route.tab, { focusField: n.route.focusField })}
+                style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>{n.actionLabel} →</button>
+            )}
+            <button type="button" onClick={() => setWhyOpen(v => !v)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.accent }}>{whyOpen ? 'Hide' : 'Why this matters'}</button>
+            {onPatchEvent && <button type="button" data-testid={`context-nudge-dismiss-${n.id}`} onClick={dismiss} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Not for this event</button>}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -42853,7 +42887,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div id="guests-entry" style={{ scrollMarginTop: 16 }}>
             <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
           </div>
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} onNavTo={(t, opts) => go(t, opts && opts.vendorId ? opts.vendorId : null, opts)} /></div></div>}
+          <div className="hp-recede"><ContextNudgeCard event={event} surface="guests" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} /><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} onNavTo={(t, opts) => go(t, opts && opts.vendorId ? opts.vendorId : null, opts)} /></div></div>}
         {tab === 'Budget' && <div className="planv2-wrap">{/* Parity fix: wrap the WHOLE tab so the PlanNowHero aligns to 760 with the content — HostSpendingPlan's inner 760 only capped the cards, leaving the hero full-bleed. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -42872,6 +42906,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="planv2-grid">
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
+              <ContextNudgeCard event={event} surface="food" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} />
               <div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
@@ -42894,7 +42929,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           // EventDayBar / RunOfShow lives in EventPlanner and is untouched.
           // Parity (P1): cap to Plan's reading measure so run-of-show text doesn't run ~1200px lines on desktop.
           <div className="planv2-wrap">{((intakeFamilyConfig(event.type) || {}).recordKind === 'event' || (() => { try { return hostNavActive(event); } catch { return false; } })())
-            ? <HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={go} />
+            ? <><ContextNudgeCard event={event} surface="program" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} /><HostRunOfShowTimeline event={event} profile={profile} ctx={ctx} onNav={go} /></>
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
@@ -42903,7 +42938,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               </>}</div>
         )}
         {tab === 'Event Details' && <div className="planv2-wrap">{/* Parity: 'Where & when' was missed in P1 — cap the settings form to the 760 measure like every other tab. */}<EventDetailsTab event={event} setEvent={setEvent} isMobile={isMobile} onBack={() => go('Command')} /></div>}
-        {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} openSection={openVendorSection} sectionPing={vendorSectionPing} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
+        {tab === 'Vendors' && <><LegacyTabHeader label="People you’re hiring" onBack={() => go('Command')} /><ContextNudgeCard event={event} surface="vendors" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} /><Suspense fallback={<SpecialistFallback />}><EventVendorsTab event={event} setEvent={setEvent} setVendors={wrap('vendors')} budget={event.budget} openId={openVendorId} openSection={openVendorSection} sectionPing={vendorSectionPing} ros={effectiveRos(event)} profile={profile} allEvents={allEvents} isMobile={isMobile} onBack={() => go('Command')} onRouteToLinked={(t, id) => go(t, id)} onSaveVendorToBank={onSaveVendorToBank} promptDecision={promptDecision} /></Suspense></>}
         {tab === 'Documents' && <EventDocumentsTab event={event} isMobile={isMobile} onBack={() => go('Command')} onOpenVendor={(vid, sec) => go('Vendors', vid, sec ? { vendorSection: sec } : undefined)} />}
         </div>
       </div>
