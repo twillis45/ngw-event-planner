@@ -37,6 +37,7 @@ import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { showsReplyTracking } from './lib/guestMode';
 import { eventContextNudge } from './lib/eventContextNudges';
 import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount } from './lib/crabPlan';
+import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -40151,11 +40152,14 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
 // ONLY: green (C.success) at/above 50%, steel (C.accent) below — never amber/gold.
 // A node dot rides the fill end; faint ticks mark the 33% / 66% thirds. Honest: if the
 // score is null (nothing to measure yet) it renders an empty track, not a guess.
-function ReadinessTrack({ event }) {
+function ReadinessTrack({ event, onNavTo = null }) {
   const C = useT();
-  // PROGRESS-1: whole-event score with not-applicable axes excluded (a host
-  // with no vendors/documents isn't dinged for categories they don't have).
-  const score = (() => { try { return wholeEventReadinessScore(event); } catch { return null; } })();
+  const T = useType();
+  // PHASE-PROGRESS-GRADIENT-1: the bar means readiness for the CURRENT PHASE —
+  // honest counts of chosen workflows (deriveEventPhaseProgress), never a
+  // whole-event score. Fill = completed/total for the phase.
+  const pp = (() => { try { return deriveEventPhaseProgress(event); } catch { return null; } })();
+  const score = pp && pp.totalCount > 0 ? pp.progress * 100 : (pp && pp.phase === 'post_event' ? 100 : null);
   const pct = score == null ? 0 : Math.max(0, Math.min(100, Math.round(score)));
   const fill = pct >= 50 ? (C.success || C.accent) : C.accent;
   const trackBg = C.border;
@@ -40164,7 +40168,8 @@ function ReadinessTrack({ event }) {
   // collision at 390×844). A progress strip must reserve layout space, not
   // rely on each tab's first card to keep its distance.
   return (
-    <div aria-hidden style={{ position: 'relative', height: 4, background: trackBg, flexShrink: 0, marginBottom: 12 }}>
+    <>
+    <div aria-hidden style={{ position: 'relative', height: 4, background: trackBg, flexShrink: 0, marginBottom: onNavTo && pp ? 0 : 12 }}>
       {/* faint thirds ticks — orientation, not measurement */}
       {[33, 66].map(t => (
         <div key={t} style={{ position: 'absolute', top: 0, bottom: 0, left: `${t}%`, width: 1, background: C.text, opacity: 0.08 }} />
@@ -40177,6 +40182,22 @@ function ReadinessTrack({ event }) {
         </>
       )}
     </div>
+    {/* Truthful phase label + AT MOST one goal-gradient cue. One line, wraps
+        safely, in flow (reserves its own space — no first-card collision). */}
+    {onNavTo && pp && (
+      <div data-testid="phase-progress-line" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', padding: '7px 16px 0', marginBottom: 12, minWidth: 0 }}>
+        <span style={{ fontSize: T.caption, color: C.muted, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>{pp.label}:</span>
+        <span data-testid="phase-progress-summary" style={{ fontSize: T.caption, color: C.text, fontWeight: FW.semibold, minWidth: 0 }}>{pp.summary}</span>
+        {pp.nextCue && (
+          <button type="button" data-testid="phase-progress-cue"
+            onClick={() => onNavTo(pp.nextCue.route.tab, pp.nextCue.route.vendorId || null, pp.nextCue.route.focusField ? { focusField: pp.nextCue.route.focusField } : undefined)}
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.accent, minWidth: 0, textAlign: 'left' }}>
+            {pp.nextCue.label} →
+          </button>
+        )}
+      </div>
+    )}
+    </>
   );
 }
 
@@ -42945,7 +42966,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
       </div>
       {/* UNIFIED HEADER FRAME (board): the single ReadinessTrack rides directly under the
           app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
-      <ReadinessTrack event={event} />
+      <ReadinessTrack event={event} onNavTo={(t, id, opts) => go(t, id, opts)} />
 
       <div style={isSidebarNav ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
         {/* Desktop / tablet-landscape: a calm left SIDE nav (the 5 host sections + the

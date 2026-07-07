@@ -8,10 +8,12 @@ import path from 'path';
 
 const app = fs.readFileSync(path.join(__dirname, '..', 'App.js'), 'utf8');
 
-test('1 · ReadinessTrack reserves its own space below the bar (first-card collision fix)', () => {
-  const m = app.match(/function ReadinessTrack[\s\S]{0,1600}?height: 4, background: trackBg[^}]*}/);
-  expect(m).toBeTruthy();
-  expect(m[0]).toMatch(/marginBottom: 12/);
+test('1 · ReadinessTrack always reserves space below the bar (first-card collision fix)', () => {
+  // Space is reserved either by the bar itself (bar-only mode) or by the
+  // phase-progress cue line (host shell) — both carry marginBottom: 12.
+  const comp = app.slice(app.indexOf('function ReadinessTrack'), app.indexOf('function ReadinessTrack') + 4200);
+  expect(comp).toMatch(/marginBottom: onNavTo && pp \? 0 : 12/);
+  expect(comp).toMatch(/marginBottom: 12, minWidth: 0/); // the cue line reserves it in cue mode
 });
 
 test('2 · the track is in document flow — never fixed/absolute overlaying content', () => {
