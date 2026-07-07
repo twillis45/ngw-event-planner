@@ -40051,8 +40051,12 @@ function ReadinessTrack({ event }) {
   const pct = score == null ? 0 : Math.max(0, Math.min(100, Math.round(score)));
   const fill = pct >= 50 ? (C.success || C.accent) : C.accent;
   const trackBg = C.border;
+  // MOBILE-LAYOUT-REPAIR-1: the track reserves its own breathing room — the
+  // first card on every host tab was starting 0px below the bar (live-measured
+  // collision at 390×844). A progress strip must reserve layout space, not
+  // rely on each tab's first card to keep its distance.
   return (
-    <div aria-hidden style={{ position: 'relative', height: 4, background: trackBg, flexShrink: 0 }}>
+    <div aria-hidden style={{ position: 'relative', height: 4, background: trackBg, flexShrink: 0, marginBottom: 12 }}>
       {/* faint thirds ticks — orientation, not measurement */}
       {[33, 66].map(t => (
         <div key={t} style={{ position: 'absolute', top: 0, bottom: 0, left: `${t}%`, width: 1, background: C.text, opacity: 0.08 }} />
