@@ -727,6 +727,60 @@ export function draftToast(event, profile) {
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
 // Returns 'shared' | 'copied' | 'cancelled' | 'failed' so the caller can confirm
 // honestly ("Shared" vs "Copied — paste it anywhere").
+// ── GUEST-UPDATE-1 — guest-safe "something changed" update drafts ─────────────
+// The host needs to tell guests about a change (parking, rain, time, location)
+// without leaking internal logistics or overclaiming. Deterministic templates
+// from known event data only; every unknown is a bracketed [add it here]
+// prompt, never an asserted fact. STRUCTURALLY guest-safe: no branch can emit
+// vendor/load-in/COI/payment/budget/planner content (test-banned). Editable in
+// the existing DraftSheet before the host copies/sends — never auto-sent.
+export function draftGuestUpdate(event, opts = {}) {
+  const ev = event || {};
+  const type = opts.type || 'general';
+  const name = String(ev.name || '').trim();
+  const forName = name ? ` for ${name}` : '';
+  const venueName = String(ev.venue || '').trim();
+  const city = String(ev.venueCity || ev.city || '').trim();
+  const parking = String(ev.parkingNotes || '').trim();
+  const rain = String(ev.rainPlan || '').trim();
+  const when = (() => { try { return fmtLongDate(ev.date); } catch { return ''; } })();
+  const tp = (() => { try { return timePhrase(ev); } catch { return ''; } })();
+  const outro = 'We’ll send another note if anything changes.';
+  let subject; let lines;
+  if (type === 'parking') {
+    subject = `Parking update${forName}`;
+    lines = parking
+      ? [`Hi everyone — parking details${forName}:`, '', parking, '', 'Please give yourself a few extra minutes when you arrive.']
+      : [`Hi everyone — a quick parking update${forName}:`, '', '[Add parking details here]', '', 'Please check this note before you head out.'];
+  } else if (type === 'rain') {
+    subject = `Weather update${forName}`;
+    lines = [`Hi everyone — weather update${forName}:`, '', 'We’re still on.'];
+    if (rain) lines.push('', 'If rain comes through, here’s the plan:', rain);
+    else lines.push('', '[Add the backup plan here]');
+    lines.push('', outro);
+  } else if (type === 'location') {
+    subject = `Location reminder${forName}`;
+    lines = [`Hi everyone — location reminder${forName}:`, ''];
+    lines.push(venueName ? `The event is at ${venueName}${city ? ` in ${city}` : ''}.` : '[Add the location here]');
+    lines.push('', parking ? `Parking: ${parking}` : '[Add entrance or parking details here if needed]');
+  } else if (type === 'time') {
+    subject = `Time reminder${forName}`;
+    lines = [`Hi everyone — a quick time reminder${forName}:`, ''];
+    lines.push((when || tp) ? [when, tp].filter(Boolean).join(', ') + '.' : '[Add the date and time here]');
+    lines.push('', outro);
+  } else if (type === 'arrival') {
+    subject = `Arrival details${forName}`;
+    lines = [`Hi everyone — arrival details${forName}:`, ''];
+    lines.push(venueName ? `We’re at ${venueName}${city ? ` in ${city}` : ''}.` : '[Add where to come here]');
+    if (parking) lines.push('', `Parking: ${parking}`);
+    lines.push('', '[Add anything else guests should know when they arrive]');
+  } else {
+    subject = `Event update${forName}`;
+    lines = [`Hi everyone — a quick event update${forName}. Please review the details below before you head out.`, '', '[Add the update here]', '', outro];
+  }
+  return { subject, body: lines.join('\n').trim() };
+}
+
 // ── PLACE-DIFM-1 — parking/arrival starter for the Location check card ────────
 // Turns the Place card's "parking needs info" from a routed gap into a CLOSED
 // one: a conservative, editable starter the host finishes in the parkingNotes

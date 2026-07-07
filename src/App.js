@@ -62,7 +62,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestUpdate, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
 // FOOD-2B — the shopping list's shopItems now come through the Effective Item seam
 // (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
 // mapping; see src/lib/__tests__/shoppingEffectiveItemsParity.test.js.
@@ -31885,6 +31885,28 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {/* "Do it for me" — the dietary note. From the guests' own needs, the app writes
           the "here's what the table needs" note for whoever's cooking. Host-only, shown
           only once at least one guest has a dietary need on file. */}
+      {/* GUEST-UPDATE-1 — guest-safe update drafts. Same DraftSheet handoff as
+          every DIFM action: editable first, share/copy explicitly, never sent
+          by the app. Rain button appears only when a rain story exists. */}
+      {guestsIsHost && (
+        <div style={{ borderTop: `1px solid ${C.border}`, padding: '13px 2px' }}>
+          <div style={{ fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 8 }}>Something changed?</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[
+              { label: 'Draft guest update', type: 'general', title: 'Your guest update' },
+              { label: 'Parking update', type: 'parking', title: 'Your parking update' },
+              ...((String(event.rainPlan || '').trim() || event.indoorOutdoor === 'outdoor' || event.indoorOutdoor === 'both' || event.venueKind === 'outdoor')
+                ? [{ label: 'Rain update', type: 'rain', title: 'Your weather update' }] : []),
+            ].map((b) => (
+              <button key={b.type} type="button" data-testid={`guest-update-${b.type}`}
+                onClick={() => { const d = draftGuestUpdate(event, { type: b.type }); setGuestDraftSheet({ title: b.title, intro: 'Written from your event details — anything in [brackets] is yours to fill in. Make it yours, then send it the way you normally reach your guests.', draft: d, shareTitle: d.subject, kind: 'thankyou' }); }}
+                style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 9, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, padding: '8px 13px', minHeight: 40 }}>
+                {b.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {guestsIsHost && (() => {
         const needCount = (guests || []).filter(g => g && String(g.needs || '').trim()).length;
         if (needCount === 0) return null;
