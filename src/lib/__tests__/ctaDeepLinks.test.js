@@ -168,3 +168,25 @@ describe('no whole-surface CTAs — formerly-broad routes carry anchors', () => 
     expect(roll.target.vendorId).toBe('v-ok');
   });
 });
+
+// Earliest-keyword-wins: a milestone label leads with its action verb, so the
+// FIRST domain keyword in the label owns the route — "Book the caterer … for
+// your guest count" is a vendor action, never a Guests landing (live-caught
+// wrong-screen bug: fixed-order checks tested 'guest' first).
+describe('milestone keyword router: earliest keyword wins', () => {
+  test('vendor verb leading a label beats a later guest mention', () => {
+    // Pin via the emitted plan on a Juneteenth-shaped event whose next
+    // milestone is the caterer-booking composite.
+    const ev = host({
+      type: 'Juneteenth Cookout', guestCount: 30, guestMode: 'count',
+      totalBudget: 500, foodPlanChoice: 'cook', date: future(14),
+    });
+    (eventPlan(ev).nextActions || []).forEach(a => {
+      const title = String(a.title || '').toLowerCase();
+      if (/prep for "book/.test(title)) {
+        expect(a.primaryRoute.tab).toBe('Vendors');
+        expect(a.primaryRoute.vendorId || a.primaryRoute.focusField === 'vendor-add').toBeTruthy();
+      }
+    });
+  });
+});

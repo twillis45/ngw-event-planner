@@ -1938,20 +1938,30 @@ function _selectEventNextActionInner(event) {
       // to the timeline (anchored to the milestone) when it isn't a domain action.
       primaryRoute: (() => {
         const s = String(nextUp.label || '').toLowerCase();
-        if (/guest|invite|rsvp|head\s?count|seat/.test(s)) return { tab: 'Guests', focusField: 'guests-entry' };
-        if (/budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/.test(s)) return { tab: 'Budget', focusField: 'hsp-budget' };
-        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) {
-          // First-undone-item rule: land on the first vendor row that still
-          // needs the host (unbooked / deposit unpaid / COI required), else the
-          // first vendor row, else the add button (nothing exists -> the first
-          // available action IS adding one).
-          const vs = (event.vendors || []).filter(v => v && String(v.name || '').trim());
-          const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
-            || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
-          const targetV = undone || vs[0];
-          return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
-        }
-        if (/food|menu|shop|grocer|drink|supplies|seating/.test(s)) return { tab: 'Planning', focusField: 'food-plan' };
+        // EARLIEST-KEYWORD-WINS: a milestone label leads with its action
+        // ("Book the caterer … for your guest count"), so the domain whose
+        // keyword appears FIRST owns the route. Fixed-order checks sent that
+        // caterer-booking task to Guests because 'guest' was tested first —
+        // a wrong-screen landing behind a working-looking CTA.
+        const DOMAINS = [
+          { re: /guest|invite|rsvp|head\s?count|\bseat\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
+          { re: /budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
+          { re: /vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/, route: () => {
+            // First-undone-item rule: the first vendor row still needing the
+            // host, else the first row, else the add button.
+            const vs = (event.vendors || []).filter(v => v && String(v.name || '').trim());
+            const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
+              || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
+            const targetV = undone || vs[0];
+            return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
+          } },
+          { re: /food|menu|shop|grocer|drink|supplies|seating/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
+        ];
+        const hits = DOMAINS
+          .map(d => ({ d, at: s.search(d.re) }))
+          .filter(x => x.at >= 0)
+          .sort((a, b) => a.at - b.at);
+        if (hits.length) return hits[0].d.route();
         return { tab: 'Timeline', timelineId: nextUp.id };
       })(),
       contextLine: daysSub,
