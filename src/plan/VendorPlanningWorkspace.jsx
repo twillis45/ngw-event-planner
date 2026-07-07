@@ -55,7 +55,7 @@ import {
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
-import { memoryOn, latestRationaleForSubject } from '../lib/decisionMemory';
+import { memoryOn, latestRationaleForSubject, decisionPayoffSummary } from '../lib/decisionMemory';
 // Sprint 58G — Event Memory: the private per-vendor track record, surfaced at the pick.
 import { vendorMemoryFor, summarizeVendorMemory } from '../lib/eventMemory';
 import {
@@ -1898,6 +1898,21 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               <span style={{ color: P.borderDef }}>·</span>
               <span style={{ color: P.textTertiary, fontStyle: 'italic' }}>{isHostView(event) ? hostStageWord(stage, vendor) : stage}</span>
             </div>
+            {/* DM-PAYOFF-1 — the visible payoff: the app asked "Why this vendor?"
+                at confirm time; the answer comes back HERE, where the host reads
+                this vendor. Internal only (never in the public brief); the user's
+                exact words, truncated at a word boundary with the full text on
+                hover; renders nothing when no rationale exists. */}
+            {memoryOn() && (() => {
+              const payoff = decisionPayoffSummary(event, vendor.id);
+              return payoff ? (
+                <div title={payoff.truncated ? payoff.full : undefined}
+                  style={{ fontSize: type.size['caption'], color: P.textTertiary, fontFamily: FF, marginTop: 5, lineHeight: 1.4 }}>
+                  <span style={{ fontWeight: 700, opacity: 0.75 }}>Why this vendor:</span>{' '}
+                  <span style={{ fontStyle: 'italic' }}>{payoff.short}</span>
+                </div>
+              ) : null;
+            })()}
             {/* Attention-item KPIs LEAD the detail (board 2026-06-12): a glanceable,
                 clickable strip — what needs you, how locked-in, what's owed — so the
                 planner reads the vendor's state in one look and can act from the top. */}

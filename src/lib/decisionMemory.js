@@ -95,6 +95,24 @@ export function latestRationaleForSubject(event, subjectId) {
 // no persistence). No new engine/table/workflow.
 
 // Small structured signals — never surveys/essays.
+// ── DM-PAYOFF-1 — the visible payoff loop ─────────────────────────────────────
+// If the app asked "why?", the user must SEE that reason come back somewhere
+// useful. This is the one read-side helper for that: deterministic, event-data
+// only, NEVER rewrites the user's words (short is a plain word-boundary prefix
+// of exactly what they typed). Returns null when no rationale exists — a
+// surface must render NOTHING rather than invented payoff copy.
+// INTERNAL ONLY: rationale never enters the vendor brief whitelist, guest
+// copy, or any public payload (privacy pinned in decisionPayoff.test.js).
+export function decisionPayoffSummary(event, subjectId, max = 90) {
+  const full = latestRationaleForSubject(event, subjectId);
+  if (!full) return null;
+  const clean = String(full).trim();
+  if (!clean) return null;
+  if (clean.length <= max) return { short: clean, full: clean, truncated: false };
+  const cut = clean.slice(0, max).replace(/\s+\S*$/, '');
+  return { short: (cut || clean.slice(0, max)) + '…', full: clean, truncated: true };
+}
+
 export const OUTCOME_SIGNALS = {
   vendor_selection: ['on_time', 'late', 'no_show', 'great', 'poor'],
   budget_reallocation: ['within', 'exceeded', 'underspent'],
