@@ -5,10 +5,16 @@ import * as Sentry from '@sentry/react';
 
 const DSN = process.env.REACT_APP_SENTRY_DSN;
 
-export const isSentryConfigured = () => Boolean(DSN);
+// Dev sessions must never report to Sentry: localhost work (including test
+// harnesses driving the preview) otherwise pollutes the project with
+// eval/probe noise that reads like product errors. Dev keeps console
+// warnings via captureError; only production builds send.
+const SEND = Boolean(DSN) && process.env.NODE_ENV === 'production';
+
+export const isSentryConfigured = () => SEND;
 
 export function initSentry() {
-  if (!DSN) return;
+  if (!SEND) return;
   Sentry.init({
     dsn: DSN,
     environment: process.env.NODE_ENV || 'production',
@@ -25,7 +31,7 @@ export function initSentry() {
 // queue depth). No-op (console only) when no DSN. Telemetry must never throw.
 export function captureError(err, context = {}) {
   try {
-    if (DSN) Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { extra: context });
+    if (SEND) Sentry.captureException(err instanceof Error ? err : new Error(String(err)), { extra: context });
     if (process.env.NODE_ENV !== 'production') console.warn('[captureError]', context.where || '', err, context);
   } catch (e) { /* never throw from telemetry */ }
 }
