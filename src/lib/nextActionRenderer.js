@@ -45,7 +45,11 @@ export const VOICE = {
   decision: {
     host: (c) => ({
       title: 'One call to make: ' + (stripDecision(c && c.title) || 'the open decision') + '.',
-      consequence: "Make it and everything waiting on it can move — it's the only thing in your way. I've got the rest.",
+      // ONE-SOURCE HERO: when the engine says more decisions wait behind this one
+      // (settleCount from the board gate), never claim it's "the only thing".
+      consequence: (c && Number(c.settleCount) > 1)
+        ? `Make this one and the other ${c.settleCount - 1} get easier — they're all yours to call, and I've got the rest.`
+        : "Make it and everything waiting on it can move — it's the only thing in your way. I've got the rest.",
       primaryCta: 'Make the call',
     }),
     operator: (c) => ({

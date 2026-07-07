@@ -50,7 +50,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // in the vendor detail. Surfaced here so the Portfolio triage column + its
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
-import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
+import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
@@ -2005,6 +2005,50 @@ function _selectEventNextActionInner(event) {
       contextLine: daysSub,
     };
   }
+
+  // Tier 7.8 — ONE-SOURCE HERO (Todd, 2026-07-07). Before any calm claim, the
+  // hero must agree with the two other truth tellers on the same screen: the
+  // "What to settle" board and the phase-readiness bar. (Observed: "You're in
+  // good shape / Nothing needs you right now" rendered directly above three
+  // OVERDUE settle chips and an open "Add a rain backup" cue — the ladder read
+  // deriveCommandCenterData().decisions, a different engine than the board.)
+  // 1 · An overdue board decision IS the next action.
+  try {
+    const _board = playbookDecisionBoard(event);
+    const _over = ((_board && _board.open) || []).filter(r => r && r.status === 'overdue');
+    if (_over.length) {
+      return {
+        level: 'attention',
+        category: 'decision',
+        title: `Resolve "${_over[0].label}".`,
+        settleCount: _over.length,
+        consequence: _over.length === 1
+          ? 'It’s past its easy window — the spread and shopping list size from it.'
+          : `${_over.length} decisions are past their easy window — this one first. The spread and shopping list size from them.`,
+        primaryCta: 'Settle it',
+        primaryRoute: { tab: 'Planning', focusField: 'host-decisions' },
+        contextLine: daysSub,
+      };
+    }
+  } catch { /* board unavailable — fall through */ }
+  // 2 · An open planning essential outranks "nothing needs you" — the header
+  // bar is already saying it; the hero must not contradict it. The cue label
+  // becomes the hero title, so the header cue's wording-yield hides itself
+  // (one telling, hero wins).
+  try {
+    const _pp = deriveEventPhaseProgress(event);
+    if (_pp && _pp.phase === 'pre_event' && _pp.nextCue) {
+      return {
+        level: 'neutral',
+        category: 'readiness',
+        title: `${_pp.nextCue.label}.`,
+        consequence: `The last of the planning essentials — ${_pp.completedCount} of ${_pp.totalCount} are already handled. After this, the plan really is quiet.`,
+        primaryCta: 'Take me to it',
+        primaryRoute: _pp.nextCue.route,
+        contextLine: daysSub,
+      };
+    }
+  } catch { /* fall through to heart/neutral */ }
 
   // Tier 7.9 (#17) — when nothing's urgent, the intelligence points to the HEART of
   // the event: the captured must-have moment. Meaning is a first-class engine input,

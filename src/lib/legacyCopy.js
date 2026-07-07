@@ -63,8 +63,28 @@ export function migrateLegacyLocationFields(events) {
       if (v && !isPlausibleCityText(v)) {
         any = true;
         next = { ...next, [field]: '' };
-        if (!String(next.venue || '').trim()) next.venue = v; // the text was the venue all along
+        if (!String(next.venue || '').trim()) {
+          next.venue = v; // the text was the venue all along
+          // The event now HAS a venue — record the kind, or the at-home city
+          // seed re-stamps the host's remembered city into the empty city field
+          // on tab open and every location reader contradicts the venue.
+          // (Todd's audit: venue "VFW Post 3150" + "At home" toggle + "near
+          // Atlanta" chips on one screen.)
+          if ((next.venueKind || 'home') === 'home') next.venueKind = 'venue';
+        }
       }
+    }
+    // Repair pass for events healed BEFORE the venueKind rule above existed:
+    // a moved venue string with venueKind still 'home' keeps re-triggering the
+    // at-home city seed. Conservative: only when the venue plainly ISN'T a
+    // home-ish label or a bare city, and no city is set (the healed signature).
+    const ven = String(next.venue || '').trim();
+    if (ven && (next.venueKind || 'home') === 'home'
+      && !String(next.venueCity || '').trim()
+      && !/^(host'?s home|our (place|home|backyard)|home|backyard)$/i.test(ven)
+      && !isPlausibleCityText(ven)) {
+      any = true;
+      next = { ...next, venueKind: 'venue' };
     }
     return next;
   });

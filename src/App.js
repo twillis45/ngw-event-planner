@@ -42,6 +42,7 @@ import { deriveCurrentLocationAssist, weatherCoordsFallback, eventLocationStatus
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from './lib/returnNarration';
 import { migrateLegacyTaskCopy, migrateLegacyLocationFields } from './lib/legacyCopy';
 import { budgetHeroCopy } from './lib/budgetCopy';
+import { planHeroCopy } from './lib/planHeroCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
 import { GlassIcon, hasGlassShape, monoSvg } from './glassIcons';
@@ -16362,6 +16363,13 @@ function eventGeoQuery(event, profile) {
   if (city && US_STATES.includes(st)) return `${city}, ${st}, US`;
   const addr = String(event.venueAddress || '').trim();
   if (addr) return addr;
+  // W&W audit fix: an explicit LOCATABLE venue string ("VFW Post 3150 —
+  // Alexandria, VA") is the event's real place — it must beat the coarse
+  // metro-market fallback ("near Atlanta" chips under an Alexandria venue).
+  // Locatable = carries a digit or a comma/dash-separated locality; a bare
+  // room name ("Grand Ballroom") still falls through to the metro.
+  const vEarly = String(event.venue || '').trim();
+  if (vEarly && /[\d,—-]/.test(vEarly) && !/^(host'?s home|our (place|home|backyard)|home)$/i.test(vEarly)) return vEarly;
   const g = event.market && METRO_GEO[event.market];
   if (g) return `${g.city}, ${g.state}, US`;
   // METRO_GEO covers fewer metros than the create-flow dropdown (METRO_MARKETS) — so a
@@ -41210,6 +41218,9 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   // #5 attention/progressive disclosure: lead with the essentials, collapse the
   // optional personal touches (open if any are already filled).
   const [showTouches, setShowTouches] = useState(!!(event.honoree || event.theme || event.honoreeSong || event.honoreeDrink));
+  // W&W audit: the Location check panel compresses to ONE row — the status
+  // report must not out-shout the inputs it describes.
+  const [locCheckOpen, setLocCheckOpen] = useState(false);
   const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
   const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
   // Condensing doctrine: settled sections start collapsed; a deep link into a
@@ -41251,13 +41262,16 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
 
   return (
     <>
-      <LegacyTabHeader label={detailsIsHost ? 'Where & when' : 'Event Details'} hint={detailsIsHost ? 'Where it’s happening, when, and the little touches that make it yours. Change anything anytime.' : 'The basics — name, type, date, venue, parking, rain plan. Edit anything here.'} onBack={onBack} />
+      <LegacyTabHeader label={detailsIsHost ? 'Where & when' : 'Event Details'} hint={detailsIsHost ? 'The place, the date, and the notes vendors and the Day-of view read.' : 'The basics — name, type, date, venue, parking, rain plan. Edit anything here.'} onBack={onBack} />
       {/* Sprint 59F: bounded form width on desktop/wide. A 720-cap keeps
           the form readable on wide monitors instead of stretching to
           1700px-wide single inputs. */}
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <div style={{ padding: sectionPad, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <CollapsibleCard id={`edt-basics-${event.id}`} isMobile={isMobile}
+        {/* Card order (Todd's W&W audit): the tab is NAMED for the place — the
+            venue card leads (flex `order`, so the anchor-bearing JSX stays put);
+            basics (usually settled) second; day-of third; history last. */}
+        <CollapsibleCard id={`edt-basics-${event.id}`} isMobile={isMobile} style={{ order: 2, marginBottom: 0 }}
           title={detailsIsHost ? 'The basics' : 'Identity'}
           subtitle={basicsDone
             ? [...new Set([event.name, event.type].map(v => String(v || '').trim()).filter(Boolean))]
@@ -41335,7 +41349,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         )}
         </CollapsibleCard>
 
-        <CollapsibleCard id={`edt-venue-${event.id}`} isMobile={isMobile}
+        <CollapsibleCard id={`edt-venue-${event.id}`} isMobile={isMobile} style={{ order: 1, marginBottom: 0 }}
           title={detailsIsHost ? 'Where it’s happening' : 'Venue'}
           subtitle={locDone
             ? [event.venue, event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Location on file'
@@ -41353,10 +41367,34 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           const visible = pi.sections.filter(x => x.state !== 'na');
           const stateWord = { handled: 'Handled', needs: 'Needs info', risk: 'At risk' };
           const stateColor = { handled: C.muted, needs: C.muted, risk: (C.danger || '#e0746a') };
+          // ONE ROW by default (W&W audit): "n of m set · See what's missing".
+          // The full per-item panel renders only on ask — the inputs below are
+          // the hero of this card, not the report card about them.
+          const setCount = visible.filter(x => x.state === 'handled').length;
+          const allSet = visible.length > 0 && setCount === visible.length;
+          if (!locCheckOpen) {
+            return (
+              <button type="button" data-testid="loc-check-row" onClick={() => setLocCheckOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: 14, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: allSet ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />
+                <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Location check</span>
+                <span style={{ fontSize: T.secondary, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {visible.length ? `${setCount} of ${visible.length} set` : 'nothing to check yet'}
+                </span>
+                {!allSet && visible.length > 0 && <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent, flexShrink: 0 }}>See what’s missing →</span>}
+              </button>
+            );
+          }
           return (
             <div style={{ padding: '14px 14px', marginBottom: 14, borderRadius: 8, ...metalEdge(C), borderLeft: `3px solid ${pi.status === 'handled' ? C.border : C.muted}` }}>
-              <div style={{ fontSize: T.secondary, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.muted, marginBottom: 6 }}>
-                Location check
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.muted }}>
+                  Location check
+                </div>
+                <button type="button" onClick={() => setLocCheckOpen(false)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>
+                  Collapse
+                </button>
               </div>
               <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, marginBottom: visible.length ? 10 : 0 }}>
                 {pi.headline}
@@ -41404,8 +41442,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           );
         })()}
 
-        {/* Venue KIND first → the attributes below adapt to it (a home shows kitchen /
-            yard / parking, not "in-house catering"). */}
+        {/* Venue KIND — for planners: the classic dropdown + attributes up top.
+            For HOSTS this question is asked ONCE, by the At home / Somewhere
+            else toggle below (W&W audit: two controls wrote venueKind on the
+            same screen); the finer kind + attributes render after the address. */}
+        {!detailsIsHost && (<>
         <EDTRow isMobile={isMobile}>
           <EDTField C={C} s={s} label="What kind of place is it?" value={event.venueKind || 'home'} onChange={v => upd('venueKind', v)} options={VENUE_KINDS} />
           <div />
@@ -41414,6 +41455,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 6 }}>Venue attributes</div>
           <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS_BY_KIND[event.venueKind || 'home'] || VENUE_TAGS} />
         </div>
+        </>)}
 
         {/* Sprint 60.L F15: quick-action chips. Restrained steel chips
             for Call / Email / Map appear only when the underlying field
@@ -41524,7 +41566,9 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   <div style={{ marginTop: 10 }}>
                     <EDTRow isMobile={isMobile}>
                       <EDTField C={C} s={s} label="ZIP" value={event.venueZip || ''} onChange={v => { upd('venueZip', v); upd('venueAddress', composeAddr({ zip: v })); }} placeholder="00000" />
-                      <div />
+                      {/* The finer venue kind lives HERE, inside the one control
+                          flow — never as a second question above the toggle. */}
+                      <EDTField C={C} s={s} label="What kind of place?" value={(event.venueKind || 'home') === 'home' ? 'venue' : event.venueKind} onChange={v => upd('venueKind', v)} options={VENUE_KINDS.filter(o => (o.value || o) !== 'home')} />
                     </EDTRow>
                   </div>
                 </>
@@ -41543,6 +41587,15 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
           </EDTRow>
         </>)}
+        {/* Host attributes — AFTER the address (W&W audit: 10 chips before the
+            location fields buried the card's actual job). Same store, same
+            kind-aware option list. */}
+        {detailsIsHost && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 6 }}>What the place has (optional)</div>
+            <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS_BY_KIND[event.venueKind || 'home'] || VENUE_TAGS} />
+          </div>
+        )}
         {/* Sprint — "Find local help near you". HONEST: these are live maps
             searches anchored to the host's own city, not a curated list. We
             never invent a vendor name, address, or distance — every chip just
@@ -41588,9 +41641,11 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         })()}
         </CollapsibleCard>
 
-        <CollapsibleCard id={`edt-dayof-${event.id}`} isMobile={isMobile}
+        <CollapsibleCard id={`edt-dayof-${event.id}`} isMobile={isMobile} style={{ order: 3, marginBottom: 0 }}
           title="Day-of notes"
-          subtitle={dayofFilled > 0 ? `${dayofFilled} of 5 noted — parking, load-in, rain plan, house rules, who to call` : 'Parking, load-in, rain plan, house rules, and who to call'}
+          subtitle={dayofFilled > 0
+            ? `${dayofFilled} of 5 noted — vendors and the Day-of view read these on event day`
+            : 'Parking, load-in, rain plan, house rules, who to call — vendors and the Day-of view read these'}
           defaultCollapsed forceOpen={dayofFocus}>
         {/* id="venue-contact": Place Intelligence CTA anchor (same wrapper
             pattern as rain-plan / event-date). */}
@@ -41663,13 +41718,25 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         </div>
         </CollapsibleCard>
 
-        <CollapsibleCard id={`edt-history-${event.id}`} isMobile={isMobile}
-          title="How it went" subtitle="Outcomes and decision history" defaultCollapsed>
-          {/* Sprint 58E — Outcome Capture (1-tap; completes the loop) */}
-          <OutcomeCapture event={event} setEvent={setEvent} />
-          {/* Sprint 58C — Decision Memory read surface (now shows derived/captured outcomes) */}
-          <DecisionHistory event={event} />
-        </CollapsibleCard>
+        {/* "How it went" is a POST-EVENT surface — pre-event it's a dead card
+            taking a row (Todd's W&W audit). Phase truth: render it only once
+            the date has passed. */}
+        {(() => {
+          try {
+            const d = new Date(String(event.date || '') + 'T00:00:00');
+            const t = new Date(); t.setHours(0, 0, 0, 0);
+            if (isNaN(d) || d >= t) return null;
+          } catch { return null; }
+          return (
+            <CollapsibleCard id={`edt-history-${event.id}`} isMobile={isMobile} style={{ order: 4, marginBottom: 0 }}
+              title="How it went" subtitle="Outcomes and decision history" defaultCollapsed>
+              {/* Sprint 58E — Outcome Capture (1-tap; completes the loop) */}
+              <OutcomeCapture event={event} setEvent={setEvent} />
+              {/* Sprint 58C — Decision Memory read surface (now shows derived/captured outcomes) */}
+              <DecisionHistory event={event} />
+            </CollapsibleCard>
+          );
+        })()}
       </div>
       </div>
     </>
@@ -42470,6 +42537,32 @@ function pickDroppableBudgetRow(event, priceFactor) {
   return candidates.length ? candidates[0] : null;
 }
 
+// ─── planHeroContent — PLAN-HERO-1: the Plan tab hero in the BUD-1 grammar ────
+// Pure copy lives in lib/planHeroCopy.js (testable, host-language-safe); this
+// wrapper only maps state → eyebrow/color/liveness, exactly like the Budget
+// and Guests scoped heroes. Derived from THIS TAB's real data (decision board
+// + food plan), so the hero can never contradict the panels below it.
+function planHeroContent(event, C, steel, priceFactor) {
+  try {
+    const copy = planHeroCopy(event, priceFactor);
+    if (!copy) return null;
+    if (copy.state === 'settle_overdue') {
+      return { state: 'settle_overdue', live: true, eyebrow: 'NEEDS YOU', eyebrowColor: steel,
+        title: copy.title, line: copy.line, cta: copy.cta, ctaRoute: copy.route };
+    }
+    if (copy.state === 'settle_ready') {
+      return { state: 'settle_ready', live: false, eyebrow: 'READY WHEN YOU ARE', eyebrowColor: steel,
+        title: copy.title, line: copy.line, cta: copy.cta, ctaRoute: copy.route };
+    }
+    if (copy.state === 'shopping') {
+      return { state: 'shopping', live: false, eyebrow: 'ON TRACK', eyebrowColor: steel,
+        title: copy.title, line: copy.line, cta: copy.cta, ctaRoute: copy.route };
+    }
+    return { state: 'allset', live: false, eyebrow: 'ALL SET', eyebrowColor: C.success || C.accent,
+      title: copy.title, line: copy.line, cta: null, ctaRoute: null };
+  } catch { return null; }
+}
+
 function budgetHeroContent(event, C, steel, priceFactor) {
   try {
     // BUD-1: all copy comes from the pure helper (lib/budgetCopy.js) so the
@@ -42644,8 +42737,15 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
   // real numbers; null/neutral when the data isn't there yet). Same visual shape:
   // STATE eyebrow (steel for live work, green for ALL SET — NEVER amber per the
   // confidence-lock memory) + action headline + supporting line + steel CTA.
-  if (scope === 'budget' || scope === 'guests') {
-    const sc = scope === 'budget' ? budgetHeroContent(event, C, steel, foodPP && foodPP.priceFactor) : guestsHeroContent(event, C, steel);
+  // PLAN-HERO-1: the Plan tab joins the scoped-hero grammar (BUD-1). Its hero
+  // derives from the Plan tab's OWN data (decision board + shopping) — when
+  // there's no real plan data yet, planHeroContent is null and the setup/global
+  // hero below still owns the tab.
+  const planSc = scope === 'plan' ? planHeroContent(event, C, steel, foodPP && foodPP.priceFactor) : null;
+  if (scope === 'budget' || scope === 'guests' || (scope === 'plan' && planSc)) {
+    const sc = scope === 'budget' ? budgetHeroContent(event, C, steel, foodPP && foodPP.priceFactor)
+      : scope === 'guests' ? guestsHeroContent(event, C, steel)
+      : planSc;
     if (!sc) return null;
     const isAllSet = sc.state === 'allset';
     // ── Guests inline-act controls (P0①) — the host ACTS in the hero (stepper + lock,
@@ -42679,7 +42779,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
     // (= eventPlan.nextActions[0]). Only shown when this tab needs nothing (not live, no
     // inline guest acts) AND the next step lives on ANOTHER tab (a same-tab CTA goes
     // nowhere). `dispatchNext` forwards the full route (incl. focusField) through onNav.
-    const scopeTab = scope === 'budget' ? 'Budget' : 'Guests';
+    const scopeTab = scope === 'budget' ? 'Budget' : scope === 'plan' ? 'Planning' : 'Guests';
     const showNext = !sc.live && !showGuestActs && na && na.primaryCta && na.primaryRoute
       && na.primaryRoute.tab && na.primaryRoute.tab !== scopeTab;
     const dispatchNext = () => {
@@ -42694,6 +42794,16 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: sc.eyebrowColor, padding: '2px 7px', borderRadius: 4, border: `1px solid ${sc.eyebrowColor}55`, display: 'inline-block', marginBottom: 8 }}>{sc.eyebrow}</div>
         <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{sc.title}</div>
         {sc.line && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{sc.line}</div>}
+        {/* PLAN-HERO-1: the plan-scoped hero carries a routed CTA (the budget/
+            guests scopes act inline instead). Same-tab focus routes go through
+            onNav so the focusField broadcast opens the target card. */}
+        {scope === 'plan' && sc.cta && sc.ctaRoute && (
+          <button type="button" className="ce-press"
+            onClick={() => { if (typeof onNav === 'function') onNav(sc.ctaRoute.tab, undefined, sc.ctaRoute.focusField ? { focusField: sc.ctaRoute.focusField } : undefined); }}
+            style={{ marginTop: 14, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${steel}`, cursor: 'pointer', background: `${steel}1f`, color: steel }}>
+            {sc.cta} →
+          </button>
+        )}
         {/* Swap-to-save (Figma 1296:25): when a single discretionary row clears the
             overage, the host resolves it in one tap right here. "Drop {label}" is the
             steel/green primary (NEVER amber per the confidence-lock memory); "Keep it"
@@ -42838,7 +42948,11 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 //   • LOCKED — the decisions/facts already settled, shown quietly with their value.
 // Tapping an open row routes to where the host acts (the same foundation/decision
 // routes the rest of the app uses). Returns null when there's nothing to settle.
+const HOST_DECISIONS_IDS = ['host-decisions'];
 function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice }) {
+  // ONE-SOURCE HERO: "Settle it" routes here with focusField 'host-decisions' —
+  // the board must OPEN on landing, not just scroll its collapsed header into view.
+  const settleFocus = useFocusFieldForceOpen(HOST_DECISIONS_IDS);
   const C = useT();
   const T = useType();
   // Which menu/sourcing row is expanded in place (settle inline, no route-away).
@@ -42959,7 +43073,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     : 'Everything’s settled.';
 
   return (
-    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} title="What to settle"
+    <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} forceOpen={settleFocus} title="What to settle"
       right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : 'All settled'}</div> : undefined}
       subtitle={!isMobile ? (settledCount ? `${settledCount} settled` : '') : subtitle}>
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
