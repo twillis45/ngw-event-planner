@@ -772,8 +772,8 @@ export function topPlaybookDecision(event, asOf) {
       // the rest via RSVP) — routing them to the roster dead-ends on a faces list with
       // no allergy field. A planner collects per-guest on the roster. Route per persona.
       primaryRoute: audiencePersona(event) === 'host'
-        ? { eventId: event.id, tab: 'Planning' }
-        : { eventId: event.id, tab: 'Guests' },
+        ? { eventId: event.id, tab: 'Planning', focusField: 'food-plan' }
+        : { eventId: event.id, tab: 'Guests', focusField: 'guest-roster' },
       eventId: event.id,
       owner: 'host',
       provenance: { source: `${playbook.type} playbook`, rule: 'decision-first: dietary before menu/food' },

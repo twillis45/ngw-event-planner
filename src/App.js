@@ -34073,7 +34073,7 @@ function HostRunOfShowTimeline({ event, profile, ctx = null, onNav = null }) {
               }} />
               {isNow ? (
                 /* M5·C — the live task in a green-bordered card with its eyebrow + time. */
-                <div ref={nowCardRef} style={{ border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
+                <div ref={nowCardRef} id="ros-now" style={{ scrollMarginTop: 96, border: `1px solid ${live}`, borderRadius: 12, padding: '12px 14px', background: `${live}0d`, boxShadow: `0 0 22px ${live}22`, animation: `ceRise 520ms ${CE_EASE} ${igniteDelay + 120}ms both` }}>
                   <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', color: live, ...ROW_FONT }}>
                     <span style={{ width: 6, height: 6, borderRadius: 99, background: live, boxShadow: `0 0 6px ${live}` }} />HAPPENING NOW{r.time ? ` · ${fmtTime12(r.time)}` : ''}
                   </div>
@@ -42431,7 +42431,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div className="planv2-grid">
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
-              <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
+              <div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
               <CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
             </div>
           </div>
@@ -42441,7 +42441,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* NOW-view command hero (host shell) — the same state-named + action-named
               hero every host tab leads with. Single focus; the food plan recedes. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
-          <div className="hp-recede"><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
+          <div className="hp-recede"><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
           <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
@@ -43274,11 +43274,11 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       )}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
+        <div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
         </div>
       )}
       {tab === 'Planning' && !isHostEvt && (
-        <FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} />
+        <div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={handleTabChange} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div>
       )}
       {/* Attention pass (host): the food plan is the one bright thing on Plan;
           Seating & supplies and the planning views recede until reached. */}

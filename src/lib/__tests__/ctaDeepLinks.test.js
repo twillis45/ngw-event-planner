@@ -41,8 +41,9 @@ describe('foundation CTAs carry exact focus targets', () => {
     expect(byId.date).toEqual({ tab: 'Event Details', focusField: 'event-date' });
     expect(byId.guests).toEqual({ tab: 'Guests', focusField: 'guests-entry' });
     expect(byId.budget).toEqual({ tab: 'Budget', focusField: 'hsp-budget' });
-    // food: foodFocus deep-link when a menu decision exists, honest tab otherwise
-    expect(byId.food.foodFocus || byId.food.tab === 'Planning').toBeTruthy();
+    // food: foodFocus deep-link when a menu decision exists, else the food-plan
+    // card anchor — NEVER a bare tab (deep-link doctrine: no whole-surface CTAs).
+    expect(byId.food.foodFocus || byId.food.focusField === 'food-plan').toBeTruthy();
   });
 
   test('guests missing → Guests + focusField guests-entry', () => {
@@ -64,7 +65,7 @@ describe('foundation CTAs carry exact focus targets', () => {
     // When the next action IS the food foundation, it either carries the
     // foodFocus deep-link (open menu decision) or the honest Planning tab.
     if (na.category === 'food' || /food/i.test(na.title || '')) {
-      expect(na.primaryRoute.foodFocus || na.primaryRoute.tab === 'Planning').toBeTruthy();
+      expect(na.primaryRoute.foodFocus || na.primaryRoute.focusField === 'food-plan').toBeTruthy();
     }
   });
 });
@@ -149,5 +150,19 @@ describe('CTAs land on the exact field/row, never a bare tab', () => {
     if (roll && roll.ctaLabel === 'Add vendor') {
       expect(roll.target.focusField).toBe('vendor-add');
     }
+  });
+});
+
+// Whole-surface CTAs are dead (Todd's rule): every remaining formerly-broad
+// route must carry its landing anchor.
+describe('no whole-surface CTAs — formerly-broad routes carry anchors', () => {
+  test('Review-vendors rollup (all booked) lands on the vendor list anchor', () => {
+    const ev = host({
+      guestCount: 40, guestMode: 'count', totalBudget: 1200, foodPlanChoice: 'catering',
+      vendors: [{ id: 'v-ok', name: 'Fork & Flower Catering', category: 'Catering', status: 'Confirmed', cost: 900, depositPaid: true, contractSigned: true, coiStatus: 'received' }],
+    });
+    const roll = buildVendorReadinessRollup(ev);
+    expect(roll.target.tab).toBe('Vendors');
+    expect(roll.target.vendorId || roll.target.focusField).toBeTruthy();
   });
 });

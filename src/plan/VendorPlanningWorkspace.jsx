@@ -924,12 +924,14 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
       display: 'flex', flexDirection: 'column',
       height: isMobile ? 'auto' : '100%',
     }}>
-      <div style={{
+      {/* id="vendor-list": CTA landing anchor ("Review vendors" deep link). */}
+      <div id="vendor-list" style={{
         height: 42, flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 14px',
         borderBottom: `1px solid ${P.borderSubtle}`,
         gap: 8,
+        scrollMarginTop: 16,
       }}>
         <span style={{
           fontSize: type.size['xs'], fontWeight: type.weight.medium,

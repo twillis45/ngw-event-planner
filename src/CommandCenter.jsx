@@ -1051,7 +1051,7 @@ export function selectStudioCommand(events = []) {
         title: `${count} thing${count !== 1 ? 's' : ''} need${count === 1 ? 's' : ''} attention right now.`,
         consequence: top ? `Start with "${top.title || top.label || 'the highest-priority item'}".` : 'Open your run of show to work the day.',
         primaryCta: 'Open your run of show',
-        primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule' },
+        primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
         secondaryCta: 'View messages',
         secondaryRoute: { eventId: todayEv.id, tab: 'Communication' },
       };
@@ -1068,7 +1068,7 @@ export function selectStudioCommand(events = []) {
       // arrivals + messages is a dev-only demo (App.js ~35410), so the CTA must not sell it.
       consequence: 'Your run of show is ready — every cue for the day, top to bottom.',
       primaryCta: 'Open your run of show',
-      primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule' },
+      primaryRoute: { eventId: todayEv.id, tab: 'Event Day Schedule', focusField: 'ros-now' },
       secondaryCta: 'View full event details',
       secondaryRoute: { eventId: todayEv.id, tab: 'Planning' },
     };
@@ -1181,7 +1181,7 @@ export function selectStudioCommand(events = []) {
       title: `${ev.name} needs follow-up.`,
       consequence: `${worstNote ? worstNote + '. ' : ''}Handle this before it becomes urgent${days !== null && days > 0 ? ` — ${daysWord(days)} until event` : ''}.`,
       primaryCta: 'Open event',
-      primaryRoute: { eventId: ev.id, tab: 'Command' },
+      primaryRoute: { eventId: ev.id, tab: 'Command', focusField: 'next-step-hero' },
       secondaryCta: 'View all attention items',
       secondaryAction: 'attention',
     };
@@ -1274,7 +1274,7 @@ export function selectStudioCommand(events = []) {
       // Sprint 60.O Addendum: locked all-clear body copy.
       consequence: 'No overdue tasks. No pending payments. Your next event is organized.',
       primaryCta: 'Open your event',
-      primaryRoute: { eventId: upcoming.ev.id, tab: 'Command' },
+      primaryRoute: { eventId: upcoming.ev.id, tab: 'Command', focusField: 'next-step-hero' },
       secondaryCta: 'View all events',
       secondaryAction: 'events',
     };
@@ -1371,7 +1371,7 @@ export function _eventFoundationActions(event) {
           const dec = topPlaybookDecision(event);
           if (dec && dec.primaryRoute && dec.primaryRoute.foodFocus) return dec.primaryRoute;
         } catch {}
-        return { tab: 'Planning' };
+        return { tab: 'Planning', focusField: 'food-plan' };
       })(),
       done: hasFood, handledFact: hasFood ? 'Food sourced' : null,
     },
@@ -1938,10 +1938,10 @@ function _selectEventNextActionInner(event) {
       // to the timeline (anchored to the milestone) when it isn't a domain action.
       primaryRoute: (() => {
         const s = String(nextUp.label || '').toLowerCase();
-        if (/guest|invite|rsvp|head\s?count|seat/.test(s)) return { tab: 'Guests' };
-        if (/budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/.test(s)) return { tab: 'Budget' };
-        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) return { tab: 'Vendors' };
-        if (/food|menu|shop|grocer|drink|supplies|seating/.test(s)) return { tab: 'Planning' };
+        if (/guest|invite|rsvp|head\s?count|seat/.test(s)) return { tab: 'Guests', focusField: 'guests-entry' };
+        if (/budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/.test(s)) return { tab: 'Budget', focusField: 'hsp-budget' };
+        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) return { tab: 'Vendors', focusField: 'vendor-list' };
+        if (/food|menu|shop|grocer|drink|supplies|seating/.test(s)) return { tab: 'Planning', focusField: 'food-plan' };
         return { tab: 'Timeline', timelineId: nextUp.id };
       })(),
       contextLine: daysSub,
@@ -2616,8 +2616,11 @@ function NextBestActionPanel({ command, onTabChange, isMobile }) {
   };
 
   return (
-    <div style={{
+    // id="next-step-hero": CTA landing anchor — "Open event" routes land ON the
+    // next-step hero, never an unscrolled Command top.
+    <div id="next-step-hero" style={{
       position: 'relative',
+      scrollMarginTop: 16,
       padding: isMobile ? '18px 18px 18px 22px' : '22px 26px 22px 30px',
       // Same polish as every app card — the metallic gradient edge + dimensional
       // lift (was flat P.card + solid border). cardEdge provides bg/border/shadow/radius.

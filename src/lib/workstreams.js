@@ -189,11 +189,11 @@ export function buildVendorReadinessRollup(event, ctx = null, vendors = null, pl
     return {
       status: 'ready', label: 'All vendors booked',
       nextAction: 'Nothing needs you here right now.', ctaLabel: 'Review vendors',
-      target: { tab: 'Vendors' }, reason: null, counts,
+      target: { tab: 'Vendors', focusField: 'vendor-list' }, reason: null, counts,
     };
   }
   const firstOpenWorkstream = workstreams.find(w => w.readiness.needsAttention > 0);
-  const firstOpenVendor = firstOpenWorkstream ? firstOpenWorkstream.deepLink : { tab: 'Vendors' };
+  const firstOpenVendor = firstOpenWorkstream ? firstOpenWorkstream.deepLink : { tab: 'Vendors', focusField: 'vendor-list' };
   return {
     status: 'in_progress', label: `${counts.ready} booked · ${counts.needsAttention} to follow up`,
     nextAction: `Follow up on ${firstOpenWorkstream ? firstOpenWorkstream.label : 'your remaining vendors'}.`,

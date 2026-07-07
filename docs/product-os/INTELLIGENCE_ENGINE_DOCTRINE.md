@@ -239,11 +239,14 @@ stale-state behavior (clears/advances on resolution) · disabled/hidden rule ·
 broad-label fallback when precise focus is impossible · test coverage** (route
 payload pinned in the CTA contract suites).
 
-**Deep-link rule (CTA-DEEPLINK-1): a CTA never leaves the user guessing.** It
-deep-links to the exact field (focusField anchor) or row (vendorId/decisionId/
-taskId/foodFocus) where the action resolves. A bare tab route is allowed ONLY
-for provably whole-surface actions (View Event Day, Open the event) — and the
-label must say the surface, not a specific action.
+**Deep-link rule (CTA-DEEPLINK-1/2): a CTA never leaves the user guessing —
+and there is NO whole-surface exception.** Every CTA deep-links to the exact
+field (focusField anchor) or row (vendorId/decisionId/taskId/foodFocus) where
+the action resolves. Even surface-opening CTAs land on a concrete element:
+Open event → next-step-hero · run of show → ros-now (the Happening-now card) ·
+food → food-plan · vendors → vendor-add / vendor-list / vendorId · guests →
+guests-entry / guest-roster · budget → hsp-budget. A new surface ships WITH
+its landing anchors or its CTAs don't ship.
 
 **Consumer rule (CTA-REPAIR-2): a route contract is not enough — every
 deep-linkable id must have a CONSUMER on its destination surface.** When a
