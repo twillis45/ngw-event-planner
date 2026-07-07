@@ -727,6 +727,35 @@ export function draftToast(event, profile) {
 // One-tap hand-off: native share sheet on mobile, clipboard everywhere else.
 // Returns 'shared' | 'copied' | 'cancelled' | 'failed' so the caller can confirm
 // honestly ("Shared" vs "Copied — paste it anywhere").
+// ── PLACE-DIFM-1 — parking/arrival starter for the Location check card ────────
+// Turns the Place card's "parking needs info" from a routed gap into a CLOSED
+// one: a conservative, editable starter the host finishes in the parkingNotes
+// field. Deterministic, event-data-only. NEVER invents logistics — anything we
+// don't know is a bracketed [fill-in / confirm] prompt, never an asserted fact
+// (no "free parking", no "main entrance", no valet/shuttle/staff/accessible
+// claims unless the host already wrote them). Host/planner field content only;
+// nothing here is sent anywhere.
+export function draftParkingInstructions(event) {
+  const ev = event || {};
+  const atHome = (ev.venueKind || 'home') === 'home';
+  const venueName = String(ev.venue || '').trim();
+  const city = String(ev.venueCity || ev.city || '').trim();
+  const rain = String(ev.rainPlan || '').trim();
+  const lines = [];
+  if (atHome) {
+    lines.push('Guests can park [street / driveway / nearby lot — pick what fits].');
+    lines.push('Come to [front door / side gate / backyard — pick one].');
+  } else if (venueName) {
+    lines.push(`Parking at ${venueName}${city ? ` in ${city}` : ''}: [lot / street / garage — confirm with the venue].`);
+    lines.push('Enter through [main entrance / event entrance — confirm with the venue].');
+  } else {
+    lines.push('Parking: [where guests park — fill in once the location is set].');
+  }
+  // Rain-aware tail uses the host's OWN saved plan verbatim — never a guess.
+  if (rain) lines.push(`If weather turns: ${rain}`);
+  return lines.join(' ');
+}
+
 export async function shareOrCopy({ title, text }) {
   const body = String(text || '');
   try {

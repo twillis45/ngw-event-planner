@@ -62,7 +62,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
 // FOOD-2B — the shopping list's shopItems now come through the Effective Item seam
 // (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
 // mapping; see src/lib/__tests__/shoppingEffectiveItemsParity.test.js.
@@ -40642,6 +40642,18 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                           onClick={() => scrollFocusFieldWithRetry(x.action.route.focusField)}
                           style={{ marginLeft: 8, background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, padding: '3px 10px' }}>
                           {x.action.label}
+                        </button>
+                      )}
+                      {/* PLACE-DIFM-1: don't just route to the empty field — draft
+                          a conservative, editable starter INTO it (blanks the host
+                          fills, zero invented logistics), then focus it. Shown
+                          only while parkingNotes is empty, so existing text can
+                          never be overwritten. */}
+                      {x.key === 'parking' && !String(event.parkingNotes || '').trim() && (
+                        <button type="button" data-testid="draft-parking-note"
+                          onClick={() => { upd('parkingNotes', draftParkingInstructions(event)); scrollFocusFieldWithRetry('parking-notes'); }}
+                          style={{ marginLeft: 8, background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted, padding: '3px 10px' }}>
+                          Draft parking note
                         </button>
                       )}
                     </span>

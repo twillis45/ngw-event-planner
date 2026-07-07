@@ -152,3 +152,60 @@ test('permit + COI notes stay honest nudges with existing gating', () => {
   const withV = derivePlaceIntelligence(venueEvent({ coiNeeded: 'required', vendors: [{ id: 'v', name: 'VFW Post 3150' }] }));
   expect(withV.notes.join(' ')).toMatch(/COI required/);
 });
+
+// ── PLACE-DIFM-1 — parking draft contract ──────────────────────────────────────
+import { draftParkingInstructions } from '../doItForMe';
+
+describe('draftParkingInstructions — conservative, never invents logistics', () => {
+  const BANNED = /free parking|valet|shuttle|accessible parking|staff will|coat check|elevator|security/i;
+
+  test('1 · at-home draft is conservative, no venue-only details', () => {
+    const d = draftParkingInstructions({ venueKind: 'home', venueCity: 'Annapolis' });
+    expect(d).toMatch(/\[street \/ driveway/);
+    expect(d).not.toMatch(/venue|confirm with the venue/i);
+    expect(d).not.toMatch(BANNED);
+  });
+
+  test('2 · venue draft uses venue name + city, asks to confirm rather than assert', () => {
+    const d = draftParkingInstructions(venueEvent({ venueCity: 'Alexandria' }));
+    expect(d).toContain('VFW Post 3150 — Alexandria, VA');
+    expect(d).toContain('in Alexandria');
+    expect(d).toMatch(/confirm with the venue/);
+    expect(d).not.toMatch(BANNED);
+  });
+
+  test('4 · never invents entrance/parking facts — unknowns are bracketed prompts', () => {
+    [homeEvent(), venueEvent(), { venueKind: 'venue' }].forEach((ev) => {
+      const d = draftParkingInstructions(ev);
+      expect(d).not.toMatch(BANNED);
+      expect(d).not.toMatch(/Use the main entrance\.|Parking is available/);
+      expect(d).toMatch(/\[/); // every draft carries at least one fill-in prompt
+    });
+  });
+
+  test('5 · insufficient data → conservative fill-in starter, never null or fake', () => {
+    const d = draftParkingInstructions({ venueKind: 'venue' }); // no venue name at all
+    expect(d).toMatch(/fill in once the location is set/);
+  });
+
+  test('rain-aware: uses the host’s OWN saved plan verbatim, only when present', () => {
+    const withRain = draftParkingInstructions(homeEvent({ rainPlan: 'Move everything into the garage.' }));
+    expect(withRain).toContain('If weather turns: Move everything into the garage.');
+    expect(draftParkingInstructions(homeEvent())).not.toMatch(/weather turns/);
+  });
+
+  test('8 · saving the drafted text clears the Place parking gap', () => {
+    const before = derivePlaceIntelligence(homeEvent());
+    expect(sec(before, 'parking').state).not.toBe(PLACE_STATES.HANDLED);
+    const after = derivePlaceIntelligence(homeEvent({ parkingNotes: draftParkingInstructions(homeEvent()) }));
+    expect(sec(after, 'parking').state).toBe(PLACE_STATES.HANDLED);
+  });
+
+  test('10 · drafted parking text cannot leak into the public vendor brief', () => {
+    const { buildVendorBriefPayload } = require('../vendorBrief');
+    const ev = venueEvent({ parkingNotes: draftParkingInstructions(venueEvent()), vendors: [{ id: 'v1', name: 'X Catering' }] });
+    const payload = JSON.stringify(buildVendorBriefPayload(ev.vendors[0], ev, [], null));
+    expect(payload).not.toContain('confirm with the venue');
+    expect(payload).not.toContain('parkingNotes');
+  });
+});
