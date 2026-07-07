@@ -2336,7 +2336,7 @@ async function extractDocumentAI({ contractUrl, vendorName, eventName, documentT
 }
 
 // 8 — Documents
-function DocumentsSection({ vendor, event, isOpen, onToggle }) {
+function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) {
   const contractSigned = vendor.contractSigned === true || vendor.contract_signed === true;
   const hasContractFile = Boolean(vendor.contractUrl || vendor.contractStoragePath);
   const [extracting, setExtracting] = useState(false);
@@ -2391,6 +2391,15 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             </div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: space[3], flexShrink: 0 }}>
+            {/* ACTIONABLE-ROWS-1: the missing state acts — it opens the contract
+                flow (attach / upload / mark received / log the ask). No more
+                dead warning. */}
+            {!hasContractFile && onAction && (
+              <button type="button" data-testid="fix-contract-row" onClick={onAction}
+                style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.accent, background: 'none', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: `4px ${space[3]}px`, cursor: 'pointer', fontFamily: FF, whiteSpace: 'nowrap' }}>
+                {contractSigned ? 'Attach the contract' : 'Add contract status'}
+              </button>
+            )}
             {hasContractFile && (
               <div style={{ display: 'flex', gap: space[2] }}>
                 <a
@@ -2487,8 +2496,18 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             // of "Not insured" / "Expired" must NOT read as present-and-good.
             const insOk = vendor.insuranceStatus && !/\b(not|no|none|missing|expired|lapsed)\b/i.test(vendor.insuranceStatus);
             return (
-              <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
-                {insOk ? 'On file' : vendor.insuranceStatus ? 'Not valid' : 'Not tracked'}
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: space[3] }}>
+                <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
+                  {insOk ? 'On file' : vendor.insuranceStatus ? 'Not valid' : 'Not tracked'}
+                </span>
+                {/* ACTIONABLE-ROWS-1: not-OK insurance acts too — same flow
+                    (the contract panel is the files fix-it home). */}
+                {!insOk && onAction && (
+                  <button type="button" data-testid="fix-coi-row" onClick={onAction}
+                    style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.accent, background: 'none', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: `4px ${space[3]}px`, cursor: 'pointer', fontFamily: FF, whiteSpace: 'nowrap' }}>
+                    Review insurance
+                  </button>
+                )}
               </span>
             );
           })()}
@@ -2504,7 +2523,9 @@ function DocumentsSection({ vendor, event, isOpen, onToggle }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary }}>{label}</div>
             </div>
-            <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic' }}>Not attached</span>
+            {/* ACTIONABLE-ROWS-1 honest fallback: no in-app control exists for
+                these — say so plainly instead of looking fixable. */}
+            <span style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic' }}>Not attached · track outside the app</span>
           </div>
         ))}
       </div>
@@ -3873,7 +3894,16 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
         <div style={ZONE_LABEL}>Money &amp; contract</div>
         <PhaseSection label="Payments & booking" hint="The deal" rows={planning} defaultOpen={false} onAddressRow={addressRow} />
         <div ref={documentsRef} style={flashStyle('documents')}>
-          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')} />
+          <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')}
+            /* ACTIONABLE-ROWS-1: a missing/at-risk file row must FIX, not warn.
+               Routes into the same inline ContractFlow the attention rows use
+               (attach link · upload · mark received · log the ask). */
+            onAction={() => {
+              setExpandedKind('contract');
+              setFlashSection('nextAction');
+              setTimeout(() => setFlashSection(null), 2000);
+              setTimeout(() => { if (nextActionRef.current && nextActionRef.current.scrollIntoView) nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+            }} />
         </div>
 
         {/* ── Zone 3 · The day-of & after ───────────────────────────── */}
