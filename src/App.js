@@ -9493,7 +9493,7 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
         style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, width: '100%', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
         <span style={{ minWidth: 0, paddingRight: 4 }}>
           {eyebrow && <span style={{ display: 'block', fontSize: T.caption, fontWeight: FW.heavy, letterSpacing: '0.14em', color: acc, textTransform: 'uppercase' }}>{eyebrow}</span>}
-          {title && <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: eyebrow ? 6 : 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden title={done === true ? 'Done' : done === false ? 'Still to do' : undefined} style={{ width: 7, height: 7, borderRadius: 99, background: done === true ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />{title}</span>}
+          {title && <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, marginTop: eyebrow ? 6 : 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}>{typeof done === 'boolean' && <span aria-hidden title={done ? 'Done' : 'Still to do'} style={{ width: 7, height: 7, borderRadius: 99, background: done ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />}{title}</span>}
           {subtitle && !open && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{subtitle}</span>}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginTop: 1 }}>
@@ -31860,7 +31860,10 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       {/* INVITES & REPLIES home (board ruling) — the ACTIONS (share the invite, nudge no-replies, send
           dietary notes) grouped under ONE labeled home; the RSVP status feed folds into the roster header
           below (status = the answer, lives with the list; actions = the tools, grouped here). */}
-      <CollapsibleCard id={`guests-invites-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed title="Invites &amp; replies" style={{ marginBottom: 18 }}>
+      <CollapsibleCard id={`guests-invites-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed title="Invites &amp; replies"
+        /* Hero copy doctrine: the header reflects live reply state, not a static label. */
+        subtitle={(() => { try { const g = (event.guests || []).filter(Boolean); if (!g.length) return 'Send the invite — replies land here'; const yes = g.filter(x => x.rsvp === 'Yes').length; const out = g.filter(x => !x.rsvp).length; return `${yes} yes${out > 0 ? ` · ${out} awaiting reply` : ' · all replied'}`; } catch { return undefined; } })()}
+        style={{ marginBottom: 18 }}>
       {/* "Do it for me" — the RSVP chase. The single highest-leverage nudge: replies grow
           the headcount that sizes everything. The app WROTE the reminder; the host sends
           it in one tap. Host-only, shown only while people still owe a reply. */}
@@ -32333,7 +32336,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
         return (
           <CollapsibleCard id={`host-thankyous-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed
             title="Thank-yous"
-            subtitle={thanked >= confirmed.length ? 'All thanked — beautifully done 💛' : `${thanked} of ${confirmed.length} thanked · we’ll write the note`}>
+            subtitle={thanked >= confirmed.length ? 'All thanked — beautifully done' : `${thanked} of ${confirmed.length} thanked · we’ll write the note`}>
             <button type="button" onClick={() => setGuestDraftSheet({ title: 'Your thank-you note', intro: 'Written from your event — send it to your guests and anyone who helped. Make it yours first.', draft: draftThankYou(event, profile), shareTitle: `Thank you — ${event.name || 'our celebration'}`, kind: 'thankyou' })}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, color: '#fff', background: C.accent, border: 'none', borderRadius: 10, padding: '10px 16px', cursor: 'pointer' }}>Write the thank-you note →</button>
             <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 8 }}>Check each off as you send it.</div>
@@ -42099,7 +42102,9 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     if (!route || typeof onNav !== 'function') return;
     const opts = (route.foodFocus || route.focusField)
       ? { foodFocus: route.foodFocus, focusField: route.focusField } : undefined;
-    onNav(route.tab, undefined, opts);
+    // Forward the row id (vendorId etc.) — the deep-link doctrine's first-undone
+    // vendor routes die without it.
+    onNav(route.tab, route.vendorId || route.taskId || undefined, opts);
   };
 
   const chip = (status) => {

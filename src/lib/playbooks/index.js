@@ -1505,10 +1505,27 @@ export function playbookDecisionBoard(event, asOf) {
     // (foodFocus, the "Your choices" card); dietary lives in Guests; vendor/team calls in Vendors;
     // everything else lands on the Plan tab where the host handles it — never a dead, chevron-less prompt.
     const _blocks = (Array.isArray(d.blocks) ? d.blocks : []).join(' ').toLowerCase();
-    const route = isMenuDecision(d) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
-      : isDietaryDecision(d) ? { eventId: event.id, tab: 'Guests' }
-      : /vendor|team|hire|staff/.test(_blocks) ? { eventId: event.id, tab: 'Vendors' }
-      : { eventId: event.id, tab: 'Planning' };
+    // Deep-link doctrine: every tappable settle row lands ON the element where it
+    // resolves — menu picks settle inline (foodFocus), dietary lands on the food
+    // plan's dietary card, vendor calls land on the first vendor still needing
+    // the host (else the add button). A decision with NO real destination gets
+    // NO route — the board renders it as a calm prompt, never a dead chevron.
+    const _firstUndoneVendorRoute = () => {
+      const vs = (event.vendors || []).filter((v) => v && String(v.name || '').trim());
+      const undone = vs.find((v) => !/confirmed|booked/i.test(String(v.status || ''))
+        || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
+      const tv = undone || vs[0];
+      return tv ? { eventId: event.id, tab: 'Vendors', vendorId: tv.id }
+        : { eventId: event.id, tab: 'Vendors', focusField: 'vendor-add' };
+    };
+    const _hay = `${d.id || ''} ${d.label || ''} ${_blocks}`.toLowerCase();
+    const route = (Array.isArray(d.options) && d.options.length > 0) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
+      : isDietaryDecision(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
+      : /vendor|team|hire|staff/.test(_blocks) ? _firstUndoneVendorRoute()
+      // Free-form menu/food decisions (no authored options) resolve on the food
+      // plan card — the host locks the menu there, never on a bare tab.
+      : /menu|food|dish|course|drink/.test(_hay) ? { eventId: event.id, tab: 'Planning', focusField: 'food-plan' }
+      : null;
 
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
@@ -1561,7 +1578,10 @@ export function playbookDecisionOptions(event, id) {
   const pb = getPlaybook(event.type);
   const decisions = (pb && Array.isArray(pb.decisions)) ? pb.decisions : [];
   const d = decisions.find((x) => x && x.id === id);
-  if (!d || !isMenuDecision(d)) return null;
+  // HOST-AUDIT-1: ANY playbook decision with authored options settles inline on
+  // the What-to-settle board (seating layout, hiring help — not just menu picks).
+  // Inline settle IS the deepest link: zero navigation, resolves where it's read.
+  if (!d || !Array.isArray(d.options) || d.options.length === 0) return null;
   return {
     id: d.id,
     label: d.label,

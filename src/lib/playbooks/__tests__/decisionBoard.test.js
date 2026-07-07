@@ -148,8 +148,10 @@ describe('playbookDecisionOptions — inline-settle accessor for the Decisions b
     expect(playbookDecisionOptions(picked, 'format').chosen).toBe('Family-style');
   });
 
-  test('non-menu / unknown / missing ids return null (board keeps route-away)', () => {
-    expect(playbookDecisionOptions(evt, 'seating')).toBeNull();
+  test('unknown / missing ids return null; optioned decisions settle inline (HOST-AUDIT-1)', () => {
+    // Doctrine change: ANY decision with authored options settles inline —
+    // seating included. Inline settle is the deepest link.
+    expect(playbookDecisionOptions(evt, 'seating')).toMatchObject({ id: 'seating' });
     expect(playbookDecisionOptions(evt, 'nope')).toBeNull();
     expect(playbookDecisionOptions(null, 'format')).toBeNull();
     expect(playbookDecisionOptions(evt, '')).toBeNull();
