@@ -46,6 +46,7 @@ import { getReadinessHistory, recordReadiness, readinessScore } from './lib/read
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
 import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary, suggestRainPlan, guestRainMessage } from './lib/weather';
 import { derivePlaceIntelligence } from './lib/placeIntelligence';
+import { buildDayBeforePlan } from './lib/dayBefore';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
@@ -42301,6 +42302,51 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   );
 }
 
+// ─── DayBeforePlanCard — DAYBEFORE-DIFM-1 ─────────────────────────────────────
+// Renders buildDayBeforePlan(event) as ONE calm card. Open sections lead with
+// their count + a first-undone deep link; settled sections read as permission
+// to stop worrying. Never marks anything done; never embeds guest copy (the
+// guest note is a LINK to where it lives).
+function DayBeforePlanCard({ event, onNav, isMobile = false }) {
+  const C = useT();
+  const T = useType();
+  const plan = useMemo(() => { try { return buildDayBeforePlan(event); } catch { return { applicable: false }; } }, [event]);
+  if (!plan.applicable) return null;
+  const go = (route) => {
+    if (!route || typeof onNav !== 'function') return;
+    const itemId = route.vendorId || route.taskId || undefined;
+    const opts = route.focusField ? { focusField: route.focusField } : undefined;
+    onNav(route.tab, itemId, opts);
+  };
+  return (
+    <div data-testid="day-before-plan" style={{ ...metalEdge(C), borderRadius: 14, padding: isMobile ? '16px 16px' : '18px 22px', marginBottom: 14, borderLeft: `3px solid ${C.accent}` }}>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 7 }}>
+        {plan.daysOut === 1 ? 'Tomorrow · Your day-before plan' : plan.daysOut === 2 ? 'Two days out · Your day-before plan' : 'Your day-before plan'}
+      </div>
+      <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3, marginBottom: 12 }}>{plan.headline}</div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {plan.sections.map((sec) => (
+          <div key={sec.key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, padding: '9px 0', borderTop: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: T.secondary, fontWeight: FW.bold, color: sec.open ? C.text : C.muted, minWidth: 150 }}>{sec.label}</span>
+            <span style={{ flex: '1 1 240px', minWidth: 0, fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
+              {sec.detail}
+              {Array.isArray(sec.items) && sec.items.length > 0 && (
+                <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3 }}>{sec.items.join(' · ')}{sec.open > sec.items.length ? ` · +${sec.open - sec.items.length} more` : ''}</span>
+              )}
+            </span>
+            {sec.cta && sec.route && (
+              <button type="button" data-testid={`daybefore-${sec.key}`} onClick={() => go(sec.route)}
+                style={{ flexShrink: 0, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: sec.open ? C.text : C.muted, padding: '5px 11px', minHeight: 34 }}>
+                {sec.cta}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── HostTaskFocusCard — the landing surface for task/decision deep links ──────
 // CTA-REPAIR-2: the planv2 Plan tab shed EventPlanningTab (the task list), so a
 // CTA promising a SPECIFIC task ("Do this first" / "Make the call") routed
@@ -42325,8 +42371,13 @@ function HostTaskFocusCard({ event, taskId, setEvent, onClear }) {
     try {
       const s = deriveEventCompressionSummary({ type: event.type, date: event.date, timeline }, daysUntil, PHASE_OFFSET);
       const ids = new Set([...(s?.doNow || []), ...(s?.considerSwap || [])].map(x => x.id));
-      return timeline.filter(x => x && !x.done && ids.has(x.id));
-    } catch { return []; }
+      const hits = timeline.filter(x => x && !x.done && ids.has(x.id));
+      if (hits.length) return hits;
+      // DAYBEFORE edge: custom tasks carry no playbook phase, so compression
+      // can't rank them — but a promised do-now landing must never render
+      // nothing while open tasks exist. Fall back to every undone task.
+      return timeline.filter(x => x && !x.done);
+    } catch { return timeline.filter(x => x && !x.done); }
   }, [compressed, event.type, event.date, timeline]);
   const t = taskId && !compressed ? timeline.find(x => x && x.id === taskId) : null;
   useEffect(() => {
@@ -42564,6 +42615,12 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {/* POP-1: ongoing home for unresolved decision blockers after Reveal closes —
               same copy + same resolution route the Reveal cards use. */}
           {!dayMode && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => go(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} />}
+          {/* DAYBEFORE-DIFM-1 — the day-before plan: one calm card compressing
+              five surfaces at peak host stress (T-2 → T-1). What still matters
+              leads; settled sections say so plainly (stop worrying); every row
+              deep-links to its first-undone element. Day-of itself is owned by
+              the FOCUS takeover, so this hides under dayMode. */}
+          {!dayMode && <DayBeforePlanCard event={event} onNav={(t, id, opts) => go(t, id, opts)} isMobile={isMobile} />}
           <CommandCenter event={event} isHost={true} onBack={onBack} backLabel={backLabel} onTabChange={go} onAddDecision={() => go('Planning')} onAddApproval={() => go('Communication')} onAddRequest={() => go('Communication')} /></div>}
         {tab === 'Guests' && <div className="planv2-wrap">{/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — the app-header + ReadinessTrack lead; the tab's own hero is first content. Parity (P1): cap to Plan's reading measure on desktop. */}
           {/* Tab-scoped NOW hero (host shell) — real RSVP/count state; list recedes.

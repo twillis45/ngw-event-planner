@@ -1437,12 +1437,12 @@ export function playbookDecisionBoard(event, asOf) {
   // one foundation we DO surface as open (a venue is optional for home hosting, so
   // an unset venue is never nagged — it only appears once settled).
   if (dateSet) {
-    locked.push({ id: 'date', label: 'Date', status: 'locked', because: friendlyDate(event.date), dueDate: event.date, daysOut: dte, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
+    locked.push({ id: 'f-date', label: 'Date', status: 'locked', because: friendlyDate(event.date), dueDate: event.date, daysOut: dte, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
   } else {
-    open.push({ id: 'date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
+    open.push({ id: 'f-date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
   }
   if (hasVenue) {
-    locked.push({ id: 'venue', label: 'Venue', status: 'locked', because: String(event.venue).trim(), dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
+    locked.push({ id: 'f-venue', label: 'Venue', status: 'locked', because: String(event.venue).trim(), dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
   }
 
   // Headcount — the count-lock. A roster with replies still out → the hero (honest
@@ -1456,7 +1456,7 @@ export function playbookDecisionBoard(event, asOf) {
     // The attendance SHIFT is a sizing derivation (food/supplies/budget), not a
     // restatement of the fact the host locked, so it never appears here.
     const n = band.planned || (band.applicable ? band.planning : (Number(event.guestCount) || Number(event.guestEstimate) || 0));
-    locked.push({ id: 'headcount', label: 'Headcount', status: 'locked', because: `${n} ${n === 1 ? 'guest' : 'guests'}`, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
+    locked.push({ id: 'f-headcount', label: 'Headcount', status: 'locked', because: `${n} ${n === 1 ? 'guest' : 'guests'}`, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
   } else if (out > 0) {
     headcount = {
       confirmed: band.confirmed,
@@ -1468,7 +1468,7 @@ export function playbookDecisionBoard(event, asOf) {
       route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
     };
   } else {
-    open.push({ id: 'headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' } });
+    open.push({ id: 'f-headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' } });
   }
 
   // ── Playbook decisions ─────────────────────────────────────────────────────

@@ -138,7 +138,7 @@ describe('CTAs land on the exact field/row, never a bare tab', () => {
 
   test('decision-board headcount rows carry the guests-entry anchor', () => {
     const board = playbookDecisionBoard(soonHost());
-    const rows = [...(board?.open || []), ...(board?.locked || [])].filter(r => r.id === 'headcount');
+    const rows = [...(board?.open || []), ...(board?.locked || [])].filter(r => r.id === 'f-headcount');
     rows.filter(r => (board?.open || []).includes(r)).forEach(r => {
       expect(r.route.focusField).toBe('guests-entry');
     });
