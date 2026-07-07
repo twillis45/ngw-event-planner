@@ -68,14 +68,16 @@ export function decisionConfidence(event, readiness) {
   items.push({
     key: 'guestCount', label: 'Guest count',
     state: gc.resolved ? 'ready_to_lock' : 'gathering',
-    confidence: gc.resolved ? c.ready : 'Still gathering responses.',
+    confidence: gc.resolved ? c.ready : (gc.reason === 'pending-rsvps' ? 'Still gathering responses.' : 'No count yet.'),
     reason: gc.resolved
       ? `${yes} confirmed — no responses outstanding.`
       : (gc.reason === 'pending-rsvps'
           ? `Waiting on ${gc.pending} RSVP${gc.pending === 1 ? '' : 's'}.`
           : 'No final count yet.'),
     blockers: [],
-    primaryAction: gc.resolved ? c.lock : 'Chase RSVPs',
+    // HOST-CHOICE-SUPPRESSION-1: "Chase RSVPs" only when replies are genuinely
+    // outstanding; a missing count is set, not chased.
+    primaryAction: gc.resolved ? c.lock : (gc.reason === 'pending-rsvps' ? 'Chase RSVPs' : 'Set the count'),
   });
 
   // ── 2 · SEATING — prereq: guest count resolved ──────────────────────────────

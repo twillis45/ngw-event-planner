@@ -34,6 +34,7 @@ import { buildExperienceContext } from './lib/experienceContext';
 import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCommit, feedbackSelect, feedbackSuccess, feedbackReveal, feedbackAlert, feedbackSettle } from './lib/feedback';
 import { hostSpending } from './lib/hostSpending';
 import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
+import { showsReplyTracking } from './lib/guestMode';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -23608,7 +23609,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
           // and the event is upcoming (≤21 days out). Score rises as the day approaches
           // (60 − daysLeft), so it overtakes the invite to become the hero when it's the
           // most urgent thing to send. Same RSVP filter as the Guests screen.
-          if (ev.date && near && daysLeft <= 21) {
+          if (ev.date && near && daysLeft <= 21 && showsReplyTracking(ev)) {
             const awaitingRsvp = (ev.guests || []).filter((g) => g && g.rsvp !== 'Yes' && g.rsvp !== 'No').length;
             if (awaitingRsvp > 0) {
               const d = draftRsvpChase(ev, profile, { rsvpUrl });
@@ -32027,12 +32028,14 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
           below (status = the answer, lives with the list; actions = the tools, grouped here). */}
       <CollapsibleCard id={`guests-invites-${event.id}`} isMobile={bp === 'mobile'} defaultCollapsed title="Invites &amp; replies"
         /* Hero copy doctrine: the header reflects live reply state, not a static label. */
-        subtitle={(() => { try { const g = (event.guests || []).filter(Boolean); if (!g.length) return 'Send the invite — replies land here'; const yes = g.filter(x => x.rsvp === 'Yes').length; const out = g.filter(x => !x.rsvp).length; return `${yes} yes${out > 0 ? ` · ${out} awaiting reply` : ' · all replied'}`; } catch { return undefined; } })()}
+        subtitle={(() => { try { if (!showsReplyTracking(event)) return 'Share the invite and send updates'; const g = (event.guests || []).filter(Boolean); if (!g.length) return 'Send the invite — replies land here'; const yes = g.filter(x => x.rsvp === 'Yes').length; const out = g.filter(x => !x.rsvp).length; return `${yes} yes${out > 0 ? ` · ${out} awaiting reply` : ' · all replied'}`; } catch { return undefined; } })()}
         style={{ marginBottom: 18 }}>
       {/* "Do it for me" — the RSVP chase. The single highest-leverage nudge: replies grow
           the headcount that sizes everything. The app WROTE the reminder; the host sends
           it in one tap. Host-only, shown only while people still owe a reply. */}
-      {guestsIsHost && awaiting > 0 && (() => {
+      {/* HOST-CHOICE-SUPPRESSION-1: a count-only host chose a number, not
+          reply management — no nudge pressure for them. */}
+      {guestsIsHost && awaiting > 0 && showsReplyTracking(event) && (() => {
         const rsvpUrl = rsvpInviteUrl(event);
         return (
           <button type="button" onClick={() => { const d = draftRsvpChase(event, profile, { rsvpUrl }); setGuestDraftSheet({ title: 'Nudge the no-replies', intro: `A gentle reminder for the ${awaiting} ${awaiting === 1 ? 'person who hasn’t' : 'people who haven’t'} replied yet. We wrote it — make it yours, then send.`, draft: d, shareTitle: d.subject, kind: 'invite', trackAs: 'rsvp' }); }}
@@ -32223,6 +32226,9 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
 
       {/* Non-responder follow-up alert */}
       {(() => {
+        // HOST-CHOICE-SUPPRESSION-1: response chasing belongs to reply-tracking
+        // mode only — a locked count is the plan, not a pending question.
+        if (!showsReplyTracking(event)) return null;
         const nonResponders = guests.filter(g => !g.rsvp || g.rsvp === 'Maybe');
         const daysLeft = event?.date ? daysUntil(event.date) : null;
         if (!nonResponders.length || daysLeft === null || daysLeft > 90) return null;
@@ -37456,7 +37462,7 @@ const computeDayAlerts = (event) => {
   // RSVPs still outstanding — headcount may shift (Figma B2 warning case).
   const yesCount = (event.guests || []).filter(g => g.rsvp === 'Yes').length;
   const pendingRsvp = (event.guests || []).filter(g => g && g.name && (!g.rsvp || g.rsvp === 'Pending' || g.rsvp === 'Maybe')).length;
-  if (event.date === td && pendingRsvp > 0)
+  if (event.date === td && pendingRsvp > 0 && showsReplyTracking(event))
     push({ id: 'rsvp-pending', tier: 'warning', headline: `${pendingRsvp} haven't RSVP'd`, move: yesCount > 0 ? `Headcount may shift — text them, or plan for ${yesCount} to be safe.` : `Headcount may shift — text them so you can plan portions.`, navTo: 'Guests' });
 
   const overdueCount = (event.timeline || []).filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
