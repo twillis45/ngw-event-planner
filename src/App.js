@@ -9257,7 +9257,10 @@ function RealityCheckPanel({ event, onPatch = () => {}, isMobile = false }) {
           if (focusMode && i !== nextIdx) return null;
           return (
             <button key={p.key} type="button" onClick={() => toggle(p.key)}
-              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: (i === 0 || focusMode) ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1 }}>
+              // CHECKLIST-CALM: in focus mode the next prompt RISES in on mount
+              // (key change remounts it) instead of jump-cutting — the host sees
+              // the new item arrive rather than the old one silently morph.
+              style={{ display: 'flex', alignItems: 'flex-start', gap: 11, textAlign: 'left', background: 'transparent', border: 'none', borderTop: (i === 0 || focusMode) ? 'none' : `1px solid ${C.border}`, padding: '12px 0', cursor: 'pointer', fontFamily: 'inherit', width: '100%', opacity: on ? 0.6 : 1, animation: focusMode ? 'ceRise 420ms ease both' : undefined }}>
               <span aria-hidden style={{ flexShrink: 0, width: 19, height: 19, borderRadius: 5, marginTop: 1, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</span>
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.bold, color: C.text, textTransform: 'capitalize', textDecoration: on ? 'line-through' : 'none' }}>{p.short}</span>
@@ -9648,7 +9651,18 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
   const skipMap = (event.capacitySkip && typeof event.capacitySkip === 'object') ? event.capacitySkip : {};
   const lockedMap = (event.capacityLocked && typeof event.capacityLocked === 'object') ? event.capacityLocked : {};
   const toggleSkip = (key) => { const next = { ...skipMap }; if (next[key]) delete next[key]; else next[key] = true; onPatch({ capacitySkip: next }); };
-  const setLock = (key, amt) => { const next = { ...lockedMap }; next[key] = Math.max(0, Math.round(Number(amt) || 0)); const patch = { capacityLocked: next }; if (checkAfterLock === key) { patch.capacityChecked = { ...checked, [key]: true }; } onPatch(patch); setOpenLockId(null); setCheckAfterLock(null); };
+  const setLock = (key, amt) => { const next = { ...lockedMap }; next[key] = Math.max(0, Math.round(Number(amt) || 0)); const patch = { capacityLocked: next }; if (checkAfterLock === key) { patch.capacityChecked = { ...checked, [key]: true }; } onPatch(patch); setOpenLockId(null); setCheckAfterLock(null);
+    // CHECKLIST-CALM: pricing-to-check advances calmly, same as a direct check.
+    if (checkAfterLock === key) {
+      try {
+        const nc = { ...checked, [key]: true };
+        const flat = groups.flatMap((gg) => (collapsedGroups[gg.group] ? [] : gg.items));
+        const idx = flat.findIndex((x) => x.key === key);
+        const undone = (x) => !nc[x.key] && !x.owned && !x.skipped;
+        const nxt = flat.slice(idx + 1).find(undone) || flat.find(undone);
+        if (nxt) calmFocusId(`caprow-${nxt.key}`);
+      } catch (e) { /* best-effort */ }
+    } };
   const clearLock = (key) => { const next = { ...lockedMap }; delete next[key]; onPatch({ capacityLocked: next }); setOpenLockId(null); };
   // eff — a locked line is a fixed cost, not a range (mirrors the engine + food plan).
   const eff = (it, k) => (it.locked != null ? it.locked : (it[k] || 0));
@@ -9809,10 +9823,21 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
               const onCheck = () => {
                 if (skipped) return;
                 if (!checked[it.key] && it.locked == null && !it.owned && !it.added && it.costLow != null) { setCheckAfterLock(it.key); setOpenLockId(it.key); return; }
+                const wasOn = !!checked[it.key];
                 toggle(it.key);
+                if (!wasOn) {
+                  // CHECKLIST-CALM: glide to the next undone supply — the one after
+                  // this in its group, else the first undone in a later group.
+                  const nc = { ...checked, [it.key]: true };
+                  const undone = (x) => !nc[x.key] && !x.owned && !x.skipped;
+                  const gi = g.items;
+                  const nxt = gi.slice(gi.findIndex((x) => x.key === it.key) + 1).find(undone)
+                    || groups.flatMap((gg) => (collapsedGroups[gg.group] ? [] : gg.items)).find(undone);
+                  if (nxt) calmFocusId(`caprow-${nxt.key}`);
+                }
               };
               return (
-                <div key={it.key} style={{ borderTop: `1px solid ${C.border}`, opacity: skipped ? 0.45 : (checked[it.key] ? 0.55 : 1) }}>
+                <div key={it.key} id={`caprow-${it.key}`} style={{ borderTop: `1px solid ${C.border}`, opacity: skipped ? 0.45 : (checked[it.key] ? 0.55 : 1) }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 11, padding: '11px 0' }}>
                     <button type="button" onClick={onCheck} disabled={skipped} aria-label={on ? 'Got it' : 'Mark as got'}
                       style={{ flexShrink: 0, marginTop: 1, width: 19, height: 19, borderRadius: 5, border: `1.5px solid ${on ? C.success : C.border}`, background: on ? C.success : 'transparent', color: '#fff', fontSize: T.secondary, fontWeight: FW.heavy, cursor: skipped ? 'default' : 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{on ? '✓' : ''}</button>
@@ -10659,7 +10684,16 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
               const toggleSkip = (e) => { e.stopPropagation(); const next = { ...(event.foodSkip || {}) }; if (skipped) delete next[i.id]; else next[i.id] = true; onPatch({ foodSkip: next }); };
               // Picking Value/Premium/Custom LOCKS the cost AND checks the item off in one
               // move (you priced it because you got it). Exhale if it completes the spread.
-              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); const willComplete = completesSpread(i.id); onPatch({ foodLocked: next, foodGot: { ...(event.foodGot || {}), [i.id]: true } }); setOpenLockId(null); setCheckAfterLock(null); try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} };
+              const setLock = (amt) => { const next = { ...(event.foodLocked || {}) }; next[i.id] = Math.max(0, Math.round(Number(amt) || 0)); const willComplete = completesSpread(i.id); onPatch({ foodLocked: next, foodGot: { ...(event.foodGot || {}), [i.id]: true } }); setOpenLockId(null); setCheckAfterLock(null);
+                // CHECKLIST-CALM: pricing checks the item off, so it advances the
+                // same calm way a direct check does.
+                try {
+                  const ng2 = { ...(event.foodGot || {}), [i.id]: true };
+                  const gi2 = plan.list.filter((x) => x.group === i.group && !x.skipped);
+                  const nxt2 = gi2.slice(gi2.findIndex((x) => x.id === i.id) + 1).find((x) => !ng2[x.id]) || gi2.find((x) => !ng2[x.id]);
+                  if (nxt2) calmFocusId(`foodrow-${nxt2.id}`);
+                } catch (e) { /* advance is best-effort */ }
+                try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} };
               const clearLock = () => { const next = { ...(event.foodLocked || {}) }; delete next[i.id]; onPatch({ foodLocked: next }); setOpenLockId(null); };
               // Changing the quantity RESETS any locked price — the committed $ was for the old
               // amount, so it must re-derive from the new qty (a locked value can't go stale).
@@ -10690,10 +10724,19 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                           const ng = { ...(event.foodGot || {}), [i.id]: true };
                           const groupItems = plan.list.filter((x) => x.group === i.group && !x.skipped);
                           const groupDone = groupItems.length > 0 && groupItems.every((x) => ng[x.id]);
+                          let advancedGroup = null;
                           if (groupDone && openGroup === i.group) {
                             const nextG = (plan.groups || []).find((g) => g !== i.group && plan.list.some((x) => x.group === g && !x.skipped && !ng[x.id]));
                             setOpenGroup(nextG || null);
+                            advancedGroup = nextG || null;
                           }
+                          // CHECKLIST-CALM: glide the NEXT undone item to center —
+                          // the one after this in its group, else the first undone
+                          // in the group we just auto-advanced to.
+                          const after = groupItems.slice(groupItems.findIndex((x) => x.id === i.id) + 1);
+                          const nxt = after.find((x) => !ng[x.id])
+                            || (advancedGroup ? plan.list.find((x) => x.group === advancedGroup && !x.skipped && !ng[x.id]) : null);
+                          if (nxt) calmFocusId(`foodrow-${nxt.id}`);
                           try { willComplete ? feedbackSuccess() : feedbackCommit(); } catch {} // whole spread done → exhale; otherwise a commit tick
                         }
                       }}
@@ -38084,6 +38127,35 @@ const PLANNING_VIEWS = ['list', 'timeline', 'checklist'];
 // state-driven effect for this (Board #15, openFocusField); the host shell's
 // go() is imperative, so a small retry loop covers the destination tab
 // mounting. Same id / data-focus-field contract, same inner-control focus.
+// ── CHECKLIST-CALM — after a check-off, guide attention to the NEXT undone item.
+// A check must never strand the host ("where did it go? what's next?"): the next
+// item glides to the center of the viewport with a soft settle highlight — calm
+// focus, not a jump-cut. Retries briefly so auto-advanced groups can mount first.
+const calmFocusEl = (el) => {
+  if (!el) return;
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
+  try {
+    const prevBg = el.style.background, prevSh = el.style.boxShadow, prevTr = el.style.transition, prevRad = el.style.borderRadius;
+    el.style.transition = 'background 480ms ease, box-shadow 480ms ease';
+    el.style.borderRadius = el.style.borderRadius || '8px';
+    el.style.background = 'rgba(122,158,137,0.10)';
+    el.style.boxShadow = '0 0 0 2px rgba(122,158,137,0.38)';
+    setTimeout(() => {
+      el.style.background = prevBg; el.style.boxShadow = prevSh;
+      setTimeout(() => { el.style.transition = prevTr; el.style.borderRadius = prevRad; }, 500);
+    }, 1000);
+  } catch (e) { /* style-locked element — scroll alone still lands */ }
+};
+const calmFocusId = (id, tries = 10) => {
+  let n = 0;
+  const tick = () => {
+    const el = document.getElementById(id);
+    if (el) return calmFocusEl(el);
+    if (++n < tries) setTimeout(tick, 90);
+  };
+  setTimeout(tick, 80);
+};
+
 const scrollFocusFieldWithRetry = (fieldId, tries = 12) => {
   if (!fieldId) return;
   const esc = (v) => (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(String(v)) : String(v).replace(/"/g, '\\"');
