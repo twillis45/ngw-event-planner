@@ -68,3 +68,25 @@ describe('legacy aliases keep resolving (D-1B contracts)', () => {
     expect(hostResolveTab('Vendors')).toBe('Vendors');
   });
 });
+
+// ── Host decision deep-link (the "Make the call → Plan tab top" trust bug) ────
+// A decision route's decisionId is a timeline task id. On the host shell it
+// must survive the Decisions→Planning remap as a list-view open, never be
+// dropped. Without an id the honest broad Planning landing stays.
+describe('host Decisions routes carry their item to the Plan list', () => {
+  test('Decisions + id → Planning list view with the item open', () => {
+    expect(resolveShellTab('host', 'Decisions', 'tl-cf-invite')).toEqual({
+      tab: 'Planning', planningView: 'list', openId: 'tl-cf-invite',
+    });
+  });
+  test('Decisions without id → broad Planning (unchanged honest fallback)', () => {
+    const n = resolveShellTab('host', 'Decisions');
+    expect(n.tab).toBe('Planning');
+    expect(n.openId).toBeFalsy();
+  });
+  test('planner Decisions routes are untouched', () => {
+    const n = resolveShellTab('planner', 'Decisions', 'd1');
+    expect(n.tab).toBe('Decisions');
+    expect(n.openId).toBe('d1');
+  });
+});

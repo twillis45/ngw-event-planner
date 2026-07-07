@@ -38,6 +38,16 @@ export const hostResolveTab = (rawTab) => {
 // Full per-shell resolution: remap (host) → normalize → clamp to the shell's
 // real tab set. Returns { tab, planningView, openId } like the normalizer.
 export function resolveShellTab(shell, rawTab, itemId) {
+  // Host decision deep-link (the "Make the call → Plan tab top" trust bug):
+  // a decision route's decisionId IS a timeline task id (see CommandCenter's
+  // clickTarget comment), and the host Plan tab already knows how to open a
+  // task — the same list-view + openId rails the 'Planning Tasks' alias uses.
+  // Mapping Decisions to bare 'Planning' dropped the id, so the CTA promised
+  // a specific call and landed on the tab top. With an id we land ON the item;
+  // without one we keep the honest broad Planning landing.
+  if (shell === 'host' && rawTab === 'Decisions' && itemId) {
+    return { tab: 'Planning', planningView: 'list', openId: itemId };
+  }
   const pre = shell === 'host' ? hostResolveTab(rawTab) : rawTab;
   const norm = normalizeEventTabRoute(pre, itemId);
   const known = shell === 'host' ? HOST_TABS : PLANNER_TABS;

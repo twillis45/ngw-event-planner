@@ -41968,7 +41968,10 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
     const r = na.primaryRoute && typeof na.primaryRoute === 'object' ? na.primaryRoute : null;
     const opts = r && (r.vendorSection || r.foodFocus || r.focusField)
       ? { vendorSection: r.vendorSection, foodFocus: r.foodFocus, focusField: r.focusField } : undefined;
-    if (onNav) onNav((r && r.tab) || 'Command', r && r.taskId, opts);
+    // Forward the route's REAL item id — decision routes carry decisionId (a
+    // timeline task id), which was dropped here, stranding "Make the call" on
+    // the Plan tab top instead of the named decision.
+    if (onNav) onNav((r && r.tab) || 'Command', r && (r.taskId || r.decisionId || r.vendorId || r.timelineId), opts);
   };
 
   return (
@@ -42136,6 +42139,54 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   );
 }
 
+// ─── HostTaskFocusCard — the landing surface for task/decision deep links ──────
+// CTA-REPAIR-2: the planv2 Plan tab shed EventPlanningTab (the task list), so a
+// CTA promising a SPECIFIC task ("Do this first" / "Make the call") routed
+// correctly and then had NOWHERE to land — the id resolved to openTaskId and no
+// planv2 surface consumed it, stranding the host on the Plan overview (the
+// long-standing "takes me to the What-to-settle screen" trust bug). This card
+// IS the landing: it renders the exact task the CTA named, front and center,
+// with the two honest moves — mark it done (single-source event.timeline
+// write, so the next-step hero advances) or set it aside. Not found or the
+// '__compressed__' sentinel → renders nothing (the broad landing stays honest).
+function HostTaskFocusCard({ event, taskId, setEvent, onClear }) {
+  const C = useT();
+  const T = useType();
+  const ref = useRef(null);
+  const t = taskId && taskId !== '__compressed__'
+    ? (Array.isArray(event.timeline) ? event.timeline : []).find(x => x && x.id === taskId)
+    : null;
+  useEffect(() => {
+    if (t && ref.current && typeof ref.current.scrollIntoView === 'function') {
+      try { ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* noop */ }
+    }
+  }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!t || t.done) return null;
+  const markDone = () => {
+    setEvent(e => ({ ...e, timeline: (Array.isArray(e.timeline) ? e.timeline : []).map(x => x && x.id === taskId ? { ...x, done: true } : x) }));
+    if (typeof onClear === 'function') onClear();
+  };
+  return (
+    <div ref={ref} style={{ ...metalEdge(C), borderRadius: 12, padding: '16px 18px', marginBottom: 14, borderLeft: `3px solid ${C.accent}` }}>
+      <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 7 }}>The step you tapped</div>
+      <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{t.task || 'This step'}</div>
+      <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>
+        {t.owner && t.owner !== 'You' ? `${t.owner} owns this. ` : ''}Handle it, then mark it done — your next step updates the moment you do.
+      </div>
+      <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
+        <button type="button" className="ce-press" onClick={markDone}
+          style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${C.success || C.accent}`, cursor: 'pointer', background: `${C.success || C.accent}1f`, color: C.success || C.accent }}>
+          Mark it done
+        </button>
+        <button type="button" onClick={() => { if (typeof onClear === 'function') onClear(); }}
+          style={{ height: 44, padding: '0 16px', fontSize: T.secondary, fontWeight: FW.semibold, borderRadius: 10, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}>
+          Not yet
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── HostEventShell — the host L3 over the shared core (pi.shell, default OFF) ──────
 // Host shell decision (docs/product-os/HOST_SHELL_DECISION.md): instead of routing a
 // host through the planner EventPlanner with runtime gating, give the host its OWN slim
@@ -42221,7 +42272,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   };
   useEffect(() => {
     if (!initialNav) return;
-    if (initialNav.tab) { const n = resolveShellTab('host', initialNav.tab, initialNav.taskId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); }
+    if (initialNav.tab) { const n = resolveShellTab('host', initialNav.tab, initialNav.taskId || initialNav.decisionId || initialNav.timelineId); if (n.tab && n.tab !== tab) setTab(n.tab); if (n.planningView) setPlanningView(n.planningView); if (n.planningView === 'list' && n.openId) setOpenTaskId(n.openId); }
     if (initialNav.foodFocus) focusFood(initialNav.foodFocus);
     // POP-1 continuity: an inbound route carrying focusField (e.g. the Reveal
     // blocker's "Handle it now") lands ON the field — parity with go()'s
@@ -42339,6 +42390,9 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               console (EventPlanningTab) is SHED (Ruthless Host Lens). */}
           <div className="planv2-wrap">
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
+          {/* CTA-REPAIR-2: task/decision deep links land HERE in planv2 (which has
+              no task list) — the named task renders as an actionable focus card. */}
+          {openTaskId && <HostTaskFocusCard event={event} taskId={openTaskId} setEvent={setEvent} onClear={() => setOpenTaskId(null)} />}
           <div className="planv2-grid">
             <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
