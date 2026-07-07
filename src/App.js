@@ -9755,6 +9755,48 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   );
 }
 
+// ─── ActionRow — the secondary-action element (Todd, 2026-07-07) ─────────────
+// Replaces outlined pill buttons for SECONDARY actions. A pill outline reads
+// as a chip/filter and gives ragged widths + short tap targets on mobile; the
+// action row is full-width, 44px, hairline-topped, label + trailing arrow —
+// the same grammar as the disclosure rows (Location check / Find local help).
+// Hierarchy per card: ONE steel primary button → ActionRows → muted text links.
+// Pills remain only for true chips (toggles/filters), never for actions.
+// `compact` renders the inline variant (no hairline, auto width, 34px) for
+// tight contexts like list-item CTAs and control columns.
+function ActionRow({ label, sub, onClick, href, compact = false, testid, disabled }) {
+  const C = useT();
+  const T = useType();
+  const base = {
+    display: 'flex', alignItems: 'center', gap: 10,
+    width: compact ? 'auto' : '100%',
+    minHeight: compact ? 34 : 44,
+    padding: compact ? '4px 2px' : '10px 2px',
+    textAlign: 'left', background: 'transparent', border: 'none',
+    borderTop: compact ? 'none' : `1px solid ${C.border}`, borderRadius: 0,
+    cursor: disabled ? 'default' : 'pointer', fontFamily: 'inherit',
+    color: C.text, textDecoration: 'none', opacity: disabled ? 0.5 : 1,
+  };
+  const inner = (
+    <>
+      <span style={{ minWidth: 0, flex: compact ? undefined : 1 }}>
+        <span style={{ display: 'block', fontSize: compact ? T.secondary : T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{label}</span>
+        {sub && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 2, lineHeight: 1.4 }}>{sub}</span>}
+      </span>
+      <span aria-hidden style={{ color: C.muted, fontWeight: FW.bold, flexShrink: 0 }}>→</span>
+    </>
+  );
+  if (href) {
+    return (
+      <a href={href} data-testid={testid} style={base}
+        {...(/^https?:/.test(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+        {inner}
+      </a>
+    );
+  }
+  return <button type="button" data-testid={testid} onClick={onClick} disabled={disabled} style={base}>{inner}</button>;
+}
+
 // storeSearchUrl(store, item, anchor) — where-to-shop link. A KNOWN retailer deep-links
 // to its product search (lands the host on CURRENT prices); a local/generic store
 // (butcher, grocery, farmers market, Black-owned market) falls back to a maps search.
@@ -11113,12 +11155,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                         is the host's real next action on an assigned dish (calling/
                         texting happens off-app; this records the answer). */}
                     {i.added && i.owner && !got && (event.helperConfirmed || {})[i.id] !== true && (
-                      <button type="button" data-testid={`helper-confirm-${i.id}`}
-                        title={`Confirm with ${i.owner} — they're still bringing it`}
-                        onClick={() => onPatch({ helperConfirmed: { ...(event.helperConfirmed || {}), [i.id]: true } })}
-                        style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: `1px solid ${C.border}`, borderRadius: 7, color: C.text, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 9px', whiteSpace: 'nowrap' }}>
-                        Confirmed?
-                      </button>
+                      <span style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, whiteSpace: 'nowrap' }} title={`Confirm with ${i.owner} — they're still bringing it`}>
+                        <ActionRow compact testid={`helper-confirm-${i.id}`} label="Confirmed?"
+                          onClick={() => onPatch({ helperConfirmed: { ...(event.helperConfirmed || {}), [i.id]: true } })} />
+                      </span>
                     )}
                     {i.added ? (
                       <>
@@ -41438,11 +41478,8 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                     <span style={{ color: C.muted, flex: '1 1 100%' }}>
                       {x.detail}
                       {x.action && (
-                        <button type="button"
-                          onClick={() => scrollFocusFieldWithRetry(x.action.route.focusField)}
-                          style={{ marginLeft: 8, background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, padding: '3px 10px' }}>
-                          {x.action.label}
-                        </button>
+                        <ActionRow compact label={x.action.label}
+                          onClick={() => scrollFocusFieldWithRetry(x.action.route.focusField)} />
                       )}
                       {/* PLACE-DIFM-1: don't just route to the empty field — draft
                           a conservative, editable starter INTO it (blanks the host
@@ -41450,11 +41487,8 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                           only while parkingNotes is empty, so existing text can
                           never be overwritten. */}
                       {x.key === 'parking' && !String(event.parkingNotes || '').trim() && (
-                        <button type="button" data-testid="draft-parking-note"
-                          onClick={() => { upd('parkingNotes', draftParkingInstructions(event)); scrollFocusFieldWithRetry('parking-notes'); }}
-                          style={{ marginLeft: 8, background: 'none', border: `1px solid ${C.border}`, borderRadius: 7, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted, padding: '3px 10px' }}>
-                          Draft parking note
-                        </button>
+                        <ActionRow compact testid="draft-parking-note" label="Draft parking note"
+                          onClick={() => { upd('parkingNotes', draftParkingInstructions(event)); scrollFocusFieldWithRetry('parking-notes'); }} />
                       )}
                     </span>
                   </li>
@@ -41488,66 +41522,37 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         </div>
         </>)}
 
-        {/* Sprint 60.L F15: quick-action chips. Restrained steel chips
-            for Call / Email / Map appear only when the underlying field
-            has a value — no fake actions. Tap targets ≥ 44px. */}
-        {(event.venuePhone || event.venueEmail || event.venueAddress) && (
-          <div style={{
-            display: 'flex', gap: 8, flexWrap: 'wrap',
-            marginBottom: 14, paddingBottom: 14,
-            borderBottom: `1px solid ${C.border}`,
-          }}>
-            {event.venuePhone && (
-              <a
-                href={`tel:${event.venuePhone.replace(/\s/g, '')}`}
-                aria-label={`Call the venue at ${event.venuePhone}`}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px', minHeight: 44,
-                  borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: 'transparent', color: C.text,
-                  fontSize: T.body, fontWeight: FW.semibold,
-                  textDecoration: 'none', fontFamily: 'inherit',
-                }}
-              >
-                <Icon name="phone" size={15} /> Call venue
-              </a>
-            )}
-            {event.venueEmail && (
-              <a
-                href={`mailto:${event.venueEmail}`}
-                aria-label={`Email the venue at ${event.venueEmail}`}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px', minHeight: 44,
-                  borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: 'transparent', color: C.text,
-                  fontSize: T.body, fontWeight: FW.semibold,
-                  textDecoration: 'none', fontFamily: 'inherit',
-                }}
-              >
-                <Icon name="mail" size={15} /> Email venue
-              </a>
-            )}
-            {event.venueAddress && (
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venueAddress)}`}
-                target="_blank" rel="noopener noreferrer"
-                aria-label="Open venue address in maps"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '10px 14px', minHeight: 44,
-                  borderRadius: 8, border: `1px solid ${C.border}`,
-                  background: 'transparent', color: C.text,
-                  fontSize: T.body, fontWeight: FW.semibold,
-                  textDecoration: 'none', fontFamily: 'inherit',
-                }}
-              >
-                <Icon name="pin" size={15} /> Open in maps
-              </a>
-            )}
-          </div>
-        )}
+        {/* Quick actions — ONE segmented text row (Todd, 2026-07-07: pills read
+            as chips, not actions). Icon + label text links, full 44px targets,
+            shown only when the underlying field has a value — no fake actions. */}
+        {(event.venuePhone || event.venueEmail || event.venueAddress) && (() => {
+          const seg = {
+            display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 44,
+            padding: '0 2px', background: 'transparent', color: C.text,
+            fontSize: T.body, fontWeight: FW.semibold,
+            textDecoration: 'none', fontFamily: 'inherit',
+          };
+          return (
+            <div data-testid="venue-quick-actions" style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginBottom: 14, paddingBottom: 10, borderBottom: `1px solid ${C.border}` }}>
+              {event.venuePhone && (
+                <a href={`tel:${event.venuePhone.replace(/\s/g, '')}`} aria-label={`Call the venue at ${event.venuePhone}`} style={seg}>
+                  <Icon name="phone" size={15} /> Call
+                </a>
+              )}
+              {event.venueEmail && (
+                <a href={`mailto:${event.venueEmail}`} aria-label={`Email the venue at ${event.venueEmail}`} style={seg}>
+                  <Icon name="mail" size={15} /> Email
+                </a>
+              )}
+              {event.venueAddress && (
+                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(event.venueAddress)}`}
+                  target="_blank" rel="noopener noreferrer" aria-label="Open venue address in maps" style={seg}>
+                  <Icon name="pin" size={15} /> Map
+                </a>
+              )}
+            </div>
+          );
+        })()}
         {detailsIsHost ? (() => {
           const atHome = (event.venueKind || 'home') === 'home';
           const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
@@ -41677,23 +41682,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
                     Real options near {vendorAnchor} — opens maps, nothing we made up.
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  <div>
                     {categories.map(cat => (
-                      <a
-                        key={cat}
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cat + ' near ' + vendorAnchor)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'inline-flex', alignItems: 'center',
-                          minHeight: 38, padding: '7px 12px',
-                          border: `1px solid ${C.border}`, borderRadius: 999,
-                          background: 'transparent', color: C.text,
-                          fontSize: T.secondary, textDecoration: 'none', fontFamily: 'inherit',
-                        }}
-                      >
-                        {cat}
-                      </a>
+                      <ActionRow key={cat} label={cat}
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(cat + ' near ' + vendorAnchor)}`} />
                     ))}
                   </div>
                 </>
@@ -41755,10 +41747,9 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               edits. Hidden the moment the field has ANY text, so an existing plan
               can never be overwritten silently. Save/clear behavior unchanged. */}
           {!String(event.rainPlan || '').trim() && (
-            <button type="button" onClick={() => upd('rainPlan', suggestRainPlan(event))}
-              style={{ marginTop: 6, background: 'none', border: `1px solid ${C.border}`, borderRadius: 8, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, padding: '6px 12px' }}>
-              Suggest a rain plan
-            </button>
+            <ActionRow testid="suggest-rain-plan" label="Suggest a rain plan"
+              sub="A starter you edit — nothing saves until you do"
+              onClick={() => upd('rainPlan', suggestRainPlan(event))} />
           )}
         </div>
         {/* Insurance / COI is vendor paperwork. Hide it for a self-host UNTIL they
