@@ -678,9 +678,19 @@ export function nextUpcomingTask(event, asOf) {
   const di = dietaryResolved(event);
   const got  = (event.foodGot  && typeof event.foodGot  === 'object') ? event.foodGot  : {};
   const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+  // Dead-CTA doctrine (2026-07-07): a route must target an item its DESTINATION
+  // renders. playbookFoodPlan filters/reshapes purchases by the host's choices,
+  // so the preview must only name ids present in that SAME rendered list —
+  // otherwise the deep link lands on nothing (Todd's 'See what's next' report).
+  let renderedIds = null;
+  try {
+    const fp = playbookFoodPlan(event);
+    if (fp && Array.isArray(fp.list)) renderedIds = new Set(fp.list.filter(x => x && !x.skipped).map(x => x.id));
+  } catch { renderedIds = null; }
   let best = null;
   for (const p of playbook.purchases) {
     if (got[p.id] || skip[p.id]) continue;
+    if (renderedIds && !renderedIds.has(p.id)) continue; // not on the rendered plan → no route to it
     const offset = buyOffsetDays(p.buyAt);
     if (offset === null) continue;
     const dueInDays = dte + offset;

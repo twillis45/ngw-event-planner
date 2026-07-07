@@ -10331,6 +10331,21 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     }
     setForceSpreadOpen(true);
     setShowFullSpread(true);
+    // Dead-CTA repair (2026-07-07): a foodrow target sits behind THREE layers —
+    // "The shopping" home, "The spread" card, and the item's GROUP — and a
+    // focus can't land on a row that isn't mounted. Open all three through the
+    // same states their headers use, then the poll below finds the row.
+    try { if (_acc) _acc.setOpenId(SHOP_HOME); else setShopLocal(true); } catch { /* poll still guards */ }
+    try {
+      const target = plan && Array.isArray(plan.list) ? plan.list.find((x) => x && x.id === focusItemId) : null;
+      if (target && target.group) setOpenGroup(target.group);
+      else if (!target) {
+        // The id isn't on the rendered plan (choice-filtered, renamed, stale
+        // route) — land on the spread card itself so the tap still visibly
+        // arrives somewhere real instead of silently dying.
+        setTimeout(() => { const card = document.getElementById(`fp-spread-${event.id}`); if (card) card.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+      }
+    } catch { /* poll still guards */ }
     setHighlightId(focusItemId);
     // Poll for the row — the spread has to expand + render first, so a single 160ms
     // timeout can miss it. Retry every 120ms up to ~1.4s, then stop.
