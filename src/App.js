@@ -40,6 +40,7 @@ import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultC
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { deriveCurrentLocationAssist, weatherCoordsFallback, eventLocationStatus } from './lib/locationAssist';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from './lib/returnNarration';
+import { migrateLegacyTaskCopy } from './lib/legacyCopy';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -45150,14 +45151,18 @@ export default function App() {
     try {
       const d = localStorage.getItem('ngw-events');
       const onboardDone = localStorage.getItem(ONBOARD_DONE_KEY) === '1';
-      if (!d) return refreshSeeds(injectExtra(onboardDone ? [] : SEED_EVENTS));
+      if (!d) return migrateLegacyTaskCopy(refreshSeeds(injectExtra(onboardDone ? [] : SEED_EVENTS)));
       const stored = JSON.parse(d);
-      if (onboardDone) return refreshSeeds(injectExtra(stored));
+      // STORED-COPY-MIGRATION-1: normalize known legacy template strings in
+      // saved timelines at load (exact phrases only, idempotent) so existing
+      // events stop showing banned lock-language. Persists via the normal save
+      // path on the next state write.
+      if (onboardDone) return migrateLegacyTaskCopy(refreshSeeds(injectExtra(stored)));
       // Pre-onboarding existing behavior: re-merge seeds so any deleted-then-
       // returned demo events come back. After onboard done this is a no-op.
       const storedIds = new Set(stored.map(e => e.id));
       const missing = SEED_EVENTS.filter(e => !storedIds.has(e.id));
-      return refreshSeeds(missing.length ? [...stored, ...missing] : stored);
+      return migrateLegacyTaskCopy(refreshSeeds(missing.length ? [...stored, ...missing] : stored));
     } catch { return localStorage.getItem(ONBOARD_DONE_KEY) === '1' ? [] : SEED_EVENTS; }
   });
   const [clients, setClients] = useState(() => {

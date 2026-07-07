@@ -57,3 +57,6 @@ Accept. Lock-language rule now enforced app-wide by tests, not convention.
 
 ## Addendum — budget recovery language (folded into this audit, 2026-07-07)
 The budget-recovery card speaks calm budget help, not collections/accounting: banned-word test extended in budgetRecovery.test.js (cut/cancel/recover/overpriced/unpaid/owed/locked in host-visible strings); preferred phrases adopted (get back on plan, still flexible, already committed, protect this, ask before changing).
+
+## Addendum — STORED-COPY-MIGRATION-1 (2026-07-07, closes the persisted-data gap)
+`lib/legacyCopy.js` normalizes the known legacy template phrases ("lock the final headcount", "Lock the headcount and rentals", …) in stored timelines at event load — exact phrases only (host free text like "lock the shed" is untouched, test-pinned), idempotent, reference-preserving when nothing matches. Wired at all three return points of the events initializer; persists through the normal save path. Verified on the real flagship event: stored task text now reads "…confirm the final guest count" in localStorage, and no lock-language remains on any screen. Return narration unaffected (it diffs counts, not text) and correctly quiet post-migration. 4 tests in src/lib/__tests__/legacyCopy.test.js.
