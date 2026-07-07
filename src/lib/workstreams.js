@@ -185,15 +185,23 @@ export function buildVendorReadinessRollup(event, ctx = null, vendors = null, pl
       reason: `${blockedWorkstream.label} has a critical issue that needs your attention.`, counts,
     };
   }
+  // First-undone-item rule: a list-shaped landing targets the FIRST actionable
+  // row, never the container. All-booked -> the first vendor row (the list's
+  // first available item); attention open -> the first vendor that needs it.
+  const allVendors = workstreams.flatMap(w => w.vendors || []).filter(v => v && v.id);
   if (counts.needsAttention === 0) {
+    const first = allVendors[0];
     return {
       status: 'ready', label: 'All vendors booked',
       nextAction: 'Nothing needs you here right now.', ctaLabel: 'Review vendors',
-      target: { tab: 'Vendors', focusField: 'vendor-list' }, reason: null, counts,
+      target: first ? { tab: 'Vendors', vendorId: first.id } : { tab: 'Vendors', focusField: 'vendor-list' },
+      reason: null, counts,
     };
   }
   const firstOpenWorkstream = workstreams.find(w => w.readiness.needsAttention > 0);
-  const firstOpenVendor = firstOpenWorkstream ? firstOpenWorkstream.deepLink : { tab: 'Vendors', focusField: 'vendor-list' };
+  const firstOpenVendor = firstOpenWorkstream
+    ? firstOpenWorkstream.deepLink
+    : (allVendors[0] ? { tab: 'Vendors', vendorId: allVendors[0].id } : { tab: 'Vendors', focusField: 'vendor-list' });
   return {
     status: 'in_progress', label: `${counts.ready} booked · ${counts.needsAttention} to follow up`,
     nextAction: `Follow up on ${firstOpenWorkstream ? firstOpenWorkstream.label : 'your remaining vendors'}.`,

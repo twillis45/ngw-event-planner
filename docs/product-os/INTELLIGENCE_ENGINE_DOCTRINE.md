@@ -248,6 +248,14 @@ food → food-plan · vendors → vendor-add / vendor-list / vendorId · guests 
 guests-entry / guest-roster · budget → hsp-budget. A new surface ships WITH
 its landing anchors or its CTAs don't ship.
 
+**First-undone-item rule:** when the landing is list-shaped, the deep link
+targets the FIRST available/undone item in the list — the thing to be done or
+completed — never the container. Vendors → the first row needing the host
+(else the first row, else the add button); run of show → the first open cue
+(nowCue); compressed tasks → the do-now list leading with its first item.
+Conditional anchors need a fallback element that owns the id whenever the
+primary doesn't render (ros-now precedent) so the landing always exists.
+
 **Consumer rule (CTA-REPAIR-2): a route contract is not enough — every
 deep-linkable id must have a CONSUMER on its destination surface.** When a
 surface is shed or redesigned, audit which open-item states it orphaned

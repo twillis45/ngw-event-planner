@@ -1940,7 +1940,17 @@ function _selectEventNextActionInner(event) {
         const s = String(nextUp.label || '').toLowerCase();
         if (/guest|invite|rsvp|head\s?count|seat/.test(s)) return { tab: 'Guests', focusField: 'guests-entry' };
         if (/budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/.test(s)) return { tab: 'Budget', focusField: 'hsp-budget' };
-        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) return { tab: 'Vendors', focusField: 'vendor-list' };
+        if (/vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/.test(s)) {
+          // First-undone-item rule: land on the first vendor row that still
+          // needs the host (unbooked / deposit unpaid / COI required), else the
+          // first vendor row, else the add button (nothing exists -> the first
+          // available action IS adding one).
+          const vs = (event.vendors || []).filter(v => v && String(v.name || '').trim());
+          const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
+            || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
+          const targetV = undone || vs[0];
+          return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
+        }
         if (/food|menu|shop|grocer|drink|supplies|seating/.test(s)) return { tab: 'Planning', focusField: 'food-plan' };
         return { tab: 'Timeline', timelineId: nextUp.id };
       })(),

@@ -163,6 +163,8 @@ describe('no whole-surface CTAs — formerly-broad routes carry anchors', () => 
     });
     const roll = buildVendorReadinessRollup(ev);
     expect(roll.target.tab).toBe('Vendors');
-    expect(roll.target.vendorId || roll.target.focusField).toBeTruthy();
+    // First-undone-item rule: with vendors present the landing is a ROW, never
+    // the list container.
+    expect(roll.target.vendorId).toBe('v-ok');
   });
 });
