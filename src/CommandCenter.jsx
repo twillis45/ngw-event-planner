@@ -51,6 +51,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan } from './lib/playbooks';
+import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
@@ -1531,6 +1532,31 @@ export function eventPlan(event, ctx = null) {
 // disagree about the top step. The compression sub-badge + persona voice + identity
 // `because` are layered on top of that one action (kept for back-compat).
 export function selectEventNextAction(event) {
+  // PHASE-HERO-1: the hero must never sell planning after the event, and on
+  // the day itself it points at the day, not stale setup. Same phase engine
+  // as the header bar (deriveEventPhaseProgress) — the two can't disagree.
+  try {
+    const pp = deriveEventPhaseProgress(event);
+    if (pp && pp.phase === 'post_event') {
+      if (!pp.nextCue) return null; // all wrapped up — surfaces show their done states
+      return {
+        level: 'neutral', category: 'wrapup',
+        title: `${pp.nextCue.label}.`,
+        consequence: 'The event is done — this is the last of the wrap-up.',
+        primaryCta: 'Take me to it',
+        primaryRoute: pp.nextCue.route,
+      };
+    }
+    if (pp && pp.phase === 'live_event' && pp.nextCue) {
+      return {
+        level: 'neutral', category: 'live',
+        title: `${pp.nextCue.label}.`,
+        consequence: 'It’s event day — run the day; the plan can rest.',
+        primaryCta: 'See the day plan',
+        primaryRoute: pp.nextCue.route,
+      };
+    }
+  } catch { /* fall through to the planning ladder */ }
   // Decompose any stale "Set date, headcount, menu" composite into the atomic remaining
   // domino so the Focus "ONE thing" + spine never show a half-done bundle (same single
   // source as eventPlan).
@@ -1546,6 +1572,22 @@ export function selectEventNextAction(event) {
     if (because) return { ...rendered, because, becauseFromIdentity: true };
   }
   return rendered;
+}
+
+
+// ONE-TELLING-1: a screen tells the next step ONCE. The Next Up list drops any
+// row that is the same step the hero above it already carries (normalized
+// prefix match — hero titles are the task text plus trims/ellipses).
+export function dropHeroDuplicate(rows, na) {
+  if (!na || !na.title || !Array.isArray(rows)) return rows || [];
+  const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  const t = norm(na.title);
+  return rows.filter(r => {
+    const l = norm(r && r.label);
+    if (!l) return true;
+    const probe = l.slice(0, 32);
+    return !(probe && t.includes(probe));
+  });
 }
 
 function _selectEventNextActionWithBadge(event) {
@@ -2949,16 +2991,16 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
             is noise (an empty card contradicts "nothing needs you, go enjoy this"). Hide
             the section entirely when there's nothing upcoming; the planner keeps the
             empty-state as an operational signal. */}
-        {!dormant('nextUp') && (d.nextUp.length > 0 || !d.isHost) && (
+        {!dormant('nextUp') && (() => { const nextUpRows = dropHeroDuplicate(d.nextUp, selectEventNextAction(event)); return (nextUpRows.length > 0 || !d.isHost) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
-          {d.nextUp.length > 0 ? (
+          {nextUpRows.length > 0 ? (
             <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-              {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+              {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
         </div>
-        )}
+        ); })()}
 
         {/* Vendor Status */}
         {!dormant('vendors') && (!d.isHost || d.hasVendors) && (
@@ -3173,16 +3215,16 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
 
             {/* Next Up — hide the empty card for a host (Attention System: no empty cards
                 contradicting "nothing needs you"). Planner keeps the empty-state signal. */}
-            {!dormant('nextUp') && (d.nextUp.length > 0 || !isHost) && (
+            {!dormant('nextUp') && (() => { const nextUpRows = dropHeroDuplicate(d.nextUp, selectEventNextAction(event)); return (nextUpRows.length > 0 || !isHost) && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
-              {d.nextUp.length > 0 ? (
+              {nextUpRows.length > 0 ? (
                 <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-                  {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
+                  {nextUpRows.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
             </div>
-            )}
+            ); })()}
 
             {/* Vendors */}
             {!dormant('vendors') && (!d.isHost || d.hasVendors) && (
