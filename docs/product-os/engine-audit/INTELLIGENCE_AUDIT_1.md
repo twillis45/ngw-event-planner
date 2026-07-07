@@ -61,7 +61,10 @@ pricing drift) were fixed and test-locked in CTA-REPAIR-1, PC-2, and HQ-2.
 ## 10+ Candidates (required review)
 
 **Verdict today: NO engine has earned 10+.** Two are at "Yes" potential, six
-at "Possible." 10+ is proof-gated, not average-gated — three engines average
+at "Possible." Proof status for the two "Yes" engines: **Trial-ready** — see
+[VENDOR_BRIEF_10PLUS_PROOF_PLAN.md](VENDOR_BRIEF_10PLUS_PROOF_PLAN.md)
+(TENPLUS-1): trial script, evidence table, and pass/fail thresholds defined;
+no code was required. 10+ is proof-gated, not average-gated — three engines average
 9.0 and still do not qualify.
 
 | Engine | Why it may be 10+ | Evidence | Missing proof | What makes it truly 10+ | Verdict |
