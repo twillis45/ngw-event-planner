@@ -38,6 +38,7 @@ import { showsReplyTracking } from './lib/guestMode';
 import { eventContextNudge } from './lib/eventContextNudges';
 import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount } from './lib/crabPlan';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
+import { deriveCurrentLocationAssist, weatherCoordsFallback, eventLocationStatus } from './lib/locationAssist';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -37706,7 +37707,11 @@ function WeatherAlert({ event, onNavTo }) {
       try {
         // Geocode a clean "City, ST, US" (structured city/state → picked metro →
         // venue) so OpenWeather resolves it; free-text venues alone often don't.
-        const coords = await geocodeVenue(eventGeoQuery(event) || event.venue);
+        // LOCATION-ROBUSTNESS-2: if the event has NO location at all and the
+        // host explicitly approved their phone location as a weather fallback,
+        // use those coords — temporary, labeled, and retired the moment any
+        // event location text exists (weatherCoordsFallback enforces that).
+        const coords = await geocodeVenue(eventGeoQuery(event) || event.venue) || weatherCoordsFallback(event);
         if (!coords || cancelled) return;
         const risk = await getEventWeatherRisk(coords.lat, coords.lon, event.date);
         if (!cancelled) setWx(risk);
@@ -37783,6 +37788,11 @@ function WeatherAlert({ event, onNavTo }) {
           })()}
           {wx.sunset && <div style={{ fontSize: T.caption, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
+          {weatherCoordsFallback(event) && (
+            <div data-testid="weather-fallback-note" style={{ fontSize: T.caption, color: C.muted, marginTop: 2 }}>
+              Using your current location for weather until the event location is added.
+            </div>
+          )}
           {/* POP-1 rain-plan continuity: when the forecast is rain-kind, connect the
               warning to the ONE place the gap is resolved — event.rainPlan on the
               Where & when / Event Details venue section. With a saved plan we show
@@ -40201,6 +40211,69 @@ function ReadinessTrack({ event, onNavTo = null }) {
   );
 }
 
+// ── LocationAssistBlock — LOCATION-ROBUSTNESS-2 ─────────────────────────────
+// Permissioned, TAP-ONLY phone-location assist on the Where & when form.
+// Phone location never becomes the event location (no reverse geocoder — no
+// fake addresses): its only power is a clearly-labeled, host-approved weather
+// fallback while the event has no location at all. Manual add is always the
+// first option. Permission is requested inside the tap handler — never on
+// page load; nothing is tracked; coords never reach guest/vendor/public copy.
+function LocationAssistBlock({ event, upd }) {
+  const C = useT();
+  const T = useType();
+  const [state, setState] = useState('idle'); // idle | asking | granted | denied | unavailable
+  const status = eventLocationStatus(event);
+  if (status !== 'missing') return null;
+  const useForWeather = () => {
+    if (!('geolocation' in navigator)) { setState('unavailable'); return; }
+    setState('asking');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        // Only what the fallback needs — no precision beyond the forecast.
+        upd('weatherFallbackCoords', { lat: Math.round(pos.coords.latitude * 1000) / 1000, lon: Math.round(pos.coords.longitude * 1000) / 1000, capturedAt: new Date().toISOString() });
+        setState('granted');
+        try { feedbackCommit(); } catch {}
+      },
+      () => setState('denied'),
+      { timeout: 12000, maximumAge: 300000 }
+    );
+  };
+  const hasFallback = !!(event.weatherFallbackCoords && Number.isFinite(Number(event.weatherFallbackCoords.lat)));
+  return (
+    <div data-testid="location-assist" style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '11px 13px', marginBottom: 12 }}>
+      <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, lineHeight: 1.45 }}>No event location yet</div>
+      <div style={{ fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.5 }}>
+        Weather, directions, and parking notes all key off it. Add it above{hasFallback ? '' : ' — or use your phone just for the forecast in the meantime'}.
+      </div>
+      {!hasFallback && state !== 'denied' && state !== 'unavailable' && (
+        <button type="button" data-testid="use-current-location" onClick={useForWeather} disabled={state === 'asking'}
+          style={{ marginTop: 8, minHeight: 40, padding: '0 14px', borderRadius: 9, border: `1px solid ${C.border}`, background: 'transparent', color: C.text, fontSize: T.caption, fontWeight: FW.semibold, cursor: 'pointer', fontFamily: 'inherit', opacity: state === 'asking' ? 0.6 : 1 }}>
+          {state === 'asking' ? 'Asking your browser…' : 'Use current location for weather'}
+        </button>
+      )}
+      {!hasFallback && state !== 'denied' && state !== 'unavailable' && (
+        <div style={{ fontSize: T.micro, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>
+          Used only to help with this event’s forecast until the real location is added. Never shared with guests or vendors.
+        </div>
+      )}
+      {hasFallback && (
+        <div data-testid="fallback-active" style={{ fontSize: T.caption, color: C.text, marginTop: 6 }}>
+          ✓ Using your current location for weather — it clears itself once the event location is added.
+          <button type="button" onClick={() => upd('weatherFallbackCoords', null)} style={{ marginLeft: 10, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Stop using it</button>
+        </div>
+      )}
+      {state === 'denied' && (
+        <div data-testid="location-denied" style={{ fontSize: T.caption, color: C.muted, marginTop: 6, lineHeight: 1.5 }}>
+          No problem — location stays off. Add the venue or city above and everything works the same.
+        </div>
+      )}
+      {state === 'unavailable' && (
+        <div style={{ fontSize: T.caption, color: C.muted, marginTop: 6 }}>Location isn’t available on this device — add the venue or city above.</div>
+      )}
+    </div>
+  );
+}
+
 function LegacyTabHeader({ label, hint, onBack }) {
   const C = useT();
   const T = useType();
@@ -41195,6 +41268,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           // (the planner branch anchors its own Venue-name field below).
           return (
             <div id="event-venue" style={{ marginBottom: 12, scrollMarginTop: 16 }}>
+              <LocationAssistBlock event={event} upd={upd} />
               {/* Default to the host's house; standard address fields only when it's elsewhere.
                   City/state feed local pricing + the weather outlook. */}
               <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted, marginBottom: 8 }}>Where's it happening?</div>
@@ -41236,7 +41310,8 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
               )}
             </div>
           );
-        })() : (
+        })() : (<>
+          <LocationAssistBlock event={event} upd={upd} />
           <EDTRow isMobile={isMobile}>
             {/* id="event-venue": landing anchor for the venue-selection decision
                 blocker's "Handle it now" route (same id-wrapper pattern as
@@ -41246,7 +41321,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
             </div>
             <EDTField C={C} s={s} label="Address"      value={event.venueAddress} onChange={v => upd('venueAddress', v)} placeholder="123 Main St, City, ST 00000" />
           </EDTRow>
-        )}
+        </>)}
         {/* Sprint — "Find local help near you". HONEST: these are live maps
             searches anchored to the host's own city, not a curated list. We
             never invent a vendor name, address, or distance — every chip just
