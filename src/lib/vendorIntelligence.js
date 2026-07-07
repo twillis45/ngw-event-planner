@@ -56,18 +56,97 @@ function fieldEither(v, ...keys) {
 //   vendor.coiStatus     = 'received' | 'requested' | 'not_required' (else inferred)
 //   vendor.coiVerified   = bool  — a human confirmed venue-as-additional-insured + window
 //   vendor.coiExpiryDate = ISO   — coverage valid through
-const COI_REQUIRED_CATEGORIES = [
-  'venue', 'catering', 'bar', 'beverage', 'rental', 'furniture', 'staffing',
-  'transport', 'shuttle', 'pyro', 'firework', 'tent', 'lighting', 'av',
-  'production', 'stage', 'security', 'valet', 'generator',
-];
+// COI-LOGIC-1: the blunt COI_REQUIRED_CATEGORIES list is retired — requirement
+// now comes from vendorCoiRequirement() (service mode + venue requirement),
+// so a pickup order can never read "COI missing".
+// ─────────────────────────────────────────────────────────────────────────────
+// COI-LOGIC-1 — service-mode-aware insurance requirement classification.
+// COI is about ON-SITE OPERATIONAL RISK and VENUE REQUIREMENTS, not vendor
+// category alone. A restaurant the host picks food up from almost never needs
+// a COI; a tent installer almost always does. Uses EXISTING fields only
+// (category / name / notes text + event.houseRules/venueNotes + explicit
+// vendor.coiStatus) — when the data can't say, it says "check", never
+// "missing". This is host guidance, not legal or insurance advice.
+const COI_TEXT = (vendor) => [vendor.category, vendor.name, vendor.notes, vendor.serviceNotes]
+  .filter(Boolean).join(' · ').toLowerCase();
+const RE_PICKUP   = /pick[\s-]?up|carry[\s-]?out|take[\s-]?out|drop[\s-]?off|delivery only|deliver only|to[\s-]?go order/;
+const RE_HIGHRISK = /tent|stage|staging|bounce|inflatab|pyro|firework|generator|transport|shuttle|limo(?!nade)|valet|security|\bbar\b|bartend|alcohol|open flame|food truck|grill on[\s-]?site|on[\s-]?site cooking/;
+const RE_ONSITE   = /cater|venue|rental|furniture|staffing|lighting|\bav\b|production|install|full[\s-]?service|on[\s-]?site/;
+const RE_VENUEREQ = /\bcoi\b|certificate of insurance|proof of insurance|insurance (is )?required|requires? (a )?(coi|insurance)/;
+
+export function vendorCoiRequirement(vendor, event) {
+  if (!vendor) return null;
+  const t = COI_TEXT(vendor);
+  const venueText = [(event && event.houseRules), (event && event.venueNotes), (event && event.venueRules)]
+    .filter(Boolean).join(' · ').toLowerCase();
+  const venueRequires = RE_VENUEREQ.test(venueText);
+
+  // 1 · Explicit handling always wins — never re-litigate what the host recorded.
+  if (vendor.coiStatus === 'not_required') {
+    return { level: 'not_needed', reason: 'You marked insurance as not required for this vendor.', source: 'explicit',
+      hostCopy: 'Marked not required. Change it here if the venue asks for one.' };
+  }
+  if (vendor.coiStatus === 'received' || vendor.coiStatus === 'requested') {
+    return { level: 'required', reason: 'Insurance is already being tracked for this vendor.', source: 'explicit',
+      hostCopy: vendor.coiStatus === 'received' ? 'Certificate received — confirm it covers the event date.' : 'Certificate requested — waiting on the vendor.' };
+  }
+
+  // 2 · The venue's own words outrank everything derived.
+  if (venueRequires) {
+    return { level: 'required', reason: 'Your venue notes mention an insurance requirement.', source: 'venue',
+      hostCopy: 'Ask for a COI — your venue notes say insurance is required.' };
+  }
+
+  // 3 · Pickup / delivery / drop-off: the vendor never works on the property.
+  if (RE_PICKUP.test(t)) {
+    return { level: 'not_needed', reason: 'Pickup or drop-off only — this vendor is not working on-site.', source: 'service_mode',
+      hostCopy: 'Insurance probably not needed for pickup or drop-off. Ask only if the venue requires it.' };
+  }
+
+  // 4 · High operational risk on-site: alcohol service, installed structures,
+  //     transport, security, open flame.
+  if (RE_HIGHRISK.test(t)) {
+    return { level: 'required', reason: 'This vendor creates on-site operational risk (alcohol, installed equipment, transport, security, or open flame).', source: 'service_mode',
+      hostCopy: 'Ask for a COI. This vendor creates on-site risk, and most venues require a certificate for it.' };
+  }
+
+  // 5 · Working on-site (serving, setting up, installing) — recommended, not asserted.
+  if (RE_ONSITE.test(t)) {
+    return { level: 'recommended', reason: 'This vendor is working on-site (serving, setting up, or installing).', source: 'service_mode',
+      hostCopy: 'Ask about insurance. This vendor will be working on-site, and many venues want a certificate for that.' };
+  }
+
+  // 6 · Mixed-risk categories where the mode is unknown: check, never "missing".
+  if (/dj|\bband\b|music|entertain/.test(t)) {
+    return { level: 'ask_venue', reason: 'Sound equipment and cables sometimes trigger a venue COI requirement.', source: 'category',
+      hostCopy: 'Check insurance. Sound equipment and cables may trigger a venue COI requirement.' };
+  }
+  if (/photo|video/.test(t)) {
+    return { level: 'ask_venue', reason: 'A solo photographer may not need a COI, but some venues require one.', source: 'category',
+      hostCopy: 'Check venue rules. A solo photographer may not need a COI, but some venues require one.' };
+  }
+  if (/restaurant|bakery|baker|cake|dessert|floral|florist|flower|decor|food|beverage|drink/.test(t)) {
+    return { level: 'ask_venue', reason: 'Whether insurance matters depends on delivery vs. on-site work — the mode is not recorded.', source: 'category',
+      hostCopy: 'Check insurance need. It depends on whether this vendor is just delivering or working on-site.' };
+  }
+
+  // 7 · Nothing to go on — say so.
+  return { level: 'unknown', reason: 'Not enough information to classify this vendor\u2019s insurance need.', source: 'none',
+    hostCopy: 'Check insurance need. We need to know whether this vendor is just delivering or working on-site.' };
+}
+
 export function getVendorCOIState(vendor, event) {
   if (!vendor) return null;
-  const cat = (vendor.category || '').toLowerCase();
   const explicit = vendor.coiStatus;
-  const requiredByCat = COI_REQUIRED_CATEGORIES.some(c => cat.includes(c));
-  if (explicit === 'not_required' || (!explicit && !requiredByCat)) {
-    return { required: false, status: 'not_required', label: 'Not required', level: 'safe', dueInDays: null, verified: false, expiry: null };
+  // COI-LOGIC-1: requirement comes from the service-mode classifier, not the
+  // old blunt category list. Explicit host tracking still always wins.
+  const req = vendorCoiRequirement(vendor, event) || { level: 'unknown', hostCopy: '', reason: '', source: 'none' };
+  if (explicit === 'not_required' || (!explicit && req.level === 'not_needed')) {
+    return { required: false, status: 'not_required', label: req.source === 'service_mode' ? 'Probably not needed — pickup/drop-off' : 'Not required', level: 'safe', dueInDays: null, verified: false, expiry: null, need: 'not_needed', hostCopy: req.hostCopy, needReason: req.reason };
+  }
+  if (!explicit && (req.level === 'ask_venue' || req.level === 'unknown')) {
+    // Mode unknown: never "COI missing" — a calm check nudge that raises no alarms.
+    return { required: false, check: true, status: 'check', label: 'Check insurance need', level: 'safe', dueInDays: null, verified: false, expiry: null, need: req.level, hostCopy: req.hostCopy, needReason: req.reason };
   }
   const status = explicit === 'received' ? 'received' : explicit === 'requested' ? 'requested' : 'required';
   const eventDays = event && event.date ? daysFrom(event.date) : null;
@@ -94,11 +173,17 @@ export function getVendorCOIState(vendor, event) {
   if (status === 'requested') {
     level = overdue ? 'critical' : 'attention';
     label = overdue ? 'Overdue — chase it' : 'Requested — awaiting';
+  } else if (!explicit && req.level === 'recommended') {
+    // COI-LOGIC-1: "working on-site" is a recommendation, not a venue mandate —
+    // it never escalates to a critical dock-blocker on its own, and the label
+    // asks instead of asserting.
+    level = 'attention';
+    label = 'Ask about insurance';
   } else {
     level = (overdue || soon) ? 'critical' : 'attention';
     label = overdue ? 'Required — not requested' : 'Request it';
   }
-  return { required: true, status, label, level, dueInDays, verified: false, expiry };
+  return { required: true, status, label, level, dueInDays, verified: false, expiry, need: req.level, hostCopy: req.hostCopy, needReason: req.reason };
 }
 
 // Centralized COI next-action so the priority ladder and the false-done guard
@@ -116,7 +201,12 @@ export function coiNextAction(vendor, event, vname) {
     return { title: `Get an updated COI from ${vname}.`, consequence: `The certificate ${coi.label.toLowerCase()} — coverage must extend through the event date or the venue will turn them away.`, ctaCopy: 'Request current COI', sourceCategory: 'coi' };
   }
   // required, not yet requested
-  return { title: `Request a certificate of insurance from ${vname}.`, consequence: 'Most venues require a COI naming them as additional insured, due ~30 days out.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
+  if (coi.need === 'recommended') {
+    // COI-LOGIC-1: on-site work is a recommendation, not a venue mandate — ask,
+    // don't assert.
+    return { title: `Ask ${vname} about insurance.`, consequence: 'This vendor will be working on-site, and many venues want a certificate for that. Worth a quick ask.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
+  }
+  return { title: `Request a certificate of insurance from ${vname}.`, consequence: coi.needReason && /venue notes/.test(coi.needReason) ? 'Your venue notes say insurance is required — the certificate should name the venue and cover the event date.' : 'This vendor creates on-site risk, and most venues require a COI naming them as additional insured, due ~30 days out.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

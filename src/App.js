@@ -6,6 +6,7 @@ import { isVendorBriefApiConfigured, mintVendorBriefLink, fetchPublicVendorBrief
 import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
 import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from './lib/demoSeed';
+import { isPlausibleCityText } from './lib/cityText';
 import { normalizeEventTabRoute, resolveShellTab } from './lib/shellTabs';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
@@ -16117,7 +16118,13 @@ const METRO_GEO = {
 function eventGeoQuery(event, profile) {
   if (!event) return '';
   const st = String(event.state || event.venueState || '').trim().toUpperCase();
-  const city = String(event.venueCity || event.city || '').trim();
+  // CITY-LEAK-1: a polluted venueCity (a full venue string like
+  // "VFW Post 3150 — Alexandria, VA") would build a garbage geocode query and
+  // silently kill the weather outlook. Only use city fields that actually look
+  // like a city; otherwise fall through to address/venue below.
+  const city = [event.venueCity, event.city]
+    .map((x) => String(x || '').trim())
+    .find(isPlausibleCityText) || '';
   if (city && US_STATES.includes(st)) return `${city}, ${st}, US`;
   const addr = String(event.venueAddress || '').trim();
   if (addr) return addr;
@@ -16148,7 +16155,9 @@ function eventGeoQuery(event, profile) {
   try {
     const hc = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-city')) || '';
     const hs = (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-host-state')) || '';
-    if (hc.trim()) return hs.trim() ? `${hc.trim()}, ${hs.trim()}` : hc.trim();
+    // CITY-LEAK-1: a legacy-polluted remembered city (venue-shaped) is worse
+    // than no default — skip it rather than geocode garbage.
+    if (hc.trim() && isPlausibleCityText(hc)) return hs.trim() ? `${hc.trim()}, ${hs.trim()}` : hc.trim();
   } catch (e) { /* storage blocked */ }
   return '';
 }
@@ -40674,10 +40683,16 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   // no city yet, seed it from the last city they used.
   useEffect(() => {
     if (!detailsIsHost) return;
+    // CITY-LEAK-1: this seed exists for AT-HOME events only ("where's your
+    // place?"). It used to fire for venueKind==='venue' events too, silently
+    // stamping the remembered home city (or a legacy-polluted venue string)
+    // into another event's venueCity on tab open — auto-save persisted it and
+    // eventGeoQuery then geocoded garbage, killing the weather outlook.
+    if ((event.venueKind || 'home') !== 'home') return;
     try {
       if (!String(event.venueCity || '').trim()) {
         const c = localStorage.getItem('ngw-host-city');
-        if (c && c.trim()) upd('venueCity', c.trim());
+        if (c && c.trim() && isPlausibleCityText(c)) upd('venueCity', c.trim());
       }
       if (!String(event.venueState || '').trim()) {
         const st = localStorage.getItem('ngw-host-state');
@@ -40910,7 +40925,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         {detailsIsHost ? (() => {
           const atHome = (event.venueKind || 'home') === 'home';
           const tog = (on) => ({ flex: 1, minHeight: 44, padding: '0 14px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.secondary, fontWeight: FW.bold, border: `1.5px solid ${on ? C.accent : C.border}`, background: on ? `${C.accent}12` : 'transparent', color: on ? C.text : C.muted });
-          const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
+          // CITY-LEAK-1: the event field always takes what the host typed, but the
+          // cross-event memory only stores city-shaped values — a pasted venue or
+          // address must never become another event's default location.
+          const rememberCity = (v) => { upd('venueCity', v); try { if (v && v.trim() && isPlausibleCityText(v)) localStorage.setItem('ngw-host-city', v.trim()); } catch (e) {} };
           const rememberState = (v) => { upd('venueState', v); try { if (v && v.trim()) localStorage.setItem('ngw-host-state', v.trim()); } catch (e) {} };
           const composeAddr = (o) => { const n = { street: event.venueStreet, city: event.venueCity, state: event.venueState, zip: event.venueZip, ...o }; return [n.street, [n.city, n.state].filter(Boolean).join(', '), n.zip].filter(Boolean).join(' ').replace(/\s+,/g, ',').trim(); };
           // id="event-venue" (host branch): the venue-selection blocker's

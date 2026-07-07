@@ -52,6 +52,7 @@ import {
   getVendorPortfolioSummary,
   getActionableNextStep,
   getVendorCOIState,
+  vendorCoiRequirement,
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
@@ -2490,11 +2491,24 @@ function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) 
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
             <div style={{ fontSize: type.size['sm'], color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
+            {/* COI-LOGIC-1: service-mode-aware guidance — pickup/drop-off reads
+                "probably not needed", unknown reads "check", never "missing". */}
+            {(() => {
+              let g = null; try { g = vendorCoiRequirement(vendor, event); } catch { g = null; }
+              return g && g.hostCopy ? (
+                <div data-testid="coi-guidance" style={{ fontSize: type.size['sm'], color: P.textSecondary, marginTop: 3, lineHeight: 1.4 }}>{g.hostCopy}</div>
+              ) : null;
+            })()}
           </div>
           {(() => {
             // Honesty (board): "On file" green only when actually insured — a status
             // of "Not insured" / "Expired" must NOT read as present-and-good.
             const insOk = vendor.insuranceStatus && !/\b(not|no|none|missing|expired|lapsed)\b/i.test(vendor.insuranceStatus);
+            // COI-LOGIC-1: no fix-it prod when insurance is probably not needed
+            // (pickup/drop-off or marked not required) — the guidance line
+            // already says what to do if the venue asks.
+            let coiNeed = null; try { coiNeed = vendorCoiRequirement(vendor, event); } catch { coiNeed = null; }
+            const notNeeded = !!(coiNeed && coiNeed.level === 'not_needed');
             return (
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: space[3] }}>
                 <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.06em', textTransform: 'uppercase', color: insOk ? P.success : vendor.insuranceStatus ? P.danger : P.textTertiary }}>
@@ -2502,7 +2516,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) 
                 </span>
                 {/* ACTIONABLE-ROWS-1: not-OK insurance acts too — same flow
                     (the contract panel is the files fix-it home). */}
-                {!insOk && onAction && (
+                {!insOk && !notNeeded && onAction && (
                   <button type="button" data-testid="fix-coi-row" onClick={onAction}
                     style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.accent, background: 'none', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: `4px ${space[3]}px`, cursor: 'pointer', fontFamily: FF, whiteSpace: 'nowrap' }}>
                     Review insurance
@@ -4036,7 +4050,11 @@ export default function VendorPlanningWorkspace({
       <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.12em', textTransform: 'uppercase', color: P.steelBlue, fontFamily: FF }}>● Needs you</div>
       <div style={{ fontSize: type.size['xl'], fontWeight: type.weight.semibold, color: P.textPrimary, fontFamily: FF, marginTop: 4 }}>Get {coiTitleWho}’s insurance</div>
       <div style={{ fontSize: type.size['sm'], color: P.textSecondary, fontFamily: FF, marginTop: 4, lineHeight: 1.45 }}>
-        The venue won’t let {coiName} load in without a certificate. Ask them to send it over.
+        {/* COI-LOGIC-1: assert the load-in gate only when the venue or a
+            high-risk service mode supports it; on-site work is an ask. */}
+        {coiHero.coi.need === 'recommended'
+          ? `${coiName} will be working on-site — many venues want a certificate for that. Worth asking them to send one over.`
+          : `The venue won’t let ${coiName} load in without a certificate. Ask them to send it over.`}
       </div>
       <button type="button" onClick={() => handleSelect(coiHero.v, { kind: 'coi' })}
         style={{ ...BTN_PRIMARY, marginTop: 12, minHeight: 40 }}>
