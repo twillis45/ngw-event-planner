@@ -43110,7 +43110,12 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               single column with the rail (decisions/count prerequisite) leading. The planner ops
               console (EventPlanningTab) is SHED (Ruthless Host Lens). */}
           <div className="planv2-wrap">
-          <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
+          {/* ONE-TELLING (dead-CTA report 2026-07-07): while the tapped-step
+              focus card is live, the Plan hero YIELDS. Landing on this tab with
+              the hero repeating the exact step you just tapped read as "nothing
+              happened" — the focus card is the single telling until it's done
+              or set aside, then the hero returns. */}
+          {!openTaskId && <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />}
           {/* CTA-REPAIR-2: task/decision deep links land HERE in planv2 (which has
               no task list) — the named task renders as an actionable focus card. */}
           {openTaskId && <HostTaskFocusCard event={event} taskId={openTaskId} setEvent={setEvent} onClear={() => setOpenTaskId(null)} />}

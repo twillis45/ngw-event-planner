@@ -59,3 +59,10 @@ test('6 · ONE-TELLING: distinct rows survive; no hero → untouched', () => {
   expect(dropHeroDuplicate(rows, { title: 'Set the guest count.' })).toEqual(rows);
   expect(dropHeroDuplicate(rows, null)).toEqual(rows);
 });
+
+test('7 · ONE-TELLING landing: the Plan hero yields while the tapped-step focus card is live (source contract)', () => {
+  const fs = require('fs'); const path = require('path');
+  const app = fs.readFileSync(path.join(__dirname, '..', 'App.js'), 'utf8');
+  // the planv2 Plan tab renders PlanNowHero only when no task is focused
+  expect(app).toMatch(/\{!openTaskId && <PlanNowHero event=\{event\} profile=\{profile\} onNav=\{\(t, id, opts\) => go\(t, id, opts\)\} \/>\}/);
+});

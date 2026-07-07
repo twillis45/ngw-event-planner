@@ -17,3 +17,6 @@ What-to-settle default-collapse test, stored-task copy migration, "since last vi
 
 ## 5. Recommendation
 Accept.
+
+## Addendum — dead-CTA report repair (same day)
+Todd reported "Do this first →" dead on the NEXT UP caterer hero. Reproduced: the CTA routed correctly to the Plan tab and rendered the tapped-step focus card — but the Plan tab's OWN hero (PlanNowHero) opened the landing with the IDENTICAL step and CTA above it, so the tap read as a no-op (the exact perceptual-deadness class of the original "Make the call" bug). Fix: while a tapped-step focus card is live (`openTaskId`), the Plan hero yields — the landing IS the step; Mark it done / Set this aside clears the card and the hero returns with the next step (live-verified: done → "You're ahead of it… Next up: buy mumbo sauce"). Source-contract test added (phaseHero test 7). Doctrine addition: **a deep-link landing must visibly differ from the screen you tapped on — a landing that re-tells the same words is a dead CTA even when the route is correct.**
