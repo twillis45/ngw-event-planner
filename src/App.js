@@ -42813,7 +42813,10 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: isSidebarNav ? 0 : 76 }}>
+    <div /* MOBILE-LAYOUT-REPAIR-1 fullscreen addendum: the bottom tab bar is
+        70px PLUS env(safe-area-inset-bottom) on notched phones — a flat 76px
+        of content padding left the last ~28px hidden behind the nav there. */
+      style={{ minHeight: '100vh', background: C.bgGrad || C.bg, paddingBottom: isSidebarNav ? 0 : 'calc(76px + env(safe-area-inset-bottom))' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: `1px solid ${C.border}` }}>
         <button onClick={onBack} aria-label="Back" style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: T.title, color: C.muted }}>←</button>
         {/* Identity icon follows the host across every tab — MONOCHROME (board: shape

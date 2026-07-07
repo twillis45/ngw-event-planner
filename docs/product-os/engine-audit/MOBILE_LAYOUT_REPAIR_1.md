@@ -28,3 +28,8 @@ DEMO TOOLS overlay (opt-in dev tooling); persisted-event cosmetic copy (unrelate
 
 ## 21. Recommendation
 Accept. If the collision Todd saw on his device differs from this repro (e.g. specific to a page I couldn't reach), send a screenshot and I'll extend the matrix.
+
+## Addendum — app-shell fullscreen behavior audit (same day)
+Audited: html/body/#root heights, vh vs dvh, safe-area, body reset, manifest, Fullscreen API.
+Already correct (receipts): index.css kills UA body margin + dark first-paint; `#root { min-height: 100vh; min-height: 100dvh }` progressive dvh fallback with viewport-fit=cover in index.html; manifest `display: standalone` (PWA shell without forcing browser fullscreen); bottom tab bar + More sheet + DraftSheet footers already pad `env(safe-area-inset-bottom)`; NO Fullscreen API anywhere; overscroll doesn't flash white (body bg synced to theme).
+Fixed: host-shell content padding was a flat 76px while the fixed tab bar is 70px + safe-area inset — on notched phones the last ~28px of content hid behind the nav. Now `calc(76px + env(safe-area-inset-bottom))` (verified 76px computed in emulation where inset=0). The app fills the viewport by layout, respecting browser/OS chrome — acceptance met.
