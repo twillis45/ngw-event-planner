@@ -10357,6 +10357,10 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
   // Deep-link (#12): a CTA like "Buy ice" lands here targeting a specific line —
   // expand the spread, scroll to it, and flash a highlight so the host sees it.
   const [highlightId, setHighlightId] = useState(null);
+  // ROW-LEVEL CTA RULE (Todd, 2026-07-07): the dietary cue routes to the
+  // allergies & diets gate itself — the broadcast must OPEN the card so the
+  // host lands on the controls, not a collapsed header.
+  const dietFocus = useFocusFieldForceOpen([`fp-diet-${event.id}`]);
   // forceSpreadOpen mounts "The spread" card body regardless of the host's collapsed
   // choice (and pins it through the re-tap window) so the target row is in the DOM.
   const [forceSpreadOpen, setForceSpreadOpen] = useState(false);
@@ -10711,7 +10715,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         // Attention hierarchy: a quiet collapsed GATE, not a second loud card competing
         // with the Food-plan lead. Warn accent keeps it noticeable; the subtitle states
         // the ask so the host can act without expanding.
-        <CollapsibleCard id={`fp-diet-${event.id}`} isMobile={isMobile} defaultCollapsed done={plan.dietaryResolved} autoCollapseWhenDone={plan.dietaryResolved} style={subCard}
+        <CollapsibleCard id={`fp-diet-${event.id}`} isMobile={isMobile} defaultCollapsed done={plan.dietaryResolved} autoCollapseWhenDone={plan.dietaryResolved} style={subCard} forceOpen={dietFocus}
           title={<span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><Icon name="needs" size={16} stroke={1.9} /> Allergies &amp; diets</span>}
           subtitle="Note who needs what before you lock the menu — tap to set counts">
           {/* The ask + why drop to secondary. */}
@@ -40410,7 +40414,7 @@ function ReadinessTrack({ event, onNavTo = null }) {
           return true;
         })() && (
           <button type="button" data-testid="phase-progress-cue"
-            onClick={() => onNavTo(pp.nextCue.route.tab, pp.nextCue.route.vendorId || null, pp.nextCue.route.focusField ? { focusField: pp.nextCue.route.focusField } : undefined)}
+            onClick={() => { const r = pp.nextCue.route; onNavTo(r.tab, r.vendorId || null, (r.foodFocus || r.focusField) ? { foodFocus: r.foodFocus, focusField: r.focusField } : undefined); }}
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.accent, minWidth: 0, textAlign: 'left' }}>
             {pp.nextCue.label} →
           </button>
@@ -40448,7 +40452,7 @@ function ReturnNarrationLine({ event, onNavTo = null }) {
   return (
     <div data-testid="return-narration" style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '0 16px', marginTop: -6, marginBottom: 12, minWidth: 0 }}>
       {narration.route && onNavTo ? (
-        <button type="button" onClick={() => onNavTo(narration.route.tab, null, { focusField: narration.route.focusField })}
+        <button type="button" onClick={() => onNavTo(narration.route.tab, null, { foodFocus: narration.route.foodFocus, focusField: narration.route.focusField })}
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.caption, color: C.muted, lineHeight: 1.5, minWidth: 0 }}>
           {narration.line}
         </button>
@@ -42856,7 +42860,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
             onNav so the focusField broadcast opens the target card. */}
         {scope === 'plan' && sc.cta && sc.ctaRoute && (
           <button type="button" className="ce-press"
-            onClick={() => { if (typeof onNav === 'function') onNav(sc.ctaRoute.tab, undefined, sc.ctaRoute.focusField ? { focusField: sc.ctaRoute.focusField } : undefined); }}
+            onClick={() => { if (typeof onNav === 'function') onNav(sc.ctaRoute.tab, undefined, (sc.ctaRoute.foodFocus || sc.ctaRoute.focusField) ? { foodFocus: sc.ctaRoute.foodFocus, focusField: sc.ctaRoute.focusField } : undefined); }}
             style={{ marginTop: 14, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${steel}`, cursor: 'pointer', background: `${steel}1f`, color: steel }}>
             {sc.cta} →
           </button>
@@ -43167,7 +43171,7 @@ function DayBeforePlanCard({ event, onNav, isMobile = false }) {
   const go = (route) => {
     if (!route || typeof onNav !== 'function') return;
     const itemId = route.vendorId || route.taskId || undefined;
-    const opts = route.focusField ? { focusField: route.focusField } : undefined;
+    const opts = (route.foodFocus || route.focusField) ? { foodFocus: route.foodFocus, focusField: route.focusField } : undefined;
     onNav(route.tab, itemId, opts);
   };
   return (
@@ -43925,7 +43929,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
         const dest = na.route && na.route.tab ? na.route.tab : null;
         setAdvanceCue({ title: na.title, tab: dest });
         feedbackAdvance();
-        if (dest) handleTabChange(dest, null, na.route.focusField ? { focusField: na.route.focusField } : undefined);
+        if (dest) handleTabChange(dest, null, (na.route.foodFocus || na.route.focusField) ? { foodFocus: na.route.foodFocus, focusField: na.route.focusField } : undefined);
       } else {
         // Nothing left to route to — the foundation is complete. Affirm it, don't nav.
         setAdvanceCue({ title: 'You’re all set — the essentials are handled.', tab: null });

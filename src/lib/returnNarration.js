@@ -90,10 +90,22 @@ export function deriveReturnNarration(event, prevSnap, now = Date.now()) {
     return { shouldShow: true, line: 'Since last time: the guest count was set.', source: 'completed_step', route: { tab: 'Guests', focusField: 'guests-entry' } };
   }
   if (cur.foodLeft != null && prevSnap.foodLeft != null && cur.foodLeft < prevSnap.foodLeft) {
+    // ROW-LEVEL CTA RULE (Todd, 2026-07-07): items still to buy → land on the
+    // first unbought LINE (foodFocus); fully bought → the food-plan card stands.
+    let firstUnboughtId = null;
+    try {
+      const plan = playbookFoodPlan(event);
+      const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
+      const u = (plan && Array.isArray(plan.list)) ? plan.list.find(i => i && !i.skipped && !got[i.id]) : null;
+      firstUnboughtId = u ? u.id : null;
+    } catch { firstUnboughtId = null; }
     return { shouldShow: true, line: cur.foodLeft === 0
       ? 'Since last time: the shopping list is fully bought.'
       : `Since last time: food moved closer — ${cur.foodLeft} item${cur.foodLeft === 1 ? '' : 's'} left to buy.`,
-      source: 'snapshot_diff', route: { tab: 'Planning', focusField: 'food-plan' } };
+      source: 'snapshot_diff',
+      route: (cur.foodLeft > 0 && firstUnboughtId)
+        ? { tab: 'Planning', foodFocus: firstUnboughtId }
+        : { tab: 'Planning', focusField: 'food-plan' } };
   }
   if (cur.vendorGaps != null && prevSnap.vendorGaps != null && cur.vendorGaps < prevSnap.vendorGaps) {
     return { shouldShow: true, line: cur.vendorGaps === 0

@@ -66,7 +66,9 @@ test('guest note is a LINK, never embedded copy', () => {
 test('deep-link doctrine: every routed section carries an anchor or row id', () => {
   const plan = buildDayBeforePlan(ev({ timeline: [{ id: 't1', task: 'x', done: false }], vendors: [{ id: 'v1', name: 'X', status: 'Quoted' }] }));
   plan.sections.filter(s => s.route).forEach(s => {
-    expect(s.route.focusField || s.route.vendorId || s.route.taskId).toBeTruthy();
+    // ROW-LEVEL CTA RULE (2026-07-07): foodFocus is a first-class row id —
+    // the shopping/helper rows land on the exact food line, not a section top.
+    expect(s.route.focusField || s.route.vendorId || s.route.taskId || s.route.foodFocus).toBeTruthy();
   });
 });
 

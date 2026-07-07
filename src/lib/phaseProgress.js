@@ -72,14 +72,20 @@ function preProgress(ev, phase, daysOut) {
   // they are time-dependent (shopping urgency); decisions still count.
   let plan = null; try { plan = playbookFoodPlan(ev); } catch { plan = null; }
   const usesFood = !!(plan && Array.isArray(plan.list) && plan.list.length);
-  add('food', usesFood && hasCount, !!(plan && plan.dietaryResolved), 'Note dietary needs on the food plan', { tab: 'Planning', focusField: 'food-plan' }, 6);
+  // ROW-LEVEL CTA RULE (Todd, 2026-07-07): no cue lands on a tab, screen, or
+  // plan-section top — every route targets the exact row/field of the next
+  // action. Dietary → the allergies & diets gate card; shopping → the FIRST
+  // unbought line (foodFocus expands the spread + group and highlights it).
+  add('food', usesFood && hasCount, !!(plan && plan.dietaryResolved), 'Note dietary needs on the food plan', { tab: 'Planning', focusField: `fp-diet-${ev.id}` }, 6);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.
   if (!noDate && daysOut != null && daysOut <= 7 && usesFood && hasCount) {
     const got = (ev.foodGot && typeof ev.foodGot === 'object') ? ev.foodGot : {};
-    const unbought = plan.list.filter(i => i && !i.skipped && !got[i.id]).length;
-    add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`, { tab: 'Planning', focusField: 'food-plan' }, 6);
+    const unboughtItems = plan.list.filter(i => i && !i.skipped && !got[i.id]);
+    const unbought = unboughtItems.length;
+    add('shopping', true, unbought === 0, `Buy the remaining items · ${unbought} left`,
+      unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6);
   }
 
   // Vendors — only when the host uses vendors; first-undone routing.

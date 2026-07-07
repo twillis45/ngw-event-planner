@@ -75,7 +75,9 @@ export function planHeroCopy(event, priceFactor) {
       title: `Buy the remaining ${unbought.length} item${unbought.length === 1 ? '' : 's'}.`,
       line: `${dollars ? `About ${dollars} still to spend — ` : ''}everything else on the plan is settled.${open.length ? ` ${open.length} decision${open.length === 1 ? '' : 's'} will be ready closer in.` : ''}`,
       cta: 'Open the list',
-      route: { tab: 'Planning', focusField: 'food-plan' },
+      // ROW-LEVEL CTA RULE (Todd, 2026-07-07): land on the FIRST unbought line
+      // (foodFocus scrolls + highlights the row), never the food-plan section top.
+      route: { tab: 'Planning', foodFocus: unbought[0].id },
       numbers: { unbought: unbought.length, low, high },
     };
   }

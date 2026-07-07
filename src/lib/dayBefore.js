@@ -39,11 +39,13 @@ export function buildDayBeforePlan(event, now = new Date()) {
 
   // 2 · Still to get — unbought food lines + unchecked supplies (same single
   // sources the Plan tab checks off against).
-  let unboughtFood = 0; let unboughtSupplies = 0;
+  let unboughtFood = 0; let unboughtSupplies = 0; let firstUnboughtFoodId = null;
   try {
     const plan = playbookFoodPlan(ev);
     if (plan && Array.isArray(plan.list)) {
-      unboughtFood = plan.list.filter(i => i && !i.skipped && !((ev.foodGot || {})[i.id])).length;
+      const unboughtList = plan.list.filter(i => i && !i.skipped && !((ev.foodGot || {})[i.id]));
+      unboughtFood = unboughtList.length;
+      firstUnboughtFoodId = unboughtList.length ? unboughtList[0].id : null;
     }
   } catch (e) { /* no playbook — honest zero */ }
   try {
@@ -90,7 +92,13 @@ export function buildDayBeforePlan(event, now = new Date()) {
       detail: stillToGet
         ? `${stillToGet} item${stillToGet === 1 ? '' : 's'} not checked off — one store run covers it.`
         : 'Everything’s bought or in hand.',
-      route: stillToGet ? { tab: 'Planning', focusField: 'food-plan' } : null,
+      // ROW-LEVEL CTA RULE (Todd, 2026-07-07): land on the first unbought food
+      // LINE (foodFocus); supplies-only remainder lands on the supplies card.
+      route: stillToGet
+        ? (firstUnboughtFoodId
+          ? { tab: 'Planning', foodFocus: firstUnboughtFoodId }
+          : { tab: 'Planning', focusField: `cap-hero-${ev.id}` })
+        : null,
       cta: stillToGet ? 'Open the list' : null,
     },
     ...(vendors.length ? [{
@@ -128,7 +136,9 @@ export function buildDayBeforePlan(event, now = new Date()) {
         detail: first
           ? `Confirm ${first.helperName} is still bringing ${first.label}${unconfirmed.length > 1 ? ` — and ${unconfirmed.length - 1} more to confirm` : ''}.`
           : 'Everyone who’s bringing something has confirmed — mark items brought as they land.',
-        route: first ? first.route : { tab: 'Planning', focusField: 'food-plan' },
+        // ROW-LEVEL CTA RULE: all-confirmed still lands on the first helper's
+        // own row (mark-it-brought lives there), never the food-plan section top.
+        route: first ? first.route : ((resp[0] && resp[0].route) || { tab: 'Planning', focusField: 'food-plan' }),
         cta: first ? `Confirm with ${first.helperName}` : 'See the list',
       }];
     })()),
