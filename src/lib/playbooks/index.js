@@ -1507,6 +1507,12 @@ export function playbookDecisionBoard(event, asOf) {
     return false;
   };
 
+  // The destination's own choice list (FoodPlan "Your choices") — the ONLY ids
+  // a foodFocus route may name (same-source rule).
+  const _foodChoiceIds = (() => {
+    try { const fp = playbookFoodPlan(event); return new Set(((fp && fp.choices) || []).map((c) => c && c.id).filter(Boolean)); }
+    catch { return new Set(); }
+  })();
   for (const d of decisions) {
     if (!d || !d.label) continue;
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
@@ -1536,7 +1542,13 @@ export function playbookDecisionBoard(event, asOf) {
         : { eventId: event.id, tab: 'Vendors', focusField: 'vendor-add' };
     };
     const _hay = `${d.id || ''} ${d.label || ''} ${_blocks}`.toLowerCase();
-    const route = (Array.isArray(d.options) && d.options.length > 0) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
+    // CTA SOURCE-OF-TRUTH (50-scenario audit, 2026-07-07): a foodFocus route is
+    // truthful ONLY when the food plan's "Your choices" card actually renders
+    // this decision — plan.choices is the destination's own list. Optioned
+    // decisions outside it (theme, shade, registry, games…) settle INLINE on
+    // the board row itself, so they carry no route (the row is the consumer).
+    const _isFoodChoice = _foodChoiceIds.has(d.id);
+    const route = (Array.isArray(d.options) && d.options.length > 0 && _isFoodChoice) ? { eventId: event.id, tab: 'Planning', foodFocus: d.id }
       : isDietaryDecision(d) ? { eventId: event.id, tab: 'Planning', focusField: `fp-diet-${event.id}` }
       : /vendor|team|hire|staff/.test(_blocks) ? _firstUndoneVendorRoute()
       // Free-form menu/food decisions (no authored options) resolve on the food

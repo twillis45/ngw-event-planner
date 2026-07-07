@@ -1,7 +1,7 @@
 // playbookDecisionBoard — the host "Decisions" reader (Figma 1692:3). Pure, derived
 // entirely from existing engine state (guestCountResolved / attendanceBand /
 // dietaryResolved / foundation facts / authored decisions[]). No fabricated counts.
-import { playbookDecisionBoard, playbookDecisionOptions } from '../index';
+import { playbookFoodPlan, playbookDecisionOptions, playbookDecisionBoard } from '../index';
 
 const roster = (yes, no, pending) => ([
   ...Array.from({ length: yes }, (_, i) => ({ name: `Y${i}`, rsvp: 'Yes' })),
@@ -105,20 +105,27 @@ describe('decision status derivation', () => {
     expect(menu.because).not.toMatch(/the format/);
   });
 
-  test('every open decision is actionable — it carries a route to where it settles', () => {
-    const b = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-02-01', guests: roster(22, 6, 12) }, '2026-01-01');
+  test('every open decision is actionable — a TRUTHFUL route, or inline settle on the row itself', () => {
+    // CTA SOURCE-OF-TRUTH (50-scenario audit, 2026-07-07): a foodFocus route may
+    // only name a decision the food plan's "Your choices" card actually renders.
+    // Optioned decisions outside that list (seating, theme, shade…) settle
+    // INLINE on the board row (playbookDecisionOptions) — routeless by design,
+    // never a lying deep link.
+    const ev = { id: 'e', type: 'Dinner Party', date: '2026-02-01', guests: roster(22, 6, 12) };
+    const b = playbookDecisionBoard(ev, '2026-01-01');
     const find = (id) => b.open.find((r) => r.id === id);
-    // A food/menu choice (format blocks the menu) settles inline on the Plan tab's "Your choices".
-    expect(find('format').route).toMatchObject({ tab: 'Planning', foodFocus: 'format' });
-    // Non-menu decisions (seating layout, hiring help) are ALSO actionable now — they route to where the
-    // host settles them (no dead, chevron-less prompt). The board re-derives from the plan on every change,
-    // so updating that field/row moves the row OPEN → LOCKED on its own.
+    const fp = playbookFoodPlan(ev);
+    const foodChoiceIds = new Set(((fp && fp.choices) || []).map((c) => c && c.id));
+    // Every foodFocus route names a choice the destination renders — no exceptions.
+    b.open.concat(b.locked || []).forEach((r) => {
+      if (r.route && r.route.foodFocus) expect(foodChoiceIds.has(r.route.foodFocus)).toBe(true);
+    });
+    // Every open row is still actionable: a route, or inline options on the row.
+    b.open.forEach((r) => {
+      const inline = !!playbookDecisionOptions(ev, r.id);
+      expect(!!r.route || inline).toBe(true);
+    });
     expect(find('seating')).toBeTruthy();
-    expect(find('seating').route).toBeTruthy();
-    expect(find('help')).toBeTruthy();
-    expect(find('help').route).toBeTruthy();
-    // Invariant: no open row is ever routeless (would render as a dead prompt).
-    expect(b.open.every((r) => r.route)).toBe(true);
   });
 
   test('open rows are ordered overdue → ready → waiting', () => {

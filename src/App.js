@@ -42772,7 +42772,11 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     // pick writes through the SAME single-source path (event.foodChoices via onSetChoice)
     // — no route to the FoodPlan mirror, no parallel choice store. Foundation routes
     // (date/venue/headcount → Event Details/Guests) KEEP their existing route-away.
-    const menuOpts = (r.route && r.route.foodFocus && typeof onSetChoice === 'function')
+    // CTA SOURCE-OF-TRUTH (2026-07-07): inline-settle is keyed on the DECISION
+    // having options, not on a foodFocus route — non-food optioned decisions
+    // (theme, shade, registry…) now settle right here on the row instead of
+    // carrying a route the food plan can't honor.
+    const menuOpts = (typeof onSetChoice === 'function')
       ? playbookDecisionOptions(event, r.id) : null;
     const inlineable = !!(menuOpts && menuOpts.options.length);
     const actionable = !!r.route;
