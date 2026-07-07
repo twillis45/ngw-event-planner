@@ -45,7 +45,7 @@ describe('eventPlan — shape & progress', () => {
       vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [],
       vendorReadinessRollup: {
         status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
-        ctaLabel: 'Add vendor', target: { tab: 'Vendors' }, reason: null,
+        ctaLabel: 'Add vendor', target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null,
         counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
       },
       planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },

@@ -749,7 +749,9 @@ export function topPlaybookDecision(event, asOf) {
       consequence: `Food, drinks, ice, and rentals all scale from headcount. ${pendingMsg}`,
       level: 'attention',
       primaryCta: gc.reason === 'pending-rsvps' ? 'Chase RSVPs' : 'Set guest count',
-      primaryRoute: { eventId: event.id, tab: 'Guests' },
+      // Deep-link doctrine: the count decision RESOLVES at the count entry/lock
+      // hero (guests-entry anchor), never at the tab top.
+      primaryRoute: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
       eventId: event.id,
       owner: 'host',
       provenance: { source: `${playbook.type} playbook`, rule: 'decision-first: count before quantity' },
@@ -1463,10 +1465,10 @@ export function playbookDecisionBoard(event, asOf) {
       planning: band.planning,
       label: attendanceBandLabel(band),
       because: `${band.confirmed} confirmed · ${out} still out of ${band.invited} invited`,
-      route: { eventId: event.id, tab: 'Guests' },
+      route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
     };
   } else {
-    open.push({ id: 'headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
+    open.push({ id: 'headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' } });
   }
 
   // ── Playbook decisions ─────────────────────────────────────────────────────

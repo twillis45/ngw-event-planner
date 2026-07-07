@@ -941,6 +941,7 @@ function VendorList({ vendors, selected, onSelect, event, allEvents, isMobile, o
           {onAdd && (
             <button
               data-testid="add-vendor-btn"
+              id="vendor-add"
               aria-label="Add vendor"
               onClick={onAdd}
               style={{ ...BTN_PRIMARY, padding: isMobile ? '10px 16px' : '8px 16px', minHeight: isMobile ? 44 : 36, flexShrink: 0 }}

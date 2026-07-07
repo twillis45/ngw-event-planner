@@ -116,3 +116,38 @@ describe('Command health rows lead with meaning, not estimate labels', () => {
     expect(all).toMatch(/No guests yet|Set how many|guests-entry/);
   });
 });
+
+// ── Deep-link doctrine: a CTA never leaves the user guessing — it lands on the
+// field or row where the action resolves, or it is a whole-surface action.
+import { topPlaybookDecision, playbookDecisionBoard } from '../playbooks';
+import { buildVendorReadinessRollup } from '../workstreams';
+
+describe('CTAs land on the exact field/row, never a bare tab', () => {
+  const soonHost = (over = {}) => ({
+    id: 'e-dl', name: 'Crab Feast DL', type: 'Crab Feast', recordKind: 'host_event',
+    date: future(5), guests: [], vendors: [], budget: [], timeline: [], ...over,
+  });
+
+  test('guest-count decision lands ON the count entry', () => {
+    const dec = topPlaybookDecision(soonHost());
+    if (dec && dec.decision === 'guestCount') {
+      expect(dec.primaryRoute.focusField).toBe('guests-entry');
+    }
+  });
+
+  test('decision-board headcount rows carry the guests-entry anchor', () => {
+    const board = playbookDecisionBoard(soonHost());
+    const rows = [...(board?.open || []), ...(board?.locked || [])].filter(r => r.id === 'headcount');
+    rows.filter(r => (board?.open || []).includes(r)).forEach(r => {
+      expect(r.route.focusField).toBe('guests-entry');
+    });
+    if (board?.headcount) expect(board.headcount.route.focusField).toBe('guests-entry');
+  });
+
+  test('Add-vendor rollup CTA lands ON the add button', () => {
+    const roll = buildVendorReadinessRollup(soonHost());
+    if (roll && roll.ctaLabel === 'Add vendor') {
+      expect(roll.target.focusField).toBe('vendor-add');
+    }
+  });
+});

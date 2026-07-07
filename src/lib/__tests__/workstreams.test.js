@@ -311,7 +311,7 @@ describe('POP-1 Phase 1 (exact first slice): buildVendorReadinessRollup / eventP
     const rollup = buildVendorReadinessRollup(event);
     expect(rollup).toEqual({
       status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
-      ctaLabel: 'Add vendor', target: { tab: 'Vendors' }, reason: null,
+      ctaLabel: 'Add vendor', target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null,
       counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
     });
   });

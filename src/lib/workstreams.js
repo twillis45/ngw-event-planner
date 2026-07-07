@@ -170,7 +170,8 @@ export function buildVendorReadinessRollup(event, ctx = null, vendors = null, pl
     return {
       status: 'not_started', label: 'No vendors added yet',
       nextAction: 'Add your first vendor.', ctaLabel: 'Add vendor',
-      target: { tab: 'Vendors' }, reason: null, counts,
+      // Deep-link doctrine: 'Add vendor' lands ON the add button, not the tab top.
+      target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null, counts,
     };
   }
   if (blockedWorkstream) {
