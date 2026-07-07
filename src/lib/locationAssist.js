@@ -18,12 +18,16 @@
 // the browser geolocation call itself lives in the UI, inside a tap handler.
 
 const has = (v) => !!String(v || '').trim();
+// CITY-LEAK guard: a city field counts as a location only when it looks like
+// a city (the pollution incident left venue strings in city fields).
+let _isPlausibleCity = (v) => has(v);
+try { _isPlausibleCity = require('./cityText').isPlausibleCityText; } catch { /* keep permissive */ }
 
 export function eventLocationStatus(event) {
   const ev = event || {};
   if (has(ev.venueAddress)) return 'full_address';
   if (has(ev.venue)) return 'venue_only';
-  if (has(ev.venueCity) || has(ev.city)) return 'city_only';
+  if ((has(ev.venueCity) && _isPlausibleCity(ev.venueCity)) || (has(ev.city) && _isPlausibleCity(ev.city))) return 'city_only';
   return 'missing';
 }
 

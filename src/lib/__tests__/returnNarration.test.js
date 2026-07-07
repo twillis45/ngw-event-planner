@@ -90,11 +90,20 @@ test('priority: phase change outranks everything else', () => {
   expect(r.source).toBe('phase_change');
 });
 
-test('contradiction guard: a city-only event never narrates "location added", and the noun guard silences cue conflicts', () => {
-  // city set but no venue: marker stays false — matches the phase essential
-  const prev = buildReturnSnapshot({ id: 'e', type: 'bbq', date: '2099-08-01', guestCount: 20, venue: '', city: '' }, NOW);
-  const r = deriveReturnNarration({ id: 'e', type: 'bbq', date: '2099-08-01', guestCount: 20, venue: '', city: 'Bowie' }, prev, LATER);
-  expect(r.shouldShow).toBe(false);
-  // noun guard: cue "Add the location" silences "the event location was added"
+test('contradiction guard: narration and the phase cue share ONE location reader — they can never disagree', () => {
+  // Adding a city flips the SHARED reader (eventLocationStatus), so the
+  // narration fires AND the phase essential is simultaneously handled — the
+  // "Add the location" cue is gone in the same world. Consistency by
+  // construction (Todd's at-home report: city on file must count as located).
+  const before = { id: 'e', type: 'bbq', date: '2099-08-01', guestCount: 20, venue: '', city: '' };
+  const after = { ...before, city: 'Bowie' };
+  const prev = buildReturnSnapshot(before, NOW);
+  const r = deriveReturnNarration(after, prev, LATER);
+  expect(r.shouldShow).toBe(true);
+  expect(r.line).toBe('Since last time: the event location was added.');
+  const pp = require('../phaseProgress').deriveEventPhaseProgress(after, new Date('2099-07-01'));
+  const locItem = 'location';
+  expect(pp.nextCue == null || pp.nextCue.id !== locItem).toBe(true); // no contradicting cue
+  // noun guard still silences any residual overlap
   expect(narrationDuplicatesTelling('Since last time: the event location was added.', null, 'Add the location')).toBe(true);
 });

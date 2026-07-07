@@ -18,6 +18,7 @@
 import { deriveEventPhaseProgress } from './phaseProgress';
 import { rainPlanStatus } from './weather';
 import { playbookFoodPlan } from './playbooks';
+import { eventLocationStatus } from './locationAssist';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const has = (v) => !!String(v || '').trim();
@@ -40,9 +41,9 @@ export function buildReturnSnapshot(event, now = Date.now()) {
   return {
     seenAt: now,
     phase,
-    // matches phaseProgress's 'location' essential (venue text) — a city alone
-    // is city_only, and narrating it as 'added' would contradict the header cue
-    location: has(ev.venue) || has(ev.venueAddress),
+    // the ONE shared location reader — phaseProgress, the weather source, and
+    // this marker can never disagree again (eventLocationStatus !== 'missing')
+    location: eventLocationStatus(ev) !== 'missing',
     parking: has(ev.parking),
     rain: (() => { try { return !!rainPlanStatus(ev).hasPlan; } catch { return false; } })(),
     countSet: num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0,

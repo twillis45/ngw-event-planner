@@ -22,6 +22,7 @@
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos } from './playbooks';
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
+import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -57,7 +58,12 @@ function preProgress(ev, phase, daysOut) {
 
   // Always-applicable foundations.
   add('date', true, !!String(ev.date || '').trim(), 'Add the event date to time the plan', { tab: 'Event Details', focusField: 'event-date' }, 1);
-  add('location', true, !!String(ev.venue || '').trim(), 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
+  // Location essential uses the ONE shared reader (eventLocationStatus) — an
+  // at-home host with their city on file has a location (weather and shopping
+  // already run off it); only a truly missing location is a readiness gap.
+  // (Todd's report: home-hosted event was nagged 'Add the location' while the
+  // app was simultaneously using Atlanta, GA for its own features.)
+  add('location', true, eventLocationStatus(ev) !== 'missing', 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   const hasCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0 || gc.resolved;
   add('headcount', true, hasCount, 'Set the guest count', { tab: 'Guests', focusField: 'guests-entry' }, 8);
