@@ -10530,10 +10530,12 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
         <span style={{ minWidth: 0, flex: 1 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: (fpHasCount && plan.dietaryResolved && hasChoices) ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />Your menu</span>
-          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.45 }}>{menuOpen ? 'Tap to close' : (fpHasCount ? (!isMobile ? `food + drinks for ${plan.guests}` : `${money(plan.foodLow, plan.foodHigh)} · food + drinks for ${plan.guests}`) : 'Food + drinks — tap to plan')}</span>
+          {/* Collapsed hero copy (Todd, 2026-07-07): the menu is the WHAT card —
+              its line says who it feeds and whether dietary is noted. The $
+              belongs to The shopping alone (the same range on two cards read
+              as duplication). */}
+          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.45 }}>{menuOpen ? 'Tap to close' : (fpHasCount ? `Food + drinks for ${plan.guests} · ${plan.dietaryResolved ? 'dietary noted' : 'dietary to note'}` : 'Food + drinks — tap to plan')}</span>
         </span>
-        {/* Tablet/desktop/wide: the estimate rides on the RIGHT of the panel (parity with the Budget cards). */}
-        {!isMobile && !menuOpen && fpHasCount && <span style={{ flexShrink: 0, fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(plan.foodLow, plan.foodHigh)}</span>}
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: menuOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
       {menuOpen && (<AccordionProvider>
@@ -10894,7 +10896,24 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         style={{ ...card, width: '100%', textAlign: 'left', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, gridColumn: isWide ? '1 / -1' : undefined }}>
         <span style={{ minWidth: 0, flex: 1 }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.section, fontWeight: FW.bold, color: C.text, lineHeight: 1.3, letterSpacing: '-0.01em' }}><span aria-hidden style={{ width: 7, height: 7, borderRadius: 99, background: spreadComplete ? (C.success || C.accent) : C.muted, flexShrink: 0 }} />The shopping</span>
-          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{shoppingOpen ? 'Tap to close' : `${plan.itemCount} item${plan.itemCount === 1 ? '' : 's'} to buy${(isMobile && fpHasCount) ? ` · ${money(plan.foodLow, plan.foodHigh)}` : ''}`}</span>
+          {/* Collapsed hero copy (Todd, 2026-07-07): actuals first, Seating &
+              supplies grammar — bought count, $ spent, what's left — computed
+              from the SAME rendered list the body checks off against. */}
+          <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 5, lineHeight: 1.45 }}>{shoppingOpen ? 'Tap to close' : (() => {
+            if (!fpHasCount) return `${plan.itemCount} item${plan.itemCount === 1 ? '' : 's'} · add a count to price`;
+            const got = (event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
+            let spent = 0, remLow = 0, remHigh = 0, boughtN = 0, totalN = 0;
+            for (const i of (plan.list || [])) {
+              if (!i || i.skipped) continue;
+              totalN++;
+              const lo = Number(i.locked != null ? i.locked : i.low) || 0;
+              const hi = Number(i.locked != null ? i.locked : i.high) || 0;
+              if (got[i.id]) { boughtN++; spent += (lo + hi) / 2; } else { remLow += lo; remHigh += hi; }
+            }
+            if (boughtN === 0) return `${totalN} item${totalN === 1 ? '' : 's'} to buy · ${money(remLow, remHigh)}`;
+            if (boughtN === totalN) return `All ${totalN} bought · $${Math.round(spent).toLocaleString()} spent`;
+            return `${boughtN} of ${totalN} bought · $${Math.round(spent).toLocaleString()} spent · ${money(remLow, remHigh)} left`;
+          })()}</span>
         </span>
         {/* Tablet/desktop/wide: the estimate rides on the RIGHT of the panel (parity with the Budget cards). */}
         {!isMobile && !shoppingOpen && fpHasCount && <span style={{ flexShrink: 0, fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{money(plan.foodLow, plan.foodHigh)}</span>}
@@ -41221,6 +41240,10 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   // W&W audit: the Location check panel compresses to ONE row — the status
   // report must not out-shout the inputs it describes.
   const [locCheckOpen, setLocCheckOpen] = useState(false);
+  // Pill-density fix (Todd, 2026-07-07): the attribute chips and the local-help
+  // chips each fold behind ONE quiet row — 14 pills at once buried the address.
+  const [chipsOpen, setChipsOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const upd = (key, val) => setEvent(e => ({ ...e, [key]: val }));
   const sectionPad = isMobile ? '14px 14px 18px' : '20px 28px 24px';
   // Condensing doctrine: settled sections start collapsed; a deep link into a
@@ -41229,7 +41252,13 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const venueFocus  = useFocusFieldForceOpen(EDT_VENUE_IDS);
   const dayofFocus  = useFocusFieldForceOpen(EDT_DAYOF_IDS);
   const basicsDone  = !!(String(event.name || '').trim() && String(event.type || '').trim() && String(event.date || '').trim());
-  const locDone     = (() => { try { return eventLocationStatus(event) !== 'missing'; } catch { return false; } })();
+  // Dot honesty (Todd, 2026-07-07): the green dot means THIS CARD's work is
+  // complete. At home, a plausible city is complete (weather/pricing run off
+  // it). Somewhere else, a bare place name is NOT — guests need the street
+  // address (the Location check inside says so; the dot must agree with it).
+  // The phase-readiness essential keeps its own looser bar (location known).
+  const _locStatus  = (() => { try { return eventLocationStatus(event); } catch { return 'missing'; } })();
+  const locDone     = (event.venueKind || 'home') === 'home' ? _locStatus !== 'missing' : _locStatus === 'full_address';
   const dayofFilled = ['parkingNotes', 'loadInNotes', 'houseRules', 'rainPlan', 'venueContact'].filter(k => String(event[k] || '').trim()).length;
   // Location default (#55): the app remembers the host's city across events so location
   // questions (pricing, weather, stores) have a sensible default. If this host event has
@@ -41353,7 +41382,9 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           title={detailsIsHost ? 'Where it’s happening' : 'Venue'}
           subtitle={locDone
             ? [event.venue, event.venueAddress || [event.venueCity, event.venueState].filter(Boolean).join(', ')].filter(Boolean).join(' · ') || 'Location on file'
-            : 'Add the place so weather, pricing, and directions can work'}
+            : _locStatus === 'venue_only'
+              ? `${String(event.venue || '').trim()} — add the street address for guests`
+              : 'Add the place so weather, pricing, and directions can work'}
           done={locDone} defaultCollapsed={locDone} forceOpen={venueFocus}>
         {/* LOCATION-VENUE-1 — Place Intelligence Card ("Location check").
             Replaces the old text-only Missing-logistics list: same spot, same
@@ -41590,12 +41621,31 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         {/* Host attributes — AFTER the address (W&W audit: 10 chips before the
             location fields buried the card's actual job). Same store, same
             kind-aware option list. */}
-        {detailsIsHost && (
-          <div style={{ marginBottom: 14 }}>
-            <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 6 }}>What the place has (optional)</div>
-            <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS_BY_KIND[event.venueKind || 'home'] || VENUE_TAGS} />
-          </div>
-        )}
+        {detailsIsHost && (() => {
+          const picked = Array.isArray(event.venueTags) ? event.venueTags.filter(Boolean) : [];
+          if (!chipsOpen) {
+            return (
+              <button type="button" data-testid="venue-chips-row" onClick={() => setChipsOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: 10, borderRadius: 8, border: `1px dashed ${C.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>What the place has</span>
+                <span style={{ fontSize: T.secondary, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {picked.length ? picked.join(' · ') : 'optional'}
+                </span>
+                <span aria-hidden style={{ fontSize: T.secondary, color: C.muted, flexShrink: 0 }}>{picked.length ? 'Edit' : '+ Add'}</span>
+              </button>
+            );
+          }
+          return (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
+                <div style={{ fontSize: T.caption, color: C.muted }}>What the place has (optional)</div>
+                <button type="button" onClick={() => setChipsOpen(false)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Done</button>
+              </div>
+              <TagChips value={event.venueTags} onChange={(t) => upd('venueTags', t)} options={VENUE_TAGS_BY_KIND[event.venueKind || 'home'] || VENUE_TAGS} />
+            </div>
+          );
+        })()}
         {/* Sprint — "Find local help near you". HONEST: these are live maps
             searches anchored to the host's own city, not a curated list. We
             never invent a vendor name, address, or distance — every chip just
@@ -41603,9 +41653,25 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
         {detailsIsHost && (() => {
           const vendorAnchor = eventGeoQuery(event); // single source — same location the shopping list/weather use
           const categories = ['Caterer', 'Party rentals', 'Bakery', 'Photographer', 'Bartender', 'Cleaning service'];
+          if (!helpOpen) {
+            return (
+              <button type="button" data-testid="local-help-row" onClick={() => setHelpOpen(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left', padding: '10px 12px', marginBottom: 14, borderRadius: 8, border: `1px solid ${C.border}`, background: 'transparent', cursor: 'pointer', fontFamily: 'inherit' }}>
+                <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text }}>Find local help</span>
+                <span style={{ fontSize: T.secondary, color: C.muted, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {vendorAnchor ? `caterers, rentals, more near ${vendorAnchor}` : 'add your city first'}
+                </span>
+                {vendorAnchor && <span aria-hidden style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.accent, flexShrink: 0 }}>→</span>}
+              </button>
+            );
+          }
           return (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text, marginBottom: 4 }}>Find local help near you</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                <div style={{ fontSize: T.secondary, fontWeight: FW.bold, color: C.text }}>Find local help near you</div>
+                <button type="button" onClick={() => setHelpOpen(false)}
+                  style={{ marginLeft: 'auto', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Collapse</button>
+              </div>
               {vendorAnchor ? (
                 <>
                   <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>

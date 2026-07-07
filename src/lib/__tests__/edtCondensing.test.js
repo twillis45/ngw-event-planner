@@ -72,3 +72,20 @@ describe('Where & when condensing', () => {
     expect(fn).toContain("document.visibilityState === 'hidden'");
   });
 });
+
+// ── Density + dot-honesty additions (Todd, 2026-07-07 second pass) ────────────
+describe('Where it\'s happening — density and dot honesty', () => {
+  test('attribute chips and local help fold behind one-row disclosures', () => {
+    expect(edt).toContain('data-testid="venue-chips-row"');
+    expect(edt).toContain('data-testid="local-help-row"');
+    expect(edt).toContain('data-testid="loc-check-row"');
+  });
+
+  test('venue dot requires the full address for somewhere-else events', () => {
+    expect(edt).toMatch(/locDone\s*=\s*\(event\.venueKind \|\| 'home'\) === 'home' \? _locStatus !== 'missing' : _locStatus === 'full_address'/);
+  });
+
+  test('venue-only subtitle asks for the street address instead of claiming done', () => {
+    expect(edt).toContain('add the street address for guests');
+  });
+});
