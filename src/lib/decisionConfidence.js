@@ -45,7 +45,7 @@ export const DEFERRED_DECISIONS = ['budgetApproval', 'venue', 'menu'];
 // Exported for tests/inventory. `operator` activates when organization→operator
 // lands (Sprint 57I / PR #52); host + planner are live today.
 export const COPY = {
-  host:     { ready: 'You have enough to decide.', lock: 'Lock it' },
+  host:     { ready: 'You have enough to decide.', lock: 'Settle it' },
   operator: { ready: 'Ready for sign-off.',         lock: 'Confirm' },
   planner:  { ready: 'Decision ready.',             lock: 'Lock' },
 };

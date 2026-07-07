@@ -13,7 +13,7 @@ const ev = {
 };
 
 test('caterer-booking label routes to Vendors first-undone, not Guests (earliest keyword wins)', () => {
-  const r = milestoneActionRoute('Book the Black-owned caterer or confirm the host-cooks plan and lock the final headcount', ev, 't1');
+  const r = milestoneActionRoute('Book the Black-owned caterer or confirm the host-cooks plan and confirm the final guest count', ev, 't1');
   expect(r.tab).toBe('Vendors');
   expect(r.vendorId).toBe('v2');
 });

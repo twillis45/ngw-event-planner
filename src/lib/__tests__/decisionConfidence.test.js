@@ -23,7 +23,7 @@ describe('57J Guest Count — reuses guestCountResolved()', () => {
     const g = get(decisionConfidence(ev, {}), 'guestCount');
     expect(g.state).toBe('ready_to_lock');
     expect(g.confidence).toBe('You have enough to decide.'); // host
-    expect(g.primaryAction).toBe('Lock it');
+    expect(g.primaryAction).toBe('Settle it');
   });
   test('unresolved (pending RSVPs) ⇒ gathering + count of pending', () => {
     const ev = { guests: [{ rsvp: 'Yes' }, { rsvp: 'Maybe' }, { rsvp: '' }] };

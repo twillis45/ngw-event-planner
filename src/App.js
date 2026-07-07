@@ -205,7 +205,7 @@ const ClientIntakeFlow        = lazy(() => import('./plan/ClientIntakeFlow'));
       ],
       timeline: [{
         id: 't1', week: '2 Weeks Out', done: false, owner: 'Host',
-        task: 'Book the Black-owned caterer or confirm the host-cooks plan and lock the final headcount',
+        task: 'Book the Black-owned caterer or confirm the host-cooks plan and confirm the final guest count',
         subtasks: [
           // skipWhenChoice: hidden when the host chose a non-caterer sourcing option.
           { id: 's1', text: 'Call 2–3 caterers for quotes', done: true,
@@ -1857,8 +1857,8 @@ const PHASE_FOCUS = {
   '3 Months Out':  'Headcount',
   '2 Months Out':  'Final Details',
   '1 Month Out':   'Confirmations',
-  '3 Weeks Out':   'Lock Plans',
-  '2 Weeks Out':   'Lock It In',
+  '3 Weeks Out':   'Firm Up Plans',
+  '2 Weeks Out':   'Settle Details',
   '10 Days Out':   'Confirm & Shop',
   'Week Of':       'Final Prep',
   '5 Days Out':    'Shop & Prep',
@@ -5208,7 +5208,7 @@ const SEED_EVENTS = [
     timeline: [
       { id: 'jnt1', week: '1 Month Out', task: 'Reserve the park pavilion permit',     done: true,  owner: 'Marcus', urgency: 'standard' },
       { id: 'jnt2', week: '2 Weeks Out', task: 'Confirm the meat order with the butcher', done: false, owner: 'Marcus', urgency: 'standard' },
-      { id: 'jnt3', week: '1 Week Out',  task: 'Lock the headcount and rentals',        done: false, owner: 'Denise', urgency: 'standard' },
+      { id: 'jnt3', week: '1 Week Out',  task: 'Finalize the headcount and rentals',        done: false, owner: 'Denise', urgency: 'standard' },
       { id: 'jnt4', week: 'Week Of',     task: 'Pick up ice, drinks, and charcoal',     done: false, owner: 'Marcus', urgency: 'standard' },
     ],
     ros: [
@@ -9950,7 +9950,7 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                     </span>
                     {/* Lock-a-cost ($) — same trailing icon + grammar as the food row. */}
                     {!it.owned && !skipped && (
-                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : it.key)} title="Lock a cost" aria-label="Lock a cost"
+                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : it.key)} title="Set the exact cost" aria-label="Set the exact cost"
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 2, background: 'transparent', border: 'none', color: it.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: T.body, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
                     )}
                     {/* Swap-out (×) / Add-back (+ add) — added items remove instead (food parity). */}
@@ -10864,7 +10864,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       </span>
                     </button>
                     {!skipped && !i.added && (
-                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Lock a cost" aria-label="Lock a cost"
+                      <button type="button" onClick={() => setOpenLockId(lockOpen ? null : i.id)} title="Set the exact cost" aria-label="Set the exact cost"
                         style={{ flexShrink: 0, alignSelf: 'center', marginLeft: 8, background: 'transparent', border: 'none', color: i.locked != null ? C.success : C.muted, cursor: 'pointer', fontSize: T.body, fontWeight: FW.heavy, lineHeight: 1, padding: '4px 5px' }}>$</button>
                     )}
                     {i.added ? (
@@ -10926,7 +10926,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
                       )}
                       {/* LOCK A COST — the shared 3-segment control (one source of truth; see CostLockSegments). */}
                       <div>
-                        <div style={{ ...lbl, marginBottom: 6 }}>Lock a cost</div>
+                        <div style={{ ...lbl, marginBottom: 6 }}>Set the exact cost</div>
                         <CostLockSegments low={i.low} high={i.high} locked={i.locked} onLock={(amt) => setLock(amt)} />
                       </div>
                       {/* Progressive reveal — the primary actions (lock a cost, mark bought)
@@ -22313,7 +22313,7 @@ function HostSetupWizard({ ev, fpProg, steps, onClose, onPatchEvent, onSelectEve
               Send invites and track RSVPs
             </span>
             <span style={{ display: 'block', fontSize: T.secondary, color: C.muted, lineHeight: 1.5 }}>
-              Add guests, collect yes/no/maybe, and lock the headcount once replies are in.
+              Add guests, collect yes/no/maybe, and confirm the final guest count once replies are in.
             </span>
           </>
         )}
@@ -23339,7 +23339,7 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
                       placeholder={String(Number(ev.guestCount) || Number(ev.guestEstimate) || 0)}
                       style={{ width: 72, background: '#15171b', border: '1px solid rgba(111,135,148,0.5)', borderRadius: 10, color: fg, fontSize: 15, fontWeight: FW.heavy, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', textAlign: 'center' }} />
                     <button type="button" onClick={lockFocusHeadcount}
-                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: `1px solid ${C.success || '#4e6877'}`, background: `${C.success || '#4e6877'}22`, color: C.success || '#9fc0d6', fontSize: 14, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Lock it</button>
+                      style={{ flex: 1, minHeight: 40, borderRadius: 10, border: `1px solid ${C.success || '#4e6877'}`, background: `${C.success || '#4e6877'}22`, color: C.success || '#9fc0d6', fontSize: 14, fontWeight: FW.bold, cursor: 'pointer', fontFamily: 'inherit' }}>Set it</button>
                   </div>
                 )}
                 {/* An out for this step — see the whole day instead of being held on the one. */}
@@ -31970,7 +31970,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
               <span aria-hidden style={{ fontSize: T.body }}>📌</span>
               <div style={{ flex: 1, minWidth: 0, fontSize: T.body, color: C.text, lineHeight: 1.6 }}>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontWeight: FW.bold, verticalAlign: 'middle' }}>
-                  Locked at
+                  Set at
                   <span style={{ display: 'inline-flex', alignItems: 'center', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, overflow: 'hidden' }}>
                     <button type="button" aria-label="fewer guests" onClick={() => { setGuestCount(Math.max(1, Number(event.guestCount) - 1)); try { feedbackSelect(); } catch {} }} style={{ width: 32, height: 30, background: 'transparent', border: 'none', color: C.accent, fontSize: T.title, cursor: 'pointer', fontFamily: 'inherit' }}>−</button>
                     <span style={{ minWidth: 34, textAlign: 'center', fontWeight: FW.heavy, color: C.text }}>{Number(event.guestCount)}</span>
@@ -31980,7 +31980,7 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
                 </span> — your final count for food, budget &amp; seating. RSVPs below are just for tracking.
               </div>
               <button type="button" onClick={() => { setGuestMode('list'); try { feedbackSelect(); } catch {} }}
-                style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Unlock the count</button>
+                style={{ flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, padding: '7px 13px', borderRadius: 8, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.accent, fontFamily: 'inherit' }}>Change the count</button>
             </div>
             {/* Kids / light eaters row — refines the protein count; divider ties it to the count above */}
             <div id="headcount-mix" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '13px 0', borderTop: `1px solid ${C.border}` }}>
@@ -42052,8 +42052,8 @@ function guestsHeroContent(event, C, steel) {
         // Warm, host-plain copy — no "headcount" ops-speak, and never "0 guests".
         title: isRoster ? `Everyone's replied — ${n} confirmed` : `You're set for ${n} guest${n === 1 ? '' : 's'}`,
         line: isRoster
-          ? `Your guest count is locked. Quantities and seating can size to it.`
-          : `Your count's locked — food, shopping, and seating all size to it.`,
+          ? `Your guest count is set. Quantities and seating can size to it.`
+          : `Your count's set — food, shopping, and seating all size to it.`,
         cta: 'Open guest list', ctaTab: 'Guests',
       };
     }
@@ -42210,7 +42210,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
                 <div style={{ minWidth: 52, textAlign: 'center', fontSize: T.title, fontWeight: FW.heavy, color: C.text, fontVariantNumeric: 'tabular-nums' }}>{localN}</div>
                 <button type="button" aria-label="More guests" onClick={() => adjust(1)} style={stepBtn}>+</button>
               </div>
-              <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(localN); }} style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}>Lock it</button>
+              <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(localN); }} style={{ height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${lockAccent}`, cursor: 'pointer', background: `${lockAccent}1f`, color: lockAccent }}>Set the count</button>
             </div>
             {/* Friendly nudge — only when replies are genuinely outstanding. */}
             {gOut > 0 && (
@@ -42317,7 +42317,7 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 //     "22 confirmed · 12 still out of 40 invited" math; "Lock it" reuses the SAME
 //     single-source count lock the Guests hero uses — guestMode/guestCount/estimate).
 //   • STILL OPEN — each open decision as a calm, tappable row with a status chip
-//     (READY TO LOCK = green · WAITING ON = amber · OVERDUE = red). Per the
+//     (READY TO SETTLE = green · WAITING ON = amber · OVERDUE = red). Per the
 //     Studio Matte confidence lock: green/steel/amber/red only, never warm gold.
 //   • LOCKED — the decisions/facts already settled, shown quietly with their value.
 // Tapping an open row routes to where the host acts (the same foundation/decision
@@ -42335,10 +42335,10 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   const steel = C.steel?.blue500 || C.accentTopGrad || C.accent;
   const green = C.success || C.accent;
   const STATUS = {
-    ready:   { label: 'READY TO LOCK', color: green },
+    ready:   { label: 'READY TO SETTLE', color: green },
     waiting: { label: 'WAITING ON',    color: C.warn },
     overdue: { label: 'OVERDUE',       color: C.danger },
-    locked:  { label: 'LOCKED',        color: green },
+    locked:  { label: 'SETTLED',       color: green },
   };
 
   const go = (route) => {
@@ -42435,21 +42435,21 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
 
   const settledCount = locked.length;
   const subtitle = open.length
-    ? `${open.length} still to settle${settledCount ? ` · ${settledCount} locked` : ''}`
+    ? `${open.length} still to settle${settledCount ? ` · ${settledCount} settled` : ''}`
     : 'Everything’s settled.';
 
   return (
     <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} title="What to settle"
       right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : 'All settled'}</div> : undefined}
-      subtitle={!isMobile ? (settledCount ? `${settledCount} locked` : '') : subtitle}>
+      subtitle={!isMobile ? (settledCount ? `${settledCount} settled` : '') : subtitle}>
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
       {headcount && (
         <div style={{ ...metalEdge(C), borderRadius: 12, padding: 16, marginBottom: 16, borderLeft: `3px solid ${steel}` }}>
           <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: steel, marginBottom: 7 }}>Needs you</div>
-          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>Lock your final guest count</div>
+          <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>Finalize your guest count</div>
           <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{headcount.because}{headcount.label ? ` — plan for ${headcount.label}.` : '.'}</div>
-          <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(headcount.planning); }} style={{ marginTop: 12, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${green}`, cursor: 'pointer', background: `${green}1f`, color: green }}>Lock it</button>
+          <button type="button" className="ce-press" onClick={() => { if (typeof onLockCount === 'function') onLockCount(headcount.planning); }} style={{ marginTop: 12, height: 44, padding: '0 18px', fontSize: T.secondary, fontWeight: FW.bold, borderRadius: 10, border: `1px solid ${green}`, cursor: 'pointer', background: `${green}1f`, color: green }}>Finalize it</button>
         </div>
       )}
       {/* Calm cap: the list is sorted urgent-first (overdue → ready → waiting), so the few
@@ -42458,7 +42458,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       {open.length > 0 && (<>{sectionLabel('Still open')}{open.slice(0, 4).map(openRow)}{open.length > 4 && (
         <div style={{ fontSize: T.secondary, color: C.muted, padding: '9px 2px 2px' }}>+{open.length - 4} more to settle, in their own time</div>
       )}</>)}
-      {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Locked')}{locked.map(lockedRow)}</div>)}
+      {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Settled')}{locked.map(lockedRow)}</div>)}
     </CollapsibleCard>
   );
 }
