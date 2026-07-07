@@ -8,6 +8,8 @@
 // we authored). Idempotent: running it twice changes nothing; events without
 // matches are returned untouched (same reference, no re-render churn).
 
+import { isPlausibleCityText } from './cityText';
+
 const REPLACEMENTS = [
   // [exact legacy phrase, doctrine copy]
   ['lock the final headcount', 'confirm the final guest count'],
@@ -42,4 +44,29 @@ export function migrateLegacyTaskCopy(events) {
     return { ...ev, timeline };
   });
   return anyEvent ? out : events;
+}
+
+// ── LOCATION FIELD HEAL (Todd, 2026-07-07) ───────────────────────────────────
+// The pollution incident left whole venue strings ("VFW Post 3150 — Alexandria,
+// VA") in CITY fields. At load: an implausible city value moves to the empty
+// venue field (it plainly IS the venue) and the city field clears. Exact same
+// idempotent, reference-preserving contract as the copy migration above.
+
+export function migrateLegacyLocationFields(events) {
+  if (!Array.isArray(events)) return events;
+  let any = false;
+  const out = events.map((ev) => {
+    if (!ev) return ev;
+    let next = ev;
+    for (const field of ['venueCity', 'city']) {
+      const v = String(next[field] || '').trim();
+      if (v && !isPlausibleCityText(v)) {
+        any = true;
+        next = { ...next, [field]: '' };
+        if (!String(next.venue || '').trim()) next.venue = v; // the text was the venue all along
+      }
+    }
+    return next;
+  });
+  return any ? out : events;
 }

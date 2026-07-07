@@ -40,7 +40,7 @@ import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultC
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { deriveCurrentLocationAssist, weatherCoordsFallback, eventLocationStatus } from './lib/locationAssist';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from './lib/returnNarration';
-import { migrateLegacyTaskCopy } from './lib/legacyCopy';
+import { migrateLegacyTaskCopy, migrateLegacyLocationFields } from './lib/legacyCopy';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -21947,12 +21947,12 @@ function HostMeaningPrompt({ ev, onPatchEvent, C, cardStyle, eyebrowStyle }) {
   const field = { width: '100%', boxSizing: 'border-box', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: T.secondary, padding: '9px 11px', outline: 'none', fontFamily: 'inherit', marginTop: 6 };
   const label = { fontSize: T.caption, fontWeight: FW.semibold, color: C.muted, marginTop: 12 };
   if (!open) {
+    // CONDENSING DOCTRINE (Todd, 2026-07-07): an optional, unanswered prompt is
+    // one quiet row — never a four-line card competing with the hero.
     return (
-      <button onClick={() => setOpen(true)} style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px dashed ${C.border}`, background: 'transparent' }}>
-        <div style={eyebrowStyle}>What matters most</div>
-        <div style={{ fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.4 }}>Every event has one moment it’s really for.</div>
-        <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 4, lineHeight: 1.5 }}>Name yours and we’ll keep the whole plan pointed at it.</div>
-        <span style={{ display: 'inline-block', marginTop: 10, fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Name the moment →</span>
+      <button onClick={() => setOpen(true)} style={{ ...cardStyle, width: '100%', textAlign: 'left', cursor: 'pointer', border: `1px dashed ${C.border}`, background: 'transparent', display: 'flex', alignItems: 'baseline', gap: 10, padding: '12px 16px' }}>
+        <span style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, minWidth: 0 }}>What’s the one moment this event is really for?</span>
+        <span style={{ marginLeft: 'auto', flexShrink: 0, fontSize: T.secondary, fontWeight: FW.bold, color: C.accent }}>Name it →</span>
       </button>
     );
   }
@@ -23962,9 +23962,25 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             <div id="hp-hero-card" style={{ ...card, borderColor: C.accent, borderLeftWidth: 3, ...(showLead ? { animation: 'ceBreathe 3.4s ease-in-out infinite' } : null) }}>
               {/* NOW-view command voice (host shell doctrine): a state-named eyebrow chip +
                   action-named headline — the single-command shape the day-of NOW hero uses. */}
-              {showLead && (
+              {/* CONDENSING DOCTRINE: a "nothing needs you" state is one calm row —
+                  hero space belongs to actions, not reassurance. */}
+              {showLead && na.category === 'neutral' && (
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.success || C.accent }}>ON TRACK</span>
+                  <span style={{ fontSize: T.secondary, color: C.text, fontWeight: FW.semibold, minWidth: 0 }}>{na.consequence || na.title}</span>
+                </div>
+              )}
+              {showLead && na.category !== 'neutral' && (
                 <>
-                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>NEEDS YOU</div>
+                  {/* TRUTH FIX (Todd, 2026-07-07): the eyebrow was hardcoded NEEDS YOU
+                      even when the copy said "You're in good shape — nothing needs
+                      you." The chip now speaks the hero's real state tier. */}
+                  <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${C.accent}55`, display: 'inline-block', marginBottom: 8 }}>{
+                    na.category === 'neutral' ? 'ON TRACK'
+                    : na.category === 'wrapup' ? 'WRAP-UP'
+                    : na.category === 'live' ? 'EVENT DAY'
+                    : na.level === 'critical' ? 'NEEDS YOU' : 'NEXT UP'
+                  }</div>
                   <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3 }}>{na.title}</div>
                   {na.consequence && <div style={{ fontSize: T.secondary, color: C.muted, marginTop: 5, lineHeight: 1.5 }}>{na.consequence}</div>}
                   {na.primaryCta && (
@@ -40388,6 +40404,25 @@ function LocationAssistBlock({ event, upd }) {
   );
 }
 
+// ── CityFieldNote — LOCATION VALIDATION (Todd, 2026-07-07) ──────────────────
+// The pollution incident put "VFW Post 3150 — Alexandria, VA" in a CITY field.
+// Every city input now carries a calm inline check: when the value doesn't
+// look like a bare city (digits, em-dashes, over-length), say so and point the
+// venue name to its own field. Non-blocking — the host's text is never
+// rejected, but implausible city text also never poisons caches or readers
+// (isPlausibleCityText already gates those).
+function CityFieldNote({ value }) {
+  const C = useT();
+  const T = useType();
+  const v = String(value || '').trim();
+  if (!v || isPlausibleCityText(v)) return null;
+  return (
+    <div data-testid="city-field-note" style={{ fontSize: T.caption, color: C.warn || C.muted, marginTop: 4, lineHeight: 1.45 }}>
+      This looks like more than a city. Put the venue or address in its own field — city only here (e.g. “Atlanta”).
+    </div>
+  );
+}
+
 function LegacyTabHeader({ label, hint, onBack }) {
   const C = useT();
   const T = useType();
@@ -41398,7 +41433,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                         the choice (venueKind='home') when it was never explicitly clicked —
                         so the venue blocker's at-home resolution rule (which reads
                         venueKind === 'home' && venueCity) matches what the host sees. */}
-                    <EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={v => { if (!event.venueKind) upd('venueKind', 'home'); rememberCity(v); }} placeholder="e.g. Atlanta" />
+                    <div><EDTField C={C} s={s} label="Your city" value={event.venueCity || ''} onChange={v => { if (!event.venueKind) upd('venueKind', 'home'); rememberCity(v); }} placeholder="e.g. Atlanta" /><CityFieldNote value={event.venueCity} /></div>
                     <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={rememberState} placeholder="GA" />
                   </EDTRow>
                 </>
@@ -41410,7 +41445,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
                   </div>
                   <div style={{ marginTop: 10 }}>
                     <EDTRow isMobile={isMobile}>
-                      <EDTField C={C} s={s} label="City" value={event.venueCity || ''} onChange={v => { rememberCity(v); upd('venueAddress', composeAddr({ city: v })); }} placeholder="City" />
+                      <div><EDTField C={C} s={s} label="City" value={event.venueCity || ''} onChange={v => { rememberCity(v); upd('venueAddress', composeAddr({ city: v })); }} placeholder="City" /><CityFieldNote value={event.venueCity} /></div>
                       <EDTField C={C} s={s} label="State" value={event.venueState || ''} onChange={v => { rememberState(v); upd('venueAddress', composeAddr({ state: v })); }} placeholder="ST" />
                     </EDTRow>
                   </div>
@@ -45201,18 +45236,18 @@ export default function App() {
     try {
       const d = localStorage.getItem('ngw-events');
       const onboardDone = localStorage.getItem(ONBOARD_DONE_KEY) === '1';
-      if (!d) return migrateLegacyTaskCopy(refreshSeeds(injectExtra(onboardDone ? [] : SEED_EVENTS)));
+      if (!d) return migrateLegacyLocationFields(migrateLegacyTaskCopy(refreshSeeds(injectExtra(onboardDone ? [] : SEED_EVENTS))));
       const stored = JSON.parse(d);
       // STORED-COPY-MIGRATION-1: normalize known legacy template strings in
       // saved timelines at load (exact phrases only, idempotent) so existing
       // events stop showing banned lock-language. Persists via the normal save
       // path on the next state write.
-      if (onboardDone) return migrateLegacyTaskCopy(refreshSeeds(injectExtra(stored)));
+      if (onboardDone) return migrateLegacyLocationFields(migrateLegacyTaskCopy(refreshSeeds(injectExtra(stored))));
       // Pre-onboarding existing behavior: re-merge seeds so any deleted-then-
       // returned demo events come back. After onboard done this is a no-op.
       const storedIds = new Set(stored.map(e => e.id));
       const missing = SEED_EVENTS.filter(e => !storedIds.has(e.id));
-      return migrateLegacyTaskCopy(refreshSeeds(missing.length ? [...stored, ...missing] : stored));
+      return migrateLegacyLocationFields(migrateLegacyTaskCopy(refreshSeeds(missing.length ? [...stored, ...missing] : stored)));
     } catch { return localStorage.getItem(ONBOARD_DONE_KEY) === '1' ? [] : SEED_EVENTS; }
   });
   const [clients, setClients] = useState(() => {

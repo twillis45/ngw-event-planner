@@ -33,3 +33,22 @@ test('events without timelines pass through untouched', () => {
   const evs = [{ id: 'e' }, null];
   expect(migrateLegacyTaskCopy(evs)).toBe(evs);
 });
+
+// Location field heal
+import { migrateLegacyLocationFields } from '../legacyCopy';
+
+test('polluted city moves to the empty venue field and clears; real cities untouched', () => {
+  const evs = [{ id: 'e', venue: '', venueCity: 'VFW Post 3150 — Alexandria, VA', city: '' }];
+  const out = migrateLegacyLocationFields(evs);
+  expect(out[0].venue).toBe('VFW Post 3150 — Alexandria, VA');
+  expect(out[0].venueCity).toBe('');
+  const clean = [{ id: 'e2', venueCity: 'Atlanta', city: 'Bowie' }];
+  expect(migrateLegacyLocationFields(clean)).toBe(clean); // reference-preserving
+});
+
+test('polluted city with a venue already set just clears (never overwrites the venue)', () => {
+  const evs = [{ id: 'e', venue: 'Real Venue Hall', city: 'Something — 123 Broken St' }];
+  const out = migrateLegacyLocationFields(evs);
+  expect(out[0].venue).toBe('Real Venue Hall');
+  expect(out[0].city).toBe('');
+});

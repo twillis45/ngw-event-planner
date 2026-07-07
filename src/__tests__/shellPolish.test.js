@@ -27,3 +27,22 @@ test('3 · header cue yields when its wording is inside the hero title (one tell
 test('4 · Plan hero still yields to the tapped-step focus card (landing-must-differ)', () => {
   expect(app).toMatch(/\{!openTaskId && <PlanNowHero event=\{event\} profile=\{profile\} onNav=\{\(t, id, opts\) => go\(t, id, opts\)\} \/>\}/);
 });
+
+// ── Todd's HostHome report (2026-07-07): eyebrow truth + condensing + city validation
+test('5 · HostHome hero eyebrow speaks the real tier — never NEEDS YOU on calm copy', () => {
+  const hero = app.slice(app.indexOf('the eyebrow was hardcoded NEEDS YOU'), app.indexOf('the eyebrow was hardcoded NEEDS YOU') + 900);
+  expect(hero).toMatch(/na\.category === 'neutral' \? 'ON TRACK'/);
+  expect(hero).toMatch(/na\.level === 'critical' \? 'NEEDS YOU' : 'NEXT UP'/);
+});
+
+test('6 · calm-tier hero condenses to one row; unanswered moment prompt is one row', () => {
+  expect(app).toMatch(/a "nothing needs you" state is one calm row/);
+  expect(app).toMatch(/What’s the one moment this event is really for\?/);
+  expect(app).not.toMatch(/Name yours and we’ll keep the whole plan pointed at it/);
+});
+
+test('7 · city fields carry inline validation (CityFieldNote) on both city inputs', () => {
+  expect(app).toMatch(/function CityFieldNote/);
+  expect((app.match(/<CityFieldNote value=\{event\.venueCity\} \/>/g) || []).length).toBe(2);
+  expect(app).toMatch(/city only here/);
+});
