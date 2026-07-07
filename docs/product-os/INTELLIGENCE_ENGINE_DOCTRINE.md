@@ -134,6 +134,11 @@ Maturity: **shipped / partial / planned / unknown**. Verdict: **build / tighten 
 - Answers: "why does this event matter, and is that protected?" See §9.
 - Maturity: **partial** (heart tier + identity/compound context shipped; broader WOW concepts planned). Verdict: **build** within §9's rules; **audit** any expansion.
 
+### DIFM Voice Module — lib/doItForMe.js (canonical, per DIFM-MAGIC-AUDIT-1)
+- Answers: "write it for me" — every generated host/guest/vendor message, list, and brief (12 draft exports, 52 tests, 19 surfaces).
+- Hard rules: edit-before-send sheet mandatory · event-data-only, no invented facts · never overwrites user content · never auto-sends. A second drafts module is a COMPETING ENGINE (kill on sight).
+- Maturity: **shipped**. Verdict: **build** — new DIFM output = a new export here.
+
 ### Admin / Fleet Intelligence Core — `getCrossEventAttention`, studio command (`selectStudioCommand`), admin console (src/admin)
 - Answers: "across all events/clients, what needs the studio?"
 - Maturity: **partial**; planner scale beyond ~3 clients is explicitly unverified (HQ-3). Verdict: **park** for expansion until Planner Pro validation.
