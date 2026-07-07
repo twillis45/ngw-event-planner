@@ -10291,7 +10291,11 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
         <span aria-hidden style={{ flexShrink: 0, fontSize: T.body, color: C.muted, transform: menuOpen ? 'none' : 'rotate(-90deg)', transition: 'transform 160ms ease' }}>▾</span>
       </button>
       {menuOpen && (<AccordionProvider>
-      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed done={fpHasCount} autoCollapseWhenDone={fpHasCount} style={{ ...subCard, gridColumn: isWide ? '1 / -1' : undefined }}
+      {/* Dot honesty (2026-07-07): green = ALL the work this card fronts is
+          done (count + dietary + choices + every spread item checked). The
+          auto-collapse trigger stays fpHasCount — progressive disclosure once
+          a count exists is UX, not a completion claim. */}
+      <CollapsibleCard id={`foodplan-${event.id}`} isMobile={isMobile} defaultCollapsed done={!!(fpHasCount && plan.dietaryResolved && hasChoices && spreadComplete)} autoCollapseWhenDone={fpHasCount} style={{ ...subCard, gridColumn: isWide ? '1 / -1' : undefined }}
         title="Food plan"
         subtitle={`${fpBand.band ? `Plan for ${fpBandLabel}` : `Food for ${plan.guests}`} guests${fpHasCount ? ` · ${money(plan.foodLow, plan.foodHigh)} · estimate` : ''}`}>
         {/* Hero stat — the number leads (Attention System): the $ range stands as the

@@ -115,33 +115,44 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
     const isHot = tempMax >= 95;   // plan ice/shade/water now
     const isWarm = tempMax >= 90;  // worth planning extra
 
+    // EVENT-ANCHORED COPY (2026-07-07): a weather alert must always relate to
+    // THE EVENT — its day by name and, when the hourly forecast supports it,
+    // the real rain window ("2–6 PM"). Never a generic "rain likely" a host
+    // could mistake for today's weather.
+    const dayName = (() => {
+      try { return new Date(eventDateIso + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long' }); } catch { return ''; }
+    })();
+    const onDay = dayName ? `${dayName} (your event day)` : 'your event day';
+    const rainWindow = computeRainWindow(data.hourly, eventDateIso, data.timezone_offset || 0);
+    const windowTail = rainWindow && rainWindow.label ? `, ${rainWindow.label}` : '';
+
     let risk = 'clear';
-    let summary = `Clear forecast — ${tempMin}°–${tempMax}°F, ${pop}% precipitation`;
+    let summary = `Clear forecast for ${onDay} — ${tempMin}°–${tempMax}°F, ${pop}% precipitation`;
 
     if (isThunder || isSnow || isHotExtreme || isColdExtreme) {
       risk = 'high';
       summary = isThunder
-        ? `Thunderstorms forecast (${pop}% chance) — have an indoor backup ready`
+        ? `Thunderstorms forecast for ${onDay} (${pop}% chance${windowTail}) — have an indoor backup ready`
         : isSnow
-        ? `Snow forecast — confirm vendor arrival times and guest logistics`
+        ? `Snow forecast for ${onDay} — confirm vendor arrival times and guest logistics`
         : isHotExtreme
-        ? `Extreme heat (${tempMax}°F) — ice, shade, and water are not optional`
-        : `Extreme cold (${tempMin}°F) — plan heat and guest comfort`;
+        ? `Extreme heat on ${onDay} (${tempMax}°F) — ice, shade, and water are not optional`
+        : `Extreme cold on ${onDay} (${tempMin}°F) — plan heat and guest comfort`;
     } else if (isHeavyRain) {
       risk = 'high';
-      summary = `Heavy rain likely (${pop}%) — rain plan required`;
+      summary = `Heavy rain likely on ${onDay} (${pop}%${windowTail}) — rain plan required`;
     } else if (isHot) {
       risk = 'high';
-      summary = `Hot day forecast (${tempMax}°F) — plan ice, shade, and water`;
+      summary = `Hot on ${onDay} (${tempMax}°F) — plan ice, shade, and water`;
     } else if (isRain) {
       risk = 'medium';
-      summary = `Rain possible (${pop}%) — monitor and prepare a rain plan`;
+      summary = `Rain possible on ${onDay} (${pop}%${windowTail}) — monitor and prepare a rain plan`;
     } else if (isWarm) {
       risk = 'medium';
-      summary = `Warm day (${tempMax}°F) — plan extra ice and some shade`;
+      summary = `Warm on ${onDay} (${tempMax}°F) — plan extra ice and some shade`;
     } else if (pop >= 30) {
       risk = 'low';
-      summary = `Light precipitation possible (${pop}%) — worth monitoring`;
+      summary = `Light precipitation possible on ${onDay} (${pop}%) — worth monitoring`;
     }
 
     return {
@@ -169,7 +180,7 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
       // forecast when the event day is inside the API's 48h hourly horizon.
       // Beyond that, hourly is absent for the date and this stays null — the
       // guest message then simply omits the timing line.
-      rainWindow: computeRainWindow(data.hourly, eventDateIso, data.timezone_offset || 0),
+      rainWindow,
     };
   } catch {
     return null;
