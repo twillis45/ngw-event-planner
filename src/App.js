@@ -39,6 +39,7 @@ import { eventContextNudge } from './lib/eventContextNudges';
 import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount } from './lib/crabPlan';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { deriveCurrentLocationAssist, weatherCoordsFallback, eventLocationStatus } from './lib/locationAssist';
+import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from './lib/returnNarration';
 import { budgetHeroCopy } from './lib/budgetCopy';
 import { artworkFor } from './lib/artworkMarks';
 import { choreography, transitionFor } from './design/motion';
@@ -40237,6 +40238,46 @@ function ReadinessTrack({ event, onNavTo = null }) {
   );
 }
 
+// ── ReturnNarrationLine — RETURN-NARRATION-1 (test-framed, easy to kill) ────
+// ONE muted line under the phase strip: "Since last time: <one real change>."
+// Computed once per shell mount from the previous snapshot, then the snapshot
+// is rewritten — which is also the anti-repeat mechanism. Silent on first
+// visit, on reloads (<30min), when nothing meaningful moved, and when the
+// hero or cue already tells the same words. Session-dismissible (×).
+function ReturnNarrationLine({ event, onNavTo = null }) {
+  const C = useT();
+  const T = useType();
+  const [dismissed, setDismissed] = useState(false);
+  const narration = useMemo(() => {
+    try {
+      const prev = readReturnSnapshot(event.id);
+      const r = deriveReturnNarration(event, prev);
+      writeReturnSnapshot(event.id, buildReturnSnapshot(event));
+      if (!r.shouldShow) return null;
+      const hero = (() => { try { const na = selectEventNextAction(event); return na && na.title; } catch { return null; } })();
+      const cue = (() => { try { const pp = deriveEventPhaseProgress(event); return pp && pp.nextCue && pp.nextCue.label; } catch { return null; } })();
+      if (narrationDuplicatesTelling(r.line, hero, cue)) return null;
+      return r;
+    } catch { return null; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]); // once per mount per event — deliberately NOT re-derived on every keystroke
+  if (!narration || dismissed) return null;
+  return (
+    <div data-testid="return-narration" style={{ display: 'flex', alignItems: 'baseline', gap: 8, padding: '0 16px', marginTop: -6, marginBottom: 12, minWidth: 0 }}>
+      {narration.route && onNavTo ? (
+        <button type="button" onClick={() => onNavTo(narration.route.tab, null, { focusField: narration.route.focusField })}
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.caption, color: C.muted, lineHeight: 1.5, minWidth: 0 }}>
+          {narration.line}
+        </button>
+      ) : (
+        <span style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5, minWidth: 0 }}>{narration.line}</span>
+      )}
+      <button type="button" aria-label="Dismiss" data-testid="return-narration-dismiss" onClick={() => setDismissed(true)}
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontSize: T.caption, flexShrink: 0 }}>✕</button>
+    </div>
+  );
+}
+
 // ── LocationAssistBlock — LOCATION-ROBUSTNESS-2 ─────────────────────────────
 // Permissioned, TAP-ONLY phone-location assist on the Where & when form.
 // Phone location never becomes the event location (no reverse geocoder — no
@@ -43068,6 +43109,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
       {/* UNIFIED HEADER FRAME (board): the single ReadinessTrack rides directly under the
           app-header on EVERY host tab (incl. Your Event) — one bar, never duplicated. */}
       <ReadinessTrack event={event} onNavTo={(t, id, opts) => go(t, id, opts)} />
+      <ReturnNarrationLine event={event} onNavTo={(t, id, opts) => go(t, id, opts)} />
 
       <div style={isSidebarNav ? { display: 'flex', alignItems: 'flex-start' } : undefined}>
         {/* Desktop / tablet-landscape: a calm left SIDE nav (the 5 host sections + the
