@@ -1,9 +1,13 @@
-// ─── CTA SOURCE-OF-TRUTH AUDIT — 50 host-shell scenarios ─────────────────────
+// ─── CTA SOURCE-OF-TRUTH AUDIT — 100 host-shell scenarios ────────────────────
 //
 // Todd (2026-07-07): "do a brutal audit of the CTA issue. 50 different
 // scenarios for the host shell. CTAs should be coming from source of truth."
+// Expanded to 100 on Todd's ask (2026-07-07): 5 more states covering the
+// configurations the first matrix never hit — over-budget with helper-assigned
+// dishes, the day-before window, RSVP-list pressure, vendor-heavy gaps, and
+// outdoor/no-rain with a city-only location.
 //
-// This makes the doctrine EXECUTABLE: 10 event types × 5 lifecycle states.
+// This makes the doctrine EXECUTABLE: 10 event types × 10 lifecycle states.
 // For every scenario, every route producer in the app is swept, and every
 // route it emits is validated against the EXACT source its destination
 // renders — a dynamic id (foodrow/caprow/crabline/vendor/task) must exist in
@@ -35,7 +39,7 @@ const STATIC_ANCHORS = new Set([
 ]);
 const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline']);
 
-// ── Scenario matrix: 10 types × 5 states = 50.
+// ── Scenario matrix: 10 types × 10 states = 100.
 const TYPES = ['bbq', 'crab feast', 'birthday', 'graduation', 'juneteenth',
   'baby shower', 'celebration of life', 'dinner party', 'family reunion', 'retirement'];
 const NOW = new Date('2026-07-07T12:00:00');
@@ -59,6 +63,47 @@ const STATES = [
   { key: 'post_event', ev: () => ({ date: iso(-6), guestMode: 'count', guestCount: 20, venue: 'Bowie, MD', guests: [ { id: 'g1', name: 'Ava', rsvp: 'Yes' } ],
     vendors: [ { id: 'v1', name: 'Main Vendor', cost: 300, depositPaid: true, balancePaid: false, status: 'Confirmed' } ], timeline: [
     { id: 't1', task: 'Old planning task', done: false, week: '2 Weeks Out' } ] }) },
+  // ── Expansion states 6–10 (100-scenario matrix) ──────────────────────────────
+  // Over budget WITH helper-assigned dishes — exercises the recovery plan's
+  // assigned≠savings path and helper foodrow routes (HELPER-RESPONSIBILITY-1).
+  { key: 'over_budget_helpers', ev: () => ({ date: iso(10), guestMode: 'count', guestCount: 30, venueKind: 'home', venueCity: 'Atlanta', venueState: 'GA',
+    totalBudget: 50,
+    foodAdd: [
+      { id: 'fa-1', name: 'Dessert tray', owner: 'Aunt Lisa', cost: 60 },
+      { id: 'fa-2', name: 'Bags of ice', owner: 'Marcus', cost: 20 },
+    ],
+    helperConfirmed: { 'fa-2': true },
+    guests: [], vendors: [], timeline: [] }) },
+  // The day-before window — buildDayBeforePlan applicable, with helpers, a
+  // vendor gap, and a run of show (exercises the new helpers section route).
+  { key: 'day_before', ev: () => ({ date: iso(1), guestMode: 'count', guestCount: 18, venue: 'Bowie, MD',
+    foodAdd: [ { id: 'fa-db', name: 'Fruit platter', owner: 'Denise', cost: 0 } ],
+    vendors: [ { id: 'v1', name: 'DJ Smooth', category: 'DJ', status: 'Quoted', cost: 200 } ],
+    rosEdited: true, ros: [ { id: 'r1', time: '11:00', segment: 'Setup', type: 'setup', owner: 'Marcus', confirmed: false }, { id: 'r2', time: '13:00', segment: 'Guests arrive', type: 'event', owner: 'Host' } ],
+    timeline: [ { id: 't1', task: 'Confirm the food order', done: false, week: 'Week Of' } ] }) },
+  // RSVP-list pressure — a list-mode host with mostly-pending replies two weeks
+  // out (exercises guest-facing cues without count-only suppression).
+  { key: 'rsvp_list_pressure', ev: () => ({ date: iso(14), guestMode: 'list', venue: 'Bowie, MD', totalBudget: 600,
+    guests: [
+      { id: 'g1', name: 'Ava', rsvp: 'Yes' }, { id: 'g2', name: 'Ben', rsvp: '' },
+      { id: 'g3', name: 'Cam', rsvp: '' }, { id: 'g4', name: 'Dee', rsvp: 'No' }, { id: 'g5', name: 'Eve', rsvp: '' },
+    ],
+    vendors: [], timeline: [ { id: 't1', task: 'Invite guests and share the details', done: false, week: '2 Weeks Out' } ] }) },
+  // Vendor-heavy — three vendors in different gap states (unconfirmed, deposit
+  // unpaid, no arrival time) — first-undone vendor routing everywhere.
+  { key: 'vendor_heavy', ev: () => ({ date: iso(20), guestMode: 'count', guestCount: 40, venue: 'VFW Post 3150', venueAddress: '123 Main St, Alexandria, VA',
+    totalBudget: 2000,
+    vendors: [
+      { id: 'v1', name: 'Soul Catering', category: 'Catering', status: 'Quoted', cost: 900 },
+      { id: 'v2', name: 'DJ Smooth', category: 'DJ', status: 'Confirmed', cost: 400, depositAmt: 100, depositPaid: false },
+      { id: 'v3', name: 'Party Rentals Co', category: 'Rentals', status: 'Booked', cost: 300, arrivalTime: '' },
+    ],
+    guests: [], timeline: [ { id: 't1', task: 'Follow up with the caterer', done: false, week: '3 Weeks Out' } ] }) },
+  // Outdoor, no rain plan, city-only location — rain-plan routes + the
+  // location-assist add-full-address suggestion (city_only branch).
+  { key: 'outdoor_no_rain', ev: () => ({ date: iso(9), guestMode: 'count', guestCount: 25, venueKind: 'home',
+    venueCity: 'Decatur', venueState: 'GA', indoorOutdoor: 'outdoor', rainPlan: '',
+    guests: [], vendors: [], timeline: [ { id: 't1', task: 'Plan the backyard layout', done: false, week: '1 Week Out' } ] }) },
 ];
 
 const scenarios = [];
@@ -169,16 +214,62 @@ function sweep(ev) {
   return problems;
 }
 
-describe('CTA source-of-truth: 50 host-shell scenarios', () => {
+// ── Anti-vacuity: the expansion states must actually EXERCISE the producers
+//    they were added for — a state that emits no routes proves nothing.
+describe('expansion states reach their target producers', () => {
+  const evFor = (stateKey, type = 'bbq') => scenarios.find((s) => s.name === `${type} · ${stateKey}`).event;
+
+  test('over_budget_helpers → recovery emits moves AND protects the unconfirmed helper dish', () => {
+    const rec = buildBudgetRecoveryPlan(evFor('over_budget_helpers'));
+    expect((rec.suggestions || []).length).toBeGreaterThan(0);
+    expect((rec.protectedItems || []).some((p) => p.id === 'helper-fa-1')).toBe(true);
+    expect((rec.suggestions || []).some((s) => String(s.id).includes('fa-1'))).toBe(false); // assigned ≠ savings
+  });
+
+  test('day_before → plan applicable with a routed helpers section', () => {
+    const db = buildDayBeforePlan(evFor('day_before'), NOW);
+    expect(db.applicable).toBe(true);
+    const helpers = db.sections.find((s) => s.key === 'helpers');
+    expect(helpers && helpers.route).toBeTruthy();
+    expect(db.sections.filter((s) => s.route).length).toBeGreaterThan(2);
+  });
+
+  test('rsvp_list_pressure → a next action and phase cue exist to validate', () => {
+    const ev = evFor('rsvp_list_pressure');
+    expect(safe(() => selectEventNextAction(ev))).toBeTruthy();
+    expect(safe(() => deriveEventPhaseProgress(ev, NOW))).toBeTruthy();
+  });
+
+  test('vendor_heavy → phase progress routes to a real gap vendor', () => {
+    const pp = deriveEventPhaseProgress(evFor('vendor_heavy'), NOW);
+    const cue = pp.nextCue;
+    expect(cue).toBeTruthy();
+    if (cue.route.vendorId) {
+      expect(evFor('vendor_heavy').vendors.some((v) => v.id === cue.route.vendorId)).toBe(true);
+    }
+  });
+
+  test('outdoor_no_rain → rain-plan and location-assist producers fire', () => {
+    const ev = evFor('outdoor_no_rain');
+    const pp = deriveEventPhaseProgress(ev, NOW);
+    // outdoor + dated + no plan → the rain essential is in the denominator
+    expect(pp.totalCount).toBeGreaterThan(3);
+    const la = deriveCurrentLocationAssist(ev, null);
+    expect(la.eventLocationStatus).toBe('city_only');
+    expect(la.suggestions.some((s) => s.id === 'add-full-address')).toBe(true);
+  });
+});
+
+describe('CTA source-of-truth: 100 host-shell scenarios', () => {
   test(`${scenarios.length} scenarios swept — every emitted route targets what its destination renders`, () => {
-    expect(scenarios.length).toBe(50);
+    expect(scenarios.length).toBe(100);
     const failures = [];
     scenarios.forEach((sc) => {
       const problems = sweep(sc.event);
       if (problems.length) failures.push(`▸ ${sc.name}\n    ${problems.join('\n    ')}`);
     });
     if (failures.length) {
-      throw new Error(`${failures.length} of 50 scenarios emit untruthful routes:\n${failures.join('\n')}`);
+      throw new Error(`${failures.length} of 100 scenarios emit untruthful routes:\n${failures.join('\n')}`);
     }
   });
 });
