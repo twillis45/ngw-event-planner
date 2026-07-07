@@ -1936,34 +1936,9 @@ function _selectEventNextActionInner(event) {
       // "Invite guests" → Guests, "Set the budget" → Budget — not just the Timeline
       // view of the milestone. Map the milestone's words to its action tab; fall back
       // to the timeline (anchored to the milestone) when it isn't a domain action.
-      primaryRoute: (() => {
-        const s = String(nextUp.label || '').toLowerCase();
-        // EARLIEST-KEYWORD-WINS: a milestone label leads with its action
-        // ("Book the caterer … for your guest count"), so the domain whose
-        // keyword appears FIRST owns the route. Fixed-order checks sent that
-        // caterer-booking task to Guests because 'guest' was tested first —
-        // a wrong-screen landing behind a working-looking CTA.
-        const DOMAINS = [
-          { re: /guest|invite|rsvp|head\s?count|\bseat\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
-          { re: /budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
-          { re: /vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/, route: () => {
-            // First-undone-item rule: the first vendor row still needing the
-            // host, else the first row, else the add button.
-            const vs = (event.vendors || []).filter(v => v && String(v.name || '').trim());
-            const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
-              || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
-            const targetV = undone || vs[0];
-            return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
-          } },
-          { re: /food|menu|shop|grocer|drink|supplies|seating/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
-        ];
-        const hits = DOMAINS
-          .map(d => ({ d, at: s.search(d.re) }))
-          .filter(x => x.at >= 0)
-          .sort((a, b) => a.at - b.at);
-        if (hits.length) return hits[0].d.route();
-        return { tab: 'Timeline', timelineId: nextUp.id };
-      })(),
+      // EARLIEST-KEYWORD-WINS router, shared with every Next Up row (see
+      // milestoneActionRoute) so the hero and the rows can never disagree.
+      primaryRoute: milestoneActionRoute(nextUp.label, event, nextUp.id),
       contextLine: daysSub,
     };
   }
@@ -2235,12 +2210,46 @@ function QuestionRow({ q, onOpen, isFirst }) {
 }
 
 // ── Timeline row ──────────────────────────────────────────────────────────────
-function TimelineRow({ t, isFirst }) {
+// ── Milestone action router (ACTIONABLE-ROWS follow-up) ──────────────────────
+// EARLIEST-KEYWORD-WINS: a milestone label leads with its action ("Book the
+// caterer … for your guest count"), so the domain whose keyword appears FIRST
+// owns the route. Shared by the Tier-7 next-step hero AND every Next Up row —
+// a visible milestone must never be a dead label (deep-link doctrine).
+export function milestoneActionRoute(label, event, timelineId) {
+  const s = String(label || '').toLowerCase();
+  const DOMAINS = [
+    { re: /guest|invite|rsvp|head\s?count|\bseat\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
+    { re: /budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
+    { re: /vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/, route: () => {
+      // First-undone-item rule: the first vendor row still needing the host,
+      // else the first row, else the add button.
+      const vs = ((event && event.vendors) || []).filter(v => v && String(v.name || '').trim());
+      const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
+        || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
+      const targetV = undone || vs[0];
+      return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
+    } },
+    { re: /food|menu|shop|grocer|drink|supplies|seating/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
+  ];
+  const hits = DOMAINS.map(d => ({ d, at: s.search(d.re) })).filter(x => x.at >= 0).sort((a, b) => a.at - b.at);
+  if (hits.length) return hits[0].d.route();
+  return { tab: 'Timeline', timelineId };
+}
+
+function TimelineRow({ t, isFirst, onOpen = null }) {
+  // Deep-link doctrine: a Next Up row is never a dead label — it routes to the
+  // exact place the milestone gets done (or the timeline anchored to it).
+  const Tag = onOpen ? 'button' : 'div';
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px',
-      borderTop: isFirst ? 'none' : `1px solid ${P.borderSubtle}`, fontFamily: FF,
-    }}>
+    <Tag
+      onClick={onOpen || undefined}
+      data-testid={onOpen ? `nextup-row-${t.id}` : undefined}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14, padding: '11px 14px', width: '100%',
+        boxSizing: 'border-box', textAlign: 'left', background: 'transparent',
+        border: 'none', cursor: onOpen ? 'pointer' : 'default',
+        borderTop: isFirst ? 'none' : `1px solid ${P.borderSubtle}`, fontFamily: FF,
+      }}>
       <div style={{
         width: 42, display: 'flex', flexDirection: 'column', alignItems: 'center',
         flexShrink: 0,
@@ -2258,7 +2267,8 @@ function TimelineRow({ t, isFirst }) {
         <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary, lineHeight: 1.3 }}>{t.label}</div>
         <div style={{ fontSize: type.size.xs, color: P.textSecondary }}>{t.sub}</div>
       </div>
-    </div>
+      {onOpen && <span aria-hidden style={{ color: P.textSecondary, fontSize: type.size.sm, flexShrink: 0 }}>›</span>}
+    </Tag>
   );
 }
 
@@ -2944,7 +2954,7 @@ function MobileCommandCenter({ event, data, crewSummary, setItems, decisionItems
           <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
           {d.nextUp.length > 0 ? (
             <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-              {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} />)}
+              {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
             </div>
           ) : <EmptyState>No upcoming milestones in window.</EmptyState>}
         </div>
@@ -3168,7 +3178,7 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
               <SectionHeader label="Next Up" action="Full timeline →" onAction={() => onTabChange?.('Timeline')} />
               {d.nextUp.length > 0 ? (
                 <div style={{ ...cardEdge, border: cardEdge.border, borderRadius: radius.md }}>
-                  {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} />)}
+                  {d.nextUp.map((t, i) => <TimelineRow key={t.id} t={t} isFirst={i === 0} onOpen={() => { const r = milestoneActionRoute(t.label, event, t.id); onTabChange?.(r.tab, r.vendorId || r.timelineId, r.focusField ? { focusField: r.focusField } : undefined); }} />)}
                 </div>
               ) : <EmptyState>No upcoming milestones.</EmptyState>}
             </div>
