@@ -42153,19 +42153,54 @@ function HostTaskFocusCard({ event, taskId, setEvent, onClear }) {
   const C = useT();
   const T = useType();
   const ref = useRef(null);
-  const t = taskId && taskId !== '__compressed__'
-    ? (Array.isArray(event.timeline) ? event.timeline : []).find(x => x && x.id === taskId)
-    : null;
+  const timeline = Array.isArray(event.timeline) ? event.timeline : [];
+  // '__compressed__' — the "Review compressed tasks" CTA promises the do-now
+  // list, so render THAT list (same deriveEventCompressionSummary source the
+  // planner's Tight-timeline filter uses), never an empty overview.
+  const compressed = taskId === '__compressed__';
+  const doNowTasks = useMemo(() => {
+    if (!compressed) return [];
+    try {
+      const s = deriveEventCompressionSummary({ type: event.type, date: event.date, timeline }, daysUntil, PHASE_OFFSET);
+      const ids = new Set([...(s?.doNow || []), ...(s?.considerSwap || [])].map(x => x.id));
+      return timeline.filter(x => x && !x.done && ids.has(x.id));
+    } catch { return []; }
+  }, [compressed, event.type, event.date, timeline]);
+  const t = taskId && !compressed ? timeline.find(x => x && x.id === taskId) : null;
   useEffect(() => {
-    if (t && ref.current && typeof ref.current.scrollIntoView === 'function') {
+    if ((t || (compressed && doNowTasks.length)) && ref.current && typeof ref.current.scrollIntoView === 'function') {
       try { ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* noop */ }
     }
   }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
-  if (!t || t.done) return null;
-  const markDone = () => {
-    setEvent(e => ({ ...e, timeline: (Array.isArray(e.timeline) ? e.timeline : []).map(x => x && x.id === taskId ? { ...x, done: true } : x) }));
-    if (typeof onClear === 'function') onClear();
+  const doneOne = (id, alsoClear) => {
+    setEvent(e => ({ ...e, timeline: (Array.isArray(e.timeline) ? e.timeline : []).map(x => x && x.id === id ? { ...x, done: true } : x) }));
+    if (alsoClear && typeof onClear === 'function') onClear();
   };
+  if (compressed) {
+    if (!doNowTasks.length) return null;
+    return (
+      <div ref={ref} style={{ ...metalEdge(C), borderRadius: 12, padding: '16px 18px', marginBottom: 14, borderLeft: `3px solid ${C.accent}` }}>
+        <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 7 }}>Do these now</div>
+        <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>Your timeline is tight — these can't wait for their usual week. Knock them out and mark each done.</div>
+        {doNowTasks.slice(0, 6).map(x => (
+          <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${C.border}` }}>
+            <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{x.task}</span>
+            <button type="button" className="ce-press" onClick={() => doneOne(x.id, doNowTasks.length <= 1)}
+              style={{ flexShrink: 0, height: 36, padding: '0 14px', fontSize: T.caption, fontWeight: FW.bold, borderRadius: 9, border: `1px solid ${C.success || C.accent}`, cursor: 'pointer', background: `${C.success || C.accent}1f`, color: C.success || C.accent }}>
+              Done
+            </button>
+          </div>
+        ))}
+        {doNowTasks.length > 6 && <div style={{ fontSize: T.caption, color: C.muted, paddingTop: 8 }}>+{doNowTasks.length - 6} more after these</div>}
+        <button type="button" onClick={() => { if (typeof onClear === 'function') onClear(); }}
+          style={{ marginTop: 10, height: 38, padding: '0 14px', fontSize: T.caption, fontWeight: FW.semibold, borderRadius: 9, border: `1px solid ${C.border}`, cursor: 'pointer', background: 'transparent', color: C.muted }}>
+          Set this aside
+        </button>
+      </div>
+    );
+  }
+  if (!t || t.done) return null;
+  const markDone = () => doneOne(taskId, true);
   return (
     <div ref={ref} style={{ ...metalEdge(C), borderRadius: 12, padding: '16px 18px', marginBottom: 14, borderLeft: `3px solid ${C.accent}` }}>
       <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 7 }}>The step you tapped</div>
