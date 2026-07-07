@@ -24,7 +24,7 @@
 // real checked-off total; committed never dips below spent (the un-bought remainder
 // is clamped at ≥ 0).
 
-import { playbookFoodPlan, guestCountResolved } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -79,14 +79,29 @@ export function hostSpending(event, priceFactor) {
   const foodEstimate = hasFood ? mid(plan.foodLow, plan.foodHigh) : 0;
   const foodBought = hasFood ? foodBoughtFrom(ev, plan) : 0;
 
-  // Spent = manual actuals + food actually bought.
-  const spent = Math.max(0, Math.round(rowsActual + foodBought));
-  // Committed adds the food still PLANNED but not yet bought (never negative — if
-  // you've bought more than the estimate, the remainder is just 0, not a credit).
-  const foodRemaining = Math.max(0, foodEstimate - foodBought);
-  const committed = Math.max(spent, Math.round(spent + foodRemaining));
+  // SUPPLIES WIRING (2026-07-07, "seating & supplies is not wiring into budget"):
+  // the spread's Supplies group and the Seating & supplies (capacity) list are
+  // both REAL planned money the host checks off — they now flow into spent/
+  // committed exactly like food, from their own single sources (the plan's
+  // supplies* fields and playbookCapacity's cost/bought totals). Same real-count
+  // gate: a guessed headcount never becomes budget money.
+  const suppliesEstimate = hasRealCount && plan ? mid(plan.suppliesLow, plan.suppliesHigh) : 0;
+  const suppliesBought = hasRealCount && plan ? mid(plan.suppliesSpentLow, plan.suppliesSpentHigh) : 0;
+  let cap = null;
+  try { cap = hasRealCount ? playbookCapacity(ev) : null; } catch (_e) { cap = null; }
+  const capacityEstimate = cap ? mid(cap.costLow, cap.costHigh) : 0;
+  const capacityBought = cap ? mid(cap.boughtLow, cap.boughtHigh) : 0;
 
-  return { total: Math.round(total), spent, committed, foodEstimate, foodBought, hasFood };
+  // Spent = manual actuals + everything actually bought/checked off.
+  const spent = Math.max(0, Math.round(rowsActual + foodBought + suppliesBought + capacityBought));
+  // Committed adds what's still PLANNED but not yet bought (each term clamped —
+  // over-buying an estimate never becomes a credit).
+  const foodRemaining = Math.max(0, foodEstimate - foodBought);
+  const suppliesRemaining = Math.max(0, suppliesEstimate - suppliesBought);
+  const capacityRemaining = Math.max(0, capacityEstimate - capacityBought);
+  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining));
+
+  return { total: Math.round(total), spent, committed, foodEstimate, foodBought, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost) };
 }
 
 export default hostSpending;

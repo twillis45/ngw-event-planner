@@ -9787,7 +9787,23 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
           eyebrow → big number → status band → sizing line → "how it's sized" explainer. */}
       <CollapsibleCard id={`cap-hero-${event.id}`} isMobile={isMobile} defaultCollapsed done={allDone} autoCollapseWhenDone={allDone} style={{ marginBottom: 4 }}
         title="Seating &amp; supplies"
-        right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>Set for {capGuestLabel}</div> : undefined}
+        /* BUD-1 hero grammar (2026-07-07): the $ leads and reflects the host's
+           ACTIONS — spent (checked-off, at their locked/eff cost) of the planned
+           range; before anything's checked, the honest estimate range. "Set for
+           N" is sizing context, not the hero. */
+        right={!isMobile ? (() => {
+          const spentMid = Math.round(((cap.boughtLow || 0) + (cap.boughtHigh || 0)) / 2);
+          const range = cap.hasCost ? `${money1(cap.costLow)}–${money1(cap.costHigh)}` : null;
+          return (
+            <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text }}>
+                {spentMid > 0 ? <>{money1(spentMid)} <span style={{ fontWeight: FW.regular, color: C.muted }}>spent</span></> : range ? <>~{range}</> : `Set for ${capGuestLabel}`}
+              </div>
+              {spentMid > 0 && range && <div style={{ fontSize: T.caption, color: C.muted }}>of ~{range} planned · set for {capGuestLabel}</div>}
+              {spentMid === 0 && range && <div style={{ fontSize: T.caption, color: C.muted }}>estimate · set for {capGuestLabel}</div>}
+            </div>
+          );
+        })() : undefined}
         subtitle={!isMobile ? (cap.hasCost ? 'seats, tables & supplies' : '') : (cap.hasCost ? `Set for ${capGuestLabel} · seats, tables & supplies` : `Set for ${capGuestLabel}`)}>
         {/* Board (10+ pass 2): the Plan tab keeps ONE money hero — the Food plan's $/guest.
             This SECONDARY supplies card leads with its PURPOSE (what it's set for + what's
@@ -9896,7 +9912,19 @@ function CapacityPanel({ event, onPatch = () => {}, isMobile = false, profile })
                         style={qtyInp} />
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span role="button" tabIndex={skipped ? -1 : 0} onClick={skipped ? undefined : onCheck} onKeyDown={(e) => { if (!skipped && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCheck(); } }} style={{ display: 'block', fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, cursor: skipped ? 'default' : 'pointer', textDecoration: (checked[it.key] || skipped) ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                      <span role="button" tabIndex={skipped ? -1 : 0} onClick={skipped ? undefined : onCheck} onKeyDown={(e) => { if (!skipped && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCheck(); } }} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, fontSize: T.secondary, fontWeight: FW.semibold, color: C.text, cursor: skipped ? 'default' : 'pointer' }}>
+                        <span style={{ minWidth: 0, textDecoration: (checked[it.key] || skipped) ? 'line-through' : 'none' }}>{it.name}{it.added && <span style={{ fontSize: T.caption, color: C.muted, marginLeft: 7 }}>· yours</span>}</span>
+                        {/* Price breakdown, spread grammar: locked $ once committed,
+                            owned = $0, else the grounded line range. Nothing shown
+                            for lines the canonical table can't price (no fabricated $). */}
+                        {(() => {
+                          if (skipped) return null;
+                          if (it.owned) return <span style={{ flexShrink: 0, fontSize: T.caption, fontWeight: FW.bold, color: C.success || C.accent }}>$0 · have it</span>;
+                          if (it.locked != null) return <span style={{ flexShrink: 0, fontSize: T.caption, fontWeight: FW.bold, color: C.text }}>{money1(it.locked)} locked</span>;
+                          if (it.costLow != null) return <span style={{ flexShrink: 0, fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>{it.costLow === it.costHigh ? money1(it.costLow) : `${money1(it.costLow)}–${money1(it.costHigh)}`}{it.kind === 'rent' ? ' rental' : ''}</span>;
+                          return null;
+                        })()}
+                      </span>
                       {it.note && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 1, lineHeight: 1.4 }}>{it.note}</span>}
                       {/* Swaps — engine-derived honest options (disposables / borrow / rent↔buy),
                           the same inline affordance the food rows use for `alternatives`. */}
@@ -27246,7 +27274,7 @@ function BudgetHealthBar({ totalBudgeted, totalActual, totalCommitted }) {
 // The Food line IS the FoodPlan's estimate (BLS-adjustable via priceContext) and
 // tracks the shopping checkoffs; the other costs are build-up (what a host adds),
 // not the planner's top-down allocation. No fees, Stripe, vendors, AR, or SOT.
-function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '', ctx = null }) {
+function HostSpendingPlan({ foodPlan, capacity = null, eventId = null, spending = null, budget, setBudget, plannedGuests = 0, onNav, priceNote, hasRegion, totalBudget = 0, onSetTotalBudget, mustHave = '', ctx = null }) {
   const C = useT();
   const T = useType();
   const bp = useContext(BpCtx);
@@ -27458,11 +27486,35 @@ function HostSpendingPlan({ foodPlan, spending = null, budget, setBudget, planne
               ? <> You've got <span style={{ color: C.success, fontWeight: FW.bold }}>{money(foodPlan.suppliesSpentHigh)}</span> ({foodPlan.suppliesBought} of {foodPlan.suppliesCount}).</>
               : <> Nothing checked off yet.</>}
           </div>
-          <button type="button" onClick={() => onNav && onNav('Planning')} style={{ ...ghostBtn, marginTop: 12 }}>
+          <button type="button" onClick={() => onNav && onNav('Planning', null, { focusField: 'food-plan' })} style={{ ...ghostBtn, marginTop: 12 }}>
             Open the supplies list →
           </button>
         </CollapsibleCard>
       )}
+
+      {/* SEATING & RENTALS — the capacity list (chairs, tables, serviceware,
+          rentals) finally wired into the budget (2026-07-07). Same single
+          source the Plan card renders (playbookCapacity: eff-costed, locks
+          honored, owned = $0); hero follows the BUD-1 actuals-first grammar. */}
+      {capacity && capacity.hasCost && (() => {
+        const capSpent = Math.round(((capacity.boughtLow || 0) + (capacity.boughtHigh || 0)) / 2);
+        const capDone = capacity.costedCount > 0 && capacity.boughtCount >= capacity.costedCount;
+        return (
+          <CollapsibleCard id="bud-rentals" isMobile={isMobile} defaultCollapsed done={capDone} autoCollapseWhenDone={capDone} title="Seating &amp; rentals" style={{ marginBottom: 0 }}
+            right={<div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, whiteSpace: 'nowrap' }}>{capSpent > 0 ? <>{money(capSpent)} <span style={{ fontWeight: FW.regular, color: C.muted }}>spent</span></> : money(capacity.costLow, capacity.costHigh)}</div>}>
+            <div style={{ fontSize: T.body, color: C.muted, marginTop: 0, lineHeight: 1.5 }}>
+              {capSpent > 0 ? <>Plan range {money(capacity.costLow, capacity.costHigh)} · </> : null}
+              Chairs, tables, serviceware &amp; rentals — {capacity.itemCount} item{capacity.itemCount === 1 ? '' : 's'}, sized for {capacity.guests}.
+              {capacity.boughtCount > 0
+                ? <> You've lined up <span style={{ color: C.success, fontWeight: FW.bold }}>{capacity.boughtCount} of {capacity.costedCount}</span>{capacity.lockedTotal > 0 ? <> · {money(capacity.lockedTotal)} locked</> : null}.</>
+                : <> Nothing lined up yet.</>}
+            </div>
+            <button type="button" onClick={() => onNav && onNav('Planning', null, eventId ? { focusField: `cap-hero-${eventId}` } : undefined)} style={{ ...ghostBtn, marginTop: 12 }}>
+              Open seating &amp; supplies →
+            </button>
+          </CollapsibleCard>
+        );
+      })()}
 
       {/* OTHER COSTS — host categories, build-up. No vendor/AR rows. */}
       <CollapsibleCard id="bud-other" isMobile={isMobile} defaultCollapsed title="Other costs" style={{ marginBottom: 0 }}
@@ -27853,6 +27905,8 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
     return (
       <HostSpendingPlan
         foodPlan={event ? playbookFoodPlan(event, foodPP) : null}
+        capacity={(() => { try { return event ? playbookCapacity(event) : null; } catch { return null; } })()}
+        eventId={event ? event.id : null}
         spending={event ? hostSpending(event, foodPP && foodPP.priceFactor) : null}
         budget={budget}
         setBudget={setBudget}

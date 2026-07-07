@@ -1141,7 +1141,14 @@ export function playbookCapacity(event) {
   const costHigh = costed.reduce((s, i) => s + eff(i, 'costHigh'), 0);
   const lockedItems = costed.filter((i) => i.locked != null);
   const lockedTotal = Math.max(0, Math.round(lockedItems.reduce((s, i) => s + i.locked, 0)));
-  return { guests, items, groups, summary, because, sizing, sizingWhy, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length, lockedTotal, lockedCount: lockedItems.length };
+  // BUDGET WIRING (2026-07-07): what the host has actually GOT (checked off),
+  // billed with the same eff() the lines display — so Seating & supplies can
+  // finally flow into hostSpending and the Budget tab with zero parallel math.
+  const gotMap = (event.capacityChecked && typeof event.capacityChecked === 'object') ? event.capacityChecked : {};
+  const boughtItems = costed.filter((i) => gotMap[i.key] || i.owned);
+  const boughtLow = Math.max(0, Math.round(boughtItems.reduce((s, i) => s + eff(i, 'costLow'), 0)));
+  const boughtHigh = Math.max(0, Math.round(boughtItems.reduce((s, i) => s + eff(i, 'costHigh'), 0)));
+  return { guests, items, groups, summary, because, sizing, sizingWhy, costLow, costHigh, hasCost: costed.length > 0, costedCount: costed.length, itemCount: items.length, lockedTotal, lockedCount: lockedItems.length, boughtLow, boughtHigh, boughtCount: boughtItems.length };
 }
 
 // ── Infrastructure-check prompts (Sprint 55L · "Event Reality Check") ──────────

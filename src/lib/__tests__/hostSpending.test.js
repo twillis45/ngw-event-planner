@@ -68,7 +68,9 @@ describe('food flows into the spending source (the bug)', () => {
     const sp = hostSpending(HOST());
     // Nothing bought, no manual actuals → spent is 0 but committed reflects the plan.
     expect(sp.spent).toBe(0);
-    expect(sp.committed).toBe(sp.foodEstimate);
+    // 2026-07-07 supplies wiring: committed now includes planned supplies +
+    // seating/rentals too — the full plan, not just food.
+    expect(sp.committed).toBe(sp.foodEstimate + sp.suppliesEstimate + sp.capacityEstimate);
     expect(sp.committed).toBeGreaterThan(0); // NOT $0 — the reported bug is gone
   });
 
