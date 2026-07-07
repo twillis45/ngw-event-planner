@@ -85,6 +85,10 @@ category-agnosticism, so prove it:
 - [ ] Vendor axis / Command surface reflects the change afterward.
 - [ ] No action required a manual workaround (SQL, localStorage, re-mint).
 
+**Trial packet (TENPLUS-2):** everything needed to run this trial —
+messages, tracker CSV, scorecard, review template, 10-minute quick start —
+lives in [vendor-brief-trial/](vendor-brief-trial/README.md).
+
 ## 9 · Real-usage trial script
 
 1. Seed the flagship demo event (Demo Tools bar → delete+reseed = fresh brief
