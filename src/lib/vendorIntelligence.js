@@ -230,7 +230,13 @@ export function getVendorChallengeSummary(vendor, event) {
     // critical once the vendor is past the considering stage.
     communication = booking.level === 'not_started'
       ? { level: 'not_started', note: 'Not sourced yet — add a contact when you reach out.' }
-      : { level: 'critical', note: 'No contact details on file — cannot reach vendor.' };
+      // Color-budget honesty (2026-07-07, "vendor tab has too much red"): a
+      // missing contact FIELD is bookkeeping to finish, not a day-blocker —
+      // hosts often have the number in their phone. Red is reserved for
+      // genuinely critical states (lapsed COI, overdue payment, venue
+      // turnaway); this stays amber so one unfilled field can't paint the
+      // whole tab red.
+      : { level: 'attention', note: 'No contact details on file — add a phone or email so day-of reach-out is one tap.' };
   } else if (checklistRatio !== null && checklistRatio < 0.5 && eventClose) {
     communication = { level: 'attention', note: `Less than half of vendor comms checklist complete with ${eventDays}d left.` };
   } else if (lastLogDays !== null && lastLogDays > 21 && isCommitted && !eventPast && eventClose) {

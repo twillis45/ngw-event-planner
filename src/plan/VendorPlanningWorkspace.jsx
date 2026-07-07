@@ -742,7 +742,9 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
   const isCoiHero = !!(host && coiHeroId && vendor.id === coiHeroId);
   const hostWord = hostStatusWord(vendor && vendor.status);
   const hostDot = hostWord === 'Booked' ? 'safe' : hostWord === 'Got a price' ? 'attention' : 'not_started';
-  const dotLevel = isCoiHero ? 'critical' : (host ? hostDot : readiness.level);
+  // Color budget: when the row shows a red chip, the dot demotes to amber —
+  // one red voice per row.
+  const dotLevel = isCoiHero ? 'attention' : (host ? hostDot : readiness.level);
   const tierColor = ACCOUNTABILITY_COLOR[acc.tier] || P.textTertiary;
   const tierLabel = host ? hostTierLabel(acc.tier) : accountabilityLabel(acc.tier);
   const emphasis = acc.tier === 'missed_promise' || acc.tier === 'at_risk';
@@ -753,7 +755,10 @@ function VendorRow({ vendor, event, allEvents, accountability, nextAction, isSel
   const chipColor = host ? P.red : (isCritical ? P.red : tierColor);
   const chipLabel = host ? 'Needs you' : (isCritical ? 'Critical' : tierLabel);
   const leftStrip = isSelected ? P.steelBlue
-    : emphasis ? P.red
+    // Color budget: the chip is the row's one red voice. The strip goes red
+    // only for a MISSED promise; at-risk demotes to amber.
+    : acc.tier === 'missed_promise' ? P.red
+    : emphasis ? P.amber
     : acc.tier === 'needs_follow_up' ? P.amber
     : 'transparent';
 
@@ -1192,8 +1197,10 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
     <div style={{
       marginTop: space[5],
       background: P.card,
-      border: `1px solid ${accent}33`,
-      borderLeft: `2px solid ${accent}`,
+      // Color budget: neutral frame — the action button and per-item severity
+      // marks inside carry the color; the panel border is not a third alarm.
+      border: `1px solid ${P.borderSubtle}`,
+      borderLeft: `2px solid ${P.borderDef}`,
       borderRadius: radius.md,
       padding: `${space[4]}px ${space[5]}px`,
     }}>
@@ -1203,7 +1210,7 @@ function NextActionCard({ vendor, accent, nextAction, onPatchVendor, onAddLog, o
       <div style={{
         fontSize: type.size['xs'], fontWeight: type.weight.semibold,
         letterSpacing: '0.14em', textTransform: 'uppercase',
-        color: alsoItems.length ? accent : P.textTertiary, marginBottom: 6, fontFamily: FF,
+        color: P.textTertiary, marginBottom: 6, fontFamily: FF,
       }}>
         {alsoItems.length ? `What needs attention · ${alsoItems.length + 1}` : 'Next action'}
       </div>
@@ -1893,18 +1900,21 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
       display: 'flex', gap: space[5],
       background: P.canvas,
     }}>
-      {/* Single accent strip — sets command-desk tone, no glow */}
+      {/* Single accent strip — command-desk CHROME, not an alarm. The CRITICAL
+          LevelChip beside the name owns the status color (color budget). */}
       <div style={{
         width: 3, flexShrink: 0,
-        background: accent, borderRadius: 2, alignSelf: 'stretch',
+        background: P.steelBlue, borderRadius: 2, alignSelf: 'stretch',
       }} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         {/* Label */}
+        {/* Color budget (2026-07-07 "too much red"): the eyebrow is CHROME —
+            the needs-you panel below carries the alarm. Steel always. */}
         <div style={{
           fontSize: type.size['xs'], fontWeight: type.weight.semibold,
           letterSpacing: '0.16em', textTransform: 'uppercase',
-          color: accent, marginBottom: 6, fontFamily: FF,
+          color: P.textTertiary, marginBottom: 6, fontFamily: FF,
         }}>
           {labelText}
         </div>
@@ -1967,7 +1977,9 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               );
               const chips = [];
               const hostHdr = isHostView(event);
-              if (openCount > 0) chips.push(chip('open', `${openCount} need you`, (readiness.counts?.critical ? P.red : P.amber), () => onAddressItem && alsoItems[0] && onAddressItem(alsoItems[0])));
+              // Color budget: the KPI is a COUNT, not the alarm — amber always
+              // (the needs-you panel below is the one red voice).
+              if (openCount > 0) chips.push(chip('open', `${openCount} need you`, P.amber, () => onAddressItem && alsoItems[0] && onAddressItem(alsoItems[0])));
               if (lockTotal > 0) chips.push(chip('lock', `${lockedIn}/${lockTotal} ${hostHdr ? 'sorted' : 'locked in'}`, lockedIn === lockTotal ? P.green : P.steelBlue, null));
               if (balanceDue > 0) chips.push(chip('bal', `$${balanceDue.toLocaleString()} due`, P.amber, () => onAddressItem && onAddressItem({ key: 'financial' })));
               if (!chips.length) return null;
