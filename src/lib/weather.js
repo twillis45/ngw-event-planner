@@ -268,6 +268,98 @@ export function rainPlanGap(event, { outdoors } = {}) {
   };
 }
 
+// ── WEATHER-IMPACT-1 — event-PHASE impact intelligence ───────────────────────
+// A host doesn't need "rain is likely on Wednesday"; they need "rain overlaps
+// guest arrival — update guests and confirm the indoor plan." This classifies
+// the real forecast against the phases the event data actually supports:
+//   before the event · around arrival/start · during (or after) the event ·
+//   event-day-only when hourly timing isn't available.
+// HARD RULES: real hourly windows only (computeRainWindow); no invented
+// setup/load-out/arrival times (no such fields exist — copy says "before the
+// event" / "around your start", never "setup will be wet"); no end time
+// exists in the model, so nothing ever claims a bounded event window — copy
+// says "during or after". Daily fallback says timing is unknown. Every CTA
+// follows the deep-link doctrine.
+export function weatherImpactByEventPhase(event, wx) {
+  const ev = event || {};
+  if (!wx || wx.risk === 'clear') return { hasImpact: false, confidence: wx ? (wx.rainWindow ? 'hourly' : 'daily') : 'unknown', primaryPhase: 'none', affectedPhases: [], headline: null, shouldPromptRainPlan: false, shouldPromptGuestUpdate: false, hourlyWindowUsed: false };
+  const dayName = (() => { try { return new Date(String(wx.date || ev.date) + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long' }); } catch { return ''; } })();
+  const onDay = dayName ? `${dayName} (your event day)` : 'your event day';
+  const win = wx.rainWindow && Number.isFinite(wx.rainWindow.startHour) ? wx.rainWindow : null;
+  const isRainish = /rain|thunder|storm|drizzle|snow/i.test(String(wx.conditions || '')) || (wx.pop || 0) >= 30;
+  const hasPlan = !!String(ev.rainPlan || '').trim();
+  const rainCta = hasPlan
+    ? { actionLabel: 'Review rain plan', route: RAIN_PLAN_TARGET }
+    : { actionLabel: 'Add rain backup', route: RAIN_PLAN_TARGET };
+  const guestCta = { actionLabel: 'Draft guest update', route: { tab: 'Guests', focusField: `guests-invites-${ev.id}` } };
+  const parkingCta = { actionLabel: 'Confirm parking/arrival note', route: { tab: 'Event Details', focusField: 'parking-notes' } };
+
+  // Start hour — ONLY from an explicit startTime; never inferred from buckets.
+  const startHour = (() => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(ev.startTime || '').trim());
+    return m ? Number(m[1]) + Number(m[2]) / 60 : null;
+  })();
+
+  // No usable hourly window (or non-rain risk like heat) → event-day copy.
+  if (!win || !isRainish) {
+    const base = {
+      hasImpact: true, confidence: win ? 'hourly' : 'daily', primaryPhase: 'event_day', hourlyWindowUsed: false,
+      shouldPromptRainPlan: isRainish && !hasPlan, shouldPromptGuestUpdate: false,
+      affectedPhases: [{ phase: 'event_day', label: 'Event day', windowLabel: null, severity: wx.risk, summary: wx.summary, ...(isRainish ? rainCta : {}) }],
+    };
+    base.headline = isRainish
+      ? `Rain risk is on ${onDay}, but hourly timing isn’t available yet — confirm the rain plan without assuming when it will hit.`
+      : wx.summary;
+    return base;
+  }
+
+  // Hourly window vs. what we truly know of the day's shape.
+  const phases = [];
+  let primaryPhase = 'event_day';
+  if (startHour == null) {
+    primaryPhase = 'event_day';
+    phases.push({ phase: 'event_day', label: 'Event day', windowLabel: win.label, severity: wx.risk,
+      summary: `Rain is forecast ${win.label} on ${onDay}. Your start time isn’t set, so it can’t be matched to arrival or the event window yet.`,
+      ...rainCta });
+  } else if (win.endHour + 1 < startHour - 1) {
+    primaryPhase = 'prep';
+    phases.push({ phase: 'prep', label: 'Before the event', windowLabel: win.label, severity: 'medium',
+      summary: `Rain is forecast ${win.label} on ${onDay} — before your ${fmtHour(startHour)} start. Check anything happening outside beforehand and keep the rain plan ready.`,
+      ...rainCta });
+  } else if (win.startHour <= startHour + 1) {
+    // Window touches [start−1, start+1] → arrival/start.
+    primaryPhase = 'arrival';
+    phases.push({ phase: 'arrival', label: 'Around arrival/start', windowLabel: win.label, severity: wx.risk,
+      summary: `Rain may affect guest arrival on ${onDay} — forecast ${win.label}, around your ${fmtHour(startHour)} start. Confirm parking/arrival instructions and the rain plan.`,
+      ...rainCta });
+    phases.push({ phase: 'arrival', label: 'Parking & arrival', windowLabel: win.label, severity: 'medium',
+      summary: 'Wet arrivals go smoother with a clear parking and entrance note.', ...parkingCta });
+  } else {
+    // Window starts after start+1. No end time exists in the model — say
+    // "during or after", never a bounded event window.
+    primaryPhase = 'event';
+    phases.push({ phase: 'event', label: 'During or after the event', windowLabel: win.label, severity: wx.risk,
+      summary: `Rain is forecast ${win.label} on ${onDay} — after your ${fmtHour(startHour)} start, so during or after the event (no end time is set). Confirm the rain plan and consider a guest update.`,
+      ...rainCta });
+  }
+  const shouldPromptGuestUpdate = primaryPhase === 'arrival' || primaryPhase === 'event';
+  if (shouldPromptGuestUpdate) {
+    phases.push({ phase: primaryPhase, label: 'Tell your guests', windowLabel: win.label, severity: 'medium',
+      summary: 'A short weather note saves the day-of texts.', ...guestCta });
+  }
+  return {
+    hasImpact: true, confidence: 'hourly', primaryPhase, affectedPhases: phases,
+    headline: phases[0].summary, hourlyWindowUsed: true,
+    shouldPromptRainPlan: !hasPlan, shouldPromptGuestUpdate,
+  };
+}
+
+const fmtHour = (h) => {
+  const whole = Math.floor(h); const ampm = whole >= 12 ? 'PM' : 'AM';
+  const twelve = whole % 12 === 0 ? 12 : whole % 12;
+  return `${twelve} ${ampm}`;
+};
+
 // Weather summary copy, made aware of a saved rain plan. The forecast (risk
 // level, precipitation) is untouched — only the "rain plan required / prepare
 // a rain plan" imperative stops nagging once event.rainPlan has real text.

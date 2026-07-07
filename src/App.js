@@ -44,7 +44,7 @@ import { isSentryConfigured, captureError } from './lib/sentry';
 import { listVersions as dvList, getActiveId as dvActiveId, getVersion as dvGet, saveVersion as dvSave, renameVersion as dvRename, deleteVersion as dvDelete, setActiveVersion as dvSetActive, updateActiveVersion as dvUpdateActive } from './lib/draftVersions';
 import { getReadinessHistory, recordReadiness, readinessScore } from './lib/readinessHistory';
 import { isStorageConfigured, uploadFile, validateFile, inferCategory } from './lib/storage';
-import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary, suggestRainPlan, guestRainMessage } from './lib/weather';
+import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk, weatherLogistics, rainPlanStatus, rainPlanGap, rainAwareSummary, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase } from './lib/weather';
 import { derivePlaceIntelligence } from './lib/placeIntelligence';
 import { buildDayBeforePlan } from './lib/dayBefore';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
@@ -37525,7 +37525,18 @@ function WeatherAlert({ event, onNavTo }) {
           {/* POP-1 rain-plan continuity: the summary stops saying "rain plan
               required" once event.rainPlan (the planner field on Where & when)
               has real text. Forecast/risk untouched — copy awareness only. */}
-          <div style={{ fontSize: T.caption, color: C.text }}>{rainAwareSummary(wx.summary, rainPlanStatus(event).hasPlan)}</div>
+          {/* WEATHER-IMPACT-1: phase-aware copy replaces the generic day summary
+              whenever the impact helper can honestly place the risk (before /
+              around arrival / during-or-after / event-day-timing-unknown). It
+              never invents setup or end times — the helper only uses the real
+              hourly rain window and event.startTime. */}
+          {(() => {
+            const impact = weatherImpactByEventPhase(event, wx);
+            if (impact.hasImpact && impact.headline) {
+              return <div data-testid="weather-phase-headline" style={{ fontSize: T.caption, color: C.text }}>{rainAwareSummary(impact.headline, rainPlanStatus(event).hasPlan)}</div>;
+            }
+            return <div style={{ fontSize: T.caption, color: C.text }}>{rainAwareSummary(wx.summary, rainPlanStatus(event).hasPlan)}</div>;
+          })()}
           {wx.sunset && <div style={{ fontSize: T.caption, color: C.text, marginTop: 2 }}>🌇 Sun sets {wx.sunset} — plan lighting + golden-hour photos before then.</div>}
           <div style={{ fontSize: T.caption, color: C.muted, marginTop: 2 }}>{wx.disclaimer}</div>
           {/* POP-1 rain-plan continuity: when the forecast is rain-kind, connect the
@@ -37547,6 +37558,30 @@ function WeatherAlert({ event, onNavTo }) {
                 {rp.ctaLabel} →
               </button>
             ) : null;
+          })()}
+          {/* WEATHER-IMPACT-1: phase CTAs beyond the rain plan — parking/arrival
+              note when rain touches arrival, guest update when arrival or the
+              event itself is affected. Routes reuse existing consumers
+              (parking-notes anchor, guests-invites card); no dead CTAs. */}
+          {onNavTo && (() => {
+            const impact = weatherImpactByEventPhase(event, wx);
+            if (!impact.hourlyWindowUsed) return null;
+            const extras = impact.affectedPhases.filter(p => p.route && p.route.focusField && p.route.focusField !== 'rain-plan');
+            if (!extras.length) return null;
+            return (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                {extras.map((p) => (
+                  <button
+                    key={p.actionLabel}
+                    data-testid={`weather-phase-cta-${p.route.focusField}`}
+                    onClick={() => onNavTo(p.route.tab, { focusField: p.route.focusField })}
+                    style={{ ...s.btn('ghost'), padding: '5px 10px', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, border: `1px solid ${C.line}`, borderRadius: 7 }}
+                  >
+                    {p.actionLabel} →
+                  </button>
+                ))}
+              </div>
+            );
           })()}
         </div>
         <button onClick={() => setDismissed(true)} title="Dismiss" style={{ ...s.btn('ghost'), padding: '3px 6px', fontSize: T.secondary, color: C.muted }}>×</button>
