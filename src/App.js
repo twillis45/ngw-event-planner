@@ -23144,6 +23144,11 @@ function demoToolsOn() {
 function DemoToolsBar({ events, setEvents, onOpen }) {
   const C = useT();
   const T = useType();
+  // SHELL-POLISH-1: the bar was a full-width floating pill that covered primary
+  // CTAs (observed over the create-flow button and the Food plan card). It now
+  // rests as a small corner CHIP and only expands to the full toolbar on tap —
+  // demo/admin access stays one tap away without ever obstructing the host flow.
+  const [open, setOpen] = useState(false);
   const hasDemo = (events || []).some(isDemoEvent);
   const btn = (label, onClick, solid) => (
     <button type="button" onClick={onClick}
@@ -23151,8 +23156,17 @@ function DemoToolsBar({ events, setEvents, onOpen }) {
       {label}
     </button>
   );
+  if (!open) {
+    return (
+      <button type="button" data-testid="demo-tools-chip" onClick={() => setOpen(true)} title="Demo tools"
+        style={{ position: 'fixed', bottom: 'calc(14px + env(safe-area-inset-bottom))', left: 14, zIndex: 80, width: 38, height: 38, borderRadius: '50%', border: `1px solid ${C.border}`, background: C.surface, color: C.muted, fontSize: 15, cursor: 'pointer', boxShadow: '0 6px 24px rgba(0,0,0,0.35)', fontFamily: 'inherit' }}>
+        ⚙
+      </button>
+    );
+  }
   return (
-    <div style={{ position: 'fixed', bottom: 14, left: 14, zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '7px 10px', boxShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>
+    <div data-testid="demo-tools-bar" style={{ position: 'fixed', bottom: 'calc(14px + env(safe-area-inset-bottom))', left: 14, zIndex: 80, display: 'flex', alignItems: 'center', gap: 8, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: '7px 10px', boxShadow: '0 6px 24px rgba(0,0,0,0.35)' }}>
+      <button type="button" aria-label="Collapse demo tools" onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: C.muted, fontSize: T.caption, fontWeight: FW.bold }}>✕</button>
       <span style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.08em', color: C.muted }}>DEMO TOOLS</span>
       {btn(hasDemo ? 'Reset demo (fresh seed)' : 'Seed demo event', () => {
         const { events: next, removed } = withDemoSeeded(events);
@@ -40198,7 +40212,19 @@ function ReadinessTrack({ event, onNavTo = null }) {
       <div data-testid="phase-progress-line" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', padding: '7px 16px 0', marginBottom: 12, minWidth: 0 }}>
         <span style={{ fontSize: T.caption, color: C.muted, fontWeight: FW.semibold, whiteSpace: 'nowrap' }}>{pp.label}:</span>
         <span data-testid="phase-progress-summary" style={{ fontSize: T.caption, color: C.text, fontWeight: FW.semibold, minWidth: 0 }}>{pp.summary}</span>
-        {pp.nextCue && (
+        {pp.nextCue && (() => {
+          // SHELL-POLISH-1: the cue never re-tells the hero's words. If the
+          // hero below already carries this step, the cue yields (one telling).
+          try {
+            const heroNA = selectEventNextAction(event);
+            if (heroNA && heroNA.title) {
+              const norm = (x) => String(x || '').toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+              const cueN = norm(pp.nextCue.label).replace(/^next |^finish |^add |^set /, '');
+              if (cueN && norm(heroNA.title).includes(cueN.slice(0, 24))) return null;
+            }
+          } catch { /* cue stays */ }
+          return true;
+        })() && (
           <button type="button" data-testid="phase-progress-cue"
             onClick={() => onNavTo(pp.nextCue.route.tab, pp.nextCue.route.vendorId || null, pp.nextCue.route.focusField ? { focusField: pp.nextCue.route.focusField } : undefined)}
             style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: T.caption, fontWeight: FW.bold, color: C.accent, minWidth: 0, textAlign: 'left' }}>
