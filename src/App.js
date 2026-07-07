@@ -9486,7 +9486,7 @@ function CrabPlanCard({ event, onPatchEvent, isMobile = false }) {
         <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
           {plan.issues.map(iss => (
             <button key={iss.type + (iss.lineId || '')} type="button" data-testid={`crab-issue-${iss.type}`}
-              onClick={() => { const el = document.getElementById(iss.route.focusField); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus(); } catch {} } }}
+              onClick={() => { const el = document.getElementById(iss.route.focusField); if (el) { calmLandTop(el); try { el.focus(); } catch {} } }}
               style={{ textAlign: 'left', background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, color: C.accent, fontWeight: FW.semibold }}>
               {iss.copy} →
             </button>
@@ -9697,6 +9697,18 @@ function CollapsibleCard({ id, eyebrow, title, subtitle, right, children, isMobi
   const toggleCard = () => { const willOpen = collapsed; toggle(); if (willOpen && _acc) _acc.setOpenId(id); };
   // A deep-link (e.g. "Take me to it →") can force the body mounted regardless of the
   // host's collapsed choice, so the target row exists in the DOM for the scroll-to.
+  // TRUTH-FUNCTION HARDENING (2026-07-07): when the force window expires, the card
+  // STAYS open — the host deep-linked here and the row they're reading must not
+  // fold away under them (observed: landing vanished 1.4s after settling). One
+  // tap re-collapses it; their preference is only overridden by their own ask.
+  const wasForced = useRef(false);
+  useEffect(() => {
+    if (forceOpen) { wasForced.current = true; return; }
+    if (wasForced.current) {
+      wasForced.current = false;
+      if (collapsed) setCollapsedPersist(false);
+    }
+  }, [forceOpen]); // eslint-disable-line react-hooks/exhaustive-deps
   const open = forceOpen || !collapsed;
   // Global: when a panel EXPANDS, float it into the viewport so the host sees the content
   // they just opened (esp. mobile, where the body often opens below the fold).
@@ -10323,7 +10335,7 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
       const civ = setInterval(() => {
         ctries += 1;
         const el = document.getElementById(`fpchoice-${focusItemId}`);
-        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(civ); }
+        if (el) { calmLandTop(el); clearInterval(civ); }
         else if (ctries > 14) clearInterval(civ);
       }, 120);
       const ct2 = setTimeout(() => { setForceChoicesOpen(false); onFocusConsumed(); }, 3400);
@@ -10353,10 +10365,15 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
     const iv = setInterval(() => {
       tries += 1;
       const el = document.getElementById(`foodrow-${focusItemId}`);
-      if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); clearInterval(iv); }
+      if (el) { calmLandTop(el); clearInterval(iv); }
       else if (tries > 12) clearInterval(iv);
     }, 120);
-    const t2 = setTimeout(() => { setHighlightId(null); setForceSpreadOpen(false); onFocusConsumed(); }, 3400);
+    const t2 = setTimeout(() => {
+      setHighlightId(null); setForceSpreadOpen(false); onFocusConsumed();
+      // Re-anchor once after the force window closes — the state settle can
+      // reflow the page, and the row the host is reading must not drift away.
+      setTimeout(() => { const el = document.getElementById(`foodrow-${focusItemId}`); if (el) calmLandTop(el); }, 260);
+    }, 3400);
     return () => { clearInterval(iv); clearTimeout(t2); };
   }, [focusItemId, focusNonce]); // eslint-disable-line react-hooks/exhaustive-deps
   const [openChoice, setOpenChoice] = useState(null); // which menu choice is expanded
@@ -11812,7 +11829,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       timers.push(setTimeout(() => {
         const el = document.getElementById('ce-name');
         if (!el || document.activeElement === el) return;
-        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* noop */ }
+        calmLandTop(el);
         el.focus({ preventScroll: true });
       }, 280));
     }
@@ -11831,7 +11848,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
       // If they're still in ce-guests, leave them there — they'll Tab on when ready.
       const active = document.activeElement;
       if (active && active.id === 'ce-guests') return;
-      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { /* older browsers */ }
+      calmLandTop(el);
       el.focus({ preventScroll: true });
     }, 280);
     return () => clearTimeout(id);
@@ -38582,9 +38599,23 @@ const PLANNING_VIEWS = ['list', 'timeline', 'checklist'];
 // A check must never strand the host ("where did it go? what's next?"): the next
 // item glides to the center of the viewport with a soft settle highlight — calm
 // focus, not a jump-cut. Retries briefly so auto-advanced groups can mount first.
+// ── ATTENTION SYSTEM · landing scroll ────────────────────────────────────────
+// Every deep-link landing settles its target at the TOP of the viewport —
+// the row the host asked for leads the screen, with breathing room so it
+// never hides under the header. One primitive so the behavior can't drift.
+const LAND_TOP_MARGIN = 76; // header + phase strip breathing room
+const calmLandTop = (el) => {
+  if (!el) return;
+  try {
+    const cur = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    if (cur < LAND_TOP_MARGIN) el.style.scrollMarginTop = LAND_TOP_MARGIN + 'px';
+  } catch (e) { /* style-locked — scroll still lands */ }
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* older browsers */ }
+};
+
 const calmFocusEl = (el) => {
   if (!el) return;
-  try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
+  calmLandTop(el);
   try {
     const prevBg = el.style.background, prevSh = el.style.boxShadow, prevTr = el.style.transition, prevRad = el.style.borderRadius;
     el.style.transition = 'background 480ms ease, box-shadow 480ms ease';
@@ -38613,7 +38644,7 @@ const scrollFocusFieldWithRetry = (fieldId, tries = 12) => {
   const tick = (n) => {
     const el = document.getElementById(fieldId) || document.querySelector(`[data-focus-field="${esc(fieldId)}"]`);
     if (el) {
-      try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
+      calmLandTop(el);
       const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)
         ? el : (el.querySelector('input, textarea, select') || el);
       try { focusTarget.focus({ preventScroll: true }); if (focusTarget.select) focusTarget.select(); } catch (e) { /* non-fatal */ }
@@ -42917,7 +42948,7 @@ function HostTaskFocusCard({ event, taskId, setEvent, onClear }) {
   const t = taskId && !compressed ? timeline.find(x => x && x.id === taskId) : null;
   useEffect(() => {
     if ((t || (compressed && doNowTasks.length)) && ref.current && typeof ref.current.scrollIntoView === 'function') {
-      try { ref.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* noop */ }
+      calmLandTop(ref.current);
     }
   }, [taskId]); // eslint-disable-line react-hooks/exhaustive-deps
   const doneOne = (id, alsoClear) => {
@@ -43396,7 +43427,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     const tick = () => {
       const el = document.querySelector(`[data-deeplink="${esc(id)}"]`);
       if (el && el.scrollIntoView) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        calmLandTop(el);
         // Brief flash so the planner sees where the CTA landed (board intent).
         try {
           const prevOutline = el.style.outline, prevOffset = el.style.outlineOffset, prevTrans = el.style.transition;
@@ -43422,7 +43453,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
     const tick = () => {
       const el = document.getElementById(openFocusField) || document.querySelector(`[data-focus-field="${esc(openFocusField)}"]`);
       if (el) {
-        try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { /* older browsers */ }
+        calmLandTop(el);
         // Anchors are often WRAPPER divs (rain-plan, event-date, guests-entry) —
         // focus the inner control so the keyboard lands in the field, not a no-op.
         const focusTarget = /^(INPUT|TEXTAREA|SELECT|BUTTON)$/.test(el.tagName)

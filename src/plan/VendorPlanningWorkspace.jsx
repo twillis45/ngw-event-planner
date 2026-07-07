@@ -130,6 +130,14 @@ const FF = type.family;
 // alone still never mutates anything. Which actions show is recomputed from
 // current vendor state every render (confirmationActionsFor), so an applied
 // action disappears — no double-writes. No attention/Command items (2B-2).
+// ATTENTION SYSTEM: landings settle at the TOP of the viewport (shared rule
+// with App.js calmLandTop) — the section the host asked for leads the screen.
+const landTop = (el) => {
+  if (!el) return;
+  try { const cur = parseFloat(getComputedStyle(el).scrollMarginTop) || 0; if (cur < 76) el.style.scrollMarginTop = '76px'; } catch (e) { /* noop */ }
+  try { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) { /* noop */ }
+};
+
 function VendorConfirmationNote({ eventId, vendor, onPatchVendor, onAddLog }) {
   const [rows, setRows] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -3744,7 +3752,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
     // Defer one tick so a freshly-expanded panel is laid out before we center.
     setTimeout(() => {
       if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        landTop(nextActionRef.current);
       }
     }, 60);
     // Contact / scope / status have no inline panel on the action card — also
@@ -3761,7 +3769,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection('nextAction');
       setTimeout(() => setFlashSection(null), 2000);
       if (nextActionRef.current?.scrollIntoView) {
-        nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        landTop(nextActionRef.current);
       }
     }
   };
@@ -3794,7 +3802,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       // before we center it (the conflict CTA changes `selected` in the same pass).
       setTimeout(() => {
         if (nextActionRef.current && nextActionRef.current.scrollIntoView) {
-          nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          landTop(nextActionRef.current);
         }
       }, 60);
       return;
@@ -3808,7 +3816,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
       setFlashSection(openSection);
       setTimeout(() => setFlashSection(null), 2000);
       if (targetRef.current.scrollIntoView) {
-        targetRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        landTop(targetRef.current);
       }
     }
   }, [openSection, sectionPing]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3916,7 +3924,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
               setExpandedKind('contract');
               setFlashSection('nextAction');
               setTimeout(() => setFlashSection(null), 2000);
-              setTimeout(() => { if (nextActionRef.current && nextActionRef.current.scrollIntoView) nextActionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 60);
+              setTimeout(() => { if (nextActionRef.current && nextActionRef.current.scrollIntoView) landTop(nextActionRef.current); }, 60);
             }} />
         </div>
 

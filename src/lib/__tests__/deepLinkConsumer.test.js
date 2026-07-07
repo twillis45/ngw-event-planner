@@ -33,3 +33,23 @@ test('3 · source contract: the focus consumer opens all three layers and falls 
   expect(app).toMatch(/if \(target && target\.group\) setOpenGroup\(target\.group\)/); // opens the item's group
   expect(app).toMatch(/fp-spread-\$\{event\.id\}`\); if \(card\) card\.scrollIntoView/); // unknown-id fallback lands somewhere real
 });
+
+test('4 · attention system: landings scroll to the TOP of the viewport via ONE primitive', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', '..', 'App.js'), 'utf8');
+  const comp = app.slice(app.indexOf('const calmLandTop'), app.indexOf('const calmLandTop') + 700);
+  expect(comp).toMatch(/block: 'start'/);
+  expect(comp).toMatch(/LAND_TOP_MARGIN/);
+  // no landing site regresses to center-scroll
+  expect(app).not.toMatch(/block: 'center'/);
+  const vpw = fs.readFileSync(path.join(__dirname, '..', '..', 'plan', 'VendorPlanningWorkspace.jsx'), 'utf8');
+  expect(vpw).not.toMatch(/block: 'center'/);
+});
+
+test('5 · a deep-link landing PERSISTS: the forced-open card stays open when the window expires', () => {
+  const app = fs.readFileSync(path.join(__dirname, '..', '..', 'App.js'), 'utf8');
+  const card = app.slice(app.indexOf('function CollapsibleCard'), app.indexOf('function CollapsibleCard') + 3000);
+  expect(card).toMatch(/wasForced/);
+  expect(card).toMatch(/if \(collapsed\) setCollapsedPersist\(false\)/);
+  // and the focus effect re-anchors after the settle so the row never drifts
+  expect(app).toMatch(/Re-anchor once after the force window closes/);
+});

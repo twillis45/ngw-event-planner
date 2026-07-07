@@ -27,3 +27,10 @@ Todd: "CTAs are broken again. CTAs should be deep links only." Repro: the calm-t
 2. **Consumer completeness**: the FoodPlan focus effect opens ALL THREE collapse layers a row sits behind (the shopping home via its accordion, the spread card via forceOpen, and the item's GROUP) — previously only the middle layer opened, so even valid ids could land on nothing.
 3. **Visible fallback**: an unknown focus id scrolls to the spread card itself — a tap never silently dies.
 Live-verified end to end: hero → row mounted, highlighted (settle ring), in viewport. DOCTRINE ADDITION: **a route producer may only emit ids from the exact list its destination renders — and focus consumers must open every collapse layer between the viewport and the target.** Tests: src/lib/__tests__/deepLinkConsumer.test.js (per-type sweep + source contracts).
+
+## Addendum 3 — TRUTH-FUNCTION HARDENING: top-of-viewport landings that never vanish
+Todd: "this may be my biggest truth function and it has got to work every time. attention system should calmly scroll the row into top of the viewport." Changes:
+1. **calmLandTop primitive** (App.js) — every deep-link landing now settles its target at the TOP of the viewport (`block:'start'` + 76px scroll margin so nothing hides under the header). All landing scrolls in App.js AND the vendor cockpit converted; `block:'center'` is banned by test from both files.
+2. **Durable landings** — a forced-open CollapsibleCard now STAYS open when the force window expires (previously the spread re-collapsed 3.4s after landing and the row VANISHED under the host — observed live). One tap re-collapses; the host's preference is only overridden by their own ask.
+3. **Post-settle re-anchor** — the state settle after the force window reflows the page; the focus effect re-scrolls the row once so it never drifts (measured: lands 186px → settles 201px and holds through 8s sampling).
+Verified end to end on a clean event: hero → row mounted + highlighted + top-anchored + persistent. Regression pins: deepLinkConsumer tests 4–5.
