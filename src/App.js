@@ -101,7 +101,7 @@ import { loadEvents as cloudLoadEvents, loadClients as cloudLoadClients, saveEve
 import { CREW_STATUSES, CREW_STATUS_LABEL, CREW_STATUS_SEVERITY, loadTeamRoster, saveTeamRoster, makeRosterMember, mergeSupabaseMembers, makeCrewAssignment, summarizeCrew, crewCallSheetText } from './lib/studioTeam';
 import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
-import CommandCenter, { deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, wholeEventReadinessScore, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
+import CommandCenter, { milestoneActionRoute, deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, wholeEventReadinessScore, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
 import { effectiveDone as taskEffectiveDone } from './lib/taskEngine';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
@@ -9400,7 +9400,33 @@ function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
 // disconnected risk engines — a compound event's "guests will be confused by
 // ceremony vs. celebration formality" risk lived ONLY in Reveal/ctx and never
 // reached this tab at all.
-function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, domain = null, title = 'What could go wrong', ctx = null }) {
+// WCGW-ROUTE-1 — route each risk to the exact place its fix happens. Weather
+// and parking risks map to their fields; everything else reuses the SAME
+// earliest-keyword-wins milestone router (first-undone vendor rule included).
+// A risk with no real destination stays honestly informational — no dead CTA.
+function riskFixRoute(risk, event) {
+  const text = `${risk.trigger || ''} ${risk.mitigation || ''}`.toLowerCase();
+  if (/rain|weather|storm|heat wave|thunder/.test(text)) return { label: 'Add rain backup', tab: 'Event Details', focusField: 'rain-plan' };
+  if (/parking|arrival directions|find the (place|house|venue)/.test(text)) return { label: 'Add parking details', tab: 'Event Details', focusField: 'parking-notes' };
+  if (/schedule|timeline|running late|timing|run of show/.test(text)) return { label: 'See the day plan', tab: 'Event Day Schedule', focusField: 'ros-now' };
+  // The MITIGATION names the fix ("stock bug spray and shade"), the trigger
+  // names the symptom ("mosquitoes run guests off") — route by the fix first,
+  // fall back to the trigger only when the mitigation gives no domain.
+  const mit = String(risk.mitigation || '').toLowerCase();
+  if (/bug spray|citronella|shade|sunscreen|\bice\b|cooler|canopy|tent|extra chairs|trash bag/.test(mit)) {
+    return { label: 'Open supplies', tab: 'Planning', focusField: event && event.id ? `cap-hero-${event.id}` : 'food-plan' };
+  }
+  const rm = milestoneActionRoute(mit, event, null);
+  const r = (rm && rm.tab !== 'Timeline') ? rm : milestoneActionRoute(text, event, null);
+  if (!r || r.tab === 'Timeline') return null; // informational by design
+  const label = r.tab === 'Guests' ? 'Open the guest list'
+    : r.tab === 'Budget' ? 'Open the budget'
+    : r.tab === 'Vendors' ? 'Open the vendor'
+    : 'Open the food plan';
+  return { label, ...r };
+}
+
+function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, domain = null, title = 'What could go wrong', ctx = null, onNavTo = null }) {
   const C = useT();
   const T = useType();
   const [expanded, setExpanded] = useState(false);
@@ -9464,6 +9490,16 @@ function WhatCouldGoWrongPanel({ event, onPatchEvent = null, isMobile = false, d
                     {onPatchEvent && (
                       <span style={{ display: 'flex', gap: 12, marginTop: 6, flexWrap: 'wrap' }}>
                         <button type="button" onClick={() => setLearnMoreId(learnOpen ? null : rid)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.accent }}>{learnOpen ? 'Hide details' : 'Learn more'}</button>
+                        {/* WCGW-ROUTE-1: the row acts — deep-link to where the fix
+                            actually happens; rows with no destination stay informational. */}
+                        {onNavTo && (() => {
+                          const fix = riskFixRoute(r, event);
+                          return fix ? (
+                            <button type="button" data-testid={`risk-fix-${rid}`}
+                              onClick={() => onNavTo(fix.tab, { focusField: fix.focusField, vendorId: fix.vendorId })}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>{fix.label} →</button>
+                          ) : null;
+                        })()}
                         <button type="button" onClick={() => setRiskStatus(rid, 'mitigated')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.accent }}>Mark mitigated</button>
                         <button type="button" onClick={() => setRiskStatus(rid, 'acknowledged')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>
                         <button type="button" onClick={() => setRiskStatus(rid, 'dismissed')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>
@@ -42491,6 +42527,13 @@ function DayBeforePlanCard({ event, onNav, isMobile = false }) {
         {plan.daysOut === 1 ? 'Tomorrow · Your day-before plan' : plan.daysOut === 2 ? 'Two days out · Your day-before plan' : 'Your day-before plan'}
       </div>
       <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.3, marginBottom: 12 }}>{plan.headline}</div>
+      {/* MOMENT-PROTECT-1 (annotate-only): the point of the party stays visible
+          under the task pressure — the host's own words, never invented. */}
+      {plan.moment && (
+        <div data-testid="daybefore-moment" style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, marginTop: -6, marginBottom: 12 }}>
+          <span style={{ fontWeight: FW.bold, color: C.text }}>Protect the moment:</span> {plan.moment.text}{plan.moment.sub ? ` — ${plan.moment.sub}` : ''}
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {plan.sections.map((sec) => (
           <div key={sec.key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 8, padding: '9px 0', borderTop: `1px solid ${C.border}` }}>
@@ -42562,6 +42605,18 @@ function HostTaskFocusCard({ event, taskId, setEvent, onClear }) {
       <div ref={ref} style={{ ...metalEdge(C), borderRadius: 12, padding: '16px 18px', marginBottom: 14, borderLeft: `3px solid ${C.accent}` }}>
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.accent, marginBottom: 7 }}>Do these now</div>
         <div style={{ fontSize: T.secondary, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>Your timeline is tight — these can't wait for their usual week. Knock them out and mark each done.</div>
+        {/* MOMENT-PROTECT-1 (annotate-only): under task pressure, keep the point
+            of the event in view — the host's own words, nothing inferred. */}
+        {(() => {
+          const mh = String(event.must_have_moment || '').trim();
+          const hn = String(event.honoree || '').trim();
+          const line = mh || (hn ? `${hn}\u2019s moment` : '');
+          return line ? (
+            <div data-testid="donow-moment" style={{ fontSize: T.caption, color: C.muted, marginBottom: 10, lineHeight: 1.5 }}>
+              <span style={{ fontWeight: FW.bold, color: C.text }}>Worth protecting while you work:</span> {line}
+            </div>
+          ) : null;
+        })()}
         {doNowTasks.slice(0, 6).map(x => (
           <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 0', borderTop: `1px solid ${C.border}` }}>
             <span style={{ flex: 1, minWidth: 0, fontSize: T.body, fontWeight: FW.semibold, color: C.text, lineHeight: 1.35 }}>{x.task}</span>
@@ -42798,7 +42853,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <div id="guests-entry" style={{ scrollMarginTop: 16 }}>
             <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="guests" onSetCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} onLockCount={(n) => setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} />
           </div>
-          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} /></div></div>}
+          <div className="hp-recede"><Guests guests={event.guests} setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} onNavTo={(t, opts) => go(t, opts && opts.vendorId ? opts.vendorId : null, opts)} /></div></div>}
         {tab === 'Budget' && <div className="planv2-wrap">{/* Parity fix: wrap the WHOLE tab so the PlanNowHero aligns to 760 with the content — HostSpendingPlan's inner 760 only capped the cards, leaving the hero full-bleed. */}
           {/* Tab-scoped NOW hero (host shell) — real over/under from spent vs total. */}
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} scope="budget" onDropBudgetRow={(rowId) => setEvent(e => ({ ...e, budget: (Array.isArray(e.budget) ? e.budget : []).filter(r => !(r && r.id === rowId)) }))} />
@@ -42843,7 +42898,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
             : <>
                 {/* UNIFIED FRAME: no LegacyTabHeader on host NOW tabs — RealityCheckPanel leads. */}
                 <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />
-                <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} />
+                <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} onNavTo={(t, opts) => go(t, opts && opts.vendorId ? opts.vendorId : null, opts)} />
                 <RunOfShow ros={effectiveRos(event)} setRos={(fn) => setEvent(e => ({ ...e, rosEdited: true, ros: typeof fn === 'function' ? fn(effectiveRos(e)) : fn }))} vendors={event.vendors} eventName={event.name} eventDate={event.date} eventVenue={event.venue} eventId={event.id} eventType={event.type} isDayOf={dayMode} honoree={event.honoree || ''} meaning={{ story: event.honoree_story, feeling: event.feeling_words, why: event.meaning_why, mustHave: event.must_have_moment }} isHost={true} authored={Array.isArray(event.ros) && event.ros.length > 0} />
               </>}</div>
         )}
@@ -43566,7 +43621,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           See the whole guest list →
         </button>
       )}
-      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} /></div>
+      <div className={isHostEvt ? (guestFocus ? 'hp-focus-dim' : 'hp-recede') : undefined}><Guests   guests={event.guests}     setGuests={wrap('guests')} event={event} profile={profile} setGuestCount={(n) => setEvent(e => ({ ...e, guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) }))} setGuestMode={(m) => setEvent(e => ({ ...e, guestMode: m }))} setKidsCount={(n) => setEvent(e => ({ ...e, kidsCount: Math.max(0, Math.round(Number(n) || 0)) }))} onSetInviteStyle={(s) => setEvent(e => ({ ...e, inviteStyle: s }))} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} /><WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} domain="guests" title="Watch-outs for your guest list" ctx={ctx} onNavTo={(t, opts) => handleTabChange(t, opts && opts.vendorId ? opts.vendorId : null, opts)} /></div>
       {/* Seating's host home — it has no nav lane, so the entry lives here on the roster
           tab (you seat the people on your guest list). Honest sub from real RSVP/table state. */}
       {isHostEvt && (() => {
@@ -43751,7 +43806,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           )}
           {/* Board ruling (unanimous): "Before the big day" safety gate leads The Day. */}
           {isHostEvt && <RealityCheckPanel event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
-          <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} />
+          <WhatCouldGoWrongPanel event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} ctx={ctx} onNavTo={(t, opts) => handleTabChange(t, opts && opts.vendorId ? opts.vendorId : null, opts)} />
           {/* Sprint 59E: legacy Agenda bridge. Removed from the visible nav
               this sprint; if the event still has persisted agenda items
               from a previous sprint, surface an inline "View legacy agenda"

@@ -121,8 +121,21 @@ export function buildDayBeforePlan(event, now = new Date()) {
   ];
 
   const openCount = sections.reduce((n, s) => n + (s.open || 0), 0);
+  // MOMENT-PROTECT-1 (annotate-only): the host-NAMED moment rides along so the
+  // day-before plan can keep the point of the event visible under the task
+  // pressure. Only explicit fields — nothing inferred, nothing invented.
+  const mustHave = String(ev.must_have_moment || '').trim();
+  const honoree = String(ev.honoree || '').trim();
+  const song = String(ev.honoree_song || ev.honoreeSong || '').trim();
+  const drink = String(ev.honoree_drink || ev.honoreeDrink || '').trim();
+  const touches = [song && `their song: ${song}`, drink && `their drink: ${drink}`].filter(Boolean).join(' · ');
+  const moment = mustHave
+    ? { text: mustHave, sub: honoree && touches ? `${honoree} — ${touches}` : (touches || null) }
+    : honoree
+      ? { text: `${honoree}\u2019s moment`, sub: touches || null }
+      : null;
   return {
-    applicable: true, daysOut, sections, openCount,
+    applicable: true, daysOut, sections, openCount, moment,
     headline: daysOut === 0
       ? 'It’s today. Here’s what still matters.'
       : openCount === 0
