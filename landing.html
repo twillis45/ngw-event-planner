@@ -192,7 +192,19 @@
   .promises p{margin-top:12px;color:var(--muted);font-size:.95rem}
   .promises .vow{color:var(--steel-hi);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:14px}
 
-  .close{padding-bottom:clamp(100px,14vw,190px)}
+  .faqlist{margin-top:52px;max-width:720px;border-top:1px solid var(--line)}
+  .faq-item{border-bottom:1px solid var(--line)}
+  .faq-q{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;
+    background:none;border:none;padding:22px 2px;cursor:pointer;text-align:left;font-family:inherit;
+    font-size:1.05rem;font-weight:600;color:var(--text)}
+  .faq-x{color:var(--steel);font-size:1.3rem;font-weight:300;flex-shrink:0;transition:transform .3s ease}
+  .faq-item.open .faq-x{transform:rotate(45deg)}
+  .faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .faq-a p{padding:0 2px 22px;color:var(--muted);font-size:.98rem;line-height:1.65;max-width:60ch}
+  .not-for-you{margin-top:36px;max-width:60ch;color:var(--dim);font-size:.98rem;line-height:1.6;font-style:italic}
+  .not-for-you em{font-style:normal;color:var(--steel-hi);font-weight:600}
+  .close{
+padding-bottom:clamp(100px,14vw,190px)}
   .close h2{max-width:18ch}
   .close .btn{margin-top:40px}
   .close .ps{margin-top:26px;color:var(--dim);font-size:.95rem;font-family:'Fraunces',Georgia,serif;font-style:italic}
@@ -535,6 +547,38 @@
       </div>
     </section>
 
+    <section id="faq">
+      <div class="sec-kicker reveal">Before you go — <b>the honest questions</b></div>
+      <h2 class="reveal">Ask it what you're <em>actually</em> wondering.</h2>
+      <div class="faqlist reveal">
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            <span>Does this cost anything?</span><span class="faq-x">+</span>
+          </button>
+          <div class="faq-a"><p>Looking around costs nothing — no sign-up, no card. Running a real event on it is a small one-time pass per event, not a subscription you forget about.</p></div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            <span>What if I mess something up?</span><span class="faq-x">+</span>
+          </button>
+          <div class="faq-a"><p>Nothing sends itself. Every message, every purchase, every plan change waits for your tap. Change your mind as many times as you want — the plan just re-adjusts.</p></div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            <span>Can my mother-in-law see the budget?</span><span class="faq-x">+</span>
+          </button>
+          <div class="faq-a"><p>Only what you choose to send her sees the light of day. The budget, who's bringing what, and your private notes stay with you — vendors and guests get their own narrow slice, never the whole plan.</p></div>
+        </div>
+        <div class="faq-item">
+          <button type="button" class="faq-q" aria-expanded="false">
+            <span>What happens to my information?</span><span class="faq-x">+</span>
+          </button>
+          <div class="faq-a"><p>It's yours. Your event lives on your device — there's no account required just to plan, and nothing about your family or your guest list is for sale.</p></div>
+        </div>
+      </div>
+      <p class="not-for-you reveal">Planning a 200-person wedding with a coordinator on retainer? You don't need this. It's built for the gathering <em>you're</em> running yourself.</p>
+    </section>
+
     <section class="close">
       <div class="sec-kicker reveal">Go ahead — <b>look around</b></div>
       <h2 class="reveal">Walk through a real cookout, already in motion. <em>Tap anything.</em></h2>
@@ -554,6 +598,27 @@
 <script>
 (function(){
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* FAQ accordion — core content interaction, must work with NO motion and
+     NO gsap (CDN blocked). Runs unconditionally, before any early return. */
+  (function(){
+    document.querySelectorAll('.faq-item').forEach(function(item){
+      var q = item.querySelector('.faq-q'), a = item.querySelector('.faq-a');
+      q.addEventListener('click', function(){
+        var willOpen = !item.classList.contains('open');
+        document.querySelectorAll('.faq-item.open').forEach(function(o){
+          o.classList.remove('open');
+          o.querySelector('.faq-q').setAttribute('aria-expanded','false');
+          o.querySelector('.faq-a').style.maxHeight = null;
+        });
+        if (willOpen) {
+          item.classList.add('open');
+          q.setAttribute('aria-expanded','true');
+          a.style.maxHeight = a.scrollHeight + 'px';
+        }
+      });
+    });
+  })();
 
   if (typeof gsap === 'undefined' || reduced) document.body.classList.add('intel-static');
   if (typeof gsap === 'undefined') return;
