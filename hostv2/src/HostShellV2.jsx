@@ -22,7 +22,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -33,13 +33,12 @@ import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 let APP_EVENTS = [];
 try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch { APP_EVENTS = []; }
 const appCrab = APP_EVENTS.find(e => e && /crab/i.test(String(e.name || '') + ' ' + String(e.type || '')));
-const CRAB_PB = ALL_PLAYBOOKS.find(pb => pb && pb.type === 'Crab Feast');
 const inThreeWeeks = (() => { const d = new Date(); d.setDate(d.getDate() + 21); return d.toISOString().slice(0, 10); })();
 const MY_CRAB_FEAST = appCrab || {
   id: 'my-crab-feast', rsvpCode: 'crab',
   name: 'My Crab Feast', type: 'Crab Feast',
   date: inThreeWeeks, venue: 'Backyard',
-  guestEstimate: (CRAB_PB && CRAB_PB.meta && CRAB_PB.meta.typicalGuests && CRAB_PB.meta.typicalGuests.default) || 18,
+  guestEstimate: playbookTypicalGuests('Crab Feast') || 18,
   budget: [], guests: [], vendors: [],
 };
 
@@ -52,12 +51,15 @@ const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-birthday', 'ev-x-graduation',
 const mkDate = (plus) => { const d = new Date(); d.setDate(d.getDate() + plus); d.setHours(12); return d.toISOString().slice(0, 10); };
 const mkTest = (id, name, typeRe, plus, extras) => {
   const pb = ALL_PLAYBOOKS.find(p => p && typeRe.test(p.type)) || ALL_PLAYBOOKS.find(p => /get.?together/i.test(p.type));
-  const typical = (pb && pb.meta && pb.meta.typicalGuests && pb.meta.typicalGuests.default) || 14;
-  const tasks = ((pb && pb.tasks) || []).filter(t => t && !t.whenChoice);
+  const type = pb ? pb.type : 'Get-Together';
+  const typical = playbookTypicalGuests(type) || 14;
+  const stub = { id, type, date: mkDate(plus), guestEstimate: typical };
+  // Canonical checklist (choice/caterer gates, computed offsets) — half done.
+  const rows = (() => { try { return playbookChecklist(stub) || []; } catch { return []; } })();
   return {
     id, rsvpCode: id, name,
-    type: pb ? pb.type : 'Get-Together',
-    date: mkDate(plus),
+    type,
+    date: stub.date,
     venue: 'Backyard', venueKind: 'home',
     guestMode: 'count', guestEstimate: typical,
     totalBudget: 400,
@@ -69,7 +71,7 @@ const mkTest = (id, name, typeRe, plus, extras) => {
       { id: id + '-g4', name: 'Aunt Cee', rsvp: '' },
     ],
     // Realistic mid-flight: early steps done, day-adjacent steps open.
-    timeline: tasks.map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: i < Math.ceil(tasks.length / 2), owner: 'Host' })),
+    timeline: rows.map((r, i) => ({ id: r.id, week: r.week || '', task: r.task || '', done: i < Math.ceil(rows.length / 2), owner: '' })),
     ...extras,
   };
 };
@@ -354,8 +356,7 @@ export default function HostShellV2() {
   // Effective values: manual correction wins, then the parse, then the
   // playbook's own typical (host-shell defaulting — never a blank form).
   const effType = fType || parsed.type || null;
-  const effPb = effType ? ALL_PLAYBOOKS.find(p => p && p.type === effType) : null;
-  const pbTypical = (effPb && effPb.meta && effPb.meta.typicalGuests && effPb.meta.typicalGuests.default) || null;
+  const pbTypical = effType ? playbookTypicalGuests(effType) : null;
   const effGuests = (fGuests ?? parsed.guests) ?? pbTypical;
   const effDate = fDate || parsed.date || '';
   const effName = fName || parsed.honoree || '';
@@ -396,18 +397,7 @@ export default function HostShellV2() {
   // Captain White's July 2026 reference ladder — from the playbook's verified
   // knowledge. Shown as REFERENCE; a price only counts when the host taps it
   // in (CRAB-PRICING-1 hard rule: no fake market prices).
-  const crabLadder = useMemo(() => {
-    try {
-      const pb = ALL_PLAYBOOKS.find(p => p && /crab/i.test(String(p.type || '')));
-      const scan = (o, depth) => {
-        if (!o || typeof o !== 'object' || depth > 6) return null;
-        if (o.priceLadder) return o.priceLadder;
-        for (const v of Object.values(o)) { const r = scan(v, depth + 1); if (r) return r; }
-        return null;
-      };
-      return scan(pb, 0);
-    } catch { return null; }
-  }, [event.type]);
+  const crabLadder = useMemo(() => { try { return crabPriceLadder(); } catch { return null; } }, []);
 
   // "Coming up" — the human-intelligence layer for CALM states: name what's
   // next and WHEN IT'S DUE even when nothing is urgent. Sources: the decision
@@ -438,6 +428,7 @@ export default function HostShellV2() {
   }, [decisionBoard, event]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
+  const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
   // MEANING CAPTURE — the raw fields the engines already read (single truth:
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
   // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
@@ -650,18 +641,10 @@ export default function HostShellV2() {
   // No timeline yet → draft one from the playbook's REAL task list, honoring
   // its choice-gated tasks (e.g. steam-yourself vs order-steamed).
   const draftTimeline = () => {
-    const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
-    if (!pb || !Array.isArray(pb.tasks)) { toast('No playbook checklist for this type.'); return; }
-    const picks = event.foodChoices || {};
-    const tasks = pb.tasks.filter(t => {
-      if (!t) return false;
-      if (t.whenChoice && Array.isArray(t.whenChoice.in)) {
-        const chosen = picks[t.whenChoice.id];
-        return chosen ? t.whenChoice.in.includes(chosen) : true;
-      }
-      return true;
-    }).map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: false, owner: 'Host' }));
-    patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted from the ' + String(event.type).toLowerCase() + ' playbook.');
+    const rows = (() => { try { return playbookChecklist(event) || []; } catch { return []; } })();
+    if (!rows.length) { toast(event.date ? 'No playbook checklist for this type.' : 'Set the date first — the checklist works backward from it.'); return; }
+    const tasks = rows.map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '' }));
+    patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted — the engine gates them by your choices and works back from the date.');
   };
 
   // The REAL spread: same food plan hostSpending bills from, sized by the
@@ -927,8 +910,9 @@ export default function HostShellV2() {
       };
       let authored = null;
       try {
-        const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
-        const hit = ((pb && pb.contingencies) || []).find(c => c && (/rain|canopy|cover|indoor|garage|tent|umbrella|wet|storm/i.test(c.plan || '') || /weather|rain|storm|cold/i.test(c.when || '')));
+        // The engine's OWN wet-weather matcher (single point of truth); the wx
+        // arg is only the lookup key — no forecast is claimed here.
+        const hit = playbookContingencyForWeather(event, { kind: 'rain', risk: 'possible' });
         authored = hit ? hit.plan : null;
       } catch { authored = null; }
       return (
@@ -1016,9 +1000,6 @@ export default function HostShellV2() {
     // 'count' (a headcount event until a roster starts), budget left to the
     // engine's own domino.
     const short = effType.replace(' Party', '');
-    const timeline = ((effPb && effPb.tasks) || [])
-      .filter(t => t && !t.whenChoice)
-      .map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: false, owner: 'Host' }));
     const ev = {
       id: 'custom', rsvpCode: 'mine',
       name: effName ? effName + '’s ' + short : 'My ' + short,
@@ -1028,8 +1009,11 @@ export default function HostShellV2() {
       guestEstimate: effGuests || '',
       totalBudget: '',
       budget: [],
-      guests: [], vendors: [], timeline,
+      guests: [], vendors: [], timeline: [],
     };
+    // Canonical checklist over the real event object (date-relative offsets,
+    // choice/caterer gates). No date yet → honestly empty; drafts later.
+    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '' })); } catch {}
     setCustom(ev); setEventId('custom'); setRevealed(true);
     // The Reveal, choreographed around the PRODUCTION reveal stages
     // (buildAssembleRevealStages): identity, blockers, domains, risks.
@@ -2144,8 +2128,11 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
                     {(event.timeline || []).filter(t => t && !t.done).length} open of {(event.timeline || []).length} — check things off and your plan keeps up.
                   </div>
-                  {(event.timeline || []).map((t, i) => (
-                    <button key={t.id || i} className={'frow' + (t.done ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
+                  {/* OPEN work gets the rows; DONE work minimizes into a green
+                      report line (tap to review) — same green-dot semantics as
+                      the handled sections everywhere else. */}
+                  {(event.timeline || []).map((t, i) => (t && !t.done) ? (
+                    <button key={t.id || i} className={'frow' + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
                       style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                       onClick={() => toggleTask(i)}>
@@ -2155,7 +2142,24 @@ export default function HostShellV2() {
                         <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
                       </span>
                     </button>
-                  ))}
+                  ) : null)}
+                  {(event.timeline || []).some(t => t && t.done) && (
+                    <>
+                      <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
+                        {(event.timeline || []).filter(t => t && t.done).length} done — the plan has them
+                        <span className="chev">{doneOpen ? '▾' : '›'}</span>
+                      </button>
+                      {doneOpen && (event.timeline || []).map((t, i) => (t && t.done) ? (
+                        <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
+                          <span className="fcheck" aria-hidden="true" />
+                          <span className="f-main">
+                            <span className="f-name">{t.task}</span>
+                            <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+                          </span>
+                        </button>
+                      ) : null)}
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -2256,16 +2260,7 @@ export default function HostShellV2() {
                   const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
-                  const undecidedAffects = (() => {
-                    try {
-                      const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
-                      const picks = event.foodChoices || {};
-                      const open = ((pb && pb.decisions) || []).filter(d => d && Array.isArray(d.affects) && !(d.id in picks));
-                      const m = {};
-                      open.forEach(d => d.affects.forEach(id => { m[id] = d.label; }));
-                      return m;
-                    } catch { return {}; }
-                  })();
+                  const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
                   return groups.map(g => (
                     <div key={g}>
                       <div className="shelf-label" style={{ margin: '14px 0 4px' }}>{g}</div>

@@ -2282,3 +2282,38 @@ export function playbookSetupPreview(type) {
     hasMeaning,                  // carries a program/reflection element
   };
 }
+
+// ── Host-shell V2 accessors (single-point-of-truth rule: surfaces never read
+// playbook internals directly — these are the sanctioned readers). ──────────
+
+// The crab playbook's verified reference price ladder (display/reference ONLY —
+// buildCrabPlan's cost math still uses host-entered prices exclusively).
+export function crabPriceLadder() {
+  const pb = getPlaybook('Crab Feast');
+  const scan = (o, depth) => {
+    if (!o || typeof o !== 'object' || depth > 6) return null;
+    if (o.priceLadder) return o.priceLadder;
+    for (const v of Object.values(o)) { const r = scan(v, depth + 1); if (r) return r; }
+    return null;
+  };
+  return pb ? scan(pb, 0) : null;
+}
+
+// Which purchase lines does an UNMADE menu decision re-price? Map of
+// itemId → decision label, for decisions the host hasn't explicitly picked.
+export function playbookOpenDecisionAffects(event) {
+  const pb = getPlaybook(event && event.type);
+  if (!pb) return {};
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const m = {};
+  (pb.decisions || []).forEach((d) => {
+    if (d && Array.isArray(d.affects) && !(d.id in picks)) d.affects.forEach((id) => { m[id] = d.label; });
+  });
+  return m;
+}
+
+// The playbook's researched typical guest count (seeding/defaulting only).
+export function playbookTypicalGuests(type) {
+  const pb = getPlaybook(type);
+  return (pb && pb.meta && pb.meta.typicalGuests && pb.meta.typicalGuests.default) || null;
+}
