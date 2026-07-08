@@ -90,6 +90,11 @@
   h2 em{font-style:italic;color:var(--ember)}
   .lede{margin-top:22px;max-width:62ch;color:var(--muted);font-size:1.05rem}
 
+  .onehome-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:52px}
+  .oh{background:var(--carbon-1);padding:28px 26px}
+  .oh-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--steel-hi);margin-bottom:16px}
+  .oh-before{color:var(--dim);font-size:.92rem;line-height:1.55;text-decoration:line-through;text-decoration-color:var(--line);text-decoration-thickness:1px}
+  .oh-after{margin-top:14px;padding-top:14px;border-top:1px solid var(--line);color:var(--text);font-family:'Fraunces',Georgia,serif;font-size:1.1rem;line-height:1.45}
   /* ── THE INVERSION — warm paper band for the magic moments ── */
   .paper{background:var(--paper);color:var(--paper-text);position:relative}
   .paper .sec-kicker{color:var(--paper-muted)}
@@ -243,6 +248,30 @@
       <span>It writes the texts <i class="dot">·</i></span>
       <span>It watches the sky <i class="dot">·</i></span>
     </div>
+  </div>
+
+  <div class="wrap">
+    <section id="onehome">
+      <div class="sec-kicker reveal">Why it's different — <b>not another app to check</b></div>
+      <h2 class="reveal">One place instead of six. <em>Change your mind — nothing breaks.</em></h2>
+      <div class="onehome-grid">
+        <div class="oh reveal">
+          <div class="oh-k">Instead of</div>
+          <div class="oh-before">The group chat. A notes app. Two receipts. A spreadsheet nobody else opens. Your memory, at 11pm.</div>
+          <div class="oh-after">One place — the plan, the money, the people, all reading off the same truth.</div>
+        </div>
+        <div class="oh reveal">
+          <div class="oh-k">Change your mind, safely</div>
+          <div class="oh-before">Swap the caterer. Drop a guest. Move the date a week.</div>
+          <div class="oh-after">Everything downstream — the food, the seats, the budget — re-adjusts itself. Changing your mind never costs you the plan.</div>
+        </div>
+        <div class="oh reveal">
+          <div class="oh-k">It catches what you'd miss</div>
+          <div class="oh-before">Already own two coolers. Ice, forgotten every single year.</div>
+          <div class="oh-after">It flags what you already have before the list adds a third, and calls out the things hosts forget most.</div>
+        </div>
+      </div>
+    </section>
   </div>
 
   <!-- ── THE INVERSION: warm paper, the do-it-for-me moments ── -->
