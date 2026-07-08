@@ -28,7 +28,13 @@ function findInviteEvent(code) {
     let custom = null;
     try { custom = JSON.parse(localStorage.getItem(LS_CUSTOM)) || null; } catch { custom = null; }
     const pool = [...ALL_SAMPLES, ...(custom ? [custom] : [])];
-    const base = pool.find(e => e && (String(e.rsvpCode || '') === c || String(e.id || '') === c));
+    let base = pool.find(e => e && (String(e.rsvpCode || '') === c || String(e.id || '') === c));
+    // Demo alias: when the shell adopted the host's REAL crab event from
+    // ngw-events, its rsvpCode is a real token — but ?rsvp=crab should still
+    // land on the same event the shell calls "My Crab Feast".
+    if (!base && /^crab$/i.test(c)) {
+      base = pool.find(e => e && /crab/i.test(String(e.name || '') + ' ' + String(e.type || '')));
+    }
     if (!base) return null;
     if (base.id === 'custom') return base; // the custom event stores itself whole
     let patch = {};
