@@ -179,14 +179,59 @@ export default function HostShellV2() {
     return t.length >= 3 && /[a-zA-Z]/.test(t) && !/^\d+$/.test(t);
   };
   const [cityDraft, setCityDraft] = useState('');
+  const [addrSugs, setAddrSugs] = useState([]);
+  const [pendingCity, setPendingCity] = useState('');
+  const addrTimer = useRef(null);
+  useEffect(() => {
+    // Google Places upgrades this input automatically when a key is present
+    // (localStorage 'ngw-google-places-key') — until then OSM answers.
+    try {
+      const k = localStorage.getItem('ngw-google-places-key');
+      if (k && !window.google) {
+        const sc = document.createElement('script');
+        sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(k) + '&libraries=places';
+        document.head.appendChild(sc);
+      }
+    } catch {}
+  }, []);
+  const fetchAddrSugs = (q) => {
+    clearTimeout(addrTimer.current);
+    const query = String(q || '').trim();
+    if (query.length < 3) { setAddrSugs([]); return; }
+    addrTimer.current = setTimeout(async () => {
+      try {
+        if (window.google && window.google.maps && window.google.maps.places) {
+          const svc = new window.google.maps.places.AutocompleteService();
+          svc.getPlacePredictions({ input: query, componentRestrictions: { country: 'us' } }, (preds) => {
+            setAddrSugs((preds || []).slice(0, 5).map(p => ({ label: p.description, city: '' })));
+          });
+          return;
+        }
+        const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(query));
+        const j = await r.json();
+        setAddrSugs((Array.isArray(j) ? j : []).map(x => {
+          const a = x.address || {};
+          const city = a.city || a.town || a.village || a.hamlet || '';
+          const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
+          return { label: short, city: city + (a.state ? ', ' + a.state : '') };
+        }));
+      } catch { setAddrSugs([]); }
+    }, 380);
+  };
+  const pickAddr = (sug) => {
+    setVenueDraft(sug.label);
+    setPendingCity(sug.city || '');
+    setAddrSugs([]);
+  };
   const saveVenue = () => {
     if (!validPlace(venueDraft)) { setVenueErr('Give guests a real place — a name or an address, not just a number.'); return; }
     const v = venueDraft.trim();
     patchEvent({
       venue: v,
       venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : (event.venueKind || ''),
+      ...(pendingCity ? { venueCity: pendingCity } : {}),
     }, 'Venue on the plan — invites, maps, and the rain note now carry it.');
-    setVenueErr(null); setVenueDraft('');
+    setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
   // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
   // same field weather geocoding reads) — so home events get a city ask.
@@ -1410,10 +1455,20 @@ export default function HostShellV2() {
                       {isVenueBlock && !venueSet && (
                         <>
                           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name the place — “My brother’s backyard”, “VFW Post 3150”…"
-                              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); }} aria-label="Venue" />
+                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                             <button className="cta" onClick={saveVenue}>Save</button>
                           </div>
+                          {addrSugs.length > 0 && (
+                            <div style={{ marginTop: 6 }}>
+                              {addrSugs.map((sg, si) => (
+                                <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+                                  onClick={() => pickAddr(sg)}>
+                                  <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                           {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
                         </>
                       )}
@@ -1512,10 +1567,23 @@ export default function HostShellV2() {
                       ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
                       : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>
                     <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name the place — “My brother’s backyard”, “VFW Post 3150”…"
-                        value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); }} aria-label="Venue" />
+                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                        value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                       <button className="cta" onClick={saveVenue}>Save</button>
                     </div>
+                    {addrSugs.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        {addrSugs.map((sg, si) => (
+                          <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+                            onClick={() => pickAddr(sg)}>
+                            <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+                          </button>
+                        ))}
+                        <p className="grounding" style={{ margin: '4px 0 0', opacity: .65 }}>
+                          {typeof window !== 'undefined' && window.google ? 'Suggestions by Google Places.' : 'Suggestions by OpenStreetMap — Google Places takes over when the API key lands.'}
+                        </p>
+                      </div>
+                    )}
                     {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
                   </div>
                 </article>
