@@ -295,7 +295,12 @@
   .reveal{display:none}
   .reveal.on{display:block; animation:stagein .45s cubic-bezier(.2,.7,.3,1)}
   .tick-list{margin:34px 0 0; padding:0; list-style:none}
-  .tick-list li{position:relative; padding:0 0 24px 40px; font-size:16.5px; line-height:1.6; color:var(--ink-soft); max-width:36em}
+  .tick-list li{
+    position:relative; padding:0 0 24px 40px; font-size:16.5px; line-height:1.6; color:var(--ink-soft); max-width:36em;
+    opacity:0; transform:translateY(16px);
+    transition:opacity .5s cubic-bezier(.2,.7,.3,1), transform .5s cubic-bezier(.2,.7,.3,1);
+  }
+  .tick-list li.in{opacity:1; transform:none}
   .tick-list li strong{color:var(--ink); font-weight:750}
   .tick-list li::before{
     content:""; position:absolute; left:0; top:3px; width:22px; height:22px; border-radius:50%;
@@ -304,9 +309,15 @@
   .tick-list li::after{
     content:""; position:absolute; left:6px; top:11px; width:10px; height:6px;
     border-left:2.5px solid var(--steel); border-bottom:2.5px solid var(--steel);
-    transform:rotate(-45deg) translateY(-1px);
+    transform:rotate(-45deg) translateY(-1px) scale(0);
+    transition:transform .32s cubic-bezier(.2,.7,.3,1) .28s;
   }
+  .tick-list li.in::after{transform:rotate(-45deg) translateY(-1px) scale(1)}
   .grounding{font-size:13.5px; color:var(--muted); margin-top:10px; font-weight:550}
+  /* Reveal choreography: pieces land in sequence */
+  .pre{opacity:0; transform:translateY(14px);
+    transition:opacity .6s cubic-bezier(.2,.7,.3,1), transform .6s cubic-bezier(.2,.7,.3,1)}
+  .pre.in{opacity:1; transform:none}
 
   /* ── AFTER ── */
   .memory-note{
@@ -402,12 +413,12 @@
     </div>
 
     <div class="reveal" id="reveal">
-      <div class="eyebrow">Here&rsquo;s what we understood</div>
-      <h1 class="mega" id="revealTitle" style="font-size:clamp(27px,8.5cqw,34px); line-height:1.1">David Carter&rsquo;s Army Retirement</h1>
-      <p class="mega-sub" style="font-size:17px; font-weight:550; color:var(--muted)">VFW Post 8469 · Fredericksburg, VA · Saturday, August 22</p>
-      <ul class="tick-list" id="revealList"></ul>
-      <p class="grounding">Your plan is ready — 21 steps, each one there because of something you told us. Nothing made up.</p>
-      <div class="actions" style="margin-top:30px">
+      <div class="eyebrow" id="revealEyebrow" aria-live="polite">Putting your plan together</div>
+      <ul class="tick-list" id="revealList" style="margin-top:26px"></ul>
+      <h1 class="mega pre" id="revealTitle" style="font-size:clamp(27px,8.5cqw,34px); line-height:1.1; margin-top:4px">David Carter&rsquo;s Army Retirement</h1>
+      <p class="mega-sub pre" id="revealMeta" style="font-size:16px; font-weight:550; color:var(--muted)">VFW Post 8469 · Fredericksburg, VA · Saturday, August 22</p>
+      <p class="grounding pre" id="revealGround">Your plan is ready — 21 steps, each one there because of something you told us. Nothing made up.</p>
+      <div class="actions pre" id="revealActions" style="margin-top:26px">
         <button class="cta big" data-go="plan">Open your plan</button>
         <button class="cta soft big" id="editBtn">Change an answer</button>
       </div>
@@ -739,7 +750,26 @@
     $$('.dock button').forEach(b=>b.setAttribute('aria-current', b.dataset.go===s?'true':'false'));
     $('#app').scrollTo({top:0,behavior:'instant'});
     watchReveals($('#s-'+s));
-    if(s==='plan') requestAnimationFrame(()=>requestAnimationFrame(render));
+    if(s==='plan') requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      render();
+      if(fromCreate){ fromCreate=false; countPctUp(); }
+    }));
+  }
+  let fromCreate=false;
+  const REDUCE=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /* First open after the Reveal: the plan's progress counts up from zero. */
+  function countPctUp(){
+    if(REDUCE) return;
+    const target=Math.round((BASE_SETTLED+Object.keys(state.done).length)/TOTAL_STEPS*100);
+    const bar=$('#planBar');
+    bar.style.transition='none'; bar.style.width='0%';
+    requestAnimationFrame(()=>{ bar.style.transition=''; bar.style.width=target+'%'; });
+    const t0=performance.now();
+    (function tk(now){
+      const p=Math.min(1,(now-t0)/1000);
+      $('#pctNum').textContent=Math.round(target*(1-Math.pow(1-p,3)))+'%';
+      if(p<1) requestAnimationFrame(tk);
+    })(t0);
   }
   document.addEventListener('click',e=>{
     const go=e.target.closest('[data-go]');
@@ -901,13 +931,48 @@
       lines.push('<strong>'+budget+' total</strong> — food takes the largest share, and every step below shows its piece of it.');
     }
     lines.push('<strong>August 22 gives you 46 days</strong> — enough for every lead time in the plan, if the long ones start this week.');
-    $('#revealList').innerHTML = lines.map(l=>'<li>'+l+'</li>').join('');
+
+    /* ── The Reveal, choreographed: understanding assembles line by line,
+         a live step counter runs, and the event's name lands last. ── */
+    const list=$('#revealList');
+    list.innerHTML = lines.map(l=>'<li>'+l+'</li>').join('');
+    const lis=[...list.children];
+    const eyebrow=$('#revealEyebrow');
+    const finale=[$('#revealTitle'),$('#revealMeta'),$('#revealGround'),$('#revealActions')];
+    finale.forEach(el=>el.classList.remove('in'));
     $('#intake').style.display='none';
     $('#reveal').classList.add('on');
+    if(REDUCE){
+      eyebrow.textContent='Here’s what we understood';
+      lis.forEach(li=>li.classList.add('in'));
+      finale.forEach(el=>el.classList.add('in'));
+      fromCreate=true;
+      return;
+    }
+    const STEP=680, LEAD=400, DUR=LEAD+lis.length*STEP;
+    lis.forEach((li,i)=>setTimeout(()=>li.classList.add('in'), LEAD+i*STEP));
+    const t0=performance.now();
+    (function tick(now){
+      const p=Math.min(1,(now-t0)/DUR);
+      const n=Math.round(TOTAL_STEPS*(1-Math.pow(1-p,2)));
+      eyebrow.textContent='Putting your plan together · '+n+' of '+TOTAL_STEPS+' steps drafted';
+      if(p<1) requestAnimationFrame(tick);
+    })(t0);
+    setTimeout(()=>{
+      eyebrow.textContent='Here’s what we understood';
+      $('#revealTitle').classList.add('in');
+      $('#revealMeta').classList.add('in');
+    }, DUR+200);
+    setTimeout(()=>{
+      $('#revealGround').classList.add('in');
+      $('#revealActions').classList.add('in');
+      fromCreate=true;
+    }, DUR+650);
   });
   $('#editBtn').addEventListener('click',()=>{
     $('#reveal').classList.remove('on');
     $('#intake').style.display='';
+    fromCreate=false;
   });
 
   /* ── Plan: lens filtering ── */
