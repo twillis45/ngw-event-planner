@@ -11,7 +11,7 @@ import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperR
 import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics } from '@app/lib/weather';
+import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -200,7 +200,7 @@ export default function HostShellV2() {
     // Google Places upgrades this input automatically when a key is present
     // (localStorage 'ngw-google-places-key') — until then OSM answers.
     try {
-      const k = localStorage.getItem('ngw-google-places-key');
+      const k = localStorage.getItem('ngw-google-places-key') || process.env.REACT_APP_GOOGLE_MAPS_KEY;
       if (k && !window.google) {
         const sc = document.createElement('script');
         sc.src = 'https://maps.googleapis.com/maps/api/js?key=' + encodeURIComponent(k) + '&libraries=places';
@@ -531,10 +531,38 @@ export default function HostShellV2() {
   };
 
   // ── Weather alerting (modern live-activity pill) ──
-  // SAMPLE forecast (live fetch needs the weather API key) driving the REAL
-  // engines: weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus,
-  // guestRainMessage. Only rendered for outdoor, upcoming, dated events.
+  // LIVE when configured: the production pipeline verbatim — geocodeVenue →
+  // getEventWeatherRisk (proxy via the API base, or the OpenWeather key).
+  // When NOT configured, the labeled sample drives the same engines. NEVER
+  // both: a configured app shows live weather or nothing — a fabricated
+  // fallback could contradict the real sky.
+  const [liveWx, setLiveWx] = useState(null);
+  useEffect(() => {
+    let dead = false;
+    setLiveWx(null);
+    (async () => {
+      try {
+        if (!isWeatherConfigured() || !event.date) return;
+        const out = isLikelyOutdoor(event.venue, event.notes);
+        const past = isPastEvent(event);
+        const d = daysUntil(event.date);
+        if (!out || past || d == null || d < 0 || d > 14) return;
+        // A bare home word ("Backyard") geocodes to junk — the town is the
+        // real locator for at-home events; skip entirely when neither exists.
+        const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String(event.venue || '').trim());
+        const q = String(event.venueCity || '').trim() || (!homeish ? String(event.venue || '').trim() : '');
+        if (!q) return;
+        const coords = await geocodeVenue(q);
+        if (dead || !coords) return;
+        const wxr = await getEventWeatherRisk(coords.lat, coords.lon, event.date);
+        if (!dead && wxr) setLiveWx(wxr);
+      } catch { /* stay quiet — no forecast beats a wrong one */ }
+    })();
+    return () => { dead = true; };
+  }, [event.id, event.date, event.venue, event.venueCity, event.notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const wx = useMemo(() => {
+    if (liveWx) return liveWx;
+    if (isWeatherConfigured()) return null; // live mode: real data or nothing
     // Self-contained reads (this memo sits above the shared outdoor/days consts).
     const out = (() => { try { return isLikelyOutdoor(event.venue, event.notes); } catch { return false; } })();
     const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
@@ -550,7 +578,7 @@ export default function HostShellV2() {
       rainWindow: { startHour: 14, endHour: 18, label: '2 PM\u20136 PM' },
       _sample: true,
     };
-  }, [event]);
+  }, [event, liveWx]);
   const wxImpact = useMemo(() => {
     if (!wx) return null;
     try { const im = weatherImpactByEventPhase(event, wx); return im && im.hasImpact ? im : null; } catch { return null; }
@@ -2739,7 +2767,7 @@ export default function HostShellV2() {
                       {tips.map(t => (
                         <p className="grounding" key={t.key} style={{ margin: '4px 0 0' }}>{t.text}</p>
                       ))}
-                      <p className="grounding" style={{ margin: '6px 0 0', opacity: .65 }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>
+                      {wx._sample && <p className="grounding" style={{ margin: '6px 0 0', opacity: .65 }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>}
                     </>
                   );
                 })()}
@@ -3419,7 +3447,9 @@ export default function HostShellV2() {
                   </button>
                 )}
               </div>
-              <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
+              {wx._sample
+                ? <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
+                : <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {event.venueCity || event.venue}.</p>}
             </div>
           )}
         </div>
