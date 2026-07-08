@@ -369,10 +369,27 @@ export default function HostShellV2() {
   };
 
   // Do-it-for-me: the app's REAL drafting engine (lib/doItForMe), verbatim.
+  const [draftTone, setDraftTone] = useState('as-written');
   const openDraft = (title, d) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
+    setDraftTone('as-written');
     setSheet({ kind: 'draft', title, body });
+  };
+  // Tone variants are DETERMINISTIC rewrites of the same facts — mechanical
+  // tightening/warming, never invented content (no fake AI doctrine).
+  const toneBody = (body, tone) => {
+    if (tone === 'tighter') {
+      const ps = String(body).split('\n\n');
+      if (ps.length <= 2) return body;
+      const mid = ps.slice(1, -1).filter(p => p.includes('→') || /:$/m.test(p));
+      return [ps[0], ...mid, ps[ps.length - 1]].join('\n\n');
+    }
+    if (tone === 'warmer') {
+      const warm = 'So glad you’ll be part of it.';
+      return String(body).includes(warm) ? body : body + '\n\n' + warm;
+    }
+    return body;
   };
   const copyDraft = async (body) => {
     try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
@@ -1364,21 +1381,26 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'draft' && (
               <>
-                <div className="draft-body">{sheet.body}</div>
+                <div className="chips" style={{ marginBottom: 12 }}>
+                  {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer']].map(([k, label]) => (
+                    <button key={k} className="chip" aria-pressed={draftTone === k} onClick={() => setDraftTone(k)}>{label}</button>
+                  ))}
+                </div>
+                <div className="draft-body">{toneBody(sheet.body, draftTone)}</div>
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                     <button className="cta"
-                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: sheet.body }).catch(() => {}); }}>
+                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: toneBody(sheet.body, draftTone) }).catch(() => {}); }}>
                       Send it…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(sheet.body)}>Text</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(sheet.body)} target="_blank" rel="noreferrer">WhatsApp</a>
-                  <button className="mini" onClick={() => copyDraft(sheet.body)}>Copy it</button>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(toneBody(sheet.body, draftTone))}>Text</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(toneBody(sheet.body, draftTone))} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button className="mini" onClick={() => copyDraft(toneBody(sheet.body, draftTone))}>Copy it</button>
                 </div>
-                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Written from your event’s real details.</p>
+                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Tones re-shape the same real details — tightened or warmed mechanically, nothing invented.</p>
               </>
             )}
             {sheet.kind === 'tasks' && (
