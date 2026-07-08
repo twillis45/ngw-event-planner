@@ -10839,7 +10839,9 @@ function FoodPlan({ event, isMobile = false, onPatch = () => {}, onNav = () => {
           </div>
         </CollapsibleCard>
       ) : (
-        <div style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px' }}>
+        // id shares the fp-diet anchor so the dietary cue's deep link lands on
+        // THIS banner in list mode (same route, whichever workflow renders).
+        <div id={`fp-diet-${event.id}`} style={{ ...card, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', borderLeft: `3px solid ${warn}`, padding: '14px 16px', scrollMarginTop: 16 }}>
           <div style={{ fontSize: T.body, color: C.text, lineHeight: 1.5, flex: 1, minWidth: 200 }}>
             <strong>Collect allergies & dietary needs first.</strong> One unflagged allergy is a safety issue — lock the menu after.
           </div>

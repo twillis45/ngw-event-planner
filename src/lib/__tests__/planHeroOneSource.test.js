@@ -111,12 +111,18 @@ describe('planHeroCopy — BUD-1 grammar for the Plan tab', () => {
     }
   });
 
-  test('routes obey the anchor registry (host-decisions / food-plan only)', () => {
+  test('routes obey the anchor registry (host-decisions board or a real food row)', () => {
+    // ROW-LEVEL CTA RULE (Todd, 2026-07-07): shopping routes carry the FIRST
+    // unbought line (foodFocus), never the food-plan section top.
     for (const ev of [overdueEvent(), calmish()]) {
       const copy = planHeroCopy(ev);
       if (copy && copy.route) {
-        expect(['host-decisions', 'food-plan']).toContain(copy.route.focusField);
         expect(copy.route.tab).toBe('Planning');
+        expect(copy.route.foodFocus || copy.route.focusField === 'host-decisions').toBeTruthy();
+        if (copy.state === 'shopping') {
+          const plan = playbookFoodPlan(ev);
+          expect(plan.list.some(i => i && i.id === copy.route.foodFocus)).toBe(true);
+        }
       }
     }
   });

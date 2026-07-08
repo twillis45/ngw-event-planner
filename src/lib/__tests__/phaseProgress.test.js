@@ -109,3 +109,21 @@ test('shopping becomes an essential only inside the final week', () => {
   // near-week bbq with a real count has an unbought spread
   expect(near.totalCount).toBeGreaterThanOrEqual(far.totalCount);
 });
+
+// ROW-LEVEL CTA RULE (Todd, 2026-07-07): no cue lands on a tab, screen, or
+// plan-section top — the route names the exact row/field of the next action.
+test('shopping cue routes to the FIRST unbought line, never the food-plan section top', () => {
+  const p = deriveEventPhaseProgress(base({ type: 'bbq', date: '2026-07-14', rainPlan: 'Carport', dietaryNoted: true }), NOW);
+  expect(p.nextCue).toBeTruthy();
+  expect(p.nextCue.label).toMatch(/Buy the remaining items/);
+  expect(p.nextCue.route.tab).toBe('Planning');
+  expect(p.nextCue.route.foodFocus).toBeTruthy();      // a real food-line id
+  expect(p.nextCue.route.focusField).toBeUndefined();  // not the section anchor
+});
+
+test('dietary cue routes to the allergies & diets gate, not the food plan top', () => {
+  const p = deriveEventPhaseProgress(base({ type: 'bbq', date: '2026-08-20', rainPlan: 'Carport' }), NOW);
+  expect(p.nextCue).toBeTruthy();
+  expect(p.nextCue.label).toMatch(/dietary/i);
+  expect(p.nextCue.route).toEqual({ tab: 'Planning', focusField: 'fp-diet-e-pp' });
+});
