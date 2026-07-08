@@ -11,7 +11,7 @@ import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperR
 import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
+import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -28,7 +28,8 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
+import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -375,7 +376,7 @@ export default function HostShellV2() {
   const effDate = fDate || parsed.date || '';
   const effName = fName || parsed.honoree || '';
   const dstatC = eventDateStatus(effDate || null);
-  const expectC = expectedFromPlanned(effGuests, effType);
+  const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
   const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
@@ -527,6 +528,7 @@ export default function HostShellV2() {
     if (!out || past || !event.date || d == null || d < 0 || d > 14) return null;
     return {
       kind: 'rain', risk: 'high', conditions: 'Rain', pop: 70,
+      precipitation: 70, // the field weatherLogistics reads (getEventWeatherRisk's name)
       date: event.date,
       summary: 'Rain likely on your event day',
       rainWindow: { startHour: 14, endHour: 18, label: '2 PM\u20136 PM' },
@@ -575,11 +577,31 @@ export default function HostShellV2() {
     ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, kind: 'crabs' }] : []),
   ].filter(r => r.est > 0 || r.got > 0);
   const guests = guestNumber(event);
-  const expect = expectedFromPlanned(guests, event.type); // lib/attendanceModel — likely turnout
+  // lib/attendanceModel — likely turnout, WITH the playbook's own attendance
+  // overrides (a crab feast's turnout curve isn't a wedding's).
+  const expect = expectedFromPlanned(guests, event.type, (() => { try { return getPlaybook(event.type); } catch { return null; } })());
   const rsvpBy = rsvpDeadlineFor(event);                  // lib/dates — reply-by date
   const actions = plan.nextActions || [];
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
+
+  // "Since you were last here" — lib/returnNarration, the original's exact
+  // semantics: derive ONE line from the previous visit's snapshot (30-min gap
+  // guard so reloads stay quiet), then stamp the fresh snapshot; the line
+  // never re-tells what the hero already says.
+  const [returnLine, setReturnLine] = useState(null);
+  useEffect(() => {
+    try {
+      const prev = readReturnSnapshot(event.id);
+      const n = deriveReturnNarration(event, prev);
+      writeReturnSnapshot(event.id, buildReturnSnapshot(event));
+      if (n.shouldShow && !narrationDuplicatesTelling(n.line,
+        plan.nextActions && plan.nextActions[0] && plan.nextActions[0].title,
+        phaseCues && phaseCues.nextCue && phaseCues.nextCue.label)) {
+        setReturnLine(n);
+      } else setReturnLine(null);
+    } catch { setReturnLine(null); }
+  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(actions.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
@@ -1165,7 +1187,7 @@ export default function HostShellV2() {
   // set budget stays changeable forever (three options = the estimator's real
   // low / mid / high; custom numbers split across the same real shares).
   const budgetEditorBlock = () => {
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -1343,7 +1365,8 @@ export default function HostShellV2() {
   // Who's helping — DERIVED people (ros owners + arriving confirmed vendors),
   // never a CRM. Caterer rows drop when the host is cooking (original rule).
   const dayHelpers = useMemo(() => {
-    if (!liveDay) return [];
+    // Computed any day (the print sheet needs it too); the live view is just
+    // one of its readers.
     const out = []; const seen = new Set();
     for (const r of ros) {
       const o = String((r && r.owner) || '').trim();
@@ -1364,7 +1387,7 @@ export default function HostShellV2() {
       out.push({ name: v.name, role: v.category || 'vendor', time: v.arrivalTime, coi });
     }
     return out;
-  }, [liveDay, ros, event]);
+  }, [ros, event]);
 
   // Micro-motion: hero + tile numbers settle in rather than snapping.
   const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
@@ -1556,6 +1579,13 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
+              {returnLine && (
+                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit' }}
+                  onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
+                  <span className="t" style={{ color: 'var(--steel-soft)', fontWeight: 550, fontSize: 13 }}>{returnLine.line}</span>
+                  {returnLine.route ? <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                </button>
+              )}
 
               <div className="bento">
                 <button className="tile tile-a" onClick={() => {
@@ -2152,6 +2182,7 @@ export default function HostShellV2() {
                     <button className="cta soft" onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, null, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
                       Send everyone their part
                     </button>
+                    <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
                   </div>
                 </div>
               )}
@@ -2203,6 +2234,9 @@ export default function HostShellV2() {
                     }}>
                       {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
                     </button>
+                  </div>
+                  <div className="actions-row" style={{ marginTop: 12 }}>
+                    <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
                   </div>
                   {dayIdx < ros.length - 1 && (
                     <div className="then">
@@ -2636,6 +2670,22 @@ export default function HostShellV2() {
                     <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Draft the guest note</button>
                   </div>
                 )}
+                {/* weatherLogistics — the engine's day-of adjustments sized to
+                    the real headcount (ice lb/guest math, shade, tent call). */}
+                {wx && (() => {
+                  let tips = [];
+                  try { tips = weatherLogistics(wx, { guests }) || []; } catch { tips = []; }
+                  if (!tips.length) return null;
+                  return (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Sized to your {guests || 'crowd'}</div>
+                      {tips.map(t => (
+                        <p className="grounding" key={t.key} style={{ margin: '4px 0 0' }}>{t.text}</p>
+                      ))}
+                      <p className="grounding" style={{ margin: '6px 0 0', opacity: .65 }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>
+                    </>
+                  );
+                })()}
               </>
             )}
             {sheet.kind === 'draft' && (
@@ -3326,6 +3376,42 @@ export default function HostShellV2() {
       </nav>
 
       {toastMsg && <div className="toast on">{toastMsg}</div>}
+
+      {/* Print-only day sheet — a paper cue sheet a helper can hold (window.print
+          from The Day). Same effectiveRos truth, nothing screen-only. */}
+      {ros.length > 0 && (
+        <div className="printsheet" aria-hidden="true">
+          <h1>{event.name}</h1>
+          <p className="p-sub">
+            {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
+            {event.venue ? ` · ${event.venue}` : ''}{event.venueCity ? `, ${event.venueCity}` : ''}
+            {event.rainPlan ? ` · If it rains: ${event.rainPlan}` : ''}
+          </p>
+          <div className="p-head">Run of show</div>
+          {ros.map((r, i) => (
+            <div className="p-row" key={r.id || i}>
+              <span className="p-time">{r.time || '—'}</span>
+              <span>
+                {r.segment}
+                <span className="p-meta">
+                  {[r.location, r.owner && ('owner: ' + r.owner), r.vendorName, r.notes].filter(Boolean).map(x => ' · ' + x).join('')}
+                </span>
+              </span>
+            </div>
+          ))}
+          {dayHelpers.length > 0 && (
+            <>
+              <div className="p-head">Who’s helping</div>
+              {dayHelpers.map((h, i) => (
+                <div className="p-row" key={i}>
+                  <span className="p-time">{h.time || ''}</span>
+                  <span>{h.name}<span className="p-meta">{h.role ? ' · ' + h.role : ''}</span></span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

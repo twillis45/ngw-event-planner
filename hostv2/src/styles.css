@@ -441,6 +441,24 @@ button{font-family:inherit}
   font:inherit; font-size:13.5px; line-height:1.55; resize:vertical; outline:none}
 .draft-edit:focus{border-color:var(--steel)}
 
+/* ── Print: the day sheet — a paper cue sheet a helper can hold. On paper the
+   palette is ink-on-paper by definition; screen tokens don't apply. ── */
+.printsheet{display:none}
+@media print{
+  body *{visibility:hidden}
+  .printsheet, .printsheet *{visibility:visible}
+  .printsheet{
+    display:block; position:absolute; left:0; top:0; width:100%;
+    color:#000; background:#fff; font:13px/1.5 Georgia, 'Times New Roman', serif; padding:24px;
+  }
+  .printsheet h1{font-size:22px; margin:0 0 2px}
+  .printsheet .p-sub{font-size:13px; margin:0 0 18px; color:#333}
+  .printsheet .p-row{display:flex; gap:14px; padding:7px 0; border-bottom:1px solid #ccc; break-inside:avoid}
+  .printsheet .p-time{min-width:70px; font-weight:700; font-variant-numeric:tabular-nums}
+  .printsheet .p-meta{color:#444; font-size:12px}
+  .printsheet .p-head{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin:20px 0 6px; color:#333}
+}
+
 /* Auto-hiding dock: slides away on scroll-down so it never traps a CTA */
 .dock{transition:transform 260ms var(--ease-standard), opacity 260ms var(--ease-standard)}
 .dock.dock-hidden{transform:translateX(-50%) translateY(150%); opacity:0; pointer-events:none}
