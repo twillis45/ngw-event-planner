@@ -384,7 +384,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </div>
         <p className="grounding" style={{ margin: 0 }}>
-          {est ? `Lean–all-out is the estimator’s real range for ${guests} at a ${String(event.type).toLowerCase()}.` : 'No estimate for this type — pick or enter any number.'} One number is all you need — your plan prices itself against it.
+          {est ? `That’s the honest range for ${guests} at a ${String(event.type).toLowerCase()} — lean to all-out.` : 'No estimate for this type — pick or enter any number.'} One number is all you need — the plan works out the rest.
         </p>
       </div>
     );
@@ -431,7 +431,7 @@ export default function HostShellV2() {
         <div className="content">
           <div className="appbar">
             <div className="wordmark">Event Boss</div>
-            <div className="appbar-note">V2 · engine + doctrine wired</div>
+            <div className="appbar-note">V2 preview</div>
           </div>
 
           {/* ══════════ CREATE ══════════ */}
@@ -442,7 +442,7 @@ export default function HostShellV2() {
                   <div className="eyebrow">New event</div>
                   <h1 className="mega" style={{ fontSize: 'clamp(30px,10cqw,40px)', lineHeight: 1.05 }}>What are we planning?</h1>
                   <p className="mega-sub" style={{ fontSize: 15, fontWeight: 550, color: 'var(--muted)' }}>
-                    Four answers — then the real engine builds the plan.
+                    Tell me four things and I’ll take it from there.
                   </p>
                   <div className="q"><div className="q-label">Who’s it for?</div>
                     <input className="field" value={fName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
@@ -470,7 +470,7 @@ export default function HostShellV2() {
                               ? typeMatches.map(t => (
                                 <button key={t} className="chip" aria-pressed={fType === t} onClick={() => pickType(t)}>{t.replace(' Party', '')}</button>
                               ))
-                              : <p className="grounding">Nothing matches — try another word. The resolver knows aliases like “bbq”, “boil”, or “get together”.</p>}
+                              : <p className="grounding">Nothing matches — try another word. “bbq”, “boil”, and “get together” all work.</p>}
                           </div>
                         ) : (
                           TYPE_GROUPS.map(([group, list]) => (
@@ -520,7 +520,7 @@ export default function HostShellV2() {
                         aria-label="Custom budget amount" />
                     </div>
                     {estC
-                      ? <p className="grounding">Typical for {fGuests} at a {fType.toLowerCase()}: {fmt(estC.lowTotal)}–{fmt(estC.highTotal)} · {confC.label}. Picking one splits it across the estimator’s real categories.</p>
+                      ? <p className="grounding">Most people spend {fmt(estC.lowTotal)}–{fmt(estC.highTotal)}{confC.level === 'high' ? ' — a confident read' : confC.level === 'medium' ? ' — a fair first read' : ' — a rough first read'}. Pick one or write your own; you can change it anytime.</p>
                       : <p className="grounding">Pick a guest count and the estimator can suggest a range.</p>}
                   </div>
                   <div style={{ marginTop: 34 }}>
@@ -537,14 +537,14 @@ export default function HostShellV2() {
                   <p className="mega-sub" style={{ fontSize: 17, marginTop: 10 }}>{identityStatement(custom)}</p>
                   {customPlan && (
                     <ul className="tick-list">
-                      <li><strong>{customPlan.progress.done} of {customPlan.progress.total} foundations</strong> already settled from your four answers.</li>
+                      <li><strong>{customPlan.progress.done} of {customPlan.progress.total} basics</strong> — date, guests, budget, food — already settled from your answers.</li>
                       {customPlan.nextActions[0] && (
-                        <li>The engine’s first move: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
+                        <li>First thing to handle: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
                       )}
-                      <li><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in the plan, ranked by the same orchestrator the app runs.</li>
+                      <li><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
                     </ul>
                   )}
-                  <p className="grounding">Every line above came from the production engine reading your answers. Nothing scripted.</p>
+                  <p className="grounding">All of this came straight from your answers — nothing made up.</p>
                   <div className="actions-row" style={{ marginTop: 24 }}>
                     <button className="cta big" onClick={() => setStage('plan')}>Open your plan</button>
                     <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => setRevealed(false)}>Change an answer</button>
@@ -598,8 +598,8 @@ export default function HostShellV2() {
                     <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
                     <div className="t-sub">
                       {plan.progress.total
-                        ? `${plan.progress.done} of ${plan.progress.total} foundations settled — date, guests, budget, food.`
-                        : 'No foundation data for this event.'}
+                        ? `${plan.progress.done} of ${plan.progress.total} basics settled — date, guests, budget, food.`
+                        : 'Nothing to read for this event yet.'}
                     </div>
                   </div>
                 </button>
@@ -658,7 +658,7 @@ export default function HostShellV2() {
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
 
               {actions.length === 0 && (
-                <div className="empty">The orchestrator has no open actions for this event — every foundation it tracks is settled.</div>
+                <div className="empty">Nothing needs you right now — the basics are all settled.</div>
               )}
 
               {actions.filter(show).map((a, i) => {
@@ -822,7 +822,7 @@ export default function HostShellV2() {
               (event.timeline || []).length ? (
                 <>
                   <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
-                    {(event.timeline || []).filter(t => t && !t.done).length} open of {(event.timeline || []).length} — checking off is what the plan’s readiness actually reads.
+                    {(event.timeline || []).filter(t => t && !t.done).length} open of {(event.timeline || []).length} — check things off and your plan keeps up.
                   </div>
                   {(event.timeline || []).map((t, i) => (
                     <button key={t.id || i} className={'frow' + (t.done ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
@@ -854,7 +854,7 @@ export default function HostShellV2() {
                   </div>
                 ) : (
                   <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
-                    Sized to a typical guess — set a real guest count and the dollars appear (the engine never prices a count you didn’t give it).
+                    Sized to a typical guess for now — set a real guest count and the dollars appear.
                   </div>
                 )}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
@@ -939,7 +939,7 @@ export default function HostShellV2() {
                   </p>
                 )}
               </>
-            ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No playbook spread for this event type — the engine only builds one where a playbook exists.</div>)}
+            ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No spread to build for this kind of event yet.</div>)}
             {sheet.kind === 'vendors' && (
               (event.vendors || []).length ? (event.vendors || []).map(v => (
                 <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
@@ -1006,7 +1006,7 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
                     {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length}
                     {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
-                    {' — tap a name to flip their RSVP. The engine reads this list.'}
+                    {' — tap a name to flip their RSVP — your plan reads this list.'}
                   </div>
                   {(event.guests || []).slice(0, 40).map((g, i) => (
                     <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
