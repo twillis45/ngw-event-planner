@@ -124,7 +124,7 @@ const TYPE_ALIASES = {
   // New At-Home Gatherings dropdown labels → nearest canonical home_hosted type,
   // so intake family / playbook / roster all resolve (no orphan canonical types).
   'Cocktail Party': 'Dinner Party',
-  'Backyard BBQ': 'Get-Together',
+  'Backyard BBQ': 'The Cookout',
   'Brunch': 'Dinner Party',
   // Watch Party + Game Night are now CANONICAL (own playbooks); sports-watch
   // variants resolve to the Watch Party playbook.
@@ -177,7 +177,16 @@ const KEYWORDS = [
   // ── Casual / at-home gatherings ──
   [/house\s*warming|housewarming/, 'Housewarming'],
   [/dinner\s*party|friendsgiving|supper\s*club|welcome\s*dinner|rehearsal\s*dinner|tasting\s*menu/, 'Dinner Party'],
-  [/get.?together|game\s*night|potluck|cookout|bbq|barbecue|crawfish|crab\s*boil|low.?country\s*boil|fish\s*fry|\bboil\b|backyard|brunch|happy\s*hour|watch\s*party|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
+  // Named food-event playbooks resolve BEFORE the generic catch-all (CANON-TYPE-1):
+  // "crab feast … in the backyard" is a Crab Feast — and `backyard` is a VENUE
+  // word, not a type signal, so it no longer appears in any type regex (it let
+  // an incidental venue mention hijack the whole resolution).
+  [/crab\s*(feast|fest|boil)/, 'Crab Feast'],
+  [/crawfish|crayfish|crawdad/, 'Crawfish Boil'],
+  [/low.?country\s*boil|frogmore/, 'Low Country Boil'],
+  [/fish\s*fry/, 'Fish Fry'],
+  [/cook.?out|\bbbq\b|barbecue|barbeque/, 'The Cookout'],
+  [/get.?together|game\s*night|potluck|\bboil\b|brunch|happy\s*hour|watch\s*party|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
   [/honeymoon|getaway|\bcruise\b|girls?\s*trip|guys?\s*trip|\bretreat\b|destination\b/, 'Wellness Retreat'],
   // ── Generic celebrations (after specifics) ──

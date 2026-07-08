@@ -301,12 +301,16 @@ export default function HostShellV2() {
   // possessive honoree, home-venue detection.
   const parsed = useMemo(() => {
     const t = String(smartText || '');
-    // An exact playbook-type mention wins ("crab feast"); the alias resolver
-    // (bbq/boil/sweet 16 regexes) is the fallback — both are real resolvers.
+    // CANON-TYPE-1 fixed in the lib (named playbooks resolve before the
+    // at-home catch-all; venue words are no longer type signals), so the
+    // canonical resolver leads. The literal-mention scan stays only as a
+    // fallback for catalog types the keyword table doesn't cover yet.
     let type = null;
-    const hit = HOST_TYPES.find(ht => t.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
-    if (hit && hit.length > 3) type = hit;
-    if (!type) { try { const c = resolveCanonicalType(t); if (c && HOST_TYPES.includes(c)) type = c; } catch { type = null; } }
+    try { const c = resolveCanonicalType(t); if (c && HOST_TYPES.includes(c)) type = c; } catch { type = null; }
+    if (!type) {
+      const hit = HOST_TYPES.find(ht => t.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
+      if (hit && hit.length > 3) type = hit;
+    }
     let guests = null;
     const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i) || t.match(/\b(\d{1,3})\s*(?:people|guests|ppl|folks|friends|pickers)\b/i);
     if (gm) guests = parseInt(gm[1], 10);
@@ -3011,6 +3015,18 @@ export default function HostShellV2() {
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Copy the invite</button>
                     {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>}
+                  </div>
+                  {/* Invite look — the tone engine guesses from the event's mood
+                      (paper by day, elegant by night, muted when somber); the
+                      host's word always wins (lib/inviteTone). */}
+                  <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                    <span className="of">invite look:</span>
+                    {[['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].map(([val, label]) => (
+                      <button key={val || 'auto'} className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={(event.inviteStyle || '') === val}
+                        onClick={() => patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.')}>
+                        {label}
+                      </button>
+                    ))}
                   </div>
                   {(event.guests || []).slice(0, 40).map((g, i) => (
                     <div key={i}>

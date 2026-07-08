@@ -36,6 +36,7 @@ import { hostSpending } from './lib/hostSpending';
 import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { showsReplyTracking } from './lib/guestMode';
 import { computeDayAlerts as computeDayAlertsLib } from './lib/dayAlerts';
+import { inviteTone as inviteToneLib, invitePalette as invitePaletteLib } from './lib/inviteTone';
 import { eventContextNudge } from './lib/eventContextNudges';
 import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount } from './lib/crabPlan';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
@@ -3224,16 +3225,10 @@ function EventGlyph({ icon, hue, size = 56, variant = 'auto', sacred = false, qu
 // dark & elegant; somber (Repast) → quiet/muted. A host override (event.inviteStyle =
 // 'bright' | 'elegant') ALWAYS wins, so the engine never silently guesses the soul of the
 // party wrong (Rams' dissent). Used only on the guest-facing invite, never the app.
-const inviteTone = (event) => {
-  if (event && event.inviteStyle === 'elegant') return 'dark';
-  if (event && event.inviteStyle === 'bright')  return 'light';
-  const e = EVT_IDENT[event && event.type];
-  if (e && e.mark === 'quiet') return 'muted';
-  const t = ((event && event.type) || '').toLowerCase();
-  const evening = !!event && (event.timeOfDay === 'evening' || event.timeOfDay === 'night');
-  const elegant = evening || /gala|client dinner|award|cocktail|board meeting|conference|product launch|networking|fundraiser|corporate/.test(t);
-  return elegant ? 'dark' : 'light';
-};
+// EXTRACTED to lib/inviteTone.js so both invite surfaces read one tone truth;
+// this wrapper injects the app's EVT_IDENT quiet-mark check.
+const inviteTone = (event) =>
+  inviteToneLib(event, { isQuiet: (ev) => { const e = EVT_IDENT[ev && ev.type]; return !!(e && e.mark === 'quiet'); } });
 // Deepen an event hue for use as a LIGHT-tone accent. The identity hues are tuned to
 // sing on a dark panel; on cream they read pale/washed-out (esp. the steel-blue ones).
 // This pushes saturation up and lightness down just enough that the same hue reads as a
@@ -3334,11 +3329,7 @@ const shiftHSL = (hex, dl = 0, ds = 0, sm = 1) => {
 //  LIGHT/MUTED sub #6b6b78 (4.38 on the muted-tone cream, FAIL) → #62626d (≥5.02:1).
 //  LIGHT/MUTED muted #8a8a96 (≈2.8–3.4, FAIL) → #6d6d78 (≥4.5:1 on panels; ≥4.14 on cream,
 //  where it's used only for bold tracked-caps eyebrow labels that need just 3:1).
-const invitePalette = (tone) => tone === 'dark'
-  ? { dark: true,  bg: '#0d0f12', panel: '#15181c', surface: '#1a1e23', border: '#262b31', text: '#ffffff', sub: 'rgba(132,158,184,0.95)', muted: 'rgba(150,174,198,0.88)' }
-  : tone === 'muted'
-  ? { dark: false, bg: '#edeae5', panel: '#f6f4f0', surface: '#ffffff', border: '#ddd7cd', text: '#2a2a2e', sub: '#62626d', muted: '#6d6d78' }
-  : { dark: false, bg: '#faf6f0', panel: '#ffffff', surface: '#ffffff', border: '#ece5d9', text: '#1a1a1a', sub: '#62626d', muted: '#6d6d78' };
+const invitePalette = invitePaletteLib; // extracted to lib/inviteTone.js (values verbatim there)
 
 // a11y P2, items 7 & 9 — heavy decorative paper-grain (inline feTurbulence on the
 // canvas + every panel) is GPU/CPU-costly to rasterize and is pure motion-free

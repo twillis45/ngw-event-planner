@@ -13,6 +13,8 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
+import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
+import { dark as steelPalette } from '@app/theme/palette';
 import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM } from './HostShellV2.jsx';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
@@ -28,7 +30,27 @@ function markUrlFor(event) {
 const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 // The ORIGINAL's RSVP_ALLERGY_OPTIONS, verbatim (App.js:2506).
 const NEEDS = ['Nut allergy', 'Shellfish', 'Dairy-free', 'Egg', 'Kosher', 'Halal', 'Wheelchair access'];
-const SOMBER = /memorial|remembrance|funeral|repast|celebration of life/i;
+
+// The invite speaks the EVENT'S mood (lib/inviteTone — one truth with the
+// original): light = warm paper, dark = elegant evening, muted = somber. The
+// palette lands as scoped CSS-var overrides so every class retints, and the
+// steel identity accent deepens on paper (dark-tuned hues wash out on cream).
+function toneVarsFor(pal) {
+  const steelAccent = pal.dark ? null : deepenForLight(steelPalette.steelBlue);
+  return {
+    '--bg': pal.bg, '--card': pal.panel, '--bg-band': pal.surface,
+    '--line': pal.border, '--line-soft': pal.border,
+    '--ink': pal.text, '--ink-soft': pal.sub, '--muted': pal.muted, '--faint': pal.muted,
+    ...(steelAccent ? {
+      '--steel': steelAccent, '--steel-soft': steelAccent,
+      '--steel-tint': `color-mix(in srgb, ${steelAccent} 10%, transparent)`,
+    } : {}),
+    // Declared HERE so inherited text re-resolves against the overridden vars —
+    // body's own color computed against :root would leak white onto paper.
+    color: 'var(--ink)',
+    colorScheme: pal.dark ? 'dark' : 'light',
+  };
+}
 
 // Resolve the invite against the SAME event pool + patch layers the host
 // shell reads — the guest sees exactly what the host's plan says.
@@ -66,16 +88,28 @@ export default function InviteV2({ code }) {
   const [hasPlusOne, setHasPlusOne] = useState(false);
   const [plusOne, setPlusOne] = useState('');
   const [plusOneMeal, setPlusOneMeal] = useState('Standard');
+  const [plusOneNeeds, setPlusOneNeeds] = useState('');
   const [kids, setKids] = useState(0);
   const [note, setNote] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   const [err, setErr] = useState('');
+  // Field-level validation (original a11y WIN 2): each missing field lights up
+  // on its own, aria-invalid + inline message; focus moves to the first one.
+  const [nameInvalid, setNameInvalid] = useState(false);
+  const [attendInvalid, setAttendInvalid] = useState(false);
+  const nameRef = useRef(null);
   const [sending, setSending] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [queued, setQueued] = useState(false);
   const [shareState, setShareState] = useState('');
   const shareTimer = useRef(null);
   useEffect(() => () => clearTimeout(shareTimer.current), []);
+  // The event's mood, one truth with the original (lib/inviteTone): warm paper
+  // by default, elegant dark for evening/formal, muted for somber — and the
+  // host's inviteStyle override always wins.
+  const tone = inviteTone(event || {});
+  const pal = invitePalette(tone);
+  const toneVars = useMemo(() => toneVarsFor(pal), [tone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Flush anything queued offline for this event once we're back (parity with
   // the original's PublicRsvpRoute; a no-op while no backend is configured).
@@ -89,7 +123,7 @@ export default function InviteV2({ code }) {
 
   if (!event) {
     return (
-      <div className="stagewrap"><div className="app"><div className="content">
+      <div className="stagewrap"><div className="app" style={toneVars}><div className="content">
         <section style={{ paddingTop: 120, textAlign: 'center' }}>
           <div className="eyebrow">Invitation</div>
           <h1 className="mega" style={{ fontSize: 'clamp(26px,8.5cqw,34px)', lineHeight: 1.1 }}>This link isn’t live anymore</h1>
@@ -101,7 +135,7 @@ export default function InviteV2({ code }) {
 
   const days = (() => { try { return daysUntil(event.date); } catch { return null; } })();
   const rsvpBy = (() => { try { return rsvpDeadlineFor(event); } catch { return null; } })();
-  const somber = SOMBER.test(String(event.type || '') + ' ' + String(event.name || ''));
+  const somber = tone === 'muted';
   const allowPlusOne = event.plusOnePolicy !== 'no_plus_ones';
   const allowKids = event.kidsPolicy !== 'adults_only';
 
@@ -132,17 +166,24 @@ export default function InviteV2({ code }) {
   const submit = async () => {
     if (sending) return;
     const fullName = guestName.trim();
-    if (!fullName || !rsvp) {
-      setErr(!fullName && !rsvp ? 'Add your name and let us know if you can make it.'
-        : !fullName ? 'Add your name to send.' : 'Let us know if you can make it.');
+    const missingName = !fullName, missingAttend = !rsvp;
+    if (missingName || missingAttend) {
+      // Both requirements validate SIMULTANEOUSLY (original a11y WIN 2):
+      // per-field flags + combined live message + focus to the first invalid.
+      setNameInvalid(missingName);
+      setAttendInvalid(missingAttend);
+      setErr(missingName && missingAttend ? 'Add your name and let us know if you can make it.'
+        : missingName ? 'Add your name to send.' : 'Let us know if you can make it.');
+      try { if (missingName && nameRef.current) nameRef.current.focus(); } catch { /* no focus */ }
       return;
     }
-    setErr('');
+    setErr(''); setNameInvalid(false); setAttendInvalid(false);
     const parts = fullName.split(/\s+/);
     const payload = {
       name: fullName, firstName: parts[0], lastName: parts.slice(1).join(' '),
       rsvp, meal: rsvp === 'Yes' ? meal : '—', needs: needsJoined,
-      plusOne: hasPlusOne ? plusOne.trim() : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—', plusOneNeeds: '',
+      plusOne: hasPlusOne ? plusOne.trim() : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—',
+      plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
       kids: rsvp === 'Yes' ? kids : 0,
       note: note.trim(),
       ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
@@ -229,7 +270,7 @@ export default function InviteV2({ code }) {
 
   return (
     <div className="stagewrap">
-      <div className="app"><div className="content">
+      <div className="app" style={toneVars}><div className="content">
         <section>
           {/* ── The invitation moment — ceremonial, centered, the event AS
               ITSELF (identity crest from the artwork registry when one
@@ -269,14 +310,17 @@ export default function InviteV2({ code }) {
           {!submitted ? (
             <div className="card no-hover" style={{ marginTop: 22 }}><div className="card-head" style={{ cursor: 'default' }}>
               <div className="shelf-label" style={{ marginBottom: 6 }}>Your name</div>
-              <input className="field" style={{ maxWidth: 'none' }} autoComplete="name" placeholder="First and last"
-                value={guestName} onChange={e => { setGuestName(e.target.value); if (err) setErr(''); }} aria-label="Your name" />
+              <input className="field" ref={nameRef} style={{ maxWidth: 'none', ...(nameInvalid ? { borderColor: 'var(--danger)' } : {}) }}
+                autoComplete="name" placeholder="First and last" aria-invalid={nameInvalid || undefined}
+                value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
+              {nameInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
 
               <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Can you make it?</div>
               <div className="chips" role="radiogroup" aria-label="Attendance">
                 {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
-                  chip(rsvp === val, label, () => { setRsvp(val); if (err) setErr(''); }, val))}
+                  chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val))}
               </div>
+              {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
 
               {rsvp === 'Yes' && (
                 <>
@@ -307,6 +351,8 @@ export default function InviteV2({ code }) {
                           <div className="chips" style={{ marginTop: 8 }}>
                             {MEALS.map(m => chip(plusOneMeal === m, m, () => setPlusOneMeal(m), 'po-' + m))}
                           </div>
+                          <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Their allergies or needs — optional"
+                            value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
                         </div>
                       )}
                     </>
