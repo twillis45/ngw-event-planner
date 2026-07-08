@@ -993,19 +993,36 @@ export default function HostShellV2() {
 
               <div className="bento">
                 <button className="tile tile-a" onClick={() => { setHandledOpen(o => !o); }}>
-                  <div className="t-label">The basics <span style={{ opacity: .55 }}>{handledOpen ? "▴" : "▾"}</span></div>
+                  <div className="t-label">Where you stand <span style={{ opacity: .55 }}>{handledOpen ? "▴" : "▾"}</span></div>
                   <div>
-                    <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
-                      {plan.progress.total ? `${doneAnim} of ${plan.progress.total}` : '—'}
-                    </div>
-                    <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
-                    <div className="t-sub">
-                      {plan.progress.total
-                        ? (plan.progress.done === plan.progress.total
-                          ? 'basics settled — date, guests, budget, food. All of it.'
-                          : 'basics settled so far — date, guests, budget, food.')
-                        : 'Nothing to read for this event yet.'}
-                    </div>
+                    {(() => {
+                      // TRUTH RULE (Todd, 2026-07-08): the tile reads the WIDER
+                      // ledger — deriveEventPhaseProgress's essentials (basics +
+                      // rain, shopping, dietary, vendors, crabs) — never just the
+                      // four foundational dominoes. "Done" is only claimed when
+                      // the ENGINE's own label says ready AND the checklist is
+                      // clear; otherwise the open work is named.
+                      const ess = phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length ? phaseCues.items : null;
+                      const essDone = ess ? ess.filter(c => c.handled).length : plan.progress.done;
+                      const essTotal = ess ? ess.length : plan.progress.total;
+                      const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
+                      const firstOpen = ess ? ess.find(c => !c.handled) : null;
+                      const basicsLine = plan.progress.total ? `basics ${plan.progress.done} of ${plan.progress.total}` : null;
+                      let sub;
+                      if (!essTotal) sub = 'Nothing to read for this event yet.';
+                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((firstOpen && firstOpen.cueLabel) || 'the open one').toLowerCase()}`;
+                      else if (openTasks > 0) sub = `essentials handled — but ${openTasks} checklist step${openTasks === 1 ? '' : 's'} still on the list. Not done yet.`;
+                      else sub = 'essentials handled and the checklist is clear — ready for the day.';
+                      return (
+                        <>
+                          <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
+                            {essTotal ? `${essDone} of ${essTotal}` : '—'}
+                          </div>
+                          <div className="bar"><i style={{ width: (essTotal ? Math.round((essDone / essTotal) * 100) : 0) + '%' }} /></div>
+                          <div className="t-sub">{sub}</div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </button>
                 <button className="tile tile-b" onClick={() => setSheet({ kind: 'guests' })}>
@@ -1488,7 +1505,7 @@ export default function HostShellV2() {
                       onClick={() => { switchEvent(e._custom ? 'custom' : e.id); setSheet(null); }}>
                       <span className="f-main">
                         <span className="f-name">{label}{isActive ? <span className="tag plan">current</span> : null}</span>
-                        <span className="v-meta">{src.name}</span>
+                        <span className="v-meta">{src.name === label ? '' : src.name}{src.venue ? (src.name === label ? '' : ' · ') + src.venue : ''}</span>
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                     </button>
