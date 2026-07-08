@@ -19,6 +19,7 @@ import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox } from '@app/lib/api/rsvp';
+import { effectiveDoneDetail } from '@app/lib/taskEngine';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
@@ -562,6 +563,15 @@ export default function HostShellV2() {
     try { return hostSpending(event, 1); } catch { return { total: 0, spent: 0, committed: 0 }; }
   }, [event]);
   const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
+  // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
+  // model is one number plus where the plan says it's going.
+  const hostSpendRows = () => [
+    { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0, kind: 'food' },
+    { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0, kind: 'supplies' },
+    ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0, kind: 'space' }] : []),
+    ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, kind: 'crabs' }] : []),
+  ].filter(r => r.est > 0 || r.got > 0);
   const guests = guestNumber(event);
   const expect = expectedFromPlanned(guests, event.type); // lib/attendanceModel — likely turnout
   const rsvpBy = rsvpDeadlineFor(event);                  // lib/dates — reply-by date
@@ -749,7 +759,7 @@ export default function HostShellV2() {
     const cur = !!(event.foodGot || {})[it.id];
     if (!cur && it.locked == null) {
       setFoodTune(it.id);
-      toast('What did ' + (it.short || it.item) + ' actually cost? Lock the price first — bought is real money, not an estimate.');
+      toast('What did ' + (it.short || it.item) + ' actually cost? Set the real price first — bought is real money, not an estimate.');
       return;
     }
     const next = { ...(event.foodGot || {}), [it.id]: !cur };
@@ -994,7 +1004,7 @@ export default function HostShellV2() {
             </div>
           ))}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.')}>That’s everyone — noted</button>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
@@ -1008,13 +1018,13 @@ export default function HostShellV2() {
       return (
         <div className="chips hc-row">
           {yes > 0 && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: yes, guestMode: 'count' }, 'Locked at ' + yes + ' — your confirmed yeses. Food and seats now size to it.')}>
-              Lock at {yes} — confirmed yeses
+            <button className="chip" onClick={() => patchEvent({ guestCount: yes, guestMode: 'count' }, 'Count set at ' + yes + ' — your confirmed yeses. Food and seats now size to it.')}>
+              Set it at {yes} — confirmed yeses
             </button>
           )}
           {planned > 0 && planned !== yes && (
-            <button className="chip" onClick={() => patchEvent({ guestCount: planned, guestMode: 'count' }, 'Locked at ' + planned + ' — the number you planned around.')}>
-              Lock at {planned} — as planned
+            <button className="chip" onClick={() => patchEvent({ guestCount: planned, guestMode: 'count' }, 'Count set at ' + planned + ' — the number you planned around.')}>
+              Set it at {planned} — as planned
             </button>
           )}
           <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Check the list first</button>
@@ -1311,7 +1321,6 @@ export default function HostShellV2() {
     }
     return out;
   }, [liveDay, ros, event]);
-  const budgetLines = Array.isArray(event.budget) ? event.budget : [];
 
   // Micro-motion: hero + tile numbers settle in rather than snapping.
   const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
@@ -1728,7 +1737,10 @@ export default function HostShellV2() {
                   {(dayBefore.sections || []).slice(0, 5).map(sec => (
                     <button className="then-row" key={sec.key} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: '7px 0' }}
                       onClick={() => {
-                        // Each row lands on the surface that resolves it.
+                        // The ENGINE authored each row's landing (route carries the
+                        // first-unbought foodFocus, the vendorId, the taskId) — use
+                        // it first; the keyword fallback only catches route-less rows.
+                        if (sec.route && routeSheet(sec.route)) return;
                         const k = String(sec.key || sec.label || '').toLowerCase();
                         if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
                         else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
@@ -1750,7 +1762,7 @@ export default function HostShellV2() {
                 return (
                   <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
                     <div className="card-head">
-                      <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>Blocked</span></div>
+                      <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>Blocked</span></div>
                       <h3>{b.title}</h3>
                       {b.what && <p className="because">{b.what}</p>}
                       {/* The blocker resolves RIGHT HERE — never a passive note.
@@ -1789,6 +1801,13 @@ export default function HostShellV2() {
                         </>
                       )}
                       {!isVenueBlock && b.nextDecision && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
+                      {/* POP-1 continuity: the engine authored WHERE this blocker
+                          resolves (b.route) — land there, never a passive note. */}
+                      {!isVenueBlock && b.route && (
+                        <div className="actions-row">
+                          <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route) || 'the right spot')); }}>Sort it out</button>
+                        </div>
+                      )}
                     </div>
                   </article>
                 );
@@ -1862,7 +1881,7 @@ export default function HostShellV2() {
                 <article className="card" style={{ marginTop: 20 }}>
                   <div className="card-head">
                     <div className="card-top">
-                      <span className="tag plan" style={(days != null && days <= 1) ? { color: 'var(--danger)', background: 'rgba(232,64,54,.14)' } : undefined}>
+                      <span className="tag plan" style={(days != null && days <= 1) ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : undefined}>
                         {(days != null && days <= 1) ? 'Today' : 'Plan'}
                       </span>
                     </div>
@@ -2161,7 +2180,7 @@ export default function HostShellV2() {
           {/* ══════════ AFTER — real budget lines, honest tense ══════════ */}
           {stage === 'after' && (
             <section>
-              <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how closeout will read'}</div>
+              <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how it’ll wrap up'}</div>
               <h1 className="mega" style={{ fontSize: 'clamp(30px,10cqw,42px)', lineHeight: 1.02 }}>
                 {isPast ? 'How it landed.' : 'How it’ll land.'}
               </h1>
@@ -2170,23 +2189,25 @@ export default function HostShellV2() {
                   ? (money.committed <= money.planned
                     ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far.`
                     : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan.`)
-                  : 'No budget lines yet — closeout has nothing to reconcile.'}
+                  : 'No budget yet — nothing to settle up when it’s over.'}
               </p>
 
-              {budgetLines.length > 0 && (
+              {/* HOST MODEL (Rule 4): the money reads as ONE number plus where
+                  the plan priced it — never planner category rows. */}
+              {(money.committed > 0 || money.planned > 0) && (
                 <>
-                  <div className="sect"><h2>The money</h2><div className="rule" /><span className="when">{budgetLines.length} lines · real data</span></div>
+                  <div className="sect"><h2>The money</h2><div className="rule" /><span className="when">from your plan</span></div>
                   <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
-                    {budgetLines.map(l => (
-                      <div className="line" key={l.id}>
-                        <span>{l.category}</span>
-                        <span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span>
+                    {hostSpendRows().map(r => (
+                      <div className="line" key={r.label}>
+                        <span>{r.label}</span>
+                        <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
                       </div>
                     ))}
                     <div className="line total">
-                      <span>{isPast ? 'Spent, all in' : 'Committed so far'}</span>
-                      <span className={'amt' + (money.committed <= money.planned ? ' under' : '')}>
-                        {fmt(money.committed)} · {money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over'}
+                      <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
+                      <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
+                        {fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
                       </span>
                     </div>
                   </div></div>
@@ -2243,7 +2264,7 @@ export default function HostShellV2() {
                     onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                     <span className="f-main">
                       <span className="f-name">{r.label}
-                        {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>overdue</span>}
+                        {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
                       </span>
                       {r.because && <span className="v-meta">{r.because}</span>}
                     </span>
@@ -2340,7 +2361,7 @@ export default function HostShellV2() {
                   <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
-                      <span className={'tag ' + (r.severity === 'high' ? 'plan' : 'plan')} style={r.severity === 'high' ? { color: 'var(--danger)', background: 'rgba(232,64,54,.14)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                      <span className={'tag ' + (r.severity === 'high' ? 'plan' : 'plan')} style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                   </div>
@@ -2573,24 +2594,41 @@ export default function HostShellV2() {
             {sheet.kind === 'tasks' && (
               (event.timeline || []).length ? (
                 <>
-                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
-                    {(event.timeline || []).filter(t => t && !t.done).length} open of {(event.timeline || []).length} — check things off and your plan keeps up.
-                  </div>
+                  {(() => {
+                    // taskEngine.effectiveDone: a step the event's own facts
+                    // already prove handled (date set, caterer booked…) reads as
+                    // inferred-done — the checklist never nags about proven work.
+                    const openRows = (event.timeline || []).filter(t => t && !t.done);
+                    const inferredN = openRows.filter(t => { try { const d = effectiveDoneDetail(event, t); return d.done && d.inferred; } catch { return false; } }).length;
+                    return (
+                      <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                        {openRows.length - inferredN} open of {(event.timeline || []).length}
+                        {inferredN ? ' · ' + inferredN + ' already handled by your plan — tap to confirm' : ''} — check things off and your plan keeps up.
+                      </div>
+                    );
+                  })()}
                   {/* OPEN work gets the rows; DONE work minimizes into a green
                       report line (tap to review) — same green-dot semantics as
                       the handled sections everywhere else. */}
-                  {(event.timeline || []).map((t, i) => (t && !t.done) ? (
-                    <button key={t.id || i} className={'frow' + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
+                  {(event.timeline || []).map((t, i) => {
+                    if (!t || t.done) return null;
+                    let inferred = false;
+                    try { const d = effectiveDoneDetail(event, t); inferred = d.done && d.inferred; } catch { inferred = false; }
+                    return (
+                    <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
                       style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
                       <span className="f-main">
-                        <span className="f-name">{t.task}</span>
+                        <span className="f-name">{t.task}
+                          {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
+                        </span>
                         <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
                       </span>
                     </button>
-                  ) : null)}
+                    );
+                  })}
                   {(event.timeline || []).some(t => t && t.done) && (
                     <>
                       <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
@@ -2671,7 +2709,7 @@ export default function HostShellV2() {
                         Vegetarian + vegan counts add a real, priced main below; the others flag the lines to double-check.
                         {!event.dietaryNoted && <span> </span>}
                         {!event.dietaryNoted && (
-                          <button className="mini" onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.'); setFoodSect(m => ({ ...m, diet: false })); }}>That’s everyone — noted</button>
+                          <button className="mini" onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); setFoodSect(m => ({ ...m, diet: false })); }}>That’s everyone — noted</button>
                         )}
                       </p>
                     </div>
@@ -2821,11 +2859,11 @@ export default function HostShellV2() {
                                   <span className="of">cost:</span>
                                   {it.locked != null ? (
                                     <>
-                                      <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{fmt(it.locked)} locked</span>
+                                      <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
                                       <button className="mini" onClick={() => {
                                         const m = { ...(event.foodLocked || {}) }; delete m[it.id];
                                         patchEvent({ foodLocked: m }, (it.short || it.item) + ' back to the estimate range.');
-                                      }}>unlock</button>
+                                      }}>back to estimate</button>
                                     </>
                                   ) : (
                                     <>
@@ -2836,9 +2874,9 @@ export default function HostShellV2() {
                                         onClick={() => {
                                           const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
                                           patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
-                                            (it.short || it.item) + ' locked at ' + fmt(n) + ' — a real price now, not a range.');
+                                            (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
                                           setTuneCost('');
-                                        }}>lock it</button>
+                                        }}>set it</button>
                                     </>
                                   )}
                                 </div>
@@ -2856,7 +2894,7 @@ export default function HostShellV2() {
                                           patchEvent({
                                             foodWhere: { ...(event.foodWhere || {}), [it.id]: w },
                                             foodLocked: { ...(event.foodLocked || {}), [it.id]: lockAt },
-                                          }, 'Buying at ' + w + ' — locked at ' + fmt(lockAt) + ' (' + (f === 0 ? 'the low end' : f === 1 ? 'the high end' : 'the middle') + ' of its price band). Unlock anytime.');
+                                          }, 'Buying at ' + w + ' — set at ' + fmt(lockAt) + ' (' + (f === 0 ? 'the low end' : f === 1 ? 'the high end' : 'the middle') + ' of its price band). Change it anytime.');
                                         }}>
                                         {w}
                                       </button>
@@ -2917,12 +2955,13 @@ export default function HostShellV2() {
               // that prices it — the spread (food/supplies), the space list,
               // the crab order. Supplies additionally opens its own group.
               const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
-              const hostRows = [
-                { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0, go: () => setSheet({ kind: 'food' }) },
-                { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0, go: () => { if (supplGroup) setFoodGroupsOpen(m => ({ ...m, [supplGroup]: true })); setSheet({ kind: 'food' }); } },
-                ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0, go: () => setSheet({ kind: 'space' }) }] : []),
-                ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, go: () => setSheet({ kind: 'crabs' }) }] : []),
-              ].filter(r => r.est > 0 || r.got > 0);
+              const GO = {
+                food: () => setSheet({ kind: 'food' }),
+                supplies: () => { if (supplGroup) setFoodGroupsOpen(m => ({ ...m, [supplGroup]: true })); setSheet({ kind: 'food' }); },
+                space: () => setSheet({ kind: 'space' }),
+                crabs: () => setSheet({ kind: 'crabs' }),
+              };
+              const hostRows = hostSpendRows().map(r => ({ ...r, go: GO[r.kind] }));
               return (
                 <>
                   <div className="line" style={{ padding: '2px 0 10px' }}>
@@ -2941,7 +2980,7 @@ export default function HostShellV2() {
                             onClick={r.go} aria-label={'Open ' + r.label}>
                             <div className="line" style={{ padding: '0 0 5px' }}>
                               <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                              <span className="amt">{fmt(r.got)} <span className="of">bought of {fmt(r.est)}</span></span>
+                              <span className="amt">{fmt(r.got)} <span className="of">bought of ~{fmt(r.est)}</span></span>
                             </div>
                             <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
                           </button>
