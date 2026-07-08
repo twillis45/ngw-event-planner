@@ -5,7 +5,10 @@
 // Nothing invented — where data is missing, the UI says so.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { eventPlan, getEventReadiness } from '@app/CommandCenter';
-import { buildAssembleRevealStages } from '@app/lib/assembleRevealEngines';
+import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
+import { buildExperienceContext } from '@app/lib/experienceContext';
+import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
+import { positiveAttention } from '@app/lib/positiveAttention';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase } from '@app/lib/doItForMe';
@@ -16,7 +19,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -159,11 +162,22 @@ export default function HostShellV2() {
   const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
 
+  // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
+  const ctx = useMemo(() => { try { return buildExperienceContext(event, null, 1); } catch { return null; } }, [event]);
+
   // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
-    try { return eventPlan(event, null); }
+    try { return eventPlan(event, ctx); }
     catch (err) { return { _error: String(err), nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadinessRollup: null }; }
-  }, [event]);
+  }, [event, ctx]);
+
+  // Blockers (the Reveal's own stage builder, ongoing view), decision board,
+  // capacity, helpers, risks, and the wins — all production functions.
+  const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
+  const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event]);
+  const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
+  const helpers = useMemo(() => { try { return deriveHelperResponsibilities(event) || []; } catch { return []; } }, [event]);
+  const risks = useMemo(() => { try { return playbookRisks(event); } catch { return null; } }, [event]);
 
   useEffect(() => {
     if (eventId !== 'custom') { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
@@ -284,6 +298,7 @@ export default function HostShellV2() {
   // The 5 readiness signals — Basics (foundations) + the four pillars the
   // production readiness engine computes: decisions, people, checklist, paperwork.
   const readiness = useMemo(() => { try { return getEventReadiness(event); } catch { return null; } }, [event]);
+  const wins = useMemo(() => { try { return positiveAttention(event, readiness) || { items: [] }; } catch { return { items: [] }; } }, [event, readiness]);
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
   // is the same one the app's weather alert and Where & when read.
@@ -766,14 +781,25 @@ export default function HostShellV2() {
                   the engine's handled facts. */}
               <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
                 <div className="slidepanel-inner">
+                  {(wins.items || []).length > 0 && (
+                    <div className="pills" style={{ marginBottom: 8 }}>
+                      {wins.items.map(w => (
+                        <span key={w.key} className="pill p-ok" style={{ cursor: 'default' }}>{w.label}<span className="pill-note">{w.note}</span></span>
+                      ))}
+                    </div>
+                  )}
                   {(() => {
                     if (!readiness) return null;
                     // Family doctrine: home-hosted events have no vendors/paperwork
                     // expectation — those pillars don't apply, so they never show.
                     const fam = (EVENT_TAXONOMY[event.type] && EVENT_TAXONOMY[event.type].family) || '';
                     const home = fam === 'home_hosted';
+                    const anyOverdue = (decisionBoard.open || []).some(r => r && r.status === 'overdue');
+                    const callsPill = (decisionBoard.open || []).length
+                      ? { status: anyOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
+                      : null;
                     const pillars = [
-                      ['Calls to make', readiness.decision],
+                      ...(callsPill ? [['Calls to make', callsPill]] : []),
                       ...(home ? [] : [['People', readiness.vendor], ['Paperwork', readiness.document]]),
                       ['Checklist', readiness.timeline],
                     ].filter(([, r]) => r && r.status !== 'ON_TRACK'); // action-only: on-track never renders
@@ -782,7 +808,11 @@ export default function HostShellV2() {
                       <div className="pills">
                         {pillars.map(([label, r]) => (
                           <button key={label} className={'pill ' + (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
-                            onClick={() => { if (label === 'Checklist') { setSheet({ kind: 'tasks', focus: null }); } else { toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : '')); } }}>
+                            onClick={() => {
+                              if (label === 'Checklist') setSheet({ kind: 'tasks', focus: null });
+                              else if (label === 'Calls to make') setSheet({ kind: 'decisions', focus: null });
+                              else toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''));
+                            }}>
                             {label}<span className="pill-note">{r.note}</span>
                           </button>
                         ))}
@@ -818,6 +848,17 @@ export default function HostShellV2() {
                   ))}
                 </div>
               )}
+
+              {blockers.map((b, i) => (
+                <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
+                  <div className="card-head">
+                    <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>Blocked</span></div>
+                    <h3>{b.title}</h3>
+                    {b.what && <p className="because">{b.what}</p>}
+                    {b.nextDecision && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
+                  </div>
+                </article>
+              ))}
 
               {outdoor && event.rainPlan && (
                 <div className="later-row" style={{ marginTop: 18 }}>
@@ -861,6 +902,19 @@ export default function HostShellV2() {
               {foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount && (
                 <button className="fold-btn" onClick={() => setSheet({ kind: 'food' })}>
                   The spread &amp; shopping — {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                  <span className="chev">›</span>
+                </button>
+              )}
+
+              {((capacity && (capacity.items || []).length > 0) || helpers.length > 0) && (
+                <button className="fold-btn" onClick={() => setSheet({ kind: 'space' })}>
+                  Space, seats &amp; helpers{helpers.length ? ` — ${helpers.length} helping` : ''}
+                  <span className="chev">›</span>
+                </button>
+              )}
+              {risks && risks.count > 0 && (
+                <button className="fold-btn" onClick={() => setSheet({ kind: 'risks' })}>
+                  What could go wrong — {risks.count} to know about
                   <span className="chev">›</span>
                 </button>
               )}
@@ -980,9 +1034,69 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
+            {sheet.kind === 'decisions' && (
+              <>
+                {(decisionBoard.open || []).length ? (decisionBoard.open || []).map((r, i) => (
+                  <button key={r.id || i} className="frow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                    onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
+                    <span className="f-main">
+                      <span className="f-name">{r.label}
+                        {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>overdue</span>}
+                      </span>
+                      {r.because && <span className="v-meta">{r.because}</span>}
+                    </span>
+                  </button>
+                )) : <div className="v-meta" style={{ padding: '14px 2px' }}>Nothing waiting on you.</div>}
+                {(decisionBoard.locked || []).length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Settled</div>
+                    {(decisionBoard.locked || []).map((r, i) => (
+                      <div key={r.id || i} className="line"><span>{r.label}</span><span className="of">{r.because}</span></div>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+            {sheet.kind === 'space' && (
+              <>
+                {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => (
+                  <div key={it.key || i} className="line" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">×{it.qty}</span>{it.note ? <span className="of"> · {it.note}</span> : null}</span>
+                    <span className="amt">{it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : '—'}</span>
+                  </div>
+                ))}
+                {helpers.length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Who’s helping</div>
+                    {helpers.map((h, i) => (
+                      <div key={i} className="line">
+                        <span>{h.helperName} <span className="of">· {h.label}</span></span>
+                        <span className="of">{(() => { try { return helperStatusLine(h) || h.status || ''; } catch { return h.status || ''; } })()}</span>
+                      </div>
+                    ))}
+                  </>
+                )}
+                {!((capacity && (capacity.items || []).length) || helpers.length) && (
+                  <div className="v-meta" style={{ padding: '14px 2px' }}>Nothing to set up or borrow for this one.</div>
+                )}
+              </>
+            )}
+            {sheet.kind === 'risks' && (
+              <>
+                {risks && (risks.items || []).map((r, i) => (
+                  <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    <div className="f-name" style={{ marginBottom: 3 }}>
+                      {r.trigger}
+                      <span className={'tag ' + (r.severity === 'high' ? 'plan' : 'plan')} style={r.severity === 'high' ? { color: 'var(--danger)', background: 'rgba(232,64,54,.14)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                    </div>
+                    <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
+                  </div>
+                ))}
+              </>
+            )}
             {sheet.kind === 'draft' && (
               <>
                 <div className="draft-body">{sheet.body}</div>
