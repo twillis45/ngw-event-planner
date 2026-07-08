@@ -65,7 +65,6 @@ export default function HostShellV2() {
     try { return JSON.parse(localStorage.getItem(LS_PATCH(FALLBACK.id))) || {}; } catch { return {}; }
   });
   const [toastMsg, setToastMsg] = useState(null);
-  const [hcOpen, setHcOpen] = useState(false);
   const [handledOpen, setHandledOpen] = useState(false);
   const toastTimer = useRef(null);
   const appRef = useRef(null);
@@ -96,7 +95,7 @@ export default function HostShellV2() {
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
   const switchEvent = (id) => {
-    setEventId(id); setHcOpen(false); setHandledOpen(false); setStage('plan');
+    setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null);
     if (id !== 'custom') { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
   };
 
@@ -118,15 +117,86 @@ export default function HostShellV2() {
   const lensSet = [...new Set(actions.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
 
-  const onCta = (a) => {
-    const dest = describeRoute(a.route);
-    toast(dest ? 'In the app this opens: ' + dest : 'This action has no route yet — the engine surfaced it without a deep link.');
+  // ── Actions that ACT: patch the real event, let the engine recompute ──
+  const [editor, setEditor] = useState(null); // which card's inline editor is open
+
+  const patchEvent = (obj, msg) => {
+    if (eventId === 'custom') setCustom(c => ({ ...c, ...obj }));
+    else setPatch(p => ({ ...p, ...obj }));
+    if (msg) toast(msg);
   };
 
-  const setGuests = (n) => {
-    if (eventId === 'custom') setCustom(c => ({ ...c, guestEstimate: n }));
-    else setPatch(p => ({ ...p, guestEstimate: n }));
-    toast('Planning around ' + n + ' now — watch the plan recompute.');
+  // Which engine actions have a real in-place edit here. Everything else stays an
+  // honest route toast — never a button that pretends.
+  const wiredKind = (a) => {
+    if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
+    if (/catering count/i.test(a.title || '')) return 'count';
+    return null;
+  };
+
+  const onCta = (a, key) => {
+    const kind = wiredKind(a);
+    if (kind) { setEditor(editor === key ? null : key); return; }
+    const dest = describeRoute(a.route);
+    toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
+  };
+
+  const setGuests = (n) => patchEvent({ guestEstimate: n }, 'Planning around ' + n + ' now — the plan just recomputed.');
+
+  // Inline editors, one per wired kind. Each writes the SAME fields the engine's
+  // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
+  const renderEditor = (a) => {
+    const kind = wiredKind(a);
+    if (kind === 'guests') return (
+      <div className="chips hc-row">
+        {[30, 50, 60, 75, 90, 120].map(n => (
+          <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
+        ))}
+      </div>
+    );
+    if (kind === 'budget') return (
+      <div className="chips hc-row">
+        {[2000, 3500, 5000, 8000].map(n => (
+          <button key={n} className="chip" aria-pressed={money.planned === n}
+            onClick={() => patchEvent(
+              { budget: [{ id: 'v2-b1', category: 'Everything', budgeted: n, actual: 0, notes: 'Set in Host V2' }] },
+              'Budget set at ' + fmt(n) + ' — the plan just recomputed.')}>{fmt(n)}</button>
+        ))}
+      </div>
+    );
+    if (kind === 'date') return (
+      <div className="hc-row">
+        <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
+          onChange={e => { if (e.target.value) patchEvent({ date: e.target.value }, 'Date set — every countdown in the plan just moved.'); }} />
+      </div>
+    );
+    if (kind === 'food') return (
+      <div className="chips hc-row">
+        {[['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']].map(([label, val]) => (
+          <button key={val} className="chip" aria-pressed={(event.foodChoices || {}).sourcing === val}
+            onClick={() => patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: val } },
+              'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.')}>{label}</button>
+        ))}
+      </div>
+    );
+    if (kind === 'count') {
+      // The engine's condition: catererCount must equal CONFIRMED yeses, not the
+      // planned number — so only that choice actually closes the card.
+      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+      return (
+        <div className="chips hc-row">
+          <button className="chip" onClick={() => patchEvent({ catererCount: yes },
+            'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.')}>
+            Match confirmed yeses ({yes})
+          </button>
+          <button className="chip" onClick={() => patchEvent({ catererCount: guests },
+            'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.')}>
+            Hold {guests} plates anyway
+          </button>
+        </div>
+      );
+    }
+    return null;
   };
 
   // ── Create: build a REAL event object and hand it to the engine ──
@@ -299,31 +369,27 @@ export default function HostShellV2() {
                 <div className="empty">The orchestrator has no open actions for this event — every foundation it tracks is settled.</div>
               )}
 
-              {actions.filter(show).map((a, i) => (
-                <article className="card" key={a.id || i}>
-                  <span className="idx">{i + 1}</span>
-                  <div className="card-head">
-                    <div className="card-top">
-                      <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                    </div>
-                    <h3>{a.title}</h3>
-                    {a.consequence && <p className="because">{a.consequence}</p>}
-                    <div className="actions-row">
-                      {a.cta && <button className="cta" onClick={() => onCta(a)}>{a.cta}</button>}
-                      {a.domain === 'guests' && (
-                        <button className="cta soft" onClick={() => setHcOpen(o => !o)}>Set a count here</button>
-                      )}
-                    </div>
-                    {a.domain === 'guests' && hcOpen && (
-                      <div className="chips hc-row">
-                        {[30, 50, 60, 75, 90, 120].map(n => (
-                          <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
-                        ))}
+              {actions.filter(show).map((a, i) => {
+                const key = String(a.id || i);
+                const wired = wiredKind(a);
+                return (
+                  <article className="card" key={key}>
+                    <span className="idx">{i + 1}</span>
+                    <div className="card-head">
+                      <div className="card-top">
+                        <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
+                        {!wired && <span className="tag plan">route only</span>}
                       </div>
-                    )}
-                  </div>
-                </article>
-              ))}
+                      <h3>{a.title}</h3>
+                      {a.consequence && <p className="because">{a.consequence}</p>}
+                      <div className="actions-row">
+                        {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
+                      </div>
+                      {editor === key && renderEditor(a)}
+                    </div>
+                  </article>
+                );
+              })}
 
               {handled.length > 0 && (
                 <>
