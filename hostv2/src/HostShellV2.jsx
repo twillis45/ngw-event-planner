@@ -20,6 +20,8 @@ import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox } from '@app/lib/api/rsvp';
 import { effectiveDoneDetail } from '@app/lib/taskEngine';
+import Papa from 'papaparse';
+import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge } from '@app/lib/csvParsers';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
@@ -685,8 +687,9 @@ export default function HostShellV2() {
   // The self-RSVP invite link — the SAME ?rsvp=CODE mechanic as the original
   // app (every event carries rsvpCode). Guests who open it reply themselves;
   // replies land in the outbox and merge into this roster automatically.
+  const inviteLinkUrl = () => window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
   const shareInviteLink = async () => {
-    const url = window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+    const url = inviteLinkUrl();
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try { await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url }); return; } catch { /* declined — fall through to copy */ }
     }
@@ -774,6 +777,47 @@ export default function HostShellV2() {
   const [rosterText, setRosterText] = useState('');
   const [guestOpen, setGuestOpen] = useState(null); // per-guest detail editor
   const [deadlineOpen, setDeadlineOpen] = useState(false);
+  // CSV import — the app's own parsers/merge (lib/csvParsers): 7 platforms,
+  // email-primary name-fallback matching, preview before anything writes.
+  const [csvOpen, setCsvOpen] = useState(false);
+  const [csvPlatform, setCsvPlatform] = useState('ngw');
+  const [csvPreview, setCsvPreview] = useState(null); // {mapped, summary, fileName}
+  const onCsvFile = (file) => {
+    if (!file) return;
+    Papa.parse(file, {
+      header: true, skipEmptyLines: true,
+      complete: (res) => {
+        try {
+          const canonical = validateRows(transformRows(res.data || [], csvPlatform));
+          // Bridge canonical → the guest shape every reader here uses (the
+          // original's canonicalToGuest mapping); _valid rides along so
+          // applyMerge can filter.
+          const ts = Date.now();
+          const mapped = canonical.map((r, i) => ({
+            id: 'g-csv-' + ts + '-' + i,
+            name: r.name || '', group: r.group || '',
+            rsvp: r.rsvp_status === 'Pending' ? '' : (r.rsvp_status || ''),
+            meal: r.meal_preference || '—', table: r.table_number ?? null,
+            plusOne: r.plus_one_name || '', plusOneMeal: '—', kids: 0,
+            needs: r.dietary_restrictions || '', email: r.email || '', phone: r.phone || '',
+            partyNotes: r.notes || '', giftReceived: false, thankYouSent: false,
+            _valid: r._valid, _errors: r._errors,
+          }));
+          const summary = computeMergeSummary(event.guests || [], mapped, 'merge');
+          setCsvPreview({ mapped, summary, fileName: file.name });
+        } catch { toast('That file didn’t read as a guest CSV — check the platform pick.'); }
+      },
+      error: () => toast('Couldn’t read that file.'),
+    });
+  };
+  const applyCsv = () => {
+    if (!csvPreview) return;
+    const merged = applyMerge(event.guests || [], csvPreview.mapped, 'merge', 'v2-' + Date.now());
+    const kidsCount = merged.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    patchEvent({ guests: merged, kidsCount },
+      (csvPreview.summary.willAdd || 0) + ' added · ' + (csvPreview.summary.willUpdate || 0) + ' updated from ' + csvPreview.fileName + ' — replies and needs came along.');
+    setCsvPreview(null); setCsvOpen(false);
+  };
   const writeGuest = (i, patch, msg) => {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
@@ -2218,6 +2262,36 @@ export default function HostShellV2() {
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
                 {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
+              {/* Thank-yous & gifts — per-guest flags on the SAME roster rows the
+                  wrap-up meter reads (phaseProgress post_event counts
+                  thankYouSent), so thanking someone literally moves the meter. */}
+              {isPast && (event.guests || []).some(g => g && g.rsvp === 'Yes') && (() => {
+                const yesIdx = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && x.g.rsvp === 'Yes');
+                const thanked = yesIdx.filter(x => x.g.thankYouSent === true).length;
+                return (
+                  <>
+                    <div className="sect"><h2>Thank-yous</h2><div className="rule" /><span className="when">{thanked} of {yesIdx.length} sent</span></div>
+                    <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                      {yesIdx.map(({ g, i }) => (
+                        <div className="line" key={i} style={{ alignItems: 'center' }}>
+                          <span>{g.name}{String(g.plusOne || '').trim() ? <span className="of"> +1</span> : null}</span>
+                          <span style={{ display: 'flex', gap: 6 }}>
+                            <button className="mini" style={g.giftReceived ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                              onClick={() => writeGuest(i, { giftReceived: !g.giftReceived }, null)}>
+                              {g.giftReceived ? 'gift received' : 'gift?'}
+                            </button>
+                            <button className="mini" style={g.thankYouSent ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                              onClick={() => writeGuest(i, { thankYouSent: !g.thankYouSent }, g.thankYouSent ? null : ((g.name || 'Guest') + ' thanked — the wrap-up meter keeps count.'))}>
+                              {g.thankYouSent ? 'thanked' : 'thank them'}
+                            </button>
+                          </span>
+                        </div>
+                      ))}
+                      <p className="grounding" style={{ margin: '8px 0 0' }}>“Thanked” feeds the wrap-up meter up top; gifts are just for your memory — and the note below writes itself from what actually happened.</p>
+                    </div></div>
+                  </>
+                );
+              })()}
               {/* Event memory capture — writes event.lessons via the canonical
                   setLesson (lib/eventMemory); recalled on Plan for the next
                   same-type event. Past events only — a preview has no lessons. */}
@@ -3012,6 +3086,57 @@ export default function HostShellV2() {
               const chase = showsReplyTracking(event); // count-only hosts are never chased
               const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes' && String(g.plusOne || '').trim()).length;
               const kidsTotal = (event.guests || []).reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+              // guestMode switch — the ENGINE's own workflow knob (guestPlanningMode
+              // reads it): by-list hosts get reply tracking + chasing, by-headcount
+              // hosts are never nagged about replies.
+              const countingChips = (
+                <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                  <span className="of">counting:</span>
+                  <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={chase}
+                    onClick={() => patchEvent({ guestMode: 'list' }, 'By list — replies are tracked and the quiet ones can be nudged.')}>By list</button>
+                  <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={event.guestMode === 'count'}
+                    onClick={() => patchEvent({ guestMode: 'count' }, 'By headcount — replies are optional and nobody gets chased.')}>By headcount</button>
+                </div>
+              );
+              // CSV import — lib/csvParsers end to end: platform map → validate →
+              // preview counts → merge (email-primary, name-fallback). Nothing
+              // writes until the host confirms the preview.
+              const csvBlock = !csvOpen ? (
+                <button className="fold-btn" onClick={() => setCsvOpen(true)}>
+                  Import a guest list (CSV)
+                  <span className="chev">›</span>
+                </button>
+              ) : (
+                <div className="brow" style={{ marginTop: 14, borderRadius: 12, padding: '10px 8px' }}>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>
+                    Where is the list from?
+                    <button className="mini" style={{ marginLeft: 8 }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>close</button>
+                  </div>
+                  <div className="chips">
+                    {Object.entries(PLATFORMS).map(([key, p]) => (
+                      <button key={key} className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={csvPlatform === key}
+                        onClick={() => { setCsvPlatform(key); setCsvPreview(null); }}>{p.label || key}</button>
+                    ))}
+                  </div>
+                  <div className="actions-row" style={{ marginTop: 10, alignItems: 'center' }}>
+                    <input type="file" accept=".csv,text/csv" aria-label="Guest CSV file" style={{ fontSize: 12.5, color: 'var(--muted)' }}
+                      onChange={e => onCsvFile(e.target.files && e.target.files[0])} />
+                  </div>
+                  {csvPreview && (
+                    <>
+                      <p className="grounding" style={{ margin: '8px 0 0' }}>
+                        {csvPreview.mapped.filter(r => r._valid).length} of {csvPreview.mapped.length} rows read cleanly from {csvPreview.fileName} —
+                        {' '}{csvPreview.summary.willAdd || 0} new, {csvPreview.summary.willUpdate || 0} already on your list (their replies update).
+                        {csvPreview.mapped.some(r => !r._valid) ? ' Rows without a name are skipped.' : ''}
+                      </p>
+                      <div className="actions-row" style={{ marginTop: 8 }}>
+                        <button className="cta" onClick={applyCsv}>Bring them in</button>
+                        <button className="mini" onClick={() => setCsvPreview(null)}>Not this file</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
               return (event.guests || []).length ? (
                 <>
                   {chase && gcr && gcr.pending > 0 && (
@@ -3052,8 +3177,8 @@ export default function HostShellV2() {
                   )}
                   <div className="actions-row" style={{ margin: '0 0 8px' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Copy the invite</button>
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>}
+                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
                   </div>
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the
@@ -3067,38 +3192,79 @@ export default function HostShellV2() {
                       </button>
                     ))}
                   </div>
-                  {(event.guests || []).slice(0, 40).map((g, i) => (
-                    <div key={i}>
-                      <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
-                          onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
-                          {g.name || 'Guest ' + (i + 1)}
-                          {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
-                          {Number(g.kids) > 0 ? <span className="of"> · {g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
-                          {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
-                        </button>
-                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
-                          <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
-                        </button>
-                      </div>
-                      {guestOpen === i && (
-                        <div className="brow" style={{ margin: '2px 0 8px', padding: '8px 6px' }}>
-                          <div className="actions-row" style={{ alignItems: 'center' }}>
-                            <span className="of">kids:</span>
-                            <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
-                            <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
-                            <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
-                            <input className="field" style={{ maxWidth: 110, fontSize: 13, padding: '6px 10px' }} placeholder="+1 name"
-                              value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
-                            <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="needs? (vegan, nut…)"
-                              value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
-                            <button className="mini" onClick={() => removeGuest(i)}>remove</button>
-                          </div>
+                  {countingChips}
+                  {(() => {
+                    // Grouped roster: when the host has sorted people into groups,
+                    // the list reads by group; indexes stay the ORIGINAL array
+                    // positions (every writer here is index-based).
+                    const withIdx = (event.guests || []).map((g, i) => ({ g, i })).slice(0, 60);
+                    const row = ({ g, i }) => (
+                      <div key={i}>
+                        <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
+                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
+                            {g.name || 'Guest ' + (i + 1)}
+                            {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                            {Number(g.kids) > 0 ? <span className="of"> · {g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                            {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
+                          </button>
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
+                          </button>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        {guestOpen === i && (
+                          <div className="brow" style={{ margin: '2px 0 8px', padding: '8px 6px' }}>
+                            <div className="actions-row" style={{ alignItems: 'center' }}>
+                              <span className="of">kids:</span>
+                              <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
+                              <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
+                              <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                              <input className="field" style={{ maxWidth: 110, fontSize: 13, padding: '6px 10px' }} placeholder="+1 name"
+                                value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
+                              <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="needs? (vegan, nut…)"
+                                value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
+                              <button className="mini" onClick={() => removeGuest(i)}>remove</button>
+                            </div>
+                            <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                              <input className="field" style={{ maxWidth: 125, fontSize: 13, padding: '6px 10px' }} placeholder="phone" type="tel"
+                                value={g.phone || ''} onChange={e => writeGuest(i, { phone: e.target.value }, null)} aria-label="Phone" />
+                              <input className="field" style={{ maxWidth: 165, fontSize: 13, padding: '6px 10px' }} placeholder="email" type="email"
+                                value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" />
+                              <input className="field" style={{ maxWidth: 105, fontSize: 13, padding: '6px 10px' }} placeholder="group" list="v2-groups"
+                                value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
+                            </div>
+                            {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
+                              // PER-GUEST chase — the engine's nudge (with the real
+                              // RSVP link) straight to THIS person's phone or inbox.
+                              const d = draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() });
+                              const body = [d.subject, d.body].filter(Boolean).join('\n\n');
+                              const first = String(g.name || 'them').split(/\s+/)[0];
+                              return (
+                                <div className="actions-row" style={{ marginTop: 8 }}>
+                                  {String(g.phone || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + encodeURIComponent(g.phone.trim()) + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
+                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    );
+                    const names = [...new Set(withIdx.map(x => String(x.g.group || '').trim()).filter(Boolean))];
+                    if (names.length <= 1) return withIdx.map(row);
+                    const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
+                    return buckets.map(b => (
+                      <div key={b.gr || 'ungrouped'}>
+                        <div className="shelf-label" style={{ margin: '12px 0 2px' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
+                        {b.items.map(row)}
+                      </div>
+                    ));
+                  })()}
+                  <datalist id="v2-groups">
+                    <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />
+                  </datalist>
                   {quickAdd}
+                  {csvBlock}
                 </>
               ) : (
                 <>
@@ -3109,7 +3275,9 @@ export default function HostShellV2() {
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                   </div>
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
+                  {countingChips}
                   {quickAdd}
+                  {csvBlock}
                 </>
               );
             })()}
