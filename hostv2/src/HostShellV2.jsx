@@ -8,9 +8,10 @@ import { eventPlan } from '@app/CommandCenter';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
+import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { estimateTotalRange, breakdownByCategory, estimatorConfidence } from '@app/lib/budgetEstimator';
+import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
 import { ALL_PLAYBOOKS, playbookFoodPlan } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -64,24 +65,6 @@ function useCountUp(target, dur = 650) {
   return v;
 }
 
-// Split a chosen total into REAL category lines using the estimator's own
-// shares for this event type, normalized so the lines sum exactly to the pick.
-function splitBudget(total, type) {
-  try {
-    const rows = breakdownByCategory(total, total, type) || [];
-    const mids = rows.map(r => ({ label: r.label, mid: Math.max(0, (Number(r.low) + Number(r.high)) / 2) }));
-    const sum = mids.reduce((s, m) => s + m.mid, 0);
-    if (!sum) throw new Error('no shares');
-    const lines = mids
-      .map((m, i) => ({ id: 'v2-b-' + i, category: m.label, budgeted: Math.round((m.mid * total / sum) / 50) * 50, actual: 0, notes: 'Split by the estimator’s real category shares' }))
-      .filter(l => l.budgeted > 0);
-    const resid = total - lines.reduce((s, l) => s + l.budgeted, 0);
-    if (resid && lines.length) lines.reduce((a, b) => (b.budgeted > a.budgeted ? b : a), lines[0]).budgeted += resid;
-    return lines;
-  } catch {
-    return [{ id: 'v2-b1', category: 'Everything', budgeted: total, actual: 0, notes: 'Set in Host V2' }];
-  }
-}
 
 const guestNumber = e => Number(e.guestEstimate) || Number(e.catererCount) || (e.guests || []).length || 0;
 
@@ -298,45 +281,7 @@ export default function HostShellV2() {
         ))}
       </div>
     );
-    if (kind === 'budget') {
-      // Three options because that's what the estimator actually computes for
-      // this type + count + date: its LOW, midpoint, and HIGH. Any custom
-      // number splits across the same real category shares.
-      const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
-      const opts = est
-        ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
-        : [2000, 3500, 5000];
-      const LABELS = opts.length === 3 ? ['Lean', 'Typical', 'All-out'] : [];
-      const setB = (n) => {
-        const lines = splitBudget(n, event.type);
-        setCustomBudget('');
-        patchEvent({ budget: lines },
-          'Budget set at ' + fmt(n) + ', split across ' + lines.length + ' real categories — tap the Budget tile to see them.');
-      };
-      const customN = parseInt(customBudget, 10) || 0;
-      return (
-        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-          <div className="chips">
-            {opts.map((n, idx) => (
-              <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
-                {LABELS[idx] ? LABELS[idx] + ' · ' : ''}{fmt(n)}
-              </button>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
-              type="number" inputMode="numeric" min="0" placeholder="Your own number"
-              value={customBudget} onChange={e => setCustomBudget(e.target.value)}
-              aria-label="Custom budget amount" />
-            <button className="cta" disabled={customN <= 0} style={customN <= 0 ? { opacity: .45 } : undefined}
-              onClick={() => setB(customN)}>Use it</button>
-          </div>
-          <p className="grounding" style={{ margin: 0 }}>
-            {est ? `Lean–all-out is the estimator’s real range for ${guests} at a ${String(event.type).toLowerCase()}.` : 'No estimate for this type — pick or enter any number.'} Whatever you choose splits across the same real categories.
-          </p>
-        </div>
-      );
-    }
+    if (kind === 'budget') return budgetEditorBlock();
     if (kind === 'date') return (
       <div className="hc-row">
         <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
@@ -375,6 +320,53 @@ export default function HostShellV2() {
     return null;
   };
 
+  // Budget editor — shared by the action-card editor AND the Budget sheet, so a
+  // set budget stays changeable forever (three options = the estimator's real
+  // low / mid / high; custom numbers split across the same real shares).
+  const budgetEditorBlock = () => {
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
+    const opts = est
+      ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
+      : [2000, 3500, 5000];
+    const LABELS = opts.length === 3 ? ['Lean', 'Typical', 'All-out'] : [];
+    // HOST MODEL: one number (event.totalBudget) — category rows are the
+    // planner's model, never the host's (per hostSpending's own doctrine).
+    const setB = (n) => {
+      setCustomBudget('');
+      patchEvent({ totalBudget: n },
+        'Budget set at ' + fmt(n) + ' — one number, yours to change anytime.');
+    };
+    const customN = parseInt(customBudget, 10) || 0;
+    return (
+      <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+        <div className="chips">
+          {opts.map((n, idx) => (
+            <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
+              {LABELS[idx] ? LABELS[idx] + ' · ' : ''}{fmt(n)}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
+            type="number" inputMode="numeric" min="0" placeholder="Your own number"
+            value={customBudget} onChange={e => setCustomBudget(e.target.value)}
+            aria-label="Custom budget amount" />
+          <button className="cta" disabled={customN <= 0} style={customN <= 0 ? { opacity: .45 } : undefined}
+            onClick={() => setB(customN)}>Use it</button>
+        </div>
+        <p className="grounding" style={{ margin: 0 }}>
+          {est ? `Lean–all-out is the estimator’s real range for ${guests} at a ${String(event.type).toLowerCase()}.` : 'No estimate for this type — pick or enter any number.'} One number is all you need — your plan prices itself against it.
+        </p>
+      </div>
+    );
+  };
+
+  // Day-before plan — lib/dayBefore, date-gated (0–2 days out). Pure and real:
+  // set an event's date to tomorrow and this materializes.
+  const dayBefore = useMemo(() => {
+    try { return buildDayBeforePlan(event); } catch { return { applicable: false }; }
+  }, [event]);
+
   // ── Create: build a REAL event object and hand it to the engine ──
   const assemble = () => {
     const ev = {
@@ -383,7 +375,8 @@ export default function HostShellV2() {
       honoree: fName || '',
       type: fType, date: fDate, venue: '',
       guestEstimate: fGuests || '',
-      budget: fBudget ? splitBudget(fBudget, fType) : [],
+      totalBudget: fBudget || '',
+      budget: [],
       guests: [], vendors: [], timeline: [],
     };
     setCustom(ev); setEventId('custom'); setRevealed(true);
@@ -535,13 +528,22 @@ export default function HostShellV2() {
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
             <section>
-              <div className="picker">
-                {ROSTER.map(e => (
-                  <button key={e.id} className="chip" aria-pressed={e.id === eventId} onClick={() => switchEvent(e.id)}>
-                    {e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type}
-                  </button>
-                ))}
-                {custom && <button className="chip" aria-pressed={eventId === 'custom'} onClick={() => switchEvent('custom')}>Yours</button>}
+              {/* Event switcher: edge-to-edge snap shelf, active event auto-centered.
+                  Each chip carries its live countdown from the same real date math. */}
+              <div className="shelf picker-shelf">
+                {[...ROSTER, ...(custom ? [{ id: 'custom', _custom: true }] : [])].map(e => {
+                  const isActive = e.id === eventId || (e._custom && eventId === 'custom');
+                  const src = e._custom ? custom : e;
+                  const d = daysUntil(src.date);
+                  return (
+                    <button key={e.id} className="chip" aria-pressed={isActive}
+                      ref={el => { if (el && isActive) el.scrollIntoView({ block: 'nearest', inline: 'center' }); }}
+                      onClick={() => switchEvent(e._custom ? 'custom' : e.id)}>
+                      {e._custom ? 'Yours' : (e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type)}
+                      <span className="chip-sub">{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : `${d}d`}</span>
+                    </button>
+                  );
+                })}
                 {eventId !== 'custom' && Object.keys(patch).length > 0 && (
                   <button className="chip reset" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes</button>
                 )}
@@ -560,7 +562,7 @@ export default function HostShellV2() {
               </p>
 
               <div className="bento">
-                <div className="tile tile-a">
+                <button className="tile tile-a" onClick={() => { setHandledOpen(o => !o); }}>
                   <div className="t-label">The basics</div>
                   <div>
                     <div className="t-num">{pct === null ? '—' : pctAnim + '%'}</div>
@@ -571,7 +573,7 @@ export default function HostShellV2() {
                         : 'No foundation data for this event.'}
                     </div>
                   </div>
-                </div>
+                </button>
                 <button className="tile tile-b" onClick={() => setSheet({ kind: 'guests' })}>
                   <div className="t-label">Guests</div>
                   <div>
@@ -585,7 +587,7 @@ export default function HostShellV2() {
                   <div className="t-label">Budget</div>
                   <div>
                     <div className="t-num">{money.planned ? fmt(bAnim) : '—'}</div>
-                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} committed · ${fmt(money.spent)} spent` : 'no budget lines yet'}</div>
+                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} spoken for · ${fmt(money.spent)} spent` : 'no number yet — tap to set one'}</div>
                   </div>
                 </button>
                 <button
@@ -609,7 +611,22 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">engine-ranked</span></div>
+              {/* Day-before plan — lib/dayBefore, appears only inside the real 0–2 day window */}
+              {dayBefore && dayBefore.applicable && (
+                <div className="day-node" style={{ marginTop: 26 }}>
+                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your day-before plan' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
+                  <h3>{dayBefore.headline}</h3>
+                  {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
+                  {(dayBefore.sections || []).slice(0, 5).map(sec => (
+                    <div className="then-row" key={sec.key}>
+                      <span className="d" style={{ minWidth: 108 }}>{sec.label}</span>
+                      <span style={{ color: 'var(--carbon-muted)' }}>{sec.detail}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
 
               {actions.length === 0 && (
                 <div className="empty">The orchestrator has no open actions for this event — every foundation it tracks is settled.</div>
@@ -625,7 +642,7 @@ export default function HostShellV2() {
                     <div className="card-head">
                       <div className="card-top">
                         <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                        {!lands && <span className="tag plan">route only</span>}
+                        {!lands && <span className="tag plan">in the app</span>}
                       </div>
                       <h3>{a.title}</h3>
                       {a.consequence && <p className="because">{a.consequence}</p>}
@@ -769,17 +786,45 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Budget lines' : sheet.kind === 'food' ? 'The spread & shopping' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'food' && (foodPlan ? (
               <>
-                <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
-                  {foodPlan.boughtCount} of {foodPlan.itemCount} bought · sized by the engine to your attendance band. Checking off moves real money to spent.
-                </div>
+                {/* The plan's own headline math: totals, per-head, and the turnout
+                    band it was sized to — $ gated on hasRealCount, per the engine. */}
+                {foodPlan.hasRealCount ? (
+                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                    Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)} · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across the {foodPlan.bandLow}–{foodPlan.bandHigh} turnout band. {foodPlan.boughtCount} of {foodPlan.itemCount} bought — checking off moves real money to spent.
+                  </div>
+                ) : (
+                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                    Sized to a typical guess — set a real guest count and the dollars appear (the engine never prices a count you didn’t give it).
+                  </div>
+                )}
+                {/* Menu decisions — the playbook's real choices; picking one re-sizes
+                    and re-prices the spread through the same engine. */}
+                {(foodPlan.choices || []).length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>Your choices</div>
+                    {foodPlan.choices.map(d => (
+                      <div key={d.id} style={{ marginBottom: 12 }}>
+                        <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
+                        <div className="chips">
+                          {(d.options || []).map(opt => (
+                            <button key={opt} className="chip" aria-pressed={(d.chosen || d.default) === opt}
+                              onClick={() => patchEvent({ foodChoices: { ...(event.foodChoices || {}), [d.id]: opt } },
+                                d.label + ': ' + opt + ' — the spread just re-sized.')}>{opt}</button>
+                          ))}
+                        </div>
+                        {d.why && <p className="grounding" style={{ marginTop: 5 }}>{d.why}</p>}
+                      </div>
+                    ))}
+                  </>
+                )}
                 {(() => {
                   const items = (foodPlan.list || []).filter(it => it && !it.skipped);
-                  const groups = [...new Set(items.map(it => it.group || 'Other'))];
+                  const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
                   return groups.map(g => (
                     <div key={g}>
                       <div className="shelf-label" style={{ margin: '14px 0 4px' }}>{g}</div>
@@ -795,7 +840,11 @@ export default function HostShellV2() {
                               <span className="f-name">{it.short || it.item}{it.essential ? <span className="tag essential">essential</span> : null}</span>
                               <span className="v-meta">{[it.qty && it.unit ? `${it.qty} ${it.unit}` : null, it.where].filter(Boolean).join(' · ')}</span>
                             </span>
-                            <span className="amt">{fmt(cost)}</span>
+                            <span className="amt">
+                              {foodPlan.hasRealCount
+                                ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
+                                : '—'}
+                            </span>
                           </button>
                         );
                       })}
@@ -816,27 +865,54 @@ export default function HostShellV2() {
                 </div>
               )) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>
             )}
-            {sheet.kind === 'budget' && (
-              budgetLines.length ? (
+            {sheet.kind === 'budget' && (() => {
+              // HOST MODEL: one number, and "where it's going" priced by the plan
+              // itself (hostSpending's food/supplies/capacity terms) — never
+              // planner category rows the host didn't write.
+              const hostRows = [
+                { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0 },
+                { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0 },
+                ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0 }] : []),
+                ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0 }] : []),
+              ].filter(r => r.est > 0 || r.got > 0);
+              return (
                 <>
-                  {budgetLines.map((l, i) => {
-                    const budgeted = Number(l.budgeted) || 0;
-                    const alloc = money.planned ? Math.round((budgeted / money.planned) * 100) : 0;
-                    const spent = budgeted ? Math.min(100, Math.round(((Number(l.actual) || 0) / budgeted) * 100)) : 0;
-                    return (
-                      <div className="brow" key={l.id} style={{ animation: `cardin 300ms var(--ease-out) ${Math.min(i, 8) * 40}ms both` }}>
-                        <div className="line" style={{ padding: '0 0 5px' }}>
-                          <span>{l.category} <span className="of">{alloc}%</span></span>
-                          <span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(budgeted)}</span></span>
-                        </div>
-                        <div className="bline"><i style={{ width: alloc + '%' }}><b style={{ width: spent + '%' }} /></i></div>
-                      </div>
-                    );
-                  })}
-                  <div className="line total"><span>Committed so far</span><span className="amt">{fmt(money.committed)} of {fmt(money.planned)}</span></div>
+                  <div className="line" style={{ padding: '2px 0 10px' }}>
+                    <span>Your budget</span>
+                    <span className="amt">{money.planned ? fmt(money.planned) : 'not set yet'}</span>
+                  </div>
+                  {hostRows.length > 0 && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '4px 0 6px' }}>Where it’s going — priced by your plan</div>
+                      {hostRows.map((r, i) => {
+                        const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
+                        const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
+                        return (
+                          <div className="brow" key={r.label} style={{ animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}>
+                            <div className="line" style={{ padding: '0 0 5px' }}>
+                              <span>{r.label}</span>
+                              <span className="amt">{fmt(r.got)} <span className="of">bought of {fmt(r.est)}</span></span>
+                            </div>
+                            <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
+                          </div>
+                        );
+                      })}
+                    </>
+                  )}
+                  {budgetLines.length > 0 && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Already promised</div>
+                      {budgetLines.map(l => (
+                        <div className="line" key={l.id}><span>{l.category}</span><span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span></div>
+                      ))}
+                    </>
+                  )}
+                  <div className="line total"><span>Spoken for so far</span><span className="amt">{fmt(money.committed)}{money.planned ? ' of ' + fmt(money.planned) : ''}</span></div>
+                  <div className="shelf-label" style={{ margin: '16px 0 8px' }}>Change it</div>
+                  {budgetEditorBlock()}
                 </>
-              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No budget lines yet.</div>
-            )}
+              );
+            })()}
             {sheet.kind === 'guests' && (
               (event.guests || []).length ? (
                 <>

@@ -308,3 +308,15 @@ button{font-family:inherit}
 .tile-b:active, .tile-c:active{transform:scale(.98)}
 .sheet::-webkit-scrollbar{display:none}
 .field::placeholder{color:var(--faint)}
+
+/* ── Event switcher shelf: snap-scroll, countdown-badged chips ── */
+.picker-shelf{margin-bottom:26px; margin-top:2px}
+.picker-shelf .chip{display:inline-flex; align-items:center; gap:7px}
+.chip-sub{
+  font-size:10.5px; font-weight:700; letter-spacing:.03em; font-variant-numeric:tabular-nums;
+  color:var(--faint); background:var(--bg-band); border-radius:999px; padding:2px 7px;
+}
+.chip[aria-pressed="true"] .chip-sub{color:var(--ink); background:rgba(255,255,255,.16)}
+.tile-a{cursor:pointer}
+.tile-a:active{transform:scale(.99)}
+.chip[aria-pressed="true"] .chip-sub{color:var(--card); background:rgba(0,0,0,.12)}
