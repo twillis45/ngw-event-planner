@@ -44,8 +44,43 @@ const MY_CRAB_FEAST = appCrab || {
 };
 
 const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-birthday', 'ev-x-graduation', 'ev-dmv-wedding'];
-const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST];
-const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST];
+// ── Intelligence/attention test events (host request, 2026-07-08): one on the
+// day itself and one two days out — the windows where dayBefore, live-day ros,
+// weather phase impact, shopping urgency, and compression all fire. Built from
+// real playbooks with realistic mid-flight state; dates computed at load so
+// they're ALWAYS day-of / +2d.
+const mkDate = (plus) => { const d = new Date(); d.setDate(d.getDate() + plus); d.setHours(12); return d.toISOString().slice(0, 10); };
+const mkTest = (id, name, typeRe, plus, extras) => {
+  const pb = ALL_PLAYBOOKS.find(p => p && typeRe.test(p.type)) || ALL_PLAYBOOKS.find(p => /get.?together/i.test(p.type));
+  const typical = (pb && pb.meta && pb.meta.typicalGuests && pb.meta.typicalGuests.default) || 14;
+  const tasks = ((pb && pb.tasks) || []).filter(t => t && !t.whenChoice);
+  return {
+    id, rsvpCode: id, name,
+    type: pb ? pb.type : 'Get-Together',
+    date: mkDate(plus),
+    venue: 'Backyard', venueKind: 'home',
+    guestMode: 'count', guestEstimate: typical,
+    totalBudget: 400,
+    budget: [], vendors: [],
+    guests: [
+      { id: id + '-g1', name: 'Denise & Ray', rsvp: 'Yes' },
+      { id: id + '-g2', name: 'The Okafors', rsvp: 'Yes' },
+      { id: id + '-g3', name: 'Marcus', rsvp: 'Maybe' },
+      { id: id + '-g4', name: 'Aunt Cee', rsvp: '' },
+    ],
+    // Realistic mid-flight: early steps done, day-adjacent steps open.
+    timeline: tasks.map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: i < Math.ceil(tasks.length / 2), owner: 'Host' })),
+    ...extras,
+  };
+};
+const TEST_DAY_OF = mkTest('test-day-of', 'Test — Cookout (day of)', /^the cookout$|^cookout$/i, 0, {
+  rainPlan: '', // day-of with NO backup: the rain essential + weather pill must both fire
+});
+const TEST_TWO_DAYS = mkTest('test-two-days', 'Test — Game Night (in 2 days)', /game night/i, 2, {});
+
+const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
+
+const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
 const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
@@ -1027,8 +1062,8 @@ export default function HostShellV2() {
                 {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : `${daysAnim} days`}
               </div>
               <p className="mega-sub">
-                {isPast && 'this one is behind you.'}
-                {!isPast && (dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
+                {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
+                {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
 
@@ -1051,7 +1086,7 @@ export default function HostShellV2() {
                       const basicsLine = plan.progress.total ? `basics ${plan.progress.done} of ${plan.progress.total}` : null;
                       let sub;
                       if (!essTotal) sub = 'Nothing to read for this event yet.';
-                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((firstOpen && firstOpen.cueLabel) || 'the open one').toLowerCase()}`;
+                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((firstOpen && (firstOpen.cueLabel || firstOpen.id)) || 'the open one').toLowerCase()}`;
                       else if (openTasks > 0) sub = `essentials handled — but ${openTasks} checklist step${openTasks === 1 ? '' : 's'} still on the list. Not done yet.`;
                       else sub = 'essentials handled and the checklist is clear — ready for the day.';
                       return (
