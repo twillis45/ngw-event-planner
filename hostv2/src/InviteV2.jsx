@@ -368,7 +368,7 @@ export default function InviteV2({ code }) {
               ) : null}
             </div>
             {days != null && days > 0 && (
-              <div {...rv()}>
+              <div {...rv('inv2-countflex')}>
                 {/* condensed state is INLINE-driven — a deployed-build cascade
                     quirk left the .answered descendant rules matching-but-inert,
                     so the state carries its own styles (transitions stay CSS). */}
@@ -380,9 +380,9 @@ export default function InviteV2({ code }) {
             )}
 
             {!submitted ? (
-              <div {...rv()}>
+              <div {...rv('inv2-ask')}>
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
-                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '18px 0 8px' }}>The favor of a reply</div>
+                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
                 <div className="chips" role="radiogroup" aria-label="Attendance">
                   {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
                     chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val))}
@@ -473,7 +473,7 @@ export default function InviteV2({ code }) {
                 </div>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '20px 4px 8px' }}>
+              <div className="inv2-ask" style={{ textAlign: 'center', padding: '20px 4px 8px' }}>
                 <div className="inv2-eyebrow lp" style={{ color: rsvp === 'Yes' ? 'var(--ok)' : undefined }}>
                   {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
                 </div>

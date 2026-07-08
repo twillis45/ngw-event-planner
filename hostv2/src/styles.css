@@ -429,7 +429,8 @@ button{font-family:inherit}
    one light source, upper-left. Two stocks: cream and deep charcoal. ── */
 .inv2-sheet{
   --hue:#D9622B; --hue-deep:#B84E1E; --stock-ink:#241f18; --stock-sub:#62626d;
-  position:relative; border-radius:22px; padding:24px 20px 20px; overflow:hidden;
+  position:relative; border-radius:22px; padding:20px 20px 18px; overflow:hidden;
+  display:flex; flex-direction:column; min-height:calc(852px - 210px);
   color:#1a1a1a;
   background:
     radial-gradient(130% 90% at 32% -10%, rgba(255,253,248,.98), rgba(253,250,245,0) 58%),
@@ -457,6 +458,11 @@ button{font-family:inherit}
     linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 8%);
 }
 .inv2-sheet > *{ position:relative; z-index:1; }
+@media(max-width:699px){ .inv2-sheet{ min-height:calc(100dvh - 210px); } }
+/* the ask rides the sheet's foot; the countdown floats CENTERED in the
+   slack — breathing room reads as composition, not leftover space */
+.inv2-ask{ margin-top:auto; padding-top:12px; }
+.inv2-countflex{ flex:1; display:flex; flex-direction:column; justify-content:center; min-height:0; }
 .inv2-dark .inv2-sheet{
   --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
   color:#ece5d8;
@@ -497,7 +503,7 @@ button{font-family:inherit}
 .inv2-mast .mr::after{ content:""; position:absolute; left:50%; top:-2.5px; width:6px; height:6px;
   background:var(--hue); transform:translateX(-50%) rotate(45deg); }
 /* embossed crest: relief cut from the artwork's own silhouette, one light */
-.inv2-crest{ position:relative; width:96px; margin:14px auto 0; }
+.inv2-crest{ position:relative; width:96px; margin:10px auto 0; }
 .inv2-crest::before, .inv2-crest::after{ content:""; position:absolute; inset:0;
   -webkit-mask:var(--crabimg) center/contain no-repeat; mask:var(--crabimg) center/contain no-repeat; }
 .inv2-crest::before{ background:rgba(255,255,255,.92); transform:translate(-1.3px,-1.3px); filter:blur(.4px); }
@@ -512,17 +518,17 @@ button{font-family:inherit}
 .inv2-eyebrow{ font-size:10.5px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
   color:var(--hue-deep); text-align:center; }
 .inv2-name{ font-family:Georgia,'Times New Roman',serif; font-weight:700; text-align:center;
-  font-size:clamp(26px,8.5cqw,34px); line-height:1.08; letter-spacing:-.01em; margin:10px 0 3px; }
+  font-size:clamp(26px,8.5cqw,34px); line-height:1.08; letter-spacing:-.01em; margin:8px 0 2px; }
 .inv2-deck{ font-family:Georgia,serif; font-style:italic; font-size:14.5px; text-align:center; color:var(--stock-sub); margin:0; }
-.inv2-rule{ width:44px; height:2px; background:var(--hue); margin:11px auto; border:none; }
+.inv2-rule{ width:44px; height:2px; background:var(--hue); margin:8px auto; border:none; }
 .inv2-label{ font-size:10px; font-weight:800; letter-spacing:.16em; color:var(--hue-deep);
-  text-transform:uppercase; text-align:center; margin-top:6px; }
+  text-transform:uppercase; text-align:center; margin-top:4px; }
 .inv2-val{ font-size:14px; font-weight:600; text-align:center; }
 /* countdown — condenses (never vanishes) once the guest answers */
 .inv2-countwrap{ max-height:130px; overflow:hidden; text-align:center;
   transition:max-height .55s var(--ease-standard), margin .55s var(--ease-standard); }
 .inv2-count{ font-family:Georgia,serif; font-size:52px; font-weight:700; text-align:center;
-  line-height:1; margin:12px 0 2px; transition:font-size .5s var(--ease-standard), margin .5s var(--ease-standard); }
+  line-height:1; margin:8px 0 0; transition:font-size .5s var(--ease-standard), margin .5s var(--ease-standard); }
 .inv2.answered .inv2-countwrap{ max-height:24px; margin:6px 0 0; }
 .inv2.answered .inv2-count{ display:inline; font-size:10px; font-family:inherit; font-weight:800; letter-spacing:.16em; margin:0; }
 .inv2.answered .inv2-countlab{ display:inline; margin-left:5px; }
