@@ -320,3 +320,21 @@ button{font-family:inherit}
 .tile-a{cursor:pointer}
 .tile-a:active{transform:scale(.99)}
 .chip[aria-pressed="true"] .chip-sub{color:var(--card); background:rgba(0,0,0,.12)}
+
+/* ── Reveal choreography: lines land, the name drops into focus, one glow ── */
+.rv-line{opacity:0; transform:translateY(16px);
+  transition:opacity .5s var(--ease-standard), transform .5s var(--ease-standard)}
+.rv-line.in{opacity:1; transform:none}
+.rv-line::after{transform:rotate(-45deg) scale(0); transition:transform .3s var(--ease-standard) .25s}
+.rv-line.in::after{transform:rotate(-45deg) scale(1)}
+.title-drop{opacity:0; transform:scale(.955) translateY(12px); filter:blur(10px);
+  transition:opacity .7s var(--ease-standard), transform .7s var(--ease-standard), filter .7s var(--ease-standard)}
+.title-drop.in{opacity:1; transform:none; filter:blur(0)}
+.pre{opacity:0; transform:translateY(12px);
+  transition:opacity .55s var(--ease-standard), transform .55s var(--ease-standard)}
+.pre.in{opacity:1; transform:none}
+@keyframes glowonce{from{box-shadow:0 0 0 0 rgba(78,104,119,.55)} to{box-shadow:0 0 0 20px rgba(78,104,119,0)}}
+.glow-once{animation:glowonce .9s var(--ease-out) 1}
+@media(prefers-reduced-motion:reduce){
+  .rv-line,.title-drop,.pre{opacity:1!important; transform:none!important; filter:none!important}
+}

@@ -120,6 +120,10 @@ export default function HostShellV2() {
   const [fGuests, setFGuests] = useState(75);
   const [fBudget, setFBudget] = useState(null);
   const [revealed, setRevealed] = useState(false);
+  const [revealStep, setRevealStep] = useState(0); // choreography: 0 thinking → 5 done
+  const revealTimers = useRef([]);
+  const clearRevealTimers = () => { revealTimers.current.forEach(clearTimeout); revealTimers.current = []; };
+  useEffect(() => clearRevealTimers, []);
   const [typeOpen, setTypeOpen] = useState(false);   // occasion browser: collapsed until asked
   const [typeQuery, setTypeQuery] = useState('');
 
@@ -409,7 +413,20 @@ export default function HostShellV2() {
       guests: [], vendors: [], timeline: [],
     };
     setCustom(ev); setEventId('custom'); setRevealed(true);
+    // The Reveal, choreographed: the plan visibly assembles — thinking beats,
+    // understanding lines landing one by one, the name arriving last.
+    clearRevealTimers();
+    if (REDUCE_MOTION) { setRevealStep(5); return; }
+    setRevealStep(0);
+    [[550, 1], [1250, 2], [1950, 3], [2700, 4], [3250, 5]].forEach(([ms, step]) => {
+      revealTimers.current.push(setTimeout(() => setRevealStep(step), ms));
+    });
   };
+  const revealEyebrow = revealStep >= 4 ? 'Here’s what we understood'
+    : revealStep >= 3 ? 'Lining up your steps…'
+    : revealStep >= 2 ? 'Pricing the spread…'
+    : revealStep >= 1 ? 'Sizing the crowd…'
+    : 'Reading your answers…';
   const customPlan = useMemo(() => {
     if (!revealed || !custom) return null;
     try { return eventPlan(custom, null); } catch { return null; }
@@ -531,23 +548,24 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
-                  <div className="eyebrow">Here’s what we understood</div>
-                  <h1 className="mega" style={{ fontSize: 'clamp(27px,8.5cqw,34px)', lineHeight: 1.1 }}>{custom?.name}</h1>
-                  {/* identityStatement() — the production identity engine, verbatim */}
-                  <p className="mega-sub" style={{ fontSize: 17, marginTop: 10 }}>{identityStatement(custom)}</p>
+                  <div className="eyebrow" aria-live="polite">{revealEyebrow}</div>
                   {customPlan && (
-                    <ul className="tick-list">
-                      <li><strong>{customPlan.progress.done} of {customPlan.progress.total} basics</strong> — date, guests, budget, food — already settled from your answers.</li>
+                    <ul className="tick-list" style={{ marginTop: 22 }}>
+                      <li className={'rv-line' + (revealStep > 0 ? ' in' : '')}><strong>{customPlan.progress.done} of {customPlan.progress.total} basics</strong> — date, guests, budget, food — already settled from your answers.</li>
                       {customPlan.nextActions[0] && (
-                        <li>First thing to handle: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
+                        <li className={'rv-line' + (revealStep > 1 ? ' in' : '')}>First thing to handle: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
                       )}
-                      <li><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
+                      <li className={'rv-line' + (revealStep > 2 ? ' in' : '')}><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
                     </ul>
                   )}
-                  <p className="grounding">All of this came straight from your answers — nothing made up.</p>
-                  <div className="actions-row" style={{ marginTop: 24 }}>
-                    <button className="cta big" onClick={() => setStage('plan')}>Open your plan</button>
-                    <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => setRevealed(false)}>Change an answer</button>
+                  {/* The name lands LAST — the conclusion the plan reached, not a header */}
+                  <h1 className={'mega title-drop' + (revealStep >= 4 ? ' in' : '')} style={{ fontSize: 'clamp(27px,8.5cqw,34px)', lineHeight: 1.1, marginTop: 6 }}>{custom?.name}</h1>
+                  {/* identityStatement() — the production identity engine, verbatim */}
+                  <p className={'mega-sub pre' + (revealStep >= 4 ? ' in' : '')} style={{ fontSize: 17, marginTop: 8 }}>{identityStatement(custom)}</p>
+                  <p className={'grounding pre' + (revealStep >= 5 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
+                  <div className={'actions-row pre' + (revealStep >= 5 ? ' in' : '')} style={{ marginTop: 24 }}>
+                    <button className={'cta big' + (revealStep >= 5 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
+                    <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => { clearRevealTimers(); setRevealed(false); }}>Change an answer</button>
                   </div>
                 </>
               )}
