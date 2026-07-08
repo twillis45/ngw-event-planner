@@ -4,7 +4,7 @@
 // host surfaces = the palette's Light mode, The Day = the Dark carbon ramp,
 // identity/CTAs = the locked steel-blue gradient. Change the doctrine file,
 // this prototype follows.
-import { light, dark } from '@app/theme/palette';
+import { dark, carbonNeutral } from '@app/theme/palette';
 import { durations, easings } from '@app/design/motion';
 
 // Alpha helper — tints derive from doctrine anchors, never new hues.
@@ -19,29 +19,32 @@ export function applyStudioMatte() {
   const r = document.documentElement.style;
   const set = (k, v) => r.setProperty(k, v);
 
-  // ── Host surfaces: Studio Matte Light mode ──
-  set('--bg', light.carbonBody);
-  set('--bg-band', light.carbonSurface2);
-  set('--card', light.carbonPanel);
-  set('--ink', light.textPrimary);
-  set('--ink-soft', light.textSecondary);
-  set('--muted', light.textSecondary);
-  set('--faint', tint(light.textSecondary, 0.55));
-  set('--line', light.carbonBorder);
-  set('--line-soft', tint(light.carbonBorder, 0.5));
+  // ── Host surfaces: the de-blued NEUTRAL CARBON ramp (the carbon gray the
+  // production shell runs — palette.js carbonNeutral, user-locked 2026-06-23).
+  const c = carbonNeutral.mid; // the production default level
+  set('--bg', c.bg);
+  set('--bg-band', c.surface2);
+  set('--card', c.panel);
+  set('--ink', dark.textPrimary);
+  set('--ink-soft', dark.textSecondary);
+  set('--muted', dark.textSecondary);
+  set('--faint', tint(dark.textSecondary, 0.55));
+  set('--line', c.border);
+  set('--line-soft', tint(c.border, 0.55));
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
-  set('--steel', light.steelBlue);
-  set('--steel-dark', light.steelBlueDark);
-  set('--steel-tint', tint(light.steelBlue, 0.1));
-  set('--cta-grad', `linear-gradient(180deg, ${light.steelBlueGradientTop} 0%, ${light.steelBlueGradientBottom} 100%)`);
+  set('--steel', dark.steelBlue);
+  set('--steel-dark', dark.steelBlueDark);
+  set('--steel-soft', dark.steelBlueMuted);       // text-legible steel on carbon
+  set('--steel-tint', tint(dark.steelBlue, 0.16));
+  set('--cta-grad', `linear-gradient(180deg, ${dark.steelBlueGradientTop} 0%, ${dark.steelBlueGradientBottom} 100%)`);
 
-  // ── Status anchors (Light calibrations) ──
-  set('--ok', light.successGreen);
-  set('--ok-tint', tint(light.successGreen, 0.12));
-  set('--warn', light.amber);
-  set('--warn-tint', tint(light.amber, 0.14));
-  set('--danger', light.dangerRed);
+  // ── Status anchors (Dark calibrations) ──
+  set('--ok', dark.successGreen);
+  set('--ok-tint', tint(dark.successGreen, 0.14));
+  set('--warn', dark.amber);
+  set('--warn-tint', tint(dark.amber, 0.15));
+  set('--danger', dark.dangerRed);
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', dark.carbonBody);
