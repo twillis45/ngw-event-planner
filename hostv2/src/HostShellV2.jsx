@@ -8,6 +8,7 @@ import { eventPlan, getEventReadiness } from '@app/CommandCenter';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
+import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
@@ -133,6 +134,28 @@ export default function HostShellV2() {
   const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
   const [addressOpen, setAddressOpen] = useState(false);
   const [addressDraft, setAddressDraft] = useState('');
+  // Voice input (Web Speech API) — the browser's own recognizer; nothing fake.
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef(null);
+  const SpeechRec = typeof window !== 'undefined' ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+  const startVoice = () => {
+    if (!SpeechRec) { toast('Voice input isn’t available in this browser — type it instead.'); return; }
+    try {
+      const r = new SpeechRec();
+      recogRef.current = r;
+      r.lang = 'en-US'; r.interimResults = true; r.maxAlternatives = 1;
+      r.onresult = (ev) => {
+        const text = Array.from(ev.results).map(x => x[0] && x[0].transcript).join(' ').trim();
+        if (text) { setSmartText(text); setFType(null); setCreateEdit(null); }
+      };
+      r.onend = () => setListening(false);
+      r.onerror = () => { setListening(false); toast('Couldn’t hear that — try again or type it.'); };
+      setListening(true);
+      r.start();
+      feedback('act');
+    } catch { setListening(false); toast('Voice input didn’t start — type it instead.'); }
+  };
+  const stopVoice = () => { try { recogRef.current && recogRef.current.stop(); } catch {} setListening(false); };
   const [revealed, setRevealed] = useState(false);
   const [revealStep, setRevealStep] = useState(0); // choreography: 0 thinking → 5 done
   const revealTimers = useRef([]);
@@ -261,6 +284,62 @@ export default function HostShellV2() {
   const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
   const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
   const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
+  const crab = useMemo(() => { try { return buildCrabPlan(event); } catch { return { relevant: false }; } }, [event]);
+  // Captain White's July 2026 reference ladder — from the playbook's verified
+  // knowledge. Shown as REFERENCE; a price only counts when the host taps it
+  // in (CRAB-PRICING-1 hard rule: no fake market prices).
+  const crabLadder = useMemo(() => {
+    try {
+      const pb = ALL_PLAYBOOKS.find(p => p && /crab/i.test(String(p.type || '')));
+      const scan = (o, depth) => {
+        if (!o || typeof o !== 'object' || depth > 6) return null;
+        if (o.priceLadder) return o.priceLadder;
+        for (const v of Object.values(o)) { const r = scan(v, depth + 1); if (r) return r; }
+        return null;
+      };
+      return scan(pb, 0);
+    } catch { return null; }
+  }, [event.type]);
+
+  // "Coming up" — the human-intelligence layer for CALM states: name what's
+  // next and WHEN IT'S DUE even when nothing is urgent. Sources: the decision
+  // board's real due dates + undone checklist steps' T-offsets vs the date.
+  const upNext = useMemo(() => {
+    const out = [];
+    try {
+      (decisionBoard.open || []).forEach(r => {
+        if (r && r.label) out.push({ label: 'Decide: ' + r.label, id: r.id || null, due: r.dueDate || null, days: r.daysOut != null ? r.daysOut : null, kind: 'call' });
+      });
+    } catch {}
+    try {
+      (event.timeline || []).filter(t => t && !t.done).forEach(t => {
+        const m = /T-(\d+)\s*d/i.exec(String(t.week || ''));
+        let due = null, dd = null;
+        if (m && event.date) {
+          const d0 = new Date(event.date + 'T12:00:00'); d0.setDate(d0.getDate() - parseInt(m[1], 10));
+          due = d0.toISOString().slice(0, 10);
+          try { dd = daysUntil(due); } catch { dd = null; }
+        }
+        out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step' });
+      });
+    } catch {}
+    return out
+      .filter(x => x.days == null || x.days >= 0)
+      .sort((a, b) => ((a.due || '9999') < (b.due || '9999') ? -1 : 1))
+      .slice(0, 3);
+  }, [decisionBoard, event]);
+  const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
+  // ROW-LEVEL CTA RULE (Todd): a coming-up item lands on the exact field that
+  // answers it — the crab order, the pickers count, the space list — never a
+  // sheet top when a closer target exists.
+  const routeUpNext = (u) => {
+    const t = String(u.label || '');
+    if (/pickers|light eaters/i.test(t)) { setSheet({ kind: 'crabs', focus: 'pickers' }); return; }
+    if (/crab house|pre-?order|bushel|dozen|steam/i.test(t)) { setSheet({ kind: 'crabs', focus: 'order' }); return; }
+    if (/rent or borrow|steamer pot|propane|tables|chairs|canopy/i.test(t)) { setSheet({ kind: 'space' }); return; }
+    if (u.kind === 'call') { setSheet({ kind: 'decisions', focus: u.id || null }); return; }
+    setSheet({ kind: 'tasks', focus: u.taskId || null });
+  };
 
   // ── Weather alerting (modern live-activity pill) ──
   // SAMPLE forecast (live fetch needs the weather API key) driving the REAL
@@ -337,7 +416,9 @@ export default function HostShellV2() {
   const spotlight = (key) => {
     setSpot(key);
     clearTimeout(spotTimer.current);
-    spotTimer.current = setTimeout(() => setSpot(null), 2200);
+    // Linger long enough for a complete read and a decision (host request,
+    // 2026-07-08) — a tap anywhere still releases it immediately.
+    spotTimer.current = setTimeout(() => setSpot(null), 8000);
     requestAnimationFrame(() => {
       const el = document.getElementById('card-' + key);
       const app = appRef.current;
@@ -367,6 +448,7 @@ export default function HostShellV2() {
       setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
     }
     if (route.focusField === 'rain-plan') { setSheet({ kind: 'rain' }); return true; }
+    if (route.focusField === 'crab-plan') { setSheet({ kind: 'crabs' }); return true; }
     return false;
   };
 
@@ -657,7 +739,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </div>
         <p className="grounding" style={{ margin: 0 }}>
-          {est ? `Typical for ${guests} at a ${String(event.type).toLowerCase()}: ${fmt(est.lowTotal)}–${fmt(est.highTotal)}.` : ''} One number is all you need — the plan works out the rest, and you can change it anytime.
+          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)} — typical lands near ${fmt(Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100)}.` : ''} One number is all you need — the plan works out the rest, and you can change it anytime.
         </p>
       </div>
     );
@@ -745,6 +827,10 @@ export default function HostShellV2() {
             <div className="wordmark">Event Boss</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
               <div className="appbar-note">V2 preview</div>
+              <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5, maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                onClick={() => setSheet({ kind: 'events' })} aria-haspopup="true">
+                {(eventId === 'custom' ? ((custom && custom.name) || 'Yours') : (/crab/i.test(String(event.name || '')) ? 'My Crab Feast' : event.type))} ▾
+              </button>
               <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setMuted(m => !m)}>{muted ? 'Muted' : 'Sound on'}</button>
             </div>
           </div>
@@ -759,13 +845,19 @@ export default function HostShellV2() {
                   <p className="mega-sub" style={{ fontSize: 15, fontWeight: 550, color: 'var(--muted)' }}>
                     Say it like you’d text a friend — I’ll take it from there.
                   </p>
-                  <input
-                    className="field" style={{ maxWidth: 'none', fontSize: 16.5, marginTop: 10 }}
-                    placeholder="Try: crab feast for 20 in the backyard aug 2"
-                    value={smartText}
-                    onChange={e => { setSmartText(e.target.value); setFType(null); setCreateEdit(null); }}
-                    aria-label="Describe your event"
-                  />
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                    <input
+                      className="field" style={{ maxWidth: 'none', fontSize: 16.5, flex: 1 }}
+                      placeholder={listening ? 'Listening…' : 'Try: crab feast for 20 in the backyard aug 2'}
+                      value={smartText}
+                      onChange={e => { setSmartText(e.target.value); setFType(null); setCreateEdit(null); }}
+                      aria-label="Describe your event"
+                    />
+                    <button className="cta soft" style={listening ? { background: 'var(--warn-tint)', color: 'var(--warn)' } : undefined}
+                      onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening} aria-label="Speak it instead">
+                      {listening ? 'Listening… tap to stop' : 'Say it'}
+                    </button>
+                  </div>
                   {smartText.trim() !== '' && (
                     <>
                       {/* Recognition chips — what was understood; tap to correct. */}
@@ -884,26 +976,8 @@ export default function HostShellV2() {
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
             <section>
-              {/* Event switcher: edge-to-edge snap shelf, active event auto-centered.
-                  Each chip carries its live countdown from the same real date math. */}
-              <div className="shelf picker-shelf">
-                {[...ROSTER, ...(custom ? [{ id: 'custom', _custom: true }] : [])].map(e => {
-                  const isActive = e.id === eventId || (e._custom && eventId === 'custom');
-                  const src = e._custom ? custom : e;
-                  const d = daysUntil(src.date);
-                  return (
-                    <button key={e.id} className="chip" aria-pressed={isActive}
-                      ref={el => { if (el && isActive) el.scrollIntoView({ block: 'nearest', inline: 'center' }); }}
-                      onClick={() => switchEvent(e._custom ? 'custom' : e.id)}>
-                      {e._custom ? 'Yours' : (e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type)}
-                      <span className="chip-sub">{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : `${d}d`}</span>
-                    </button>
-                  );
-                })}
-                {eventId !== 'custom' && Object.keys(patch).length > 0 && (
-                  <button className="chip reset" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes</button>
-                )}
-              </div>
+              {/* Event switching lives in the app-bar switcher (events sheet) —
+                  the always-on shelf drew more attention than the plan itself. */}
 
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
 
@@ -960,14 +1034,25 @@ export default function HostShellV2() {
                   }}
                 >
                   <div className="t-label">Next</div>
-                  <div className="t-big">{actions.length === 0 ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you'}</div>
+                  <div className="t-big">{(() => {
+                    const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                    return actions.length === 0 || calmTop ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
+                  })()}</div>
                   <div className="t-sub">
                     {(() => {
                       // Host audit (2026-07-08): NAME the first thing (same source as
                       // the card below — can't disagree) instead of counting the
                       // checklist ledger; open to-dos aren't "needs you" unless
                       // overdue, and then the engine makes catch-up the top card.
-                      if (!actions.length) return 'Nothing waiting on you right now.';
+                      const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                      if (!actions.length || calmTop) {
+                        // Calm ≠ blank: name the next DATED thing (human intelligence).
+                        if (upNext.length) {
+                          const u = upNext[0];
+                          return 'next: ' + u.label + (u.due ? ' · by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') + ' ↓';
+                        }
+                        return 'Nothing waiting on you right now.';
+                      }
                       const bits = [];
                       if (phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length) {
                         const d = phaseCues.items.filter(c => c.handled).length, t = phaseCues.items.length;
@@ -1159,6 +1244,27 @@ export default function HostShellV2() {
                 </button>
               )}
 
+              {actions.length <= 1 && upNext.length > 0 && (
+                <>
+                  <div className="sect" style={{ marginTop: 26 }}><h2 style={{ fontSize: 17 }}>Coming up</h2><div className="rule" /><span className="when">dated, not urgent</span></div>
+                  {upNext.map((u, i) => (
+                    <button key={i} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0' }}
+                      onClick={() => routeUpNext(u)}>
+                      <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{u.label}</span>
+                      <span className="of" style={{ whiteSpace: 'nowrap' }}>
+                        {u.due ? 'by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (u.days != null ? ' · ' + (u.days === 0 ? 'today' : 'in ' + u.days + 'd') : '') : 'no date'}
+                      </span>
+                    </button>
+                  ))}
+                </>
+              )}
+
+              {crab.relevant && (
+                <button className="fold-btn" onClick={() => setSheet({ kind: 'crabs' })}>
+                  The crab order — {crab.lines && crab.lines.length ? (crab.mixedSummary || ('about ' + crab.totalEstimatedCrabs + ' crabs')) : 'not started'}
+                  <span className="chev">›</span>
+                </button>
+              )}
               {((capacity && (capacity.items || []).length > 0) || helpers.length > 0) && (
                 <button className="fold-btn" onClick={() => setSheet({ kind: 'space' })}>
                   Space, seats &amp; helpers{helpers.length ? ` — ${helpers.length} helping` : ''}
@@ -1287,13 +1393,13 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
               <>
                 {(decisionBoard.open || []).length ? (decisionBoard.open || []).map((r, i) => (
-                  <button key={r.id || i} className="frow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                  <button key={r.id || i} className={'frow' + (sheet.focus && sheet.focus === r.id ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                     onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                     <span className="f-main">
                       <span className="f-name">{r.label}
@@ -1370,6 +1476,119 @@ export default function HostShellV2() {
                 ))}
               </>
             )}
+            {sheet.kind === 'events' && (
+              <>
+                {[...ROSTER, ...(custom ? [{ id: 'custom', _custom: true }] : [])].map((e, i) => {
+                  const isActive = e.id === eventId || (e._custom && eventId === 'custom');
+                  const src = e._custom ? custom : e;
+                  const d = daysUntil(src.date);
+                  const label = e._custom ? ((custom && custom.name) || 'Yours') : (e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type);
+                  return (
+                    <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                      onClick={() => { switchEvent(e._custom ? 'custom' : e.id); setSheet(null); }}>
+                      <span className="f-main">
+                        <span className="f-name">{label}{isActive ? <span className="tag plan">current</span> : null}</span>
+                        <span className="v-meta">{src.name}</span>
+                      </span>
+                      <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
+                    </button>
+                  );
+                })}
+                {eventId !== 'custom' && Object.keys(patch).length > 0 && (
+                  <div className="actions-row" style={{ marginTop: 12 }}>
+                    <button className="mini" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes to this event</button>
+                  </div>
+                )}
+              </>
+            )}
+            {sheet.kind === 'crabs' && (() => {
+              const cp = (event.crabPlan && typeof event.crabPlan === 'object') ? event.crabPlan : {};
+              const lines = Array.isArray(cp.lines) ? cp.lines : [];
+              const writeCp = (next, msg) => patchEvent({ crabPlan: { ...cp, ...next } }, msg);
+              const UNIT_LABEL = { dozen: 'dozen', half_bushel: 'half bushel', bushel: 'bushel' };
+              const SIZE_LABEL = { medium: 'medium', large: 'large', extra_large: 'XL', jumbo: 'jumbo' };
+              // Reference prices for the picked size+unit, from the verified ladder.
+              const refs = (() => {
+                if (!crabLadder) return [];
+                const KEYS = { medium: ['medium'], large: ['largeFemale', 'largeMale'], extra_large: ['xlFemale', 'xlMale'], jumbo: ['jumboMale'] };
+                const FIELD = { dozen: 'perDz', half_bushel: 'perHalfBushel', bushel: 'perBushel' };
+                return (KEYS[crabAdd.size] || []).map(k => {
+                  const row = crabLadder[k]; const p = row && row[FIELD[crabAdd.unit]];
+                  return p ? { label: (/Female/.test(k) ? 'female' : /Male/.test(k) ? 'male' : 'ref') + ' $' + p, price: p } : null;
+                }).filter(Boolean);
+              })();
+              return (
+                <>
+                  {crab.coverageCopy && <div className="v-meta" style={{ padding: '0 2px 6px' }}>{crab.coverageCopy}</div>}
+                  {lines.length > 0 && (
+                    <div className="v-meta" style={{ padding: '0 2px 10px' }}>
+                      About {crab.totalEstimatedCrabs} crabs{crab.coveredCrabsPerPerson != null ? ' · ~' + (Math.round(crab.coveredCrabsPerPerson * 10) / 10) + ' each' : ''}
+                      {crab.totalEstimatedCost != null ? ' · about ' + fmt(crab.totalEstimatedCost) + ' from your prices' : ' · add prices to see the cost'}
+                      {crab.boughtCost > 0 ? ' · ' + fmt(crab.boughtCost) + ' bought' : ''}
+                    </div>
+                  )}
+                  {lines.map((l, i) => (
+                    <div className="line" key={l.id || i}>
+                      <span>
+                        {l.quantity}× {UNIT_LABEL[l.unit] || l.unit} {SIZE_LABEL[l.size] || l.size}
+                        {Number(l.pricePerUnit) > 0 ? <span className="of"> · {fmt(l.pricePerUnit)} each</span> : <span className="of"> · no price yet</span>}
+                      </span>
+                      <span style={{ display: 'flex', gap: 6 }}>
+                        <button className="mini" style={l.bought ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => writeCp({ lines: lines.map((x, ix) => ix === i ? { ...x, bought: !x.bought } : x) }, l.bought ? 'Back on the order.' : 'Marked bought — real spend now, not an estimate.')}>
+                          {l.bought ? 'bought' : 'got it?'}
+                        </button>
+                        <button className="mini" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}>×</button>
+                      </span>
+                    </div>
+                  ))}
+                  {crab.bushelExplanation && <p className="grounding" style={{ margin: '8px 0 0' }}>{crab.bushelExplanation}</p>}
+                  {(crab.issues || []).map((iss, i) => (
+                    <p className="grounding" key={i} style={{ margin: '6px 0 0', color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
+                  ))}
+                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Who’s actually picking?</div>
+                  <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 12, padding: '6px 4px' }}>
+                    <input className="field" style={{ maxWidth: 80, fontSize: 15, padding: '10px 12px' }} type="number" min="0"
+                      placeholder={String(guests || '')} aria-label="Serious crab pickers"
+                      value={cp.crabEatingHeadcount || ''}
+                      onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
+                    <span className="of" style={{ flex: 1 }}>serious pickers — kids and light eaters don’t drive the crab count</span>
+                  </div>
+                  <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: '16px 0 6px', borderRadius: 8 }}>Add to the order</div>
+                  <div className="chips">
+                    {['medium', 'large', 'extra_large', 'jumbo'].map(sz => (
+                      <button key={sz} className="chip" aria-pressed={crabAdd.size === sz} onClick={() => setCrabAdd(a => ({ ...a, size: sz }))}>{SIZE_LABEL[sz]}</button>
+                    ))}
+                  </div>
+                  <div className="chips" style={{ marginTop: 8 }}>
+                    {['dozen', 'half_bushel', 'bushel'].map(u => (
+                      <button key={u} className="chip" aria-pressed={crabAdd.unit === u} onClick={() => setCrabAdd(a => ({ ...a, unit: u }))}>{UNIT_LABEL[u]}</button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                    <input className="field" style={{ maxWidth: 70, fontSize: 15, padding: '10px 12px' }} type="number" min="1" aria-label="How many"
+                      value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
+                    <input className="field" style={{ maxWidth: 120, fontSize: 15, padding: '10px 12px' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
+                      value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
+                    <button className="cta" onClick={() => {
+                      const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, countPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
+                      writeCp({ lines: [...lines, l] }, 'On the order — coverage and cost just recomputed.');
+                      setCrabAdd(a => ({ ...a, qty: 1, price: '' }));
+                    }}>Add it</button>
+                  </div>
+                  {refs.length > 0 && (
+                    <div className="actions-row" style={{ marginTop: 8 }}>
+                      {refs.map(r => (
+                        <button key={r.label} className="mini" onClick={() => setCrabAdd(a => ({ ...a, price: String(r.price) }))}>{r.label}</button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="grounding" style={{ marginTop: 8 }}>
+                    Reference prices: Captain White's, Maine Ave Fish Market, July 2026 — one verified DMV point, not the market. Cost only counts prices you put in. Crabs count toward “spoken for” the moment they’re priced.
+                  </p>
+                </>
+              );
+            })()}
             {sheet.kind === 'rain' && (
               <>
                 {event.rainPlan ? (
