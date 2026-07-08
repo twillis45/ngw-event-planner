@@ -583,6 +583,7 @@ export default function HostShellV2() {
     }
     if (route.focusField === 'rain-plan') { setSheet({ kind: 'rain' }); return true; }
     if (route.focusField === 'crab-plan') { setSheet({ kind: 'crabs' }); return true; }
+    if (/^fp-diet/.test(String(route.focusField || ''))) { setSheet({ kind: 'food', focus: 'diet' }); return true; }
     return false;
   };
 
@@ -788,6 +789,7 @@ export default function HostShellV2() {
     if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
     if (f === 'event-date') return 'date';
     if (f === 'guests-entry') return 'guests';
+    if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
     if (/final guest count|confirm .*guest count/i.test(a.title || '')) return 'lockcount';
@@ -821,6 +823,37 @@ export default function HostShellV2() {
       </div>
     );
     if (kind === 'rain') return rainEditorBlock();
+    if (kind === 'diet') {
+      // The ENGINE's dietary model: dietCounts adds a real priced veg main and
+      // flags related lines; dietaryNoted closes the cue (headcount events).
+      const dc = event.dietCounts || {};
+      const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy'];
+      const setD = (k, delta) => {
+        const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+        patchEvent({ dietCounts: { ...dc, [k]: n } },
+          n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
+      };
+      return (
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+          {DIETS.map(k => (
+            <div className="line" key={k} style={{ padding: '5px 0' }}>
+              <span>{k}</span>
+              <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <button className="mini" onClick={() => setD(k, -1)} aria-label={'Fewer ' + k}>−</button>
+                <span className="of" style={{ minWidth: 18, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(dc[k]) || 0}</span>
+                <button className="mini" onClick={() => setD(k, 1)} aria-label={'More ' + k}>+</button>
+              </span>
+            </div>
+          ))}
+          <div className="actions-row" style={{ marginTop: 6 }}>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.')}>That’s everyone — noted</button>
+          </div>
+          <p className="grounding" style={{ margin: 0 }}>
+            Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
+          </p>
+        </div>
+      );
+    }
     if (kind === 'lockcount') {
       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
       const planned = guests || 0;
@@ -2146,6 +2179,37 @@ export default function HostShellV2() {
                 )}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
+                {(() => {
+                  const dc = event.dietCounts || {};
+                  const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy'];
+                  const anyDiet = DIETS.some(k => Number(dc[k]) > 0);
+                  const setD = (k, delta) => {
+                    const n = Math.max(0, (Number(dc[k]) || 0) + delta);
+                    patchEvent({ dietCounts: { ...dc, [k]: n } },
+                      n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
+                  };
+                  return (
+                    <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 12, borderRadius: 12, padding: '8px 6px' }}>
+                      <div className="shelf-label" style={{ marginBottom: 6 }}>Dietary needs {anyDiet ? '' : '— none counted yet'}</div>
+                      <div className="chips">
+                        {DIETS.map(k => (
+                          <span key={k} className="chip" style={{ display: 'inline-flex', gap: 7, alignItems: 'center', cursor: 'default' }}>
+                            {k} <b>{Number(dc[k]) || 0}</b>
+                            <span role="button" tabIndex={0} style={{ cursor: 'pointer', padding: '0 3px' }} onClick={() => setD(k, -1)}>−</span>
+                            <span role="button" tabIndex={0} style={{ cursor: 'pointer', padding: '0 3px' }} onClick={() => setD(k, 1)}>+</span>
+                          </span>
+                        ))}
+                      </div>
+                      <p className="grounding" style={{ margin: '6px 0 0' }}>
+                        Vegetarian + vegan counts add a real, priced main below; the others flag the lines to double-check.
+                        {!event.dietaryNoted && <span> </span>}
+                        {!event.dietaryNoted && (
+                          <button className="mini" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.')}>That’s everyone — noted</button>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
                   return openN > 0 ? <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--warn)' }}>{openN} menu decision{openN === 1 ? '' : 's'} still open — each re-prices the lines it touches.</p> : null;
