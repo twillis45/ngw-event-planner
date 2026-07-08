@@ -4,7 +4,9 @@ import path from 'node:path';
 
 // Standalone host-shell prototype. Imports the REAL engines from ../src
 // (eventPlan, sample events) — read-only; never modifies the app.
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Production build ships as a static bundle under the Pages site.
+  base: command === 'build' ? '/ngw-event-planner/hostv2/' : '/',
   plugins: [react()],
   resolve: {
     alias: { '@app': path.resolve(__dirname, '../src') },
@@ -23,4 +25,4 @@ export default defineConfig({
   optimizeDeps: {
     esbuildOptions: { loader: { '.js': 'jsx' } },
   },
-});
+}));
