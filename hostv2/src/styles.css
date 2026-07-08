@@ -351,3 +351,8 @@ button{font-family:inherit}
 .p-ok{color:var(--ok); background:var(--ok-tint)}
 .p-warn{color:var(--warn); background:var(--warn-tint)}
 .p-risk{color:var(--danger); background:rgba(232,64,54,.14)}
+
+/* ── Slide-down readouts (never-dense: hidden until asked) ── */
+.slidepanel{max-height:0; overflow:hidden; transition:max-height var(--ms-sheet) var(--ease-standard)}
+.slidepanel.open{max-height:420px}
+.slidepanel-inner{padding:14px 2px 4px}

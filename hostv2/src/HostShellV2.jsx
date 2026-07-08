@@ -672,7 +672,7 @@ export default function HostShellV2() {
 
               <div className="bento">
                 <button className="tile tile-a" onClick={() => { setHandledOpen(o => !o); }}>
-                  <div className="t-label">The basics</div>
+                  <div className="t-label">The basics <span style={{ opacity: .55 }}>{handledOpen ? "▴" : "▾"}</span></div>
                   <div>
                     <div className="t-num">{pct === null ? '—' : pctAnim + '%'}</div>
                     <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
@@ -711,17 +711,26 @@ export default function HostShellV2() {
                 </button>
               </div>
 
-              {/* The 5 readiness signals: Basics tile above + these four pillars */}
-              {readiness && (
-                <div className="pills">
-                  {[['Calls to make', readiness.decision], ['People', readiness.vendor], ['Checklist', readiness.timeline], ['Paperwork', readiness.document]].map(([label, r]) => r && (
-                    <button key={label} className={'pill ' + (r.status === 'ON_TRACK' ? 'p-ok' : r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
-                      onClick={() => toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''))}>
-                      {label}<span className="pill-note">{r.note}</span>
-                    </button>
+              {/* Slide-down readouts: hidden until the Basics tile is tapped —
+                  never-dense doctrine. Pills = the 4 readiness pillars; below them
+                  the engine's handled facts. */}
+              <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
+                <div className="slidepanel-inner">
+                  {readiness && (
+                    <div className="pills">
+                      {[['Calls to make', readiness.decision], ['People', readiness.vendor], ['Checklist', readiness.timeline], ['Paperwork', readiness.document]].map(([label, r]) => r && (
+                        <button key={label} className={'pill ' + (r.status === 'ON_TRACK' ? 'p-ok' : r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
+                          onClick={() => toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''))}>
+                          {label}<span className="pill-note">{r.note}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {handled.length > 0 && handled.map((h, i) => (
+                    <div className="later-row done" key={i} style={{ marginLeft: 0 }}><span className="t">{h}</span></div>
                   ))}
                 </div>
-              )}
+              </div>
 
               {lensSet.length > 1 && (
                 <div className="lenses">
@@ -783,17 +792,6 @@ export default function HostShellV2() {
                 );
               })}
 
-              {handled.length > 0 && (
-                <>
-                  <button className="fold-btn" onClick={() => setHandledOpen(o => !o)}>
-                    Already handled — {handled.length} {handled.length === 1 ? 'thing' : 'things'}
-                    <span className="chev">{handledOpen ? '▴' : '▾'}</span>
-                  </button>
-                  {handledOpen && handled.map((h, i) => (
-                    <div className="later-row done" key={i}><span className="t">{h}</span></div>
-                  ))}
-                </>
-              )}
 
               {foodPlan && foodPlan.itemCount > 0 && (
                 <button className="fold-btn" onClick={() => setSheet({ kind: 'food' })}>
