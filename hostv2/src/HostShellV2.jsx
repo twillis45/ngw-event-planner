@@ -644,6 +644,25 @@ export default function HostShellV2() {
   // synthesized chime reserved for magic moments. Muted preference persists.
   const [muted, setMuted] = useState(() => { try { return localStorage.getItem('ngw-hostv2-muted') === '1'; } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
+  // Screen Wake Lock — the device must not sleep while the app is up (above
+  // all on The Day: messy-handed hosts can't keep re-unlocking). Re-acquired
+  // whenever the tab becomes visible again; released on unmount. No-ops
+  // safely where unsupported.
+  useEffect(() => {
+    let lock = null, dead = false;
+    const acquire = async () => {
+      try {
+        if (!dead && 'wakeLock' in navigator && document.visibilityState === 'visible') {
+          lock = await navigator.wakeLock.request('screen');
+        }
+      } catch { /* low battery or unsupported — the OS wins */ }
+    };
+    acquire();
+    const onVis = () => { if (document.visibilityState === 'visible') acquire(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { dead = true; document.removeEventListener('visibilitychange', onVis); try { lock && lock.release(); } catch {} };
+  }, []);
+
   // Sprint 60.Y PARITY — the ORIGINAL's one chime placement: ring softly when
   // the total inbound-message count across events increases (a message
   // arrived). Skips the first measurement so mount never rings. Identical
