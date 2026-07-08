@@ -64,7 +64,17 @@ button{font-family:inherit}
 .mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:12px 0 6px; font-variant-numeric:tabular-nums}
 .mega-sub{font-size:18px; font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.35; min-height:1.3em}
 
-.bento{display:grid; gap:10px; margin-top:26px; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c" "d d"}
+/* ── Hero viewport: first screen fills the visible frame; the NEXT tile is
+   anchored to its bottom so the primary CTA rides just above the floating
+   dock (host request, 2026-07-08). Frame math: appbar ~48 + content pad 16
+   above; dock 16 offset + ~50 pill + 12 breathing room below. min-height
+   (not height) so long copy simply grows past the fold instead of clipping. */
+.hero{display:flex; flex-direction:column; min-height:calc(852px - 64px - 88px)}
+@media(max-width:699px){
+  .hero{min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px))}
+}
+.bento{display:grid; gap:10px; margin-top:auto; padding-top:18px; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
+.hero > .tile-d{margin-top:14px}
 .tile{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; min-height:108px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:33px; font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}

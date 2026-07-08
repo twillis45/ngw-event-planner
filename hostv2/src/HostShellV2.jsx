@@ -1388,6 +1388,12 @@ export default function HostShellV2() {
 
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
 
+              {/* HERO VIEWPORT (host request, 2026-07-08): the first screen is a
+                  flex column sized to the visible frame — masthead + countdown
+                  up top, the summary tiles mid, and the NEXT tile anchored just
+                  above the floating dock so the primary action sits at thumb
+                  reach with no dead space below it. */}
+              <div className="hero">
               {/* Event masthead — kicker / readable title / quiet venue.
                   (The old all-caps eyebrow crushed long names into three
                   unreadable letterspaced lines.) */}
@@ -1471,7 +1477,10 @@ export default function HostShellV2() {
                     </div>
                   </div>
                 </button>
-                <button
+              </div>
+              {/* NEXT — out of the grid, anchored to the bottom of the hero
+                  viewport (margin-top:auto) so it rides just above the dock. */}
+              <button
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
                   onClick={() => {
                     if (days === 0) { setStage('day'); return; }
