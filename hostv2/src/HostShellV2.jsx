@@ -1533,7 +1533,16 @@ export default function HostShellV2() {
                       const basicsLine = plan.progress.total ? `basics ${plan.progress.done} of ${plan.progress.total}` : null;
                       let sub;
                       if (!essTotal) sub = 'Nothing to read for this event yet.';
-                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((nextCue && nextCue.label) || 'the open one').replace(/^next:\s*/i, '').toLowerCase()}`;
+                      else if (essDone < essTotal) {
+                        // BALANCE RULES (host, 2026-07-08): the big number already
+                        // says "2 of 4" — no dangling "handled" prefix; the cue
+                        // label keeps the ENGINE's own casing (never lowercased
+                        // proper nouns) and clamps so a venue-length label can't
+                        // restate the masthead right underneath it.
+                        let nl = String((nextCue && nextCue.label) || 'the open one').replace(/^next:\s*/i, '').replace(/\.+$/, '');
+                        if (nl.length > 44) nl = nl.slice(0, 44) + '…';
+                        sub = `essentials${basicsLine ? ' · ' + basicsLine : ''} · next: ${nl}`;
+                      }
                       else if (openTasks > 0) sub = `essentials handled — but ${openTasks} checklist step${openTasks === 1 ? '' : 's'} still on the list. Not done yet.`;
                       else sub = 'essentials handled and the checklist is clear — ready for the day.';
                       return (
