@@ -21,6 +21,7 @@ import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox } from '@app/lib/api/rsvp';
 import { effectiveDoneDetail } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
+import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge } from '@app/lib/csvParsers';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
@@ -755,6 +756,16 @@ export default function HostShellV2() {
   // app (every event carries rsvpCode). Guests who open it reply themselves;
   // replies land in the outbox and merge into this roster automatically.
   const inviteLinkUrl = () => window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+  // Scan-to-RSVP: the SAME invite link as a QR — for the printed invite, the
+  // door sign, the fridge. Dark-on-white regardless of theme (scanners first).
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const showQr = async () => {
+    try {
+      const data = await QRCode.toDataURL(inviteLinkUrl(), { width: 520, margin: 2, color: { dark: '#1a1a1a', light: '#ffffff' } });
+      setQrDataUrl(data);
+      setSheet({ kind: 'qr' });
+    } catch { toast('Couldn’t draw the QR — share the link instead.'); }
+  };
   const shareInviteLink = async () => {
     const url = inviteLinkUrl();
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
@@ -2426,7 +2437,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -2743,6 +2754,21 @@ export default function HostShellV2() {
                 </>
               );
             })()}
+            {sheet.kind === 'qr' && (
+              <>
+                <p className="grounding" style={{ margin: '2px 0 12px' }}>
+                  Guests scan it and RSVP themselves — no app, no account. Screenshot it for the group chat, print it for the paper invite, tape it by the door.
+                </p>
+                {qrDataUrl && (
+                  <div style={{ background: '#ffffff', borderRadius: 16, padding: 18, display: 'flex', justifyContent: 'center' }}>
+                    <img src={qrDataUrl} alt={'QR code for the ' + (event.name || 'event') + ' RSVP link'} style={{ width: '100%', maxWidth: 300, display: 'block' }} />
+                  </div>
+                )}
+                <div className="actions-row" style={{ marginTop: 12 }}>
+                  <button className="mini" onClick={shareInviteLink}>Share the link instead</button>
+                </div>
+              </>
+            )}
             {sheet.kind === 'rain' && (
               <>
                 {event.rainPlan ? (
@@ -3341,6 +3367,7 @@ export default function HostShellV2() {
                   )}
                   <div className="actions-row" style={{ margin: '0 0 8px' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                    <button className="mini" onClick={showQr}>Show the QR</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
                     {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
                   </div>
@@ -3437,6 +3464,7 @@ export default function HostShellV2() {
                   </div>
                   <div className="actions-row" style={{ margin: '0 0 4px' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                    <button className="mini" onClick={showQr}>Show the QR</button>
                   </div>
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
                   {countingChips}

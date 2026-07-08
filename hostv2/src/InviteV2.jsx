@@ -14,6 +14,7 @@ import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox } 
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
+import { geocodeVenue } from '@app/lib/weather';
 import { dark as steelPalette } from '@app/theme/palette';
 import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM } from './HostShellV2.jsx';
 
@@ -104,6 +105,38 @@ export default function InviteV2({ code }) {
   const [shareState, setShareState] = useState('');
   const shareTimer = useRef(null);
   useEffect(() => () => clearTimeout(shareTimer.current), []);
+  // ── Arrival assist (event day): guest-initiated, entirely client-side —
+  // location is watched ONLY after the guest asks, compared against the
+  // geocoded venue, and never leaves the device. Web constraint stated
+  // honestly: it works while this page is open (no background geofence).
+  const [nearState, setNearState] = useState('idle'); // idle|watching|near|denied|nocoords
+  const watchRef = useRef(null);
+  useEffect(() => () => { if (watchRef.current != null) { try { navigator.geolocation.clearWatch(watchRef.current); } catch { /* gone */ } } }, []);
+  const haversineKm = (la1, lo1, la2, lo2) => {
+    const R = 6371, toR = (x) => x * Math.PI / 180;
+    const dLa = toR(la2 - la1), dLo = toR(lo2 - lo1);
+    const a = Math.sin(dLa / 2) ** 2 + Math.cos(toR(la1)) * Math.cos(toR(la2)) * Math.sin(dLo / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(a));
+  };
+  const startNearWatch = async () => {
+    try {
+      if (!navigator.geolocation) { setNearState('denied'); return; }
+      const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String((event && event.venue) || '').trim());
+      const q = String((event && event.venueCity) || '').trim() || (!homeish ? String((event && event.venue) || '').trim() : '');
+      if (!q) { setNearState('nocoords'); return; }
+      const coords = await geocodeVenue(q);
+      if (!coords) { setNearState('nocoords'); return; }
+      setNearState('watching');
+      watchRef.current = navigator.geolocation.watchPosition((pos) => {
+        const d = haversineKm(pos.coords.latitude, pos.coords.longitude, coords.lat, coords.lon);
+        if (d <= 0.8) {
+          setNearState('near');
+          try { navigator.geolocation.clearWatch(watchRef.current); } catch { /* done */ }
+          try { if (navigator.vibrate) navigator.vibrate([12, 70, 12]); } catch { /* no haptics */ }
+        }
+      }, () => setNearState('denied'), { enableHighAccuracy: true, maximumAge: 30000 });
+    } catch { setNearState('denied'); }
+  };
   // The event's mood, one truth with the original (lib/inviteTone): warm paper
   // by default, elegant dark for evening/formal, muted for somber — and the
   // host's inviteStyle override always wins.
@@ -306,6 +339,32 @@ export default function InviteV2({ code }) {
               {social ? ` · ${social}` : ''}
             </p>
           </div>
+
+          {/* ── Getting there — event day only. Directions always; "tell me
+              when I'm close" is opt-in and stays on the device. ── */}
+          {days === 0 && (event.venue || event.venueCity) && (
+            <div className="card no-hover" style={{ marginBottom: 4 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
+              <div className="shelf-label" style={{ marginBottom: 4 }}>Getting there — it’s today</div>
+              <p className="grounding" style={{ margin: '0 0 8px' }}>{[event.venue, event.venueCity].filter(Boolean).join(', ')}</p>
+              <div className="actions-row" style={{ marginTop: 0 }}>
+                <a className="mini" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer"
+                  href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent([event.venue, event.venueCity].filter(Boolean).join(', '))}>
+                  Directions
+                </a>
+                {nearState === 'idle' && <button className="mini" onClick={startNearWatch}>Tell me when I’m close</button>}
+              </div>
+              {nearState === 'watching' && <p className="grounding" style={{ margin: '8px 0 0' }}>Watching — keep this page open and we’ll flag it when you’re close. Your location never leaves this phone.</p>}
+              {nearState === 'near' && (
+                <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--ok)', fontWeight: 600 }}>
+                  You’re basically there.
+                  {String(event.parkingNotes || '').trim() ? ' Parking: ' + event.parkingNotes : ''}
+                  {String(event.rainPlan || '').trim() ? ' If the sky turns: ' + event.rainPlan : ''}
+                </p>
+              )}
+              {nearState === 'denied' && <p className="grounding" style={{ margin: '8px 0 0' }}>Location was blocked — directions above still get you there.</p>}
+              {nearState === 'nocoords' && <p className="grounding" style={{ margin: '8px 0 0' }}>We couldn’t pin the venue on a map — directions above will ask for the address.</p>}
+            </div></div>
+          )}
 
           {!submitted ? (
             <div className="card no-hover" style={{ marginTop: 22 }}><div className="card-head" style={{ cursor: 'default' }}>
