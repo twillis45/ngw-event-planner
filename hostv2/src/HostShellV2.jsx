@@ -9,7 +9,7 @@ import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/ass
 import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
 import { positiveAttention } from '@app/lib/positiveAttention';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage } from '@app/lib/weather';
+import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -131,6 +131,8 @@ export default function HostShellV2() {
   const [fGuests, setFGuests] = useState(null);
   const [fBudget, setFBudget] = useState(null);
   const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
+  const [addressOpen, setAddressOpen] = useState(false);
+  const [addressDraft, setAddressDraft] = useState('');
   const [revealed, setRevealed] = useState(false);
   const [revealStep, setRevealStep] = useState(0); // choreography: 0 thinking → 5 done
   const revealTimers = useRef([]);
@@ -169,13 +171,32 @@ export default function HostShellV2() {
     const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i) || t.match(/\b(\d{1,3})\s*(?:people|guests|ppl|folks|friends|pickers)\b/i);
     if (gm) guests = parseInt(gm[1], 10);
     let date = null;
+    // Relative forms first — "in 2 weeks", "tomorrow", "next saturday".
+    const rel = t.match(/\bin\s+(\d+)\s+(day|week|month)s?\b/i);
+    if (rel) {
+      const d = new Date(); const n = parseInt(rel[1], 10);
+      if (rel[2].toLowerCase() === 'day') d.setDate(d.getDate() + n);
+      else if (rel[2].toLowerCase() === 'week') d.setDate(d.getDate() + n * 7);
+      else d.setMonth(d.getMonth() + n);
+      d.setHours(12); date = d.toISOString().slice(0, 10);
+    } else if (/\btomorrow\b/i.test(t)) {
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(12); date = d.toISOString().slice(0, 10);
+    } else {
+      const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const wd = t.match(/\b(?:next|this)\s+(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/i);
+      if (wd) {
+        const d = new Date(); const target = DAYS.indexOf(wd[1].toLowerCase());
+        let add = (target - d.getDay() + 7) % 7; if (add === 0) add = 7;
+        d.setDate(d.getDate() + add); d.setHours(12); date = d.toISOString().slice(0, 10);
+      }
+    }
     const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
-    const dm = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+    const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
     if (dm) {
       const now = new Date(); const cand = new Date(now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
       if (cand < now) cand.setFullYear(cand.getFullYear() + 1);
       date = cand.toISOString().slice(0, 10);
-    } else {
+    } else if (!date) {
       const sm = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
       if (sm) {
         const now = new Date(); const y = sm[3] ? (sm[3].length === 2 ? 2000 + Number(sm[3]) : Number(sm[3])) : now.getFullYear();
@@ -186,11 +207,16 @@ export default function HostShellV2() {
     }
     const hm = t.match(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)[’']s\b/);
     const home = /backyard|back\s?yard|at home|my place|our (house|home)|the house/i.test(t);
+    // Venue phrase kept VERBATIM — "my brother's backyard" is the venue, not
+    // a generic "Backyard". Guests read this in invites and rain notes.
+    const vm = t.match(/\b(?:in|at)\s+((?:my|our|his|her|their)\s+[a-z]+(?:['’]s)?\s+(?:backyard|back\s?yard|house|place|yard|home|garden|farm|cabin|lake house))\b/i)
+      || t.match(/\b(?:in|at)\s+(the\s+(?:park|beach|clubhouse|pavilion|community center))\b/i);
+    const venuePhrase = vm ? vm[1].charAt(0).toUpperCase() + vm[1].slice(1) : '';
     return {
       type, guests, date,
       honoree: hm ? hm[1] : null,
-      venueKind: home ? 'home' : '',
-      venue: home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : '',
+      venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
+      venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : ''),
     };
   }, [smartText]);
 
@@ -235,6 +261,30 @@ export default function HostShellV2() {
   const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
   const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
   const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
+
+  // ── Weather alerting (modern live-activity pill) ──
+  // SAMPLE forecast (live fetch needs the weather API key) driving the REAL
+  // engines: weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus,
+  // guestRainMessage. Only rendered for outdoor, upcoming, dated events.
+  const wx = useMemo(() => {
+    // Self-contained reads (this memo sits above the shared outdoor/days consts).
+    const out = (() => { try { return isLikelyOutdoor(event.venue, event.notes); } catch { return false; } })();
+    const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
+    const d = (() => { try { return daysUntil(event.date); } catch { return null; } })();
+    if (!out || past || !event.date || d == null || d < 0) return null;
+    return {
+      kind: 'rain', risk: 'high', conditions: 'Rain', pop: 70,
+      date: event.date,
+      summary: 'Rain likely on your event day',
+      rainWindow: { startHour: 14, endHour: 18, label: '2 PM\u20136 PM' },
+      _sample: true,
+    };
+  }, [event]);
+  const wxImpact = useMemo(() => {
+    if (!wx) return null;
+    try { const im = weatherImpactByEventPhase(event, wx); return im && im.hasImpact ? im : null; } catch { return null; }
+  }, [event, wx]);
+  const [wxOpen, setWxOpen] = useState(false);
 
   useEffect(() => {
     if (eventId !== 'custom') { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
@@ -510,6 +560,13 @@ export default function HostShellV2() {
   const rainEditorBlock = () => {
     let suggested = null;
       try { suggested = suggestRainPlan(event); } catch { suggested = null; }
+      // The moment a backup is written, show the host the guest-facing copy
+      // and the send options (share sheet / text / WhatsApp) — no dead-end toast.
+      const showGuestNote = (planText) => {
+        setTimeout(() => {
+          try { openDraft('Rain note to guests', guestRainMessage({ ...event, rainPlan: planText }, wx)); } catch {}
+        }, 350);
+      };
       let authored = null;
       try {
         const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
@@ -521,13 +578,13 @@ export default function HostShellV2() {
           <div className="actions-row" style={{ marginTop: 0 }}>
             {suggested && (
               <button className="cta"
-                onClick={() => patchEvent({ rainPlan: suggested }, 'Backup written for you — tuned to where you’re hosting.')}>
+                onClick={() => { patchEvent({ rainPlan: suggested }, 'Backup written for you — tuned to where you’re hosting.'); showGuestNote(suggested); }}>
                 Do it for me
               </button>
             )}
             {authored && (
               <button className="cta soft"
-                onClick={() => patchEvent({ rainPlan: authored }, 'The ' + String(event.type).toLowerCase() + ' move it is.')}>
+                onClick={() => { patchEvent({ rainPlan: authored }, 'The ' + String(event.type).toLowerCase() + ' move it is.'); showGuestNote(authored); }}>
                 The {String(event.type).toLowerCase()} move
               </button>
             )}
@@ -535,7 +592,7 @@ export default function HostShellV2() {
           <div className="chips">
             {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
               <button key={p} className="chip" aria-pressed={event.rainPlan === p}
-                onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
+                onClick={() => { patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.'); showGuestNote(p); }}>{p}</button>
             ))}
           </div>
           {suggested && <p className="grounding" style={{ margin: 0 }}>“Do it for me”: “{suggested.slice(0, 110)}…”</p>}
@@ -548,8 +605,13 @@ export default function HostShellV2() {
   // low / mid / high; custom numbers split across the same real shares).
   const budgetEditorBlock = () => {
     const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
-    // HOST MODEL (the app's own pattern): one "What's your budget?" number;
-    // the estimator range is a HINT beside it, never a set of options.
+    // HOST MODEL: one number (event.totalBudget). Offered three ways — the
+    // estimator's real low/mid/high as Lean / Typical / All-out chips (host
+    // request, 2026-07-08), a custom number, and the range as a hint.
+    const opts = est
+      ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
+      : [];
+    const OPT_LABELS = ['Lean', 'Typical', 'All-out'];
     const setB = (n) => {
       setCustomBudget('');
       patchEvent({ totalBudget: n },
@@ -558,6 +620,15 @@ export default function HostShellV2() {
     const customN = parseInt(customBudget, 10) || 0;
     return (
       <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+        {opts.length > 0 && (
+          <div className="chips">
+            {opts.map((n, idx) => (
+              <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
+                {opts.length === 3 ? OPT_LABELS[idx] + ' · ' : ''}{fmt(n)}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
@@ -643,6 +714,7 @@ export default function HostShellV2() {
   // Micro-motion: hero + tile numbers settle in rather than snapping.
   const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
   const pctAnim = useCountUp(pct);
+  const doneAnim = useCountUp(plan.progress.done, 450);
   const gAnim = useCountUp(guests || 0);
   const bAnim = useCountUp(money.planned || 0);
 
@@ -692,6 +764,7 @@ export default function HostShellV2() {
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
+                        {parsed.venue ? <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{parsed.venue}</span> : null}
                       </div>
                       {(createEdit === 'type' || !effType) && (
                         <div className="typebrowser" style={{ marginTop: 12 }}>
@@ -829,11 +902,15 @@ export default function HostShellV2() {
                 <button className="tile tile-a" onClick={() => { setHandledOpen(o => !o); }}>
                   <div className="t-label">The basics <span style={{ opacity: .55 }}>{handledOpen ? "▴" : "▾"}</span></div>
                   <div>
-                    <div className="t-num">{pct === null ? '—' : pctAnim + '%'}</div>
+                    <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
+                      {plan.progress.total ? `${doneAnim} of ${plan.progress.total}` : '—'}
+                    </div>
                     <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
                     <div className="t-sub">
                       {plan.progress.total
-                        ? `${plan.progress.done} of ${plan.progress.total} basics settled — date, guests, budget, food.`
+                        ? (plan.progress.done === plan.progress.total
+                          ? 'basics settled — date, guests, budget, food. All of it.'
+                          : 'basics settled so far — date, guests, budget, food.')
                         : 'Nothing to read for this event yet.'}
                     </div>
                   </div>
@@ -985,6 +1062,25 @@ export default function HostShellV2() {
                   </div>
                 </article>
               ))}
+
+              {event.venue && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
+                <div className="later-row" style={{ marginTop: 18 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
+                    {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + String(event.venue).toLowerCase()}
+                  </span>
+                  {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
+                </div>
+              )}
+              {event.venue && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
+                <div className="hc-row" style={{ marginTop: 8 }}>
+                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it"
+                    value={addressDraft} onChange={e => setAddressDraft(e.target.value)} aria-label="Venue address" />
+                  <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
+                    onClick={() => { patchEvent({ venue: event.venue + ' — ' + addressDraft.trim() }, 'Address on the plan — invites and the rain note now carry it.'); setAddressOpen(false); setAddressDraft(''); }}>
+                    Save
+                  </button>
+                </div>
+              )}
 
               {outdoor && event.rainPlan && (
                 <div className="later-row" style={{ marginTop: 18 }}>
@@ -1518,6 +1614,35 @@ export default function HostShellV2() {
       )}
 
       {spot && <div className="dimveil" onClick={() => { clearTimeout(spotTimer.current); setSpot(null); }} />}
+
+      {wxImpact && stage === 'plan' && (
+        <div className={'wxpill' + (wxOpen ? ' open' : '')}>
+          <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
+            <span className="wx-glyph">☂</span>
+            <span className="wx-line">
+              {wxOpen ? 'Weather on your day' : rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
+            </span>
+            <span className="chev" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
+          </button>
+          {wxOpen && (
+            <div className="wx-body">
+              <p className="wx-headline">{rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}</p>
+              {wx.rainWindow && <p className="grounding" style={{ margin: '4px 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
+              <div className="actions-row" style={{ marginTop: 10 }}>
+                <button className="cta" onClick={() => { setWxOpen(false); setSheet({ kind: 'rain' }); }}>
+                  {rainPlanStatus(event).hasPlan ? 'Review the backup' : 'Add a rain backup'}
+                </button>
+                {rainPlanStatus(event).hasPlan && (
+                  <button className="mini" onClick={() => { setWxOpen(false); try { openDraft('Rain note to guests', guestRainMessage(event, wx)); } catch { toast('Couldn’t draft the note.'); } }}>
+                    Guest note
+                  </button>
+                )}
+              </div>
+              <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
+            </div>
+          )}
+        </div>
+      )}
 
       <nav className="dock" aria-label="Sections">
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>

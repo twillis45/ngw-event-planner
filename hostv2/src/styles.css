@@ -377,3 +377,26 @@ button{font-family:inherit}
   .dimveil{animation:none}
   .card.spot{animation:none; box-shadow:0 0 0 2.5px var(--steel)}
 }
+
+/* ── Weather live-activity pill: glanceable, expands on tap ── */
+.wxpill{
+  position:absolute; left:14px; right:14px; bottom:76px; z-index:26;
+  border-radius:20px; border:1px solid var(--warn-tint);
+  background:color-mix(in srgb, var(--card) 82%, transparent);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
+  box-shadow:0 14px 40px -14px rgba(0,0,0,.6);
+  overflow:hidden;
+  animation:wxin 340ms var(--ease-out) both;
+}
+@keyframes wxin{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+.wxpill-head{
+  display:flex; align-items:center; gap:9px; width:100%;
+  padding:11px 14px; border:none; background:none; cursor:pointer;
+  color:var(--ink); font:inherit; font-size:13px; font-weight:600; text-align:left;
+}
+.wx-glyph{color:var(--warn); font-size:15px; line-height:1}
+.wx-line{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.wxpill.open .wx-line{white-space:normal}
+.wx-body{padding:0 14px 14px}
+.wx-headline{margin:0; font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.45}
+@media(prefers-reduced-motion:reduce){.wxpill{animation:none}}
