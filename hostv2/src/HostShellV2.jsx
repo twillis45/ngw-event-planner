@@ -211,7 +211,36 @@ export default function HostShellV2() {
     if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(String(route.focusField || '')))) {
       setSheet({ kind: 'food', focus: route.foodFocus || null }); return true;
     }
+    if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
+      setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
+    }
     return false;
+  };
+
+  // Tasks: toggle done on the SAME timeline the readiness engine reads —
+  // catching up genuinely closes the "Catch up on overdue planning" card.
+  const toggleTask = (i) => {
+    const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
+    const open = tl.filter(t => t && !t.done).length;
+    patchEvent({ timeline: tl },
+      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.');
+  };
+
+  // No timeline yet → draft one from the playbook's REAL task list, honoring
+  // its choice-gated tasks (e.g. steam-yourself vs order-steamed).
+  const draftTimeline = () => {
+    const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
+    if (!pb || !Array.isArray(pb.tasks)) { toast('No playbook checklist for this type.'); return; }
+    const picks = event.foodChoices || {};
+    const tasks = pb.tasks.filter(t => {
+      if (!t) return false;
+      if (t.whenChoice && Array.isArray(t.whenChoice.in)) {
+        const chosen = picks[t.whenChoice.id];
+        return chosen ? t.whenChoice.in.includes(chosen) : true;
+      }
+      return true;
+    }).map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: false, owner: 'Host' }));
+    patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted from the ' + String(event.type).toLowerCase() + ' playbook.');
   };
 
   // The REAL spread: same food plan hostSpending bills from, sized by the
@@ -635,7 +664,7 @@ export default function HostShellV2() {
               {actions.filter(show).map((a, i) => {
                 const key = String(a.id || i);
                 const wired = wiredKind(a);
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests'].includes(a.route.tab));
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline'].includes(a.route.tab));
                 return (
                   <article className="card" key={key} style={{ animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     <span className="idx">{i + 1}</span>
@@ -786,9 +815,35 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
+            {sheet.kind === 'tasks' && (
+              (event.timeline || []).length ? (
+                <>
+                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                    {(event.timeline || []).filter(t => t && !t.done).length} open of {(event.timeline || []).length} — checking off is what the plan’s readiness actually reads.
+                  </div>
+                  {(event.timeline || []).map((t, i) => (
+                    <button key={t.id || i} className={'frow' + (t.done ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
+                      ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
+                      style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                      onClick={() => toggleTask(i)}>
+                      <span className="fcheck" aria-hidden="true" />
+                      <span className="f-main">
+                        <span className="f-name">{t.task}</span>
+                        <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+                      </span>
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <div className="v-meta" style={{ padding: '14px 2px' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
+                  <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
+                </>
+              )
+            )}
             {sheet.kind === 'food' && (foodPlan ? (
               <>
                 {/* The plan's own headline math: totals, per-head, and the turnout
@@ -822,6 +877,22 @@ export default function HostShellV2() {
                     ))}
                   </>
                 )}
+                {/* Sourcing tier — the plan's real cook/order axis; switching
+                    re-prices proteins and changes where each line says to buy. */}
+                {(foodPlan.sourcingTiers || []).length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>How it’s sourced</div>
+                    <div className="chips" style={{ marginBottom: 4 }}>
+                      {(foodPlan.sourcingTiers || []).map(t => t && (
+                        <button key={t.id || t.key || t.label} className="chip" aria-pressed={foodPlan.sourcing === (t.id || t.key)}
+                          onClick={() => patchEvent({ sourcing: t.id || t.key }, 'Sourcing: ' + (t.label || t.id) + ' — proteins re-priced, stores updated.')}>
+                          {t.label || t.id}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="grounding" style={{ marginBottom: 10 }}>The tier re-prices the proteins and changes where each line says to buy.</p>
+                  </>
+                )}
                 {(() => {
                   const items = (foodPlan.list || []).filter(it => it && !it.skipped);
                   const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
@@ -837,8 +908,19 @@ export default function HostShellV2() {
                             onClick={() => toggleGot(it, cost)}>
                             <span className="fcheck" aria-hidden="true" />
                             <span className="f-main">
-                              <span className="f-name">{it.short || it.item}{it.essential ? <span className="tag essential">essential</span> : null}</span>
-                              <span className="v-meta">{[it.qty && it.unit ? `${it.qty} ${it.unit}` : null, it.where].filter(Boolean).join(' · ')}</span>
+                              <span className="f-name">
+                                {it.short || it.item}
+                                {it.essential ? <span className="tag essential">essential</span> : null}
+                                {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
+                                {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
+                              </span>
+                              <span className="v-meta">
+                                {[
+                                  it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
+                                  foodPlan.hasRealCount && it.unitBase && it.perUnitLow ? `${fmt(it.perUnitLow)}–${fmt(it.perUnitHigh)}/${it.unitBase}` : null,
+                                  it.where,
+                                ].filter(Boolean).join(' · ')}
+                              </span>
                             </span>
                             <span className="amt">
                               {foodPlan.hasRealCount
@@ -851,6 +933,11 @@ export default function HostShellV2() {
                     </div>
                   ));
                 })()}
+                {(foodPlan.specialDiets || []).length > 0 && (
+                  <p className="grounding" style={{ marginTop: 10 }}>
+                    Dietary: {foodPlan.specialDiets.map(d => d.count + ' ' + d.diet).join(', ')} — a real named main is sized into the totals for them.
+                  </p>
+                )}
               </>
             ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No playbook spread for this event type — the engine only builds one where a playbook exists.</div>)}
             {sheet.kind === 'vendors' && (
