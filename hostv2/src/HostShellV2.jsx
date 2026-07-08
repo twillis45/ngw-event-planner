@@ -220,6 +220,12 @@ export default function HostShellV2() {
   // Blockers (the Reveal's own stage builder, ongoing view), decision board,
   // capacity, helpers, risks, and the wins — all production functions.
   const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
+  useEffect(() => {
+    try {
+      console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.identity && ctx.identity.primaryEventType,
+        '· blockers:', blockers.length, '· priority:', plan && plan.planningState && plan.planningState.currentPriority);
+    } catch {}
+  }, [event.id, ctx, blockers, plan]);
   const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event]);
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   const helpers = useMemo(() => { try { return deriveHelperResponsibilities(event) || []; } catch { return []; } }, [event]);
@@ -858,10 +864,20 @@ export default function HostShellV2() {
                   }}
                 >
                   <div className="t-label">Next</div>
-                  <div className="t-num">
-                    {actions.length === 0 ? 'Nothing needs you' : `${actions.length} thing${actions.length === 1 ? '' : 's'} need${actions.length === 1 ? 's' : ''} you`}
+                  <div className="t-big">{actions.length === 0 ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you'}</div>
+                  <div className="t-sub">
+                    {(() => {
+                      // Tier 7.8 (one-source hero): the tile carries the OTHER two
+                      // truth tellers so no ledger can silently disagree with it.
+                      const bits = [];
+                      if (phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length) {
+                        bits.push(phaseCues.items.filter(c => c.handled).length + ' of ' + phaseCues.items.length + ' essentials handled');
+                      }
+                      const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
+                      if (openTasks) bits.push(openTasks + ' checklist steps open');
+                      return bits.length ? bits.join(' · ') + ' — start below ↓' : 'Start with the first one ↓';
+                    })()}
                   </div>
-                  <div className="t-go">{actions.length ? 'Start with the first one ↓' : 'The engine found no gaps'}</div>
                 </button>
               </div>
 
@@ -1253,10 +1269,20 @@ export default function HostShellV2() {
             {sheet.kind === 'draft' && (
               <>
                 <div className="draft-body">{sheet.body}</div>
+                {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
+                    plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
-                  <button className="cta" onClick={() => copyDraft(sheet.body)}>Copy it</button>
+                  {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                    <button className="cta"
+                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: sheet.body }).catch(() => {}); }}>
+                      Send it…
+                    </button>
+                  )}
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(sheet.body)}>Text</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(sheet.body)} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button className="mini" onClick={() => copyDraft(sheet.body)}>Copy it</button>
                 </div>
-                <p className="grounding" style={{ marginTop: 10 }}>Written from your event’s real details — edit anything after you paste it.</p>
+                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Written from your event’s real details.</p>
               </>
             )}
             {sheet.kind === 'tasks' && (

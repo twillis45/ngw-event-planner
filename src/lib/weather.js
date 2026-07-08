@@ -415,19 +415,21 @@ export function guestRainMessage(event, wx) {
   // stays hedged ("looks most likely").
   const windowLabel = wx && wx.rainWindow && wx.rainWindow.label ? wx.rainWindow.label : null;
 
+  // GUEST-RAIN-3 formatting: one restrained glyph (☂) carries the subject;
+  // arrows carry structure. Reads clean in SMS, WhatsApp, and email alike.
   return [
-    `☔ Weather update for ${name || 'our event'}`,
+    `☂ Weather note — ${name || 'our event'}`,
     '',
     "We're still on.",
     '',
     windowLabel
       ? `If rain comes through (looks most likely ${windowLabel}):`
       : 'If rain comes through:',
-    `📍 ${where}`,
-    `🚗 ${parking}`,
-    `👀 Follow signs or staff direction`,
+    `→ ${where}`,
+    `→ ${parking}`,
+    '→ Follow signs or staff direction',
     '',
-    "We'll send another update if anything changes.",
+    'Another update will follow if anything changes.',
   ].join('\n');
 }
 

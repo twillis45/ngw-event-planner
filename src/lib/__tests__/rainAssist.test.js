@@ -45,37 +45,40 @@ describe('suggestRainPlan (RAIN-2)', () => {
 describe('guestRainMessage (GUEST-RAIN-2)', () => {
   const INTERNAL = /vendor|load-in|load in|power|catering setup|tent|sound|setup protected|COI|invoice/i;
 
-  test('structured plain text: line breaks, no markdown, light icons (3-5)', () => {
+  test('structured plain text: line breaks, no markdown, ONE restrained glyph', () => {
     const m = guestRainMessage({ name: "Wanda's celebration", ...venueEv });
     expect(m.split('\n').length).toBeGreaterThanOrEqual(8);
     expect(m).not.toMatch(/\*\*|__|^#|^- /m);
+    // GUEST-RAIN-3: sophistication = restraint. The umbrella glyph is the only
+    // pictograph; arrows (→, outside the emoji ranges) carry the structure.
     const emoji = m.match(/[☀-➿\u{1F300}-\u{1FAFF}]/gu) || [];
-    expect(emoji.length).toBeGreaterThanOrEqual(3);
-    expect(emoji.length).toBeLessThanOrEqual(5);
+    expect(emoji.length).toBeGreaterThanOrEqual(1);
+    expect(emoji.length).toBeLessThanOrEqual(2);
+    expect(m.match(/^→ /gm).length).toBe(3);
   });
 
   test('venue event copy is guest-facing and names the venue', () => {
     const m = guestRainMessage({ name: 'Retirement Celebration', ...venueEv });
-    expect(m).toContain('☔ Weather update for Retirement Celebration');
-    expect(m).toContain('📍 Head indoors at VFW Post 3150 — Alexandria, VA');
+    expect(m).toContain('☂ Weather note — Retirement Celebration');
+    expect(m).toContain('→ Head indoors at VFW Post 3150 — Alexandria, VA');
     expect(m).not.toMatch(INTERNAL);
   });
 
   test('at-home copy is guest-facing (head inside)', () => {
     const m = guestRainMessage({ name: 'Backyard 50th', ...atHome });
-    expect(m).toContain('📍 Head inside when you arrive');
+    expect(m).toContain('→ Head inside when you arrive');
     expect(m).not.toMatch(INTERNAL);
   });
 
   test('missing event name still reads well', () => {
-    expect(guestRainMessage({})).toContain('☔ Weather update for our event');
+    expect(guestRainMessage({})).toContain('☂ Weather note — our event');
   });
 
   test('parking: real host-authored note when present, safe fallback otherwise', () => {
     expect(guestRainMessage({ parkingNotes: 'Street parking on Elm — overflow at the church lot' }))
-      .toContain('🚗 Parking: Street parking on Elm — overflow at the church lot');
+      .toContain('→ Parking: Street parking on Elm — overflow at the church lot');
     expect(guestRainMessage({}))
-      .toContain('🚗 Parking stays the same unless we send a change');
+      .toContain('→ Parking stays the same unless we send a change');
   });
 
   test('never claims confirmed or severe rain — conditional voice only', () => {
