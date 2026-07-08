@@ -4,125 +4,124 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>NGW Event Boss — be at your own party</title>
-<meta name="description" content="For the ones who host. Event Boss keeps the whole plan — who's bringing what, what's bought, what's next — so you get to enjoy the party you made." />
+<meta name="description" content="It sizes the food, writes the messages, watches the weather, and walks the day with you. You host. It handles." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,400;1,9..144,600&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
   :root{
-    /* backyard at dusk — warm near-black, not server-room carbon */
-    --dusk-0:#131010; --dusk-1:#1a1512; --dusk-2:#221b16; --line:#2e2620;
-    --text:#f4efe7; --muted:#b3a696; --dim:#7d7264;
-    --ember:#e0a458;        /* string-light glow — headlines' warmth, sparingly */
-    --ember-deep:#b5793a;
-    --leaf:#8fa98b;         /* the calm/confirmed tone */
-    --signal:#e8202a;       /* the brand star only */
-    --measure:62ch;
+    /* Studio Matte, warmed two degrees — brushed metal by lamplight */
+    --carbon-0:#14120f; --carbon-1:#1b1815; --carbon-2:#221e19; --line:#2c2620;
+    --text:#f2ede4; --muted:#a99e8e; --dim:#746a5c;
+    --steel:#6f8794; --steel-hi:#a8b7bf; --steel-lo:#3f5b6a;   /* the app's own accent */
+    --ember:#c98d4b;                                            /* warm signal, sparingly */
+    --signal:#e8202a;
+    /* the inversion — warm paper panels */
+    --paper:#ece5d8; --paper-2:#e3dbcb; --paper-text:#1b1713; --paper-muted:#6d6455; --paper-line:#d3c9b6;
+    --ok:#5d7a58;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
-  body{
-    background:var(--dusk-0); color:var(--text);
-    font-family:'Archivo',system-ui,sans-serif; font-size:17px; line-height:1.6;
-    -webkit-font-smoothing:antialiased; overflow-x:hidden;
-  }
-  ::selection{background:var(--ember-deep);color:var(--dusk-0)}
+  body{background:var(--carbon-0);color:var(--text);
+    font-family:'Archivo',system-ui,sans-serif;font-size:17px;line-height:1.6;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--steel-lo);color:var(--text)}
   a{color:inherit}
 
-  /* ── string-light bokeh backdrop ── */
   #lights{position:fixed;inset:0;z-index:0;pointer-events:none}
-  .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.06;
+  .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");}
-
   main{position:relative;z-index:2}
-  .wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px}
 
-  /* ── nav ── */
-  nav{position:fixed;top:0;left:0;right:0;z-index:10;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:18px 24px;
-    background:rgba(19,16,16,.88);
-    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
-    border-bottom:1px solid rgba(46,38,32,.6);}
+  nav{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;background:rgba(20,18,15,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(44,38,32,.6)}
   .brand{display:flex;align-items:baseline;gap:10px;font-weight:700;letter-spacing:.16em;font-size:12px;text-transform:uppercase;white-space:nowrap}
   .brand .star{color:var(--signal)}
-  .nav-cta{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--text);white-space:nowrap;
-    text-decoration:none;border:1px solid var(--line);padding:10px 16px;
-    transition:border-color .25s,background .25s}
-  .nav-cta:hover{border-color:var(--ember-deep);background:rgba(224,164,88,.08)}
+  .nav-cta{font-size:13px;font-weight:600;letter-spacing:.04em;white-space:nowrap;text-decoration:none;
+    border:1px solid var(--line);padding:10px 16px;color:var(--text);transition:border-color .25s,background .25s}
+  .nav-cta:hover{border-color:var(--steel);background:rgba(111,135,148,.08)}
 
-  /* ── hero ── */
   header{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:120px 0 80px}
-  .kicker{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--ember);margin-bottom:26px}
-  .kicker .tick{display:inline-block;width:26px;height:1px;background:var(--ember-deep);vertical-align:middle;margin-right:12px}
-  h1{font-family:'Fraunces',Georgia,serif;font-weight:300;
-    font-size:clamp(2.7rem,7.4vw,5.8rem);line-height:1.05;letter-spacing:-.015em;
-    text-wrap:balance;max-width:14ch}
+  .kicker{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--steel-hi);margin-bottom:26px}
+  .kicker .tick{display:inline-block;width:26px;height:1px;background:var(--steel);vertical-align:middle;margin-right:12px}
+  h1{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(2.7rem,7.4vw,5.6rem);
+    line-height:1.05;letter-spacing:-.015em;text-wrap:balance;max-width:14ch}
   h1 em{font-style:italic;font-weight:600;color:var(--ember)}
-  .hero-sub{margin-top:30px;max-width:44ch;color:var(--muted);font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.7}
+  .hero-sub{margin-top:30px;max-width:46ch;color:var(--muted);font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.7}
   .hero-ctas{margin-top:44px;display:flex;gap:14px;flex-wrap:wrap}
   .btn{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 26px;
     font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.02em;text-decoration:none;
-    border:1px solid var(--ember-deep);color:var(--text);background:rgba(224,164,88,.12);
+    border:1px solid var(--steel-lo);color:var(--text);background:rgba(63,91,106,.2);
     transition:background .25s,border-color .25s}
-  .btn:hover{background:rgba(224,164,88,.22)}
+  .btn:hover{background:rgba(63,91,106,.36);border-color:var(--steel)}
   .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
-  .btn.ghost:hover{color:var(--text);border-color:var(--ember-deep)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--steel-lo)}
   .btn .arrow{transition:transform .25s}
   .btn:hover .arrow{transform:translateX(4px)}
   .hero-foot{margin-top:70px;color:var(--dim);font-size:14px;font-family:'Fraunces',Georgia,serif;font-style:italic}
 
-  /* ── marquee ── */
-  .truthline{border-top:1px solid var(--line);border-bottom:1px solid var(--line);
-    overflow:hidden;white-space:nowrap;padding:20px 0;background:var(--dusk-1)}
+  .truthline{border-top:1px solid var(--line);border-bottom:1px solid var(--line);overflow:hidden;white-space:nowrap;padding:20px 0;background:var(--carbon-1)}
   .truthline .track{display:inline-block;will-change:transform}
-  .truthline span{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:clamp(1.05rem,2.3vw,1.6rem);
-    color:var(--ember);padding:0 3.5vw}
-  .truthline .dot{color:var(--dim);font-style:normal}
+  .truthline span{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:clamp(1.05rem,2.3vw,1.6rem);color:var(--steel-hi);padding:0 3.5vw}
+  .truthline .dot{color:var(--ember);font-style:normal}
 
-  /* ── sections ── */
   section{padding:clamp(80px,12vw,150px) 0}
   .sec-kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
-  .sec-kicker b{color:var(--ember)}
-  h2{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(1.9rem,4.4vw,3.2rem);
-    line-height:1.14;letter-spacing:-.01em;text-wrap:balance;max-width:22ch}
+  .sec-kicker b{color:var(--steel-hi)}
+  h2{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(1.9rem,4.4vw,3.1rem);line-height:1.14;letter-spacing:-.01em;text-wrap:balance;max-width:22ch}
   h2 em{font-style:italic;color:var(--ember)}
-  .lede{margin-top:22px;max-width:var(--measure);color:var(--muted);font-size:1.05rem}
+  .lede{margin-top:22px;max-width:62ch;color:var(--muted);font-size:1.05rem}
 
-  /* the group-chat wall */
-  .chaos{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:56px}
-  .chaos > div{background:var(--dusk-1);padding:30px 26px}
-  .chaos .q{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:1.15rem;color:var(--text);line-height:1.4}
-  .chaos .a{margin-top:14px;font-size:.85rem;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+  /* ── THE INVERSION — warm paper band for the magic moments ── */
+  .paper{background:var(--paper);color:var(--paper-text);position:relative}
+  .paper .sec-kicker{color:var(--paper-muted)}
+  .paper .sec-kicker b{color:var(--steel-lo)}
+  .paper h2 em{color:var(--steel-lo)}
+  .paper .lede{color:var(--paper-muted)}
 
-  /* how it helps */
-  .sysrow{display:grid;grid-template-columns:64px 1fr;gap:26px;padding:44px 0;border-top:1px solid var(--line);align-items:start}
-  .sysrow:last-of-type{border-bottom:1px solid var(--line)}
-  .sysrow .num{font-family:'Fraunces',Georgia,serif;font-size:1.6rem;color:var(--ember-deep);font-weight:300;line-height:1.15;padding-top:4px}
-  .sysrow h3{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.45rem;letter-spacing:-.01em}
-  .sysrow p{margin-top:10px;color:var(--muted);max-width:58ch}
+  .moments{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;margin-top:60px}
+  .moment{border:1px solid var(--paper-line);background:var(--paper-2);padding:26px 24px 28px;display:flex;flex-direction:column;gap:16px}
+  .moment .eyebrow{font-size:10px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--steel-lo)}
+  .moment h3{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.35rem;line-height:1.25}
+  .moment p{color:var(--paper-muted);font-size:.95rem;line-height:1.6}
+  /* matte object on paper — the mini app mock */
+  .mock{margin-top:auto;background:var(--carbon-1);color:var(--text);border:1px solid #2a251f;padding:16px 15px 17px;box-shadow:0 14px 34px rgba(27,23,19,.18)}
+  .mock .mk{font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--steel);margin-bottom:10px}
+  .mock .r{display:flex;align-items:baseline;gap:8px;padding:7px 0;border-top:1px solid #29241e;font-size:13px}
+  .mock .r:first-of-type{border-top:none}
+  .mock .r .it{color:var(--text);font-weight:600;white-space:nowrap}
+  .mock .r .d{color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mock .r .v{color:var(--steel-hi);font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .mock .r .ok{color:#8fae89;font-size:9px;font-weight:700;letter-spacing:.14em;white-space:nowrap}
+  .mock .r .wait{color:var(--ember);font-size:9px;font-weight:700;letter-spacing:.14em;white-space:nowrap}
+  .mock .msg{font-size:13px;color:var(--text);line-height:1.55;border-left:2px solid var(--steel-lo);padding:2px 0 2px 12px;font-style:italic;font-family:'Fraunces',Georgia,serif}
+  .mock .foot{margin-top:10px;font-size:11px;color:var(--dim)}
+  .mock .foot b{color:var(--steel-hi);font-weight:600}
 
-  /* the note card — a text a host would actually get */
-  .note{margin-top:64px;border:1px solid var(--line);background:var(--dusk-1);max-width:560px}
-  .note .bar{padding:14px 20px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between}
-  .note .bar .day{color:var(--ember)}
-  .note .body{padding:26px 22px 30px}
-  .note .head{font-family:'Fraunces',Georgia,serif;font-size:1.3rem;line-height:1.35}
-  .note .line{margin-top:10px;color:var(--muted);font-size:.98rem;line-height:1.65}
-  .note .row{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);display:flex;align-items:baseline;gap:10px;font-size:.95rem}
-  .note .row .who{color:var(--text);font-weight:600;white-space:nowrap}
-  .note .row .what{color:var(--muted);flex:1;min-width:0}
-  .note .row .st{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap}
-  .note .st.ok{color:var(--leaf)} .note .st.wait{color:var(--ember)}
+  /* day-of band (dark) */
+  .dayof-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:60px;align-items:start}
+  .ros{border:1px solid var(--line);background:var(--carbon-1)}
+  .ros .bar{padding:12px 18px;border-bottom:1px solid var(--line);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between}
+  .ros .bar .now{color:var(--ember)}
+  .ros .cue{display:flex;gap:14px;align-items:baseline;padding:15px 18px;border-top:1px solid var(--line);font-size:14px}
+  .ros .cue:first-of-type{border-top:none}
+  .ros .t{color:var(--steel-hi);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .ros .s{color:var(--text)}
+  .ros .cue.live{background:rgba(201,141,75,.07)}
+  .ros .cue.live .s::after{content:"— now";color:var(--ember);font-size:11px;margin-left:8px;letter-spacing:.08em}
+  .dayof-points{display:flex;flex-direction:column;gap:26px}
+  .dpt h4{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.2rem}
+  .dpt p{margin-top:6px;color:var(--muted);font-size:.95rem;max-width:44ch}
 
-  /* promises */
   .promises{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:56px}
-  .promises > div{background:var(--dusk-0);padding:34px 28px}
+  .promises > div{background:var(--carbon-0);padding:34px 28px}
   .promises h4{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.3rem;line-height:1.25}
   .promises p{margin-top:12px;color:var(--muted);font-size:.95rem}
-  .promises .vow{color:var(--ember);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:14px}
+  .promises .vow{color:var(--steel-hi);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:14px}
 
-  .close{text-align:left;padding-bottom:clamp(100px,14vw,190px)}
+  .close{padding-bottom:clamp(100px,14vw,190px)}
   .close h2{max-width:18ch}
   .close .btn{margin-top:40px}
   .close .ps{margin-top:26px;color:var(--dim);font-size:.95rem;font-family:'Fraunces',Georgia,serif;font-style:italic}
@@ -137,9 +136,8 @@
     #lights{display:none}
     html{scroll-behavior:auto}
   }
+  @media (max-width:760px){ .dayof-grid{grid-template-columns:1fr;gap:40px} }
   @media (max-width:640px){
-    .sysrow{grid-template-columns:1fr;gap:8px}
-    .sysrow .num{padding-top:0}
     nav{padding:14px 16px}
     .brand{font-size:11px;letter-spacing:.1em;gap:7px}
     .nav-cta{font-size:12px;padding:9px 12px}
@@ -161,10 +159,10 @@
     <header>
       <div class="kicker" id="hero-k"><span class="tick"></span>For the ones who host</div>
       <h1 id="hero-h">Be at <em>your own party.</em></h1>
-      <p class="hero-sub" id="hero-s">You're the one who plans it, shops for it, cooks it, and worries about it. Event Boss holds all of that — who's bringing what, what's bought, what's still open — and just tells you the one thing to do next. So on the day, you're on the porch with everybody else.</p>
+      <p class="hero-sub" id="hero-s">You're the planner, the shopper, the cook, and the one everybody calls. Event Boss does the work under the work — it sizes the food, writes the messages, watches the weather, and walks the day with you. You make the calls. It carries everything else.</p>
       <div class="hero-ctas" id="hero-c">
         <a class="btn" href="./index.html">Plan your gathering <span class="arrow">→</span></a>
-        <a class="btn ghost" href="#help">How it helps</a>
+        <a class="btn ghost" href="#magic">See what it does for you</a>
       </div>
       <div class="hero-foot" id="hero-f">Cookouts, reunions, showers, repasts, graduations — the events you host yourself.</div>
     </header>
@@ -172,83 +170,104 @@
 
   <div class="truthline" aria-hidden="true">
     <div class="track" id="truthtrack">
-      <span>“I got you” isn't the same as it's handled <i class="dot">·</i></span>
-      <span>Picking the menu isn't buying the food <i class="dot">·</i></span>
-      <span>Hope is not a rain plan <i class="dot">·</i></span>
-      <span>“I got you” isn't the same as it's handled <i class="dot">·</i></span>
-      <span>Picking the menu isn't buying the food <i class="dot">·</i></span>
-      <span>Hope is not a rain plan <i class="dot">·</i></span>
+      <span>It does the math <i class="dot">·</i></span>
+      <span>It writes the texts <i class="dot">·</i></span>
+      <span>It watches the sky <i class="dot">·</i></span>
+      <span>It does the math <i class="dot">·</i></span>
+      <span>It writes the texts <i class="dot">·</i></span>
+      <span>It watches the sky <i class="dot">·</i></span>
+    </div>
+  </div>
+
+  <!-- ── THE INVERSION: warm paper, the do-it-for-me moments ── -->
+  <div class="paper">
+    <div class="wrap">
+      <section id="magic">
+        <div class="sec-kicker reveal">The magic — <b>“do it for me” moments</b></div>
+        <h2 class="reveal">Say <em>“do it for me”</em> and mean it.</h2>
+        <p class="lede reveal">These aren't features to learn. They're chores that disappear. Everything below is drafted from your real plan — you look it over, tap once, done.</p>
+
+        <div class="moments">
+          <div class="moment reveal">
+            <div class="eyebrow">The shopping does its own math</div>
+            <h3>Tell it 30 people. It sizes everything.</h3>
+            <p>Ribs by the pound, drinks by the cooler, ice by the bag — quantities sized to your headcount, with real price ranges and where to get each thing near you. Change the count, the whole list re-sizes.</p>
+            <div class="mock" aria-label="Example shopping rows">
+              <div class="mk">The spread · sized for 30</div>
+              <div class="r"><span class="it">Ribs</span><span class="d">9 lbs · butcher or Costco</span><span class="v">$58–$76</span></div>
+              <div class="r"><span class="it">Red drink</span><span class="d">3 gal · grocery</span><span class="v">$14–$22</span></div>
+              <div class="r"><span class="it">Ice</span><span class="d">4 bags — it knows to buy this day-of</span><span class="v">$12</span></div>
+              <div class="foot">One tap opens the store search or an <b>Instacart cart</b> — your call.</div>
+            </div>
+          </div>
+
+          <div class="moment reveal">
+            <div class="eyebrow">It writes the awkward texts</div>
+            <h3>The messages, drafted and waiting.</h3>
+            <p>The invite. The “still on for Saturday?” note to the DJ. The final-details message with the address, parking, and what to bring. Even a parking note and a rain plan — starters written from your plan, ready for your edits.</p>
+            <div class="mock" aria-label="Example drafted message">
+              <div class="mk">Final details · drafted for you</div>
+              <div class="msg">“Hey y'all — Saturday, 2pm, our place. Street parking out front, driveway holds 2–3 cars. Bring a chair if you have one. Can't wait to see you.”</div>
+              <div class="foot">You read it, you send it. <b>Nothing goes out on its own.</b></div>
+            </div>
+          </div>
+
+          <div class="moment reveal">
+            <div class="eyebrow">It remembers who's got what</div>
+            <h3>Aunt Lisa's dessert has a status.</h3>
+            <p>Everyone who said “I got you” gets a quiet spot in the plan — assigned, confirmed, or actually brought. It nudges you to check in at the right moment, and keeps your backup until the tray is on the table.</p>
+            <div class="mock" aria-label="Example helper rows">
+              <div class="mk">People bringing things</div>
+              <div class="r"><span class="it">Aunt Lisa</span><span class="d">dessert tray</span><span class="wait">CHECK IN</span></div>
+              <div class="r"><span class="it">Marcus</span><span class="d">ice · confirmed Tuesday</span><span class="ok">COVERED</span></div>
+              <div class="r"><span class="it">Denise</span><span class="d">fruit platter · on the table</span><span class="ok">BROUGHT</span></div>
+            </div>
+          </div>
+
+          <div class="moment reveal">
+            <div class="eyebrow">It watches the money and the sky</div>
+            <h3>Over budget? It finds the one swap.</h3>
+            <p>When the plan creeps past your number, it names the single thing you can drop to get back — without touching the food. And if rain shows up in the forecast, it nudges you toward a backup before the week of, not the morning of.</p>
+            <div class="mock" aria-label="Example budget and weather nudges">
+              <div class="mk">Two quiet nudges</div>
+              <div class="r"><span class="it">$64 over</span><span class="d">drop the party favors and you're back on plan</span><span class="v">1 tap</span></div>
+              <div class="r"><span class="it">Rain watch</span><span class="d">Thursday looks wet — garage + carport saved as plan B</span><span class="ok">READY</span></div>
+              <div class="foot">It suggests. <b>You decide.</b> Always in that order.</div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
   <div class="wrap">
-    <section id="problem">
-      <div class="sec-kicker reveal">You know this feeling — <b>the week before</b></div>
-      <h2 class="reveal">Everybody said they've got it. So why are <em>you</em> the one up at midnight?</h2>
-      <p class="lede reveal">The plan lives in the group chat, a notes app, two receipts, and your head. Everyone means well. Nobody can tell you what actually still needs doing.</p>
-      <div class="chaos">
-        <div class="reveal"><div class="q">“Auntie's got the potato salad.”</div><div class="a">Nobody's checked since Tuesday</div></div>
-        <div class="reveal"><div class="q">“We picked the menu weeks ago.”</div><div class="a">Nothing's actually been bought</div></div>
-        <div class="reveal"><div class="q">“It's not gonna rain.”</div><div class="a">There's no plan B written anywhere</div></div>
-        <div class="reveal"><div class="q">“The DJ said he's good.”</div><div class="a">No time, no deposit, no number saved</div></div>
-      </div>
-    </section>
-
-    <section id="help">
-      <div class="sec-kicker reveal">What it does — <b>plainly</b></div>
-      <h2 class="reveal">It carries the plan, so <em>you</em> don't have to.</h2>
-      <p class="lede reveal">No dashboards to study. You open it, it tells you the one thing worth doing today, and everything it says is checked against what's really true.</p>
-
-      <div style="margin-top:64px">
-        <div class="sysrow reveal">
-          <div class="num">01</div>
-          <div>
-            <h3>One thing at a time</h3>
-            <p>Not a wall of red. Not fourteen reminders. The top of your screen says the single next thing — book the tables, confirm the count, buy the drinks — and takes you straight to it. And when it says you're in good shape, it's because you actually are.</p>
-          </div>
+    <section id="dayof">
+      <div class="sec-kicker reveal">Event day — <b>it walks with you</b></div>
+      <h2 class="reveal">On the day, the planning goes quiet and the <em>day plan</em> takes over.</h2>
+      <div class="dayof-grid">
+        <div class="ros reveal" aria-label="Example run of show">
+          <div class="bar"><span>Saturday · the cookout</span><span class="now">12:40 PM</span></div>
+          <div class="cue"><span class="t">10:00</span><span class="s">Setup — tables, canopy, coolers</span></div>
+          <div class="cue"><span class="t">11:30</span><span class="s">Grill on · Marcus starts the ice run</span></div>
+          <div class="cue live"><span class="t">12:30</span><span class="s">Guests arrive</span></div>
+          <div class="cue"><span class="t">2:00</span><span class="s">The toast for Pop — his song ready</span></div>
+          <div class="cue"><span class="t">6:30</span><span class="s">Plates wrapped, leftovers list out</span></div>
         </div>
-        <div class="sysrow reveal">
-          <div class="num">02</div>
-          <div>
-            <h3>It remembers who's bringing what</h3>
-            <p>Aunt Lisa said she's got dessert? Great — but the plan keeps a spot for it until you've confirmed with her, and doesn't call it done until the tray is actually on the table. Nobody gets embarrassed, nothing gets forgotten.</p>
-          </div>
-        </div>
-        <div class="sysrow reveal">
-          <div class="num">03</div>
-          <div>
-            <h3>The day before, it gets quiet</h3>
-            <p>All the planning noise folds down into one page: what still matters, who to check in with, what to stop worrying about. And on the day itself it stops talking about planning entirely — it just walks the day with you.</p>
-          </div>
-        </div>
-        <div class="sysrow reveal">
-          <div class="num">04</div>
-          <div>
-            <h3>It does the awkward writing for you</h3>
-            <p>The invite text, the "still on for Saturday?" note to the DJ, the final details message with the address and what to bring — drafted from your real plan, in plain words, for you to look over and send.</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="note reveal" aria-label="An example of the day-before page">
-        <div class="bar"><span>Marcus &amp; Tasha's cookout</span><span class="day">The day before</span></div>
-        <div class="body">
-          <div class="head">Three things still matter. Everything else is handled.</div>
-          <div class="line">You're in better shape than it feels like. Here's what's left:</div>
-          <div class="row"><span class="who">Aunt Lisa</span><span class="what">dessert tray — check she's still bringing it</span><span class="st wait">Check in</span></div>
-          <div class="row"><span class="who">The ice</span><span class="what">2 bags, morning-of — it's on tomorrow's list</span><span class="st ok">Planned</span></div>
-          <div class="row"><span class="who">Rain plan</span><span class="what">garage + carport, written down and ready</span><span class="st ok">Ready</span></div>
+        <div class="dayof-points">
+          <div class="dpt reveal"><h4>The day before, it compresses</h4><p>All the planning noise folds into one page: what still matters, who to check with, what to stop worrying about.</p></div>
+          <div class="dpt reveal"><h4>On the day, it points at now</h4><p>No stale to-dos, no guilt. Just the next cue — and the moment that's the whole point of the day, protected on the schedule.</p></div>
+          <div class="dpt reveal"><h4>After, it closes out gently</h4><p>Thank-yous, returns, the last vendor payment — a short list, then it's done and quiet.</p></div>
         </div>
       </div>
     </section>
 
     <section id="promises">
       <div class="sec-kicker reveal">Our word — <b>three promises</b></div>
-      <h2 class="reveal">Built for your family's business to <em>stay</em> your family's business.</h2>
+      <h2 class="reveal">Real help, not <em>pretend smart.</em></h2>
       <div class="promises">
-        <div class="reveal"><span class="vow">We won't make things up</span><h4>If it doesn't know, it says so.</h4><p>No invented prices, no fake suggestions, no pretend smartness. Every number on your screen comes from something you told it or something real.</p></div>
-        <div class="reveal"><span class="vow">We won't nag you</span><h4>Calm, always.</h4><p>One nudge at a time, and only when it matters. Finished things fold themselves away. If you don't want to track RSVPs, it will never bring them up.</p></div>
-        <div class="reveal"><span class="vow">We won't share your people</span><h4>Your folks stay yours.</h4><p>Who's bringing what stays between you and the app. Vendors see only what they need for the day. Guests see only what you choose to send.</p></div>
+        <div class="reveal"><span class="vow">We won't make things up</span><h4>If it doesn't know, it says so.</h4><p>Every price, quantity, and suggestion traces to something real — your plan, your count, your prices. No pretend intelligence.</p></div>
+        <div class="reveal"><span class="vow">We won't nag you</span><h4>One nudge at a time.</h4><p>Finished things fold away. Skipped things stay skipped. If you don't track RSVPs, it never mentions them.</p></div>
+        <div class="reveal"><span class="vow">We won't share your people</span><h4>Your folks stay yours.</h4><p>Who's bringing what stays between you and the app. Vendors see only their own day. Guests see only what you send.</p></div>
       </div>
     </section>
 
@@ -272,78 +291,78 @@
 (function(){
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  /* ── string-light bokeh: soft warm orbs drifting like backyard lights ── */
+  /* warm lamplight bokeh — quiet, matte, few */
   var cv = document.getElementById('lights');
   if (!reduced && cv && cv.getContext) {
     var ctx = cv.getContext('2d'), W, H, DPR, orbs = [];
     var mob = Math.min(window.innerWidth, window.innerHeight) < 700;
-    var N = mob ? 14 : 26;
+    var N = mob ? 10 : 18;
     function size(){
       DPR = Math.min(window.devicePixelRatio || 1, 2);
       W = window.innerWidth; H = window.innerHeight;
-      cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+      cv.width = W*DPR; cv.height = H*DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
     }
     size(); window.addEventListener('resize', size);
-    for (var i = 0; i < N; i++) {
-      var warm = Math.random() < .8; // mostly ember, a few leaf-green
-      orbs.push({
-        x: Math.random()*window.innerWidth, y: Math.random()*window.innerHeight,
-        r: Math.random()*46 + 14,
-        vx: (Math.random()-.5)*.12, vy: (Math.random()-.5)*.09,
-        hue: warm ? '224,164,88' : '143,169,139',
-        a: Math.random()*.05 + .025,
-        tw: Math.random()*6.283, ts: Math.random()*.008 + .003
-      });
+    for (var i=0;i<N;i++){
+      var warm = Math.random() < .7;
+      orbs.push({ x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight,
+        r:Math.random()*44+16, vx:(Math.random()-.5)*.1, vy:(Math.random()-.5)*.08,
+        hue: warm ? '201,141,75' : '111,135,148',
+        a:Math.random()*.04+.02, tw:Math.random()*6.283, ts:Math.random()*.007+.003 });
     }
     var running = true;
     document.addEventListener('visibilitychange', function(){ running = !document.hidden; if (running) tick(); });
     function tick(){
       if (!running) return;
       ctx.clearRect(0,0,W,H);
-      for (var i = 0; i < N; i++) {
+      for (var i=0;i<N;i++){
         var o = orbs[i];
         o.x += o.vx; o.y += o.vy; o.tw += o.ts;
-        if (o.x < -o.r) o.x = W + o.r; if (o.x > W + o.r) o.x = -o.r;
-        if (o.y < -o.r) o.y = H + o.r; if (o.y > H + o.r) o.y = -o.r;
-        var a = o.a * (0.75 + 0.25*Math.sin(o.tw)); // slow twinkle
-        var g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
-        g.addColorStop(0, 'rgba(' + o.hue + ',' + a.toFixed(3) + ')');
-        g.addColorStop(1, 'rgba(' + o.hue + ',0)');
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, 6.2832); ctx.fill();
+        if (o.x < -o.r) o.x = W+o.r; if (o.x > W+o.r) o.x = -o.r;
+        if (o.y < -o.r) o.y = H+o.r; if (o.y > H+o.r) o.y = -o.r;
+        var a = o.a * (0.75 + 0.25*Math.sin(o.tw));
+        var g = ctx.createRadialGradient(o.x,o.y,0,o.x,o.y,o.r);
+        g.addColorStop(0,'rgba('+o.hue+','+a.toFixed(3)+')');
+        g.addColorStop(1,'rgba('+o.hue+',0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x,o.y,o.r,0,6.2832); ctx.fill();
       }
       requestAnimationFrame(tick);
     }
     tick();
   }
 
-  if (typeof gsap === 'undefined') return; // CDN blocked — page stays static & readable
+  if (typeof gsap === 'undefined') return;
   gsap.registerPlugin(ScrollTrigger);
   if (reduced) return;
 
   gsap.timeline({defaults:{ease:'power3.out'}})
-    .from('#hero-k', {y:18, opacity:0, duration:.7})
-    .from('#hero-h', {y:42, opacity:0, duration:1.0}, '-=.35')
-    .from('#hero-s', {y:26, opacity:0, duration:.8}, '-=.55')
-    .from('#hero-c', {y:20, opacity:0, duration:.7}, '-=.5')
-    .from('#hero-f', {opacity:0, duration:.9}, '-=.3');
+    .from('#hero-k',{y:18,opacity:0,duration:.7})
+    .from('#hero-h',{y:42,opacity:0,duration:1.0},'-=.35')
+    .from('#hero-s',{y:26,opacity:0,duration:.8},'-=.55')
+    .from('#hero-c',{y:20,opacity:0,duration:.7},'-=.5')
+    .from('#hero-f',{opacity:0,duration:.9},'-=.3');
 
   gsap.utils.toArray('.reveal').forEach(function(el){
-    gsap.to(el, { opacity:1, y:0, duration:.85, ease:'power3.out',
-      scrollTrigger:{ trigger:el, start:'top 86%' } });
+    gsap.to(el,{opacity:1,y:0,duration:.85,ease:'power3.out',
+      scrollTrigger:{trigger:el,start:'top 86%'}});
   });
 
   var track = document.getElementById('truthtrack');
-  if (track) gsap.to(track, { xPercent:-50, ease:'none', duration:28, repeat:-1 });
+  if (track) gsap.to(track,{xPercent:-50,ease:'none',duration:24,repeat:-1});
 
-  gsap.to('#hero-h', { yPercent:-8, ease:'none',
-    scrollTrigger:{ trigger:'header', start:'top top', end:'bottom top', scrub:true } });
+  gsap.to('#hero-h',{yPercent:-8,ease:'none',
+    scrollTrigger:{trigger:'header',start:'top top',end:'bottom top',scrub:true}});
 
-  /* the note card settles in a touch later than the rows above it */
-  gsap.utils.toArray('.note .row').forEach(function(el, i){
-    gsap.from(el, { opacity:0, x:-14, duration:.6, delay:.15*i, ease:'power2.out',
-      scrollTrigger:{ trigger:'.note', start:'top 78%' } });
+  /* moment mocks: rows type themselves in */
+  gsap.utils.toArray('.mock').forEach(function(mock){
+    var rows = mock.querySelectorAll('.r, .msg, .foot');
+    gsap.from(rows,{opacity:0,x:-12,duration:.55,stagger:.12,ease:'power2.out',
+      scrollTrigger:{trigger:mock,start:'top 82%'}});
   });
+
+  /* run-of-show cues cascade */
+  gsap.from('.ros .cue',{opacity:0,x:-16,duration:.5,stagger:.12,ease:'power2.out',
+    scrollTrigger:{trigger:'.ros',start:'top 78%'}});
 })();
 </script>
 </body>
