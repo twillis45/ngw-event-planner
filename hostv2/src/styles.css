@@ -27,7 +27,12 @@ button{font-family:inherit}
 }
 .app::-webkit-scrollbar{display:none}
 @media(min-width:700px){
-  .stagewrap{width:402px; height:min(844px,92vh); margin:20px auto 40px}
+  /* True iPhone 15/16 geometry (393×852 pt); scales as a whole via --fit (main.jsx). */
+  .stagewrap{
+    width:393px; height:852px; margin:20px auto 40px;
+    transform-origin:top center; transform:scale(var(--fit,1));
+    margin-bottom:calc(40px + 852px*(var(--fit,1) - 1));
+  }
   .app{border-radius:48px; box-shadow:0 0 0 11px #17181B, 0 0 0 13px #2E2F33, 0 42px 90px -28px rgba(25,22,17,.5)}
 }
 @media(max-width:699px){ .stagewrap{height:100dvh} }
