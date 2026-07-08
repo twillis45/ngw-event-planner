@@ -10,6 +10,7 @@ import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
 import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
 import { positiveAttention } from '@app/lib/positiveAttention';
+import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
@@ -710,6 +711,22 @@ export default function HostShellV2() {
   // Roster quick-add: paste names, one per line — a REAL guest list, which is
   // what unlocks RSVP intelligence, yes-counts, and the drift detector.
   const [rosterText, setRosterText] = useState('');
+  const [guestOpen, setGuestOpen] = useState(null); // per-guest detail editor
+  const [deadlineOpen, setDeadlineOpen] = useState(false);
+  const writeGuest = (i, patch, msg) => {
+    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
+    // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
+    // protein) — derive it from the roster so food re-prices automatically.
+    const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    patchEvent({ guests: gs, kidsCount }, msg);
+  };
+  const removeGuest = (i) => {
+    const g = (event.guests || [])[i];
+    const gs = (event.guests || []).filter((_, ix) => ix !== i);
+    const kidsCount = gs.reduce((t, x) => t + (Number(x && x.kids) || 0), 0);
+    patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
+    setGuestOpen(null);
+  };
   const addRoster = () => {
     const names = rosterText.split('\n').map(x => x.trim()).filter(Boolean);
     if (!names.length) return;
@@ -2544,27 +2561,81 @@ export default function HostShellV2() {
                   </div>
                 </div>
               );
+              const chase = showsReplyTracking(event); // count-only hosts are never chased
+              const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes' && String(g.plusOne || '').trim()).length;
+              const kidsTotal = (event.guests || []).reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
               return (event.guests || []).length ? (
                 <>
-                  {gcr && gcr.pending > 0 && (
+                  {chase && gcr && gcr.pending > 0 && (
                     <div className="v-meta" style={{ padding: '0 2px 6px' }}>
                       {gcr.pending} still unanswered{bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''} — the count settles as replies land.
                     </div>
                   )}
+                  {(plusOnes > 0 || kidsTotal > 0) && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsTotal ? kidsTotal + ' kid' + (kidsTotal === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
+                  {!chase && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      You went by headcount — replies here are just for tracking, no chasing.
+                    </div>
+                  )}
                   <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
-                    {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length}
+                    {(() => {
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      return heads !== yes.length ? `${yes.length} yes (+${heads - yes.length} with them = ${heads} heads) of ${(event.guests || []).length}` : `${yes.length} yes of ${(event.guests || []).length}`;
+                    })()}
                     {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
-                    {' — tap a name to flip their RSVP — your plan reads this list.'}
+                    {!isPast && (
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : 'change'}</button>
+                    )}
+                    {' — tap the tag to flip an RSVP, the name for kids, +1s and needs.'}
                   </div>
+                  {deadlineOpen && (
+                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                      <span className="of">replies by:</span>
+                      <input className="field" style={{ maxWidth: 160, fontSize: 13, padding: '6px 10px' }} type="date"
+                        value={event.rsvpDeadline || (rsvpBy && rsvpBy.iso) || ''}
+                        onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — the nudges and countdown read it.')}
+                        aria-label="RSVP deadline" />
+                    </div>
+                  )}
                   <div className="actions-row" style={{ margin: '0 0 8px' }}>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Copy the invite</button>
-                    <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>}
                   </div>
                   {(event.guests || []).slice(0, 40).map((g, i) => (
-                    <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
-                      <span>{g.name || 'Guest ' + (i + 1)}</span>
-                      <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
-                    </button>
+                    <div key={i}>
+                      <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
+                          onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
+                          {g.name || 'Guest ' + (i + 1)}
+                          {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                          {Number(g.kids) > 0 ? <span className="of"> · {g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                          {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
+                        </button>
+                        <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
+                          <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
+                        </button>
+                      </div>
+                      {guestOpen === i && (
+                        <div className="brow" style={{ margin: '2px 0 8px', padding: '8px 6px' }}>
+                          <div className="actions-row" style={{ alignItems: 'center' }}>
+                            <span className="of">kids:</span>
+                            <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
+                            <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
+                            <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
+                            <input className="field" style={{ maxWidth: 110, fontSize: 13, padding: '6px 10px' }} placeholder="+1 name"
+                              value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
+                            <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="needs? (vegan, nut…)"
+                              value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
+                            <button className="mini" onClick={() => removeGuest(i)}>remove</button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   ))}
                   {quickAdd}
                 </>
