@@ -414,3 +414,8 @@ button{font-family:inherit}
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .ev-venue{font-size:12px; font-weight:550; color:var(--muted); margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+
+/* Editable draft body — same look as the read-only card, but yours */
+.draft-edit{width:100%; border:1px solid var(--line); background:var(--bg-band); color:var(--ink);
+  font:inherit; font-size:13.5px; line-height:1.55; resize:vertical; outline:none}
+.draft-edit:focus{border-color:var(--steel)}

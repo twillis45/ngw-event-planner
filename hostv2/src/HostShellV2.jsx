@@ -453,28 +453,51 @@ export default function HostShellV2() {
   };
 
   // Do-it-for-me: the app's REAL drafting engine (lib/doItForMe), verbatim.
-  const [draftTone, setDraftTone] = useState('as-written');
+  // Voice: the host's remembered writing personality — applies to every draft
+  // until they change it. Deterministic re-shapes only (no fake AI).
+  const [draftTone, setDraftTone] = useState(() => { try { return localStorage.getItem('ngw-hostv2-voice') || 'as-written'; } catch { return 'as-written'; } });
+  const [draftBody, setDraftBody] = useState(null); // non-null = host's own edit
+  useEffect(() => { try { localStorage.setItem('ngw-hostv2-voice', draftTone); } catch {} }, [draftTone]);
   const openDraft = (title, d) => {
     const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
     if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
-    setDraftTone('as-written');
+    setDraftBody(null);
     setSheet({ kind: 'draft', title, body });
   };
   // Tone variants are DETERMINISTIC rewrites of the same facts — mechanical
   // tightening/warming, never invented content (no fake AI doctrine).
   const toneBody = (body, tone) => {
+    let b = String(body);
     if (tone === 'tighter') {
-      const ps = String(body).split('\n\n');
-      if (ps.length <= 2) return body;
+      const ps = b.split('\n\n');
+      if (ps.length <= 2) return b;
       const mid = ps.slice(1, -1).filter(p => p.includes('→') || /:$/m.test(p));
       return [ps[0], ...mid, ps[ps.length - 1]].join('\n\n');
     }
     if (tone === 'warmer') {
       const warm = 'So glad you’ll be part of it.';
-      return String(body).includes(warm) ? body : body + '\n\n' + warm;
+      return b.includes(warm) ? b : b + '\n\n' + warm;
     }
-    return body;
+    if (tone === 'playful') {
+      const lines = b.split('\n');
+      if (lines[0] && !/[!?]$/.test(lines[0].trim())) lines[0] = lines[0].replace(/[.。]?\s*$/, '!');
+      b = lines.join('\n');
+      const kick = 'It’s going to be a good one.';
+      return b.includes(kick) ? b : b + '\n\n' + kick;
+    }
+    if (tone === 'formal') {
+      return b
+        .replace(/!/g, '.')
+        .replace(/\bWe're\b/g, 'We are').replace(/\bwe're\b/g, 'we are')
+        .replace(/\bWe’re\b/g, 'We are').replace(/\bwe’re\b/g, 'we are')
+        .replace(/\bdon['’]t\b/gi, 'do not').replace(/\bcan['’]t\b/gi, 'cannot')
+        .replace(/\bwon['’]t\b/gi, 'will not').replace(/\bI['’]ll\b/g, 'I will')
+        .replace(/\byou['’]ll\b/gi, 'you will').replace(/\bwe['’]ll\b/gi, 'we will')
+        .replace(/\bit['’]s\b/gi, 'it is').replace(/\bthat['’]s\b/gi, 'that is');
+    }
+    return b;
   };
+  const shownDraft = () => draftBody != null ? draftBody : toneBody(sheet && sheet.body, draftTone);
   const copyDraft = async (body) => {
     try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
@@ -1664,25 +1687,28 @@ export default function HostShellV2() {
             {sheet.kind === 'draft' && (
               <>
                 <div className="chips" style={{ marginBottom: 12 }}>
-                  {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer']].map(([k, label]) => (
-                    <button key={k} className="chip" aria-pressed={draftTone === k} onClick={() => setDraftTone(k)}>{label}</button>
+                  {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => (
+                    <button key={k} className="chip" aria-pressed={draftBody == null && draftTone === k} onClick={() => { setDraftTone(k); setDraftBody(null); }}>{label}</button>
                   ))}
+                  {draftBody != null && <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>Your words</span>}
                 </div>
-                <div className="draft-body">{toneBody(sheet.body, draftTone)}</div>
+                <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
+                  onChange={e => setDraftBody(e.target.value)}
+                  rows={Math.min(14, shownDraft().split('\n').length + 2)} />
                 {/* Real handoffs: the native share sheet (iMessage/WhatsApp/etc.),
                     plus direct sms: and wa.me deep links — no fake "sent" states. */}
                 <div className="actions-row" style={{ marginTop: 14 }}>
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                     <button className="cta"
-                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: toneBody(sheet.body, draftTone) }).catch(() => {}); }}>
+                      onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).catch(() => {}); }}>
                       Send it…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(toneBody(sheet.body, draftTone))}>Text</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(toneBody(sheet.body, draftTone))} target="_blank" rel="noreferrer">WhatsApp</a>
-                  <button className="mini" onClick={() => copyDraft(toneBody(sheet.body, draftTone))}>Copy it</button>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())}>Text</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button className="mini" onClick={() => copyDraft(shownDraft())}>Copy it</button>
                 </div>
-                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Tones re-shape the same real details — tightened or warmed mechanically, nothing invented.</p>
+                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Voices re-shape the same real details mechanically — and you can edit every word above; your voice choice is remembered for every draft.</p>
               </>
             )}
             {sheet.kind === 'tasks' && (
