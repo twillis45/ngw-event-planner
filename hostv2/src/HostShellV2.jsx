@@ -175,6 +175,7 @@ export default function HostShellV2() {
   // or stray digits. Same gate the address row uses.
   const validPlace = (v) => {
     const t = String(v || '').trim();
+    if (/^\d{5}(-\d{4})?$/.test(t)) return true; // a ZIP is a real place
     return t.length >= 3 && /[a-zA-Z]/.test(t) && !/^\d+$/.test(t);
   };
   const [cityDraft, setCityDraft] = useState('');
@@ -192,7 +193,7 @@ export default function HostShellV2() {
   const needsCity = () => event.venueKind === 'home' && !String(event.venueCity || '').trim();
   const saveCity = () => {
     const c = cityDraft.trim();
-    if (c.length < 2 || !/^[a-zA-Z][a-zA-Z .,'-]*$/.test(c)) { toast('City or town name only — “Annapolis”, “Silver Spring, MD”.'); return; }
+    if (!/^\d{5}(-\d{4})?$/.test(c) && (c.length < 2 || !/^[a-zA-Z][a-zA-Z .,'-]*$/.test(c))) { toast('A town name or ZIP — “Annapolis”, “Silver Spring, MD”, “21401”.'); return; }
     patchEvent({ venueCity: c }, 'City noted — weather and the venue check now line up.');
     setCityDraft('');
   };
@@ -391,6 +392,7 @@ export default function HostShellV2() {
       .slice(0, 3);
   }, [decisionBoard, event]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
+  const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
   // ROW-LEVEL CTA RULE (Todd): a coming-up item lands on the exact field that
   // answers it — the crab order, the pickers count, the space list — never a
   // sheet top when a closer target exists.
@@ -702,6 +704,7 @@ export default function HostShellV2() {
     if (f === 'guests-entry') return 'guests';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
+    if (/final guest count|confirm .*guest count/i.test(a.title || '')) return 'lockcount';
     if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
     if (a.domain === 'start') return 'guests';
     return null;
@@ -732,6 +735,25 @@ export default function HostShellV2() {
       </div>
     );
     if (kind === 'rain') return rainEditorBlock();
+    if (kind === 'lockcount') {
+      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+      const planned = guests || 0;
+      return (
+        <div className="chips hc-row">
+          {yes > 0 && (
+            <button className="chip" onClick={() => patchEvent({ guestCount: yes, guestMode: 'count' }, 'Locked at ' + yes + ' — your confirmed yeses. Food and seats now size to it.')}>
+              Lock at {yes} — confirmed yeses
+            </button>
+          )}
+          {planned > 0 && planned !== yes && (
+            <button className="chip" onClick={() => patchEvent({ guestCount: planned, guestMode: 'count' }, 'Locked at ' + planned + ' — the number you planned around.')}>
+              Lock at {planned} — as planned
+            </button>
+          )}
+          <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Check the list first</button>
+        </div>
+      );
+    }
     if (kind === 'budget') return budgetEditorBlock();
     if (kind === 'date') return (
       <div className="hc-row">
@@ -1115,8 +1137,19 @@ export default function HostShellV2() {
               </p>
 
               <div className="bento">
-                <button className="tile tile-a" onClick={() => { setHandledOpen(o => !o); }}>
-                  <div className="t-label">Where you stand <span style={{ opacity: .55 }}>{handledOpen ? "▴" : "▾"}</span></div>
+                <button className="tile tile-a" onClick={() => {
+                  // Tap = take me to what's next, front and center (attention
+                  // system); the caret corner toggles the readouts panel.
+                  if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
+                  else setHandledOpen(o => !o);
+                }}>
+                  <div className="t-label">Where you stand{' '}
+                    <span role="button" tabIndex={0} style={{ opacity: .55, padding: '2px 6px' }}
+                      onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setHandledOpen(o => !o); } }}>
+                      {handledOpen ? "▴ readouts" : "▾ readouts"}
+                    </span>
+                  </div>
                   <div>
                     {(() => {
                       // TRUTH RULE (Todd, 2026-07-08): the tile reads the WIDER
@@ -1311,16 +1344,45 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              {blockers.map((b, i) => (
-                <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
-                  <div className="card-head">
-                    <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>Blocked</span></div>
-                    <h3>{b.title}</h3>
-                    {b.what && <p className="because">{b.what}</p>}
-                    {b.nextDecision && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
-                  </div>
-                </article>
-              ))}
+              {blockers.map((b, i) => {
+                const isVenueBlock = /venue/i.test(String(b.title || ''));
+                const venueSet = !!String(event.venue || '').trim();
+                return (
+                  <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
+                    <div className="card-head">
+                      <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'rgba(232,64,54,.14)' }}>Blocked</span></div>
+                      <h3>{b.title}</h3>
+                      {b.what && <p className="because">{b.what}</p>}
+                      {/* The blocker resolves RIGHT HERE — never a passive note.
+                          At-home venues clear via the town (venueCity), the same
+                          field weather and maps read. */}
+                      {isVenueBlock && !venueSet && (
+                        <>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name the place — “My brother’s backyard”, “VFW Post 3150”…"
+                              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); }} aria-label="Venue" />
+                            <button className="cta" onClick={saveVenue}>Save</button>
+                          </div>
+                          {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                        </>
+                      )}
+                      {isVenueBlock && venueSet && needsCity() && (
+                        <>
+                          <p className="grounding" style={{ marginTop: 6 }}>
+                            “{event.venue}” is named — the venue check also needs the town, so weather and maps can find it.
+                          </p>
+                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <input className="field" style={{ maxWidth: 180 }} placeholder="Annapolis"
+                              value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City or town" />
+                            <button className="cta" onClick={saveCity}>Save</button>
+                          </div>
+                        </>
+                      )}
+                      {!isVenueBlock && b.nextDecision && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
+                    </div>
+                  </article>
+                );
+              })}
 
               {event.venue && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
@@ -1955,32 +2017,77 @@ export default function HostShellV2() {
                       {items.filter(it => (it.group || 'Other') === g).map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
+                        const tuning = foodTune === it.id;
+                        const alts = (it.alternatives || []).map(a => (a && (a.name || a.label)) || (typeof a === 'string' ? a : null)).filter(Boolean).slice(0, 4);
                         return (
-                          <button key={it.id} className={'frow' + (got ? ' got' : '')}
-                            style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
-                            onClick={() => toggleGot(it, cost)}>
-                            <span className="fcheck" aria-hidden="true" />
-                            <span className="f-main">
-                              <span className="f-name">
-                                {it.short || it.item}
-                                {it.essential && !got ? <span className="tag essential">essential</span> : null}
-                                {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
-                                {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
+                          <div key={it.id}>
+                            <button className={'frow' + (got ? ' got' : '')}
+                              style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              onClick={() => toggleGot(it, cost)}>
+                              <span className="fcheck" aria-hidden="true" />
+                              <span className="f-main">
+                                <span className="f-name">
+                                  {it.short || it.item}
+                                  {it.swappedFrom ? <span className="tag plan">swapped</span> : null}
+                                  {it.essential && !got ? <span className="tag essential">essential</span> : null}
+                                  {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
+                                  {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
+                                </span>
+                                <span className="v-meta">
+                                  {[
+                                    it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
+                                    foodPlan.hasRealCount && it.unitBase && it.perUnitLow ? `${fmt(it.perUnitLow)}–${fmt(it.perUnitHigh)}/${it.unitBase}` : null,
+                                    it.where,
+                                  ].filter(Boolean).join(' · ')}
+                                </span>
                               </span>
-                              <span className="v-meta">
-                                {[
-                                  it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
-                                  foodPlan.hasRealCount && it.unitBase && it.perUnitLow ? `${fmt(it.perUnitLow)}–${fmt(it.perUnitHigh)}/${it.unitBase}` : null,
-                                  it.where,
-                                ].filter(Boolean).join(' · ')}
+                              <span className="amt">
+                                {foodPlan.hasRealCount
+                                  ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
+                                  : '—'}
                               </span>
-                            </span>
-                            <span className="amt">
-                              {foodPlan.hasRealCount
-                                ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
-                                : '—'}
-                            </span>
-                          </button>
+                              <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
+                                onClick={e => { e.stopPropagation(); setFoodTune(tuning ? null : it.id); }}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setFoodTune(tuning ? null : it.id); } }}>
+                                {tuning ? 'done' : 'tune'}
+                              </span>
+                            </button>
+                            {tuning && (
+                              <div className="brow" style={{ margin: '2px 0 8px', paddingLeft: 30 }}>
+                                {/* COST STRUCTURE, per item — the engine's own knobs:
+                                    size it (foodQty re-prices), swap it (alternatives
+                                    carry their own real ranges), or skip it. */}
+                                <div className="actions-row" style={{ alignItems: 'center' }}>
+                                  <span className="of">size:</span>
+                                  <button className="mini" onClick={() => {
+                                    const q = Math.max(0, (Number(it.qty) || 0) - 1);
+                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — the cost just moved.');
+                                  }}>−</button>
+                                  <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{it.qty} {it.unit}</span>
+                                  <button className="mini" onClick={() => {
+                                    const q = (Number(it.qty) || 0) + 1;
+                                    patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — the cost just moved.');
+                                  }}>+</button>
+                                  <button className="mini" onClick={() => patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped — the total just dropped.')}>skip it</button>
+                                </div>
+                                {(alts.length > 0 || it.swappedFrom) && (
+                                  <div className="chips" style={{ marginTop: 8 }}>
+                                    {it.swappedFrom && (
+                                      <button className="chip" onClick={() => {
+                                        const m = { ...(event.foodSwap || {}) }; delete m[it.id];
+                                        patchEvent({ foodSwap: m }, 'Back to ' + it.swappedFrom + ' — original pricing restored.');
+                                      }}>back to {it.swappedFrom}</button>
+                                    )}
+                                    {alts.map(name => (
+                                      <button key={name} className="chip" onClick={() => patchEvent({ foodSwap: { ...(event.foodSwap || {}), [it.id]: name } }, 'Swapped to ' + name + ' — priced with its own real range.')}>
+                                        {name}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>
