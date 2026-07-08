@@ -189,7 +189,7 @@ export default function HostShellV2() {
   };
   // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
   // same field weather geocoding reads) — so home events get a city ask.
-  const needsCity = event.venueKind === 'home' && !String(event.venueCity || '').trim();
+  const needsCity = () => event.venueKind === 'home' && !String(event.venueCity || '').trim();
   const saveCity = () => {
     const c = cityDraft.trim();
     if (c.length < 2 || !/^[a-zA-Z][a-zA-Z .,'-]*$/.test(c)) { toast('City or town name only — “Annapolis”, “Silver Spring, MD”.'); return; }
@@ -1360,7 +1360,7 @@ export default function HostShellV2() {
                 </button>
               )}
 
-              {String(event.venue || '').trim() && needsCity && (
+              {String(event.venue || '').trim() && needsCity() && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
                   <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="Annapolis"
