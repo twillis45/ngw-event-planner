@@ -4,7 +4,10 @@
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { eventPlan } from '@app/CommandCenter';
+import { eventPlan, getEventReadiness } from '@app/CommandCenter';
+import { buildAssembleRevealStages } from '@app/lib/assembleRevealEngines';
+import { isLikelyOutdoor } from '@app/lib/weather';
+import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -253,6 +256,14 @@ export default function HostShellV2() {
     try { return playbookFoodPlan(event, { priceFactor: 1 }); } catch { return null; }
   }, [event]);
 
+  // The 5 readiness signals — Basics (foundations) + the four pillars the
+  // production readiness engine computes: decisions, people, checklist, paperwork.
+  const readiness = useMemo(() => { try { return getEventReadiness(event); } catch { return null; } }, [event]);
+
+  // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
+  // is the same one the app's weather alert and Where & when read.
+  const outdoor = (() => { try { return isLikelyOutdoor(event.venue || '', event.notes || ''); } catch { return false; } })();
+
   // Shopping check-off writes the same foodGot flags the money engine reads —
   // buying an item literally moves real dollars from committed to spent.
   const toggleGot = (it, cost) => {
@@ -272,9 +283,20 @@ export default function HostShellV2() {
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' flipped to ' + (gs[i].rsvp === 'Yes' ? 'yes' : 'no') + ' — ' + yes + ' confirmed now. The engine reads this.');
   };
 
+  // ── Feedback layer: haptic tick on real state changes, the original app's
+  // synthesized chime reserved for magic moments. Muted preference persists.
+  const [muted, setMuted] = useState(() => { try { return localStorage.getItem('ngw-hostv2-muted') === '1'; } catch { return false; } });
+  useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
+  const feedback = (kind) => {
+    if (muted) return;
+    try { if (navigator.vibrate) navigator.vibrate(kind === 'magic' ? [12, 70, 12] : 10); } catch { /* no haptics */ }
+    if (kind === 'magic') { try { playMessageChime(); } catch { /* no audio */ } }
+  };
+
   const patchEvent = (obj, msg) => {
     if (eventId === 'custom') setCustom(c => ({ ...c, ...obj }));
     else setPatch(p => ({ ...p, ...obj }));
+    feedback('act');
     if (msg) toast(msg);
   };
 
@@ -413,20 +435,33 @@ export default function HostShellV2() {
       guests: [], vendors: [], timeline: [],
     };
     setCustom(ev); setEventId('custom'); setRevealed(true);
-    // The Reveal, choreographed: the plan visibly assembles — thinking beats,
-    // understanding lines landing one by one, the name arriving last.
+    // The Reveal, choreographed around the PRODUCTION reveal stages
+    // (buildAssembleRevealStages): identity, blockers, domains, risks.
     clearRevealTimers();
-    if (REDUCE_MOTION) { setRevealStep(5); return; }
+    let lineCount = 4;
+    try { lineCount = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), null, 1) || []).length, 5) + 1; } catch { /* default */ }
+    if (REDUCE_MOTION) { setRevealStep(lineCount + 2); return; }
     setRevealStep(0);
-    [[550, 1], [1250, 2], [1950, 3], [2700, 4], [3250, 5]].forEach(([ms, step]) => {
-      revealTimers.current.push(setTimeout(() => setRevealStep(step), ms));
-    });
+    for (let i = 0; i < lineCount; i++) {
+      revealTimers.current.push(setTimeout(() => setRevealStep(i + 1), 550 + 650 * i));
+    }
+    revealTimers.current.push(setTimeout(() => setRevealStep(lineCount + 1), 550 + 650 * lineCount + 350));
+    revealTimers.current.push(setTimeout(() => { setRevealStep(lineCount + 2); feedback('magic'); }, 550 + 650 * lineCount + 950));
   };
-  const revealEyebrow = revealStep >= 4 ? 'Here’s what we understood'
-    : revealStep >= 3 ? 'Lining up your steps…'
-    : revealStep >= 2 ? 'Pricing the spread…'
-    : revealStep >= 1 ? 'Sizing the crowd…'
-    : 'Reading your answers…';
+  const revealIdentityFor = (ev) => ({
+    primaryEventType: (ev && ev.type) || 'Event', secondaryEventTypes: [], isCompound: false,
+    complexity: 'standard', ceremonyComponents: [], participants: [], confidence: 0.8,
+  });
+  // Production reveal stages for the created event — identity, blockers,
+  // planning domains (with real $), risk preview.
+  const revealStages = useMemo(() => {
+    if (!revealed || !custom) return [];
+    try { return (buildAssembleRevealStages(custom, revealIdentityFor(custom), null, 1) || []).slice(0, 5); }
+    catch { return []; }
+  }, [revealed, custom]);
+  const revealLineCount = revealStages.length + 1;
+  const revealEyebrow = revealStep > revealLineCount ? 'Here’s what we understood'
+    : ['Reading your answers…', 'Sizing the crowd…', 'Pricing the spread…', 'Lining up your steps…'][Math.min(Math.max(revealStep - 1, 0), 3)];
   const customPlan = useMemo(() => {
     if (!revealed || !custom) return null;
     try { return eventPlan(custom, null); } catch { return null; }
@@ -448,7 +483,10 @@ export default function HostShellV2() {
         <div className="content">
           <div className="appbar">
             <div className="wordmark">Event Boss</div>
-            <div className="appbar-note">V2 preview</div>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+              <div className="appbar-note">V2 preview</div>
+              <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setMuted(m => !m)}>{muted ? 'Muted' : 'Sound on'}</button>
+            </div>
           </div>
 
           {/* ══════════ CREATE ══════════ */}
@@ -549,22 +587,24 @@ export default function HostShellV2() {
               ) : (
                 <>
                   <div className="eyebrow" aria-live="polite">{revealEyebrow}</div>
-                  {customPlan && (
-                    <ul className="tick-list" style={{ marginTop: 22 }}>
-                      <li className={'rv-line' + (revealStep > 0 ? ' in' : '')}><strong>{customPlan.progress.done} of {customPlan.progress.total} basics</strong> — date, guests, budget, food — already settled from your answers.</li>
-                      {customPlan.nextActions[0] && (
-                        <li className={'rv-line' + (revealStep > 1 ? ' in' : '')}>First thing to handle: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
-                      )}
-                      <li className={'rv-line' + (revealStep > 2 ? ' in' : '')}><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
-                    </ul>
-                  )}
+                  <ul className="tick-list" style={{ marginTop: 22 }}>
+                    {revealStages.map((st, i) => (
+                      <li key={st.key || i} className={'rv-line' + (revealStep > i ? ' in' : '')}>
+                        <strong>{st.title}:</strong> {st.what}{st.why ? <span style={{ color: 'var(--muted)' }}> {st.why}</span> : null}
+                        {st.nextDecision && <span className="grounding" style={{ display: 'block', marginTop: 3 }}>{st.nextDecision}</span>}
+                      </li>
+                    ))}
+                    {customPlan && (
+                      <li className={'rv-line' + (revealStep > revealStages.length ? ' in' : '')}><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
+                    )}
+                  </ul>
                   {/* The name lands LAST — the conclusion the plan reached, not a header */}
-                  <h1 className={'mega title-drop' + (revealStep >= 4 ? ' in' : '')} style={{ fontSize: 'clamp(27px,8.5cqw,34px)', lineHeight: 1.1, marginTop: 6 }}>{custom?.name}</h1>
+                  <h1 className={'mega title-drop' + (revealStep > revealLineCount ? ' in' : '')} style={{ fontSize: 'clamp(27px,8.5cqw,34px)', lineHeight: 1.1, marginTop: 6 }}>{custom?.name}</h1>
                   {/* identityStatement() — the production identity engine, verbatim */}
-                  <p className={'mega-sub pre' + (revealStep >= 4 ? ' in' : '')} style={{ fontSize: 17, marginTop: 8 }}>{identityStatement(custom)}</p>
-                  <p className={'grounding pre' + (revealStep >= 5 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
-                  <div className={'actions-row pre' + (revealStep >= 5 ? ' in' : '')} style={{ marginTop: 24 }}>
-                    <button className={'cta big' + (revealStep >= 5 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
+                  <p className={'mega-sub pre' + (revealStep > revealLineCount ? ' in' : '')} style={{ fontSize: 17, marginTop: 8 }}>{identityStatement(custom)}</p>
+                  <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
+                  <div className={'actions-row pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 24 }}>
+                    <button className={'cta big' + (revealStep > revealLineCount + 1 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
                     <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => { clearRevealTimers(); setRevealed(false); }}>Change an answer</button>
                   </div>
                 </>
@@ -649,6 +689,18 @@ export default function HostShellV2() {
                 </button>
               </div>
 
+              {/* The 5 readiness signals: Basics tile above + these four pillars */}
+              {readiness && (
+                <div className="pills">
+                  {[['Calls to make', readiness.decision], ['People', readiness.vendor], ['Checklist', readiness.timeline], ['Paperwork', readiness.document]].map(([label, r]) => r && (
+                    <button key={label} className={'pill ' + (r.status === 'ON_TRACK' ? 'p-ok' : r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
+                      onClick={() => toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''))}>
+                      {label}<span className="pill-note">{r.note}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {lensSet.length > 1 && (
                 <div className="lenses">
                   <button className="lens" aria-pressed={lens === 'all'} onClick={() => setLens('all')}>Everything</button>
@@ -670,6 +722,29 @@ export default function HostShellV2() {
                       <span style={{ color: 'var(--carbon-muted)' }}>{sec.detail}</span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Rain backup — real outdoor heuristic (lib/weather); rainPlan is the
+                  same field the app's weather alert reads. */}
+              {outdoor && !event.rainPlan && !isPast && (
+                <article className="card" style={{ marginTop: 26 }}>
+                  <div className="card-head">
+                    <div className="card-top"><span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>If it rains</span></div>
+                    <h3>Name the rain backup</h3>
+                    <p className="because">{event.venue || 'Your spot'} is open sky. Say the backup once, and a forecast can’t hijack the day.</p>
+                    <div className="chips hc-row">
+                      {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+                        <button key={p} className="chip" onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              )}
+              {outdoor && event.rainPlan && (
+                <div className="later-row" style={{ marginTop: 18 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>If it rains: {event.rainPlan}</span>
+                  <button className="mini" onClick={() => patchEvent({ rainPlan: '' }, 'Rain backup cleared — worth re-naming one.')}>Change</button>
                 </div>
               )}
 
@@ -762,7 +837,7 @@ export default function HostShellV2() {
                       {[ros[dayIdx].location, ros[dayIdx].owner && ('owner: ' + ros[dayIdx].owner), ros[dayIdx].vendorName].filter(Boolean).join(' · ')}
                     </p>
                     {ros[dayIdx].notes && <p className="meta">{ros[dayIdx].notes}</p>}
-                    <button className="cta" style={{ marginTop: 6 }} onClick={() => setDayIdx(i => i + 1)}>
+                    <button className="cta" style={{ marginTop: 6 }} onClick={() => { feedback(dayIdx === ros.length - 1 ? 'magic' : 'act'); setDayIdx(i => i + 1); }}>
                       {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
                     </button>
                   </div>

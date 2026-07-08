@@ -338,3 +338,16 @@ button{font-family:inherit}
 @media(prefers-reduced-motion:reduce){
   .rv-line,.title-drop,.pre{opacity:1!important; transform:none!important; filter:none!important}
 }
+
+/* ── Readiness pills: the four pillar signals ── */
+.pills{display:flex; gap:7px; flex-wrap:wrap; margin-top:10px}
+.pill{
+  display:inline-flex; align-items:center; gap:7px; border:none; cursor:pointer;
+  font-size:11.5px; font-weight:750; letter-spacing:.02em; padding:6px 12px; border-radius:999px;
+  transition:transform var(--ms-press) var(--ease-out);
+}
+.pill:active{transform:scale(.96)}
+.pill-note{font-weight:550; opacity:.75; font-variant-numeric:tabular-nums}
+.p-ok{color:var(--ok); background:var(--ok-tint)}
+.p-warn{color:var(--warn); background:var(--warn-tint)}
+.p-risk{color:var(--danger); background:rgba(232,64,54,.14)}
