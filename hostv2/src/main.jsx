@@ -1,6 +1,10 @@
 import { createRoot } from 'react-dom/client';
 import HostShellV2 from './HostShellV2.jsx';
+import { applyStudioMatte } from './theme.js';
 import './styles.css';
+
+// Studio Matte doctrine tokens land on :root before first paint.
+applyStudioMatte();
 
 // Fit the fixed 393×852 phone frame to the window without distorting its shape.
 function fitPhone() {

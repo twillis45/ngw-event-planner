@@ -248,7 +248,7 @@ export default function HostShellV2() {
         <div className="content">
           <div className="appbar">
             <div className="wordmark">Event Boss</div>
-            <div className="appbar-note">V2 · wired to real engine</div>
+            <div className="appbar-note">V2 · engine + doctrine wired</div>
           </div>
 
           {/* ══════════ CREATE ══════════ */}
