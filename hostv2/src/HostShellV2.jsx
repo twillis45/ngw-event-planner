@@ -30,6 +30,7 @@ import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
+import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -453,6 +454,21 @@ export default function HostShellV2() {
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
   const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
+  // Decision memory — capture WHY in the host's own words (lib/decisionMemory);
+  // the settled row reads it back next time the subject comes up.
+  const [whyOpen, setWhyOpen] = useState(null);
+  const [whyText, setWhyText] = useState('');
+  const saveWhy = (r) => {
+    const text = whyText.trim();
+    if (!text) { setWhyOpen(null); return; }
+    const rec = makeRecord({
+      eventId: event.id, subjectId: r.id, subjectLabel: r.label,
+      decision: r.because || 'settled', rationale: text,
+    }, new Date().toISOString());
+    patchEvent({ decisionMemory: appendDecision(event, rec).decisionMemory },
+      'Noted — next time this comes up, your own reasoning comes with it.');
+    setWhyOpen(null); setWhyText('');
+  };
   // Auto-hiding dock (real-device fix: the floating dock overlapped bottom
   // CTAs on tall phones) — hides on scroll-down, returns on scroll-up/top.
   const [dockHidden, setDockHidden] = useState(false);
@@ -2119,6 +2135,22 @@ export default function HostShellV2() {
                     {[nowActive && nowCue.time ? 'started ' + nowCue.time : null, nowCue.location, nowCue.owner && ('owner: ' + nowCue.owner), nowCue.vendorName].filter(Boolean).join(' · ')}
                   </p>
                   {nowCue.notes && <p className="meta">{nowCue.notes}</p>}
+                  {/* Vendor operational line — the cue's vendor with their
+                      arrival + ON-SITE contact (day-of cell beats office line)
+                      and a real call link. */}
+                  {(() => {
+                    const v = (event.vendors || []).find(x => x && (x.id === nowCue.vendorId || (nowCue.vendorName && x.name === nowCue.vendorName)));
+                    if (!v) return null;
+                    const phone = v.dayOfPhone || v.phone || '';
+                    const who = v.dayOfContactName || v.contactName || v.name;
+                    if (!phone && !v.arrivalTime) return null;
+                    return (
+                      <p className="meta" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        {[v.arrivalTime ? 'arrives ' + v.arrivalTime : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
+                        {phone ? <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(phone).replace(/[^+\d]/g, '')}>Call {String(who).split(/\s+/)[0]}</a> : null}
+                      </p>
+                    );
+                  })()}
                   <button className="cta" style={{ marginTop: 6 }} onClick={() => {
                     // Same single-truth write as ever: per-cue rosDone only; the
                     // NOW cue re-derives, so this IS the advance.
@@ -2147,7 +2179,10 @@ export default function HostShellV2() {
                         <span className="d" style={behind ? { color: 'var(--warn)', fontWeight: 800 } : i === 0 ? { color: 'var(--steel-soft)', fontWeight: 800 } : undefined}>
                           {behind ? 'BEHIND · ' + (r.time || '') : i === 0 ? 'NEXT · ' + (r.time || '') : r.time}
                         </span>
-                        <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
+                        <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{(() => {
+                          const v = (event.vendors || []).find(x => x && (x.id === r.vendorId || (r.vendorName && x.name === r.vendorName)));
+                          return v && v.arrivalTime ? <span style={{ color: 'var(--carbon-muted)' }}> · arrives {v.arrivalTime}</span> : null;
+                        })()}</span>
                       </button>
                     );
                   })}
@@ -2381,9 +2416,31 @@ export default function HostShellV2() {
                 {(decisionBoard.locked || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Settled</div>
-                    {(decisionBoard.locked || []).map((r, i) => (
-                      <div key={r.id || i} className="line"><span>{r.label}</span><span className="of">{r.because}</span></div>
-                    ))}
+                    {(decisionBoard.locked || []).map((r, i) => {
+                      const why = latestRationaleForSubject(event, r.id);
+                      return (
+                        <div key={r.id || i}>
+                          <div className="line" style={{ alignItems: 'center' }}>
+                            <span>{r.label}</span>
+                            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span className="of">{r.because}</span>
+                              {!why && whyOpen !== r.id && (
+                                <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>note why</button>
+                              )}
+                            </span>
+                          </div>
+                          {why && <p className="grounding" style={{ margin: '0 0 6px' }}>Your call: “{why}”</p>}
+                          {whyOpen === r.id && (
+                            <div className="actions-row" style={{ margin: '0 0 8px', alignItems: 'center' }}>
+                              <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 13, padding: '8px 12px' }}
+                                placeholder="Why this call? — in your own words" value={whyText}
+                                onChange={e => setWhyText(e.target.value)} aria-label={'Why ' + r.label} />
+                              <button className="mini" onClick={() => saveWhy(r)}>save</button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </>
                 )}
               </>
