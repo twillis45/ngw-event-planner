@@ -143,6 +143,11 @@
   .intel-view{position:relative;min-height:300px}
   .iv{position:absolute;inset:0;opacity:0;visibility:hidden;transform:translateY(18px);transition:opacity .45s ease,transform .45s ease,visibility .45s}
   .iv.active{opacity:1;visibility:visible;transform:none}
+  .iv{display:grid;grid-template-columns:1fr 340px;gap:44px;align-items:start}
+  .iv-mock{margin-top:6px;box-shadow:0 18px 44px rgba(0,0,0,.3)}
+  .iv.active .iv-mock{animation:ivRise .6s ease both .12s}
+  @keyframes ivRise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+  @media (max-width:1020px){ .iv{grid-template-columns:1fr} .iv-mock{max-width:420px} }
   .iv-vow{font-size:11px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--steel-hi);margin-bottom:16px}
   .iv h4{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:clamp(1.6rem,3vw,2.3rem);line-height:1.18;max-width:18ch}
   .iv p{margin-top:16px;color:var(--muted);font-size:1.05rem;line-height:1.7;max-width:52ch}
@@ -335,7 +340,7 @@
            page practicing the product's own doctrine. Scroll (or tap the rail)
            to move through; pinned on desktop, calm stacked list on mobile /
            reduced-motion / no-JS. -->
-      <div class="intelstage reveal">
+      <div class="intelstage">
         <div class="intel-rail" role="tablist" aria-label="What it understands">
           <button type="button" class="ir" data-i="0">Cultural</button>
           <button type="button" class="ir" data-i="1">Human</button>
@@ -351,18 +356,103 @@
           <button type="button" class="ir" data-i="11">Memory</button>
         </div>
         <div class="intel-view">
-          <div class="iv" data-i="0"><div class="iv-vow">Cultural</div><h4>It knows what this table wants.</h4><p>A Juneteenth cookout gets asked about the red drink and the red velvet. A crab feast gets bushel math. A repast gets a gentler voice. Offered when it fits — never assumed, never pushed.</p></div>
-          <div class="iv" data-i="1"><div class="iv-vow">Human</div><h4>It knows who the day is for.</h4><p>The guest of honor, their song, the one moment you said can't be missed — it keeps the heart of the event on the schedule, not just the chores around it.</p></div>
-          <div class="iv" data-i="2"><div class="iv-vow">Location</div><h4>It knows where you are.</h4><p>Prices tuned to your city, stores and help near you, directions that actually land people at your door.</p></div>
-          <div class="iv" data-i="3"><div class="iv-vow">Weather</div><h4>It watches your exact sky.</h4><p>The forecast for your spot, read against your plan — outdoor event, no backup, rain on Thursday? You hear about it while there's still time to be calm about it.</p></div>
-          <div class="iv" data-i="4"><div class="iv-vow">Venue</div><h4>It knows a backyard from a hall.</h4><p>Home means kitchen, driveway, and neighbors. A venue means load-in, contacts, and house rules — and your vendors get exactly the piece they need.</p></div>
-          <div class="iv" data-i="5"><div class="iv-vow">RSVP</div><h4>Replies become the plan.</h4><p>Share one link; the yeses roll in. Twelve more said yes? The ribs, the seats, and the ice resize themselves. And if you'd rather just set a number — it will never once nag you about replies.</p></div>
-          <div class="iv" data-i="6"><div class="iv-vow">Communication</div><h4>It keeps the thread.</h4><p>Invites, updates, the friendly nudge to the three who haven't answered — drafted for you, sent when you say, with honest delivery status. “Delivered” means delivered, never guessed.</p></div>
-          <div class="iv" data-i="7"><div class="iv-vow">Dietary</div><h4>It remembers who can't eat what.</h4><p>Your cousin's allergy lives on the plan, not in your memory — flagged on every dish it touches, with a real vegetarian main sized to the actual count.</p></div>
-          <div class="iv" data-i="8"><div class="iv-vow">Timing</div><h4>It knows the windows.</h4><p>Ice is a morning-of buy. The caterer needed three weeks. Every decision has an easy window — it tells you before one closes, not after.</p></div>
-          <div class="iv" data-i="9"><div class="iv-vow">Vendors</div><h4>Quoted isn't booked.</h4><p>It tracks what's actually locked — deposit, arrival time, paperwork — and drafts the “still on for Saturday?” note, so you're never calling the DJ at nine in the morning.</p></div>
-          <div class="iv" data-i="10"><div class="iv-vow">Money</div><h4>It keeps honest count.</h4><p>Every dollar traces to your plan and your prices — spent is spent, planned is planned, nothing quietly rounded into good news.</p></div>
-          <div class="iv" data-i="11"><div class="iv-vow">Memory</div><h4>It's already remembering this year for next.</h4><p>What ran out, what was the hit, which call you'd make again — captured as you go, so next year's gathering doesn't start from a blank page.</p></div>
+          <div class="iv" data-i="0">
+            <div class="iv-copy"><div class="iv-vow">Cultural</div><h4>It knows what this table wants.</h4><p>A Juneteenth cookout gets asked about the red drink and the red velvet. A crab feast gets bushel math. A repast gets a gentler voice. Offered when it fits — never assumed, never pushed.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">If it fits your event</div>
+              <div class="r"><span class="it">Red drink</span><span class="d">many hosts include it — your call</span><span class="wait">ADD?</span></div>
+              <div class="r"><span class="it">Red velvet</span><span class="d">the symbolic layer</span><span class="wait">ADD?</span></div>
+              <div class="foot">One tap adds it. One tap says <b>not for this event</b> — and it never asks again.</div>
+            </div>
+          </div>
+          <div class="iv" data-i="1">
+            <div class="iv-copy"><div class="iv-vow">Human</div><h4>It knows who the day is for.</h4><p>The guest of honor, their song, the one moment you said can't be missed — it keeps the heart of the event on the schedule, not just the chores around it.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">The moment that matters</div>
+              <div class="r"><span class="it">2:00</span><span class="d">the toast for Pop — his song queued</span><span class="ok">PROTECTED</span></div>
+              <div class="foot">Named once. Kept on the schedule <b>no matter what else moves.</b></div>
+            </div>
+          </div>
+          <div class="iv" data-i="2">
+            <div class="iv-copy"><div class="iv-vow">Location</div><h4>It knows where you are.</h4><p>Prices tuned to your city, stores and help near you, directions that actually land people at your door.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Near Alexandria, VA</div>
+              <div class="r"><span class="it">Ribs</span><span class="d">butcher · Costco · farmers market</span><span class="v">$58–$76</span></div>
+              <div class="r"><span class="it">Directions</span><span class="d">one link, lands at your door</span><span class="ok">READY</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="3">
+            <div class="iv-copy"><div class="iv-vow">Weather</div><h4>It watches your exact sky.</h4><p>The forecast for your spot, read against your plan — outdoor event, no backup, rain on Thursday? You hear about it while there's still time to be calm about it.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Rain watch · Thursday</div>
+              <div class="r"><span class="it">Saturday</span><span class="d">70% clear by noon at your address</span><span class="v">78°</span></div>
+              <div class="r"><span class="it">Plan B</span><span class="d">garage + carport — written down</span><span class="ok">READY</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="4">
+            <div class="iv-copy"><div class="iv-vow">Venue</div><h4>It knows a backyard from a hall.</h4><p>Home means kitchen, driveway, and neighbors. A venue means load-in, contacts, and house rules — and your vendors get exactly the piece they need.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Your place · backyard</div>
+              <div class="r"><span class="it">Parking</span><span class="d">street out front, driveway holds 2–3</span><span class="ok">NOTED</span></div>
+              <div class="r"><span class="it">DJ's copy</span><span class="d">load-in + arrival only — nothing else</span><span class="ok">SENT</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="5">
+            <div class="iv-copy"><div class="iv-vow">RSVP</div><h4>Replies become the plan.</h4><p>Share one link; the yeses roll in. Twelve more said yes? The ribs, the seats, and the ice resize themselves. And if you'd rather just set a number — it will never once nag you about replies.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Replies so far</div>
+              <div class="r"><span class="it">24 yes</span><span class="d">6 waiting · 3 can't make it</span><span class="v">→ 24</span></div>
+              <div class="r"><span class="it">The plan</span><span class="d">food, seats, ice re-sized to 24</span><span class="ok">UPDATED</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="6">
+            <div class="iv-copy"><div class="iv-vow">Communication</div><h4>It keeps the thread.</h4><p>Invites, updates, the friendly nudge to the three who haven't answered — drafted for you, sent when you say, with honest delivery status. “Delivered” means delivered, never guessed.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Final details · drafted</div>
+              <div class="msg">“Saturday, 2pm, our place. Street parking out front. Bring a chair if you have one.”</div>
+              <div class="foot">Sent when you say. Status: <b>Delivered</b> — never guessed.</div>
+            </div>
+          </div>
+          <div class="iv" data-i="7">
+            <div class="iv-copy"><div class="iv-vow">Dietary</div><h4>It remembers who can't eat what.</h4><p>Your cousin's allergy lives on the plan, not in your memory — flagged on every dish it touches, with a real vegetarian main sized to the actual count.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">On the spread</div>
+              <div class="r"><span class="it">Mac &amp; cheese</span><span class="d">double-check — nut allergy noted</span><span class="wait">CHECK</span></div>
+              <div class="r"><span class="it">Veggie main</span><span class="d">a real dish, sized for 4</span><span class="ok">PLANNED</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="8">
+            <div class="iv-copy"><div class="iv-vow">Timing</div><h4>It knows the windows.</h4><p>Ice is a morning-of buy. The caterer needed three weeks. Every decision has an easy window — it tells you before one closes, not after.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">The windows</div>
+              <div class="r"><span class="it">Caterer</span><span class="d">book by 3 weeks out</span><span class="wait">2 DAYS LEFT</span></div>
+              <div class="r"><span class="it">Ice</span><span class="d">buy morning-of — it'll remind you</span><span class="ok">TIMED</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="9">
+            <div class="iv-copy"><div class="iv-vow">Vendors</div><h4>Quoted isn't booked.</h4><p>It tracks what's actually locked — deposit, arrival time, paperwork — and drafts the “still on for Saturday?” note, so you're never calling the DJ at nine in the morning.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">DJ Smooth</div>
+              <div class="r"><span class="it">Deposit</span><span class="d">$100 paid Tuesday</span><span class="ok">LOCKED IN</span></div>
+              <div class="r"><span class="it">Arrival</span><span class="d">not confirmed — note drafted</span><span class="wait">ASK</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="10">
+            <div class="iv-copy"><div class="iv-vow">Money</div><h4>It keeps honest count.</h4><p>Every dollar traces to your plan and your prices — spent is spent, planned is planned, nothing quietly rounded into good news.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">Where it stands</div>
+              <div class="r"><span class="it">Spent</span><span class="d">18 of 20 items bought</span><span class="v">$726</span></div>
+              <div class="r"><span class="it">Still to spend</span><span class="d">2 items left, real ranges</span><span class="v">$26–$41</span></div>
+            </div>
+          </div>
+          <div class="iv" data-i="11">
+            <div class="iv-copy"><div class="iv-vow">Memory</div><h4>It's already remembering this year for next.</h4><p>What ran out, what was the hit, which call you'd make again — captured as you go, so next year's gathering doesn't start from a blank page.</p></div>
+            <div class="mock iv-mock" aria-hidden="true">
+              <div class="mk">This year, noted</div>
+              <div class="r"><span class="it">The ribs</span><span class="d">the hit — gone by 4:00</span><span class="ok">KEEPER</span></div>
+              <div class="r"><span class="it">The ice</span><span class="d">ran out — next year buy 6 bags</span><span class="wait">NOTED</span></div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
