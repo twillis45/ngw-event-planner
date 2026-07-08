@@ -10,14 +10,30 @@ import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { EVENT_TAXONOMY } from '@app/lib/eventTaxonomy.mjs';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
+import { ALL_PLAYBOOKS } from '@app/lib/playbooks';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
+// My Crab Feast: prefer the user's REAL event from the app's own storage
+// (same-origin on the deployed site — the production app writes 'ngw-events');
+// otherwise construct one from the Crab Feast playbook's real defaults.
+let APP_EVENTS = [];
+try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch { APP_EVENTS = []; }
+const appCrab = APP_EVENTS.find(e => e && /crab/i.test(String(e.name || '') + ' ' + String(e.type || '')));
+const CRAB_PB = ALL_PLAYBOOKS.find(pb => pb && pb.type === 'Crab Feast');
+const inThreeWeeks = (() => { const d = new Date(); d.setDate(d.getDate() + 21); return d.toISOString().slice(0, 10); })();
+const MY_CRAB_FEAST = appCrab || {
+  id: 'my-crab-feast', rsvpCode: 'crab',
+  name: 'My Crab Feast', type: 'Crab Feast',
+  date: inThreeWeeks, venue: 'Backyard',
+  guestEstimate: (CRAB_PB && CRAB_PB.meta && CRAB_PB.meta.typicalGuests && CRAB_PB.meta.typicalGuests.default) || 18,
+  budget: [], guests: [], vendors: [],
+};
+
 const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-birthday', 'ev-x-graduation', 'ev-dmv-wedding'];
-const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV];
-const ROSTER = ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean);
+const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST];
+const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST];
 const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
@@ -40,11 +56,12 @@ function describeRoute(route) {
   return bits.join(' → ');
 }
 
-// Occasion choices come from the REAL taxonomy: every host-driven family type.
-const HOST_TYPES = Object.entries(EVENT_TAXONOMY)
-  .filter(([, v]) => v && v.family === 'host_driven')
-  .map(([k]) => k)
-  .slice(0, 9);
+// Occasion choices = the REAL playbook catalog: every type the engine ships a
+// full playbook for (same registry the app's type browse resolves against),
+// minus the business types a host never plans.
+const HOST_TYPES = ALL_PLAYBOOKS
+  .map(pb => pb && pb.type)
+  .filter(t => t && !/board meeting|conference|team retreat/i.test(t));
 
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
@@ -339,7 +356,9 @@ export default function HostShellV2() {
             <section>
               <div className="picker">
                 {ROSTER.map(e => (
-                  <button key={e.id} className="chip" aria-pressed={e.id === eventId} onClick={() => switchEvent(e.id)}>{e.type}</button>
+                  <button key={e.id} className="chip" aria-pressed={e.id === eventId} onClick={() => switchEvent(e.id)}>
+                    {e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type}
+                  </button>
                 ))}
                 {custom && <button className="chip" aria-pressed={eventId === 'custom'} onClick={() => switchEvent('custom')}>Yours</button>}
                 {eventId !== 'custom' && Object.keys(patch).length > 0 && (
