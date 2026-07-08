@@ -369,9 +369,12 @@ export default function InviteV2({ code }) {
             </div>
             {days != null && days > 0 && (
               <div {...rv()}>
-                <div className="inv2-countwrap">
-                  <div className="inv2-count lp-display">{days}</div>
-                  <div className="inv2-label lp inv2-countlab" style={{ marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
+                {/* condensed state is INLINE-driven — a deployed-build cascade
+                    quirk left the .answered descendant rules matching-but-inert,
+                    so the state carries its own styles (transitions stay CSS). */}
+                <div className="inv2-countwrap" style={answered ? { maxHeight: 24, margin: '6px 0 0' } : undefined}>
+                  <div className="inv2-count lp-display" style={answered ? { display: 'inline', fontSize: 10, fontFamily: 'inherit', fontWeight: 800, letterSpacing: '.16em', margin: 0 } : undefined}>{days}</div>
+                  <div className="inv2-label lp inv2-countlab" style={answered ? { display: 'inline', marginLeft: 5, marginTop: 0 } : { marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
                 </div>
               </div>
             )}
