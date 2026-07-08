@@ -12,7 +12,7 @@ import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -393,6 +393,31 @@ export default function HostShellV2() {
   }, [decisionBoard, event]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
+  // MEANING CAPTURE — the raw fields the engines already read (single truth:
+  // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
+  // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
+  const [meaningDraft, setMeaningDraft] = useState(null);
+  const openMeaning = () => {
+    setMeaningDraft({
+      honoree: event.honoree || '',
+      honoree_story: event.honoree_story || '',
+      meaning_why: event.meaning_why || '',
+      feeling_words: event.feeling_words || '',
+      must_have_moment: event.must_have_moment || '',
+    });
+    setSheet({ kind: 'meaning' });
+  };
+  const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
+  const [lessonDraft, setLessonDraft] = useState('');
+  // Event memory: the one persisted field the original uses (event.lessons).
+  // Recall reads across the loaded events — a past event of the same type.
+  const lastLesson = useMemo(() => {
+    try {
+      const pool = [...ALL_SAMPLES, ...(custom ? [custom] : [])];
+      const hit = pool.find(e => e && e.id !== event.id && e.type === event.type && String(e.lessons || '').trim() && isPastEvent(e));
+      return hit ? { name: hit.name, lessons: String(hit.lessons).trim() } : null;
+    } catch { return null; }
+  }, [event.id, event.type, custom]);
   // ROW-LEVEL CTA RULE (Todd): a coming-up item lands on the exact field that
   // answers it — the crab order, the pickers count, the space list — never a
   // sheet top when a closer target exists.
@@ -1448,6 +1473,24 @@ export default function HostShellV2() {
                 </button>
               )}
 
+              {!isPast && (
+                <div className="later-row" style={{ marginTop: 18 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
+                    {hasMeaning
+                      ? 'The moment that must happen: ' + (String(event.must_have_moment || event.meaning_why || event.honoree_story).slice(0, 52)) + (String(event.must_have_moment || event.meaning_why || event.honoree_story).length > 52 ? '…' : '')
+                      : 'Make it yours — the story, the feeling, the one moment that must happen'}
+                  </span>
+                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
+                  <button className="mini" onClick={openMeaning}>{hasMeaning ? 'Edit' : 'Add it'}</button>
+                </div>
+              )}
+              {lastLesson && (
+                <div className="later-row" style={{ marginTop: 10 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
+                    From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
+                  </span>
+                </div>
+              )}
               {String(event.venue || '').trim() && needsCity() && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
@@ -1665,7 +1708,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -1777,6 +1820,44 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                   </div>
                 ))}
+              </>
+            )}
+            {sheet.kind === 'meaning' && meaningDraft && (
+              <>
+                <p className="grounding" style={{ margin: '0 0 12px' }}>
+                  This is what the plan protects — the day-before brief, the run of show, and the toast all draw from your own words. Nothing here is required.
+                </p>
+                {[
+                  ['honoree', 'Who is it for?', 'Margaret — my mom', false],
+                  ['honoree_story', 'Their story, in a line or two', '32 years at the library; she taught half the county to read', true],
+                  ['meaning_why', 'Why this matters', 'She never lets anyone celebrate her — this time we are', false],
+                  ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
+                  ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
+                ].map(([key, label, ph, multi]) => (
+                  <div key={key} style={{ marginBottom: 12 }}>
+                    <div className="shelf-label" style={{ marginBottom: 5 }}>{label}</div>
+                    {multi ? (
+                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 14 }} placeholder={ph}
+                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} aria-label={label} />
+                    ) : (
+                      <input className="field" style={{ maxWidth: 'none', fontSize: 14 }} placeholder={ph}
+                        value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} aria-label={label} />
+                    )}
+                  </div>
+                ))}
+                <div className="actions-row">
+                  <button className="cta" onClick={() => {
+                    const clean = {};
+                    Object.entries(meaningDraft).forEach(([k, v]) => { clean[k] = String(v || '').trim(); });
+                    patchEvent(clean, 'That’s the heart of it — the plan will protect it.');
+                    setSheet(null);
+                  }}>Save it</button>
+                  {hasToastMaterial({ ...event, ...meaningDraft }) && (
+                    <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast({ ...event, ...meaningDraft }, null)); } catch { toast('Couldn’t draft it.'); } }}>
+                      Draft the toast
+                    </button>
+                  )}
+                </div>
               </>
             )}
             {sheet.kind === 'events' && (
