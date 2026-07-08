@@ -169,6 +169,33 @@ export default function HostShellV2() {
   const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
   const [addressOpen, setAddressOpen] = useState(false);
   const [addressDraft, setAddressDraft] = useState('');
+  const [venueDraft, setVenueDraft] = useState('');
+  const [venueErr, setVenueErr] = useState(null);
+  // Venue validation: a real place has letters and substance — not "", "1",
+  // or stray digits. Same gate the address row uses.
+  const validPlace = (v) => {
+    const t = String(v || '').trim();
+    return t.length >= 3 && /[a-zA-Z]/.test(t) && !/^\d+$/.test(t);
+  };
+  const [cityDraft, setCityDraft] = useState('');
+  const saveVenue = () => {
+    if (!validPlace(venueDraft)) { setVenueErr('Give guests a real place — a name or an address, not just a number.'); return; }
+    const v = venueDraft.trim();
+    patchEvent({
+      venue: v,
+      venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : (event.venueKind || ''),
+    }, 'Venue on the plan — invites, maps, and the rain note now carry it.');
+    setVenueErr(null); setVenueDraft('');
+  };
+  // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
+  // same field weather geocoding reads) — so home events get a city ask.
+  const needsCity = event.venueKind === 'home' && !String(event.venueCity || '').trim();
+  const saveCity = () => {
+    const c = cityDraft.trim();
+    if (c.length < 2 || !/^[a-zA-Z][a-zA-Z .,'-]*$/.test(c)) { toast('City or town name only — “Annapolis”, “Silver Spring, MD”.'); return; }
+    patchEvent({ venueCity: c }, 'City noted — weather and the venue check now line up.');
+    setCityDraft('');
+  };
   // Voice input (Web Speech API) — the browser's own recognizer; nothing fake.
   const [listening, setListening] = useState(false);
   const recogRef = useRef(null);
@@ -664,6 +691,7 @@ export default function HostShellV2() {
   const onCta = (a, key) => {
     const kind = wiredKind(a);
     if (kind) { setEditor(key); spotlight(key); return; }
+    if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
     if (routeSheet(a.route)) return;
     const dest = describeRoute(a.route);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
@@ -1122,12 +1150,14 @@ export default function HostShellV2() {
                 <button
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
                   onClick={() => {
+                    if (days === 0) { setStage('day'); return; }
                     if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
                     else document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
                   <div className="t-label">Next</div>
                   <div className="t-big">{(() => {
+                    if (days === 0) return 'Run the day';
                     const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
                     return actions.length === 0 || calmTop ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
                   })()}</div>
@@ -1137,6 +1167,15 @@ export default function HostShellV2() {
                       // the card below — can't disagree) instead of counting the
                       // checklist ledger; open to-dos aren't "needs you" unless
                       // overdue, and then the engine makes catch-up the top card.
+                      if (days === 0) {
+                        // Day-of truth: count what's actually left today, not "1 thing".
+                        const moments = ros.filter(r => r && !r.done).length;
+                        const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
+                        const bits = [];
+                        if (moments) bits.push(moments + ' moment' + (moments === 1 ? '' : 's') + ' queued');
+                        if (openTasks) bits.push(openTasks + ' steps open');
+                        return (bits.length ? bits.join(' · ') + ' — ' : '') + 'The Day has the wheel ↓';
+                      }
                       const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
                       if (!actions.length || calmTop) {
                         // Calm ≠ blank: name the next DATED thing (human intelligence).
@@ -1277,7 +1316,10 @@ export default function HostShellV2() {
                   <input className="field" style={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it"
                     value={addressDraft} onChange={e => setAddressDraft(e.target.value)} aria-label="Venue address" />
                   <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
-                    onClick={() => { patchEvent({ venue: event.venue + ' — ' + addressDraft.trim() }, 'Address on the plan — invites and the rain note now carry it.'); setAddressOpen(false); setAddressDraft(''); }}>
+                    onClick={() => {
+                      if (!validPlace(addressDraft) && !/\d/.test(addressDraft)) { toast('That doesn’t read like an address — street and number help guests find you.'); return; }
+                      patchEvent({ venue: event.venue + ' — ' + addressDraft.trim() }, 'Address on the plan — invites and the rain note now carry it.'); setAddressOpen(false); setAddressDraft('');
+                    }}>
                     Save
                   </button>
                 </div>
@@ -1297,6 +1339,36 @@ export default function HostShellV2() {
                   <span className="t" style={{ color: 'var(--warn)' }}>{compression.headline}</span>
                   {compression.meta && compression.meta.sub && <span className="of" style={{ color: 'var(--warn)' }}> {compression.meta.sub}</span>}
                 </button>
+              )}
+
+              {String(event.venue || '').trim() && needsCity && (
+                <div className="later-row" style={{ marginTop: 18 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
+                  <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="Annapolis"
+                    value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City or town" />
+                  <button className="mini" onClick={saveCity}>Save</button>
+                </div>
+              )}
+              {!String(event.venue || '').trim() && (
+                <article className="card" style={{ marginTop: 20 }}>
+                  <div className="card-head">
+                    <div className="card-top">
+                      <span className="tag plan" style={(days != null && days <= 1) ? { color: 'var(--danger)', background: 'rgba(232,64,54,.14)' } : undefined}>
+                        {(days != null && days <= 1) ? 'Today' : 'Plan'}
+                      </span>
+                    </div>
+                    <h3>Where is it happening?</h3>
+                    <p className="because">{(days != null && days <= 1)
+                      ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
+                      : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name the place — “My brother’s backyard”, “VFW Post 3150”…"
+                        value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); }} aria-label="Venue" />
+                      <button className="cta" onClick={saveVenue}>Save</button>
+                    </div>
+                    {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                  </div>
+                </article>
               )}
 
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
@@ -1516,19 +1588,50 @@ export default function HostShellV2() {
               <>
                 {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
                   const links = it.owned ? null : (() => { try { return supplyRetailLinks(it.short || it.item, event.venue); } catch { return null; } })();
+                  // Whole units only — nobody rents 3.2 canopies. The engine's
+                  // scaled qty rounds UP for the host (short beats stranded).
+                  const baseNeed = (() => {
+                    const ov = event.capacityQty && event.capacityQty[it.key];
+                    const raw = (event.capacityHave && event.capacityHave[it.key] != null && ov != null)
+                      ? ov + (event.capacityHave[it.key] || 0)  // reconstruct the true need when we've overridden
+                      : it.qty;
+                    return Math.ceil(Number(raw) || 0);
+                  })();
+                  const have = Math.min(baseNeed, (event.capacityHave && event.capacityHave[it.key]) || 0);
+                  const remaining = Math.max(0, baseNeed - have);
+                  const helperName = (event.capacityHelpers && event.capacityHelpers[it.key]) || '';
+                  // Writes go through the ENGINE's own knobs: capacityQty holds
+                  // the REMAINING count (so cost prices only what's left) and
+                  // capacityOwned flips when the host is fully covered.
+                  const setHave = (n) => {
+                    const h = Math.max(0, Math.min(baseNeed, n));
+                    patchEvent({
+                      capacityHave: { ...(event.capacityHave || {}), [it.key]: h },
+                      capacityQty: { ...(event.capacityQty || {}), [it.key]: Math.max(0, baseNeed - h) },
+                      capacityOwned: { ...(event.capacityOwned || {}), [it.key]: h >= baseNeed },
+                    }, h >= baseNeed ? ((it.short || it.item) + ' fully covered — the plan stops pricing it.') : h > 0 ? ('Counting your ' + h + ' — the plan now prices the remaining ' + (baseNeed - h) + '.') : 'Back to the full count.');
+                  };
                   return (
                     <div key={it.key || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                       <div className="line" style={{ padding: '0 0 4px' }}>
-                        <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">×{it.qty}</span></span>
-                        <button className="mini" style={it.owned ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => patchEvent(
-                            { capacityOwned: { ...(event.capacityOwned || {}), [it.key]: !it.owned } },
-                            it.owned ? ((it.short || it.item) + ' back on the get list.') : ((it.short || it.item) + ' marked as yours — the plan stops pricing it.'))}>
-                          {it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'have it?'}
-                        </button>
+                        <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
+                        <span className="amt">
+                          {remaining === 0 ? 'covered' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'no price read'}
+                        </span>
                       </div>
-                      {links && (
-                        <div className="actions-row" style={{ marginTop: 2 }}>
+                      <div className="actions-row" style={{ marginTop: 4, alignItems: 'center' }}>
+                        <span className="of">you have</span>
+                        <input className="field" style={{ maxWidth: 58, fontSize: 13, padding: '6px 10px' }} type="number" min="0" max={baseNeed}
+                          value={have || ''} placeholder="0" aria-label={'How many ' + (it.short || it.item) + ' you have'}
+                          onChange={e => setHave(parseInt(e.target.value, 10) || 0)} />
+                        <input className="field" style={{ maxWidth: 110, fontSize: 13, padding: '6px 10px' }} type="text"
+                          value={helperName} placeholder="helper brings?" aria-label="Helper supplying this"
+                          onChange={e => patchEvent({ capacityHelpers: { ...(event.capacityHelpers || {}), [it.key]: e.target.value } }, null)} />
+                        {remaining > 0 && <span className="of">still need {remaining}{helperName ? ' — ask ' + helperName : ''}</span>}
+                        {remaining === 0 && helperName && <span className="of" style={{ color: 'var(--ok)' }}>{helperName} has it covered</span>}
+                      </div>
+                      {links && remaining > 0 && (
+                        <div className="actions-row" style={{ marginTop: 4 }}>
                           {links.kind === 'rent' && links.rentUrl && (
                             <a className="mini" style={{ textDecoration: 'none' }} href={links.rentUrl} target="_blank" rel="noreferrer">Find rentals nearby</a>
                           )}
