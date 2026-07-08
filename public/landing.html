@@ -23,7 +23,10 @@
     --ok:#5d7a58;
   }
   *{box-sizing:border-box;margin:0;padding:0}
-  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%;
+    /* gentle landing: sections snap into frame when you stop NEAR one —
+       proximity only, so the pinned rotator's long scrub is never hijacked */
+    scroll-snap-type:y proximity}
   body{background:var(--carbon-0);color:var(--text);
     font-family:'Archivo',system-ui,sans-serif;font-size:17px;line-height:1.6;
     -webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -51,7 +54,7 @@
     border:1px solid var(--line);padding:10px 16px;color:var(--text);transition:border-color .25s,background .25s}
   .nav-cta:hover{border-color:var(--steel);background:rgba(111,135,148,.08)}
 
-  header{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:120px 0 80px}
+  header{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:120px 0 80px;scroll-snap-align:start}
   .kicker{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--steel-hi);margin-bottom:26px}
   .kicker .tick{display:inline-block;width:26px;height:1px;background:var(--steel);vertical-align:middle;margin-right:12px}
   h1{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(2.7rem,7.4vw,5.6rem);
@@ -75,7 +78,12 @@
   .truthline span{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:clamp(1.05rem,2.3vw,1.6rem);color:var(--steel-hi);padding:0 3.5vw}
   .truthline .dot{color:var(--ember);font-style:normal}
 
-  section{padding:clamp(64px,9vw,104px) 0}
+  section{
+    /* every section is a viewport stage: full height, content centered,
+       snap-aligned — so stopping anywhere frames a whole thought */
+    min-height:100svh;display:flex;flex-direction:column;justify-content:center;
+    padding:clamp(48px,6vw,84px) 0;scroll-snap-align:start}
+  section > *{width:100%}
   .sec-kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
   .sec-kicker b{color:var(--steel-hi)}
   h2{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(1.9rem,4.4vw,3.1rem);line-height:1.14;letter-spacing:-.01em;text-wrap:balance;max-width:22ch}
