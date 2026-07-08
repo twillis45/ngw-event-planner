@@ -453,6 +453,7 @@ export default function HostShellV2() {
   }, [decisionBoard, event]);
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
+  const [choiceOpen, setChoiceOpen] = useState(null); // re-opened settled choice (auto-collapse)
   const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
   // Decision memory — capture WHY in the host's own words (lib/decisionMemory);
   // the settled row reads it back next time the subject comes up.
@@ -2939,20 +2940,48 @@ export default function HostShellV2() {
                 })()}
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
-                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>Your choices</div>
-                    {foodPlan.choices.map(d => (
-                      <div key={d.id} style={{ marginBottom: 12 }}>
-                        <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
-                        <div className="chips">
-                          {(d.options || []).map(opt => (
-                            <button key={opt} className="chip" aria-pressed={(d.chosen || d.default) === opt}
-                              onClick={() => patchEvent({ foodChoices: { ...(event.foodChoices || {}), [d.id]: opt } },
-                                d.label + ': ' + opt + ' — the spread just re-sized.')}>{opt}</button>
-                          ))}
+                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>
+                      Your choices
+                      <button className="mini" style={{ marginLeft: 8 }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>done</button>
+                    </div>
+                    {foodPlan.choices.map(d => {
+                      // AUTO-COLLAPSE (host request): a made choice folds to its
+                      // settled line; when the LAST one lands the whole section
+                      // closes itself — done work never keeps the room.
+                      const picked = (event.foodChoices || {})[d.id];
+                      if (picked && choiceOpen !== d.id) {
+                        return (
+                          <div key={d.id} className="line" style={{ alignItems: 'center' }}>
+                            <span>{d.label}</span>
+                            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{picked}</span>
+                              <button className="mini" onClick={() => setChoiceOpen(d.id)}>change</button>
+                            </span>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={d.id} style={{ marginBottom: 12 }}>
+                          <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
+                          <div className="chips">
+                            {(d.options || []).map(opt => (
+                              <button key={opt} className="chip" aria-pressed={(d.chosen || d.default) === opt}
+                                onClick={() => {
+                                  const nextChoices = { ...(event.foodChoices || {}), [d.id]: opt };
+                                  const stillOpen = (foodPlan.choices || []).filter(c => !nextChoices[c.id]).length;
+                                  patchEvent({ foodChoices: nextChoices },
+                                    stillOpen === 0
+                                      ? d.label + ': ' + opt + ' — that was the last call. The spread is fully priced.'
+                                      : d.label + ': ' + opt + ' — the spread just re-sized.');
+                                  setChoiceOpen(null);
+                                  if (stillOpen === 0) setFoodSect(m => ({ ...m, choices: false }));
+                                }}>{opt}</button>
+                            ))}
+                          </div>
+                          {d.why && <p className="grounding" style={{ marginTop: 5 }}>{d.why}</p>}
                         </div>
-                        {d.why && <p className="grounding" style={{ marginTop: 5 }}>{d.why}</p>}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </>
                 )}
                 <div className="actions-row" style={{ margin: '0 0 6px' }}>
