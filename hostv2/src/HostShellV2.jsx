@@ -207,6 +207,19 @@ export default function HostShellV2() {
   const [editor, setEditor] = useState(null); // which card's inline editor is open
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  const [spot, setSpot] = useState(null);     // attention system: spotlighted card key
+  const spotTimer = useRef(null);
+  // FOCUS MODE, prototype-grade: scroll the destination to center, dim the rest,
+  // ring the target, release automatically (or on any tap).
+  const spotlight = (key) => {
+    setSpot(key);
+    clearTimeout(spotTimer.current);
+    spotTimer.current = setTimeout(() => setSpot(null), 2200);
+    requestAnimationFrame(() => {
+      const el = document.getElementById('card-' + key);
+      if (el) el.scrollIntoView({ behavior: REDUCE_MOTION ? 'instant' : 'smooth', block: 'center' });
+    });
+  };
   const [dayIdx, setDayIdx] = useState(0);    // The Day: position in the run of show
 
   // Row-level landings inside the prototype — a route with a real destination
@@ -343,7 +356,12 @@ export default function HostShellV2() {
 
   const onCta = (a, key) => {
     const kind = wiredKind(a);
-    if (kind) { setEditor(editor === key ? null : key); return; }
+    if (kind) {
+      const opening = editor !== key;
+      setEditor(opening ? key : null);
+      if (opening) spotlight(key);
+      return;
+    }
     if (routeSheet(a.route)) return;
     const dest = describeRoute(a.route);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
@@ -735,7 +753,10 @@ export default function HostShellV2() {
                 </button>
                 <button
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
-                  onClick={() => document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => {
+                    if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
+                    else document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                 >
                   <div className="t-label">Next</div>
                   <div className="t-num">
@@ -808,7 +829,8 @@ export default function HostShellV2() {
                 const wired = wiredKind(a);
                 const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline'].includes(a.route.tab));
                 return (
-                  <article className="card" key={key} style={{ animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                  <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
+                    style={{ animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     <span className="idx">{i + 1}</span>
                     <div className="card-head">
                       <div className="card-top">
@@ -1200,6 +1222,8 @@ export default function HostShellV2() {
           </div>
         </>
       )}
+
+      {spot && <div className="dimveil" onClick={() => { clearTimeout(spotTimer.current); setSpot(null); }} />}
 
       <nav className="dock" aria-label="Sections">
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
