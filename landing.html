@@ -117,6 +117,10 @@
   .ros .cue:first-of-type{border-top:none}
   .ros .t{color:var(--steel-hi);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
   .ros .s{color:var(--text)}
+  .ros .nowcue{padding:22px 18px;border-top:1px solid var(--line);background:rgba(201,141,75,.06)}
+  .ros .nc-k{font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--ember);margin-bottom:8px}
+  .ros .nc-s{font-family:'Fraunces',Georgia,serif;font-size:1.25rem;line-height:1.35;color:var(--text)}
+  .ros .nc-n{margin-top:10px;font-size:.92rem;color:var(--muted)}
   .ros .cue.live{background:rgba(201,141,75,.07)}
   .ros .cue.live .s::after{content:"— now";color:var(--ember);font-size:11px;margin-left:8px;letter-spacing:.08em}
   .dayof-points{display:flex;flex-direction:column;gap:26px}
@@ -253,19 +257,33 @@
       <div class="sec-kicker reveal">Event day — <b>it walks with you</b></div>
       <h2 class="reveal">On the day, the planning goes quiet and the <em>day plan</em> takes over.</h2>
       <div class="dayof-grid">
-        <div class="ros reveal" aria-label="Example run of show">
+        <div class="ros reveal" aria-label="What the day plan feels like">
           <div class="bar"><span>Saturday · the cookout</span><span class="now">12:40 PM</span></div>
-          <div class="cue"><span class="t">10:00</span><span class="s">Setup — tables, canopy, coolers</span></div>
-          <div class="cue"><span class="t">11:30</span><span class="s">Grill on · Marcus starts the ice run</span></div>
-          <div class="cue live"><span class="t">12:30</span><span class="s">Guests arrive</span></div>
-          <div class="cue"><span class="t">2:00</span><span class="s">The toast for Pop — his song ready</span></div>
-          <div class="cue"><span class="t">6:30</span><span class="s">Plates wrapped, leftovers list out</span></div>
+          <div class="nowcue">
+            <div class="nc-k">Happening now</div>
+            <div class="nc-s">Guests arriving — coolers stocked, music on</div>
+            <div class="nc-n">Up next · 2:00 — the toast for Pop, his song's already queued</div>
+          </div>
+          <div class="cue"><span class="t">Notes</span><span class="s">Parking, house rules, and the rain plan — one tap away all day</span></div>
         </div>
         <div class="dayof-points">
           <div class="dpt reveal"><h4>The day before, it compresses</h4><p>All the planning noise folds into one page: what still matters, who to check with, what to stop worrying about.</p></div>
           <div class="dpt reveal"><h4>On the day, it points at now</h4><p>No stale to-dos, no guilt. Just the next cue — and the moment that's the whole point of the day, protected on the schedule.</p></div>
           <div class="dpt reveal"><h4>After, it closes out gently</h4><p>Thank-yous, returns, the last vendor payment — a short list, then it's done and quiet.</p></div>
         </div>
+      </div>
+    </section>
+
+    <section id="intel">
+      <div class="sec-kicker reveal">Under the hood — <b>the quiet intelligence</b></div>
+      <h2 class="reveal">It doesn't just track your plan. It <em>understands</em> your event.</h2>
+      <div class="promises" style="margin-top:56px">
+        <div class="reveal"><span class="vow">Cultural</span><h4>It knows what this table wants.</h4><p>A Juneteenth cookout gets asked about the red drink and the red velvet. A crab feast gets bushel math. A repast gets a gentler voice. Offered when it fits — never assumed, never pushed.</p></div>
+        <div class="reveal"><span class="vow">Human</span><h4>It knows who the day is for.</h4><p>The guest of honor, their song, the one moment you said can't be missed — it keeps the heart of the event on the schedule, not just the chores around it.</p></div>
+        <div class="reveal"><span class="vow">Location</span><h4>It knows where you are.</h4><p>Prices tuned to your city, stores and help near you, directions that actually land people at your door.</p></div>
+        <div class="reveal"><span class="vow">Weather</span><h4>It watches your exact sky.</h4><p>The forecast for your spot, read against your plan — outdoor event, no backup, rain on Thursday? You hear about it while there's still time to be calm about it.</p></div>
+        <div class="reveal"><span class="vow">Venue</span><h4>It knows a backyard from a hall.</h4><p>Home means kitchen, driveway, and neighbors. A venue means load-in, contacts, and house rules — and your vendors get exactly the piece they need.</p></div>
+        <div class="reveal"><span class="vow">Money</span><h4>It keeps honest count.</h4><p>Every dollar on screen traces to your plan and your prices — spent is spent, planned is planned, and nothing is ever quietly rounded into good news.</p></div>
       </div>
     </section>
 
