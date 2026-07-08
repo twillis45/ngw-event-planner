@@ -12,7 +12,18 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
+import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM } from './HostShellV2.jsx';
+
+// Identity crest — the SAME registry the app's glyph system reads (real PD
+// artwork, one image at every size; artwork doctrine). Only types with a
+// registered mark get one; everything else stays quietly typographic.
+function markUrlFor(event) {
+  const t = String((event && event.type) || '') + ' ' + String((event && event.name) || '');
+  const key = /crab/i.test(t) ? 'crab' : /fish\s*fry|catfish/i.test(t) ? 'fish' : null;
+  const file = key ? ARTWORK_MARKS[key] : null;
+  return file ? (import.meta.env.BASE_URL + file) : null;
+}
 
 const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 // The ORIGINAL's RSVP_ALLERGY_OPTIONS, verbatim (App.js:2506).
@@ -220,17 +231,40 @@ export default function InviteV2({ code }) {
     <div className="stagewrap">
       <div className="app"><div className="content">
         <section>
-          <div className="eyebrow" style={{ marginTop: 10 }}>{somber ? 'Please join us' : 'You’re invited'}</div>
-          <h1 className="mega" style={{ fontSize: 'clamp(27px,8.5cqw,36px)', lineHeight: 1.08 }}>{event.name}</h1>
-          <p className="mega-sub" style={{ fontSize: 16 }}>
-            {event.date ? dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Date to come'}
-            {event.venue ? ` · ${event.venue}` : ''}{event.venueCity ? `, ${event.venueCity}` : ''}
-          </p>
-          <p className="grounding" style={{ marginTop: 4 }}>
-            {days != null && days > 0 ? `${days} day${days === 1 ? '' : 's'} away` : days === 0 ? 'Today' : ''}
-            {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? ` · replies by ${dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' })}` : ''}
-            {social ? ` · ${social}` : ''}
-          </p>
+          {/* ── The invitation moment — ceremonial, centered, the event AS
+              ITSELF (identity crest from the artwork registry when one
+              exists). This is the screen guests screenshot. ── */}
+          <div style={{ textAlign: 'center', padding: '18px 0 6px' }}>
+            <div className="eyebrow" style={{ letterSpacing: '.22em', color: 'var(--steel-soft)' }}>{somber ? 'Please join us' : 'You’re invited'}</div>
+            {(() => {
+              const mark = markUrlFor(event);
+              return mark ? (
+                <div aria-hidden style={{
+                  width: 132, height: 132, margin: '18px auto 6px', borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'radial-gradient(circle at 50% 42%, var(--steel-tint) 0%, transparent 72%)',
+                  border: '1px solid var(--line-soft)',
+                }}>
+                  <img src={mark} alt="" style={{ maxWidth: 96, maxHeight: 96, display: 'block' }} />
+                </div>
+              ) : <div style={{ height: 14 }} />;
+            })()}
+            <h1 className="mega" style={{ fontSize: 'clamp(28px,9cqw,38px)', lineHeight: 1.06, margin: '10px 0 10px', letterSpacing: '-.035em' }}>{event.name}</h1>
+            <p style={{ margin: '0 0 2px', fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--steel-soft)' }}>
+              {event.date ? dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Date to come'}
+            </p>
+            {(event.venue || event.venueCity) && (
+              <p style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                {event.venue || ''}{event.venueCity ? `${event.venue ? ', ' : ''}${event.venueCity}` : ''}
+              </p>
+            )}
+            <div aria-hidden style={{ width: 44, height: 1, background: 'var(--line)', margin: '16px auto 12px' }} />
+            <p className="grounding" style={{ margin: 0 }}>
+              {days != null && days > 0 ? `${days} day${days === 1 ? '' : 's'} away` : days === 0 ? 'Today' : ''}
+              {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? ` · replies by ${dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' })}` : ''}
+              {social ? ` · ${social}` : ''}
+            </p>
+          </div>
 
           {!submitted ? (
             <div className="card no-hover" style={{ marginTop: 22 }}><div className="card-head" style={{ cursor: 'default' }}>
@@ -315,32 +349,35 @@ export default function InviteV2({ code }) {
               <p className="grounding" style={{ marginTop: 8 }}>Just a name and an answer — everything else is optional. You can open this link again anytime to change your reply.</p>
             </div></div>
           ) : (
-            <div className="card no-hover" style={{ marginTop: 22 }}><div className="card-head" style={{ cursor: 'default' }}>
-              <h3 style={{ marginTop: 0 }}>
+            <div className="card no-hover" style={{ marginTop: 18 }}><div className="card-head" style={{ cursor: 'default', textAlign: 'center', padding: '26px 20px 22px' }}>
+              <div className="eyebrow" style={{ letterSpacing: '.18em', color: rsvp === 'Yes' ? 'var(--ok)' : 'var(--steel-soft)' }}>
+                {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
+              </div>
+              <h3 style={{ margin: '10px 0 0', fontSize: 20 }}>
                 {queued ? `Saved, ${first || 'friend'} — we’ll send it as soon as you’re back online.`
-                  : rsvp === 'Yes' ? `Thanks, ${first || 'friend'} — you’re in.`
-                  : rsvp === 'Maybe' ? `Noted, ${first || 'friend'} — come back to this link when you know.`
-                  : `Thanks for letting us know, ${first || 'friend'}. You’ll be missed.`}
+                  : rsvp === 'Yes' ? `Thanks, ${first || 'friend'} — see you there.`
+                  : rsvp === 'Maybe' ? `Come back to this link when you know, ${first || 'friend'}.`
+                  : `Thanks for letting us know, ${first || 'friend'}.`}
               </h3>
               {rsvp === 'Yes' && (
-                <p className="grounding" style={{ margin: '4px 0 0' }}>
+                <p className="grounding" style={{ margin: '8px 0 0' }}>
                   {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
                   {needsJoined ? ' · needs noted: ' + needsJoined : ''}
                   {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
                 </p>
               )}
-              <div className="actions-row" style={{ marginTop: 14 }}>
-                {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
-                {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Apple / .ics</a>}
-                <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
-              </div>
               {!queued && rsvp === 'Yes' && !somber && (
-                <div className="actions-row" style={{ marginTop: 12 }}>
-                  <button className="cta" onClick={() => shareForward(true)}>
+                <div className="actions-row" style={{ marginTop: 16, justifyContent: 'center' }}>
+                  <button className="cta big" onClick={() => shareForward(true)}>
                     {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'I’m in — tell a friend'}
                   </button>
                 </div>
               )}
+              <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
+                {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
+                {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Apple / .ics</a>}
+                <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
+              </div>
             </div></div>
           )}
 
