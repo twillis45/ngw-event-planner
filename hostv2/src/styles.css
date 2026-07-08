@@ -3,6 +3,7 @@
    the locked palette (demo/src/theme/palette.js). Motion timings come from
    the choreography system (design/motion.js). Layout is the V2 geometry. */
 :root{
+  color-scheme:dark; /* native controls (date picker, scrollbars) render for dark */
   --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
 }
 *{box-sizing:border-box}
@@ -55,7 +56,7 @@ button{font-family:inherit}
 .mega-sub{font-size:18px; font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.35; min-height:1.3em}
 
 .bento{display:grid; gap:10px; margin-top:26px; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c" "d d"}
-.tile{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; min-height:108px; border:none; text-align:left}
+.tile{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; min-height:108px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:33px; font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}
 .tile .t-sub{font-size:12.5px; font-weight:550; color:var(--muted); line-height:1.45}
@@ -225,7 +226,7 @@ button{font-family:inherit}
 .sheet-scrim{position:absolute; inset:0; z-index:40; background:rgba(0,0,0,.42); border-radius:inherit}
 .sheet{
   position:absolute; left:0; right:0; bottom:0; z-index:50; max-height:72%;
-  overflow-y:auto; overscroll-behavior:contain;
+  overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none;
   background:var(--card); border-radius:26px 26px 0 0; padding:18px 20px 28px;
   box-shadow:0 -18px 60px -20px rgba(0,0,0,.4);
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
@@ -261,3 +262,49 @@ button{font-family:inherit}
 }
 .shelf::-webkit-scrollbar{display:none}
 .shelf .chip{flex-shrink:0; scroll-snap-align:start; white-space:nowrap}
+
+/* ── Micro-motion: press feedback + entrance settles (choreography timings, no bounce) ── */
+@keyframes cardin{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+.chip:active, .cta:active, .lens:active, .dock button:active, .tile-d:active{transform:scale(.965)}
+.chip, .cta, .lens, .dock button{will-change:transform}
+
+/* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
+.brow{padding:11px 0 12px; border-top:1px solid var(--line-soft)}
+.bline{height:8px; border-radius:5px; background:var(--bg-band); overflow:hidden}
+.bline i{
+  display:block; height:100%; border-radius:5px; background:var(--steel-tint);
+  border:1px solid var(--steel-tint); position:relative;
+  transition:width .7s var(--ease-standard);
+}
+.bline b{display:block; height:100%; border-radius:5px; background:var(--steel); transition:width .7s var(--ease-standard)}
+
+/* ── The spread & shopping: check-off rows (real foodGot flags) ── */
+.frow{
+  display:flex; align-items:center; gap:12px; width:100%; padding:10px 8px;
+  background:none; border:none; border-top:1px solid var(--line-soft);
+  cursor:pointer; text-align:left; color:var(--ink);
+}
+.frow:hover{background:var(--bg)}
+.f-main{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px}
+.f-name{font-size:14px; font-weight:650; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.frow .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
+.fcheck{
+  width:22px; height:22px; border-radius:8px; border:1.5px solid var(--line);
+  flex-shrink:0; position:relative;
+  transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out);
+}
+.fcheck::after{
+  content:""; position:absolute; left:5px; top:9px; width:9px; height:5px;
+  border-left:2.5px solid var(--card); border-bottom:2.5px solid var(--card);
+  transform:rotate(-45deg) scale(0);
+  transition:transform var(--ms-ambient) var(--ease-standard);
+}
+.frow.got .fcheck{background:var(--ok); border-color:var(--ok)}
+.frow.got .fcheck::after{transform:rotate(-45deg) scale(1)}
+.frow.got .f-name{color:var(--muted)}
+.frow.got .amt{color:var(--ok)}
+.tag.essential{color:var(--warn); background:var(--warn-tint); font-size:10px; padding:2px 7px}
+.tile-b, .tile-c{cursor:pointer}
+.tile-b:active, .tile-c:active{transform:scale(.98)}
+.sheet::-webkit-scrollbar{display:none}
+.field::placeholder{color:var(--faint)}

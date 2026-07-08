@@ -10,8 +10,8 @@ import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS } from '@app/lib/playbooks';
+import { estimateTotalRange, breakdownByCategory, estimatorConfidence } from '@app/lib/budgetEstimator';
+import { ALL_PLAYBOOKS, playbookFoodPlan } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -41,6 +41,47 @@ const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
 const LS_CUSTOM = 'ngw-hostv2-custom-event';
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
+
+const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Count-up micro-motion: numbers settle into place (ease-out cubic, no bounce).
+function useCountUp(target, dur = 650) {
+  const [v, setV] = useState(target);
+  const prev = useRef(target);
+  useEffect(() => {
+    const from = prev.current; prev.current = target;
+    if (REDUCE_MOTION || target === null || target === undefined || isNaN(target) || from === target) { setV(target); return; }
+    const start = typeof from === 'number' && !isNaN(from) ? from : 0;
+    const t0 = performance.now(); let raf;
+    const tick = (now) => {
+      const p = Math.min(1, (now - t0) / dur);
+      setV(Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, dur]);
+  return v;
+}
+
+// Split a chosen total into REAL category lines using the estimator's own
+// shares for this event type, normalized so the lines sum exactly to the pick.
+function splitBudget(total, type) {
+  try {
+    const rows = breakdownByCategory(total, total, type) || [];
+    const mids = rows.map(r => ({ label: r.label, mid: Math.max(0, (Number(r.low) + Number(r.high)) / 2) }));
+    const sum = mids.reduce((s, m) => s + m.mid, 0);
+    if (!sum) throw new Error('no shares');
+    const lines = mids
+      .map((m, i) => ({ id: 'v2-b-' + i, category: m.label, budgeted: Math.round((m.mid * total / sum) / 50) * 50, actual: 0, notes: 'Split by the estimator’s real category shares' }))
+      .filter(l => l.budgeted > 0);
+    const resid = total - lines.reduce((s, l) => s + l.budgeted, 0);
+    if (resid && lines.length) lines.reduce((a, b) => (b.budgeted > a.budgeted ? b : a), lines[0]).budgeted += resid;
+    return lines;
+  } catch {
+    return [{ id: 'v2-b1', category: 'Everything', budgeted: total, actual: 0, notes: 'Set in Host V2' }];
+  }
+}
 
 const guestNumber = e => Number(e.guestEstimate) || Number(e.catererCount) || (e.guests || []).length || 0;
 
@@ -119,6 +160,7 @@ export default function HostShellV2() {
   const dstatC = eventDateStatus(fDate);
   const expectC = expectedFromPlanned(fGuests, fType);
   const estC = estimateTotalRange({ type: fType, guestCount: fGuests, date: fDate });
+  const confC = estimatorConfidence({ hasType: !!fType, hasDate: !dstatC.blocking, hasGuestCount: fGuests > 0, hasMarket: false, hasTimeOfDay: false, hasHistory: false });
   const budgetOpts = estC
     ? [...new Set([estC.lowTotal, Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100, estC.highTotal])]
     : [];
@@ -172,6 +214,7 @@ export default function HostShellV2() {
 
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
+  const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
   const [dayIdx, setDayIdx] = useState(0);    // The Day: position in the run of show
 
@@ -182,7 +225,27 @@ export default function HostShellV2() {
     if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null }); return true; }
     if (route.tab === 'Budget') { setSheet({ kind: 'budget', focus: null }); return true; }
     if (route.tab === 'Guests') { setSheet({ kind: 'guests', focus: null }); return true; }
+    if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(String(route.focusField || '')))) {
+      setSheet({ kind: 'food', focus: route.foodFocus || null }); return true;
+    }
     return false;
+  };
+
+  // The REAL spread: same food plan hostSpending bills from, sized by the
+  // engine's own attendance band for this event.
+  const foodPlan = useMemo(() => {
+    try { return playbookFoodPlan(event, { priceFactor: 1 }); } catch { return null; }
+  }, [event]);
+
+  // Shopping check-off writes the same foodGot flags the money engine reads —
+  // buying an item literally moves real dollars from committed to spent.
+  const toggleGot = (it, cost) => {
+    const cur = !!(event.foodGot || {})[it.id];
+    const next = { ...(event.foodGot || {}), [it.id]: !cur };
+    let ns = null;
+    try { ns = hostSpending({ ...event, foodGot: next }, 1).spent; } catch { ns = null; }
+    patchEvent({ foodGot: next },
+      (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + ' (' + fmt(cost) + ')' + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
   };
 
   // Flip one RSVP — writes the same guests array the engine's confirmed-count
@@ -203,6 +266,13 @@ export default function HostShellV2() {
   // honest route toast — never a button that pretends.
   const wiredKind = (a) => {
     if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
+    // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
+    // recognize them by their real deep-link target or category.
+    const f = (a.route && a.route.focusField) || '';
+    if (f === 'hsp-budget' || a.domain === 'readiness') return 'budget';
+    if (f === 'event-date') return 'date';
+    if (f === 'guests-entry' || a.domain === 'start') return 'guests';
+    if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
     return null;
   };
@@ -228,16 +298,45 @@ export default function HostShellV2() {
         ))}
       </div>
     );
-    if (kind === 'budget') return (
-      <div className="chips hc-row">
-        {[2000, 3500, 5000, 8000].map(n => (
-          <button key={n} className="chip" aria-pressed={money.planned === n}
-            onClick={() => patchEvent(
-              { budget: [{ id: 'v2-b1', category: 'Everything', budgeted: n, actual: 0, notes: 'Set in Host V2' }] },
-              'Budget set at ' + fmt(n) + ' — the plan just recomputed.')}>{fmt(n)}</button>
-        ))}
-      </div>
-    );
+    if (kind === 'budget') {
+      // Three options because that's what the estimator actually computes for
+      // this type + count + date: its LOW, midpoint, and HIGH. Any custom
+      // number splits across the same real category shares.
+      const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
+      const opts = est
+        ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
+        : [2000, 3500, 5000];
+      const LABELS = opts.length === 3 ? ['Lean', 'Typical', 'All-out'] : [];
+      const setB = (n) => {
+        const lines = splitBudget(n, event.type);
+        setCustomBudget('');
+        patchEvent({ budget: lines },
+          'Budget set at ' + fmt(n) + ', split across ' + lines.length + ' real categories — tap the Budget tile to see them.');
+      };
+      const customN = parseInt(customBudget, 10) || 0;
+      return (
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+          <div className="chips">
+            {opts.map((n, idx) => (
+              <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
+                {LABELS[idx] ? LABELS[idx] + ' · ' : ''}{fmt(n)}
+              </button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
+              type="number" inputMode="numeric" min="0" placeholder="Your own number"
+              value={customBudget} onChange={e => setCustomBudget(e.target.value)}
+              aria-label="Custom budget amount" />
+            <button className="cta" disabled={customN <= 0} style={customN <= 0 ? { opacity: .45 } : undefined}
+              onClick={() => setB(customN)}>Use it</button>
+          </div>
+          <p className="grounding" style={{ margin: 0 }}>
+            {est ? `Lean–all-out is the estimator’s real range for ${guests} at a ${String(event.type).toLowerCase()}.` : 'No estimate for this type — pick or enter any number.'} Whatever you choose splits across the same real categories.
+          </p>
+        </div>
+      );
+    }
     if (kind === 'date') return (
       <div className="hc-row">
         <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
@@ -251,6 +350,9 @@ export default function HostShellV2() {
             onClick={() => patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: val } },
               'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.')}>{label}</button>
         ))}
+        {foodPlan && (
+          <button className="chip" onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items)</button>
+        )}
       </div>
     );
     if (kind === 'count') {
@@ -281,7 +383,7 @@ export default function HostShellV2() {
       honoree: fName || '',
       type: fType, date: fDate, venue: '',
       guestEstimate: fGuests || '',
-      budget: fBudget ? [{ id: 'custom-b1', category: 'Everything', budgeted: fBudget, actual: 0, notes: 'Set at creation' }] : [],
+      budget: fBudget ? splitBudget(fBudget, fType) : [],
       guests: [], vendors: [], timeline: [],
     };
     setCustom(ev); setEventId('custom'); setRevealed(true);
@@ -294,6 +396,12 @@ export default function HostShellV2() {
   const ros = Array.isArray(event.ros) ? event.ros : [];
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   const budgetLines = Array.isArray(event.budget) ? event.budget : [];
+
+  // Micro-motion: hero + tile numbers settle in rather than snapping.
+  const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
+  const pctAnim = useCountUp(pct);
+  const gAnim = useCountUp(guests || 0);
+  const bAnim = useCountUp(money.planned || 0);
 
   return (
     <div className="stagewrap">
@@ -372,15 +480,25 @@ export default function HostShellV2() {
                     {expectC && <p className="grounding">Plan for {expectC.planned} — likely {expectC.low}–{expectC.high} actually make it.</p>}
                   </div>
                   <div className="q"><div className="q-label">What feels right to spend?</div>
-                    {/* Options come from the REAL budget estimator for this type + count + date */}
+                    {/* Three options = the estimator's real low / typical / high for this
+                        type + count + date. A custom number is first-class too. */}
                     <div className="chips">
-                      {budgetOpts.map(n => (
-                        <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => setFBudget(n)}>{fmt(n)}</button>
+                      {budgetOpts.map((n, idx) => (
+                        <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => { setFBudget(n); setCustomBudget(''); }}>
+                          {(budgetOpts.length === 3 ? ['Lean', 'Typical', 'All-out'][idx] + ' · ' : '')}{fmt(n)}
+                        </button>
                       ))}
-                      <button className="chip" aria-pressed={fBudget === null} onClick={() => setFBudget(null)}>Not sure yet</button>
+                      <button className="chip" aria-pressed={fBudget === null && !customBudget} onClick={() => { setFBudget(null); setCustomBudget(''); }}>Not sure yet</button>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
+                        type="number" inputMode="numeric" min="0" placeholder="Your own number"
+                        value={customBudget}
+                        onChange={e => { setCustomBudget(e.target.value); const n = parseInt(e.target.value, 10); setFBudget(n > 0 ? n : null); }}
+                        aria-label="Custom budget amount" />
                     </div>
                     {estC
-                      ? <p className="grounding">Typical for {fGuests} at a {fType.toLowerCase()}: {fmt(estC.lowTotal)}–{fmt(estC.highTotal)} — the estimator’s real range.</p>
+                      ? <p className="grounding">Typical for {fGuests} at a {fType.toLowerCase()}: {fmt(estC.lowTotal)}–{fmt(estC.highTotal)} · {confC.label}. Picking one splits it across the estimator’s real categories.</p>
                       : <p className="grounding">Pick a guest count and the estimator can suggest a range.</p>}
                   </div>
                   <div style={{ marginTop: 34 }}>
@@ -433,7 +551,7 @@ export default function HostShellV2() {
 
               <div className="eyebrow">{event.name}{event.venue ? ' · ' + event.venue : ''}</div>
               <div className="mega">
-                {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${-days}d ago` : `${days} days`}
+                {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : `${daysAnim} days`}
               </div>
               <p className="mega-sub">
                 {isPast && 'this one is behind you.'}
@@ -445,7 +563,7 @@ export default function HostShellV2() {
                 <div className="tile tile-a">
                   <div className="t-label">The basics</div>
                   <div>
-                    <div className="t-num">{pct === null ? '—' : pct + '%'}</div>
+                    <div className="t-num">{pct === null ? '—' : pctAnim + '%'}</div>
                     <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
                     <div className="t-sub">
                       {plan.progress.total
@@ -454,22 +572,22 @@ export default function HostShellV2() {
                     </div>
                   </div>
                 </div>
-                <div className="tile tile-b">
+                <button className="tile tile-b" onClick={() => setSheet({ kind: 'guests' })}>
                   <div className="t-label">Guests</div>
                   <div>
-                    <div className="t-num">{guests || '—'}</div>
+                    <div className="t-num">{guests ? gAnim : '—'}</div>
                     <div className="t-sub">{guests
                       ? (expect ? `planned around · likely ${expect.low}–${expect.high} on the day` : 'planned around')
                       : 'no count yet — the plan can’t size food or seats'}</div>
                   </div>
-                </div>
-                <div className="tile tile-c">
+                </button>
+                <button className="tile tile-c" onClick={() => setSheet({ kind: 'budget' })}>
                   <div className="t-label">Budget</div>
                   <div>
-                    <div className="t-num">{money.planned ? fmt(money.planned) : '—'}</div>
+                    <div className="t-num">{money.planned ? fmt(bAnim) : '—'}</div>
                     <div className="t-sub">{money.planned ? `${fmt(money.committed)} committed · ${fmt(money.spent)} spent` : 'no budget lines yet'}</div>
                   </div>
-                </div>
+                </button>
                 <button
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
                   onClick={() => document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' })}
@@ -502,7 +620,7 @@ export default function HostShellV2() {
                 const wired = wiredKind(a);
                 const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests'].includes(a.route.tab));
                 return (
-                  <article className="card" key={key}>
+                  <article className="card" key={key} style={{ animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     <span className="idx">{i + 1}</span>
                     <div className="card-head">
                       <div className="card-top">
@@ -530,6 +648,13 @@ export default function HostShellV2() {
                     <div className="later-row done" key={i}><span className="t">{h}</span></div>
                   ))}
                 </>
+              )}
+
+              {foodPlan && foodPlan.itemCount > 0 && (
+                <button className="fold-btn" onClick={() => setSheet({ kind: 'food' })}>
+                  The spread &amp; shopping — {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                  <span className="chev">›</span>
+                </button>
               )}
 
               {rollup && rollup.counts && rollup.counts.total > 0 && (
@@ -644,9 +769,41 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Budget lines' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Budget lines' : sheet.kind === 'food' ? 'The spread & shopping' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
+            {sheet.kind === 'food' && (foodPlan ? (
+              <>
+                <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                  {foodPlan.boughtCount} of {foodPlan.itemCount} bought · sized by the engine to your attendance band. Checking off moves real money to spent.
+                </div>
+                {(() => {
+                  const items = (foodPlan.list || []).filter(it => it && !it.skipped);
+                  const groups = [...new Set(items.map(it => it.group || 'Other'))];
+                  return groups.map(g => (
+                    <div key={g}>
+                      <div className="shelf-label" style={{ margin: '14px 0 4px' }}>{g}</div>
+                      {items.filter(it => (it.group || 'Other') === g).map((it, i) => {
+                        const got = !!(event.foodGot || {})[it.id];
+                        const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
+                        return (
+                          <button key={it.id} className={'frow' + (got ? ' got' : '')}
+                            style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                            onClick={() => toggleGot(it, cost)}>
+                            <span className="fcheck" aria-hidden="true" />
+                            <span className="f-main">
+                              <span className="f-name">{it.short || it.item}{it.essential ? <span className="tag essential">essential</span> : null}</span>
+                              <span className="v-meta">{[it.qty && it.unit ? `${it.qty} ${it.unit}` : null, it.where].filter(Boolean).join(' · ')}</span>
+                            </span>
+                            <span className="amt">{fmt(cost)}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
+              </>
+            ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No playbook spread for this event type — the engine only builds one where a playbook exists.</div>)}
             {sheet.kind === 'vendors' && (
               (event.vendors || []).length ? (event.vendors || []).map(v => (
                 <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
@@ -662,9 +819,20 @@ export default function HostShellV2() {
             {sheet.kind === 'budget' && (
               budgetLines.length ? (
                 <>
-                  {budgetLines.map(l => (
-                    <div className="line" key={l.id}><span>{l.category}</span><span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span></div>
-                  ))}
+                  {budgetLines.map((l, i) => {
+                    const budgeted = Number(l.budgeted) || 0;
+                    const alloc = money.planned ? Math.round((budgeted / money.planned) * 100) : 0;
+                    const spent = budgeted ? Math.min(100, Math.round(((Number(l.actual) || 0) / budgeted) * 100)) : 0;
+                    return (
+                      <div className="brow" key={l.id} style={{ animation: `cardin 300ms var(--ease-out) ${Math.min(i, 8) * 40}ms both` }}>
+                        <div className="line" style={{ padding: '0 0 5px' }}>
+                          <span>{l.category} <span className="of">{alloc}%</span></span>
+                          <span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(budgeted)}</span></span>
+                        </div>
+                        <div className="bline"><i style={{ width: alloc + '%' }}><b style={{ width: spent + '%' }} /></i></div>
+                      </div>
+                    );
+                  })}
                   <div className="line total"><span>Committed so far</span><span className="amt">{fmt(money.committed)} of {fmt(money.planned)}</span></div>
                 </>
               ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No budget lines yet.</div>
