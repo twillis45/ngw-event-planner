@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 import HostShellV2 from './HostShellV2.jsx';
+import InviteV2 from './InviteV2.jsx';
 import { applyStudioMatte } from './theme.js';
 import './styles.css';
 
@@ -14,4 +15,12 @@ function fitPhone() {
 window.addEventListener('resize', fitPhone);
 fitPhone();
 
-createRoot(document.getElementById('root')).render(<HostShellV2 />);
+// ?rsvp=CODE is the PUBLIC self-RSVP invite (same mechanic as the original
+// app) — guests get the invite page, never the host shell.
+const rsvpCode = (() => {
+  try { return new URLSearchParams(window.location.search).get('rsvp'); } catch { return null; }
+})();
+
+createRoot(document.getElementById('root')).render(
+  rsvpCode ? <InviteV2 code={rsvpCode} /> : <HostShellV2 />
+);

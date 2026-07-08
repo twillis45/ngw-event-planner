@@ -18,6 +18,7 @@ import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
+import { purgeStaleOutbox } from '@app/lib/api/rsvp';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
@@ -82,13 +83,15 @@ const TEST_DAY_OF = mkTest('test-day-of', 'Test — Cookout (day of)', /^the coo
 });
 const TEST_TWO_DAYS = mkTest('test-two-days', 'Test — Game Night (in 2 days)', /game night/i, 2, {});
 
-const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
+// Exported for the public invite page (InviteV2) — it resolves rsvpCode links
+// against the SAME pool + patch layers the host shell reads (one truth).
+export const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
 
 const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
 const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
-const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
-const LS_CUSTOM = 'ngw-hostv2-custom-event';
+export const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
+export const LS_CUSTOM = 'ngw-hostv2-custom-event';
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -663,6 +666,18 @@ export default function HostShellV2() {
     catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
   };
 
+  // The self-RSVP invite link — the SAME ?rsvp=CODE mechanic as the original
+  // app (every event carries rsvpCode). Guests who open it reply themselves;
+  // replies land in the outbox and merge into this roster automatically.
+  const shareInviteLink = async () => {
+    const url = window.location.origin + window.location.pathname + '?rsvp=' + encodeURIComponent(event.rsvpCode || event.id);
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+      try { await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url }); return; } catch { /* declined — fall through to copy */ }
+    }
+    try { await navigator.clipboard.writeText(url); toast('Invite link copied — anyone who opens it can RSVP themselves, no app needed.'); feedback('act'); }
+    catch { toast('Couldn’t copy on this browser — the link ends in ?rsvp=' + (event.rsvpCode || event.id)); }
+  };
+
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
   // catching up genuinely closes the "Catch up on overdue planning" card.
   const toggleTask = (i) => {
@@ -675,10 +690,20 @@ export default function HostShellV2() {
     let extra = {};
     let boughtNote = '';
     if (tl[i].done && /\b(buy|shop)\b|shopping/i.test(String(tl[i].task || ''))) {
+      // COST-TRUTH GATE: the bulk shortcut only marks lines that carry a REAL
+      // locked cost — unpriced lines stay open and are named, so "spent" never
+      // moves on estimates.
       const got = { ...(event.foodGot || {}) };
-      let n = 0;
-      ((foodPlan && foodPlan.list) || []).forEach(it => { if (it && !it.skipped && !got[it.id]) { got[it.id] = true; n += 1; } });
-      if (n > 0) { extra = { foodGot: got }; boughtNote = ' ' + n + ' spread item' + (n === 1 ? '' : 's') + ' marked bought with it.'; }
+      let n = 0, unpriced = 0;
+      ((foodPlan && foodPlan.list) || []).forEach(it => {
+        if (!it || it.skipped || got[it.id]) return;
+        if (it.locked != null) { got[it.id] = true; n += 1; } else unpriced += 1;
+      });
+      if (n > 0) extra = { foodGot: got };
+      if (n > 0 || unpriced > 0) {
+        boughtNote = (n > 0 ? ' ' + n + ' priced item' + (n === 1 ? '' : 's') + ' marked bought.' : '')
+          + (unpriced > 0 ? ' ' + unpriced + ' still need a real price before they can count as bought.' : '');
+      }
     }
     patchEvent({ timeline: tl, ...extra },
       (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
@@ -710,8 +735,17 @@ export default function HostShellV2() {
 
   // Shopping check-off writes the same foodGot flags the money engine reads —
   // buying an item literally moves real dollars from committed to spent.
+  // COST-TRUTH GATE (Todd, 2026-07-08): because "bought" moves money to spent,
+  // a line can only be checked once a REAL cost is locked on it (lock-it, a
+  // store pick, or $0 for freebies). Checking an unpriced line opens its cost
+  // panel instead — an estimate never gets to pose as spend.
   const toggleGot = (it, cost) => {
     const cur = !!(event.foodGot || {})[it.id];
+    if (!cur && it.locked == null) {
+      setFoodTune(it.id);
+      toast('What did ' + (it.short || it.item) + ' actually cost? Lock the price first — bought is real money, not an estimate.');
+      return;
+    }
     const next = { ...(event.foodGot || {}), [it.id]: !cur };
     let ns = null;
     try { ns = hostSpending({ ...event, foodGot: next }, 1).spent; } catch { ns = null; }
@@ -820,6 +854,67 @@ export default function HostShellV2() {
     feedback('act');
     if (msg) toast(msg);
   };
+
+  // ── Guest replies land here. The public invite (?rsvp=CODE) writes the
+  // ORIGINAL app's outbox (ngw-rsvp-queue-<eventId>); on load we merge with the
+  // ORIGINAL's name-match rules (exact → last+first(≥3) → first-only(≥4)) so
+  // both apps read the same roster, then clear the queue (raw feeds truth).
+  useEffect(() => {
+    try {
+      const key = 'ngw-rsvp-queue-' + event.id;
+      const raw = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(raw) || !raw.length) return;
+      const queue = purgeStaleOutbox(raw);
+      if (!queue.length) { localStorage.removeItem(key); return; }
+      const gs = [...(event.guests || [])];
+      let merged = 0, added = 0, yesCount = 0;
+      for (const data of queue) {
+        const full = String(data.name || '').trim();
+        if (!full) continue;
+        const toks = full.toLowerCase().split(/\s+/);
+        const first = toks[0] || '';
+        const last = toks.length > 1 ? toks[toks.length - 1] : '';
+        const ix = gs.findIndex(g => {
+          const gn = String((g && g.name) || '').trim().toLowerCase();
+          if (!gn) return false;
+          if (gn === full.toLowerCase()) return true;
+          const gp = gn.split(/\s+/);
+          const gFirst = gp[0] || '', gLast = gp.length > 1 ? gp[gp.length - 1] : '';
+          if (last.length >= 3 && gLast === last && gFirst === first) return true;
+          if (first.length >= 4 && gFirst === first) return true;
+          return false;
+        });
+        if (data.rsvp === 'Yes') yesCount += 1;
+        if (ix >= 0) {
+          const g = gs[ix];
+          gs[ix] = {
+            ...g, rsvp: data.rsvp,
+            meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal,
+            needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne,
+            plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds,
+            kids: data.kids || g.kids, address: data.mailingAddress || g.address,
+            partyNotes: data.note || g.partyNotes,
+          };
+          merged += 1;
+        } else {
+          gs.push({
+            id: 'g-rsvp-' + (data.idempotencyKey || Math.random().toString(36).slice(2, 10)),
+            name: full, group: 'Friends', rsvp: data.rsvp || '', meal: data.meal || '—',
+            needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—',
+            plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0,
+            address: data.mailingAddress || '', partyNotes: data.note || '',
+          });
+          added += 1;
+        }
+      }
+      localStorage.removeItem(key);
+      const n = merged + added;
+      if (!n) return;
+      const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+      patchEvent({ guests: gs, kidsCount },
+        n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.');
+    } catch { /* queue unreadable — leave it for the original app */ }
+  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which engine actions have a real in-place edit here. Everything else stays an
   // honest route toast — never a button that pretends.
@@ -2120,7 +2215,15 @@ export default function HostShellV2() {
                       </span>
                       <span style={{ display: 'flex', gap: 6 }}>
                         <button className="mini" style={l.bought ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
-                          onClick={() => writeCp({ lines: lines.map((x, ix) => ix === i ? { ...x, bought: !x.bought } : x) }, l.bought ? 'Back on the order.' : 'Marked bought — real spend now, not an estimate.')}>
+                          onClick={() => {
+                            // COST-TRUTH GATE: a crab line needs its real price
+                            // before it can be bought — same rule as the spread.
+                            if (!l.bought && !(Number(l.pricePerUnit) > 0)) {
+                              toast('Enter what this line cost first — tap a reference price or type your crab house’s quote.');
+                              return;
+                            }
+                            writeCp({ lines: lines.map((x, ix) => ix === i ? { ...x, bought: !x.bought } : x) }, l.bought ? 'Back on the order.' : 'Marked bought — real spend now, not an estimate.');
+                          }}>
                           {l.bought ? 'bought' : 'got it?'}
                         </button>
                         <button className="mini" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}>×</button>
@@ -2674,6 +2777,7 @@ export default function HostShellV2() {
                     </div>
                   )}
                   <div className="actions-row" style={{ margin: '0 0 8px' }}>
+                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Copy the invite</button>
                     {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>}
                   </div>
@@ -2715,6 +2819,10 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '14px 2px 4px' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
                   </div>
+                  <div className="actions-row" style={{ margin: '0 0 4px' }}>
+                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                  </div>
+                  <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
                   {quickAdd}
                 </>
               );
