@@ -6,7 +6,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { eventPlan, getEventReadiness } from '@app/CommandCenter';
 import { buildAssembleRevealStages } from '@app/lib/assembleRevealEngines';
-import { isLikelyOutdoor } from '@app/lib/weather';
+import { isLikelyOutdoor, suggestRainPlan, guestRainMessage } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -383,7 +383,11 @@ export default function HostShellV2() {
       </div>
     );
     if (kind === 'rain') {
-      // Do-it-for-me: the playbook's AUTHORED wet-weather contingency, verbatim.
+      // ORIGINAL intelligence: suggestRainPlan() — the app's venue-aware
+      // suggestion (home vs named venue vs generic) — leads as do-it-for-me;
+      // the playbook's authored wet-weather contingency is the tradition option.
+      let suggested = null;
+      try { suggested = suggestRainPlan(event); } catch { suggested = null; }
       let authored = null;
       try {
         const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
@@ -392,19 +396,27 @@ export default function HostShellV2() {
       } catch { authored = null; }
       return (
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-          {authored && (
-            <button className="cta" style={{ alignSelf: 'flex-start' }}
-              onClick={() => patchEvent({ rainPlan: authored }, 'Backup written for you — the playbook’s own wet-weather move.')}>
-              Do it for me
-            </button>
-          )}
+          <div className="actions-row" style={{ marginTop: 0 }}>
+            {suggested && (
+              <button className="cta"
+                onClick={() => patchEvent({ rainPlan: suggested }, 'Backup written for you — tuned to where you’re hosting.')}>
+                Do it for me
+              </button>
+            )}
+            {authored && (
+              <button className="cta soft"
+                onClick={() => patchEvent({ rainPlan: authored }, 'The ' + String(event.type).toLowerCase() + ' move it is.')}>
+                The {String(event.type).toLowerCase()} move
+              </button>
+            )}
+          </div>
           <div className="chips">
             {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
               <button key={p} className="chip" aria-pressed={event.rainPlan === p}
                 onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
             ))}
           </div>
-          {authored && <p className="grounding" style={{ margin: 0 }}>“Do it for me” uses the playbook’s authored move: “{authored.slice(0, 90)}…”</p>}
+          {suggested && <p className="grounding" style={{ margin: 0 }}>“Do it for me”: “{suggested.slice(0, 110)}…”</p>}
         </div>
       );
     }
@@ -809,7 +821,8 @@ export default function HostShellV2() {
 
               {outdoor && event.rainPlan && (
                 <div className="later-row" style={{ marginTop: 18 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>If it rains: {event.rainPlan}</span>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>If it rains: {String(event.rainPlan).slice(0, 60)}{String(event.rainPlan).length > 60 ? '…' : ''}</span>
+                  <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
                   <button className="mini" onClick={() => patchEvent({ rainPlan: '' }, 'Rain backup cleared — worth re-naming one.')}>Change</button>
                 </div>
               )}
