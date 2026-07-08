@@ -378,6 +378,7 @@ export default function HostShellV2() {
   // Blockers (the Reveal's own stage builder, ongoing view), decision board,
   // capacity, helpers, risks, and the wins — all production functions.
   const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
+  const venueBlockerShown = blockers.some(b => /venue/i.test(String(b && b.title || '')));
   useEffect(() => {
     try {
       console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.identity && ctx.identity.primaryEventType,
@@ -1522,7 +1523,7 @@ export default function HostShellV2() {
                 );
               })}
 
-              {event.venue && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
+              {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
                     {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + String(event.venue).toLowerCase()}
@@ -1530,7 +1531,7 @@ export default function HostShellV2() {
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {event.venue && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
+              {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 8 }}>
                   <input className="field" style={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it"
                     value={addressDraft} onChange={e => setAddressDraft(e.target.value)} aria-label="Venue address" />
@@ -1578,7 +1579,7 @@ export default function HostShellV2() {
                   </span>
                 </div>
               )}
-              {String(event.venue || '').trim() && needsCity() && (
+              {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
                   <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="Annapolis"
@@ -1586,7 +1587,7 @@ export default function HostShellV2() {
                   <button className="mini" onClick={saveCity}>Save</button>
                 </div>
               )}
-              {!String(event.venue || '').trim() && (
+              {!String(event.venue || '').trim() && !venueBlockerShown && (
                 <article className="card" style={{ marginTop: 20 }}>
                   <div className="card-head">
                     <div className="card-top">
