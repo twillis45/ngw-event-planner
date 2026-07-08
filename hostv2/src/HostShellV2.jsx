@@ -13,7 +13,7 @@ import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -25,7 +25,9 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
+import { computeDayAlerts } from '@app/lib/dayAlerts';
+import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -1218,6 +1220,93 @@ export default function HostShellV2() {
     const first = ros.findIndex(r => r && !r.done);
     setDayIdx(first === -1 ? ros.length : first);
   }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── LIVE DAY (original parity, App.js:34368 semantics): a real wall-clock
+  // ticks every 30s and the NOW cue is DERIVED from the current minute — the
+  // first open cue at/after now, else the first open cue. The host never taps
+  // to find their place; marking done simply re-derives the next NOW.
+  const [nowMin, setNowMin] = useState(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
+  useEffect(() => {
+    if (stage !== 'day' || days !== 0) return undefined;
+    const tick = () => { const d = new Date(); setNowMin(d.getHours() * 60 + d.getMinutes()); };
+    tick();
+    const iv = setInterval(tick, 30000);
+    return () => clearInterval(iv);
+  }, [stage, days]);
+  // Cue-time math honoring BOTH stored forms — 24h "14:00" and 12h "2:00 PM"
+  // (the original's toMins; parsing 12h as 24h creates the 3 AM-cookout bug).
+  const cueMins = (t) => {
+    const m = /(\d{1,2}):(\d{2})\s*([ap])?\.?m?\.?/i.exec(String(t || ''));
+    if (!m) return null;
+    let h = Number(m[1]); const mi = Number(m[2]);
+    const ap = m[3] ? m[3].toLowerCase() : null;
+    if (ap === 'p' && h < 12) h += 12;
+    if (ap === 'a' && h === 12) h = 0;
+    return h * 60 + mi;
+  };
+  const rosState = useMemo(() => { try { return classifyRos(ros); } catch { return ros.length ? 'timed' : 'empty'; } }, [ros]);
+  const liveDay = stage === 'day' && days === 0 && rosState === 'timed';
+  const openCues = useMemo(() => ros.filter(r => r && !r.done), [ros]);
+  const nowCue = liveDay
+    ? (openCues.find(r => { const m = cueMins(r.time); return m !== null && m >= nowMin; }) || openCues[0] || null)
+    : null;
+  const nowActive = !!(nowCue && (() => { const m = cueMins(nowCue.time); return m !== null && m <= nowMin; })());
+  // EVERY open cue stays visible (original renders the full timeline): the
+  // list is chronological and includes behind-schedule cues, marked honestly.
+  const cuesAfterNow = nowCue ? openCues.filter(c => c !== nowCue) : [];
+  const dayAllDone = liveDay && ros.length > 0 && openCues.length === 0;
+  const dayStarted = ros.some(r => r && (r.done || (() => { const m = cueMins(r.time); return m !== null && m <= nowMin; })()));
+  // The alert stack — the SAME engine the production app reads (lib/dayAlerts,
+  // extracted from App.js so both shells agree). nowMin keeps it current.
+  const dayAlerts = useMemo(() => {
+    if (days !== 0) return [];
+    try { return computeDayAlerts(event) || []; } catch { return []; }
+  }, [event, days, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
+  const alertSheet = (a) => {
+    const to = String(a.navTo || '');
+    if (/arrivals|vendors/i.test(to)) { setSheet({ kind: 'vendors' }); return; }
+    if (/guests/i.test(to)) { setSheet({ kind: 'guests' }); return; }
+    if (/task/i.test(to)) { setSheet({ kind: 'tasks', focus: null }); return; }
+    if (/communication/i.test(to)) { toast('Approvals live in the app’s messages — not wired here yet.'); return; }
+    // Event Day Schedule → we're already looking at it.
+  };
+  // Handled whispers — ONLY facts the data proves (original Focus semantics).
+  const dayWhispers = useMemo(() => {
+    if (!liveDay) return [];
+    const w = [];
+    const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+    if (yes > 0) w.push(yes + ' confirmed');
+    else if (guests) w.push('planned for ' + guests);
+    if (foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount >= foodPlan.itemCount) w.push('food shopped');
+    if (money.planned && money.committed <= money.planned) w.push('budget on plan');
+    if (outdoor && String(event.rainPlan || '').trim()) w.push('rain backup set');
+    return w.slice(0, 4);
+  }, [liveDay, event, foodPlan, money.planned, money.committed, outdoor, guests]);
+  // Who's helping — DERIVED people (ros owners + arriving confirmed vendors),
+  // never a CRM. Caterer rows drop when the host is cooking (original rule).
+  const dayHelpers = useMemo(() => {
+    if (!liveDay) return [];
+    const out = []; const seen = new Set();
+    for (const r of ros) {
+      const o = String((r && r.owner) || '').trim();
+      if (!o || /^(host|you|me|everyone|all)$/i.test(o)) continue;
+      const k = o.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      const cues = ros.filter(x => String((x && x.owner) || '').trim().toLowerCase() === k);
+      out.push({ name: o, role: cues.slice(0, 2).map(c => c.segment).join(' · ').slice(0, 64), time: cues[0] && cues[0].time });
+    }
+    let cooking = false; try { cooking = hostIsCooking(event); } catch { cooking = false; }
+    for (const v of (event.vendors || [])) {
+      if (!v || !v.name || !v.arrivalTime) continue;
+      if (!['Confirmed', 'Contracted', 'Deposit Paid'].includes(v.status)) continue;
+      if (cooking && /cater/i.test(String(v.category || ''))) continue;
+      if (seen.has(String(v.name).toLowerCase())) continue;
+      let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
+      out.push({ name: v.name, role: v.category || 'vendor', time: v.arrivalTime, coi });
+    }
+    return out;
+  }, [liveDay, ros, event]);
   const budgetLines = Array.isArray(event.budget) ? event.budget : [];
 
   // Micro-motion: hero + tile numbers settle in rather than snapping.
@@ -1878,10 +1967,128 @@ export default function HostShellV2() {
             </section>
           )}
 
-          {/* ══════════ THE DAY — real run-of-show data ══════════ */}
-          {stage === 'day' && (
+          {/* ══════════ THE DAY — live command surface on the day itself,
+              walkthrough preview any other day ══════════ */}
+          {stage === 'day' && liveDay && (
+            <section className="day-sec">
+              <div className="eyebrow">
+                {dayAllDone ? 'All clear — that’s a wrap' : nowActive ? 'Today · live' : dayStarted ? 'Today · next up' : 'Today · starts soon'}
+                {' · '}{new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              </div>
+              {/* The REAL wall-clock — ticks every 30s; the day tells the host
+                  where it is, the host never hunts for their place. */}
+              <div className="clock">
+                {(() => { const h = Math.floor(nowMin / 60); const m = nowMin % 60; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`; })()}
+              </div>
+              {dayWhispers.length > 0 && (
+                <div className="pills" style={{ margin: '-14px 0 18px' }}>
+                  {dayWhispers.map(w => <span key={w} className="pill p-ok" style={{ cursor: 'default' }}>{w}</span>)}
+                </div>
+              )}
+              {/* Day alerts — the SAME engine the production app reads
+                  (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
+              {dayAlerts.map(a => (
+                <button key={a.id} onClick={() => alertSheet(a)}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
+                    borderRadius: 14, padding: '12px 14px', marginBottom: 8, font: 'inherit',
+                    background: a.tier === 'critical' ? 'var(--danger-tint)' : a.tier === 'warning' ? 'var(--warn-tint)' : 'var(--steel-tint)',
+                    color: 'var(--carbon-text)',
+                  }}>
+                  <span style={{ display: 'block', fontSize: 13.5, fontWeight: 750, color: a.tier === 'critical' ? 'var(--danger)' : a.tier === 'warning' ? 'var(--warn)' : 'var(--steel-soft)' }}>{a.headline}</span>
+                  {a.move && <span style={{ display: 'block', fontSize: 12.5, marginTop: 2, color: 'var(--carbon-muted)' }}>{a.move}</span>}
+                </button>
+              ))}
+              {dayAllDone ? (
+                <div className="now-card" style={{ borderColor: 'var(--ok)', marginTop: 6 }}>
+                  <div className="now-label" style={{ color: 'var(--ok)' }}>Everything handled</div>
+                  <h2>That’s a wrap.</h2>
+                  <p className="meta">All {ros.length} moments run, in order. Enjoy what’s left of the day.</p>
+                </div>
+              ) : nowCue && (
+                <div className="now-card" style={{ marginTop: 6 }}>
+                  <div className="now-label">{nowActive ? 'Happening now' : (dayStarted ? 'Next up' : 'Up first') + (nowCue.time ? ' · ' + nowCue.time : '')}</div>
+                  <h2>{nowCue.segment}</h2>
+                  <p className="meta">
+                    {[nowActive && nowCue.time ? 'started ' + nowCue.time : null, nowCue.location, nowCue.owner && ('owner: ' + nowCue.owner), nowCue.vendorName].filter(Boolean).join(' · ')}
+                  </p>
+                  {nowCue.notes && <p className="meta">{nowCue.notes}</p>}
+                  <button className="cta" style={{ marginTop: 6 }} onClick={() => {
+                    // Same single-truth write as ever: per-cue rosDone only; the
+                    // NOW cue re-derives, so this IS the advance.
+                    if (nowCue.id) {
+                      patchEvent({ rosDone: { ...(event.rosDone || {}), [nowCue.id]: true } }, null);
+                      if (openCues.length === 1) feedback('magic');
+                    }
+                  }}>
+                    {openCues.length === 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
+                  </button>
+                </div>
+              )}
+              {cuesAfterNow.length > 0 && (
+                <div className="then">
+                  <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</div>
+                  {cuesAfterNow.slice(0, 7).map((r, i) => {
+                    const m = cueMins(r.time);
+                    const behind = m !== null && m < nowMin;
+                    return (
+                      // Tappable: a behind-schedule host records finished-late work
+                      // right on the row (same single-truth rosDone write) — the
+                      // NOW card alone can't reach a cue whose time already passed.
+                      <button className="then-row" key={r.id || i}
+                        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--carbon-line)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+                        onClick={() => { if (r.id) patchEvent({ rosDone: { ...(event.rosDone || {}), [r.id]: true } }, 'Recorded: ' + String(r.segment || '').slice(0, 44) + '…'); }}>
+                        <span className="d" style={behind ? { color: 'var(--warn)', fontWeight: 800 } : i === 0 ? { color: 'var(--steel-soft)', fontWeight: 800 } : undefined}>
+                          {behind ? 'BEHIND · ' + (r.time || '') : i === 0 ? 'NEXT · ' + (r.time || '') : r.time}
+                        </span>
+                        <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
+                      </button>
+                    );
+                  })}
+                  {cuesAfterNow.length > 7 && <div className="then-row"><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {cuesAfterNow.length - 7} more, through the last item</span></div>}
+                </div>
+              )}
+              {ros.some(r => r && r.done) && !dayAllDone && (
+                <p className="grounding" style={{ marginTop: 12, color: 'var(--carbon-muted)' }}>
+                  {ros.filter(r => r && r.done).length} already run — the day has them.
+                </p>
+              )}
+              {dayHelpers.length > 0 && (
+                <div style={{ marginTop: 28 }}>
+                  <div className="eyebrow" style={{ marginBottom: 10 }}>Who’s helping · {dayHelpers.length}</div>
+                  {dayHelpers.map((h, i) => (
+                    <div className="then-row" key={i} style={{ alignItems: 'center' }}>
+                      <span aria-hidden style={{
+                        width: 28, height: 28, borderRadius: '50%', flexShrink: 0, display: 'inline-flex',
+                        alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800,
+                        background: 'var(--steel-tint)', color: 'var(--steel-soft)',
+                      }}>{String(h.name).trim().charAt(0).toUpperCase()}</span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'block', fontWeight: 700 }}>{h.name}
+                          {h.coi && h.coi.label ? <span className="tag plan" style={{ marginLeft: 8, color: h.coi.level === 'safe' ? 'var(--carbon-muted)' : 'var(--warn)', background: 'var(--steel-tint)' }}>{h.coi.label}</span> : null}
+                        </span>
+                        <span style={{ display: 'block', fontSize: 12.5, color: 'var(--carbon-muted)' }}>{h.role}</span>
+                      </span>
+                      <span className="d" style={{ minWidth: 0 }}>{h.time || ''}</span>
+                    </div>
+                  ))}
+                  <div className="actions-row" style={{ marginTop: 10 }}>
+                    <button className="cta soft" onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, null, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
+                      Send everyone their part
+                    </button>
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
+          {stage === 'day' && !liveDay && (
             <section className="day-sec">
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
+              {days === 0 && rosState === 'untimed' && (
+                <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--carbon-muted)' }}>
+                  These moments don’t have times yet — the live clock takes over once times are set. Walking through by hand still records what’s done.
+                </p>
+              )}
               {ros.length === 0 ? (
                 <>
                   <h1 className="mega" style={{ fontSize: 'clamp(28px,9cqw,36px)', lineHeight: 1.08 }}>No run of show yet</h1>

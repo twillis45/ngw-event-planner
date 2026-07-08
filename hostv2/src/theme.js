@@ -45,6 +45,7 @@ export function applyStudioMatte() {
   set('--warn', dark.amber);
   set('--warn-tint', tint(dark.amber, 0.15));
   set('--danger', dark.dangerRed);
+  set('--danger-tint', tint(dark.dangerRed, 0.14));
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', dark.carbonBody);
