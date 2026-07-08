@@ -15,11 +15,13 @@ import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, dra
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
+import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
+import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -178,6 +180,11 @@ export default function HostShellV2() {
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   const helpers = useMemo(() => { try { return deriveHelperResponsibilities(event) || []; } catch { return []; } }, [event]);
   const risks = useMemo(() => { try { return playbookRisks(event); } catch { return null; } }, [event]);
+  // The essentials rail (phaseProgress), tight-timeline summary, and the
+  // playbook's heart moments — the last of the audit list.
+  const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
+  const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
+  const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
 
   useEffect(() => {
     if (eventId !== 'custom') { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
@@ -788,6 +795,27 @@ export default function HostShellV2() {
                       ))}
                     </div>
                   )}
+                  {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '6px 0 4px' }}>The essentials</div>
+                      {phaseCues.items.map((c, i) => c.handled ? (
+                        <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
+                          <span className="of">{c.id}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
+                        </div>
+                      ) : (
+                        <button key={c.id || i} className="frow" style={{ padding: '8px 2px' }}
+                          onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel); }}>
+                          <span className="f-main"><span className="f-name" style={{ fontSize: 13.5 }}>{c.cueLabel}</span></span>
+                          <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  {heartMoments.length > 0 && (
+                    <p className="grounding" style={{ marginTop: 10 }}>
+                      Protect the moment: {String((heartMoments[0] && (heartMoments[0].label || heartMoments[0].title || heartMoments[0].moment)) || heartMoments[0]).slice(0, 120)}
+                    </p>
+                  )}
                   {(() => {
                     if (!readiness) return null;
                     // Family doctrine: home-hosted events have no vendors/paperwork
@@ -866,6 +894,14 @@ export default function HostShellV2() {
                   <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
                   <button className="mini" onClick={() => patchEvent({ rainPlan: '' }, 'Rain backup cleared — worth re-naming one.')}>Change</button>
                 </div>
+              )}
+
+              {compression && compression.headline && (
+                <button className="later-row" style={{ marginTop: 20, width: '100%', textAlign: 'left', background: 'var(--warn-tint)', border: 'none', borderRadius: 12, padding: '12px 14px', cursor: 'pointer' }}
+                  onClick={() => setSheet({ kind: 'tasks', focus: null })}>
+                  <span className="t" style={{ color: 'var(--warn)' }}>{compression.headline}</span>
+                  {compression.meta && compression.meta.sub && <span className="of" style={{ color: 'var(--warn)' }}> {compression.meta.sub}</span>}
+                </button>
               )}
 
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
@@ -1062,12 +1098,27 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'space' && (
               <>
-                {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => (
-                  <div key={it.key || i} className="line" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
-                    <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">×{it.qty}</span>{it.note ? <span className="of"> · {it.note}</span> : null}</span>
-                    <span className="amt">{it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : '—'}</span>
-                  </div>
-                ))}
+                {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
+                  const links = it.owned ? null : (() => { try { return supplyRetailLinks(it.short || it.item, event.venue); } catch { return null; } })();
+                  return (
+                    <div key={it.key || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                      <div className="line" style={{ padding: '0 0 4px' }}>
+                        <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">×{it.qty}</span></span>
+                        <span className="amt">{it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : '—'}</span>
+                      </div>
+                      {links && (
+                        <div className="actions-row" style={{ marginTop: 2 }}>
+                          {links.kind === 'rent' && links.rentUrl && (
+                            <a className="mini" style={{ textDecoration: 'none' }} href={links.rentUrl} target="_blank" rel="noreferrer">Find rentals nearby</a>
+                          )}
+                          {(links.buy || []).slice(0, links.kind === 'rent' ? 1 : 3).map(l => (
+                            <a key={l.label} className="mini" style={{ textDecoration: 'none' }} href={l.url} target="_blank" rel="noreferrer">{l.label}</a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
                 {helpers.length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Who’s helping</div>
