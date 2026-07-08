@@ -637,8 +637,20 @@ export default function HostShellV2() {
   const toggleTask = (i) => {
     const tl = (event.timeline || []).map((t, ix) => ix === i ? { ...t, done: !t.done } : t);
     const open = tl.filter(t => t && !t.done).length;
-    patchEvent({ timeline: tl },
-      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.');
+    // RAW FEEDS TRUTH, both directions: checking a buy/shop step is the host
+    // asserting the purchases happened — write the raw layer (foodGot) so
+    // "Still to get", totals, and the day-before brief all agree. Unchecking
+    // never un-buys (asymmetric on purpose).
+    let extra = {};
+    let boughtNote = '';
+    if (tl[i].done && /\b(buy|shop)\b|shopping/i.test(String(tl[i].task || ''))) {
+      const got = { ...(event.foodGot || {}) };
+      let n = 0;
+      ((foodPlan && foodPlan.list) || []).forEach(it => { if (it && !it.skipped && !got[it.id]) { got[it.id] = true; n += 1; } });
+      if (n > 0) { extra = { foodGot: got }; boughtNote = ' ' + n + ' spread item' + (n === 1 ? '' : 's') + ' marked bought with it.'; }
+    }
+    patchEvent({ timeline: tl, ...extra },
+      (tl[i].done ? 'Done: ' : 'Reopened: ') + String(tl[i].task || '').slice(0, 50) + '… — ' + open + ' still open.' + boughtNote);
   };
 
   // No timeline yet → draft one from the playbook's REAL task list, honoring
@@ -2395,7 +2407,18 @@ export default function HostShellV2() {
                                   <div className="chips" style={{ marginTop: 8 }}>
                                     {it.where.slice(0, 4).map(w => (
                                       <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
-                                        onClick={() => patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } }, 'Buying ' + (it.short || it.item) + ' at ' + w + '.')}>
+                                        onClick={() => {
+                                          // Store pick → a REAL cost, not a range: lock the
+                                          // line at the store's point on its own BLS band
+                                          // (bulk = low end, grocery = mid, specialty = high).
+                                          const f = /costco|sam|bulk|bj|warehouse/i.test(w) ? 0 : /butcher|cheese|bakery|farmers|fish|premium|market/i.test(w) ? 1 : 0.5;
+                                          const lo = Number(it.low) || 0, hi = Number(it.high) || lo;
+                                          const lockAt = Math.round(lo + (hi - lo) * f);
+                                          patchEvent({
+                                            foodWhere: { ...(event.foodWhere || {}), [it.id]: w },
+                                            foodLocked: { ...(event.foodLocked || {}), [it.id]: lockAt },
+                                          }, 'Buying at ' + w + ' — locked at ' + fmt(lockAt) + ' (' + (f === 0 ? 'the low end' : f === 1 ? 'the high end' : 'the middle') + ' of its price band). Unlock anytime.');
+                                        }}>
                                         {w}
                                       </button>
                                     ))}
