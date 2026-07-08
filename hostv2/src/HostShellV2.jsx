@@ -12,6 +12,7 @@ import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { ALL_PLAYBOOKS } from '@app/lib/playbooks';
+import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
@@ -63,6 +64,17 @@ const HOST_TYPES = ALL_PLAYBOOKS
   .map(pb => pb && pb.type)
   .filter(t => t && !/board meeting|conference|team retreat/i.test(t));
 
+// Shelves: group the catalog by the taxonomy's REAL parent categories.
+const TYPE_GROUPS = (() => {
+  const groups = new Map();
+  for (const t of HOST_TYPES) {
+    const parent = (EVENT_TAXONOMY[t] && EVENT_TAXONOMY[t].parent) || 'More occasions';
+    if (!groups.has(parent)) groups.set(parent, []);
+    groups.get(parent).push(t);
+  }
+  return [...groups.entries()];
+})();
+
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
   const [eventId, setEventId] = useState(FALLBACK ? FALLBACK.id : null);
@@ -84,6 +96,23 @@ export default function HostShellV2() {
   const [fGuests, setFGuests] = useState(75);
   const [fBudget, setFBudget] = useState(null);
   const [revealed, setRevealed] = useState(false);
+  const [typeOpen, setTypeOpen] = useState(false);   // occasion browser: collapsed until asked
+  const [typeQuery, setTypeQuery] = useState('');
+
+  // Type-ahead over the catalog, backed by the REAL alias resolver — "bbq",
+  // "crab boil", "40th" all resolve through the taxonomy's own regexes.
+  const typeMatches = typeQuery.trim() ? (() => {
+    const q = typeQuery.trim().toLowerCase();
+    let canon = null;
+    try { canon = resolveCanonicalType(typeQuery); } catch { canon = null; }
+    const list = HOST_TYPES.filter(t => t.toLowerCase().includes(q));
+    if (canon && HOST_TYPES.includes(canon) && !list.includes(canon)) list.unshift(canon);
+    return list;
+  })() : null;
+
+  const pickType = (t) => {
+    setFType(t); setFBudget(null); setTypeOpen(false); setTypeQuery('');
+  };
 
   // Create-stage intelligence, all real: date validity (lib/dates), likely
   // turnout (lib/attendanceModel), and budget options from the REAL estimator.
@@ -289,10 +318,44 @@ export default function HostShellV2() {
                     <input className="field" value={fName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
                   </div>
                   <div className="q"><div className="q-label">The occasion</div>
-                    {/* Choices = the real taxonomy's host-driven family */}
-                    <div className="chips">{HOST_TYPES.map(t => (
-                      <button key={t} className="chip" aria-pressed={fType === t} onClick={() => { setFType(t); setFBudget(null); }}>{t.replace(' Party', '')}</button>
-                    ))}</div>
+                    {!typeOpen ? (
+                      /* Progressive disclosure: the 35-type catalog stays folded
+                         behind the current pick until the host asks for it. */
+                      <div className="chips">
+                        <button className="chip" aria-pressed="true" onClick={() => setTypeOpen(true)}>{fType.replace(' Party', '')}</button>
+                        <button className="chip" onClick={() => setTypeOpen(true)}>Change</button>
+                      </div>
+                    ) : (
+                      <div className="typebrowser">
+                        <input
+                          className="field" style={{ maxWidth: 'none' }}
+                          placeholder="Type it — bbq, crab boil, sweet 16…"
+                          value={typeQuery} autoFocus
+                          onChange={e => setTypeQuery(e.target.value)}
+                          aria-label="Search occasions"
+                        />
+                        {typeMatches ? (
+                          <div className="chips" style={{ marginTop: 12 }}>
+                            {typeMatches.length
+                              ? typeMatches.map(t => (
+                                <button key={t} className="chip" aria-pressed={fType === t} onClick={() => pickType(t)}>{t.replace(' Party', '')}</button>
+                              ))
+                              : <p className="grounding">Nothing matches — try another word. The resolver knows aliases like “bbq”, “boil”, or “get together”.</p>}
+                          </div>
+                        ) : (
+                          TYPE_GROUPS.map(([group, list]) => (
+                            <div key={group} className="shelf-wrap">
+                              <div className="shelf-label">{group}</div>
+                              <div className="shelf">
+                                {list.map(t => (
+                                  <button key={t} className="chip" aria-pressed={fType === t} onClick={() => pickType(t)}>{t.replace(' Party', '')}</button>
+                                ))}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="q"><div className="q-label">When?</div>
                     <input className="field" type="date" value={fDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
