@@ -452,12 +452,8 @@ export default function HostShellV2() {
   // low / mid / high; custom numbers split across the same real shares).
   const budgetEditorBlock = () => {
     const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date });
-    const opts = est
-      ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
-      : [2000, 3500, 5000];
-    const LABELS = opts.length === 3 ? ['Lean', 'Typical', 'All-out'] : [];
-    // HOST MODEL: one number (event.totalBudget) — category rows are the
-    // planner's model, never the host's (per hostSpending's own doctrine).
+    // HOST MODEL (the app's own pattern): one "What's your budget?" number;
+    // the estimator range is a HINT beside it, never a set of options.
     const setB = (n) => {
       setCustomBudget('');
       patchEvent({ totalBudget: n },
@@ -466,13 +462,6 @@ export default function HostShellV2() {
     const customN = parseInt(customBudget, 10) || 0;
     return (
       <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-        <div className="chips">
-          {opts.map((n, idx) => (
-            <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
-              {LABELS[idx] ? LABELS[idx] + ' · ' : ''}{fmt(n)}
-            </button>
-          ))}
-        </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
@@ -482,7 +471,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </div>
         <p className="grounding" style={{ margin: 0 }}>
-          {est ? `That’s the honest range for ${guests} at a ${String(event.type).toLowerCase()} — lean to all-out.` : 'No estimate for this type — pick or enter any number.'} One number is all you need — the plan works out the rest.
+          {est ? `Typical for ${guests} at a ${String(event.type).toLowerCase()}: ${fmt(est.lowTotal)}–${fmt(est.highTotal)}.` : ''} One number is all you need — the plan works out the rest, and you can change it anytime.
         </p>
       </div>
     );
@@ -631,22 +620,14 @@ export default function HostShellV2() {
                     {expectC && <p className="grounding">Plan for {expectC.planned} — likely {expectC.low}–{expectC.high} actually make it.</p>}
                   </div>
                   <div className="q"><div className="q-label">What feels right to spend?</div>
-                    {/* Three options = the estimator's real low / typical / high for this
-                        type + count + date. A custom number is first-class too. */}
-                    <div className="chips">
-                      {budgetOpts.map((n, idx) => (
-                        <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => { setFBudget(n); setCustomBudget(''); }}>
-                          {(budgetOpts.length === 3 ? ['Lean', 'Typical', 'All-out'][idx] + ' · ' : '')}{fmt(n)}
-                        </button>
-                      ))}
-                      <button className="chip" aria-pressed={fBudget === null && !customBudget} onClick={() => { setFBudget(null); setCustomBudget(''); }}>Not sure yet</button>
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                      <input className="field" style={{ maxWidth: 170, fontSize: 15, padding: '10px 14px' }}
-                        type="number" inputMode="numeric" min="0" placeholder="Your own number"
+                    {/* The app's host pattern: one number, estimator range as a hint. */}
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input className="field" style={{ maxWidth: 190, fontSize: 15, padding: '10px 14px' }}
+                        type="number" inputMode="numeric" min="0" placeholder="What’s your budget?"
                         value={customBudget}
                         onChange={e => { setCustomBudget(e.target.value); const n = parseInt(e.target.value, 10); setFBudget(n > 0 ? n : null); }}
-                        aria-label="Custom budget amount" />
+                        aria-label="Your budget" />
+                      <button className="chip" aria-pressed={fBudget === null && !customBudget} onClick={() => { setFBudget(null); setCustomBudget(''); }}>Not sure yet</button>
                     </div>
                     {estC
                       ? <p className="grounding">Most people spend {fmt(estC.lowTotal)}–{fmt(estC.highTotal)}{confC.level === 'high' ? ' — a confident read' : confC.level === 'medium' ? ' — a fair first read' : ' — a rough first read'}. Pick one or write your own; you can change it anytime.</p>
@@ -773,16 +754,29 @@ export default function HostShellV2() {
                   the engine's handled facts. */}
               <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
                 <div className="slidepanel-inner">
-                  {readiness && (
-                    <div className="pills">
-                      {[['Calls to make', readiness.decision], ['People', readiness.vendor], ['Checklist', readiness.timeline], ['Paperwork', readiness.document]].map(([label, r]) => r && (
-                        <button key={label} className={'pill ' + (r.status === 'ON_TRACK' ? 'p-ok' : r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
-                          onClick={() => toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''))}>
-                          {label}<span className="pill-note">{r.note}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    if (!readiness) return null;
+                    // Family doctrine: home-hosted events have no vendors/paperwork
+                    // expectation — those pillars don't apply, so they never show.
+                    const fam = (EVENT_TAXONOMY[event.type] && EVENT_TAXONOMY[event.type].family) || '';
+                    const home = fam === 'home_hosted';
+                    const pillars = [
+                      ['Calls to make', readiness.decision],
+                      ...(home ? [] : [['People', readiness.vendor], ['Paperwork', readiness.document]]),
+                      ['Checklist', readiness.timeline],
+                    ].filter(([, r]) => r && r.status !== 'ON_TRACK'); // action-only: on-track never renders
+                    if (!pillars.length) return <p className="grounding" style={{ margin: '2px 0 6px' }}>All quiet — nothing flagged.</p>;
+                    return (
+                      <div className="pills">
+                        {pillars.map(([label, r]) => (
+                          <button key={label} className={'pill ' + (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
+                            onClick={() => { if (label === 'Checklist') { setSheet({ kind: 'tasks', focus: null }); } else { toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : '')); } }}>
+                            {label}<span className="pill-note">{r.note}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {handled.length > 0 && handled.map((h, i) => (
                     <div className="later-row done" key={i} style={{ marginLeft: 0 }}><span className="t">{h}</span></div>
                   ))}
