@@ -8,6 +8,7 @@ import { eventPlan, getEventReadiness } from '@app/CommandCenter';
 import { buildAssembleRevealStages } from '@app/lib/assembleRevealEngines';
 import { isLikelyOutdoor } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -224,6 +225,17 @@ export default function HostShellV2() {
     return false;
   };
 
+  // Do-it-for-me: the app's REAL drafting engine (lib/doItForMe), verbatim.
+  const openDraft = (title, d) => {
+    const body = d ? (typeof d === 'string' ? d : [d.subject, d.body].filter(Boolean).join('\n\n')) : '';
+    if (!body.trim()) { toast('Nothing to draft yet — add a few more details first.'); return; }
+    setSheet({ kind: 'draft', title, body });
+  };
+  const copyDraft = async (body) => {
+    try { await navigator.clipboard.writeText(body); toast('Copied — paste it anywhere.'); feedback('act'); }
+    catch { toast('Couldn’t copy on this browser — long-press to select it.'); }
+  };
+
   // Tasks: toggle done on the SAME timeline the readiness engine reads —
   // catching up genuinely closes the "Catch up on overdue planning" card.
   const toggleTask = (i) => {
@@ -309,6 +321,7 @@ export default function HostShellV2() {
     const f = (a.route && a.route.focusField) || '';
     if (f === 'hsp-budget' || a.domain === 'readiness') return 'budget';
     if (f === 'event-date') return 'date';
+    if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
     if (f === 'guests-entry' || a.domain === 'start') return 'guests';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
@@ -333,6 +346,15 @@ export default function HostShellV2() {
       <div className="chips hc-row">
         {[30, 50, 60, 75, 90, 120].map(n => (
           <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
+        ))}
+        <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Use the invite we wrote</button>
+      </div>
+    );
+    if (kind === 'rain') return (
+      <div className="chips hc-row">
+        {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+          <button key={p} className="chip" aria-pressed={event.rainPlan === p}
+            onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
         ))}
       </div>
     );
@@ -725,22 +747,6 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              {/* Rain backup — real outdoor heuristic (lib/weather); rainPlan is the
-                  same field the app's weather alert reads. */}
-              {outdoor && !event.rainPlan && !isPast && (
-                <article className="card" style={{ marginTop: 26 }}>
-                  <div className="card-head">
-                    <div className="card-top"><span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>If it rains</span></div>
-                    <h3>Name the rain backup</h3>
-                    <p className="because">{event.venue || 'Your spot'} is open sky. Say the backup once, and a forecast can’t hijack the day.</p>
-                    <div className="chips hc-row">
-                      {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
-                        <button key={p} className="chip" onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
-                      ))}
-                    </div>
-                  </div>
-                </article>
-              )}
               {outdoor && event.rainPlan && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>If it rains: {event.rainPlan}</span>
@@ -895,7 +901,10 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. In the app, closeout also drafts thank-yous and keeps “for next time” notes in event memory — those engines live in the main app and aren’t wired here yet.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; “for next time” notes live in the main app’s event memory.
+              </div>
+              <div className="actions-row" style={{ marginTop: 14 }}>
+                <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, null))}>Draft the thank-you</button>
               </div>
             </section>
           )}
@@ -908,9 +917,18 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
+            {sheet.kind === 'draft' && (
+              <>
+                <div className="draft-body">{sheet.body}</div>
+                <div className="actions-row" style={{ marginTop: 14 }}>
+                  <button className="cta" onClick={() => copyDraft(sheet.body)}>Copy it</button>
+                </div>
+                <p className="grounding" style={{ marginTop: 10 }}>Written from your event’s real details — edit anything after you paste it.</p>
+              </>
+            )}
             {sheet.kind === 'tasks' && (
               (event.timeline || []).length ? (
                 <>
@@ -970,6 +988,9 @@ export default function HostShellV2() {
                     ))}
                   </>
                 )}
+                <div className="actions-row" style={{ margin: '0 0 6px' }}>
+                  <button className="mini" onClick={() => openDraft('Your shopping list', draftShoppingList(event, null))}>Copy the shopping list</button>
+                </div>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy. */}
                 {(foodPlan.sourcingTiers || []).length > 0 && (
@@ -1041,7 +1062,10 @@ export default function HostShellV2() {
                     <div className="v-name">{v.name || 'Unnamed'}</div>
                     <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
                   </div>
-                  <span className="tag vendors">{v.status || '—'}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span className="tag vendors">{v.status || '—'}</span>
+                    <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, null)); }}>Draft note</button>
+                  </span>
                 </div>
               )) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>
             )}
@@ -1100,6 +1124,10 @@ export default function HostShellV2() {
                     {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length}
                     {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
                     {' — tap a name to flip their RSVP — your plan reads this list.'}
+                  </div>
+                  <div className="actions-row" style={{ margin: '0 0 8px' }}>
+                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Copy the invite</button>
+                    <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null))}>Nudge the quiet ones</button>
                   </div>
                   {(event.guests || []).slice(0, 40).map((g, i) => (
                     <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
