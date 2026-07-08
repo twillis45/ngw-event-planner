@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NGW Event Boss — host it like you have a team</title>
+<meta name="description" content="A command system for the events you host yourself. One next action, honest readiness, nothing invented." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,600;9..144,700&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --carbon-0:#0a0c0e; --carbon-1:#111417; --carbon-2:#181c20; --carbon-3:#22272c;
+    --line:#242a30;
+    --text:#eef0f4; --muted:#8fa0ab; --dim:#5c6b74;
+    --steel:#6f8794; --steel-hi:#a8b7bf; --steel-lo:#3f5b6a;
+    --signal:#e8202a;
+    --measure:64ch;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{
+    background:var(--carbon-0); color:var(--text);
+    font-family:'Archivo',system-ui,sans-serif; font-size:17px; line-height:1.6;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  ::selection{background:var(--steel-lo);color:var(--text)}
+  a{color:inherit}
+  .serif{font-family:'Fraunces',Georgia,serif}
+
+  /* ── canvas backdrop ── */
+  #field{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.9}
+  .grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='.5'/%3E%3C/svg%3E");}
+
+  main{position:relative;z-index:2}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  /* ── nav ── */
+  nav{position:fixed;top:0;left:0;right:0;z-index:10;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:18px 24px;
+    background:rgba(10,12,14,.86);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(36,42,48,.6);}
+  .brand{display:flex;align-items:baseline;gap:10px;font-weight:700;letter-spacing:.16em;font-size:12px;text-transform:uppercase}
+  .brand .no{color:var(--dim);font-weight:500}
+  .brand .star{color:var(--signal)}
+  .nav-cta{font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--steel-hi);
+    text-decoration:none;border:1px solid var(--line);border-radius:0;padding:10px 16px;
+    transition:border-color .25s,color .25s}
+  .nav-cta:hover{border-color:var(--steel);color:var(--text)}
+
+  /* ── hero ── */
+  header{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:120px 0 80px}
+  .kicker{font-size:12px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--steel);margin-bottom:26px}
+  .kicker .tick{display:inline-block;width:26px;height:1px;background:var(--steel);vertical-align:middle;margin-right:12px}
+  h1{font-family:'Fraunces',Georgia,serif;font-weight:300;
+    font-size:clamp(2.6rem,7.2vw,5.6rem);line-height:1.04;letter-spacing:-.015em;
+    text-wrap:balance;max-width:15ch}
+  h1 em{font-style:italic;font-weight:600;color:var(--steel-hi)}
+  .hero-sub{margin-top:30px;max-width:46ch;color:var(--muted);font-size:clamp(1rem,1.6vw,1.15rem);line-height:1.65}
+  .hero-ctas{margin-top:44px;display:flex;gap:14px;flex-wrap:wrap}
+  .btn{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:0 26px;
+    font-family:inherit;font-size:15px;font-weight:600;letter-spacing:.02em;text-decoration:none;
+    border:1px solid var(--steel-lo);color:var(--text);background:rgba(63,91,106,.18);
+    transition:background .25s,border-color .25s}
+  .btn:hover{background:rgba(63,91,106,.34);border-color:var(--steel)}
+  .btn.ghost{background:transparent;border-color:var(--line);color:var(--muted)}
+  .btn.ghost:hover{color:var(--text);border-color:var(--steel-lo)}
+  .btn .arrow{transition:transform .25s}
+  .btn:hover .arrow{transform:translateX(4px)}
+  .hero-foot{margin-top:70px;display:flex;gap:34px;flex-wrap:wrap;color:var(--dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  .hero-foot span b{color:var(--muted);font-weight:600}
+
+  /* ── marquee truth line ── */
+  .truthline{border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+    overflow:hidden;white-space:nowrap;padding:20px 0;background:var(--carbon-1)}
+  .truthline .track{display:inline-block;will-change:transform}
+  .truthline span{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:clamp(1.1rem,2.4vw,1.7rem);
+    color:var(--steel-hi);padding:0 3.5vw}
+  .truthline .dot{color:var(--signal);font-style:normal}
+
+  /* ── sections ── */
+  section{padding:clamp(80px,12vw,150px) 0}
+  .sec-kicker{font-size:11px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);margin-bottom:18px}
+  .sec-kicker b{color:var(--steel)}
+  h2{font-family:'Fraunces',Georgia,serif;font-weight:300;font-size:clamp(1.9rem,4.4vw,3.2rem);
+    line-height:1.12;letter-spacing:-.01em;text-wrap:balance;max-width:20ch}
+  h2 em{font-style:italic;color:var(--steel-hi)}
+  .lede{margin-top:22px;max-width:var(--measure);color:var(--muted);font-size:1.05rem}
+
+  /* problem section */
+  .chaos{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:56px}
+  .chaos > div{background:var(--carbon-1);padding:30px 26px}
+  .chaos .q{font-family:'Fraunces',Georgia,serif;font-style:italic;font-size:1.15rem;color:var(--text);line-height:1.4}
+  .chaos .a{margin-top:14px;font-size:.85rem;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+
+  /* system rows */
+  .sysrow{display:grid;grid-template-columns:64px 1fr;gap:26px;padding:44px 0;border-top:1px solid var(--line);align-items:start}
+  .sysrow:last-of-type{border-bottom:1px solid var(--line)}
+  .sysrow .num{font-family:'Fraunces',Georgia,serif;font-size:1.6rem;color:var(--steel-lo);font-weight:300;line-height:1.15;padding-top:4px}
+  .sysrow h3{font-size:1.25rem;font-weight:600;letter-spacing:-.01em}
+  .sysrow p{margin-top:10px;color:var(--muted);max-width:58ch}
+  .sysrow .chip{display:inline-block;margin-top:16px;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--steel);border:1px solid var(--steel-lo);padding:6px 10px}
+
+  /* demo strip — a faithful miniature of the app hero */
+  .console{margin-top:64px;border:1px solid var(--line);background:var(--carbon-1);padding:0}
+  .console .bar{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .console .bar .live{color:var(--steel)}
+  .console .body{padding:30px 20px 34px}
+  .console .eyebrow{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.18em;color:var(--steel);border:1px solid rgba(111,135,148,.4);padding:3px 8px;margin-bottom:14px}
+  .console .head{font-size:clamp(1.1rem,2.6vw,1.5rem);font-weight:700;line-height:1.3;max-width:32ch}
+  .console .line{margin-top:8px;color:var(--muted);font-size:.95rem;max-width:52ch}
+  .console .track{height:4px;background:var(--carbon-3);margin-top:26px;position:relative}
+  .console .fill{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,rgba(111,135,148,.8),var(--steel))}
+  .console .track .node{position:absolute;top:50%;width:7px;height:7px;margin:-3.5px 0 0 -4px;border-radius:50%;background:var(--steel);box-shadow:0 0 8px rgba(111,135,148,.7);left:0}
+  .console .meta{margin-top:10px;font-size:12px;color:var(--dim)}
+  .console .meta b{color:var(--muted)}
+
+  /* principles */
+  .principles{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:56px}
+  .principles > div{background:var(--carbon-0);padding:34px 28px}
+  .principles h4{font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:1.3rem;line-height:1.25}
+  .principles p{margin-top:12px;color:var(--muted);font-size:.95rem}
+  .principles .no{color:var(--signal);font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;display:block;margin-bottom:14px}
+
+  /* closing cta */
+  .close{ text-align:left; padding-bottom:clamp(100px,14vw,190px)}
+  .close h2{max-width:16ch}
+  .close .btn{margin-top:40px}
+
+  footer{border-top:1px solid var(--line);padding:34px 0 60px;color:var(--dim);font-size:12px;letter-spacing:.06em;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  footer a{color:var(--muted);text-decoration:none}
+  footer a:hover{color:var(--text)}
+
+  .reveal{opacity:0;transform:translateY(28px)}
+  @media (prefers-reduced-motion: reduce){
+    .reveal{opacity:1 !important;transform:none !important}
+    #field{display:none}
+    html{scroll-behavior:auto}
+  }
+  .brand, .nav-cta{white-space:nowrap}
+  @media (max-width:640px){
+    .sysrow{grid-template-columns:1fr;gap:8px}
+    .sysrow .num{padding-top:0}
+    nav{padding:14px 16px}
+    .brand{font-size:11px;letter-spacing:.1em;gap:7px}
+    .brand .no{display:none}
+    .nav-cta{font-size:12px;padding:9px 12px}
+    .wrap{padding:0 18px}
+    .hero-foot{gap:18px}
+  }
+</style>
+</head>
+<body>
+<canvas id="field" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+
+<nav>
+  <div class="brand"><span class="star" aria-hidden="true">★</span> NGW Event Boss <span class="no">NO. 01</span></div>
+  <a class="nav-cta" href="./index.html">Open the demo</a>
+</nav>
+
+<main>
+  <div class="wrap">
+    <header>
+      <div class="kicker" id="hero-k"><span class="tick"></span>A command system for the events you host yourself</div>
+      <h1 id="hero-h">Host it like <em>you have a team.</em></h1>
+      <p class="hero-sub" id="hero-s">The cookout, the reunion, the retirement party — you're the caterer, the planner, and the day-of coordinator. Event Boss holds the whole plan and hands you exactly one next action, so the person who made the event happen still gets to be at it.</p>
+      <div class="hero-ctas" id="hero-c">
+        <a class="btn" href="./index.html">See it run a real event <span class="arrow">→</span></a>
+        <a class="btn ghost" href="#system">How it thinks</a>
+      </div>
+      <div class="hero-foot" id="hero-f">
+        <span><b>One</b> next action</span>
+        <span><b>Zero</b> invented data</span>
+        <span><b>Every</b> button lands somewhere real</span>
+      </div>
+    </header>
+  </div>
+
+  <div class="truthline" aria-hidden="true">
+    <div class="track" id="truthtrack">
+      <span>Assigned is not handled <i class="dot">·</i></span>
+      <span>Chosen is not bought <i class="dot">·</i></span>
+      <span>A plan should never flatter you <i class="dot">·</i></span>
+      <span>Assigned is not handled <i class="dot">·</i></span>
+      <span>Chosen is not bought <i class="dot">·</i></span>
+      <span>A plan should never flatter you <i class="dot">·</i></span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <section id="problem">
+      <div class="sec-kicker reveal">The problem — <b>hosting alone</b></div>
+      <h2 class="reveal">The plan lives in six places, and every one of them is <em>lying a little.</em></h2>
+      <p class="lede reveal">The group chat says your aunt has dessert. The list says the drinks are chosen. The weather app says maybe. None of them will tell you the one thing that actually needs you today.</p>
+      <div class="chaos">
+        <div class="reveal"><div class="q">“Auntie's got the potato salad.”</div><div class="a">Assigned — nobody confirmed</div></div>
+        <div class="reveal"><div class="q">“We decided on the menu weeks ago.”</div><div class="a">Chosen — nothing bought</div></div>
+        <div class="reveal"><div class="q">“It won't rain.”</div><div class="a">Hoped — no backup written down</div></div>
+        <div class="reveal"><div class="q">“The DJ is booked.”</div><div class="a">Quoted — no arrival time, no deposit</div></div>
+      </div>
+    </section>
+
+    <section id="system">
+      <div class="sec-kicker reveal">The system — <b>how it thinks</b></div>
+      <h2 class="reveal">One source of truth, <em>one next action.</em></h2>
+      <p class="lede reveal">Every surface in Event Boss reads from the same engines — the readiness bar, the decision board, and the hero can never disagree. When it says you're in good shape, you actually are.</p>
+
+      <div style="margin-top:64px">
+        <div class="sysrow reveal">
+          <div class="num serif">01</div>
+          <div>
+            <h3>The hero never flatters you</h3>
+            <p>If three decisions are past their window, the top of your screen says so — and takes you to the first one. “You're in good shape” is a claim the system has to earn, checked against every open essential before it's allowed to say it.</p>
+            <span class="chip">One-source hero</span>
+          </div>
+        </div>
+        <div class="sysrow reveal">
+          <div class="num serif">02</div>
+          <div>
+            <h3>Assigned is not handled</h3>
+            <p>If Marcus is bringing the ice, your next action isn't “buy ice” — it's “confirm with Marcus.” Helpers get a real status ladder: assigned, confirmed, brought. The backup stays in your plan until the confirm actually happens.</p>
+            <span class="chip">Helper responsibility</span>
+          </div>
+        </div>
+        <div class="sysrow reveal">
+          <div class="num serif">03</div>
+          <div>
+            <h3>The plan knows what day it is</h3>
+            <p>Readiness means readiness for the phase you're in. Planning gaps retire on event day; the day before, fourteen cards compress into one honest page — what still matters, what to confirm, what to stop worrying about.</p>
+            <span class="chip">Phase truth</span>
+          </div>
+        </div>
+        <div class="sysrow reveal">
+          <div class="num serif">04</div>
+          <div>
+            <h3>Every tap lands somewhere real</h3>
+            <p>Every button routes to the exact row it names — the food line, the vendor, the rain-plan field — and the target opens itself when you arrive. Dead buttons are treated as defects and tested against a hundred scenarios in CI.</p>
+            <span class="chip">Deep links only</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="console reveal" aria-label="A miniature of the app's readiness header">
+        <div class="bar"><span>Juneteenth Cookout — Sat</span><span class="live">Planning readiness</span></div>
+        <div class="body">
+          <span class="eyebrow">NEEDS YOU</span>
+          <div class="head">One call to make: how will you honor the history?</div>
+          <div class="line">Make this one and the other two get easier — they're all yours to call. The spread and shopping list size from them.</div>
+          <div class="track"><div class="fill" id="conFill"></div><div class="node" id="conNode"></div></div>
+          <div class="meta"><b id="conCount">0 of 5</b> essentials handled · one open cue at a time — never a wall of red</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="principles">
+      <div class="sec-kicker reveal">The refusals — <b>what it will not do</b></div>
+      <h2 class="reveal">Trust is a feature. It's built out of <em>refusals.</em></h2>
+      <div class="principles">
+        <div class="reveal"><span class="no">No fake AI</span><h4 class="serif">Nothing is invented.</h4><p>No fabricated vendor lists, no imaginary prices, no “insights” without a source. If the app doesn't know, it says so and shows you where to put the answer.</p></div>
+        <div class="reveal"><span class="no">No guilt engine</span><h4 class="serif">Calm by default.</h4><p>One cue at a time. Settled work folds itself away. If you chose not to track RSVPs, it will never nag you about replies.</p></div>
+        <div class="reveal"><span class="no">No leaks</span><h4 class="serif">Your people stay private.</h4><p>Helper names never appear in vendor briefs or guest messages. What the vendor sees is a whitelist, not a data dump.</p></div>
+      </div>
+    </section>
+
+    <section class="close">
+      <div class="sec-kicker reveal">Now — <b>see it work</b></div>
+      <h2 class="reveal">Open the demo. Break it if you can — <em>every button is real.</em></h2>
+      <a class="btn reveal" href="./index.html">Open NGW Event Boss <span class="arrow">→</span></a>
+    </section>
+
+    <footer>
+      <span>NGW Event Boss — a New Ground Works build</span>
+      <a href="./index.html">Launch the app →</a>
+    </footer>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+<script>
+(function(){
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ── command constellation backdrop (cheap canvas, capped on mobile) ── */
+  var cv = document.getElementById('field');
+  if (!reduced && cv && cv.getContext) {
+    var ctx = cv.getContext('2d'), W, H, DPR, pts = [];
+    var mob = Math.min(window.innerWidth, window.innerHeight) < 700;
+    var N = mob ? 42 : 90, LINK = mob ? 110 : 150;
+    function size(){
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      W = cv.clientWidth = window.innerWidth; H = cv.clientHeight = window.innerHeight;
+      cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR,0,0,DPR,0,0);
+    }
+    size(); window.addEventListener('resize', size);
+    for (var i=0;i<N;i++) pts.push({ x:Math.random()*window.innerWidth, y:Math.random()*window.innerHeight,
+      vx:(Math.random()-.5)*.22, vy:(Math.random()-.5)*.22, r:Math.random()*1.4+.4 });
+    var running = true;
+    document.addEventListener('visibilitychange', function(){ running = !document.hidden; if (running) tick(); });
+    function tick(){
+      if (!running) return;
+      ctx.clearRect(0,0,W,H);
+      for (var i=0;i<N;i++){
+        var p = pts[i];
+        p.x += p.vx; p.y += p.vy;
+        if (p.x<0||p.x>W) p.vx*=-1; if (p.y<0||p.y>H) p.vy*=-1;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,6.2832);
+        ctx.fillStyle = 'rgba(111,135,148,.5)'; ctx.fill();
+        for (var j=i+1;j<N;j++){
+          var q = pts[j], dx = p.x-q.x, dy = p.y-q.y, d = dx*dx+dy*dy;
+          if (d < LINK*LINK){
+            ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+            ctx.strokeStyle = 'rgba(111,135,148,' + (0.10*(1 - d/(LINK*LINK))).toFixed(3) + ')';
+            ctx.lineWidth = 1; ctx.stroke();
+          }
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    tick();
+  }
+
+  if (typeof gsap === 'undefined') return; // CDN blocked — page stays static & readable
+  gsap.registerPlugin(ScrollTrigger);
+  if (reduced) return;
+
+  /* ── hero load sequence ── */
+  gsap.timeline({defaults:{ease:'power3.out'}})
+    .from('#hero-k', {y:18, opacity:0, duration:.7})
+    .from('#hero-h', {y:42, opacity:0, duration:1.0}, '-=.35')
+    .from('#hero-s', {y:26, opacity:0, duration:.8}, '-=.55')
+    .from('#hero-c', {y:20, opacity:0, duration:.7}, '-=.5')
+    .from('#hero-f', {opacity:0, duration:.9}, '-=.3');
+
+  /* ── scroll reveals ── */
+  gsap.utils.toArray('.reveal').forEach(function(el){
+    gsap.to(el, { opacity:1, y:0, duration:.85, ease:'power3.out',
+      scrollTrigger:{ trigger:el, start:'top 86%' } });
+  });
+
+  /* ── truth marquee (seamless: track is 2x content) ── */
+  var track = document.getElementById('truthtrack');
+  if (track) gsap.to(track, { xPercent:-50, ease:'none', duration:26, repeat:-1 });
+
+  /* ── console readiness: fill + count tick when it enters view ── */
+  var counts = { n: 0 };
+  ScrollTrigger.create({
+    trigger: '.console', start: 'top 75%', once: true,
+    onEnter: function(){
+      gsap.to('#conFill', { width:'80%', duration:1.6, ease:'power2.inOut' });
+      gsap.to('#conNode', { left:'80%', duration:1.6, ease:'power2.inOut' });
+      gsap.to(counts, { n:4, duration:1.6, ease:'power2.inOut', onUpdate:function(){
+        document.getElementById('conCount').textContent = Math.round(counts.n) + ' of 5';
+      }});
+    }
+  });
+
+  /* ── hero drifts up slightly as you leave it ── */
+  gsap.to('header .wrap, header', { });
+  gsap.to('#hero-h', { yPercent:-8, ease:'none',
+    scrollTrigger:{ trigger:'header', start:'top top', end:'bottom top', scrub:true } });
+})();
+</script>
+</body>
+</html>
