@@ -271,7 +271,9 @@ export default function HostShellV2() {
     const out = (() => { try { return isLikelyOutdoor(event.venue, event.notes); } catch { return false; } })();
     const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
     const d = (() => { try { return daysUntil(event.date); } catch { return null; } })();
-    if (!out || past || !event.date || d == null || d < 0) return null;
+    // Same 14-day boundary as getEventWeatherRisk — no real forecast reaches
+    // beyond it, so no alert may exist there either (even a sample one).
+    if (!out || past || !event.date || d == null || d < 0 || d > 14) return null;
     return {
       kind: 'rain', risk: 'high', conditions: 'Rain', pop: 70,
       date: event.date,
@@ -961,15 +963,19 @@ export default function HostShellV2() {
                   <div className="t-big">{actions.length === 0 ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you'}</div>
                   <div className="t-sub">
                     {(() => {
-                      // Tier 7.8 (one-source hero): the tile carries the OTHER two
-                      // truth tellers so no ledger can silently disagree with it.
+                      // Host audit (2026-07-08): NAME the first thing (same source as
+                      // the card below — can't disagree) instead of counting the
+                      // checklist ledger; open to-dos aren't "needs you" unless
+                      // overdue, and then the engine makes catch-up the top card.
+                      if (!actions.length) return 'Nothing waiting on you right now.';
                       const bits = [];
                       if (phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length) {
-                        bits.push(phaseCues.items.filter(c => c.handled).length + ' of ' + phaseCues.items.length + ' essentials handled');
+                        const d = phaseCues.items.filter(c => c.handled).length, t = phaseCues.items.length;
+                        if (d < t) bits.push(d + ' of ' + t + ' essentials handled');
                       }
-                      const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
-                      if (openTasks) bits.push(openTasks + ' checklist steps open');
-                      return bits.length ? bits.join(' · ') + ' — start below ↓' : 'Start with the first one ↓';
+                      const first = String(actions[0].title || '').replace(/\.+$/, '');
+                      bits.push('first: ' + (first.length > 44 ? first.slice(0, 44) + '…' : first) + ' ↓');
+                      return bits.join(' · ');
                     })()}
                   </div>
                 </button>
