@@ -16,7 +16,7 @@ import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, playbookFoodPlan } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
@@ -287,6 +287,19 @@ export default function HostShellV2() {
       (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + ' (' + fmt(cost) + ')' + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
   };
 
+  // Roster quick-add: paste names, one per line — a REAL guest list, which is
+  // what unlocks RSVP intelligence, yes-counts, and the drift detector.
+  const [rosterText, setRosterText] = useState('');
+  const addRoster = () => {
+    const names = rosterText.split('\n').map(x => x.trim()).filter(Boolean);
+    if (!names.length) return;
+    const existing = event.guests || [];
+    const add = names.map((name, i) => ({ id: 'g-' + Date.now() + '-' + i, name, rsvp: '' }));
+    patchEvent({ guests: [...existing, ...add] },
+      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.');
+    setRosterText('');
+  };
+
   // Flip one RSVP — writes the same guests array the engine's confirmed-count
   // (and the catering-drift detector) read.
   const toggleRsvp = (i) => {
@@ -348,16 +361,35 @@ export default function HostShellV2() {
           <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
         ))}
         <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Use the invite we wrote</button>
+        <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>
       </div>
     );
-    if (kind === 'rain') return (
-      <div className="chips hc-row">
-        {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
-          <button key={p} className="chip" aria-pressed={event.rainPlan === p}
-            onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
-        ))}
-      </div>
-    );
+    if (kind === 'rain') {
+      // Do-it-for-me: the playbook's AUTHORED wet-weather contingency, verbatim.
+      let authored = null;
+      try {
+        const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
+        const hit = ((pb && pb.contingencies) || []).find(c => c && (/rain|canopy|cover|indoor|garage|tent|umbrella|wet|storm/i.test(c.plan || '') || /weather|rain|storm|cold/i.test(c.when || '')));
+        authored = hit ? hit.plan : null;
+      } catch { authored = null; }
+      return (
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          {authored && (
+            <button className="cta" style={{ alignSelf: 'flex-start' }}
+              onClick={() => patchEvent({ rainPlan: authored }, 'Backup written for you — the playbook’s own wet-weather move.')}>
+              Do it for me
+            </button>
+          )}
+          <div className="chips">
+            {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+              <button key={p} className="chip" aria-pressed={event.rainPlan === p}
+                onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
+            ))}
+          </div>
+          {authored && <p className="grounding" style={{ margin: 0 }}>“Do it for me” uses the playbook’s authored move: “{authored.slice(0, 90)}…”</p>}
+        </div>
+      );
+    }
     if (kind === 'budget') return budgetEditorBlock();
     if (kind === 'date') return (
       <div className="hc-row">
@@ -489,7 +521,9 @@ export default function HostShellV2() {
     try { return eventPlan(custom, null); } catch { return null; }
   }, [revealed, custom]);
 
-  const ros = Array.isArray(event.ros) ? event.ros : [];
+  // Run of show — the app's single source: playbook-derived (tracks the event's
+  // time of day), a stored ros only when the host has taken ownership.
+  const ros = useMemo(() => { try { return effectiveRos(event) || []; } catch { return Array.isArray(event.ros) ? event.ros : []; } }, [event]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   const budgetLines = Array.isArray(event.budget) ? event.budget : [];
 
@@ -1115,9 +1149,28 @@ export default function HostShellV2() {
                 </>
               );
             })()}
-            {sheet.kind === 'guests' && (
-              (event.guests || []).length ? (
+            {sheet.kind === 'guests' && (() => {
+              const gcr = (() => { try { return guestCountResolved(event); } catch { return null; } })();
+              const band = (() => { try { return attendanceBand(event); } catch { return null; } })();
+              const bandLbl = (() => { try { return attendanceBandLabel(band); } catch { return null; } })();
+              const quickAdd = (
+                <div style={{ marginTop: 12 }}>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>Add names — one per line</div>
+                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 14, fontWeight: 500 }}
+                    placeholder={'Denise & Ray\nThe Okafors\nUncle Joe'}
+                    value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
+                  <div className="actions-row" style={{ marginTop: 8 }}>
+                    <button className="cta" disabled={!rosterText.trim()} style={!rosterText.trim() ? { opacity: .45 } : undefined} onClick={addRoster}>Add them</button>
+                  </div>
+                </div>
+              );
+              return (event.guests || []).length ? (
                 <>
+                  {gcr && gcr.pending > 0 && (
+                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
+                      {gcr.pending} still unanswered{bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''} — the count settles as replies land.
+                    </div>
+                  )}
                   <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
                     {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length}
                     {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
@@ -1133,9 +1186,17 @@ export default function HostShellV2() {
                       <span className={'tag ' + (g.rsvp === 'Yes' ? 'budget' : 'plan')}>{g.rsvp || '—'}</span>
                     </button>
                   ))}
+                  {quickAdd}
                 </>
-              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No guest list on this event.</div>
-            )}
+              ) : (
+                <>
+                  <div className="v-meta" style={{ padding: '14px 2px 4px' }}>
+                    No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
+                  </div>
+                  {quickAdd}
+                </>
+              );
+            })()}
           </div>
         </>
       )}
