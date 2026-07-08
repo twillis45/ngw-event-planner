@@ -992,7 +992,14 @@ export default function HostShellV2() {
 
               {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
 
-              <div className="eyebrow">{event.name}{event.venue ? ' · ' + event.venue : ''}</div>
+              {/* Event masthead — kicker / readable title / quiet venue.
+                  (The old all-caps eyebrow crushed long names into three
+                  unreadable letterspaced lines.) */}
+              <div className="ev-head">
+                <div className="ev-kicker">{event.type}</div>
+                <div className="ev-title">{event.name}</div>
+                {event.venue ? <div className="ev-venue">{event.venue}</div> : null}
+              </div>
               <div className="mega">
                 {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : `${daysAnim} days`}
               </div>
