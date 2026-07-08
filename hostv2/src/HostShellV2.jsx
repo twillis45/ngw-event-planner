@@ -95,7 +95,7 @@ export default function HostShellV2() {
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
   const switchEvent = (id) => {
-    setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null);
+    setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null); setSheet(null); setDayIdx(0);
     if (id !== 'custom') { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
   };
 
@@ -119,6 +119,26 @@ export default function HostShellV2() {
 
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
+  const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  const [dayIdx, setDayIdx] = useState(0);    // The Day: position in the run of show
+
+  // Row-level landings inside the prototype — a route with a real destination
+  // here opens the sheet on the exact row, instead of toasting.
+  const routeSheet = (route) => {
+    if (!route || !route.tab) return false;
+    if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null }); return true; }
+    if (route.tab === 'Budget') { setSheet({ kind: 'budget', focus: null }); return true; }
+    if (route.tab === 'Guests') { setSheet({ kind: 'guests', focus: null }); return true; }
+    return false;
+  };
+
+  // Flip one RSVP — writes the same guests array the engine's confirmed-count
+  // (and the catering-drift detector) read.
+  const toggleRsvp = (i) => {
+    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: g.rsvp === 'Yes' ? 'No' : 'Yes' } : g);
+    const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
+    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' flipped to ' + (gs[i].rsvp === 'Yes' ? 'yes' : 'no') + ' — ' + yes + ' confirmed now. The engine reads this.');
+  };
 
   const patchEvent = (obj, msg) => {
     if (eventId === 'custom') setCustom(c => ({ ...c, ...obj }));
@@ -137,6 +157,7 @@ export default function HostShellV2() {
   const onCta = (a, key) => {
     const kind = wiredKind(a);
     if (kind) { setEditor(editor === key ? null : key); return; }
+    if (routeSheet(a.route)) return;
     const dest = describeRoute(a.route);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
   };
@@ -372,13 +393,14 @@ export default function HostShellV2() {
               {actions.filter(show).map((a, i) => {
                 const key = String(a.id || i);
                 const wired = wiredKind(a);
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests'].includes(a.route.tab));
                 return (
                   <article className="card" key={key}>
                     <span className="idx">{i + 1}</span>
                     <div className="card-head">
                       <div className="card-top">
                         <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                        {!wired && <span className="tag plan">route only</span>}
+                        {!lands && <span className="tag plan">route only</span>}
                       </div>
                       <h3>{a.title}</h3>
                       {a.consequence && <p className="because">{a.consequence}</p>}
@@ -409,7 +431,7 @@ export default function HostShellV2() {
                   <h3>{rollup.label}</h3>
                   {rollup.nextAction && <p>{rollup.nextAction}</p>}
                   {rollup.ctaLabel && (
-                    <button className="cta" onClick={() => toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors'))}>
+                    <button className="cta" onClick={() => { if (!routeSheet(rollup.target)) toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors')); }}>
                       {rollup.ctaLabel}
                     </button>
                   )}
@@ -428,27 +450,38 @@ export default function HostShellV2() {
                   <p className="day-empty">This event hasn’t built its day schedule. In the app, the run of show fills in as vendors, times, and the ceremony order settle — then this screen becomes one thing at a time, in the order the day runs.
                     {'\n'}Try the Wedding — it has a real one.</p>
                 </>
+              ) : dayIdx >= ros.length ? (
+                <>
+                  <div className="clock" style={{ fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>That’s the whole day.</div>
+                  <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
+                  <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
+                </>
               ) : (
                 <>
-                  <div className="clock">{ros[0].time}</div>
+                  <div className="clock">{ros[dayIdx].time}</div>
                   <div className="now-card">
-                    <div className="now-label">{isPast ? 'How it started' : 'First thing that day'}</div>
-                    <h2>{ros[0].segment}</h2>
+                    <div className="now-label">{dayIdx === 0 ? (isPast ? 'How it started' : 'First thing that day') : 'Now'}</div>
+                    <h2>{ros[dayIdx].segment}</h2>
                     <p className="meta">
-                      {[ros[0].location, ros[0].owner && ('owner: ' + ros[0].owner), ros[0].vendorName].filter(Boolean).join(' · ')}
+                      {[ros[dayIdx].location, ros[dayIdx].owner && ('owner: ' + ros[dayIdx].owner), ros[dayIdx].vendorName].filter(Boolean).join(' · ')}
                     </p>
-                    {ros[0].notes && <p className="meta" style={{ marginBottom: 0 }}>{ros[0].notes}</p>}
+                    {ros[dayIdx].notes && <p className="meta">{ros[dayIdx].notes}</p>}
+                    <button className="cta" style={{ marginTop: 6 }} onClick={() => setDayIdx(i => i + 1)}>
+                      {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
+                    </button>
                   </div>
-                  <div className="then">
-                    <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {ros.length - 1} more moments</div>
-                    {ros.slice(1, 8).map((r, i) => (
-                      <div className="then-row" key={r.id || i}>
-                        <span className="d">{r.time}</span>
-                        <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
-                      </div>
-                    ))}
-                    {ros.length > 8 && <div className="then-row"><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {ros.length - 8} more, through the last item</span></div>}
-                  </div>
+                  {dayIdx < ros.length - 1 && (
+                    <div className="then">
+                      <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {ros.length - 1 - dayIdx} more moments</div>
+                      {ros.slice(dayIdx + 1, dayIdx + 8).map((r, i) => (
+                        <div className="then-row" key={r.id || i}>
+                          <span className="d">{r.time}</span>
+                          <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
+                        </div>
+                      ))}
+                      {ros.length - 1 - dayIdx > 7 && <div className="then-row"><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {ros.length - 1 - dayIdx - 7} more, through the last item</span></div>}
+                    </div>
+                  )}
                 </>
               )}
             </section>
@@ -497,6 +530,56 @@ export default function HostShellV2() {
           )}
         </div>
       </div>
+
+      {/* ── Deep-link landing sheet: routes land on the exact row ── */}
+      {sheet && (
+        <>
+          <div className="sheet-scrim" onClick={() => setSheet(null)} />
+          <div className="sheet" role="dialog" aria-label="Details">
+            <div className="sheet-head">
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Budget lines' : 'Guest list'}</strong>
+              <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
+            </div>
+            {sheet.kind === 'vendors' && (
+              (event.vendors || []).length ? (event.vendors || []).map(v => (
+                <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
+                  ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
+                  <div>
+                    <div className="v-name">{v.name || 'Unnamed'}</div>
+                    <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  <span className="tag vendors">{v.status || '—'}</span>
+                </div>
+              )) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>
+            )}
+            {sheet.kind === 'budget' && (
+              budgetLines.length ? (
+                <>
+                  {budgetLines.map(l => (
+                    <div className="line" key={l.id}><span>{l.category}</span><span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span></div>
+                  ))}
+                  <div className="line total"><span>Committed so far</span><span className="amt">{fmt(money.committed)} of {fmt(money.planned)}</span></div>
+                </>
+              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No budget lines yet.</div>
+            )}
+            {sheet.kind === 'guests' && (
+              (event.guests || []).length ? (
+                <>
+                  <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
+                    {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length} — tap a name to flip their RSVP. The engine reads this list.
+                  </div>
+                  {(event.guests || []).slice(0, 40).map((g, i) => (
+                    <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
+                      <span>{g.name || 'Guest ' + (i + 1)}</span>
+                      <span className={'tag ' + (g.rsvp === 'Yes' ? 'budget' : 'plan')}>{g.rsvp || '—'}</span>
+                    </button>
+                  ))}
+                </>
+              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No guest list on this event.</div>
+            )}
+          </div>
+        </>
+      )}
 
       <nav className="dock" aria-label="Sections">
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
