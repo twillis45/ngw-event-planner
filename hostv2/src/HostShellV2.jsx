@@ -122,12 +122,15 @@ export default function HostShellV2() {
   const toastTimer = useRef(null);
   const appRef = useRef(null);
 
-  // Create-stage form
-  const [fName, setFName] = useState('David Carter');
-  const [fType, setFType] = useState('Retirement Party');
-  const [fDate, setFDate] = useState('2026-08-22');
-  const [fGuests, setFGuests] = useState(75);
+  // Create — ONE smart input; the real resolvers parse it. Form fields exist
+  // only as corrections layered over the parse (host-shell logic, not a form).
+  const [smartText, setSmartText] = useState('');
+  const [fName, setFName] = useState('');
+  const [fType, setFType] = useState(null);
+  const [fDate, setFDate] = useState('');
+  const [fGuests, setFGuests] = useState(null);
   const [fBudget, setFBudget] = useState(null);
+  const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
   const [revealed, setRevealed] = useState(false);
   const [revealStep, setRevealStep] = useState(0); // choreography: 0 thinking → 5 done
   const revealTimers = useRef([]);
@@ -151,15 +154,56 @@ export default function HostShellV2() {
     setFType(t); setFBudget(null); setTypeOpen(false); setTypeQuery('');
   };
 
-  // Create-stage intelligence, all real: date validity (lib/dates), likely
-  // turnout (lib/attendanceModel), and budget options from the REAL estimator.
-  const dstatC = eventDateStatus(fDate);
-  const expectC = expectedFromPlanned(fGuests, fType);
-  const estC = estimateTotalRange({ type: fType, guestCount: fGuests, date: fDate });
-  const confC = estimatorConfidence({ hasType: !!fType, hasDate: !dstatC.blocking, hasGuestCount: fGuests > 0, hasMarket: false, hasTimeOfDay: false, hasHistory: false });
-  const budgetOpts = estC
-    ? [...new Set([estC.lowTotal, Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100, estC.highTotal])]
-    : [];
+  // Smart parse — every extraction is a REAL resolver: resolveCanonicalType
+  // (taxonomy aliases), month/day + m/d date forms, count-near-people words,
+  // possessive honoree, home-venue detection.
+  const parsed = useMemo(() => {
+    const t = String(smartText || '');
+    // An exact playbook-type mention wins ("crab feast"); the alias resolver
+    // (bbq/boil/sweet 16 regexes) is the fallback — both are real resolvers.
+    let type = null;
+    const hit = HOST_TYPES.find(ht => t.toLowerCase().includes(ht.toLowerCase().replace(' party', '')));
+    if (hit && hit.length > 3) type = hit;
+    if (!type) { try { const c = resolveCanonicalType(t); if (c && HOST_TYPES.includes(c)) type = c; } catch { type = null; } }
+    let guests = null;
+    const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i) || t.match(/\b(\d{1,3})\s*(?:people|guests|ppl|folks|friends|pickers)\b/i);
+    if (gm) guests = parseInt(gm[1], 10);
+    let date = null;
+    const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+    const dm = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+    if (dm) {
+      const now = new Date(); const cand = new Date(now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
+      if (cand < now) cand.setFullYear(cand.getFullYear() + 1);
+      date = cand.toISOString().slice(0, 10);
+    } else {
+      const sm = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
+      if (sm) {
+        const now = new Date(); const y = sm[3] ? (sm[3].length === 2 ? 2000 + Number(sm[3]) : Number(sm[3])) : now.getFullYear();
+        const cand = new Date(y, Number(sm[1]) - 1, Number(sm[2]), 12);
+        if (!sm[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
+        if (!isNaN(cand)) date = cand.toISOString().slice(0, 10);
+      }
+    }
+    const hm = t.match(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)[’']s\b/);
+    const home = /backyard|back\s?yard|at home|my place|our (house|home)|the house/i.test(t);
+    return {
+      type, guests, date,
+      honoree: hm ? hm[1] : null,
+      venueKind: home ? 'home' : '',
+      venue: home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : '',
+    };
+  }, [smartText]);
+
+  // Effective values: manual correction wins, then the parse, then the
+  // playbook's own typical (host-shell defaulting — never a blank form).
+  const effType = fType || parsed.type || null;
+  const effPb = effType ? ALL_PLAYBOOKS.find(p => p && p.type === effType) : null;
+  const pbTypical = (effPb && effPb.meta && effPb.meta.typicalGuests && effPb.meta.typicalGuests.default) || null;
+  const effGuests = (fGuests ?? parsed.guests) ?? pbTypical;
+  const effDate = fDate || parsed.date || '';
+  const effName = fName || parsed.honoree || '';
+  const dstatC = eventDateStatus(effDate || null);
+  const expectC = expectedFromPlanned(effGuests, effType);
 
   const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
@@ -238,7 +282,11 @@ export default function HostShellV2() {
     spotTimer.current = setTimeout(() => setSpot(null), 2200);
     requestAnimationFrame(() => {
       const el = document.getElementById('card-' + key);
-      if (el) el.scrollIntoView({ behavior: REDUCE_MOTION ? 'instant' : 'smooth', block: 'center' });
+      const app = appRef.current;
+      if (el && app) {
+        const top = Math.max(0, el.offsetTop - (app.clientHeight - el.offsetHeight) / 2);
+        app.scrollTo({ top, behavior: REDUCE_MOTION ? 'instant' : 'smooth' });
+      }
     });
   };
   const [dayIdx, setDayIdx] = useState(0);    // The Day: position in the run of show
@@ -256,6 +304,7 @@ export default function HostShellV2() {
     if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
       setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
     }
+    if (route.focusField === 'rain-plan') { setSheet({ kind: 'rain' }); return true; }
     return false;
   };
 
@@ -338,9 +387,11 @@ export default function HostShellV2() {
   // Flip one RSVP — writes the same guests array the engine's confirmed-count
   // (and the catering-drift detector) read.
   const toggleRsvp = (i) => {
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: g.rsvp === 'Yes' ? 'No' : 'Yes' } : g);
+    const CYCLE = { '': 'Yes', 'Yes': 'No', 'No': 'Maybe', 'Maybe': '' };
+    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: CYCLE[String(g.rsvp || '')] ?? 'Yes' } : g);
     const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
-    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' flipped to ' + (gs[i].rsvp === 'Yes' ? 'yes' : 'no') + ' — ' + yes + ' confirmed now. The engine reads this.');
+    const now = gs[i].rsvp || 'no reply yet';
+    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + now + ' — ' + yes + ' confirmed. Maybes stay pending until they land.');
   };
 
   // ── Feedback layer: haptic tick on real state changes, the original app's
@@ -378,12 +429,7 @@ export default function HostShellV2() {
 
   const onCta = (a, key) => {
     const kind = wiredKind(a);
-    if (kind) {
-      const opening = editor !== key;
-      setEditor(opening ? key : null);
-      if (opening) spotlight(key);
-      return;
-    }
+    if (kind) { setEditor(key); spotlight(key); return; }
     if (routeSheet(a.route)) return;
     const dest = describeRoute(a.route);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
@@ -404,44 +450,7 @@ export default function HostShellV2() {
         <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>
       </div>
     );
-    if (kind === 'rain') {
-      // ORIGINAL intelligence: suggestRainPlan() — the app's venue-aware
-      // suggestion (home vs named venue vs generic) — leads as do-it-for-me;
-      // the playbook's authored wet-weather contingency is the tradition option.
-      let suggested = null;
-      try { suggested = suggestRainPlan(event); } catch { suggested = null; }
-      let authored = null;
-      try {
-        const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
-        const hit = ((pb && pb.contingencies) || []).find(c => c && (/rain|canopy|cover|indoor|garage|tent|umbrella|wet|storm/i.test(c.plan || '') || /weather|rain|storm|cold/i.test(c.when || '')));
-        authored = hit ? hit.plan : null;
-      } catch { authored = null; }
-      return (
-        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-          <div className="actions-row" style={{ marginTop: 0 }}>
-            {suggested && (
-              <button className="cta"
-                onClick={() => patchEvent({ rainPlan: suggested }, 'Backup written for you — tuned to where you’re hosting.')}>
-                Do it for me
-              </button>
-            )}
-            {authored && (
-              <button className="cta soft"
-                onClick={() => patchEvent({ rainPlan: authored }, 'The ' + String(event.type).toLowerCase() + ' move it is.')}>
-                The {String(event.type).toLowerCase()} move
-              </button>
-            )}
-          </div>
-          <div className="chips">
-            {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
-              <button key={p} className="chip" aria-pressed={event.rainPlan === p}
-                onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
-            ))}
-          </div>
-          {suggested && <p className="grounding" style={{ margin: 0 }}>“Do it for me”: “{suggested.slice(0, 110)}…”</p>}
-        </div>
-      );
-    }
+    if (kind === 'rain') return rainEditorBlock();
     if (kind === 'budget') return budgetEditorBlock();
     if (kind === 'date') return (
       <div className="hc-row">
@@ -481,6 +490,45 @@ export default function HostShellV2() {
     return null;
   };
 
+
+  // Rain editor — shared by the engine card editor AND the rain sheet, so
+  // every route to rain-plan lands on the same real controls.
+  const rainEditorBlock = () => {
+    let suggested = null;
+      try { suggested = suggestRainPlan(event); } catch { suggested = null; }
+      let authored = null;
+      try {
+        const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
+        const hit = ((pb && pb.contingencies) || []).find(c => c && (/rain|canopy|cover|indoor|garage|tent|umbrella|wet|storm/i.test(c.plan || '') || /weather|rain|storm|cold/i.test(c.when || '')));
+        authored = hit ? hit.plan : null;
+      } catch { authored = null; }
+      return (
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+          <div className="actions-row" style={{ marginTop: 0 }}>
+            {suggested && (
+              <button className="cta"
+                onClick={() => patchEvent({ rainPlan: suggested }, 'Backup written for you — tuned to where you’re hosting.')}>
+                Do it for me
+              </button>
+            )}
+            {authored && (
+              <button className="cta soft"
+                onClick={() => patchEvent({ rainPlan: authored }, 'The ' + String(event.type).toLowerCase() + ' move it is.')}>
+                The {String(event.type).toLowerCase()} move
+              </button>
+            )}
+          </div>
+          <div className="chips">
+            {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+              <button key={p} className="chip" aria-pressed={event.rainPlan === p}
+                onClick={() => patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.')}>{p}</button>
+            ))}
+          </div>
+          {suggested && <p className="grounding" style={{ margin: 0 }}>“Do it for me”: “{suggested.slice(0, 110)}…”</p>}
+        </div>
+      );
+
+  };
   // Budget editor — shared by the action-card editor AND the Budget sheet, so a
   // set budget stays changeable forever (three options = the estimator's real
   // low / mid / high; custom numbers split across the same real shares).
@@ -519,15 +567,25 @@ export default function HostShellV2() {
 
   // ── Create: build a REAL event object and hand it to the engine ──
   const assemble = () => {
+    if (!effType) { toast('Tell me the occasion first — type it or pick it.'); return; }
+    // Host-shell creation: playbook-typical count when unsaid, home venueKind
+    // detection, universal playbook tasks drafted immediately, guestMode
+    // 'count' (a headcount event until a roster starts), budget left to the
+    // engine's own domino.
+    const short = effType.replace(' Party', '');
+    const timeline = ((effPb && effPb.tasks) || [])
+      .filter(t => t && !t.whenChoice)
+      .map((t, i) => ({ id: 'tl-' + (t.id || i), week: t.when || '', task: t.label || '', done: false, owner: 'Host' }));
     const ev = {
       id: 'custom', rsvpCode: 'mine',
-      name: (fName || 'My') + '’s ' + fType.replace(' Party', ''),
-      honoree: fName || '',
-      type: fType, date: fDate, venue: '',
-      guestEstimate: fGuests || '',
-      totalBudget: fBudget || '',
+      name: effName ? effName + '’s ' + short : 'My ' + short,
+      honoree: effName || '',
+      type: effType, date: effDate || '', venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      guestMode: 'count',
+      guestEstimate: effGuests || '',
+      totalBudget: '',
       budget: [],
-      guests: [], vendors: [], timeline: [],
+      guests: [], vendors: [], timeline,
     };
     setCustom(ev); setEventId('custom'); setRevealed(true);
     // The Reveal, choreographed around the PRODUCTION reveal stages
@@ -594,84 +652,100 @@ export default function HostShellV2() {
                   <div className="eyebrow">New event</div>
                   <h1 className="mega" style={{ fontSize: 'clamp(30px,10cqw,40px)', lineHeight: 1.05 }}>What are we planning?</h1>
                   <p className="mega-sub" style={{ fontSize: 15, fontWeight: 550, color: 'var(--muted)' }}>
-                    Tell me four things and I’ll take it from there.
+                    Say it like you’d text a friend — I’ll take it from there.
                   </p>
-                  <div className="q"><div className="q-label">Who’s it for?</div>
-                    <input className="field" value={fName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
-                  </div>
-                  <div className="q"><div className="q-label">The occasion</div>
-                    {!typeOpen ? (
-                      /* Progressive disclosure: the 35-type catalog stays folded
-                         behind the current pick until the host asks for it. */
-                      <div className="chips">
-                        <button className="chip" aria-pressed="true" onClick={() => setTypeOpen(true)}>{fType.replace(' Party', '')}</button>
-                        <button className="chip" onClick={() => setTypeOpen(true)}>Change</button>
+                  <input
+                    className="field" style={{ maxWidth: 'none', fontSize: 16.5, marginTop: 10 }}
+                    placeholder="Try: crab feast for 20 in the backyard aug 2"
+                    value={smartText}
+                    onChange={e => { setSmartText(e.target.value); setFType(null); setCreateEdit(null); }}
+                    aria-label="Describe your event"
+                  />
+                  {smartText.trim() !== '' && (
+                    <>
+                      {/* Recognition chips — what was understood; tap to correct. */}
+                      <div className="chips" style={{ marginTop: 14 }}>
+                        <button className="chip" aria-pressed={!!effType}
+                          onClick={() => { setCreateEdit(createEdit === 'type' ? null : 'type'); setTypeOpen(true); setTypeQuery(''); }}>
+                          {effType ? effType.replace(' Party', '') : 'Which occasion?'}
+                        </button>
+                        <button className="chip" onClick={() => setCreateEdit(createEdit === 'count' ? null : 'count')}>
+                          {effGuests ? '~' + effGuests + (fGuests == null && parsed.guests == null ? ' · typical' : '') : 'How many?'}
+                        </button>
+                        <button className="chip" onClick={() => setCreateEdit(createEdit === 'date' ? null : 'date')}>
+                          {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No date yet'}
+                        </button>
+                        <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
+                          {effName ? 'For ' + effName : 'Who’s it for?'}
+                        </button>
                       </div>
-                    ) : (
-                      <div className="typebrowser">
-                        <input
-                          className="field" style={{ maxWidth: 'none' }}
-                          placeholder="Type it — bbq, crab boil, sweet 16…"
-                          value={typeQuery} autoFocus
-                          onChange={e => setTypeQuery(e.target.value)}
-                          aria-label="Search occasions"
-                        />
-                        {typeMatches ? (
-                          <div className="chips" style={{ marginTop: 12 }}>
-                            {typeMatches.length
-                              ? typeMatches.map(t => (
-                                <button key={t} className="chip" aria-pressed={fType === t} onClick={() => pickType(t)}>{t.replace(' Party', '')}</button>
-                              ))
-                              : <p className="grounding">Nothing matches — try another word. “bbq”, “boil”, and “get together” all work.</p>}
-                          </div>
-                        ) : (
-                          TYPE_GROUPS.map(([group, list]) => (
-                            <div key={group} className="shelf-wrap">
-                              <div className="shelf-label">{group}</div>
-                              <div className="shelf">
-                                {list.map(t => (
-                                  <button key={t} className="chip" aria-pressed={fType === t} onClick={() => pickType(t)}>{t.replace(' Party', '')}</button>
-                                ))}
-                              </div>
+                      {(createEdit === 'type' || !effType) && (
+                        <div className="typebrowser" style={{ marginTop: 12 }}>
+                          <input
+                            className="field" style={{ maxWidth: 'none' }}
+                            placeholder="Search occasions — bbq, boil, sweet 16…"
+                            value={typeQuery}
+                            onChange={e => setTypeQuery(e.target.value)}
+                            aria-label="Search occasions"
+                          />
+                          {typeMatches ? (
+                            <div className="chips" style={{ marginTop: 12 }}>
+                              {typeMatches.length
+                                ? typeMatches.map(t => (
+                                  <button key={t} className="chip" aria-pressed={effType === t} onClick={() => { pickType(t); setCreateEdit(null); }}>{t.replace(' Party', '')}</button>
+                                ))
+                                : <p className="grounding">Nothing matches — “bbq”, “boil”, and “get together” all work.</p>}
                             </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="q"><div className="q-label">When?</div>
-                    <input className="field" type="date" value={fDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
-                    {/* eventDateStatus — the app's real time intelligence */}
-                    {dstatC.status !== 'ok' && (
-                      <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
-                    )}
-                  </div>
-                  <div className="q"><div className="q-label">Roughly how many people?</div>
-                    <div className="chips">{[30, 50, 75, 120, 0].map(n => (
-                      <button key={n} className="chip" aria-pressed={fGuests === n} onClick={() => { setFGuests(n); setFBudget(null); }}>{n === 0 ? 'No idea yet' : '~' + n}</button>
-                    ))}</div>
-                    {/* expectedFromPlanned — the real attendance model */}
-                    {expectC && <p className="grounding">Plan for {expectC.planned} — likely {expectC.low}–{expectC.high} actually make it.</p>}
-                  </div>
-                  <div className="q"><div className="q-label">What feels right to spend?</div>
-                    {/* The app's host pattern: one number, estimator range as a hint. */}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <input className="field" style={{ maxWidth: 190, fontSize: 15, padding: '10px 14px' }}
-                        type="number" inputMode="numeric" min="0" placeholder="What’s your budget?"
-                        value={customBudget}
-                        onChange={e => { setCustomBudget(e.target.value); const n = parseInt(e.target.value, 10); setFBudget(n > 0 ? n : null); }}
-                        aria-label="Your budget" />
-                      <button className="chip" aria-pressed={fBudget === null && !customBudget} onClick={() => { setFBudget(null); setCustomBudget(''); }}>Not sure yet</button>
-                    </div>
-                    {estC
-                      ? <p className="grounding">Most people spend {fmt(estC.lowTotal)}–{fmt(estC.highTotal)}{confC.level === 'high' ? ' — a confident read' : confC.level === 'medium' ? ' — a fair first read' : ' — a rough first read'}. Pick one or write your own; you can change it anytime.</p>
-                      : <p className="grounding">Pick a guest count and the estimator can suggest a range.</p>}
-                  </div>
-                  <div style={{ marginTop: 34 }}>
-                    <button className="cta big" onClick={assemble} disabled={dstatC.blocking} style={dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>
-                      Put my plan together
-                    </button>
-                  </div>
+                          ) : (
+                            TYPE_GROUPS.map(([group, list]) => (
+                              <div key={group} className="shelf-wrap">
+                                <div className="shelf-label">{group}</div>
+                                <div className="shelf">
+                                  {list.map(t => (
+                                    <button key={t} className="chip" aria-pressed={effType === t} onClick={() => { pickType(t); setCreateEdit(null); }}>{t.replace(' Party', '')}</button>
+                                  ))}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
+                      {createEdit === 'count' && (
+                        <div className="chips hc-row">
+                          {[10, 18, 30, 50, 75, 120].map(n => (
+                            <button key={n} className="chip" aria-pressed={effGuests === n} onClick={() => { setFGuests(n); setCreateEdit(null); }}>~{n}</button>
+                          ))}
+                        </div>
+                      )}
+                      {createEdit === 'date' && (
+                        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                          <input className="field" type="date" value={effDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
+                          {effDate && dstatC.status !== 'ok' && (
+                            <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
+                          )}
+                        </div>
+                      )}
+                      {createEdit === 'name' && (
+                        <div className="hc-row">
+                          <input className="field" placeholder="Who’s it for?" value={effName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
+                        </div>
+                      )}
+                      {effType && (
+                        <div style={{ marginTop: 26 }}>
+                          <button className="cta big" onClick={assemble}
+                            disabled={!!effDate && dstatC.blocking}
+                            style={effDate && dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>
+                            Put my plan together
+                          </button>
+                          <p className="grounding" style={{ marginTop: 10 }}>
+                            {effGuests ? `Planning around ${effGuests}${fGuests == null && parsed.guests == null ? ' (the ' + effType.replace(' Party', '').toLowerCase() + ' typical)' : ''}` : ''}
+                            {expectC ? ` — likely ${expectC.low}–${expectC.high} make it.` : ''}
+                            {!effDate ? ' No date yet is fine — the plan will ask.' : ''}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -916,7 +990,7 @@ export default function HostShellV2() {
                 const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline'].includes(a.route.tab));
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
-                    style={{ animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                    style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     <span className="idx">{i + 1}</span>
                     <div className="card-head">
                       <div className="card-top">
@@ -1070,7 +1144,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -1104,7 +1178,12 @@ export default function HostShellV2() {
                     <div key={it.key || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                       <div className="line" style={{ padding: '0 0 4px' }}>
                         <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">×{it.qty}</span></span>
-                        <span className="amt">{it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : '—'}</span>
+                        <button className="mini" style={it.owned ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : undefined}
+                          onClick={() => patchEvent(
+                            { capacityOwned: { ...(event.capacityOwned || {}), [it.key]: !it.owned } },
+                            it.owned ? ((it.short || it.item) + ' back on the get list.') : ((it.short || it.item) + ' marked as yours — the plan stops pricing it.'))}>
+                          {it.owned ? 'you have it' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'have it?'}
+                        </button>
                       </div>
                       {links && (
                         <div className="actions-row" style={{ marginTop: 2 }}>
@@ -1146,6 +1225,21 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                   </div>
                 ))}
+              </>
+            )}
+            {sheet.kind === 'rain' && (
+              <>
+                {event.rainPlan ? (
+                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>Your backup: {event.rainPlan}</div>
+                ) : (
+                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>Open sky and no backup named yet — pick one, or let it be written for you.</div>
+                )}
+                {rainEditorBlock()}
+                {event.rainPlan && (
+                  <div className="actions-row" style={{ marginTop: 12 }}>
+                    <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Draft the guest note</button>
+                  </div>
+                )}
               </>
             )}
             {sheet.kind === 'draft' && (
@@ -1371,7 +1465,7 @@ export default function HostShellV2() {
                   {(event.guests || []).slice(0, 40).map((g, i) => (
                     <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
                       <span>{g.name || 'Guest ' + (i + 1)}</span>
-                      <span className={'tag ' + (g.rsvp === 'Yes' ? 'budget' : 'plan')}>{g.rsvp || '—'}</span>
+                      <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
                     </button>
                   ))}
                   {quickAdd}
