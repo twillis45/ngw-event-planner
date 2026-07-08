@@ -1336,10 +1336,20 @@ export default function HostShellV2() {
                   <h3>{dayBefore.headline}</h3>
                   {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
                   {(dayBefore.sections || []).slice(0, 5).map(sec => (
-                    <div className="then-row" key={sec.key}>
+                    <button className="then-row" key={sec.key} style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', font: 'inherit', padding: '7px 0' }}
+                      onClick={() => {
+                        // Each row lands on the surface that resolves it.
+                        const k = String(sec.key || sec.label || '').toLowerCase();
+                        if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
+                        else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
+                        else if (/weather|rain/.test(k)) setSheet({ kind: 'rain' });
+                        else if (/tomorrow|start|schedule/.test(k)) setStage('day');
+                        else setSheet({ kind: 'tasks', focus: null });
+                      }}>
                       <span className="d" style={{ minWidth: 108 }}>{sec.label}</span>
-                      <span style={{ color: 'var(--carbon-muted)' }}>{sec.detail}</span>
-                    </div>
+                      <span style={{ color: 'var(--carbon-muted)', flex: 1 }}>{sec.detail}</span>
+                      <span className="chev" style={{ position: 'static', color: 'var(--carbon-muted)' }}>›</span>
+                    </button>
                   ))}
                 </div>
               )}
@@ -1971,6 +1981,10 @@ export default function HostShellV2() {
                 )}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
+                {(foodPlan.choices || []).length > 0 && (() => {
+                  const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
+                  return openN > 0 ? <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--warn)' }}>{openN} menu decision{openN === 1 ? '' : 's'} still open — each re-prices the lines it touches.</p> : null;
+                })()}
                 {(foodPlan.choices || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 8px' }}>Your choices</div>
@@ -2011,6 +2025,18 @@ export default function HostShellV2() {
                 {(() => {
                   const items = (foodPlan.list || []).filter(it => it && !it.skipped);
                   const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
+                  // Decision flags: a menu decision the host hasn't explicitly
+                  // made yet marks every line it re-prices (playbook `affects`).
+                  const undecidedAffects = (() => {
+                    try {
+                      const pb = ALL_PLAYBOOKS.find(p => p && p.type === event.type);
+                      const picks = event.foodChoices || {};
+                      const open = ((pb && pb.decisions) || []).filter(d => d && Array.isArray(d.affects) && !(d.id in picks));
+                      const m = {};
+                      open.forEach(d => d.affects.forEach(id => { m[id] = d.label; }));
+                      return m;
+                    } catch { return {}; }
+                  })();
                   return groups.map(g => (
                     <div key={g}>
                       <div className="shelf-label" style={{ margin: '14px 0 4px' }}>{g}</div>
@@ -2029,6 +2055,7 @@ export default function HostShellV2() {
                                 <span className="f-name">
                                   {it.short || it.item}
                                   {it.swappedFrom ? <span className="tag plan">swapped</span> : null}
+                                  {undecidedAffects[it.id] ? <span className="tag essential" title={undecidedAffects[it.id]}>decision open</span> : null}
                                   {it.essential && !got ? <span className="tag essential">essential</span> : null}
                                   {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
                                   {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
