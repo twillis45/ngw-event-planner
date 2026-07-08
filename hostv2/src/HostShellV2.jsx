@@ -429,6 +429,9 @@ export default function HostShellV2() {
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
   const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
+  const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
+  const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
+  const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // MEANING CAPTURE — the raw fields the engines already read (single truth:
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
   // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
@@ -2192,9 +2195,22 @@ export default function HostShellV2() {
                     patchEvent({ dietCounts: { ...dc, [k]: n } },
                       n ? k + ' × ' + n + ' — the spread just adjusted for it.' : k + ' cleared.');
                   };
+                  const dietSummary = DIETS.filter(k => Number(dc[k]) > 0).map(k => k + ' ' + dc[k]).join(' · ');
+                  const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
+                  if (!dietOpen) {
+                    return (
+                      <button className="fold-btn" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                        Dietary needs — {anyDiet ? dietSummary : event.dietaryNoted ? <span style={{ color: 'var(--ok)' }}>noted</span> : 'none counted yet'}
+                        <span className="chev">›</span>
+                      </button>
+                    );
+                  }
                   return (
                     <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 12, borderRadius: 12, padding: '8px 6px' }}>
-                      <div className="shelf-label" style={{ marginBottom: 6 }}>Dietary needs {anyDiet ? '' : '— none counted yet'}</div>
+                      <div className="shelf-label" style={{ marginBottom: 6 }}>
+                        Dietary needs {anyDiet ? '' : '— none counted yet'}
+                        <button className="mini" style={{ marginLeft: 8 }} onClick={() => setFoodSect(m => ({ ...m, diet: false }))}>done</button>
+                      </div>
                       <div className="chips">
                         {DIETS.map(k => (
                           <span key={k} className="chip" style={{ display: 'inline-flex', gap: 7, alignItems: 'center', cursor: 'default' }}>
@@ -2208,7 +2224,7 @@ export default function HostShellV2() {
                         Vegetarian + vegan counts add a real, priced main below; the others flag the lines to double-check.
                         {!event.dietaryNoted && <span> </span>}
                         {!event.dietaryNoted && (
-                          <button className="mini" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.')}>That’s everyone — noted</button>
+                          <button className="mini" onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu can lock now.'); setFoodSect(m => ({ ...m, diet: false })); }}>That’s everyone — noted</button>
                         )}
                       </p>
                     </div>
@@ -2216,9 +2232,18 @@ export default function HostShellV2() {
                 })()}
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
-                  return openN > 0 ? <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--warn)' }}>{openN} menu decision{openN === 1 ? '' : 's'} still open — each re-prices the lines it touches.</p> : null;
+                  const open = !!foodSect.choices;
+                  if (!open) {
+                    return (
+                      <button className="fold-btn" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
+                        Your choices — {openN > 0 ? <span style={{ color: 'var(--warn)' }}>{openN} open · each re-prices lines</span> : <span style={{ color: 'var(--ok)' }}>all set</span>}
+                        <span className="chev">›</span>
+                      </button>
+                    );
+                  }
+                  return null;
                 })()}
-                {(foodPlan.choices || []).length > 0 && (
+                {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 8px' }}>Your choices</div>
                     {foodPlan.choices.map(d => (
@@ -2261,10 +2286,27 @@ export default function HostShellV2() {
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
-                  return groups.map(g => (
+                  return groups.map(g => {
+                    const gItems = items.filter(it => (it.group || 'Other') === g);
+                    if (!gItems.length) return null;
+                    const gBought = gItems.filter(it => (event.foodGot || {})[it.id]).length;
+                    const gLow = gItems.reduce((t, it) => t + (it.locked != null ? Number(it.locked) : Number(it.low) || 0), 0);
+                    const gHigh = gItems.reduce((t, it) => t + (it.locked != null ? Number(it.locked) : Number(it.high) || 0), 0);
+                    const gDecisions = gItems.filter(it => undecidedAffects[it.id]).length;
+                    // Accordion (never-dense): a group opens when tapped, when a
+                    // deep-link targets one of its lines, or while tuning one.
+                    const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
+                    const isOpen = !!foodGroupsOpen[g] || focusHere;
+                    return (
                     <div key={g}>
-                      <div className="shelf-label" style={{ margin: '14px 0 4px' }}>{g}</div>
-                      {items.filter(it => (it.group || 'Other') === g).map((it, i) => {
+                      <button className="fold-btn" style={{ marginTop: 10, ...(gBought === gItems.length ? { color: 'var(--ok)' } : {}) }} onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
+                        {gBought === gItems.length
+                          ? `${g} — all ${gItems.length} bought`
+                          : `${g} — ${gBought} of ${gItems.length} bought${foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : ''}`}
+                        {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 8 }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
+                        <span className="chev">{isOpen ? '▾' : '›'}</span>
+                      </button>
+                      {isOpen && gItems.map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
                         const tuning = foodTune === it.id;
@@ -2288,7 +2330,7 @@ export default function HostShellV2() {
                                   {[
                                     it.qty && it.unit ? `${it.qty} ${it.unit}` : null,
                                     foodPlan.hasRealCount && it.unitBase && it.perUnitLow ? `${fmt(it.perUnitLow)}–${fmt(it.perUnitHigh)}/${it.unitBase}` : null,
-                                    it.where,
+                                    (event.foodWhere || {})[it.id] ? 'your pick: ' + (event.foodWhere || {})[it.id] : (Array.isArray(it.where) ? it.where.join(',') : it.where),
                                   ].filter(Boolean).join(' · ')}
                                 </span>
                               </span>
@@ -2321,6 +2363,44 @@ export default function HostShellV2() {
                                   }}>+</button>
                                   <button className="mini" onClick={() => patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped — the total just dropped.')}>skip it</button>
                                 </div>
+                                {/* ORIGINAL parity — lock the real cost: event.foodLocked[id]
+                                    = the committed dollar amount ("picked a source/price");
+                                    the engine turns the range into a fixed line. */}
+                                <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                                  <span className="of">cost:</span>
+                                  {it.locked != null ? (
+                                    <>
+                                      <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{fmt(it.locked)} locked</span>
+                                      <button className="mini" onClick={() => {
+                                        const m = { ...(event.foodLocked || {}) }; delete m[it.id];
+                                        patchEvent({ foodLocked: m }, (it.short || it.item) + ' back to the estimate range.');
+                                      }}>unlock</button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <input className="field" style={{ maxWidth: 90, fontSize: 13, padding: '6px 10px' }} type="number" min="0" placeholder="$ actual"
+                                        aria-label={'Real cost for ' + (it.short || it.item)}
+                                        value={tuneCost} onChange={e => setTuneCost(e.target.value)} />
+                                      <button className="mini" disabled={!(parseFloat(tuneCost) >= 0 && tuneCost !== '')}
+                                        onClick={() => {
+                                          const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
+                                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                            (it.short || it.item) + ' locked at ' + fmt(n) + ' — a real price now, not a range.');
+                                          setTuneCost('');
+                                        }}>lock it</button>
+                                    </>
+                                  )}
+                                </div>
+                                {Array.isArray(it.where) && it.where.length > 1 && (
+                                  <div className="chips" style={{ marginTop: 8 }}>
+                                    {it.where.slice(0, 4).map(w => (
+                                      <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
+                                        onClick={() => patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } }, 'Buying ' + (it.short || it.item) + ' at ' + w + '.')}>
+                                        {w}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                                 {(alts.length > 0 || it.swappedFrom) && (
                                   <div className="chips" style={{ marginTop: 8 }}>
                                     {it.swappedFrom && (
@@ -2342,7 +2422,8 @@ export default function HostShellV2() {
                         );
                       })}
                     </div>
-                  ));
+                    );
+                  });
                 })()}
                 {(foodPlan.specialDiets || []).length > 0 && (
                   <p className="grounding" style={{ marginTop: 10 }}>
