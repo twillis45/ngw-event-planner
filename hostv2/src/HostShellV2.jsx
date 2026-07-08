@@ -665,6 +665,22 @@ export default function HostShellV2() {
     return () => { dead = true; document.removeEventListener('visibilitychange', onVis); try { lock && lock.release(); } catch {} };
   }, []);
 
+  // DERIVED COMPLETION (domino doctrine): a checklist step whose real-world
+  // condition is satisfied completes ITSELF — the host never re-checks what
+  // the plan already knows. Conservative matching: only the unambiguous case
+  // (shopping steps, once every spread item is bought). Writes timeline.done
+  // for real, so every reader (engine readiness, counts, sheets) agrees.
+  useEffect(() => {
+    try {
+      if (!foodPlan || !foodPlan.itemCount || foodPlan.boughtCount < foodPlan.itemCount) return;
+      const tl = event.timeline || [];
+      const idx = tl.map((t, i) => (t && !t.done && /\b(buy|shop)\b|shopping/i.test(String(t.task || '')) ? i : -1)).filter(i => i >= 0);
+      if (!idx.length) return;
+      patchEvent({ timeline: tl.map((t, i) => idx.includes(i) ? { ...t, done: true } : t) },
+        idx.length + ' shopping step' + (idx.length === 1 ? '' : 's') + ' completed ' + (idx.length === 1 ? 'itself' : 'themselves') + ' — everything on the spread is bought.');
+    } catch {}
+  }, [foodPlan && foodPlan.boughtCount, foodPlan && foodPlan.itemCount]);
+
   // Sprint 60.Y PARITY — the ORIGINAL's one chime placement: ring softly when
   // the total inbound-message count across events increases (a message
   // arrived). Skips the first measurement so mount never rings. Identical
