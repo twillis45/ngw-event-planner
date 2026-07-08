@@ -177,3 +177,54 @@ button{font-family:inherit}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{transition:none!important; animation:none!important}
 }
+
+/* ── Create stage ── */
+.q{margin:30px 0 0}
+.q-label{font-size:16px; font-weight:750; margin-bottom:11px; letter-spacing:-.01em}
+.field{
+  width:100%; max-width:320px; font-family:inherit; font-size:17px; font-weight:650; color:var(--ink);
+  background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px 16px; letter-spacing:-.01em;
+}
+.field:focus{outline:2px solid var(--steel); outline-offset:1px}
+.tick-list{margin:26px 0 0; padding:0; list-style:none}
+.tick-list li{position:relative; padding:0 0 20px 34px; font-size:15px; line-height:1.6; color:var(--ink-soft)}
+.tick-list li strong{color:var(--ink); font-weight:750}
+.tick-list li::before{content:""; position:absolute; left:0; top:3px; width:20px; height:20px; border-radius:50%; background:var(--steel-tint)}
+.tick-list li::after{
+  content:""; position:absolute; left:5px; top:10px; width:9px; height:5px;
+  border-left:2.5px solid var(--steel); border-bottom:2.5px solid var(--steel);
+  transform:rotate(-45deg);
+}
+.grounding{font-size:13px; color:var(--muted); margin-top:6px; font-weight:550}
+
+/* ── The Day stage (dark) ── */
+.app.dark-stage{
+  background-color:var(--carbon); color:var(--carbon-text);
+  background-image:radial-gradient(120% 300px at 50% -40px, rgba(78,104,119,.16) 0%, rgba(78,104,119,0) 100%);
+}
+.app.dark-stage .wordmark{color:var(--carbon-text)}
+.app.dark-stage .appbar-note{color:var(--carbon-muted)}
+.day-sec .eyebrow{color:var(--carbon-muted)}
+.clock{font-size:clamp(56px,18cqw,76px); font-weight:200; letter-spacing:-.04em; margin:12px 0 30px; font-variant-numeric:tabular-nums; line-height:1}
+.now-card{
+  background:#15181D; border:1px solid rgba(255,255,255,.09); border-radius:20px; padding:24px 24px 22px;
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.6);
+}
+.now-label{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:#6F8794}
+.now-card h2{font-size:24px; font-weight:750; margin:12px 0 8px; line-height:1.15; letter-spacing:-.02em}
+.now-card .meta{font-size:13.5px; color:var(--carbon-muted); margin:0 0 10px; line-height:1.5}
+.then{margin-top:32px}
+.then-row{display:flex; gap:16px; padding:13px 4px; border-bottom:1px solid rgba(255,255,255,.09); font-size:14px; align-items:baseline}
+.then-row .d{font-variant-numeric:tabular-nums; color:#6F8794; min-width:68px; font-size:12.5px; font-weight:700}
+.then-row:last-child{border-bottom:none}
+.day-empty{font-size:15px; line-height:1.65; color:var(--carbon-muted); white-space:pre-line; max-width:34em}
+
+/* ── After stage ── */
+.line .of{font-weight:550; color:var(--muted); font-size:12px}
+.card.no-hover:hover{transform:none; box-shadow:none}
+
+/* ── Money lines (After stage) ── */
+.line{display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:14px; padding:7px 0; color:var(--ink-soft)}
+.line .amt{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:700; white-space:nowrap}
+.line .amt.under{color:var(--ok)}
+.line.total{border-top:1px solid var(--line-soft); margin-top:6px; padding-top:12px}

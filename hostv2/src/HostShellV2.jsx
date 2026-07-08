@@ -1,19 +1,21 @@
 // Host Shell V2 — WIRED PROTOTYPE (separate app, real engines).
 // UI is the expressive-editorial concept; every number and card below comes from
-// the production orchestrator: eventPlan() (CommandCenter.jsx), real sample events,
-// real budget lines. Nothing invented — where data is missing, the UI says so.
+// the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
+// (lib/eventIdentity), real sample events, real budget + run-of-show data.
+// Nothing invented — where data is missing, the UI says so.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { eventPlan } from '@app/CommandCenter';
+import { identityStatement } from '@app/lib/eventIdentity';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
-// ── Event roster: a few real samples to swap between (engine generality demo) ──
 const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-birthday', 'ev-x-graduation', 'ev-dmv-wedding'];
 const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV];
 const ROSTER = ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean);
 const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
-const LS_KEY = id => 'ngw-hostv2-patch-' + id;
+const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
+const LS_CUSTOM = 'ngw-hostv2-custom-event';
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -36,15 +38,10 @@ function budgetTotals(event) {
   return { planned: 0, committed: 0, lines: 0 };
 }
 
-function guestNumber(event) {
-  return Number(event.guestEstimate) || Number(event.catererCount) || (event.guests || []).length || 0;
-}
+const guestNumber = e => Number(e.guestEstimate) || Number(e.catererCount) || (e.guests || []).length || 0;
 
-// Map engine action domains → host-facing lens labels.
 const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors: 'Vendors', date: 'Plan', start: 'Guests' };
 
-// Describe a route in host words — CTAs in this prototype don't navigate (there
-// are no tabs here); they show exactly where the real app would take you.
 function describeRoute(route) {
   if (!route || !route.tab) return null;
   const bits = [route.tab];
@@ -56,47 +53,63 @@ function describeRoute(route) {
   return bits.join(' → ');
 }
 
+const TYPE_OPTIONS = ['Retirement Party', 'Birthday', 'Wedding', 'Graduation', 'Reunion', 'Anniversary'];
+
 export default function HostShellV2() {
+  const [stage, setStage] = useState('plan');
   const [eventId, setEventId] = useState(FALLBACK ? FALLBACK.id : null);
+  const [custom, setCustom] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LS_CUSTOM)) || null; } catch { return null; }
+  });
   const [patch, setPatch] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY(FALLBACK.id))) || {}; } catch { return {}; }
+    try { return JSON.parse(localStorage.getItem(LS_PATCH(FALLBACK.id))) || {}; } catch { return {}; }
   });
   const [toastMsg, setToastMsg] = useState(null);
   const [hcOpen, setHcOpen] = useState(false);
   const [handledOpen, setHandledOpen] = useState(false);
   const toastTimer = useRef(null);
+  const appRef = useRef(null);
 
-  const base = ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK;
-  const event = useMemo(() => ({ ...base, ...patch }), [base, patch]);
+  // Create-stage form
+  const [fName, setFName] = useState('David Carter');
+  const [fType, setFType] = useState('Retirement Party');
+  const [fDate, setFDate] = useState('2026-08-22');
+  const [fGuests, setFGuests] = useState(75);
+  const [fBudget, setFBudget] = useState(3500);
+  const [revealed, setRevealed] = useState(false);
 
-  // ── THE REAL ENGINE ── every card, count, and route below comes from here.
+  const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
+  const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
+
+  // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
     try { return eventPlan(event, null); }
     catch (err) { return { _error: String(err), nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadinessRollup: null }; }
   }, [event]);
 
   useEffect(() => {
-    try { localStorage.setItem(LS_KEY(eventId), JSON.stringify(patch)); } catch {}
+    if (eventId !== 'custom') { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
   }, [patch, eventId]);
+  useEffect(() => {
+    if (custom) { try { localStorage.setItem(LS_CUSTOM, JSON.stringify(custom)); } catch {} }
+  }, [custom]);
+  useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
   const switchEvent = (id) => {
-    setEventId(id);
-    setHcOpen(false); setHandledOpen(false);
-    try { setPatch(JSON.parse(localStorage.getItem(LS_KEY(id))) || {}); } catch { setPatch({}); }
+    setEventId(id); setHcOpen(false); setHandledOpen(false); setStage('plan');
+    if (id !== 'custom') { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
   };
 
   const toast = (msg) => {
     setToastMsg(msg);
     clearTimeout(toastTimer.current);
-    toastTimer.current = setTimeout(() => setToastMsg(null), 3200);
+    toastTimer.current = setTimeout(() => setToastMsg(null), 3400);
   };
 
   const days = daysUntil(event.date);
   const money = budgetTotals(event);
   const guests = guestNumber(event);
   const actions = plan.nextActions || [];
-  const top = actions.slice(0, 3);
-  const rest = actions.slice(3);
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
   const pct = plan.progress.total ? Math.round((plan.progress.done / plan.progress.total) * 100) : null;
@@ -111,177 +124,319 @@ export default function HostShellV2() {
   };
 
   const setGuests = (n) => {
-    setPatch(p => ({ ...p, guestEstimate: n }));
+    if (eventId === 'custom') setCustom(c => ({ ...c, guestEstimate: n }));
+    else setPatch(p => ({ ...p, guestEstimate: n }));
     toast('Planning around ' + n + ' now — watch the plan recompute.');
   };
 
+  // ── Create: build a REAL event object and hand it to the engine ──
+  const assemble = () => {
+    const ev = {
+      id: 'custom', rsvpCode: 'mine',
+      name: (fName || 'My') + '’s ' + fType.replace(' Party', ''),
+      honoree: fName || '',
+      type: fType, date: fDate, venue: '',
+      guestEstimate: fGuests || '',
+      budget: fBudget ? [{ id: 'custom-b1', category: 'Everything', budgeted: fBudget, actual: 0, notes: 'Set at creation' }] : [],
+      guests: [], vendors: [], timeline: [],
+    };
+    setCustom(ev); setEventId('custom'); setRevealed(true);
+  };
+  const customPlan = useMemo(() => {
+    if (!revealed || !custom) return null;
+    try { return eventPlan(custom, null); } catch { return null; }
+  }, [revealed, custom]);
+
+  const ros = Array.isArray(event.ros) ? event.ros : [];
+  const isPast = days !== null && days < 0;
+  const budgetLines = Array.isArray(event.budget) ? event.budget : [];
+
   return (
     <div className="stagewrap">
-      <div className="app" id="app">
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '')} id="app" ref={appRef}>
         <div className="content">
           <div className="appbar">
             <div className="wordmark">Event Boss</div>
             <div className="appbar-note">V2 · wired to real engine</div>
           </div>
 
-          {/* Event picker — proves the engine generality: same surface, any event */}
-          <div className="picker">
-            {ROSTER.map(e => (
-              <button key={e.id} className="chip" aria-pressed={e.id === eventId} onClick={() => switchEvent(e.id)}>
-                {e.type}
-              </button>
-            ))}
-            {Object.keys(patch).length > 0 && (
-              <button className="chip reset" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes</button>
-            )}
-          </div>
-
-          {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
-
-          {/* ── Hero: time is the thing a host feels ── */}
-          <div className="eyebrow">{event.name}{event.venue ? ' · ' + event.venue : ''}</div>
-          <div className="mega">
-            {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${-days}d ago` : `${days} days`}
-          </div>
-          <p className="mega-sub">
-            {days !== null && days > 0 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
-            {days !== null && days < 0 && 'this one is behind you.'}
-            {days === 0 && 'it all happens today.'}
-          </p>
-
-          {/* ── Bento: real numbers or honest absence ── */}
-          <div className="bento">
-            <div className="tile tile-a">
-              <div className="t-label">The basics</div>
-              <div>
-                <div className="t-num">{pct === null ? '—' : pct + '%'}</div>
-                <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
-                <div className="t-sub">
-                  {plan.progress.total
-                    ? `${plan.progress.done} of ${plan.progress.total} foundations settled — date, guests, budget, food.`
-                    : 'No foundation data for this event.'}
-                </div>
-              </div>
-            </div>
-            <div className="tile tile-b">
-              <div className="t-label">Guests</div>
-              <div>
-                <div className="t-num">{guests || '—'}</div>
-                <div className="t-sub">{guests ? 'planned around' : 'no count yet — the plan can’t size food or seats'}</div>
-              </div>
-            </div>
-            <div className="tile tile-c">
-              <div className="t-label">Budget</div>
-              <div>
-                <div className="t-num">{money.planned ? fmt(money.planned) : '—'}</div>
-                <div className="t-sub">
-                  {money.planned
-                    ? `${fmt(money.committed)} committed across ${money.lines} lines`
-                    : 'no budget lines yet'}
-                </div>
-              </div>
-            </div>
-            <button
-              className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
-              onClick={() => document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              <div className="t-label">Next</div>
-              <div className="t-num">
-                {actions.length === 0 ? 'Nothing needs you' : `${actions.length} thing${actions.length === 1 ? '' : 's'} need${actions.length === 1 ? 's' : ''} you`}
-              </div>
-              <div className="t-go">{actions.length ? 'Start with the first one ↓' : 'The engine found no gaps'}</div>
-            </button>
-          </div>
-
-          {/* ── Lenses (only the domains the engine actually surfaced) ── */}
-          {lensSet.length > 1 && (
-            <div className="lenses">
-              <button className="lens" aria-pressed={lens === 'all'} onClick={() => setLens('all')}>Everything</button>
-              {lensSet.map(l => (
-                <button key={l} className="lens" aria-pressed={lens === l} onClick={() => setLens(l)}>{l}</button>
-              ))}
-            </div>
-          )}
-
-          {/* ── Next actions: straight from eventPlan(), engine order preserved ── */}
-          <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">engine-ranked</span></div>
-
-          {actions.length === 0 && (
-            <div className="empty">The orchestrator has no open actions for this event — every foundation it tracks is settled.</div>
-          )}
-
-          {top.filter(show).map((a, i) => (
-            <article className="card" key={a.id || i}>
-              <span className="idx">{i + 1}</span>
-              <div className="card-head">
-                <div className="card-top">
-                  <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                </div>
-                <h3>{a.title}</h3>
-                {a.consequence && <p className="because">{a.consequence}</p>}
-                <div className="actions-row">
-                  {a.cta && <button className="cta" onClick={() => onCta(a)}>{a.cta}</button>}
-                  {a.domain === 'guests' && (
-                    <button className="cta soft" onClick={() => setHcOpen(o => !o)}>Set a count here</button>
-                  )}
-                </div>
-                {a.domain === 'guests' && hcOpen && (
-                  <div className="chips hc-row">
-                    {[30, 50, 60, 75, 90, 120].map(n => (
-                      <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
-                    ))}
+          {/* ══════════ CREATE ══════════ */}
+          {stage === 'create' && (
+            <section>
+              {!revealed ? (
+                <>
+                  <div className="eyebrow">New event</div>
+                  <h1 className="mega" style={{ fontSize: 'clamp(30px,10cqw,40px)', lineHeight: 1.05 }}>What are we planning?</h1>
+                  <p className="mega-sub" style={{ fontSize: 15, fontWeight: 550, color: 'var(--muted)' }}>
+                    Four answers — then the real engine builds the plan.
+                  </p>
+                  <div className="q"><div className="q-label">Who’s it for?</div>
+                    <input className="field" value={fName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
                   </div>
+                  <div className="q"><div className="q-label">The occasion</div>
+                    <div className="chips">{TYPE_OPTIONS.map(t => (
+                      <button key={t} className="chip" aria-pressed={fType === t} onClick={() => setFType(t)}>{t.replace(' Party', '')}</button>
+                    ))}</div>
+                  </div>
+                  <div className="q"><div className="q-label">When?</div>
+                    <input className="field" type="date" value={fDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
+                  </div>
+                  <div className="q"><div className="q-label">Roughly how many people?</div>
+                    <div className="chips">{[30, 50, 75, 120, 0].map(n => (
+                      <button key={n} className="chip" aria-pressed={fGuests === n} onClick={() => setFGuests(n)}>{n === 0 ? 'No idea yet' : '~' + n}</button>
+                    ))}</div>
+                  </div>
+                  <div className="q"><div className="q-label">What feels right to spend?</div>
+                    <div className="chips">{[2000, 3500, 5000, 0].map(n => (
+                      <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => setFBudget(n)}>{n === 0 ? 'Not sure yet' : fmt(n)}</button>
+                    ))}</div>
+                  </div>
+                  <div style={{ marginTop: 34 }}>
+                    <button className="cta big" onClick={assemble}>Put my plan together</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="eyebrow">Here’s what we understood</div>
+                  <h1 className="mega" style={{ fontSize: 'clamp(27px,8.5cqw,34px)', lineHeight: 1.1 }}>{custom?.name}</h1>
+                  {/* identityStatement() — the production identity engine, verbatim */}
+                  <p className="mega-sub" style={{ fontSize: 17, marginTop: 10 }}>{identityStatement(custom)}</p>
+                  {customPlan && (
+                    <ul className="tick-list">
+                      <li><strong>{customPlan.progress.done} of {customPlan.progress.total} foundations</strong> already settled from your four answers.</li>
+                      {customPlan.nextActions[0] && (
+                        <li>The engine’s first move: <strong>{customPlan.nextActions[0].title}</strong>{customPlan.nextActions[0].consequence ? ' — ' + customPlan.nextActions[0].consequence : ''}</li>
+                      )}
+                      <li><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in the plan, ranked by the same orchestrator the app runs.</li>
+                    </ul>
+                  )}
+                  <p className="grounding">Every line above came from the production engine reading your answers. Nothing scripted.</p>
+                  <div className="actions-row" style={{ marginTop: 24 }}>
+                    <button className="cta big" onClick={() => setStage('plan')}>Open your plan</button>
+                    <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => setRevealed(false)}>Change an answer</button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* ══════════ PLAN ══════════ */}
+          {stage === 'plan' && (
+            <section>
+              <div className="picker">
+                {ROSTER.map(e => (
+                  <button key={e.id} className="chip" aria-pressed={e.id === eventId} onClick={() => switchEvent(e.id)}>{e.type}</button>
+                ))}
+                {custom && <button className="chip" aria-pressed={eventId === 'custom'} onClick={() => switchEvent('custom')}>Yours</button>}
+                {eventId !== 'custom' && Object.keys(patch).length > 0 && (
+                  <button className="chip reset" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes</button>
                 )}
               </div>
-            </article>
-          ))}
 
-          {rest.filter(show).length > 0 && (
-            <>
-              <div className="sect"><h2>Then</h2><div className="rule" /><span className="when">{rest.filter(show).length} more</span></div>
-              {rest.filter(show).map((a, i) => (
-                <div className="later-row" key={a.id || i}>
-                  <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                  <span className="t">{a.title}</span>
-                  {a.cta && <button className="mini" onClick={() => onCta(a)}>{a.cta}</button>}
+              {plan._error && <div className="engine-error">Engine error: {plan._error}</div>}
+
+              <div className="eyebrow">{event.name}{event.venue ? ' · ' + event.venue : ''}</div>
+              <div className="mega">
+                {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${-days}d ago` : `${days} days`}
+              </div>
+              <p className="mega-sub">
+                {days !== null && days > 0 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+                {days !== null && days < 0 && 'this one is behind you.'}
+                {days === 0 && 'it all happens today.'}
+              </p>
+
+              <div className="bento">
+                <div className="tile tile-a">
+                  <div className="t-label">The basics</div>
+                  <div>
+                    <div className="t-num">{pct === null ? '—' : pct + '%'}</div>
+                    <div className="bar"><i style={{ width: (pct || 0) + '%' }} /></div>
+                    <div className="t-sub">
+                      {plan.progress.total
+                        ? `${plan.progress.done} of ${plan.progress.total} foundations settled — date, guests, budget, food.`
+                        : 'No foundation data for this event.'}
+                    </div>
+                  </div>
                 </div>
-              ))}
-            </>
-          )}
-
-          {/* ── Already handled: the engine's own facts, foldable ── */}
-          {handled.length > 0 && (
-            <>
-              <button className="fold-btn" onClick={() => setHandledOpen(o => !o)}>
-                Already handled — {handled.length} {handled.length === 1 ? 'thing' : 'things'}
-                <span className="chev">{handledOpen ? '▴' : '▾'}</span>
-              </button>
-              {handledOpen && handled.map((h, i) => (
-                <div className="later-row done" key={i}><span className="t">{h}</span></div>
-              ))}
-            </>
-          )}
-
-          {/* ── Vendors rollup: the engine's single-source readiness sentence ── */}
-          {rollup && rollup.counts && rollup.counts.total > 0 && (
-            <div className="day-node">
-              <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
-              <h3>{rollup.label}</h3>
-              {rollup.nextAction && <p>{rollup.nextAction}</p>}
-              {rollup.ctaLabel && (
-                <button className="cta" onClick={() => toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors'))}>
-                  {rollup.ctaLabel}
+                <div className="tile tile-b">
+                  <div className="t-label">Guests</div>
+                  <div>
+                    <div className="t-num">{guests || '—'}</div>
+                    <div className="t-sub">{guests ? 'planned around' : 'no count yet — the plan can’t size food or seats'}</div>
+                  </div>
+                </div>
+                <div className="tile tile-c">
+                  <div className="t-label">Budget</div>
+                  <div>
+                    <div className="t-num">{money.planned ? fmt(money.planned) : '—'}</div>
+                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} committed across ${money.lines} lines` : 'no budget lines yet'}</div>
+                  </div>
+                </div>
+                <button
+                  className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
+                  onClick={() => document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  <div className="t-label">Next</div>
+                  <div className="t-num">
+                    {actions.length === 0 ? 'Nothing needs you' : `${actions.length} thing${actions.length === 1 ? '' : 's'} need${actions.length === 1 ? 's' : ''} you`}
+                  </div>
+                  <div className="t-go">{actions.length ? 'Start with the first one ↓' : 'The engine found no gaps'}</div>
                 </button>
+              </div>
+
+              {lensSet.length > 1 && (
+                <div className="lenses">
+                  <button className="lens" aria-pressed={lens === 'all'} onClick={() => setLens('all')}>Everything</button>
+                  {lensSet.map(l => (
+                    <button key={l} className="lens" aria-pressed={lens === l} onClick={() => setLens(l)}>{l}</button>
+                  ))}
+                </div>
               )}
-            </div>
+
+              <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">engine-ranked</span></div>
+
+              {actions.length === 0 && (
+                <div className="empty">The orchestrator has no open actions for this event — every foundation it tracks is settled.</div>
+              )}
+
+              {actions.filter(show).map((a, i) => (
+                <article className="card" key={a.id || i}>
+                  <span className="idx">{i + 1}</span>
+                  <div className="card-head">
+                    <div className="card-top">
+                      <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
+                    </div>
+                    <h3>{a.title}</h3>
+                    {a.consequence && <p className="because">{a.consequence}</p>}
+                    <div className="actions-row">
+                      {a.cta && <button className="cta" onClick={() => onCta(a)}>{a.cta}</button>}
+                      {a.domain === 'guests' && (
+                        <button className="cta soft" onClick={() => setHcOpen(o => !o)}>Set a count here</button>
+                      )}
+                    </div>
+                    {a.domain === 'guests' && hcOpen && (
+                      <div className="chips hc-row">
+                        {[30, 50, 60, 75, 90, 120].map(n => (
+                          <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </article>
+              ))}
+
+              {handled.length > 0 && (
+                <>
+                  <button className="fold-btn" onClick={() => setHandledOpen(o => !o)}>
+                    Already handled — {handled.length} {handled.length === 1 ? 'thing' : 'things'}
+                    <span className="chev">{handledOpen ? '▴' : '▾'}</span>
+                  </button>
+                  {handledOpen && handled.map((h, i) => (
+                    <div className="later-row done" key={i}><span className="t">{h}</span></div>
+                  ))}
+                </>
+              )}
+
+              {rollup && rollup.counts && rollup.counts.total > 0 && (
+                <div className="day-node">
+                  <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
+                  <h3>{rollup.label}</h3>
+                  {rollup.nextAction && <p>{rollup.nextAction}</p>}
+                  {rollup.ctaLabel && (
+                    <button className="cta" onClick={() => toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors'))}>
+                      {rollup.ctaLabel}
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ══════════ THE DAY — real run-of-show data ══════════ */}
+          {stage === 'day' && (
+            <section className="day-sec">
+              <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
+              {ros.length === 0 ? (
+                <>
+                  <h1 className="mega" style={{ fontSize: 'clamp(28px,9cqw,36px)', lineHeight: 1.08 }}>No run of show yet</h1>
+                  <p className="day-empty">This event hasn’t built its day schedule. In the app, the run of show fills in as vendors, times, and the ceremony order settle — then this screen becomes one thing at a time, in the order the day runs.
+                    {'\n'}Try the Wedding — it has a real one.</p>
+                </>
+              ) : (
+                <>
+                  <div className="clock">{ros[0].time}</div>
+                  <div className="now-card">
+                    <div className="now-label">{isPast ? 'How it started' : 'First thing that day'}</div>
+                    <h2>{ros[0].segment}</h2>
+                    <p className="meta">
+                      {[ros[0].location, ros[0].owner && ('owner: ' + ros[0].owner), ros[0].vendorName].filter(Boolean).join(' · ')}
+                    </p>
+                    {ros[0].notes && <p className="meta" style={{ marginBottom: 0 }}>{ros[0].notes}</p>}
+                  </div>
+                  <div className="then">
+                    <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {ros.length - 1} more moments</div>
+                    {ros.slice(1, 8).map((r, i) => (
+                      <div className="then-row" key={r.id || i}>
+                        <span className="d">{r.time}</span>
+                        <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
+                      </div>
+                    ))}
+                    {ros.length > 8 && <div className="then-row"><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {ros.length - 8} more, through the last item</span></div>}
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* ══════════ AFTER — real budget lines, honest tense ══════════ */}
+          {stage === 'after' && (
+            <section>
+              <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how closeout will read'}</div>
+              <h1 className="mega" style={{ fontSize: 'clamp(30px,10cqw,42px)', lineHeight: 1.02 }}>
+                {isPast ? 'How it landed.' : 'How it’ll land.'}
+              </h1>
+              <p className="mega-sub" style={{ fontSize: 16 }}>
+                {money.planned
+                  ? (money.committed <= money.planned
+                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far.`
+                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan.`)
+                  : 'No budget lines yet — closeout has nothing to reconcile.'}
+              </p>
+
+              {budgetLines.length > 0 && (
+                <>
+                  <div className="sect"><h2>The money</h2><div className="rule" /><span className="when">{budgetLines.length} lines · real data</span></div>
+                  <div className="card no-hover"><div className="card-head" style={{ cursor: 'default' }}>
+                    {budgetLines.map(l => (
+                      <div className="line" key={l.id}>
+                        <span>{l.category}</span>
+                        <span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span>
+                      </div>
+                    ))}
+                    <div className="line total">
+                      <span>{isPast ? 'Spent, all in' : 'Committed so far'}</span>
+                      <span className={'amt' + (money.committed <= money.planned ? ' under' : '')}>
+                        {fmt(money.committed)} · {money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over'}
+                      </span>
+                    </div>
+                  </div></div>
+                </>
+              )}
+
+              <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
+              <div className="empty" style={{ background: 'var(--steel-tint)' }}>
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. In the app, closeout also drafts thank-yous and keeps “for next time” notes in event memory — those engines live in the main app and aren’t wired here yet.
+              </div>
+            </section>
           )}
         </div>
       </div>
 
       <nav className="dock" aria-label="Sections">
-        <button aria-current="true">Plan</button>
-        <button onClick={() => toast('Not wired in this prototype yet — Plan is the wired surface.')}>The Day</button>
-        <button onClick={() => toast('Not wired in this prototype yet — Plan is the wired surface.')}>After</button>
+        <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
+        <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>
+        <button aria-current={stage === 'day'} onClick={() => setStage('day')}>The Day</button>
+        <button aria-current={stage === 'after'} onClick={() => setStage('after')}>After</button>
       </nav>
 
       {toastMsg && <div className="toast on">{toastMsg}</div>}
