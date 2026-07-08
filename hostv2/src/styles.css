@@ -31,7 +31,7 @@ button{font-family:inherit}
   .app{border-radius:48px; box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line), 0 42px 90px -28px rgba(0,0,0,.5)}
 }
 @media(max-width:699px){ .stagewrap{height:100dvh} }
-.content{padding:16px 20px 150px}
+.content{padding:16px 20px calc(170px + env(safe-area-inset-bottom, 0px))}
 
 .appbar{
   display:flex; align-items:baseline; justify-content:space-between;
@@ -428,3 +428,8 @@ button{font-family:inherit}
 .draft-edit{width:100%; border:1px solid var(--line); background:var(--bg-band); color:var(--ink);
   font:inherit; font-size:13.5px; line-height:1.55; resize:vertical; outline:none}
 .draft-edit:focus{border-color:var(--steel)}
+
+/* Auto-hiding dock: slides away on scroll-down so it never traps a CTA */
+.dock{transition:transform 260ms var(--ease-standard), opacity 260ms var(--ease-standard)}
+.dock.dock-hidden{transform:translateX(-50%) translateY(150%); opacity:0; pointer-events:none}
+@media(prefers-reduced-motion:reduce){.dock{transition:none}}

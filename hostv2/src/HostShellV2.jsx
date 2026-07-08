@@ -430,6 +430,24 @@ export default function HostShellV2() {
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
   const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
+  // Auto-hiding dock (real-device fix: the floating dock overlapped bottom
+  // CTAs on tall phones) — hides on scroll-down, returns on scroll-up/top.
+  const [dockHidden, setDockHidden] = useState(false);
+  const lastScrollY = useRef(0);
+  useEffect(() => {
+    const app = appRef.current;
+    if (!app) return;
+    const onScroll = () => {
+      const y = app.scrollTop;
+      const delta = y - lastScrollY.current;
+      if (y < 40) setDockHidden(false);
+      else if (delta > 6) setDockHidden(true);
+      else if (delta < -6) setDockHidden(false);
+      lastScrollY.current = y;
+    };
+    app.addEventListener('scroll', onScroll, { passive: true });
+    return () => app.removeEventListener('scroll', onScroll);
+  }, []);
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
@@ -2594,7 +2612,7 @@ export default function HostShellV2() {
         </div>
       )}
 
-      <nav className="dock" aria-label="Sections">
+      <nav className={'dock' + (dockHidden ? ' dock-hidden' : '')} aria-label="Sections">
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
         <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>
         <button aria-current={stage === 'day'} onClick={() => setStage('day')}>The Day</button>
