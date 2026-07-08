@@ -6,6 +6,12 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { eventPlan } from '@app/CommandCenter';
 import { identityStatement } from '@app/lib/eventIdentity';
+import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
+import { isPastEvent } from '@app/lib/closeoutIntel';
+import { hostSpending } from '@app/lib/hostSpending';
+import { expectedFromPlanned } from '@app/lib/attendanceModel';
+import { EVENT_TAXONOMY } from '@app/lib/eventTaxonomy.mjs';
+import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
@@ -18,25 +24,6 @@ const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
 const LS_CUSTOM = 'ngw-hostv2-custom-event';
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
-
-function daysUntil(dateStr) {
-  try {
-    const d = new Date(dateStr + 'T12:00:00');
-    if (isNaN(d)) return null;
-    return Math.round((d - new Date()) / 86400000);
-  } catch { return null; }
-}
-
-function budgetTotals(event) {
-  const b = event.budget;
-  if (Array.isArray(b)) {
-    const planned = b.reduce((s, l) => s + (Number(l.budgeted) || 0), 0);
-    const committed = b.reduce((s, l) => s + (Number(l.actual) || 0), 0);
-    return { planned, committed, lines: b.length };
-  }
-  if (typeof b === 'number') return { planned: b, committed: 0, lines: 0 };
-  return { planned: 0, committed: 0, lines: 0 };
-}
 
 const guestNumber = e => Number(e.guestEstimate) || Number(e.catererCount) || (e.guests || []).length || 0;
 
@@ -53,7 +40,11 @@ function describeRoute(route) {
   return bits.join(' → ');
 }
 
-const TYPE_OPTIONS = ['Retirement Party', 'Birthday', 'Wedding', 'Graduation', 'Reunion', 'Anniversary'];
+// Occasion choices come from the REAL taxonomy: every host-driven family type.
+const HOST_TYPES = Object.entries(EVENT_TAXONOMY)
+  .filter(([, v]) => v && v.family === 'host_driven')
+  .map(([k]) => k)
+  .slice(0, 9);
 
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
@@ -74,8 +65,17 @@ export default function HostShellV2() {
   const [fType, setFType] = useState('Retirement Party');
   const [fDate, setFDate] = useState('2026-08-22');
   const [fGuests, setFGuests] = useState(75);
-  const [fBudget, setFBudget] = useState(3500);
+  const [fBudget, setFBudget] = useState(null);
   const [revealed, setRevealed] = useState(false);
+
+  // Create-stage intelligence, all real: date validity (lib/dates), likely
+  // turnout (lib/attendanceModel), and budget options from the REAL estimator.
+  const dstatC = eventDateStatus(fDate);
+  const expectC = expectedFromPlanned(fGuests, fType);
+  const estC = estimateTotalRange({ type: fType, guestCount: fGuests, date: fDate });
+  const budgetOpts = estC
+    ? [...new Set([estC.lowTotal, Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100, estC.highTotal])]
+    : [];
 
   const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
@@ -105,9 +105,16 @@ export default function HostShellV2() {
     toastTimer.current = setTimeout(() => setToastMsg(null), 3400);
   };
 
-  const days = daysUntil(event.date);
-  const money = budgetTotals(event);
+  // ── Real lib functions, one per element ──
+  const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
+  const days = dstat.days;
+  const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
+    try { return hostSpending(event, 1); } catch { return { total: 0, spent: 0, committed: 0 }; }
+  }, [event]);
+  const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   const guests = guestNumber(event);
+  const expect = expectedFromPlanned(guests, event.type); // lib/attendanceModel — likely turnout
+  const rsvpBy = rsvpDeadlineFor(event);                  // lib/dates — reply-by date
   const actions = plan.nextActions || [];
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
@@ -239,7 +246,7 @@ export default function HostShellV2() {
   }, [revealed, custom]);
 
   const ros = Array.isArray(event.ros) ? event.ros : [];
-  const isPast = days !== null && days < 0;
+  const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   const budgetLines = Array.isArray(event.budget) ? event.budget : [];
 
   return (
@@ -265,25 +272,41 @@ export default function HostShellV2() {
                     <input className="field" value={fName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
                   </div>
                   <div className="q"><div className="q-label">The occasion</div>
-                    <div className="chips">{TYPE_OPTIONS.map(t => (
-                      <button key={t} className="chip" aria-pressed={fType === t} onClick={() => setFType(t)}>{t.replace(' Party', '')}</button>
+                    {/* Choices = the real taxonomy's host-driven family */}
+                    <div className="chips">{HOST_TYPES.map(t => (
+                      <button key={t} className="chip" aria-pressed={fType === t} onClick={() => { setFType(t); setFBudget(null); }}>{t.replace(' Party', '')}</button>
                     ))}</div>
                   </div>
                   <div className="q"><div className="q-label">When?</div>
                     <input className="field" type="date" value={fDate} onChange={e => setFDate(e.target.value)} aria-label="Event date" />
+                    {/* eventDateStatus — the app's real time intelligence */}
+                    {dstatC.status !== 'ok' && (
+                      <p className="grounding" style={dstatC.blocking ? { color: 'var(--danger)' } : { color: 'var(--warn)' }}>{dstatC.reason}</p>
+                    )}
                   </div>
                   <div className="q"><div className="q-label">Roughly how many people?</div>
                     <div className="chips">{[30, 50, 75, 120, 0].map(n => (
-                      <button key={n} className="chip" aria-pressed={fGuests === n} onClick={() => setFGuests(n)}>{n === 0 ? 'No idea yet' : '~' + n}</button>
+                      <button key={n} className="chip" aria-pressed={fGuests === n} onClick={() => { setFGuests(n); setFBudget(null); }}>{n === 0 ? 'No idea yet' : '~' + n}</button>
                     ))}</div>
+                    {/* expectedFromPlanned — the real attendance model */}
+                    {expectC && <p className="grounding">Plan for {expectC.planned} — likely {expectC.low}–{expectC.high} actually make it.</p>}
                   </div>
                   <div className="q"><div className="q-label">What feels right to spend?</div>
-                    <div className="chips">{[2000, 3500, 5000, 0].map(n => (
-                      <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => setFBudget(n)}>{n === 0 ? 'Not sure yet' : fmt(n)}</button>
-                    ))}</div>
+                    {/* Options come from the REAL budget estimator for this type + count + date */}
+                    <div className="chips">
+                      {budgetOpts.map(n => (
+                        <button key={n} className="chip" aria-pressed={fBudget === n} onClick={() => setFBudget(n)}>{fmt(n)}</button>
+                      ))}
+                      <button className="chip" aria-pressed={fBudget === null} onClick={() => setFBudget(null)}>Not sure yet</button>
+                    </div>
+                    {estC
+                      ? <p className="grounding">Typical for {fGuests} at a {fType.toLowerCase()}: {fmt(estC.lowTotal)}–{fmt(estC.highTotal)} — the estimator’s real range.</p>
+                      : <p className="grounding">Pick a guest count and the estimator can suggest a range.</p>}
                   </div>
                   <div style={{ marginTop: 34 }}>
-                    <button className="cta big" onClick={assemble}>Put my plan together</button>
+                    <button className="cta big" onClick={assemble} disabled={dstatC.blocking} style={dstatC.blocking ? { opacity: .45, cursor: 'not-allowed' } : undefined}>
+                      Put my plan together
+                    </button>
                   </div>
                 </>
               ) : (
@@ -331,9 +354,9 @@ export default function HostShellV2() {
                 {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${-days}d ago` : `${days} days`}
               </div>
               <p className="mega-sub">
-                {days !== null && days > 0 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
-                {days !== null && days < 0 && 'this one is behind you.'}
-                {days === 0 && 'it all happens today.'}
+                {isPast && 'this one is behind you.'}
+                {!isPast && (dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
+                {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
 
               <div className="bento">
@@ -353,14 +376,16 @@ export default function HostShellV2() {
                   <div className="t-label">Guests</div>
                   <div>
                     <div className="t-num">{guests || '—'}</div>
-                    <div className="t-sub">{guests ? 'planned around' : 'no count yet — the plan can’t size food or seats'}</div>
+                    <div className="t-sub">{guests
+                      ? (expect ? `planned around · likely ${expect.low}–${expect.high} on the day` : 'planned around')
+                      : 'no count yet — the plan can’t size food or seats'}</div>
                   </div>
                 </div>
                 <div className="tile tile-c">
                   <div className="t-label">Budget</div>
                   <div>
                     <div className="t-num">{money.planned ? fmt(money.planned) : '—'}</div>
-                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} committed across ${money.lines} lines` : 'no budget lines yet'}</div>
+                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} committed · ${fmt(money.spent)} spent` : 'no budget lines yet'}</div>
                   </div>
                 </div>
                 <button
@@ -566,7 +591,9 @@ export default function HostShellV2() {
               (event.guests || []).length ? (
                 <>
                   <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
-                    {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length} — tap a name to flip their RSVP. The engine reads this list.
+                    {(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} yes of {(event.guests || []).length}
+                    {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                    {' — tap a name to flip their RSVP. The engine reads this list.'}
                   </div>
                   {(event.guests || []).slice(0, 40).map((g, i) => (
                     <button key={i} className="grow" onClick={() => toggleRsvp(i)}>
