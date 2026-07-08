@@ -17,12 +17,13 @@ import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, dra
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
+import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
-import { estimateTotalRange, estimatorConfidence } from '@app/lib/budgetEstimator';
+import { estimateTotalRange } from '@app/lib/budgetEstimator';
 import { ALL_PLAYBOOKS, playbookFoodPlan, effectiveRos, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests } from '@app/lib/playbooks';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -382,13 +383,21 @@ export default function HostShellV2() {
   const venueBlockerShown = blockers.some(b => /venue/i.test(String(b && b.title || '')));
   useEffect(() => {
     try {
-      console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.identity && ctx.identity.primaryEventType,
+      console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.eventIdentity && ctx.eventIdentity.primaryEventType,
         '· blockers:', blockers.length, '· priority:', plan && plan.planningState && plan.planningState.currentPriority);
     } catch {}
   }, [event.id, ctx, blockers, plan]);
   const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event]);
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
-  const helpers = useMemo(() => { try { return deriveHelperResponsibilities(event) || []; } catch { return []; } }, [event]);
+  // deriveHelperResponsibilities returns { helpers, responsibilities } — the
+  // rows we render are the responsibilities (helperName/label/status); the
+  // deduped helpers list is the "N helping" people count.
+  const helperData = useMemo(() => {
+    try { return deriveHelperResponsibilities(event) || { helpers: [], responsibilities: [] }; }
+    catch { return { helpers: [], responsibilities: [] }; }
+  }, [event]);
+  const helpers = helperData.responsibilities || [];
+  const helperPeople = helperData.helpers || [];
   const risks = useMemo(() => { try { return playbookRisks(event); } catch { return null; } }, [event]);
   // The essentials rail (phaseProgress), tight-timeline summary, and the
   // playbook's heart moments — the last of the audit list.
@@ -468,6 +477,9 @@ export default function HostShellV2() {
   };
   const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
   const [lessonDraft, setLessonDraft] = useState('');
+  // Seed the draft from the saved lesson whenever the event changes (getLesson
+  // is the canonical reader; setLesson the writer — 200-char cap lives in lib).
+  useEffect(() => { setLessonDraft(getLesson(event)); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -547,7 +559,6 @@ export default function HostShellV2() {
   const actions = plan.nextActions || [];
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
-  const pct = plan.progress.total ? Math.round((plan.progress.done / plan.progress.total) * 100) : null;
 
   const [lens, setLens] = useState('all');
   const lensSet = [...new Set(actions.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
@@ -861,7 +872,9 @@ export default function HostShellV2() {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
       // flags related lines; dietaryNoted closes the cue (headcount events).
       const dc = event.dietCounts || {};
-      const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy'];
+      // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
+      // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
+      const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish'];
       const setD = (k, delta) => {
         const n = Math.max(0, (Number(dc[k]) || 0) + delta);
         patchEvent({ dietCounts: { ...dc, [k]: n } },
@@ -1102,11 +1115,18 @@ export default function HostShellV2() {
   // time of day), a stored ros only when the host has taken ownership.
   const ros = useMemo(() => { try { return effectiveRos(event) || []; } catch { return Array.isArray(event.ros) ? event.ros : []; } }, [event]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
+  // DAY-OF resume: entering The Day on the day itself picks up at the first
+  // cue not already done (event.rosDone persists across reloads — the same
+  // per-cue flag the production app writes; effectiveRos overlays it).
+  useEffect(() => {
+    if (stage !== 'day' || days !== 0) return;
+    const first = ros.findIndex(r => r && !r.done);
+    setDayIdx(first === -1 ? ros.length : first);
+  }, [stage]); // eslint-disable-line react-hooks/exhaustive-deps
   const budgetLines = Array.isArray(event.budget) ? event.budget : [];
 
   // Micro-motion: hero + tile numbers settle in rather than snapping.
   const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
-  const pctAnim = useCountUp(pct);
   const doneAnim = useCountUp(plan.progress.done, 450);
   const gAnim = useCountUp(guests || 0);
   const bAnim = useCountUp(money.planned || 0);
@@ -1312,15 +1332,18 @@ export default function HostShellV2() {
                       // four foundational dominoes. "Done" is only claimed when
                       // the ENGINE's own label says ready AND the checklist is
                       // clear; otherwise the open work is named.
-                      const ess = phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length ? phaseCues.items : null;
-                      const essDone = ess ? ess.filter(c => c.handled).length : plan.progress.done;
-                      const essTotal = ess ? ess.length : plan.progress.total;
+                      // Engine-authored numbers: completedCount/totalCount and the
+                      // ranked nextCue come straight from deriveEventPhaseProgress
+                      // (the engine returns counts + nextCue + items — never re-derive).
+                      const hasCues = !!(phaseCues && phaseCues.totalCount);
+                      const essDone = hasCues ? phaseCues.completedCount : plan.progress.done;
+                      const essTotal = hasCues ? phaseCues.totalCount : plan.progress.total;
                       const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
-                      const firstOpen = ess ? ess.find(c => !c.handled) : null;
+                      const nextCue = hasCues ? phaseCues.nextCue : null;
                       const basicsLine = plan.progress.total ? `basics ${plan.progress.done} of ${plan.progress.total}` : null;
                       let sub;
                       if (!essTotal) sub = 'Nothing to read for this event yet.';
-                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((firstOpen && (firstOpen.cueLabel || firstOpen.id)) || 'the open one').toLowerCase()}`;
+                      else if (essDone < essTotal) sub = `essentials handled — ${basicsLine ? basicsLine + ' · ' : ''}next: ${String((nextCue && nextCue.label) || 'the open one').replace(/^next:\s*/i, '').toLowerCase()}`;
                       else if (openTasks > 0) sub = `essentials handled — but ${openTasks} checklist step${openTasks === 1 ? '' : 's'} still on the list. Not done yet.`;
                       else sub = 'essentials handled and the checklist is clear — ready for the day.';
                       return (
@@ -1392,9 +1415,8 @@ export default function HostShellV2() {
                         return 'Nothing waiting on you right now.';
                       }
                       const bits = [];
-                      if (phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length) {
-                        const d = phaseCues.items.filter(c => c.handled).length, t = phaseCues.items.length;
-                        if (d < t) bits.push(d + ' of ' + t + ' essentials handled');
+                      if (phaseCues && phaseCues.totalCount && phaseCues.completedCount < phaseCues.totalCount) {
+                        bits.push(phaseCues.completedCount + ' of ' + phaseCues.totalCount + ' essentials handled');
                       }
                       const first = String(actions[0].title || '').replace(/\.+$/, '');
                       bits.push('first: ' + (first.length > 44 ? first.slice(0, 44) + '…' : first) + ' ↓');
@@ -1447,10 +1469,18 @@ export default function HostShellV2() {
                     const callsPill = (decisionBoard.open || []).length
                       ? { status: anyOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
                       : null;
+                    // HOST WORDS, never percentages: the engine's checklist note can
+                    // read "73%" — remap it to the honest count from the SAME
+                    // timeline the pillar was scored on ("11 of 15 done").
+                    const tlDone = (event.timeline || []).filter(t => t && t.done).length;
+                    const tlTotal = (event.timeline || []).length;
+                    const checklistPill = readiness.timeline && /%/.test(String(readiness.timeline.note || '')) && tlTotal
+                      ? { ...readiness.timeline, note: tlDone + ' of ' + tlTotal + ' done' }
+                      : readiness.timeline;
                     const pillars = [
                       ...(callsPill ? [['Calls to make', callsPill]] : []),
                       ...(home ? [] : [['People', readiness.vendor], ['Paperwork', readiness.document]]),
-                      ['Checklist', readiness.timeline],
+                      ['Checklist', checklistPill],
                     ].filter(([, r]) => r && r.status !== 'ON_TRACK'); // action-only: on-track never renders
                     if (!pillars.length) return <p className="grounding" style={{ margin: '2px 0 6px' }}>All quiet — nothing flagged.</p>;
                     return (
@@ -1718,7 +1748,7 @@ export default function HostShellV2() {
               )}
               {((capacity && (capacity.items || []).length > 0) || helpers.length > 0) && (
                 <button className="fold-btn" onClick={() => setSheet({ kind: 'space' })}>
-                  Space, seats &amp; helpers{helpers.length ? ` — ${helpers.length} helping` : ''}
+                  Space, seats &amp; helpers{helperPeople.length ? ` — ${helperPeople.length} helping` : ''}
                   <span className="chev">›</span>
                 </button>
               )}
@@ -1770,7 +1800,20 @@ export default function HostShellV2() {
                       {[ros[dayIdx].location, ros[dayIdx].owner && ('owner: ' + ros[dayIdx].owner), ros[dayIdx].vendorName].filter(Boolean).join(' · ')}
                     </p>
                     {ros[dayIdx].notes && <p className="meta">{ros[dayIdx].notes}</p>}
-                    <button className="cta" style={{ marginTop: 6 }} onClick={() => { feedback(dayIdx === ros.length - 1 ? 'magic' : 'act'); setDayIdx(i => i + 1); }}>
+                    <button className="cta" style={{ marginTop: 6 }} onClick={() => {
+                      const cue = ros[dayIdx];
+                      // DAY-OF ONLY: write the per-cue done flag the production app
+                      // persists (event.rosDone; single-truth — effectiveRos overlays
+                      // it, so "N moments queued" and reloads all agree). A preview
+                      // walk on any other day stays session-only: nothing happened.
+                      if (days === 0 && cue && cue.id) {
+                        patchEvent({ rosDone: { ...(event.rosDone || {}), [cue.id]: true } }, null);
+                        if (dayIdx === ros.length - 1) feedback('magic');
+                      } else {
+                        feedback(dayIdx === ros.length - 1 ? 'magic' : 'act');
+                      }
+                      setDayIdx(i => i + 1);
+                    }}>
                       {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
                     </button>
                   </div>
@@ -1828,8 +1871,30 @@ export default function HostShellV2() {
 
               <div className="sect"><h2>What carries forward</h2><div className="rule" /></div>
               <div className="empty" style={{ background: 'var(--steel-tint)' }}>
-                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; “for next time” notes live in the main app’s event memory.
+                {guests ? `${guests} guests planned` : 'No guest count'} · {handled.length} foundation fact{handled.length === 1 ? '' : 's'} on record · every budget line above stays saved. The thank-you is drafted right here from what actually happened; your “for next time” note below comes back the next time you plan one of these.
               </div>
+              {/* Event memory capture — writes event.lessons via the canonical
+                  setLesson (lib/eventMemory); recalled on Plan for the next
+                  same-type event. Past events only — a preview has no lessons. */}
+              {isPast && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>For next time — the one thing you’d tell yourself</div>
+                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 14 }}
+                    placeholder="Two bags of ice per cooler wasn’t enough — get three"
+                    value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
+                  <div className="actions-row" style={{ marginTop: 8 }}>
+                    <button className="cta" disabled={lessonDraft.trim() === getLesson(event)}
+                      style={lessonDraft.trim() === getLesson(event) ? { opacity: .45 } : undefined}
+                      onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
+                        lessonDraft.trim() ? 'Saved — it’ll come back when you plan the next one.' : 'Note cleared.')}>
+                      {getLesson(event) ? 'Update it' : 'Save it'}
+                    </button>
+                    {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
+                      <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="actions-row" style={{ marginTop: 14 }}>
                 <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, null))}>Draft the thank-you</button>
               </div>
@@ -2236,7 +2301,9 @@ export default function HostShellV2() {
                     and re-prices the spread through the same engine. */}
                 {(() => {
                   const dc = event.dietCounts || {};
-                  const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish allergy'];
+                  // Keys must match the engine's DIET_KEYWORDS table verbatim ('Shellfish',
+                  // not 'Shellfish allergy') — dietCounts keys ARE the flag lookup keys.
+                  const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish'];
                   const anyDiet = DIETS.some(k => Number(dc[k]) > 0);
                   const setD = (k, delta) => {
                     const n = Math.max(0, (Number(dc[k]) || 0) + delta);
@@ -2373,6 +2440,10 @@ export default function HostShellV2() {
                                   {it.essential && !got ? <span className="tag essential">essential</span> : null}
                                   {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
                                   {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
+                                  {/* Engine dietary heads-up (dietFlags: roster needs +
+                                      dietCounts, keyword-matched) — "watch this", never
+                                      a hard contains-X claim. */}
+                                  {Array.isArray(it.dietFlags) && it.dietFlags.length ? <span className="tag essential">{it.dietFlags.join(' · ').toLowerCase()}</span> : null}
                                 </span>
                                 <span className="v-meta">
                                   {[
@@ -2659,14 +2730,16 @@ export default function HostShellV2() {
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
             <span className="wx-glyph">☂</span>
             <span className="wx-line">
-              {wxOpen ? 'Weather on your day' : rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
+              {/* The sample marker rides the COLLAPSED line — the only line most
+                  hosts read. A forecast claim may never outrun its source. */}
+              {wxOpen ? 'Weather on your day' : (wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
             </span>
             <span className="chev" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
           </button>
           {wxOpen && (
             <div className="wx-body">
-              <p className="wx-headline">{rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}</p>
-              {wx.rainWindow && <p className="grounding" style={{ margin: '4px 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
+              <p className="wx-headline">{(wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}</p>
+              {wx.rainWindow && <p className="grounding" style={{ margin: '4px 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wx._sample ? 'sample timing for this preview, not a live read' : wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
               <div className="actions-row" style={{ marginTop: 10 }}>
                 <button className="cta" onClick={() => { setWxOpen(false); setSheet({ kind: 'rain' }); }}>
                   {rainPlanStatus(event).hasPlan ? 'Review the backup' : 'Add a rain backup'}

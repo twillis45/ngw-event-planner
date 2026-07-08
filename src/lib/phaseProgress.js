@@ -127,6 +127,9 @@ function preProgress(ev, phase, daysOut) {
     progress: total ? done / total : 0,
     summary,
     nextCue: pickCue(items),
+    // The per-essential ledger behind the counts — same rows pickCue ranks.
+    // Additive: readers that only want the counts are unaffected.
+    items,
   };
 }
 
@@ -159,6 +162,7 @@ function liveProgress(ev, now) {
     progress: total ? done / total : 0,
     summary,
     nextCue: nextSeg ? { id: 'ros-next', label: `Next: ${nextSeg.segment}${nextSeg.time ? ` · ${nextSeg.time}` : ''}`, actionLabel: 'Go', route: { tab: 'Event Day Schedule', focusField: 'ros-now' }, source: 'ros' } : null,
+    items: [], // live day has no essentials rail — the run of show owns the rows
   };
 }
 
@@ -190,5 +194,6 @@ function postProgress(ev) {
     progress: total ? done / total : 1,
     summary: total === 0 ? 'All wrapped up' : (total - done) === 0 ? 'All wrapped up' : `${total - done} thing${total - done === 1 ? '' : 's'} left`,
     nextCue: pickCue(items),
+    items,
   };
 }
