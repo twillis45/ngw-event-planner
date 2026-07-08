@@ -299,49 +299,213 @@ export default function InviteV2({ code }) {
   );
   const first = guestName.trim().split(/\s+/)[0] || '';
 
+  // Deck line — a small voice-keyed map (the original's DECK_BY_VOICE concept,
+  // scoped to what V2 can honestly claim). The host's own words win if set.
+  const deck = (() => {
+    const explicit = String(event.deckLine || '').trim();
+    if (explicit) return explicit;
+    const t = String(event.type || '') + ' ' + String(event.name || '');
+    if (somber) return 'In loving memory';
+    if (/crab|crawfish|low.?country|fish\s*fry|cook.?out|bbq|barbecue/i.test(t)) return 'Good food, good people';
+    if (/retire/i.test(t)) return 'A career worth celebrating';
+    if (/birthday/i.test(t)) return 'Another year, celebrated right';
+    if (/graduat/i.test(t)) return 'They did the work — come cheer';
+    if (/baby|shower/i.test(t)) return 'Something wonderful is coming';
+    if (/wedding|anniversary/i.test(t)) return 'Two names, one day';
+    return 'It wouldn’t be the same without you';
+  })();
+  const mastRight = event.date ? dfmt(event.date, { month: 'short', year: 'numeric' }) : '';
+  const mark = markUrlFor(event);
+
+  // Staged reveal (approved choreography): one element per beat in reading
+  // order. A single flag + per-element transition delays; reduced-motion CSS
+  // lands everything instantly.
+  const [rvOn, setRvOn] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setRvOn(true), 60); return () => clearTimeout(t); }, []);
+  let rvIdx = 0;
+  const rv = (extra) => ({
+    className: 'rv' + (rvOn ? ' in' : '') + (extra ? ' ' + extra : ''),
+    style: { transitionDelay: rvOn ? (0.15 + (rvIdx++) * 0.28) + 's' : '0s' },
+  });
+
+  const toneClass = pal.dark ? 'inv2-dark' : somber ? 'inv2-muted' : '';
+  const answered = !!rsvp || submitted;
+
   return (
     <div className="stagewrap">
       <div className="app" style={toneVars}><div className="content">
-        <section>
-          {/* ── The invitation moment — ceremonial, centered, the event AS
-              ITSELF (identity crest from the artwork registry when one
-              exists). This is the screen guests screenshot. ── */}
-          <div style={{ textAlign: 'center', padding: '18px 0 6px' }}>
-            <div className="eyebrow" style={{ letterSpacing: '.22em', color: 'var(--steel-soft)' }}>{somber ? 'Please join us' : 'You’re invited'}</div>
-            {(() => {
-              const mark = markUrlFor(event);
-              return mark ? (
-                <div aria-hidden style={{
-                  width: 132, height: 132, margin: '18px auto 6px', borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'radial-gradient(circle at 50% 42%, var(--steel-tint) 0%, transparent 72%)',
-                  border: '1px solid var(--line-soft)',
-                }}>
-                  <img src={mark} alt="" style={{ maxWidth: 96, maxHeight: 96, display: 'block' }} />
+        <section className={'inv2 ' + toneClass + (answered ? ' answered' : '')} style={{ paddingTop: 14 }}>
+          {/* ── The stationery — the approved remake: linen stock, letterpress,
+              embossed crest, staged reveal, ONE ask, disclosure earned by the
+              answer, countdown that condenses but never vanishes. ── */}
+          <div className="inv2-sheet">
+            <div {...rv()}>
+              <div className="inv2-mast lp"><span>An invitation</span><span className="mr" aria-hidden /><span>{mastRight}</span></div>
+            </div>
+            {mark && (
+              <div {...rv()}>
+                <div className="inv2-crest" style={{ '--crabimg': 'url("' + mark + '")' }}>
+                  <img src={mark} alt="" />
                 </div>
-              ) : <div style={{ height: 14 }} />;
-            })()}
-            <h1 className="mega" style={{ fontSize: 'clamp(28px,9cqw,38px)', lineHeight: 1.06, margin: '10px 0 10px', letterSpacing: '-.035em' }}>{event.name}</h1>
-            <p style={{ margin: '0 0 2px', fontSize: 12.5, fontWeight: 700, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--steel-soft)' }}>
-              {event.date ? dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' }) : 'Date to come'}
-            </p>
-            {(event.venue || event.venueCity) && (
-              <p style={{ margin: 0, fontSize: 14.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
-                {event.venue || ''}{event.venueCity ? `${event.venue ? ', ' : ''}${event.venueCity}` : ''}
-              </p>
+              </div>
             )}
-            <div aria-hidden style={{ width: 44, height: 1, background: 'var(--line)', margin: '16px auto 12px' }} />
-            <p className="grounding" style={{ margin: 0 }}>
-              {days != null && days > 0 ? `${days} day${days === 1 ? '' : 's'} away` : days === 0 ? 'Today' : ''}
-              {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? ` · replies by ${dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' })}` : ''}
-              {social ? ` · ${social}` : ''}
-            </p>
+            <div {...rv()} >
+              <div className="inv2-eyebrow lp" style={{ marginTop: mark ? 10 : 22 }}>{somber ? 'Please join us' : 'You’re invited'}</div>
+            </div>
+            <h1 {...rv('inv2-name lp-display')}>{event.name}</h1>
+            <p {...rv('inv2-deck lp')}>{deck}</p>
+            <div {...rv()}>
+              <hr className="inv2-rule" />
+              {event.date && (<><div className="inv2-label lp">When</div>
+                <div className="inv2-val lp">{dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}</div></>)}
+              {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
+                <div className="inv2-val lp">{[event.venue, event.venueCity].filter(Boolean).join(', ')}</div></>)}
+              {(rsvpBy && rsvpBy.iso && days != null && days >= 0) || social ? (
+                <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center' }}>
+                  {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
+                  {rsvpBy && rsvpBy.iso && days != null && days >= 0 && social ? ' · ' : ''}{social || ''}
+                </p>
+              ) : null}
+            </div>
+            {days != null && days > 0 && (
+              <div {...rv()}>
+                <div className="inv2-countwrap">
+                  <div className="inv2-count lp-display">{days}</div>
+                  <div className="inv2-label lp inv2-countlab" style={{ marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
+                </div>
+              </div>
+            )}
+
+            {!submitted ? (
+              <div {...rv()}>
+                {/* THE ONE ASK — attendance alone; everything else is earned */}
+                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '18px 0 8px' }}>The favor of a reply</div>
+                <div className="chips" role="radiogroup" aria-label="Attendance">
+                  {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
+                    chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val))}
+                </div>
+                {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
+
+                <div className={'inv2-more' + (rsvp ? ' open' : '')} aria-hidden={!rsvp}>
+                  <div className="inv2-label lp" style={{ textAlign: 'left', margin: '16px 0 6px' }}>
+                    {rsvp === 'Yes' ? 'Wonderful — just a few taps' : rsvp === 'Maybe' ? 'Noted — leave a name at least' : 'Thanks for telling us straight'}
+                  </div>
+                  <input className="field" ref={nameRef} style={{ maxWidth: 'none', ...(nameInvalid ? { borderColor: 'var(--danger)' } : {}) }}
+                    autoComplete="name" placeholder="Your name — first and last" aria-invalid={nameInvalid || undefined}
+                    value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
+                  {nameInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
+
+                  {rsvp === 'Yes' && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Meal</div>
+                      <div className="chips">{MEALS.map(m => chip(meal === m, m, () => setMeal(m)))}</div>
+                      {allowKids && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Kids coming with you</div>
+                          <div className="actions-row" style={{ alignItems: 'center' }}>
+                            <button className="mini" onClick={() => setKids(k => Math.max(0, k - 1))} aria-label="Fewer kids">−</button>
+                            <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700 }} aria-live="polite">{kids}</span>
+                            <button className="mini" onClick={() => setKids(k => k + 1)} aria-label="More kids">+</button>
+                          </div>
+                        </>
+                      )}
+                      {allowPlusOne && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Bringing someone?</div>
+                          <div className="chips">
+                            {chip(hasPlusOne, hasPlusOne ? 'Yes — a plus-one' : 'Add a plus-one', () => setHasPlusOne(v => !v))}
+                          </div>
+                          {hasPlusOne && (
+                            <div style={{ marginTop: 8 }}>
+                              <input className="field" style={{ maxWidth: 'none' }} placeholder="Their name"
+                                value={plusOne} onChange={e => setPlusOne(e.target.value)} aria-label="Plus-one name" />
+                              <div className="chips" style={{ marginTop: 8 }}>
+                                {MEALS.map(m => chip(plusOneMeal === m, m, () => setPlusOneMeal(m), 'po-' + m))}
+                              </div>
+                              <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Their allergies or needs — optional"
+                                value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {rsvp && rsvp !== 'No' && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Allergies or access needs</div>
+                      <div className="chips">
+                        {NEEDS.map(n => chip(needsSel.includes(n), n,
+                          () => setNeedsSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n])))}
+                      </div>
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Anything else we should know about food or access"
+                        value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
+                    </>
+                  )}
+
+                  {event.collectAddresses && rsvp === 'Yes' && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Mailing address — optional</div>
+                      <p className="grounding" style={{ margin: '0 0 6px' }}>Your host plans to mail thank-yous or favors. Skip it if you’d rather not.</p>
+                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
+                        value={mailingAddress} onChange={e => setMailingAddress(e.target.value)} aria-label="Mailing address" />
+                    </>
+                  )}
+
+                  {rsvp && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>{rsvp === 'No' ? 'Send a note anyway?' : 'A note for your host — optional'}</div>
+                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
+                        placeholder={rsvp === 'No' ? 'Sorry to miss it — save me a plate!' : 'Can’t wait!'}
+                        value={note} onChange={e => setNote(e.target.value)} aria-label="Note to host" />
+                      {err && <p className="grounding" role="alert" style={{ marginTop: 10, color: 'var(--danger)' }}>{err}</p>}
+                      <div className="actions-row" style={{ marginTop: 14 }}>
+                        <button className="cta big" onClick={submit} disabled={sending} style={sending ? { opacity: .6 } : undefined}>
+                          {sending ? 'Sending…' : 'Send my reply'}
+                        </button>
+                      </div>
+                      <p className="grounding" style={{ marginTop: 8 }}>Just a name and an answer — everything else is optional. Open this link again anytime to change your reply.</p>
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '20px 4px 8px' }}>
+                <div className="inv2-eyebrow lp" style={{ color: rsvp === 'Yes' ? 'var(--ok)' : undefined }}>
+                  {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
+                </div>
+                <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 20, fontFamily: 'Georgia,serif' }}>
+                  {queued ? 'Saved, ' + (first || 'friend') + ' — we’ll send it as soon as you’re back online.'
+                    : rsvp === 'Yes' ? 'See you there, ' + (first || 'friend') + '.'
+                    : rsvp === 'Maybe' ? 'Come back to this link when you know, ' + (first || 'friend') + '.'
+                    : 'Thanks for letting us know, ' + (first || 'friend') + '.'}
+                </h3>
+                {rsvp === 'Yes' && (
+                  <p className="grounding" style={{ margin: '8px 0 0' }}>
+                    {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
+                    {needsJoined ? ' · needs noted: ' + needsJoined : ''}
+                    {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
+                  </p>
+                )}
+                {!queued && rsvp === 'Yes' && !somber && (
+                  <div className="actions-row" style={{ marginTop: 16, justifyContent: 'center' }}>
+                    <button className="cta big" onClick={() => shareForward(true)}>
+                      {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'I’m in — tell a friend'}
+                    </button>
+                  </div>
+                )}
+                <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
+                  {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
+                  {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Apple / .ics</a>}
+                  <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ── Getting there — event day only. Directions always; "tell me
-              when I'm close" is opt-in and stays on the device. ── */}
+          {/* ── Getting there — event day only; unchanged mechanics. ── */}
           {days === 0 && (event.venue || event.venueCity) && (
-            <div className="card no-hover" style={{ marginBottom: 4 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
+            <div className="card no-hover" style={{ marginTop: 14 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
               <div className="shelf-label" style={{ marginBottom: 4 }}>Getting there — it’s today</div>
               <p className="grounding" style={{ margin: '0 0 8px' }}>{[event.venue, event.venueCity].filter(Boolean).join(', ')}</p>
               <div className="actions-row" style={{ marginTop: 0 }}>
@@ -361,126 +525,6 @@ export default function InviteV2({ code }) {
               )}
               {nearState === 'denied' && <p className="grounding" style={{ margin: '8px 0 0' }}>Location was blocked — directions above still get you there.</p>}
               {nearState === 'nocoords' && <p className="grounding" style={{ margin: '8px 0 0' }}>We couldn’t pin the venue on a map — directions above will ask for the address.</p>}
-            </div></div>
-          )}
-
-          {!submitted ? (
-            <div className="card no-hover" style={{ marginTop: 22 }}><div className="card-head" style={{ cursor: 'default' }}>
-              <div className="shelf-label" style={{ marginBottom: 6 }}>Your name</div>
-              <input className="field" ref={nameRef} style={{ maxWidth: 'none', ...(nameInvalid ? { borderColor: 'var(--danger)' } : {}) }}
-                autoComplete="name" placeholder="First and last" aria-invalid={nameInvalid || undefined}
-                value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
-              {nameInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
-
-              <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Can you make it?</div>
-              <div className="chips" role="radiogroup" aria-label="Attendance">
-                {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
-                  chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val))}
-              </div>
-              {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
-
-              {rsvp === 'Yes' && (
-                <>
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Meal</div>
-                  <div className="chips">{MEALS.map(m => chip(meal === m, m, () => setMeal(m)))}</div>
-
-                  {allowKids && (
-                    <>
-                      <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Kids coming with you</div>
-                      <div className="actions-row" style={{ alignItems: 'center' }}>
-                        <button className="mini" onClick={() => setKids(k => Math.max(0, k - 1))} aria-label="Fewer kids">−</button>
-                        <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }} aria-live="polite">{kids}</span>
-                        <button className="mini" onClick={() => setKids(k => k + 1)} aria-label="More kids">+</button>
-                      </div>
-                    </>
-                  )}
-
-                  {allowPlusOne && (
-                    <>
-                      <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Bringing someone?</div>
-                      <div className="chips">
-                        {chip(hasPlusOne, hasPlusOne ? 'Yes — a plus-one' : 'Add a plus-one', () => setHasPlusOne(v => !v))}
-                      </div>
-                      {hasPlusOne && (
-                        <div style={{ marginTop: 8 }}>
-                          <input className="field" style={{ maxWidth: 'none' }} placeholder="Their name"
-                            value={plusOne} onChange={e => setPlusOne(e.target.value)} aria-label="Plus-one name" />
-                          <div className="chips" style={{ marginTop: 8 }}>
-                            {MEALS.map(m => chip(plusOneMeal === m, m, () => setPlusOneMeal(m), 'po-' + m))}
-                          </div>
-                          <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Their allergies or needs — optional"
-                            value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-
-              {rsvp !== 'No' && (
-                <>
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Allergies or access needs</div>
-                  <div className="chips">
-                    {NEEDS.map(n => chip(needsSel.includes(n), n,
-                      () => setNeedsSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n])))}
-                  </div>
-                  <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Anything else we should know about food or access"
-                    value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
-                </>
-              )}
-
-              {event.collectAddresses && rsvp === 'Yes' && (
-                <>
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Mailing address — optional</div>
-                  <p className="grounding" style={{ margin: '0 0 6px' }}>Your host plans to mail thank-yous or favors. Skip it if you’d rather not.</p>
-                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
-                    value={mailingAddress} onChange={e => setMailingAddress(e.target.value)} aria-label="Mailing address" />
-                </>
-              )}
-
-              <div className="shelf-label" style={{ margin: '16px 0 6px' }}>{rsvp === 'No' ? 'Send a note anyway?' : 'A note for your host — optional'}</div>
-              <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
-                placeholder={rsvp === 'No' ? 'Sorry to miss it — save me a plate!' : 'Can’t wait!'}
-                value={note} onChange={e => setNote(e.target.value)} aria-label="Note to host" />
-
-              {err && <p className="grounding" role="alert" style={{ marginTop: 10, color: 'var(--danger)' }}>{err}</p>}
-              <div className="actions-row" style={{ marginTop: 14 }}>
-                <button className="cta big" onClick={submit} disabled={sending} style={sending ? { opacity: .6 } : undefined}>
-                  {sending ? 'Sending…' : 'Send my reply'}
-                </button>
-              </div>
-              <p className="grounding" style={{ marginTop: 8 }}>Just a name and an answer — everything else is optional. You can open this link again anytime to change your reply.</p>
-            </div></div>
-          ) : (
-            <div className="card no-hover" style={{ marginTop: 18 }}><div className="card-head" style={{ cursor: 'default', textAlign: 'center', padding: '26px 20px 22px' }}>
-              <div className="eyebrow" style={{ letterSpacing: '.18em', color: rsvp === 'Yes' ? 'var(--ok)' : 'var(--steel-soft)' }}>
-                {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
-              </div>
-              <h3 style={{ margin: '10px 0 0', fontSize: 20 }}>
-                {queued ? `Saved, ${first || 'friend'} — we’ll send it as soon as you’re back online.`
-                  : rsvp === 'Yes' ? `Thanks, ${first || 'friend'} — see you there.`
-                  : rsvp === 'Maybe' ? `Come back to this link when you know, ${first || 'friend'}.`
-                  : `Thanks for letting us know, ${first || 'friend'}.`}
-              </h3>
-              {rsvp === 'Yes' && (
-                <p className="grounding" style={{ margin: '8px 0 0' }}>
-                  {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
-                  {needsJoined ? ' · needs noted: ' + needsJoined : ''}
-                  {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
-                </p>
-              )}
-              {!queued && rsvp === 'Yes' && !somber && (
-                <div className="actions-row" style={{ marginTop: 16, justifyContent: 'center' }}>
-                  <button className="cta big" onClick={() => shareForward(true)}>
-                    {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'I’m in — tell a friend'}
-                  </button>
-                </div>
-              )}
-              <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
-                {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
-                {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Apple / .ics</a>}
-                <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
-              </div>
             </div></div>
           )}
 

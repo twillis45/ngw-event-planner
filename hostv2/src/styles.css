@@ -422,6 +422,133 @@ button{font-family:inherit}
 .wx-headline{margin:0; font-size:13.5px; font-weight:600; color:var(--ink); line-height:1.45}
 @media(prefers-reduced-motion:reduce){.wxpill{animation:none}}
 
+/* ── InviteV2 stationery (the approved motion-demo spec, verbatim recipe):
+   linen weave = deterministic 1px threads at 3/4px pitch + stitched noise
+   for tooth and pulp only (noise-based weaves read as plaid blocks);
+   letterpressed copy; embossed crest cut from the artwork's own silhouette;
+   one light source, upper-left. Two stocks: cream and deep charcoal. ── */
+.inv2-sheet{
+  --hue:#D9622B; --hue-deep:#B84E1E; --stock-ink:#241f18; --stock-sub:#62626d;
+  position:relative; border-radius:22px; padding:24px 20px 20px; overflow:hidden;
+  color:#1a1a1a;
+  background:
+    radial-gradient(130% 90% at 32% -10%, rgba(255,253,248,.98), rgba(253,250,245,0) 58%),
+    radial-gradient(160% 120% at 50% 118%, rgba(226,213,192,.5), rgba(240,232,218,0) 46%),
+    linear-gradient(168deg, #fdfaf4 0%, #f9f4ea 48%, #f2ebdc 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(196,178,148,.5), inset 0 2px 0 rgba(255,255,255,.95),
+    inset 1.5px 0 0 rgba(255,255,255,.55), inset -1.5px 0 1px rgba(140,110,70,.12),
+    inset 0 -2px 3px rgba(140,110,70,.14),
+    0 1px 2px rgba(60,40,20,.18), 0 6px 14px -6px rgba(60,40,20,.22), 0 26px 60px -24px rgba(60,40,20,.5);
+}
+.inv2-sheet::before{ content:""; position:absolute; inset:0; pointer-events:none; mix-blend-mode:multiply;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(120,96,60,.05) 0 1px, rgba(120,96,60,0) 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120,96,60,.038) 0 1px, rgba(120,96,60,0) 1px 4px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='t'%3E%3CfeTurbulence stitchTiles='stitch' type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='11'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.45 0 0 0 0 0.38 0 0 0 0 0.28 0 0 0 0.08 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23t)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='m'%3E%3CfeTurbulence stitchTiles='stitch' type='fractalNoise' baseFrequency='0.03' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.48 0 0 0 0 0.40 0 0 0 0 0.28 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23m)'/%3E%3C/svg%3E");
+  background-size:auto, auto, 300px 300px, 420px 420px;
+}
+.inv2-sheet::after{ content:""; position:absolute; inset:0; pointer-events:none;
+  background:
+    linear-gradient(118deg, rgba(255,255,255,.62) 0%, rgba(255,255,255,.16) 26%, rgba(255,255,255,0) 42%),
+    radial-gradient(140% 105% at 50% 45%, rgba(0,0,0,0) 62%, rgba(110,85,50,.10) 100%),
+    linear-gradient(0deg, rgba(120,96,60,.09) 0%, rgba(120,96,60,0) 20%),
+    linear-gradient(180deg, rgba(255,255,255,.28) 0%, rgba(255,255,255,0) 8%);
+}
+.inv2-sheet > *{ position:relative; z-index:1; }
+.inv2-dark .inv2-sheet{
+  --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
+  color:#ece5d8;
+  background:
+    radial-gradient(130% 90% at 32% -10%, rgba(44,47,52,.85), rgba(22,24,27,0) 58%),
+    radial-gradient(160% 120% at 50% 118%, rgba(0,0,0,.55), rgba(20,22,25,0) 46%),
+    linear-gradient(168deg, #191b1f 0%, #131518 48%, #0d0f11 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,244,224,.09), inset 0 1.5px 0 rgba(255,246,230,.14),
+    inset 0 -2px 3px rgba(0,0,0,.5),
+    0 1px 2px rgba(0,0,0,.5), 0 26px 60px -24px rgba(0,0,0,.85);
+}
+.inv2-dark .inv2-sheet::before{ mix-blend-mode:screen; opacity:.85;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(236,229,216,.045) 0 1px, rgba(236,229,216,0) 1px 3px),
+    repeating-linear-gradient(90deg, rgba(236,229,216,.035) 0 1px, rgba(236,229,216,0) 1px 4px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='td'%3E%3CfeTurbulence stitchTiles='stitch' type='fractalNoise' baseFrequency='0.8' numOctaves='2' seed='11'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.92 0 0 0 0 0.86 0 0 0 0 0.74 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23td)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='md'%3E%3CfeTurbulence stitchTiles='stitch' type='fractalNoise' baseFrequency='0.03' numOctaves='3' seed='4'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.90 0 0 0 0 0.84 0 0 0 0 0.70 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='420' height='420' filter='url(%23md)'/%3E%3C/svg%3E");
+  background-size:auto, auto, 300px 300px, 420px 420px;
+}
+.inv2-dark .inv2-sheet::after{ background:
+    linear-gradient(118deg, rgba(255,246,228,.10) 0%, rgba(255,246,228,.03) 26%, rgba(255,255,255,0) 42%),
+    radial-gradient(140% 105% at 50% 45%, rgba(0,0,0,0) 58%, rgba(0,0,0,.4) 100%);
+}
+/* muted (somber) keeps the cream stock but trades the hue for quiet taupe */
+.inv2-muted .inv2-sheet{ --hue:#8a7a66; --hue-deep:#6f6152; }
+/* letterpress — the copy is struck into the stock */
+.inv2 .lp{ text-shadow:0 1px 0 rgba(255,255,255,.85), 0 -0.5px 0.5px rgba(100,72,40,.4); }
+.inv2 .lp-display{ color:var(--stock-ink);
+  text-shadow:0 2px 1px rgba(255,255,255,.9), 0 -1.5px 1px rgba(90,62,32,.5), 0 -0.5px 0 rgba(70,48,26,.35); }
+.inv2-dark .lp{ text-shadow:0 1px 0 rgba(255,246,230,.14), 0 -1px 1px rgba(0,0,0,.85); }
+.inv2-dark .lp-display{
+  text-shadow:0 1.5px 0 rgba(255,246,230,.18), 0 -2px 2px rgba(0,0,0,.95), 0 -0.5px 0 rgba(0,0,0,.8); }
+/* masthead */
+.inv2-mast{ display:flex; align-items:center; gap:9px; font-size:9.5px; font-weight:800;
+  letter-spacing:.18em; color:var(--hue-deep); text-transform:uppercase; }
+.inv2-mast .mr{ flex:1; height:1px; background:var(--hue); opacity:.55; position:relative; }
+.inv2-mast .mr::after{ content:""; position:absolute; left:50%; top:-2.5px; width:6px; height:6px;
+  background:var(--hue); transform:translateX(-50%) rotate(45deg); }
+/* embossed crest: relief cut from the artwork's own silhouette, one light */
+.inv2-crest{ position:relative; width:96px; margin:14px auto 0; }
+.inv2-crest::before, .inv2-crest::after{ content:""; position:absolute; inset:0;
+  -webkit-mask:var(--crabimg) center/contain no-repeat; mask:var(--crabimg) center/contain no-repeat; }
+.inv2-crest::before{ background:rgba(255,255,255,.92); transform:translate(-1.3px,-1.3px); filter:blur(.4px); }
+.inv2-crest::after{ background:rgba(110,80,45,.55); transform:translate(1.7px,2.2px); filter:blur(.9px); }
+.inv2-crest img{ position:relative; z-index:1; width:96px; height:auto; display:block; mix-blend-mode:multiply;
+  filter:saturate(.82) contrast(1.03) drop-shadow(0 1px 1px rgba(100,72,40,.16)); }
+.inv2-dark .inv2-crest::before{ background:rgba(255,246,230,.24); }
+.inv2-dark .inv2-crest::after{ background:rgba(0,0,0,.62); }
+.inv2-dark .inv2-crest img{ mix-blend-mode:normal;
+  filter:saturate(.8) brightness(.93) contrast(1.02) drop-shadow(0 1px 1px rgba(0,0,0,.45)); }
+/* stationery type */
+.inv2-eyebrow{ font-size:10.5px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--hue-deep); text-align:center; }
+.inv2-name{ font-family:Georgia,'Times New Roman',serif; font-weight:700; text-align:center;
+  font-size:clamp(26px,8.5cqw,34px); line-height:1.08; letter-spacing:-.01em; margin:10px 0 3px; }
+.inv2-deck{ font-family:Georgia,serif; font-style:italic; font-size:14.5px; text-align:center; color:var(--stock-sub); margin:0; }
+.inv2-rule{ width:44px; height:2px; background:var(--hue); margin:11px auto; border:none; }
+.inv2-label{ font-size:10px; font-weight:800; letter-spacing:.16em; color:var(--hue-deep);
+  text-transform:uppercase; text-align:center; margin-top:6px; }
+.inv2-val{ font-size:14px; font-weight:600; text-align:center; }
+/* countdown — condenses (never vanishes) once the guest answers */
+.inv2-countwrap{ max-height:130px; overflow:hidden; text-align:center;
+  transition:max-height .55s var(--ease-standard), margin .55s var(--ease-standard); }
+.inv2-count{ font-family:Georgia,serif; font-size:52px; font-weight:700; text-align:center;
+  line-height:1; margin:12px 0 2px; transition:font-size .5s var(--ease-standard), margin .5s var(--ease-standard); }
+.inv2.answered .inv2-countwrap{ max-height:24px; margin:6px 0 0; }
+.inv2.answered .inv2-count{ display:inline; font-size:10px; font-family:inherit; font-weight:800; letter-spacing:.16em; margin:0; }
+.inv2.answered .inv2-countlab{ display:inline; margin-left:5px; }
+/* staged reveal — one element per beat; reduced motion lands instantly */
+.inv2 .rv{ opacity:0; transform:translateY(10px);
+  transition:opacity .5s var(--ease-standard), transform .5s var(--ease-standard); }
+.inv2 .rv.in{ opacity:1; transform:none; }
+@media (prefers-reduced-motion: reduce){ .inv2 .rv{ opacity:1; transform:none; transition:none; } }
+/* engraved reply chips + fields on the stock */
+.inv2-sheet .chip{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:#1a1a1a;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
+.inv2-sheet .chip[aria-pressed="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff;
+  box-shadow:0 3px 10px rgba(62,122,90,.35); }
+.inv2-dark .inv2-sheet .chip{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
+  box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
+.inv2-dark .inv2-sheet .chip[aria-pressed="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff; }
+.inv2-sheet .field{ background:rgba(255,255,255,.7); border-color:rgba(196,178,148,.6); color:#1a1a1a; }
+.inv2-dark .inv2-sheet .field{ background:#1c2024; border-color:rgba(255,244,224,.16); color:#ece5d8; }
+.inv2-sheet .shelf-label{ color:var(--hue-deep); }
+.inv2-sheet .grounding{ color:var(--stock-sub); }
+/* the disclosure that the answer earns */
+.inv2-more{ opacity:0; max-height:0; overflow:hidden;
+  transition:opacity .6s var(--ease-standard), max-height .6s var(--ease-standard); }
+.inv2-more.open{ opacity:1; max-height:1400px; }
+@media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
+
 /* ── T-72h reconfirm sweep: a live-moment banner + staged sweep sheet ── */
 .sweepcard{
   position:relative; margin:22px 0 0; border-radius:20px; padding:15px 18px 15px 21px;
