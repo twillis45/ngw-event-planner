@@ -559,6 +559,17 @@ export default function HostShellV2() {
   // synthesized chime reserved for magic moments. Muted preference persists.
   const [muted, setMuted] = useState(() => { try { return localStorage.getItem('ngw-hostv2-muted') === '1'; } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
+  // Sprint 60.Y PARITY — the ORIGINAL's one chime placement: ring softly when
+  // the total inbound-message count across events increases (a message
+  // arrived). Skips the first measurement so mount never rings. Identical
+  // logic to App.js; V2's reveal/day chimes are additions on top of this.
+  const prevInboundCount = useRef(null);
+  useEffect(() => {
+    const evs = [...ROSTER, ...(custom ? [custom] : [])].map(e => (e && e.id) === eventId ? event : e);
+    const count = evs.reduce((sum, ev) => sum + ((ev && ev.commClient) || []).filter(m => m && m.direction === 'inbound').length, 0);
+    if (prevInboundCount.current !== null && count > prevInboundCount.current) { try { playMessageChime(); } catch {} }
+    prevInboundCount.current = count;
+  }, [event, custom, eventId]);
   const feedback = (kind) => {
     if (muted) return;
     try { if (navigator.vibrate) navigator.vibrate(kind === 'magic' ? [12, 70, 12] : 10); } catch { /* no haptics */ }
