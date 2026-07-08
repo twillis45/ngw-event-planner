@@ -1600,6 +1600,28 @@ export default function HostShellV2() {
                       ))}
                     </div>
                   )}
+                  {/* Live selection preview — cost and coverage MOVE with every
+                      chip, before the line is added. Reference range until the
+                      host commits a price. */}
+                  {(() => {
+                    const per = defaultCountPerUnit(crabAdd.size, crabAdd.unit);
+                    const crabsAdded = per ? per * crabAdd.qty : null;
+                    const priceN = parseFloat(crabAdd.price) || 0;
+                    const refLo = refs.length ? Math.min(...refs.map(r => r.price)) : null;
+                    const refHi = refs.length ? Math.max(...refs.map(r => r.price)) : null;
+                    const costLine = priceN > 0
+                      ? 'about ' + fmt(priceN * crabAdd.qty) + ' at your price'
+                      : refLo != null
+                        ? 'reference ' + (refLo === refHi ? 'about ' + fmt(refLo * crabAdd.qty) : fmt(refLo * crabAdd.qty) + '–' + fmt(refHi * crabAdd.qty)) + ' — tap a price above to use it'
+                        : 'no reference price for this pick — enter what your crab house quotes';
+                    const heads = crab.crabEatingHeadcount || guests || 0;
+                    return (
+                      <p className="grounding" style={{ marginTop: 8, color: 'var(--ink-soft)' }}>
+                        This pick: {crabAdd.qty}× {crabAdd.unit.replace('_', ' ')} {crabAdd.size.replace('_', ' ')}
+                        {crabsAdded ? ' ≈ ' + crabsAdded + ' crabs' + (heads ? ' (~' + (Math.round(((crab.totalEstimatedCrabs || 0) + crabsAdded) / heads * 10) / 10) + ' each with the order so far)' : '') : ' — crab count varies, ask the vendor'} · {costLine}
+                      </p>
+                    );
+                  })()}
                   <p className="grounding" style={{ marginTop: 8 }}>
                     Reference prices: Captain White's, Maine Ave Fish Market, July 2026 — one verified DMV point, not the market. Cost only counts prices you put in. Crabs count toward “spoken for” the moment they’re priced.
                   </p>
