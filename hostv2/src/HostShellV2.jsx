@@ -748,7 +748,9 @@ export default function HostShellV2() {
                   <div className="t-label">Budget</div>
                   <div>
                     <div className="t-num">{money.planned ? fmt(bAnim) : '—'}</div>
-                    <div className="t-sub">{money.planned ? `${fmt(money.committed)} spoken for · ${fmt(money.spent)} spent` : 'no number yet — tap to set one'}</div>
+                    <div className="t-sub" style={money.planned && money.committed > money.planned ? { color: 'var(--warn)' } : undefined}>
+                      {money.planned ? `${fmt(money.committed)} spoken for · ${fmt(money.spent)} spent${money.committed > money.planned ? ' · over' : ''}` : 'no number yet — tap to set one'}
+                    </div>
                   </div>
                 </button>
                 <button
@@ -849,14 +851,14 @@ export default function HostShellV2() {
               })}
 
 
-              {foodPlan && foodPlan.itemCount > 0 && (
+              {foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount && (
                 <button className="fold-btn" onClick={() => setSheet({ kind: 'food' })}>
                   The spread &amp; shopping — {foodPlan.boughtCount} of {foodPlan.itemCount} bought
                   <span className="chev">›</span>
                 </button>
               )}
 
-              {rollup && rollup.counts && rollup.counts.total > 0 && (
+              {rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0) && (
                 <div className="day-node">
                   <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
                   <h3>{rollup.label}</h3>
@@ -1078,7 +1080,7 @@ export default function HostShellV2() {
                             <span className="f-main">
                               <span className="f-name">
                                 {it.short || it.item}
-                                {it.essential ? <span className="tag essential">essential</span> : null}
+                                {it.essential && !got ? <span className="tag essential">essential</span> : null}
                                 {it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
                                 {it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
                               </span>
@@ -1155,14 +1157,6 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
-                    </>
-                  )}
-                  {budgetLines.length > 0 && (
-                    <>
-                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Already promised</div>
-                      {budgetLines.map(l => (
-                        <div className="line" key={l.id}><span>{l.category}</span><span className="amt">{fmt(Number(l.actual) || 0)} <span className="of">of {fmt(Number(l.budgeted) || 0)}</span></span></div>
-                      ))}
                     </>
                   )}
                   <div className="line total"><span>Spoken for so far</span><span className="amt">{fmt(money.committed)}{money.planned ? ' of ' + fmt(money.planned) : ''}</span></div>

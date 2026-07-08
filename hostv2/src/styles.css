@@ -109,7 +109,7 @@ button{font-family:inherit}
 /* Color budget: category tags stay in the steel/neutral register; only
    money (success) and status use the calibrated anchors. */
 .tag.food, .tag.vendors, .tag.plan{color:var(--ink-soft); background:var(--bg-band)}
-.tag.budget{color:var(--ok); background:var(--ok-tint)}
+.tag.budget{color:var(--ink-soft); background:var(--bg-band)}
 .tag.guests{color:var(--steel-soft); background:var(--steel-tint)}
 .card h3{font-size:17.5px; font-weight:750; margin:0 0 7px; letter-spacing:-.02em; padding-right:34px}
 .because{font-size:14px; line-height:1.55; color:var(--ink-soft); margin:0}
