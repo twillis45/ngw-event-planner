@@ -13,7 +13,7 @@ import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftVendorReconfirm, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -35,6 +35,7 @@ import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
+import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
@@ -100,6 +101,15 @@ const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 export const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
 export const LS_CUSTOM = 'ngw-hostv2-custom-event';
+
+// The event's registered artwork mark (ARTWORK_MARKS registry — real PD
+// artwork only). ONE resolver shared by the invite and the host's crest
+// control; returns the filename or null when the type has no mark.
+export function eventArtworkFile(event) {
+  const t = String((event && event.type) || '') + ' ' + String((event && event.name) || '');
+  const key = /crab/i.test(t) ? 'crab' : /fish\s*fry|catfish/i.test(t) ? 'fish' : null;
+  return key ? (ARTWORK_MARKS[key] || null) : null;
+}
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -455,6 +465,10 @@ export default function HostShellV2() {
   const [crabAdd, setCrabAdd] = useState({ size: 'large', unit: 'dozen', qty: 1, price: '' });
   const [foodTune, setFoodTune] = useState(null); // per-item cost-structure panel
   const [choiceOpen, setChoiceOpen] = useState(null); // re-opened settled choice (auto-collapse)
+  // ── T-72h reconfirm sweep ── staged drafting state: {} | {vendorId: 'drafting'|'ready'}
+  const [sweepState, setSweepState] = useState({});
+  const sweepTimers = useRef([]);
+  useEffect(() => () => sweepTimers.current.forEach(clearTimeout), []);
   const [doneOpen, setDoneOpen] = useState(false); // completed-work fold in the checklist
   // Decision memory — capture WHY in the host's own words (lib/decisionMemory);
   // the settled row reads it back next time the subject comes up.
@@ -585,6 +599,69 @@ export default function HostShellV2() {
     if (!wx) return null;
     try { const im = weatherImpactByEventPhase(event, wx); return im && im.hasImpact ? im : null; } catch { return null; }
   }, [event, wx]);
+
+  // ── Rain notes per audience — pure composition from what's on file (rain
+  // plan, date, window, venue). Same facts, three jobs: guests get the call,
+  // helpers get the shift, vendors get the question.
+  const rainNoteFor = (who) => {
+    const when = event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'the day';
+    const win = wx && wx.rainWindow && wx.rainWindow.label ? ' — most likely ' + wx.rainWindow.label : '';
+    const plan = String(event.rainPlan || '').trim();
+    if (who === 'helpers') {
+      return {
+        subject: 'If the sky turns — ' + (event.name || when),
+        body: ['Quick heads-up, crew —', '', 'Rain is in play for ' + when + win + '. If it comes, we shift to: ' + plan + '.',
+          'That may mean moving setup earlier or under cover — I’ll text timing the moment it firms up.', '', 'Nothing changes yet. Just wanted you ahead of it.'].join('\n'),
+      };
+    }
+    if (who === 'vendors') {
+      return {
+        subject: 'Weather heads-up for ' + when + (event.name ? ' — ' + event.name : ''),
+        body: ['Hi —', '', 'Watching the forecast for ' + when + ': rain is possible' + win + '. Our backup is ' + plan + '.',
+          'Does that change anything on your end — setup spot, cover, timing? Anything you need from us, say the word.', '', 'Thanks so much!'].join('\n'),
+      };
+    }
+    return guestRainMessage(event, null);
+  };
+
+  // ── Watch the sky — Notification API opt-in, per event. Fires on CHANGES
+  // in live weather only (first read is the baseline; the sample never pings).
+  const [wxNotify, setWxNotify] = useState(false);
+  const [notifGranted, setNotifGranted] = useState(() => typeof Notification !== 'undefined' && Notification.permission === 'granted');
+  useEffect(() => {
+    try { setWxNotify(localStorage.getItem('ngw-hostv2-wxnotify-' + event.id) === 'on'); } catch { setWxNotify(false); }
+  }, [event.id]);
+  const setWxNotifyPref = (on) => {
+    setWxNotify(on);
+    try { on ? localStorage.setItem('ngw-hostv2-wxnotify-' + event.id, 'on') : localStorage.removeItem('ngw-hostv2-wxnotify-' + event.id); } catch { /* private mode */ }
+    if (!on) toast('Standing down — the sky is yours to watch again.');
+  };
+  const askWxNotify = async () => {
+    if (typeof Notification === 'undefined') { toast('This browser can’t send notifications — the pill above stays your watch.'); return; }
+    try {
+      const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+      setNotifGranted(perm === 'granted');
+      if (perm === 'granted') { setWxNotifyPref(true); toast('Watching the sky — you’ll get a ping the moment the forecast moves.'); }
+      else toast('Notifications are blocked for this site — the weather pill still keeps watch here.');
+    } catch { toast('Couldn’t ask for notification permission.'); }
+  };
+  useEffect(() => {
+    if (!wxNotify || !liveWx || !notifGranted) return;
+    const bucket = String(liveWx.risk || '') + '|' + (liveWx.rainWindow ? liveWx.rainWindow.label : 'day-level') + '|' + (liveWx.pop != null ? Math.round(Number(liveWx.pop) / 10) : '');
+    const seenKey = 'ngw-hostv2-wxseen-' + event.id;
+    let last = null; try { last = localStorage.getItem(seenKey); } catch { /* private mode */ }
+    if (last === bucket) return;
+    try { localStorage.setItem(seenKey, bucket); } catch { /* private mode */ }
+    if (last == null) return; // baseline, not news
+    try {
+      new Notification('The sky moved — ' + (event.name || 'your event'), {
+        tag: 'ngw-wx-' + event.id,
+        body: (liveWx.summary || 'The forecast changed.')
+          + (liveWx.rainWindow && liveWx.rainWindow.label ? ' Most likely ' + liveWx.rainWindow.label + '.' : '')
+          + (String(event.rainPlan || '').trim() ? ' Your backup: ' + event.rainPlan + '.' : ' No backup named yet — worth picking one.'),
+      });
+    } catch { /* notification construction can throw on some platforms */ }
+  }, [liveWx, wxNotify, notifGranted, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wxOpen, setWxOpen] = useState(false);
 
   useEffect(() => {
@@ -609,6 +686,24 @@ export default function HostShellV2() {
   // ── Real lib functions, one per element ──
   const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
   const days = dstat.days;
+
+  // ── T-72h reconfirm window ── named vendors only; the sweep exists inside
+  // the last three days, and closes itself once every vendor has answered.
+  const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim()), [event]);
+  const sweepWindow = days != null && days >= 0 && days <= 3 && reconfirmables.length > 0 && !isPastEvent(event);
+  const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
+  const writeVendor = (id, patch, msg) => {
+    const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
+    patchEvent({ vendors: vs }, msg);
+  };
+  const runSweepDrafts = () => {
+    sweepTimers.current.forEach(clearTimeout); sweepTimers.current = [];
+    reconfirmables.forEach((v, i) => {
+      if (v.reconfirmed72) return;
+      sweepTimers.current.push(setTimeout(() => setSweepState(m => ({ ...m, [v.id]: 'drafting' })), 120 + i * 430));
+      sweepTimers.current.push(setTimeout(() => setSweepState(m => ({ ...m, [v.id]: 'ready' })), 520 + i * 430));
+    });
+  };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
     try { return hostSpending(event, 1); } catch { return { total: 0, spent: 0, committed: 0 }; }
   }, [event]);
@@ -1771,6 +1866,24 @@ export default function HostShellV2() {
                 </button>
               </div>
 
+              {/* ── T-72h reconfirm sweep — a live-moment banner that exists only
+                  inside the window, and folds to one green line once every
+                  vendor has answered. ── */}
+              {sweepWindow && reconfirmedN < reconfirmables.length && (
+                <div className="sweepcard" role="region" aria-label="Reconfirm your vendors">
+                  <div className="sc-eyebrow">{days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days + ' days out'} · the reconfirm window</div>
+                  <h3>Make sure everyone’s coming</h3>
+                  <p>{reconfirmables.length === 1 ? reconfirmables[0].name + ' holds your day' : reconfirmables.length + ' vendors hold your day'} — one tap drafts every reconfirm, each with their own time and details.{reconfirmedN > 0 ? ' ' + reconfirmedN + ' of ' + reconfirmables.length + ' already answered.' : ''}</p>
+                  <button className="mini" onClick={() => { setSheet({ kind: 'sweep' }); runSweepDrafts(); }}>Reconfirm everyone</button>
+                </div>
+              )}
+              {sweepWindow && reconfirmedN === reconfirmables.length && (
+                <div className="later-row" style={{ marginTop: 14, color: 'var(--ok)' }}>
+                  All {reconfirmables.length} vendors answered — everyone’s coming.
+                  <button className="mini" style={{ marginLeft: 8 }} onClick={() => setSheet({ kind: 'sweep' })}>See the sweep</button>
+                </div>
+              )}
+
               {/* Slide-down readouts: hidden until the Basics tile is tapped —
                   never-dense doctrine. Pills = the 4 readiness pillars; below them
                   the engine's handled facts. */}
@@ -2437,7 +2550,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -2754,6 +2867,57 @@ export default function HostShellV2() {
                 </>
               );
             })()}
+            {sheet.kind === 'sweep' && (() => {
+              const total = reconfirmables.length;
+              const pct = total ? Math.round((reconfirmedN / total) * 100) : 0;
+              return (
+                <>
+                  <p className="grounding" style={{ margin: '2px 0 10px' }}>
+                    {reconfirmedN === total
+                      ? 'That’s everyone — the day is set.'
+                      : 'Each note already knows their arrival time and your address. Send from your own thread — nothing goes out by itself.'}
+                  </p>
+                  <div className="bar" aria-hidden style={{ marginBottom: 4 }}><span style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <p className="grounding" style={{ margin: '0 0 12px', fontVariantNumeric: 'tabular-nums' }}>{reconfirmedN} of {total} answered</p>
+                  {reconfirmables.map(v => {
+                    const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
+                    const d = draftVendorReconfirm(event, v, null);
+                    const phone = String(v.dayOfPhone || v.phone || '').trim();
+                    const arrival = String(v.arrivalTime || v.loadIn || v.arrival || '').trim();
+                    return (
+                      <div key={v.id} className={'sweep-row ' + st}>
+                        <span className="sweep-state">{st === 'waiting' ? 'waiting' : st === 'drafting' ? 'drafting…' : st === 'ready' ? 'draft ready' : 'they answered'}</span>
+                        <div className="f-name">{v.name}</div>
+                        <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
+                        {st === 'ready' && !v.reconfirmed72 && (
+                          <div className="actions-row" style={{ marginTop: 8 }}>
+                            {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(d.body)}>Text them</a>}
+                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(d.body); toast('Copied — paste it wherever you talk to ' + v.name + '.'); } catch { openDraft('Reconfirm — ' + v.name, d); } }}>Copy the note</button>
+                            <button className="mini" onClick={() => openDraft('Reconfirm — ' + v.name, d)}>Read it first</button>
+                          </div>
+                        )}
+                        {st !== 'answered' && (
+                          <div className="actions-row" style={{ marginTop: 6 }}>
+                            <button className="mini" onClick={() => writeVendor(v.id, { reconfirmed72: true }, v.name + ' is confirmed — ' + (total - reconfirmedN - 1) + ' to go.')}>They answered — all set</button>
+                          </div>
+                        )}
+                        {st === 'answered' && (
+                          <div className="actions-row" style={{ marginTop: 6 }}>
+                            <button className="mini" onClick={() => writeVendor(v.id, { reconfirmed72: false }, 'Back on the list — worth another nudge.')}>Actually, still waiting</button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {reconfirmedN < total && (
+                    <div className="actions-row" style={{ marginTop: 4 }}>
+                      <button className="mini" onClick={runSweepDrafts}>Draft the reconfirms</button>
+                    </div>
+                  )}
+                  <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Every note is built from what’s on file — their arrival time, your date and place. Nothing invented, nothing auto-sent.</p>
+                </>
+              );
+            })()}
             {sheet.kind === 'qr' && (
               <>
                 <p className="grounding" style={{ margin: '2px 0 12px' }}>
@@ -2778,9 +2942,34 @@ export default function HostShellV2() {
                 )}
                 {rainEditorBlock()}
                 {event.rainPlan && (
-                  <div className="actions-row" style={{ marginTop: 12 }}>
-                    <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Draft the guest note</button>
-                  </div>
+                  <>
+                    <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Written for you — every audience</div>
+                    <div className="actions-row">
+                      <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
+                      <button className="mini" onClick={() => openDraft('Heads-up for your helpers', rainNoteFor('helpers'))}>Helper heads-up</button>
+                      {reconfirmables.length > 0 && <button className="mini" onClick={() => openDraft('Weather note to vendors', rainNoteFor('vendors'))}>Vendor heads-up</button>}
+                    </div>
+                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Three audiences, three notes — same facts, different job: guests get the call, helpers get the shift, vendors get the question. Each opens for editing before anything sends.</p>
+                  </>
+                )}
+                {/* Watch the sky — device notifications while the app is open.
+                    LIVE weather only (never the sample), changes only (the
+                    first read is a baseline, not news). */}
+                {!wx?._sample && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Watch the sky for me</div>
+                    {wxNotify && notifGranted ? (
+                      <div className="actions-row">
+                        <span className="pill p-ok" style={{ cursor: 'default' }}>Watching<span className="pill-note">you’ll get a ping when it moves</span></span>
+                        <button className="mini" onClick={() => setWxNotifyPref(false)}>Stop watching</button>
+                      </div>
+                    ) : (
+                      <div className="actions-row">
+                        <button className="mini" onClick={askWxNotify}>Ping me if the forecast moves</button>
+                      </div>
+                    )}
+                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>While the app is open, your phone gets a heads-up the moment the risk or timing changes — with your backup named in the ping. Lock-screen alerts land when the installable app ships.</p>
+                  </>
                 )}
                 {/* weatherLogistics — the engine's day-of adjustments sized to
                     the real headcount (ice lb/guest math, shade, tent call). */}
@@ -3383,6 +3572,18 @@ export default function HostShellV2() {
                       </button>
                     ))}
                   </div>
+                  {/* Crest choice — only offered when this event HAS registered
+                      artwork (never a toggle that does nothing). The host's
+                      call: artwork on the invite, or purely typographic. */}
+                  {eventArtworkFile(event) && (
+                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                      <span className="of">artwork:</span>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={event.inviteCrest !== 'off'}
+                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={event.inviteCrest === 'off'}
+                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
+                    </div>
+                  )}
                   {countingChips}
                   {(() => {
                     // Grouped roster: when the host has sorted people into groups,

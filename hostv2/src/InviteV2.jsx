@@ -12,19 +12,17 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
-import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 import { geocodeVenue } from '@app/lib/weather';
 import { dark as steelPalette } from '@app/theme/palette';
-import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM } from './HostShellV2.jsx';
+import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile } from './HostShellV2.jsx';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
-// artwork, one image at every size; artwork doctrine). Only types with a
-// registered mark get one; everything else stays quietly typographic.
+// artwork; artwork doctrine), and the HOST'S call whether it appears:
+// event.inviteCrest === 'off' keeps the invitation purely typographic.
 function markUrlFor(event) {
-  const t = String((event && event.type) || '') + ' ' + String((event && event.name) || '');
-  const key = /crab/i.test(t) ? 'crab' : /fish\s*fry|catfish/i.test(t) ? 'fish' : null;
-  const file = key ? ARTWORK_MARKS[key] : null;
+  if (event && event.inviteCrest === 'off') return null;
+  const file = eventArtworkFile(event);
   return file ? (import.meta.env.BASE_URL + file) : null;
 }
 
