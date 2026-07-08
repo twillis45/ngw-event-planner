@@ -284,7 +284,11 @@ export default function HostShellV2() {
       const el = document.getElementById('card-' + key);
       const app = appRef.current;
       if (el && app) {
-        const top = Math.max(0, el.offsetTop - (app.clientHeight - el.offsetHeight) / 2);
+        // Rect math relative to the scroller, un-scaled by the phone frame's
+        // --fit transform (offsetTop resolves against the wrong ancestor here).
+        const fit = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fit')) || 1;
+        const delta = (el.getBoundingClientRect().top - app.getBoundingClientRect().top) / fit;
+        const top = Math.max(0, app.scrollTop + delta - (app.clientHeight - el.getBoundingClientRect().height / fit) / 2);
         app.scrollTo({ top, behavior: REDUCE_MOTION ? 'instant' : 'smooth' });
       }
     });
@@ -417,13 +421,17 @@ export default function HostShellV2() {
     if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
     // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
     // recognize them by their real deep-link target or category.
+    // SPECIFIC deep-link targets first — category fallbacks LAST. (The rain
+    // essential arrives under the 'readiness' category; mapping the whole
+    // category to budget put the budget editor on the rain card.)
     const f = (a.route && a.route.focusField) || '';
-    if (f === 'hsp-budget' || a.domain === 'readiness') return 'budget';
-    if (f === 'event-date') return 'date';
     if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
-    if (f === 'guests-entry' || a.domain === 'start') return 'guests';
+    if (f === 'event-date') return 'date';
+    if (f === 'guests-entry') return 'guests';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
+    if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
+    if (a.domain === 'start') return 'guests';
     return null;
   };
 
