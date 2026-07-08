@@ -2693,11 +2693,15 @@ export default function HostShellV2() {
               // HOST MODEL: one number, and "where it's going" priced by the plan
               // itself (hostSpending's food/supplies/capacity terms) — never
               // planner category rows the host didn't write.
+              // ROW-LEVEL CTA RULE: every allocation row lands on the surface
+              // that prices it — the spread (food/supplies), the space list,
+              // the crab order. Supplies additionally opens its own group.
+              const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
               const hostRows = [
-                { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0 },
-                { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0 },
-                ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0 }] : []),
-                ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0 }] : []),
+                { label: 'Food & drinks', est: spend.foodEstimate || 0, got: spend.foodBought || 0, go: () => setSheet({ kind: 'food' }) },
+                { label: 'Supplies', est: spend.suppliesEstimate || 0, got: spend.suppliesBought || 0, go: () => { if (supplGroup) setFoodGroupsOpen(m => ({ ...m, [supplGroup]: true })); setSheet({ kind: 'food' }); } },
+                ...(spend.hasCapacity ? [{ label: 'Seats, tables & space', est: spend.capacityEstimate || 0, got: spend.capacityBought || 0, go: () => setSheet({ kind: 'space' }) }] : []),
+                ...(spend.crabEstimate ? [{ label: 'The crab order', est: spend.crabEstimate || 0, got: spend.crabBought || 0, go: () => setSheet({ kind: 'crabs' }) }] : []),
               ].filter(r => r.est > 0 || r.got > 0);
               return (
                 <>
@@ -2712,13 +2716,15 @@ export default function HostShellV2() {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
                         return (
-                          <div className="brow" key={r.label} style={{ animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}>
+                          <button className="brow" key={r.label}
+                            style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
+                            onClick={r.go} aria-label={'Open ' + r.label}>
                             <div className="line" style={{ padding: '0 0 5px' }}>
-                              <span>{r.label}</span>
+                              <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
                               <span className="amt">{fmt(r.got)} <span className="of">bought of {fmt(r.est)}</span></span>
                             </div>
                             <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
-                          </div>
+                          </button>
                         );
                       })}
                     </>
