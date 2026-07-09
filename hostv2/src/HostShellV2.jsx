@@ -45,6 +45,10 @@ import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy } from '@app/lib/budgetCopy';
 import { rosOverlapCount } from '@app/lib/rosOverlap';
+import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
+import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
+import { taskUrgencyChip } from '@app/lib/workflowCompression';
+import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -2366,6 +2370,27 @@ export default function HostShellV2() {
                 </div>
               )}
               {nudgeFor('program')}
+              {(() => {
+                let sugg = [];
+                try { sugg = suggestableMoments(event.type, ros) || []; } catch { sugg = []; }
+                if (!sugg.length) return null;
+                const m = sugg[0];
+                return (
+                  <div className="later-row" style={{ marginBottom: 8 }}>
+                    <span className="t" style={{ color: 'var(--carbon-muted)', fontWeight: 550, fontSize: 12.5 }}>
+                      Worth a spot on the schedule: {m.label || m.title || m.name}
+                    </span>
+                    <button className="mini" onClick={() => {
+                      try {
+                        const seg = buildMomentSegment(m);
+                        if (!seg) return;
+                        const rosNext = [...(event.ros || ros || []), { ...seg, id: 'm-' + Math.random().toString(36).slice(2, 9) }];
+                        patchEvent({ ros: rosNext }, (m.label || 'The moment') + ' is on the schedule — give it a time when you know it.');
+                      } catch { toast('Couldn’t add it.'); }
+                    }}>Add it</button>
+                  </div>
+                );
+              })()}
               {dayAlerts.map(a => (
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
@@ -3238,6 +3263,17 @@ export default function HostShellV2() {
                       <span className="f-main">
                         <span className="f-name">{t.task}
                           {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
+                          {(() => { // compressed-timeline urgency, the engine's word (never for standard)
+                            try {
+                              // the engine wants a week→offset map (production's
+                              // PHASE_OFFSET); V2 checklists carry T-Nd weeks, so
+                              // the map derives from the convention itself.
+                              const mm = /T-(\d+)d/i.exec(String(t.week || ''));
+                              const po = mm ? { [t.week]: -Number(mm[1]) } : null;
+                              const u = days != null && po ? taskUrgencyChip(t, days, event.type, po) : null;
+                              return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
+                            } catch { return null; }
+                          })()}
                         </span>
                         <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
                       </span>
@@ -3628,6 +3664,8 @@ export default function HostShellV2() {
                     const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length;
                     let coiAct = null;
                     try { coiAct = coiNextAction(v, event, v.name || 'this vendor'); } catch { coiAct = null; }
+                    let memLine = '';
+                    try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
                     return (
                       <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
                         ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
@@ -3636,6 +3674,7 @@ export default function HostShellV2() {
                           <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
                           {worry ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{acct.reasons[0]}</div> : null}
                           {coiAct ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{coiAct.title} {coiAct.consequence}</div> : null}
+                          {memLine ? <div className="v-meta" style={{ color: 'var(--steel-soft)' }}>{memLine}</div> : null}
                         </div>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag vendors">{v.status || '—'}</span>
@@ -3643,6 +3682,11 @@ export default function HostShellV2() {
                           {Number(v.cost) > 0 && !v.balancePaid && (
                             <button className="mini" onClick={(ev) => { ev.stopPropagation(); try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
                           )}
+                          {(() => { try {
+                            const m = getSuggestedPayMethod(v); if (!m) return null;
+                            const link = buildPayLink(m, v, null); if (!link) return null;
+                            return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer" onClick={ev => ev.stopPropagation()}>Pay via {m}</a>;
+                          } catch { return null; } })()}
                         </span>
                       </div>
                     );
