@@ -1619,7 +1619,8 @@ export default function HostShellV2() {
   }, [event, days, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
   const alertSheet = (a) => {
     const to = String(a.navTo || '');
-    if (/arrivals|vendors/i.test(to)) { setSheet({ kind: 'vendors' }); return; }
+    const vm = /^(?:ov|confirm|pay)-(.+)$/.exec(String(a.id || ''));
+    if (/arrivals|vendors/i.test(to)) { setSheet({ kind: 'vendors', focus: vm ? vm[1] : null }); return; }
     if (/guests/i.test(to)) { setSheet({ kind: 'guests' }); return; }
     if (/task/i.test(to)) { setSheet({ kind: 'tasks', focus: null }); return; }
     if (/communication/i.test(to)) { toast('Approvals live in the app’s messages — not wired here yet.'); return; }
@@ -2327,8 +2328,11 @@ export default function HostShellV2() {
               )}
 
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
-              {plan && plan.planningState && plan.planningState.reasoning && (
-                <p className="grounding" style={{ margin: '-8px 0 14px' }}>{plan.planningState.reasoning}</p>
+              {plan && plan.planningState && (plan.planningState.reasoning || plan.planningState.currentMilestone) && (
+                <p className="grounding" style={{ margin: '-8px 0 14px' }}>
+                  {plan.planningState.reasoning || ''}
+                  {plan.planningState.currentMilestone ? (plan.planningState.reasoning ? ' ' : '') + 'Milestone: ' + plan.planningState.currentMilestone + (plan.planningState.nextMilestone ? ' — then ' + plan.planningState.nextMilestone + '.' : '.') : ''}
+                </p>
               )}
 
               {actions.length === 0 && (
@@ -3839,8 +3843,26 @@ export default function HostShellV2() {
               // when the tier isn't clean. Deterministic, honest not_tracked.
               let conflicts = [];
               try { conflicts = deriveVendorPromiseConflicts(event) || []; } catch { conflicts = []; }
+              const streams = (plan && plan.workstreams) || [];
+              const showStreams = streams.length > 1 || streams.some(w => w.status !== 'ready' && w.status !== 'not_started');
               return (event.vendors || []).length ? (
                 <>
+                  {showStreams && streams.map(w => (
+                    <button key={w.id} className="frow" style={{ padding: '8px 2px' }}
+                      onClick={() => { if (!(w.deepLink && routeSheet(w.deepLink))) setSheet({ kind: 'vendors' }); }}>
+                      <span className="f-main">
+                        <span className="f-name" style={{ fontSize: 13.5 }}>{w.label}
+                          {w.blocked ? <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>blocked</span> : null}
+                        </span>
+                        <span className="v-meta">
+                          {(w.readiness && w.readiness.total) ? w.readiness.booked + ' of ' + w.readiness.total + ' booked' : ''}
+                          {w.nextDecision ? (w.readiness && w.readiness.total ? ' · ' : '') + w.nextDecision : ''}
+                        </span>
+                      </span>
+                      <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                    </button>
+                  ))}
+                  {showStreams && <div style={{ height: 8 }} />}
                   {conflicts.slice(0, 3).map((c, i) => (
                     <div key={c.id || i} className="brow" style={{ borderColor: 'var(--warn-tint)' }}>
                       <p className="grounding" style={{ margin: 0, color: 'var(--warn)', fontWeight: 600 }}>{c.title}</p>
