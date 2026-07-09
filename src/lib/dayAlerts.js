@@ -14,7 +14,31 @@
 import { effectiveRos } from './playbooks';
 import { showsReplyTracking } from './guestMode';
 
-const parseMin = (t) => { if (!t) return null; const [h, m] = String(t).split(':').map(Number); return Number.isNaN(h) ? null : h * 60 + (m || 0); };
+// Time-string → minutes-since-midnight. Contract (exported so both shells and
+// tests read the same parser): 24-hour "HH:MM" → h*60+m; falsy input → null;
+// non-numeric hour → null. NOTE: a 12-hour display string like "3:30 PM" is
+// NOT understood — "30 PM" coerces to NaN and falls back to 0 minutes, so
+// "3:30 PM" reads as 180 (3:30 AM). Callers with mixed-format times must
+// normalize to 24h first (fmtTime12 below handles the display direction).
+// Time-string → minutes since midnight. Handles BOTH storage formats —
+// 24-hour ("14:05" → 845) and 12-hour display strings ("1:30 PM" → 810).
+// The 12-hour path matters: vendor arrivalTime is stored as a display string
+// in several paths, and parsing "1:30 PM" as 24h read it as 1:30 AM — the
+// overdue-vendor alert then misfired all day (found by dayAlertsBehavior).
+export const parseMin = (t) => {
+  if (!t) return null;
+  const s = String(t).trim();
+  const ampm = /([ap])\.?m\.?/i.exec(s);
+  const [h, m] = s.replace(/\s*[ap]\.?m\.?/i, '').split(':').map(Number);
+  if (Number.isNaN(h)) return null;
+  let hh = h;
+  if (ampm) {
+    const isPm = ampm[1].toLowerCase() === 'p';
+    if (isPm && hh < 12) hh += 12;
+    if (!isPm && hh === 12) hh = 0;
+  }
+  return hh * 60 + (m || 0);
+};
 const fmtTime12 = (t) => {
   if (!t) return '—';
   // startTime is stored inconsistently — 12-hour display strings ("3:00 PM") in

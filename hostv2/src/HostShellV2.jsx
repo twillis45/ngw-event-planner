@@ -37,6 +37,8 @@ import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText } from '@app/lib/cityText';
+import { mergeGuestReplies } from '@app/lib/guestMerge';
+import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
@@ -416,7 +418,7 @@ export default function HostShellV2() {
   useEffect(() => {
     try {
       console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.eventIdentity && ctx.eventIdentity.primaryEventType,
-        '· blockers:', blockers.length, '· priority:', plan && plan.planningState && plan.planningState.currentPriority);
+        '· blockers:', blockers.length, '· priority:', plan && plan.planningState && plan.planningState.currentPriority, '· compound:', ctx && ctx.compound, '· reasoning:', ctx && ctx.reasoning, '· activeRisks:', ctx && (ctx.activeRisks || []).length);
     } catch {}
   }, [event.id, ctx, blockers, plan]);
   const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event]);
@@ -1101,51 +1103,8 @@ export default function HostShellV2() {
   //   2. the backend (fetchEventRsvps) — replies DELIVERED from other devices;
   //      without this pull a successfully-delivered reply never reaches this
   //      roster (audit find 2026-07-08: delivery success made replies vanish).
-  const mergeGuestReplies = (gsBase, subs) => {
-    const gs = [...gsBase];
-    let merged = 0, added = 0, yesCount = 0;
-    for (const data of subs) {
-      const full = String(data.name || '').trim();
-      if (!full) continue;
-      const toks = full.toLowerCase().split(/\s+/);
-      const first = toks[0] || '';
-      const last = toks.length > 1 ? toks[toks.length - 1] : '';
-      const ix = gs.findIndex(g => {
-        const gn = String((g && g.name) || '').trim().toLowerCase();
-        if (!gn) return false;
-        if (gn === full.toLowerCase()) return true;
-        const gp = gn.split(/\s+/);
-        const gFirst = gp[0] || '', gLast = gp.length > 1 ? gp[gp.length - 1] : '';
-        if (last.length >= 3 && gLast === last && gFirst === first) return true;
-        if (first.length >= 4 && gFirst === first) return true;
-        return false;
-      });
-      if (data.rsvp === 'Yes') yesCount += 1;
-      if (ix >= 0) {
-        const g = gs[ix];
-        const next = {
-          ...g, rsvp: data.rsvp,
-          meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal,
-          needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne,
-          plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds,
-          kids: data.kids || g.kids, address: data.mailingAddress || g.address,
-          partyNotes: data.note || g.partyNotes,
-        };
-        // Server rows re-arrive on every visit — only count real changes.
-        if (JSON.stringify(next) !== JSON.stringify(g)) { gs[ix] = next; merged += 1; }
-      } else {
-        gs.push({
-          id: 'g-rsvp-' + (data.idempotencyKey || Math.random().toString(36).slice(2, 10)),
-          name: full, group: 'Friends', rsvp: data.rsvp || '', meal: data.meal || '—',
-          needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—',
-          plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0,
-          address: data.mailingAddress || '', partyNotes: data.note || '',
-        });
-        added += 1;
-      }
-    }
-    return { gs, merged, added, yesCount };
-  };
+  // THE single merge (lib/guestMerge) — extracted from App.js + this file's
+  // former inline copy; both apps now consume one implementation.
   const announceReplies = (gs, n, yesCount) => {
     if (!n) return;
     const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
@@ -1159,7 +1118,7 @@ export default function HostShellV2() {
       if (!Array.isArray(raw) || !raw.length) return;
       const queue = purgeStaleOutbox(raw);
       if (!queue.length) { localStorage.removeItem(key); return; }
-      const { gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], queue);
+      const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], queue);
       localStorage.removeItem(key);
       announceReplies(gs, merged + added, yesCount);
     } catch { /* queue unreadable — leave it for the original app */ }
@@ -1177,7 +1136,7 @@ export default function HostShellV2() {
           plusOne: r.plus_one, plusOneMeal: r.plus_one_meal, plusOneNeeds: r.plus_one_needs,
           kids: r.kids, note: r.note, idempotencyKey: r.idempotency_key,
         }));
-        const { gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
+        const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
         if (!dead) announceReplies(gs, merged + added, yesCount);
       } catch { /* offline or unauthorized — the local queue path still works */ }
     })();
@@ -1475,10 +1434,13 @@ export default function HostShellV2() {
     revealTimers.current.push(setTimeout(() => setRevealStep(lineCount + 1), 550 + 650 * lineCount + 350));
     revealTimers.current.push(setTimeout(() => { setRevealStep(lineCount + 2); feedback('magic'); }, 550 + 650 * lineCount + 950));
   };
-  const revealIdentityFor = (ev) => ({
-    primaryEventType: (ev && ev.type) || 'Event', secondaryEventTypes: [], isCompound: false,
-    complexity: 'standard', ceremonyComponents: [], participants: [], confidence: 0.8,
-  });
+  // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
+  // confidence .8 / isCompound false — compound events got a false single-
+  // identity reveal). One ctx build serves identity, stages, and eventPlan.
+  const revealIdentityFor = (ev) => {
+    try { return buildExperienceContext(ev, null, 1).eventIdentity; }
+    catch { return { primaryEventType: (ev && ev.type) || 'Event', secondaryEventTypes: [], isCompound: false, complexity: 'standard', ceremonyComponents: [], participants: [], confidence: 0 }; }
+  };
   // Production reveal stages for the created event — identity, blockers,
   // planning domains (with real $), risk preview.
   const revealStages = useMemo(() => {
@@ -1521,15 +1483,7 @@ export default function HostShellV2() {
   }, [stage, days]);
   // Cue-time math honoring BOTH stored forms — 24h "14:00" and 12h "2:00 PM"
   // (the original's toMins; parsing 12h as 24h creates the 3 AM-cookout bug).
-  const cueMins = (t) => {
-    const m = /(\d{1,2}):(\d{2})\s*([ap])?\.?m?\.?/i.exec(String(t || ''));
-    if (!m) return null;
-    let h = Number(m[1]); const mi = Number(m[2]);
-    const ap = m[3] ? m[3].toLowerCase() : null;
-    if (ap === 'p' && h < 12) h += 12;
-    if (ap === 'a' && h === 12) h = 0;
-    return h * 60 + mi;
-  };
+  const cueMins = (t) => parseMin(t); // lib/dayAlerts — one time parser (12h+24h)
   const rosState = useMemo(() => { try { return classifyRos(ros); } catch { return ros.length ? 'timed' : 'empty'; } }, [ros]);
   const liveDay = stage === 'day' && days === 0 && rosState === 'timed';
   const openCues = useMemo(() => ros.filter(r => r && !r.done), [ros]);
@@ -1795,6 +1749,13 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
+              {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
+                  for compound events where the understanding isn't obvious. */}
+              {ctx && ctx.compound && ctx.reasoning && (
+                <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--steel-soft)' }}>
+                  Planning this as {String(ctx.reasoning).toLowerCase().replace(/\.$/, '')}.
+                </p>
+              )}
               {returnLine && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit' }}
                   onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
@@ -2221,6 +2182,9 @@ export default function HostShellV2() {
               )}
 
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
+              {plan && plan.planningState && plan.planningState.reasoning && (
+                <p className="grounding" style={{ margin: '-8px 0 14px' }}>{plan.planningState.reasoning}</p>
+              )}
 
               {actions.length === 0 && (
                 <div className="empty">Nothing needs you right now — the basics are all settled.</div>
@@ -2740,6 +2704,21 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'risks' && (
               <>
+                {/* ctx.activeRisks (PC-2): the reveal's risk deriver, already
+                    filtered through event.riskStatus — dismissing here writes
+                    the SAME field production writes, one loop everywhere. */}
+                {ctx && (ctx.activeRisks || []).map((r, i) => (
+                  <div key={'ctx-' + (r.type || i)} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                    <div className="f-name" style={{ marginBottom: 3 }}>
+                      {r.description}
+                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                    </div>
+                    <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
+                    <div className="actions-row" style={{ marginTop: 6 }}>
+                      <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
+                    </div>
+                  </div>
+                ))}
                 {risks && (risks.items || []).map((r, i) => (
                   <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
