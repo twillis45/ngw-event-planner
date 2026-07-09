@@ -37,6 +37,7 @@ import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText } from '@app/lib/cityText';
+import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -402,6 +403,24 @@ export default function HostShellV2() {
   const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
 
+  // ── Regional price factor (queue item 3) — the production pipeline:
+  // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
+  // an explicit ', XX' in venueCity — never guessed. Neutral 1.0 otherwise.
+  const [foodPP, setFoodPP] = useState({ priceFactor: 1, priceContext: null });
+  useEffect(() => {
+    let dead = false;
+    const m = /,\s*([A-Za-z]{2})\s*$/.exec(String(event.venueCity || ''));
+    const state = m ? m[1].toUpperCase() : null;
+    if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null }); return undefined; }
+    (async () => {
+      try {
+        const d = await getFoodPriceFactor({ state });
+        if (!dead) setFoodPP({ priceFactor: d.factor || 1, priceContext: d.factor !== 1 ? (d.regionLabel + (d.month ? ' · ' + d.month : '') + ' · ' + d.source) : null });
+      } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null }); }
+    })();
+    return () => { dead = true; };
+  }, [event.id, event.venueCity]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
   const ctx = useMemo(() => { try { return buildExperienceContext(event, null, 1); } catch { return null; } }, [event]);
 
@@ -714,7 +733,7 @@ export default function HostShellV2() {
     });
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
-    try { return hostSpending(event, 1); } catch { return { total: 0, spent: 0, committed: 0 }; }
+    try { return hostSpending(event, foodPP.priceFactor); } catch { return { total: 0, spent: 0, committed: 0 }; }
   }, [event]);
   const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
@@ -922,7 +941,7 @@ export default function HostShellV2() {
   // The REAL spread: same food plan hostSpending bills from, sized by the
   // engine's own attendance band for this event.
   const foodPlan = useMemo(() => {
-    try { return playbookFoodPlan(event, { priceFactor: 1 }); } catch { return null; }
+    try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor }); } catch { return null; }
   }, [event]);
 
   // The 5 readiness signals — Basics (foundations) + the four pillars the
@@ -949,7 +968,7 @@ export default function HostShellV2() {
     }
     const next = { ...(event.foodGot || {}), [it.id]: !cur };
     let ns = null;
-    try { ns = hostSpending({ ...event, foodGot: next }, 1).spent; } catch { ns = null; }
+    try { ns = hostSpending({ ...event, foodGot: next }, foodPP.priceFactor).spent; } catch { ns = null; }
     patchEvent({ foodGot: next },
       (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + ' (' + fmt(cost) + ')' + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
   };
@@ -1846,6 +1865,8 @@ export default function HostShellV2() {
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
                   onClick={() => {
                     if (days === 0) { setStage('day'); return; }
+                    // the engine's next cue carries its own route — honor it first
+                    if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
                     if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
                     else document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
                   }}
@@ -1962,6 +1983,11 @@ export default function HostShellV2() {
                       ? { ...readiness.timeline, note: tlDone + ' of ' + tlTotal + ' done' }
                       : readiness.timeline;
                     const pillars = [
+                      // CANONICAL (queue item 10, ruled 2026-07-08): V2's
+                      // decision pillar IS the playbook decision board — the
+                      // readiness engine's decision axis is intentionally not
+                      // rendered (one decision truth; the board carries
+                      // per-decision due dates + routes the pillar lacks).
                       ...(callsPill ? [['Calls to make', callsPill]] : []),
                       ...(home ? [] : [['People', readiness.vendor], ['Paperwork', readiness.document]]),
                       ['Checklist', checklistPill],
@@ -2844,7 +2870,14 @@ export default function HostShellV2() {
                   ))}
                   {crab.bushelExplanation && <p className="grounding" style={{ margin: '8px 0 0' }}>{crab.bushelExplanation}</p>}
                   {(crab.issues || []).map((iss, i) => (
-                    <p className="grounding" key={i} style={{ margin: '6px 0 0', color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
+                    <div key={i} style={{ margin: '6px 0 0' }}>
+                      <p className="grounding" style={{ margin: 0, color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
+                      {/* the ENGINE's own route — lands on the exact field */}
+                      {iss.actionLabel && iss.route && iss.route.focusField && (
+                        <button className="mini" style={{ marginTop: 4 }}
+                          onClick={() => setSheet(s => ({ ...s, focus: iss.route.focusField }))}>{iss.actionLabel}</button>
+                      )}
+                    </div>
                   ))}
                   <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Who’s actually picking?</div>
                   <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 12, padding: '6px 4px' }}>
@@ -3739,13 +3772,26 @@ export default function HostShellV2() {
             <div className="wx-body">
               <p className="wx-headline">{(wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}</p>
               {wx.rainWindow && <p className="grounding" style={{ margin: '4px 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wx._sample ? 'sample timing for this preview, not a live read' : wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
+              {/* WEATHER-IMPACT-1 (queue item 4): the engine's per-phase rows,
+                  not a hand-built summary — each names its own moment. */}
+              {(wxImpact.affectedPhases || []).slice(0, 3).map(ph => (
+                <p key={ph.phase || ph.label} className="grounding" style={{ margin: '6px 0 0' }}>
+                  <strong style={{ color: 'var(--ink-soft)' }}>{ph.label || ph.phase}</strong>{ph.summary ? ' — ' + ph.summary : ''}
+                </p>
+              ))}
               <div className="actions-row" style={{ marginTop: 10 }}>
-                <button className="cta" onClick={() => { setWxOpen(false); setSheet({ kind: 'rain' }); }}>
-                  {rainPlanStatus(event).hasPlan ? 'Review the backup' : 'Add a rain backup'}
-                </button>
-                {rainPlanStatus(event).hasPlan && (
+                {/* CTAs follow the ENGINE's prompts, not a local guess */}
+                {(wxImpact.shouldPromptRainPlan || !rainPlanStatus(event).hasPlan) && (
+                  <button className="cta" onClick={() => { setWxOpen(false); setSheet({ kind: 'rain' }); }}>
+                    {rainPlanStatus(event).hasPlan ? 'Review the backup' : 'Add a rain backup'}
+                  </button>
+                )}
+                {!wxImpact.shouldPromptRainPlan && rainPlanStatus(event).hasPlan && (
+                  <button className="cta" onClick={() => { setWxOpen(false); setSheet({ kind: 'rain' }); }}>Review the backup</button>
+                )}
+                {(wxImpact.shouldPromptGuestUpdate || rainPlanStatus(event).hasPlan) && (
                   <button className="mini" onClick={() => { setWxOpen(false); try { openDraft('Rain note to guests', guestRainMessage(event, wx)); } catch { toast('Couldn’t draft the note.'); } }}>
-                    Guest note
+                    {wxImpact.shouldPromptGuestUpdate ? 'Tell the guests' : 'Guest note'}
                   </button>
                 )}
               </div>
