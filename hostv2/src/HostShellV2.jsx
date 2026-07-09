@@ -222,6 +222,7 @@ export default function HostShellV2() {
   });
   const [toastMsg, setToastMsg] = useState(null);
   const [handledOpen, setHandledOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false); // below-fold status links, collapsed by default (mobile density)
   const toastTimer = useRef(null);
   const appRef = useRef(null);
 
@@ -2283,32 +2284,6 @@ export default function HostShellV2() {
                 </button>
               )}
 
-              {!isPast && (
-                <div className="later-row" style={{ marginTop: 18 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
-                    {hasMeaning
-                      ? 'The moment that must happen: ' + (String(event.must_have_moment || event.meaning_why || event.honoree_story).slice(0, 52)) + (String(event.must_have_moment || event.meaning_why || event.honoree_story).length > 52 ? '…' : '')
-                      : 'Make it yours — the story, the feeling, the one moment that must happen'}
-                  </span>
-                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
-                  <button className="mini" onClick={openMeaning}>{hasMeaning ? 'Edit' : 'Add it'}</button>
-                </div>
-              )}
-              {lastLesson && (
-                <div className="later-row" style={{ marginTop: 10 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
-                    From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
-                  </span>
-                </div>
-              )}
-              {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
-                <div className="later-row" style={{ marginTop: 18 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
-                  <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="Annapolis"
-                    value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City or town" />
-                  <button className="mini" onClick={saveCity}>Save</button>
-                </div>
-              )}
               {!String(event.venue || '').trim() && !venueBlockerShown && (
                 <article className="card" style={{ marginTop: 20 }}>
                   <div className="card-head">
@@ -2345,12 +2320,24 @@ export default function HostShellV2() {
               )}
 
               <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
-              {plan && plan.planningState && (plan.planningState.reasoning || plan.planningState.currentMilestone) && (
-                <p className="grounding" style={{ margin: '-8px 0 14px' }}>
-                  {plan.planningState.reasoning || ''}
-                  {plan.planningState.currentMilestone ? (plan.planningState.reasoning ? ' ' : '') + 'Milestone: ' + plan.planningState.currentMilestone + (plan.planningState.nextMilestone ? ' — then ' + plan.planningState.nextMilestone + '.' : '.') : ''}
-                </p>
-              )}
+              {plan && plan.planningState && (plan.planningState.reasoning || plan.planningState.currentMilestone) && (() => {
+                // QUIET: don't restate the first card's own title/consequence a
+                // few lines above it — only show the reasoning when it says
+                // something the card itself doesn't already carry.
+                const firstCard = actions[0];
+                const reasoning = plan.planningState.reasoning || '';
+                const redundant = firstCard && reasoning && (
+                  (firstCard.consequence && firstCard.consequence.slice(0, 24) === reasoning.slice(0, 24)) ||
+                  (firstCard.title && reasoning.toLowerCase().includes(String(firstCard.title).toLowerCase().replace(/\.$/, '')))
+                );
+                if (redundant && !plan.planningState.currentMilestone) return null;
+                return (
+                  <p className="grounding" style={{ margin: '-8px 0 14px' }}>
+                    {redundant ? '' : reasoning}
+                    {plan.planningState.currentMilestone ? (redundant ? '' : reasoning ? ' ' : '') + 'Milestone: ' + plan.planningState.currentMilestone + (plan.planningState.nextMilestone ? ' — then ' + plan.planningState.nextMilestone + '.' : '.') : ''}
+                  </p>
+                );
+              })()}
 
               {actions.length === 0 && (
                 <div className="empty">Nothing needs you right now — the basics are all settled.</div>
@@ -2381,13 +2368,6 @@ export default function HostShellV2() {
               })}
 
 
-              {foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount && (
-                <button className="fold-btn" onClick={() => setSheet({ kind: 'food' })}>
-                  The spread &amp; shopping — {foodPlan.boughtCount} of {foodPlan.itemCount} bought
-                  <span className="chev">›</span>
-                </button>
-              )}
-
               {actions.length <= 1 && upNext.length > 0 && (
                 <>
                   <div className="sect" style={{ marginTop: 26 }}><h2 style={{ fontSize: 17 }}>Coming up</h2><div className="rule" /><span className="when">dated, not urgent</span></div>
@@ -2403,35 +2383,83 @@ export default function HostShellV2() {
                 </>
               )}
 
-              {crab.relevant && (
-                <button className="fold-btn" onClick={() => setSheet({ kind: 'crabs' })}>
-                  The crab order — {crab.lines && crab.lines.length ? (crab.mixedSummary || ('about ' + crab.totalEstimatedCrabs + ' crabs')) : 'not started'}
-                  <span className="chev">›</span>
-                </button>
-              )}
-              {((capacity && (capacity.items || []).length > 0) || helpers.length > 0) && (
-                <button className="fold-btn" onClick={() => setSheet({ kind: 'space' })}>
-                  Space, seats &amp; helpers{helperPeople.length ? ` — ${helperPeople.length} helping` : ''}
-                  <span className="chev">›</span>
-                </button>
-              )}
-              {risks && risks.count > 0 && (
-                <button className="fold-btn" onClick={() => setSheet({ kind: 'risks' })}>
-                  What could go wrong — {risks.count} to know about
-                  <span className="chev">›</span>
-                </button>
-              )}
-
-              {rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0) && (
-                <div className="day-node">
-                  <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
-                  <h3>{rollup.label}</h3>
-                  {rollup.nextAction && <p>{rollup.nextAction}</p>}
-                  {rollup.ctaLabel && (
-                    <button className="cta" onClick={() => { if (!routeSheet(rollup.target)) toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors')); }}>
-                      {rollup.ctaLabel}
+              {/* QUIET / COLLAPSE (host directive): none of this is something
+                  the host must act on right now — it's status, not action.
+                  One toggle instead of a standing stack of up to 5 rows. */}
+              {(() => {
+                const hasRollup = rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0);
+                const items = [
+                  foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount
+                    ? { key: 'food', label: 'The spread & shopping', sub: foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought', go: () => setSheet({ kind: 'food' }) } : null,
+                  crab.relevant
+                    ? { key: 'crab', label: 'The crab order', sub: crab.lines && crab.lines.length ? (crab.mixedSummary || ('about ' + crab.totalEstimatedCrabs + ' crabs')) : 'not started', go: () => setSheet({ kind: 'crabs' }) } : null,
+                  ((capacity && (capacity.items || []).length > 0) || helpers.length > 0)
+                    ? { key: 'space', label: 'Space, seats & helpers', sub: helperPeople.length ? helperPeople.length + ' helping' : null, go: () => setSheet({ kind: 'space' }) } : null,
+                  risks && risks.count > 0
+                    ? { key: 'risks', label: 'What could go wrong', sub: risks.count + ' to know about', go: () => setSheet({ kind: 'risks' }) } : null,
+                ].filter(Boolean);
+                if (!items.length && !hasRollup) return null;
+                if (!moreOpen) {
+                  return (
+                    <button className="fold-btn" style={{ marginTop: 22 }} onClick={() => setMoreOpen(true)}>
+                      More — {items.length + (hasRollup ? 1 : 0)} thing{(items.length + (hasRollup ? 1 : 0)) === 1 ? '' : 's'} not urgent
+                      <span className="chev">›</span>
                     </button>
-                  )}
+                  );
+                }
+                return (
+                  <>
+                    <div className="shelf-label" style={{ margin: '22px 0 6px' }}>More — not urgent
+                      <button className="mini" style={{ marginLeft: 8 }} onClick={() => setMoreOpen(false)}>hide</button>
+                    </div>
+                    {items.map(it => (
+                      <button key={it.key} className="fold-btn" style={{ marginTop: 0 }} onClick={it.go}>
+                        {it.label}{it.sub ? ' — ' + it.sub : ''}
+                        <span className="chev">›</span>
+                      </button>
+                    ))}
+                    {hasRollup && (
+                      <div className="day-node" style={{ marginTop: 10 }}>
+                        <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
+                        <h3>{rollup.label}</h3>
+                        {rollup.nextAction && <p>{rollup.nextAction}</p>}
+                        {rollup.ctaLabel && (
+                          <button className="cta" onClick={() => { if (!routeSheet(rollup.target)) toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors')); }}>
+                            {rollup.ctaLabel}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+
+              {/* LOWEST priority — optional, emotional, no urgency: last on
+                  the page, after everything actionable or dated. */}
+              {!isPast && (
+                <div className="later-row" style={{ marginTop: 26 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
+                    {hasMeaning
+                      ? 'The moment that must happen: ' + (String(event.must_have_moment || event.meaning_why || event.honoree_story).slice(0, 52)) + (String(event.must_have_moment || event.meaning_why || event.honoree_story).length > 52 ? '…' : '')
+                      : 'Make it yours — the story, the feeling, the one moment that must happen'}
+                  </span>
+                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
+                  <button className="mini" onClick={openMeaning}>{hasMeaning ? 'Edit' : 'Add it'}</button>
+                </div>
+              )}
+              {lastLesson && (
+                <div className="later-row" style={{ marginTop: 10 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
+                    From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
+                  </span>
+                </div>
+              )}
+              {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
+                <div className="later-row" style={{ marginTop: 18 }}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city or town? Weather and maps need it.</span>
+                  <input className="field" style={{ maxWidth: 130, fontSize: 13, padding: '6px 10px' }} placeholder="Annapolis"
+                    value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City or town" />
+                  <button className="mini" onClick={saveCity}>Save</button>
                 </div>
               )}
             </section>
