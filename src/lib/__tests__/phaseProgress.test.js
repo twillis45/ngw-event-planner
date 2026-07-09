@@ -127,3 +127,18 @@ test('dietary cue routes to the allergies & diets gate, not the food plan top', 
   expect(p.nextCue.label).toMatch(/dietary/i);
   expect(p.nextCue.route).toEqual({ tab: 'Planning', focusField: 'fp-diet-e-pp' });
 });
+
+test('headcount essential: a real named guest list counts as "set", even with replies pending', () => {
+  // A host who chose "By guest list" and named real people has taken real,
+  // visible action — the essential shouldn't stay open just because nobody
+  // has replied yet (that's guestCountResolved's stricter, separate concern
+  // for finalizing food/seating quantities, not this planning-readiness cue).
+  const noCount = deriveEventPhaseProgress(base({ guestMode: 'list', guestCount: undefined, guests: [] }), NOW);
+  expect(noCount.nextCue && noCount.nextCue.id).toBe('headcount');
+
+  const pendingReplies = deriveEventPhaseProgress(base({
+    guestMode: 'list', guestCount: undefined,
+    guests: [{ name: 'Alex', rsvp: '' }, { name: 'Sam', rsvp: '' }],
+  }), NOW);
+  expect(pendingReplies.nextCue && pendingReplies.nextCue.id).not.toBe('headcount');
+});

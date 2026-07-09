@@ -65,7 +65,15 @@ function preProgress(ev, phase, daysOut) {
   // app was simultaneously using Atlanta, GA for its own features.)
   add('location', true, eventLocationStatus(ev) !== 'missing', 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
-  const hasCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0 || gc.resolved;
+  // A real named guest list — even with replies still pending — IS the host
+  // having set a count: it's a real floor number, informative on its own.
+  // guestCountResolved()'s stricter "zero pending RSVPs" bar is correct for
+  // ITS purpose (finalizing food/seating quantities) but was leaking into
+  // this essential too, leaving "Set the guest count" open indefinitely
+  // right after a host chose "By guest list" and named real people — the
+  // one moment they'd already taken real, visible action.
+  const hasCount = num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0 || gc.resolved
+    || (Array.isArray(ev.guests) && ev.guests.length > 0);
   add('headcount', true, hasCount, 'Set the guest count', { tab: 'Guests', focusField: 'guests-entry' }, 8);
 
   // Time-independent essentials below are skipped for no-date events only when
