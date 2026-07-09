@@ -13,7 +13,7 @@ import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftVendorReconfirm, hasToastMaterial, draftToast } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -41,6 +41,10 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 import { quickAccountabilityForVendor } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
+import { deriveEventContextNudges } from '@app/lib/eventContextNudges';
+import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
+import { budgetHeroCopy } from '@app/lib/budgetCopy';
+import { rosOverlapCount } from '@app/lib/rosOverlap';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -1572,6 +1576,9 @@ export default function HostShellV2() {
     return out;
   }, [ros, event]);
 
+  // Schedule collisions on the day (rosOverlap — pairwise interval overlaps).
+  const rosOverlaps = useMemo(() => { try { return rosOverlapCount(ros) || 0; } catch { return 0; } }, [ros]);
+
   // Micro-motion: hero + tile numbers settle in rather than snapping.
   const daysAnim = useCountUp(typeof days === 'number' ? Math.abs(days) : null);
   const doneAnim = useCountUp(plan.progress.done, 450);
@@ -1772,6 +1779,21 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
+              {/* Cultural nudges — source-bounded (explicit host text only),
+                  max 3, dismiss writes the lib's own suppression field. */}
+              {(() => {
+                let nd = null; try { nd = deriveEventContextNudges(event); } catch { nd = null; }
+                if (!nd || !(nd.nudges || []).length) return null;
+                return nd.nudges.slice(0, 3).map(n => (
+                  <div key={n.id} className="later-row" style={{ marginTop: 6 }}>
+                    <span className="t" style={{ color: 'var(--muted)', fontWeight: 550, fontSize: 13 }}>{n.text}</span>
+                    <span style={{ display: 'flex', gap: 6 }}>
+                      {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{n.actionLabel || 'Open'}</button>}
+                      <button className="mini" onClick={() => patchEvent({ contextNudges: { ...(event.contextNudges || {}), [n.id]: 'dismissed' } }, 'Noted.')}>Dismiss</button>
+                    </span>
+                  </div>
+                ));
+              })()}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (
@@ -2057,6 +2079,9 @@ export default function HostShellV2() {
                       <span className="chev" style={{ position: 'static', color: 'var(--carbon-muted)' }}>›</span>
                     </button>
                   ))}
+                  <div className="actions-row" style={{ marginTop: 8 }}>
+                    <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, null, {})); } catch { toast('Couldn’t draft it.'); } }}>Send everyone the details</button>
+                  </div>
                 </div>
               )}
 
@@ -2330,6 +2355,13 @@ export default function HostShellV2() {
               )}
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
+              {rosOverlaps > 0 && (
+                <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 12, padding: '10px 14px', marginBottom: 8 }}>
+                  <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
+                    {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
+                  </span>
+                </div>
+              )}
               {dayAlerts.map(a => (
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
@@ -2439,6 +2471,7 @@ export default function HostShellV2() {
                       Send everyone their part
                     </button>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
+                    {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                   </div>
                 </div>
               )}
@@ -2493,6 +2526,7 @@ export default function HostShellV2() {
                   </div>
                   <div className="actions-row" style={{ marginTop: 12 }}>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
+                    {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                   </div>
                   {dayIdx < ros.length - 1 && (
                     <div className="then">
@@ -2606,6 +2640,7 @@ export default function HostShellV2() {
               )}
               <div className="actions-row" style={{ marginTop: 14 }}>
                 <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, null))}>Draft the thank-you</button>
+                <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
               </div>
             </section>
           )}
@@ -2666,6 +2701,25 @@ export default function HostShellV2() {
                 )}
               </>
             )}
+            {sheet.kind === 'space' && (() => {
+              // ONE Place Core (queue: untouched list) — venue/location states;
+              // 'na' is suppression, never failure.
+              let place = null; try { place = derivePlaceIntelligence(event); } catch { place = null; }
+              const placeRows = ((place && place.sections) || []).filter(s => s && s.state !== 'na');
+              return placeRows.length ? (
+                <>
+                  {placeRows.map(s => (
+                    <div key={s.key} className="line" style={{ alignItems: 'flex-start' }}>
+                      <span style={{ fontSize: 13 }}>
+                        <strong style={{ color: s.state === 'risk' ? 'var(--danger)' : s.state === 'needs' ? 'var(--warn)' : 'var(--ok)' }}>{s.label}</strong>
+                        {s.detail ? ' — ' + s.detail : ''}
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{ height: 10 }} />
+                </>
+              ) : null;
+            })()}
             {sheet.kind === 'space' && (
               <>
                 {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
@@ -3291,6 +3345,7 @@ export default function HostShellV2() {
                 )}
                 <div className="actions-row" style={{ margin: '0 0 6px' }}>
                   <button className="mini" onClick={() => openDraft('Your shopping list', draftShoppingList(event, null))}>Copy the shopping list</button>
+                  <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
                 </div>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy. */}
@@ -3503,6 +3558,9 @@ export default function HostShellV2() {
                         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag vendors">{v.status || '—'}</span>
                           <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, null)); }}>Draft note</button>
+                          {Number(v.cost) > 0 && !v.balancePaid && (
+                            <button className="mini" onClick={(ev) => { ev.stopPropagation(); try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                          )}
                         </span>
                       </div>
                     );
@@ -3525,6 +3583,7 @@ export default function HostShellV2() {
                 crabs: () => setSheet({ kind: 'crabs' }),
               };
               const hostRows = hostSpendRows().map(r => ({ ...r, go: GO[r.kind] }));
+              let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
               let recovery = null;
@@ -3556,6 +3615,9 @@ export default function HostShellV2() {
                     </>
                   )}
                   <div className="line total"><span>Spoken for so far</span><span className="amt">{fmt(money.committed)}{money.planned ? ' of ' + fmt(money.planned) : ''}</span></div>
+                  {heroCopy && heroCopy.title && (
+                    <p className="grounding" style={{ margin: '10px 0 0' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p>
+                  )}
                   {recovery && recovery.status === 'recovery_available' && (
                     <div style={{ marginTop: 12 }}>
                       <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--warn)' }}>A way back under</div>
@@ -3687,6 +3749,7 @@ export default function HostShellV2() {
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
+                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
                     {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
                   </div>
                   {/* Invite look — the tone engine guesses from the event's mood

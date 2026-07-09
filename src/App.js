@@ -35,6 +35,7 @@ import { feedbackLock, feedbackBudget, feedbackSeal, feedbackAdvance, feedbackCo
 import { hostSpending } from './lib/hostSpending';
 import { buildBudgetRecoveryPlan } from './lib/budgetRecovery';
 import { showsReplyTracking } from './lib/guestMode';
+import { mergeGuestReplies } from './lib/guestMerge';
 import { computeDayAlerts as computeDayAlertsLib } from './lib/dayAlerts';
 import { inviteTone as inviteToneLib, invitePalette as invitePaletteLib } from './lib/inviteTone';
 import { eventContextNudge } from './lib/eventContextNudges';
@@ -31976,6 +31977,17 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
 
 
 
+  // Single-truth merge: lib/guestMerge owns the name-match + field-merge rules
+  // (shared with HostShellV2). The lib keeps new rows generic, so post-process
+  // its appended rows (always at the end) with the host-only roster fields the
+  // lib doesn't know about (table/email/phone/gift tracking).
+  const mergeRepliesIntoRoster = (gs, subs) => {
+    const { guests: next, added } = mergeGuestReplies(gs, subs, { makeId: () => uid() });
+    if (!added) return next;
+    const firstNew = next.length - added;
+    return next.map((g, i) => i < firstNew ? g : { ...g, table: null, email: '', phone: '', giftReceived: false, thankYouSent: false });
+  };
+
   // Merge any queued RSVPs submitted via the public RSVP link.
   // setGuests is stable (from useState), so omitting it is safe.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -31998,26 +32010,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       // Close the invite loop: the guest came back through the link. This is the
       // bottom of the growth funnel (host shared → guest RSVP'd) — count each arrival.
       queued.forEach(d => { try { track(EVENTS.GUEST_RSVP_RECEIVED, { event_id: event.id, rsvp: d && d.rsvp ? String(d.rsvp).toLowerCase() : 'unknown' }); } catch {} });
-      queued.forEach(data => {
-        setGuests(gs => {
-          const nameParts = (data.name || '').toLowerCase().split(' ').filter(Boolean);
-          const first = nameParts[0] || '';
-          const last  = nameParts[nameParts.length - 1] || '';
-          // Match on full name first, then last+first, then exact first name only (≥4 chars to avoid short collisions)
-          const match = gs.find(g => {
-            const gn = g.name.toLowerCase();
-            const gParts = gn.split(' ').filter(Boolean);
-            const gFirst = gParts[0] || '';
-            const gLast  = gParts[gParts.length - 1] || '';
-            if (data.name && gn === (data.name || '').toLowerCase()) return true;
-            if (last && last.length >= 3 && gLast === last && gFirst === first) return true;
-            if (first.length >= 4 && gFirst === first) return true;
-            return false;
-          });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, address: data.mailingAddress || g.address, partyNotes: data.note || g.partyNotes } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: data.mailingAddress || '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
-        });
-      });
+      // Merge against the CURRENT roster inside the updater (not a stale closure).
+      setGuests(gs => mergeRepliesIntoRoster(gs, queued));
       localStorage.removeItem(key);
     } catch {}
   }, [event?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -32042,25 +32036,8 @@ function Guests({ guests = [], setGuests, event = {}, profile, setGuestCount = (
       }));
       const arrivedYeses = subs.filter(d => d && d.rsvp === 'Yes').map(d => String(d.name || '').trim()).filter(Boolean);
       if (arrivedYeses.length) setNewYeses(arrivedYeses);
-      subs.forEach(data => {
-        setGuests(gs => {
-          const nameParts = (data.name || '').toLowerCase().split(' ').filter(Boolean);
-          const first = nameParts[0] || '';
-          const last  = nameParts[nameParts.length - 1] || '';
-          const match = gs.find(g => {
-            const gn = (g.name || '').toLowerCase();
-            const gParts = gn.split(' ').filter(Boolean);
-            const gFirst = gParts[0] || '';
-            const gLast  = gParts[gParts.length - 1] || '';
-            if (data.name && gn === (data.name || '').toLowerCase()) return true;
-            if (last && last.length >= 3 && gLast === last && gFirst === first) return true;
-            if (first.length >= 4 && gFirst === first) return true;
-            return false;
-          });
-          if (match) return gs.map(g => g.id === match.id ? { ...g, rsvp: data.rsvp, meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal, needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne, plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds, kids: data.kids || g.kids, address: data.mailingAddress || g.address, partyNotes: data.note || g.partyNotes } : g);
-          return [...gs, { id: uid(), name: data.name, group: 'Friends', rsvp: data.rsvp, meal: data.meal || '—', needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—', plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0, table: null, email: '', phone: '', address: data.mailingAddress || '', giftReceived: false, thankYouSent: false, partyNotes: data.note || '' }];
-        });
-      });
+      // Merge against the CURRENT roster inside the updater (not a stale closure).
+      setGuests(gs => mergeRepliesIntoRoster(gs, subs));
     })();
     return () => { cancelled = true; };
   }, [event?.id]); // eslint-disable-line react-hooks/exhaustive-deps
