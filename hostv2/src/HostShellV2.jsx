@@ -3514,16 +3514,23 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'food' && (foodPlan ? (
               <>
-                {/* The plan's own headline math: totals, per-head, and the turnout
-                    band it was sized to — $ gated on hasRealCount, per the engine. */}
+                {/* PRINCIPLES REDESIGN: summary before detail — the bought count
+                    leads (the host's real question: "how much is left to do?"),
+                    one grounding line carries the rest of the engine's math. */}
                 {foodPlan.hasRealCount ? (
-                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
-                    Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)} · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head across the {foodPlan.bandLow}–{foodPlan.bandHigh} turnout band. {foodPlan.boughtCount} of {foodPlan.itemCount} bought — checking off moves real money to spent.
+                  <div style={{ padding: '2px 0 12px' }}>
+                    <div className="line" style={{ padding: 0 }}>
+                      <span className="shelf-label" style={{ margin: 0 }}>Bought so far</span>
+                      <span className="amt" style={{ fontSize: 22, fontWeight: 800, color: foodPlan.boughtCount >= foodPlan.itemCount ? 'var(--ok)' : 'var(--ink)' }}>{foodPlan.boughtCount} of {foodPlan.itemCount}</span>
+                    </div>
+                    <p className="grounding" style={{ margin: '4px 0 0' }}>
+                      Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)} · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head, sized to {foodPlan.bandLow}–{foodPlan.bandHigh} guests.
+                    </p>
                   </div>
                 ) : (
-                  <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
+                  <p className="grounding" style={{ margin: '2px 0 12px' }}>
                     Sized to a typical guess for now — set a real guest count and the dollars appear.
-                  </div>
+                  </p>
                 )}
                 {/* Menu decisions — the playbook's real choices; picking one re-sizes
                     and re-prices the spread through the same engine. */}
@@ -3541,12 +3548,7 @@ export default function HostShellV2() {
                   const dietSummary = DIETS.filter(k => Number(dc[k]) > 0).map(k => k + ' ' + dc[k]).join(' · ');
                   const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
                   if (!dietOpen) {
-                    return (
-                      <button className="fold-btn" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                        Dietary needs — {anyDiet ? dietSummary : event.dietaryNoted ? <span style={{ color: 'var(--ok)' }}>noted</span> : 'none counted yet'}
-                        <span className="chev">›</span>
-                      </button>
-                    );
+                    return null; // folded into the status strip below — see fstatusStrip
                   }
                   return (
                     <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 12, borderRadius: 12, padding: '8px 6px' }}>
@@ -3576,15 +3578,36 @@ export default function HostShellV2() {
                 {(foodPlan.choices || []).length > 0 && (() => {
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
                   const open = !!foodSect.choices;
-                  if (!open) {
-                    return (
-                      <button className="fold-btn" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
-                        Your choices — {openN > 0 ? <span style={{ color: 'var(--warn)' }}>{openN} open · each re-prices lines</span> : <span style={{ color: 'var(--ok)' }}>all set</span>}
-                        <span className="chev">›</span>
+                  void openN;
+                  return null; // folded into the status strip below
+                })()}
+                {/* ONE compact status strip replaces two heavy fold-rows — the
+                    same information, without the wall-of-rows drift. */}
+                {(() => {
+                  const dc = event.dietCounts || {};
+                  const DIETS = ['Vegetarian', 'Vegan', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish'];
+                  const anyDiet = DIETS.some(k => Number(dc[k]) > 0);
+                  const dietOpen = !!foodSect.diet || sheet.focus === 'diet';
+                  const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
+                  const choicesOpen = !!foodSect.choices;
+                  const hasChoices = (foodPlan.choices || []).length > 0;
+                  if (dietOpen || choicesOpen) return null; // the expanded panel above already shows it
+                  return (
+                    <div className="fstatus-row">
+                      <button className="fstatus" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                        <div className="fs-l">Dietary needs</div>
+                        <div className="fs-v" style={{ color: anyDiet || event.dietaryNoted ? 'var(--ok)' : 'var(--muted)' }}>
+                          {anyDiet ? 'noted · ' + DIETS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet ›'}
+                        </div>
                       </button>
-                    );
-                  }
-                  return null;
+                      {hasChoices && (
+                        <button className="fstatus" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
+                          <div className="fs-l">Your choices</div>
+                          <div className="fs-v" style={{ color: openN > 0 ? 'var(--warn)' : 'var(--ok)' }}>{openN > 0 ? openN + ' open ›' : 'all set'}</div>
+                        </button>
+                      )}
+                    </div>
+                  );
                 })()}
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
@@ -3637,8 +3660,6 @@ export default function HostShellV2() {
                   <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
                 </div>
                 {nudgeFor('food')}
-                <div className="actions-row" style={{ margin: '0 0 6px', display: 'none' }}>
-                </div>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy. */}
                 {(foodPlan.sourcingTiers || []).length > 0 && (
@@ -3683,15 +3704,23 @@ export default function HostShellV2() {
                     // deep-link targets one of its lines, or while tuning one.
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
                     const isOpen = !!foodGroupsOpen[g] || focusHere || !!shopStore; // run mode opens the shelves
+                    const gDone = gBought === gItems.length;
                     return (
-                    <div key={g}>
-                      <button className="fold-btn" style={{ marginTop: 10, ...(gBought === gItems.length ? { color: 'var(--ok)' } : {}) }} onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
-                        {gBought === gItems.length
-                          ? `${g} — all ${gItems.length} bought`
-                          : `${g} — ${gBought} of ${gItems.length} bought${foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : ''}`}
-                        {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 8 }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
-                        <span className="chev">{isOpen ? '▾' : '›'}</span>
+                    <div key={g} className={'fgroup' + (isOpen ? ' open' : '')}>
+                      <button className="fg-head" onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
+                        <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{g.trim().charAt(0).toUpperCase()}</div>
+                        <div className="fg-id">
+                          <div className="fg-label">{g}
+                            {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 8 }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
+                          </div>
+                          <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
+                            {gDone ? 'all ' + gItems.length + ' bought' : gBought + ' of ' + gItems.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : '')}
+                          </div>
+                          <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ width: (gItems.length ? gBought / gItems.length * 100 : 0) + '%' }} /></div>
+                        </div>
+                        <span className="fg-chev">›</span>
                       </button>
+                      <div className="fg-items">
                       {isOpen && gItems.map((it, i) => {
                         const got = !!(event.foodGot || {})[it.id];
                         const cost = it.locked != null ? Number(it.locked) : ((Number(it.low) || 0) + (Number(it.high) || 0)) / 2;
@@ -3818,20 +3847,23 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
+                      </div>
                     </div>
                     );
                   });
                   return (
                     <>
                       {stores.length > 1 && (
-                        <div className="actions-row" style={{ margin: '2px 0 10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <span className="of">shopping at:</span>
+                        <>
+                        <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Shopping at</div>
+                        <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', flexWrap: 'wrap' }}>
                           {stores.slice(0, 5).map(s => (
                             <button key={s} className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={shopStore === s}
                               onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>
                           ))}
                           {shopStore && <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => setShopStore(null)}>Everything</button>}
                         </div>
+                        </>
                       )}
                       {shopStore && (
                         <p className="grounding" style={{ margin: '0 0 10px' }}>

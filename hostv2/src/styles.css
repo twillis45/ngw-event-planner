@@ -556,6 +556,34 @@ button{font-family:inherit}
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
 
 
+
+/* ── Food/shopping: group cards matching the vendor card system ── */
+.fgroup{background:var(--card); border:1px solid var(--line-soft); border-radius:16px;
+  padding:12px 14px; margin:0 0 10px; overflow:hidden}
+.fg-head{width:100%; background:none; border:none; padding:0; margin:0;
+  display:flex; align-items:center; gap:10px; cursor:pointer; font:inherit; color:inherit; text-align:left}
+.fg-badge{width:32px; height:32px; border-radius:10px; flex-shrink:0;
+  background:var(--steel-tint); color:var(--steel-soft);
+  display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800}
+.fg-badge.done{background:var(--ok-tint); color:var(--ok)}
+.fg-id{flex:1; min-width:0}
+.fg-label{font-size:14px; font-weight:750}
+.fg-sub{font-size:11.5px; color:var(--muted); margin-top:1px}
+.fg-chev{color:var(--faint); flex-shrink:0; transition:transform 200ms var(--ease-out)}
+.fg-track{height:4px; border-radius:99px; background:var(--line-soft); margin-top:10px; overflow:hidden}
+.fg-track i{display:block; height:100%; background:var(--steel-soft); border-radius:99px;
+  transition:width var(--ms-ambient) var(--ease-standard)}
+.fg-track.done i{background:var(--ok)}
+.fg-items{max-height:0; opacity:0; overflow:hidden;
+  transition:max-height .4s var(--ease-standard), opacity .3s var(--ease-standard)}
+.fgroup.open .fg-items{max-height:2000px; opacity:1; margin-top:6px}
+.fgroup.open .fg-chev{transform:rotate(90deg)}
+.fstatus-row{display:flex; gap:8px; margin:0 0 12px}
+.fstatus{flex:1; text-align:left; background:var(--card); border:1px solid var(--line-soft);
+  border-radius:12px; padding:9px 12px; font:inherit; cursor:pointer; color:inherit}
+.fstatus .fs-l{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+.fstatus .fs-v{font-size:12.5px; font-weight:650; margin-top:2px}
+
 /* ── Vendors: modern card system (host directive 2026-07-08 late) ──
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
