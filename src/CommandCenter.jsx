@@ -375,16 +375,18 @@ export function deriveCommandCenterData(event) {
     };
   });
 
-  // Vendor issues count (anything not Confirmed/Booked) — caterer drift
-  // counts as an issue even though the vendor itself is confirmed.
-  const vendorIssuesCount = vendors.filter(v => v.status !== 'Confirmed' && v.status !== 'Booked').length
+  // POP-1A: vendor issue count comes from the CANONICAL rollup
+  // (workstream needsAttention), not a second "not Confirmed/Booked" filter
+  // that could disagree with the orchestrator. Caterer drift stays additive —
+  // it's a headcount contradiction the workstream model doesn't carry.
+  const _vendorRollup = buildVendorReadinessRollup(event, null, vendors);
+  const vendorIssuesCount = (_vendorRollup.counts.needsAttention || 0)
     + (catererDrift ? 1 : 0);
 
   // Planning Health (operational readiness, not financial)
   const tasksDone   = timeline.filter(t => t.done).length;
   const tasksTotal  = timeline.length;
   const overdueCount = timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
-  const confirmedVendors = vendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
   const yesGuests = guests.filter(g => g.rsvp === 'Yes').length;
   const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
   const totalActual   = budget.reduce((s, r) => s + (r.actual   || 0), 0);
@@ -426,11 +428,17 @@ export function deriveCommandCenterData(event) {
         : (tasksDone / tasksTotal) >= 0.5 ? 'ON TRACK' : 'ATTENTION',
       tasksTotal > 0 ? `${Math.round(tasksDone/tasksTotal*100)}% complete · ${overdueCount} overdue` : 'No tasks yet'),
     (!_isHost || _hasVendors) ? stat('Vendors',
-      vendors.length === 0 ? 'AT RISK'
-        : confirmedVendors === vendors.length ? 'ON TRACK'
-        : (vendors.length - confirmedVendors) >= 3 ? 'AT RISK'
+      // POP-1A: status + line from the canonical rollup, not local thresholds.
+      // rollup.status is not_started/needs_attention/in_progress/ready — map to
+      // the health vocabulary the row renders.
+      _vendorRollup.status === 'not_started' ? 'AT RISK'
+        : _vendorRollup.status === 'ready' ? 'ON TRACK'
+        : _vendorRollup.status === 'needs_attention' ? ((_vendorRollup.counts.needsAttention || 0) >= 3 ? 'AT RISK' : 'ATTENTION')
         : 'ATTENTION',
-      vendors.length > 0 ? `${confirmedVendors} of ${vendors.length} confirmed` : 'No vendors yet') : null,
+      // Count from the canonical rollup (single source); the WORD stays
+      // vendor-scoped 'confirmed' (host-friendly, test-locked) — not generic
+      // readiness jargon.
+      _vendorRollup.counts.total > 0 ? `${_vendorRollup.counts.ready} of ${_vendorRollup.counts.total} confirmed` : 'No vendors yet') : null,
     stat('Guests',
       guests.length === 0 ? 'AT RISK'
         : yesGuests / guests.length >= 0.7 ? 'ON TRACK'
