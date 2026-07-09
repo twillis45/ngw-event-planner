@@ -2103,6 +2103,27 @@ export default function HostShellV2() {
                   the engine's handled facts. */}
               <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
                 <div className="slidepanel-inner">
+                  {/* POP-1C consumer: the recommendation lifecycle is the one
+                      source that classifies EVERY recommendation (foundation,
+                      vendors, decisions, risks) by a single state vocabulary.
+                      This is the only surface that shows that whole picture —
+                      in host language, non-zero states only, simplicity intact. */}
+                  {(() => {
+                    const lc = (plan.planningState && plan.planningState.recommendationLifecycle) || [];
+                    if (!lc.length) return null;
+                    const n = (s) => lc.filter(i => i.state === s).length;
+                    const bits = [
+                      n('Completed') ? n('Completed') + ' handled' : null,
+                      n('Working') ? n('Working') + ' in progress' : null,
+                      n('Blocked') ? n('Blocked') + ' need' + (n('Blocked') === 1 ? 's' : '') + ' unblocking' : null,
+                    ].filter(Boolean);
+                    if (!bits.length) return null;
+                    return (
+                      <p className="grounding" style={{ margin: '0 0 10px', color: 'var(--steel-soft)', fontWeight: 550 }}>
+                        {bits.join(' · ')}{n('Blocked') ? '' : ' · all clear'}
+                      </p>
+                    );
+                  })()}
                   {(wins.items || []).length > 0 && (
                     <div className="pills" style={{ marginBottom: 8 }}>
                       {wins.items.map(w => (
