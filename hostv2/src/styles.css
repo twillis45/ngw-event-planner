@@ -62,7 +62,7 @@ button{font-family:inherit}
 }
 
 .eyebrow{font-size:11.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); line-height:1.5}
-.mega{font-family:var(--serif); font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:12px 0 6px; font-variant-numeric:lining-nums tabular-nums; font-feature-settings:"lnum" 1,"tnum" 1}
+.mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:12px 0 6px; font-variant-numeric:tabular-nums}
 .mega-sub{font-size:18px; font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.35; min-height:1.3em}
 
 /* ── Hero viewport: first screen fills the visible frame; the NEXT tile is
