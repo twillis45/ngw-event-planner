@@ -5,6 +5,7 @@
 // Nothing invented — where data is missing, the UI says so.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { eventPlan, getEventReadiness } from '@app/CommandCenter';
+import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
@@ -3102,8 +3103,56 @@ export default function HostShellV2() {
                   return p ? { label: (/Female/.test(k) ? 'female' : /Male/.test(k) ? 'male' : 'ref') + ' $' + p, price: p } : null;
                 }).filter(Boolean);
               })();
+              // POP-1E: the reusable procurement estimate — an explained band
+              // (assumptions/pricing model/region/confidence/cost reducers) plus
+              // pickup/storage/cooking logistics. Region from the event's state.
+              const _pm = /,\s*([A-Za-z]{2})\s*$/.exec(String(event.venueCity || ''));
+              const _pstate = (_pm ? _pm[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
+              const proc = (() => { try { return buildCrabProcurement(event, { state: _pstate }); } catch { return null; } })();
               return (
                 <>
+                  {proc && proc.cost && (
+                    <div className="card" style={{ marginBottom: 12, padding: '13px 15px' }}>
+                      <div className="line" style={{ padding: 0 }}>
+                        <span className="shelf-label" style={{ margin: 0 }}>{proc.explanation.pricingModel === 'host-entered-actual' ? 'Your crab cost' : 'Estimated crab cost'}</span>
+                        <span className="amt" style={{ fontSize: 19, fontWeight: 800 }}>
+                          {proc.cost.low === proc.cost.high ? fmt(proc.cost.low) : fmt(proc.cost.low) + '–' + fmt(proc.cost.high)}
+                        </span>
+                      </div>
+                      {proc.cost.perPerson && (
+                        <p className="grounding" style={{ margin: '3px 0 0' }}>
+                          {proc.cost.perPerson.low === proc.cost.perPerson.high ? fmt(proc.cost.perPerson.low) : fmt(proc.cost.perPerson.low) + '–' + fmt(proc.cost.perPerson.high)} a head · {proc.explanation.confidence} confidence · {proc.explanation.regionalFactors.region}
+                        </p>
+                      )}
+                      {proc.explanation.assumptions[0] && (
+                        <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>{proc.explanation.assumptions[0]} {proc.explanation.regionalFactors.note}</p>
+                      )}
+                      {proc.explanation.costReducers.length > 0 && (
+                        <details style={{ marginTop: 8 }}>
+                          <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 650, color: 'var(--steel-soft)' }}>Ways to spend less</summary>
+                          <div style={{ marginTop: 6 }}>
+                            {proc.explanation.costReducers.map((c, i) => (
+                              <p key={i} className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>{c.label}.</strong> {c.hint}</p>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                      {(proc.logistics.pickupWindow || proc.logistics.cooking) && (
+                        <details style={{ marginTop: 6 }}>
+                          <summary style={{ cursor: 'pointer', fontSize: 12.5, fontWeight: 650, color: 'var(--steel-soft)' }}>Pickup, storage & cooking</summary>
+                          <div style={{ marginTop: 6 }}>
+                            {proc.logistics.pickupWindow && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Pickup:</strong> {proc.logistics.pickupWindow.note}</p>}
+                            {proc.logistics.storage && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Storage:</strong> {proc.logistics.storage.note}</p>}
+                            {proc.logistics.transport && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Transport:</strong> {proc.logistics.transport.note}</p>}
+                            {proc.logistics.cooking && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Cooking:</strong> {proc.logistics.cooking.note}</p>}
+                            {(proc.logistics.servingWaves || []).map((w, i) => (
+                              <p key={i} className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Wave {w.wave} ({w.timing}):</strong> {w.note}</p>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
+                  )}
                   {crab.coverageCopy && <div className="v-meta" style={{ padding: '0 2px 6px' }}>{crab.coverageCopy}</div>}
                   {lines.length > 0 && (
                     <div className="v-meta" style={{ padding: '0 2px 10px' }}>
