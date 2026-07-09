@@ -201,10 +201,22 @@ describe('POP-1.1 Objective 1: planningState — a read-only mapping over existi
     expect(plan.planningState.blockedDecisions).toEqual(blockers);
   });
 
-  test('blockedDecisions is [] when no ctx is passed, never throws', () => {
+  test('POP-1B: bare eventPlan(event) derives ctx itself — blockedDecisions reflects the event, never throws', () => {
+    // eventPlan is now the SINGLE consumer of Experience Context: a caller that
+    // passes no ctx still gets ctx-derived blockers (the orchestrator builds it
+    // once internally), instead of every surface wiring ctx separately.
     const event = flagshipEvent();
     const plan = eventPlan(event);
-    expect(plan.planningState.blockedDecisions).toEqual([]);
+    expect(Array.isArray(plan.planningState.blockedDecisions)).toBe(true);
+    // a flagship event with no venue has a real venue-selection blocker
+    expect(plan.planningState.blockedDecisions.some(b => b && b.type === 'venue-selection')).toBe(true);
+  });
+
+  test('an explicitly-passed ctx still wins over the internally-derived one', () => {
+    const event = flagshipEvent();
+    const custom = [{ type: 'custom-block', urgency: 'critical', reasoning: 'caller-supplied' }];
+    const plan = eventPlan(event, { decisionBlockers: custom });
+    expect(plan.planningState.blockedDecisions).toEqual(custom);
   });
 
   test('confidence and recommendationLifecycle are honestly undefined, not invented', () => {

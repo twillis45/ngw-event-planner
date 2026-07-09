@@ -72,6 +72,7 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // computing their own flat vendor tally. See src/lib/workstreams.js header +
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
 import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup } from './lib/workstreams';
+import { buildExperienceContext } from './lib/experienceContext';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -1437,6 +1438,15 @@ export function eventPlan(event, ctx = null) {
     },
     planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },
   };
+
+  // POP-1B — SINGLE CONSUMER OF EXPERIENCE CONTEXT: derive ctx here when the
+  // caller didn't pass one, so no planning surface has to build/wire it
+  // separately. eventPlan consumes only ctx.decisionBlockers (event-derived,
+  // profile-independent), so a null-profile build is complete for this use.
+  // An explicit ctx from the caller wins (e.g. profile-enriched).
+  if (!ctx) {
+    try { ctx = buildExperienceContext(event, null, undefined); } catch { ctx = null; }
+  }
 
   const foundation = _eventFoundationActions(event);
   const progress = {
