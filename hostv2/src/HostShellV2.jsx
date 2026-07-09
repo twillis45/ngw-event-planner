@@ -33,7 +33,7 @@ import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
-import { getVendorCOIState } from '@app/lib/vendorIntelligence';
+import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText } from '@app/lib/cityText';
@@ -143,6 +143,7 @@ function useCountUp(target, dur = 650) {
 }
 
 
+const kidsTotal = (gs) => (gs || []).reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
 // ENGINE precedence (guestCountResolved): the CONFIRMED count wins, then the
 // estimate, then the roster. (Audit fix: V2 wrote guestCount from the
 // confirm-count panel but never read it back — tiles kept the old estimate.)
@@ -1017,7 +1018,7 @@ export default function HostShellV2() {
   const applyCsv = () => {
     if (!csvPreview) return;
     const merged = applyMerge(event.guests || [], csvPreview.mapped, 'merge', 'v2-' + Date.now());
-    const kidsCount = merged.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    const kidsCount = kidsTotal(merged);
     patchEvent({ guests: merged, kidsCount },
       (csvPreview.summary.willAdd || 0) + ' added · ' + (csvPreview.summary.willUpdate || 0) + ' updated from ' + csvPreview.fileName + ' — replies and needs came along.');
     setCsvPreview(null); setCsvOpen(false);
@@ -1026,7 +1027,7 @@ export default function HostShellV2() {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, ...patch } : g);
     // kidsCount is the ENGINE's portion-skew knob (kids eat ~40% of adult
     // protein) — derive it from the roster so food re-prices automatically.
-    const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    const kidsCount = kidsTotal(gs);
     patchEvent({ guests: gs, kidsCount }, msg);
   };
   const removeGuest = (i) => {
@@ -1129,7 +1130,7 @@ export default function HostShellV2() {
   // former inline copy; both apps now consume one implementation.
   const announceReplies = (gs, n, yesCount) => {
     if (!n) return;
-    const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    const kidsCount = kidsTotal(gs);
     patchEvent({ guests: gs, kidsCount },
       n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.');
   };
@@ -1848,7 +1849,7 @@ export default function HostShellV2() {
                   <div>
                     <div className="t-num">{guests ? gAnim : '—'}</div>
                     <div className="t-sub">{guests
-                      ? (expect ? `planned around · likely ${expect.low}–${expect.high} on the day` : 'planned around')
+                      ? (expect ? `planned around · likely ${expect.low}–${expect.high} on the day` + (expect.note ? ` (${expect.note})` : '') : 'planned around')
                       : 'no count yet — the plan can’t size food or seats'}</div>
                   </div>
                 </button>
@@ -1963,9 +1964,14 @@ export default function HostShellV2() {
                     </>
                   )}
                   {heartMoments.length > 0 && (
-                    <p className="grounding" style={{ marginTop: 10 }}>
-                      Protect the moment: {String((heartMoments[0] && (heartMoments[0].label || heartMoments[0].title || heartMoments[0].moment)) || heartMoments[0]).slice(0, 120)}
-                    </p>
+                    <div style={{ marginTop: 10 }}>
+                      {heartMoments.slice(0, 3).map((m, i) => (
+                        <p key={i} className="grounding" style={{ margin: i ? '4px 0 0' : 0 }}>
+                          {i === 0 ? 'Protect the moment: ' : 'Also worth protecting: '}
+                          {String((m && (m.label || m.title || m.moment)) || m)}
+                        </p>
+                      ))}
+                    </div>
                   )}
                   {(() => {
                     if (!readiness) return null;
@@ -2143,7 +2149,11 @@ export default function HostShellV2() {
 
               {compression && compression.headline && (
                 <button className="later-row" style={{ marginTop: 20, width: '100%', textAlign: 'left', background: 'var(--warn-tint)', border: 'none', borderRadius: 12, padding: '12px 14px', cursor: 'pointer' }}
-                  onClick={() => setSheet({ kind: 'tasks', focus: null })}>
+                  onClick={() => {
+                    // land on the engine's FIRST do-now task, not the sheet top
+                    const first = (compression.doNow && compression.doNow[0]) || null;
+                    setSheet({ kind: 'tasks', focus: (first && (first.id || first.taskId)) || null });
+                  }}>
                   <span className="t" style={{ color: 'var(--warn)' }}>{compression.headline}</span>
                   {compression.meta && compression.meta.sub && <span className="of" style={{ color: 'var(--warn)' }}> {compression.meta.sub}</span>}
                 </button>
@@ -3418,16 +3428,12 @@ export default function HostShellV2() {
                                     {it.where.slice(0, 4).map(w => (
                                       <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
                                         onClick={() => {
-                                          // Store pick → a REAL cost, not a range: lock the
-                                          // line at the store's point on its own BLS band
-                                          // (bulk = low end, grocery = mid, specialty = high).
-                                          const f = /costco|sam|bulk|bj|warehouse/i.test(w) ? 0 : /butcher|cheese|bakery|farmers|fish|premium|market/i.test(w) ? 1 : 0.5;
-                                          const lo = Number(it.low) || 0, hi = Number(it.high) || lo;
-                                          const lockAt = Math.round(lo + (hi - lo) * f);
-                                          patchEvent({
-                                            foodWhere: { ...(event.foodWhere || {}), [it.id]: w },
-                                            foodLocked: { ...(event.foodLocked || {}), [it.id]: lockAt },
-                                          }, 'Buying at ' + w + ' — set at ' + fmt(lockAt) + ' (' + (f === 0 ? 'the low end' : f === 1 ? 'the high end' : 'the middle') + ' of its price band). Change it anytime.');
+                                          // Store pick records WHERE only — the price stays the
+                                          // honest engine band until a real cost is entered at
+                                          // purchase (cost-truth gate). The old low/mid/high
+                                          // interpolation was invented pricing policy (audit).
+                                          patchEvent({ foodWhere: { ...(event.foodWhere || {}), [it.id]: w } },
+                                            'Buying at ' + w + ' — the real price locks in when you buy it.');
                                         }}>
                                         {w}
                                       </button>
@@ -3483,6 +3489,8 @@ export default function HostShellV2() {
                     let acct = null;
                     try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
                     const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length;
+                    let coiAct = null;
+                    try { coiAct = coiNextAction(v, event, v.name || 'this vendor'); } catch { coiAct = null; }
                     return (
                       <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
                         ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
@@ -3490,6 +3498,7 @@ export default function HostShellV2() {
                           <div className="v-name">{v.name || 'Unnamed'}</div>
                           <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
                           {worry ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{acct.reasons[0]}</div> : null}
+                          {coiAct ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{coiAct.title} {coiAct.consequence}</div> : null}
                         </div>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag vendors">{v.status || '—'}</span>
@@ -3584,7 +3593,7 @@ export default function HostShellV2() {
               );
               const chase = showsReplyTracking(event); // count-only hosts are never chased
               const plusOnes = (event.guests || []).filter(g => g && g.rsvp === 'Yes' && String(g.plusOne || '').trim()).length;
-              const kidsTotal = (event.guests || []).reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+              const kidsHere = kidsTotal(event.guests);
               // guestMode switch — the ENGINE's own workflow knob (guestPlanningMode
               // reads it): by-list hosts get reply tracking + chasing, by-headcount
               // hosts are never nagged about replies.
@@ -3643,9 +3652,9 @@ export default function HostShellV2() {
                       {gcr.pending} still unanswered{bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''} — the count settles as replies land.
                     </div>
                   )}
-                  {(plusOnes > 0 || kidsTotal > 0) && (
+                  {(plusOnes > 0 || kidsHere > 0) && (
                     <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsTotal ? kidsTotal + ' kid' + (kidsTotal === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
+                      {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
                     </div>
                   )}
                   {!chase && (
