@@ -1875,6 +1875,31 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
+              {/* THE VERDICT (host, 2026-07-09): the one sentence the readouts
+                  circle but never say — "am I okay?" answered plainly, in the
+                  app's voice. Grounded ONLY in already-computed engine state:
+                  overdue board decisions, timeline compression, budget overage
+                  — the engines' own escalation states, never invented cheer.
+                  Division of labor: this line owns "how am I doing"; the NEXT
+                  tile owns "what do I do"; the tiles below are the evidence. */}
+              {!isPast && days !== null && days > 0 && (() => {
+                const slips = [];
+                try {
+                  const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
+                  if (od) slips.push(od === 1 ? 'one decision is past its easy window' : od + ' decisions are past their easy window');
+                } catch { /* board unavailable */ }
+                if (compression && compression.headline) slips.push('time got tight');
+                if (money.planned && money.committed > money.planned) slips.push('the budget is running over');
+                if (slips.length) {
+                  return (
+                    <p className="verdict slipping">
+                      Mostly on course — {slips.slice(0, 2).join(', and ')}. Worth a look today.
+                    </p>
+                  );
+                }
+                if (!actions.length) return <p className="verdict">All quiet — you’re genuinely set for now.</p>;
+                return <p className="verdict">You’re in good shape — nothing’s slipping.</p>;
+              })()}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (

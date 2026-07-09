@@ -586,6 +586,14 @@ button{font-family:inherit}
 .fstatus .fs-v{font-size:12.5px; font-weight:650; margin-top:2px}
 
 
+
+/* ── The verdict — the landing's one sentence in the app's voice. Sits
+   between the countdown (feeling) and the tiles (evidence); the only
+   running prose on the hero, so it gets a real text size and no chrome. ── */
+.verdict{font-size:15px; font-weight:600; letter-spacing:-.01em; line-height:1.45;
+  color:var(--ink-soft); margin:10px 0 0; max-width:34ch}
+.verdict.slipping{color:var(--warn)}
+
 /* ── Quiet index — below-fold wayfinding. Every secondary surface is ONE
    featherweight row: uniform metrics, hairline separators, zero card
    chrome. The eye scans a column of labels + right-aligned status; nothing
