@@ -76,21 +76,18 @@ button{font-family:inherit}
 }
 /* The hero's slack lives INSIDE the tile cluster (rows stretch), not as dead
    air between the countdown and the tiles — taller tiles, no empty band. */
-/* QUIET LANDING (host directive, modern UI/UX pass): the countdown is the
-   one loud fact on this screen; everything below it is calm, scannable
-   status — not three more cards shouting for the same attention. */
-.bento{display:grid; gap:4px 18px; margin-top:22px; flex:1; align-content:start; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
-.hero > .tile-d{margin-top:18px}
-.tile{border-radius:14px; padding:0; display:flex; flex-direction:column; justify-content:flex-start; min-height:0; border:none; text-align:left; color:var(--ink); font-family:inherit; background:none}
-.tile .t-label{font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--faint)}
-.tile .t-num{font-size:22px; font-weight:750; letter-spacing:-.02em; line-height:1.15; margin:4px 0 2px; font-variant-numeric:tabular-nums; color:var(--ink-soft)}
-.tile .t-sub{font-size:12px; font-weight:500; color:var(--muted); line-height:1.4}
-.tile-a{grid-area:a; padding-bottom:14px; margin-bottom:10px; border-bottom:1px solid var(--line-soft)}
-.tile-a .t-num{font-size:26px; color:var(--ink)}
-.bar{height:5px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:8px 0 8px; max-width:220px}
-.bar i{display:block; height:100%; border-radius:6px; background:var(--steel-soft); transition:width .9s var(--ease-standard)}
-.tile-b{grid-area:b}
-.tile-c{grid-area:c}
+.bento{display:grid; gap:10px; margin-top:18px; flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
+.hero > .tile-d{margin-top:14px}
+.tile{border-radius:20px; padding:18px 20px; display:flex; flex-direction:column; justify-content:space-between; min-height:108px; border:none; text-align:left; color:var(--ink); font-family:inherit}
+.tile .t-label{font-size:11.5px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.tile .t-num{font-size:33px; font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}
+.tile .t-sub{font-size:12.5px; font-weight:550; color:var(--muted); line-height:1.45}
+.tile-a{grid-area:a; background:var(--card); border:1px solid var(--line-soft)}
+.tile-a .t-num{font-size:48px}
+.bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:14px 0 10px}
+.bar i{display:block; height:100%; border-radius:6px; background:var(--steel); transition:width .9s var(--ease-standard)}
+.tile-b{grid-area:b; background:var(--bg-band)}
+.tile-c{grid-area:c; background:var(--card); border:1px solid var(--line-soft)}
 .tile-d{grid-area:d; background:var(--cta-grad); color:var(--carbon-text); cursor:pointer;
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out)}
 .tile-d:hover{filter:brightness(1.06); transform:translateY(-2px)}
