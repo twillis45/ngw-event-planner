@@ -38,6 +38,9 @@ import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText } from '@app/lib/cityText';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
+import { quickAccountabilityForVendor } from '@app/lib/vendorAccountability/derive';
+import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
+import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -3462,21 +3465,42 @@ export default function HostShellV2() {
                 )}
               </>
             ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No spread to build for this kind of event yet.</div>)}
-            {sheet.kind === 'vendors' && (
-              (event.vendors || []).length ? (event.vendors || []).map(v => (
-                <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
-                  ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
-                  <div>
-                    <div className="v-name">{v.name || 'Unnamed'}</div>
-                    <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
-                  </div>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="tag vendors">{v.status || '—'}</span>
-                    <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, null)); }}>Draft note</button>
-                  </span>
-                </div>
-              )) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>
-            )}
+            {sheet.kind === 'vendors' && (() => {
+              // Queue item 6 — the promise-model engine (vendorAccountability):
+              // cross-vendor conflicts up top, a per-vendor accountability line
+              // when the tier isn't clean. Deterministic, honest not_tracked.
+              let conflicts = [];
+              try { conflicts = deriveVendorPromiseConflicts(event) || []; } catch { conflicts = []; }
+              return (event.vendors || []).length ? (
+                <>
+                  {conflicts.slice(0, 3).map((c, i) => (
+                    <div key={c.id || i} className="brow" style={{ borderColor: 'var(--warn-tint)' }}>
+                      <p className="grounding" style={{ margin: 0, color: 'var(--warn)', fontWeight: 600 }}>{c.title}</p>
+                      <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
+                    </div>
+                  ))}
+                  {(event.vendors || []).map(v => {
+                    let acct = null;
+                    try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
+                    const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length;
+                    return (
+                      <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
+                        ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
+                        <div>
+                          <div className="v-name">{v.name || 'Unnamed'}</div>
+                          <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
+                          {worry ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{acct.reasons[0]}</div> : null}
+                        </div>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="tag vendors">{v.status || '—'}</span>
+                          <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, null)); }}>Draft note</button>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
+            })()}
             {sheet.kind === 'budget' && (() => {
               // HOST MODEL: one number, and "where it's going" priced by the plan
               // itself (hostSpending's food/supplies/capacity terms) — never
@@ -3492,6 +3516,10 @@ export default function HostShellV2() {
                 crabs: () => setSheet({ kind: 'crabs' }),
               };
               const hostRows = hostSpendRows().map(r => ({ ...r, go: GO[r.kind] }));
+              // Queue item 7 — the recovery engine: source-backed ways OUT of
+              // an overage (safe cuts / tradeoffs / protected), never invented $.
+              let recovery = null;
+              try { recovery = buildBudgetRecoveryPlan(event, foodPP.priceFactor); } catch { recovery = null; }
               return (
                 <>
                   <div className="line" style={{ padding: '2px 0 10px' }}>
@@ -3519,6 +3547,21 @@ export default function HostShellV2() {
                     </>
                   )}
                   <div className="line total"><span>Spoken for so far</span><span className="amt">{fmt(money.committed)}{money.planned ? ' of ' + fmt(money.planned) : ''}</span></div>
+                  {recovery && recovery.status === 'recovery_available' && (
+                    <div style={{ marginTop: 12 }}>
+                      <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--warn)' }}>A way back under</div>
+                      {recovery.headline && <p className="grounding" style={{ margin: '0 0 6px' }}>{recovery.headline}</p>}
+                      {(recovery.suggestions || []).slice(0, 4).map((s, i) => (
+                        <div key={s.id || i} className="line" style={{ alignItems: 'flex-start' }}>
+                          <span style={{ fontSize: 13 }}>{s.copy || s.label || s.title}</span>
+                          {s.amount ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.amount)}</span> : null}
+                        </div>
+                      ))}
+                      {(recovery.protectedItems || []).length > 0 && (
+                        <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
+                      )}
+                    </div>
+                  )}
                   <div className="shelf-label" style={{ margin: '16px 0 8px' }}>Change it</div>
                   {budgetEditorBlock()}
                 </>
