@@ -219,11 +219,16 @@ describe('POP-1.1 Objective 1: planningState — a read-only mapping over existi
     expect(plan.planningState.blockedDecisions).toEqual(custom);
   });
 
-  test('confidence and recommendationLifecycle are honestly undefined, not invented', () => {
+  test('confidence stays honestly undefined; recommendationLifecycle is now the POP-1C projection', () => {
     const event = flagshipEvent();
     const plan = eventPlan(event);
+    // no per-action confidence signal exists to compose — still not invented
     expect(plan.planningState.confidence).toBeUndefined();
-    expect(plan.planningState.recommendationLifecycle).toBeUndefined();
+    // POP-1C: the lifecycle is now a real read-only projection over existing state
+    const lc = plan.planningState.recommendationLifecycle;
+    expect(Array.isArray(lc)).toBe(true);
+    const STATES = new Set(['Discovered','Recommended','Accepted','Working','Blocked','Completed','Archived']);
+    lc.forEach(i => expect(STATES.has(i.state)).toBe(true));
   });
 
   test('null event → planningState is fully null/empty, never throws', () => {

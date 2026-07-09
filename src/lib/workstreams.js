@@ -66,6 +66,15 @@ const WORKSTREAM_LABELS = {
 // vocabulary mismatch caused before it was unified.
 const BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Deposit Paid', 'Contracted']);
 
+// POP-1C: the ONE canonical "is this vendor booked?" status predicate. Four
+// surfaces used to re-derive this with drifting vocabularies (a regex that
+// omitted 'Deposit Paid', a 3-value set that omitted 'Booked') — the confirmed
+// contradiction a 'Deposit Paid' vendor being READY here and a GAP elsewhere.
+// Status only; surfaces with an EXTRA concern (e.g. unpaid deposit) layer it on.
+export function isVendorBooked(vendor) {
+  return !!vendor && BOOKED_STATUSES.has(vendor.status);
+}
+
 function workstreamKeyForVendor(vendor) {
   return CATEGORY_TO_WORKSTREAM[vendor && vendor.category] || 'other';
 }

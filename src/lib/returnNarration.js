@@ -16,6 +16,8 @@
 // "moved closer"), never sent/replied/paid claims, never the hero's words.
 
 import { deriveEventPhaseProgress } from './phaseProgress';
+import { effectiveDone } from './taskEngine';
+import { isVendorBooked } from './workstreams';
 import { rainPlanStatus } from './weather';
 import { playbookFoodPlan } from './playbooks';
 import { eventLocationStatus } from './locationAssist';
@@ -36,8 +38,8 @@ export function buildReturnSnapshot(event, now = Date.now()) {
     if (plan && Array.isArray(plan.list)) foodLeft = plan.list.filter(i => i && !i.skipped && !got[i.id]).length;
   } catch { /* null */ }
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && has(v.name));
-  const vendorGaps = vendors.filter(v => !/confirmed|booked|contracted/i.test(String(v.status || ''))
-    || (num(v.depositAmt) > 0 && v.depositPaid !== true)).length;
+  const vendorGaps = vendors.filter(v => !isVendorBooked(v)
+    || (num(v.depositAmt) > 0 && v.depositPaid !== true)).length; // POP-1C canonical status
   return {
     seenAt: now,
     phase,
@@ -49,7 +51,9 @@ export function buildReturnSnapshot(event, now = Date.now()) {
     countSet: num(ev.guestCount) > 0 || num(ev.guestEstimate) > 0,
     foodLeft,
     vendorGaps: vendors.length ? vendorGaps : null,
-    openTasks: (Array.isArray(ev.timeline) ? ev.timeline : []).filter(t => t && t.task && !t.done).length,
+    // POP-1C stale-snapshot fix: openTasks used raw !t.done, disagreeing with
+    // every other task surface (which use effectiveDone = done OR satisfied).
+    openTasks: (Array.isArray(ev.timeline) ? ev.timeline : []).filter(t => t && t.task && !effectiveDone(ev, t)).length,
   };
 }
 

@@ -1426,6 +1426,64 @@ function decomposeSetComposite(cmd, event) {
   return title !== cmd.title ? { ...cmd, title } : cmd;
 }
 
+// POP-1C — the ONE recommendation lifecycle. A pure read-only PROJECTION that
+// maps every already-computed recommendation onto the 7 canonical states:
+//   Discovered → Recommended → Accepted → Working → Blocked → Completed → Archived
+// It invents no field and calls no engine eventPlan doesn't already run — every
+// state is read from a signal that exists above (foundation.done, workstream
+// status/blocked, ctx.decisionBlockers, ctx.activeRisks) or from an event status
+// map (riskStatus/decisionBlockerStatus/contextNudges = the dismissal → Archived
+// path). Consumers filter by state (e.g. hide Completed/Archived) instead of
+// each re-deriving "is this done?" — that duplication was the doctrine's target.
+function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, workstreams) {
+  const items = [];
+  const ev = event || {};
+  const surfacedDomains = new Set((nextActions || []).map(a => a.domain).filter(Boolean));
+
+  // Foundation dominoes: done → Completed; surfaced now → Recommended; else Discovered.
+  (foundation || []).forEach(a => {
+    if (!a || !a.domain) return;
+    const state = a.done ? 'Completed' : (a.domain === (nextActions[0] && nextActions[0].domain) || surfacedDomains.has(a.domain)) ? 'Recommended' : 'Discovered';
+    items.push({ id: a.domain, category: 'foundation', state });
+  });
+
+  // Vendor workstreams: blocked → Blocked; ready → Completed; in_progress → Working;
+  // not_started → Recommended (there's work to start).
+  (workstreams || []).forEach(w => {
+    if (!w || !w.id) return;
+    const state = w.blocked ? 'Blocked'
+      : w.status === 'ready' ? 'Completed'
+      : w.status === 'in_progress' ? 'Working'
+      : w.status === 'not_started' ? 'Recommended'
+      : 'Working';
+    items.push({ id: 'workstream:' + w.id, category: 'vendor', state });
+  });
+
+  // Decision blockers (advisory): acknowledged → Accepted; else Blocked (they gate).
+  const blockerStatus = ev.decisionBlockerStatus || {};
+  ((ctx && ctx.decisionBlockers) || []).forEach(b => {
+    if (!b || !b.type) return;
+    items.push({ id: 'blocker:' + b.type, category: 'decision', state: blockerStatus[b.type] === 'acknowledged' ? 'Accepted' : 'Blocked' });
+  });
+
+  // Active risks (advisory, not yet dismissed): Recommended (a suggested mitigation).
+  ((ctx && ctx.activeRisks) || []).forEach(r => {
+    if (!r || !r.type) return;
+    items.push({ id: 'risk:' + r.type, category: 'risk', state: 'Recommended' });
+  });
+
+  // Archived — the dismissal path, the ONE place recommendations leave the flow:
+  // any *Status map entry marked 'dismissed', plus balance-paid (vendor) events.
+  const archiveFrom = (map, cat) => Object.keys(map || {}).forEach(k => {
+    if (map[k] === 'dismissed') items.push({ id: cat + ':' + k, category: cat, state: 'Archived' });
+  });
+  archiveFrom(ev.riskStatus, 'risk');
+  archiveFrom(ev.decisionBlockerStatus, 'decision');
+  archiveFrom(ev.contextNudges, 'nudge');
+
+  return items;
+}
+
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event, ctx = null) {
   if (!event) return {
@@ -1520,7 +1578,8 @@ export function eventPlan(event, ctx = null) {
     currentMilestone: lastCompletedMilestone ? lastCompletedMilestone.title : null,
     nextMilestone: nextMilestone ? nextMilestone.title : null,
     blockedDecisions: (ctx && Array.isArray(ctx.decisionBlockers)) ? ctx.decisionBlockers : [],
-    recommendationLifecycle: undefined, // not yet unified — see Recommendation Lifecycle Matrix
+    // POP-1C: one lifecycle, projected read-only from state that already exists.
+    recommendationLifecycle: deriveRecommendationLifecycle(event, ctx, nextActions, foundation, workstreams),
     deepLink: leadAction ? (leadAction.route || null) : null,
     reasoning: leadAction ? (leadAction.consequence || null) : null,
     confidence: undefined, // no existing per-action confidence signal to compose — not invented here

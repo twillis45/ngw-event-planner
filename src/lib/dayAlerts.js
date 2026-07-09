@@ -12,6 +12,7 @@
 // opts.isTaskOverdue(task); the built-in default understands the playbook
 // checklist's "T-N d" week labels and otherwise never invents an overdue.
 import { effectiveRos } from './playbooks';
+import { isVendorBooked } from './workstreams';
 import { showsReplyTracking } from './guestMode';
 
 // Time-string → minutes-since-midnight. Contract (exported so both shells and
@@ -71,7 +72,7 @@ export function computeDayAlerts(event, opts = {}) {
 
   if (event.date === td) {
     (event.vendors || [])
-      .filter(v => v.arrivalTime && ['Confirmed', 'Contracted', 'Deposit Paid'].includes(v.status)
+      .filter(v => v.arrivalTime && isVendorBooked(v)
                 && v.arrivalStatus !== 'arrived' && v.arrivalStatus !== 'completed')
       .forEach(v => {
         const vm = parseMin(v.arrivalTime);
@@ -83,7 +84,7 @@ export function computeDayAlerts(event, opts = {}) {
     // a day-of "make sure they're coming" critical (the Figma "Caterer hasn't
     // confirmed arrival" case). Only the soonest one, to stay calm.
     const unconfirmed = (event.vendors || [])
-      .filter(v => v.name && v.arrivalTime && ['Confirmed', 'Contracted', 'Deposit Paid'].includes(v.status)
+      .filter(v => v.name && v.arrivalTime && isVendorBooked(v)
                 && v.arrivalStatus !== 'arrived' && v.arrivalStatus !== 'completed' && v.arrivalStatus !== 'delayed')
       .map(v => ({ v, m: parseMin(v.arrivalTime) }))
       .filter(x => x.m !== null && x.m >= nowMin - 10 && x.m <= nowMin + 90)
@@ -115,7 +116,7 @@ export function computeDayAlerts(event, opts = {}) {
   // Guests with allergies + catering confirmed — on event day, confirm with caterer
   if (event.date === td) {
     const allergyGuests = (event.guests || []).filter(g => g.rsvp === 'Yes' && g.needs && /allerg/i.test(g.needs));
-    const hasCaterer = (event.vendors || []).some(v => /cater|f&b|food|beverage/i.test(v.category) && ['Confirmed', 'Contracted', 'Deposit Paid'].includes(v.status));
+    const hasCaterer = (event.vendors || []).some(v => /cater|f&b|food|beverage/i.test(v.category) && isVendorBooked(v));
     if (allergyGuests.length && hasCaterer)
       push({ id: 'dietary', tier: 'critical', headline: `${allergyGuests.length} guest${allergyGuests.length > 1 ? 's' : ''} with allergies`, move: `Confirm the swaps with your caterer before service.`, navTo: 'Guests' });
   }

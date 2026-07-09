@@ -24,6 +24,7 @@ import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos } 
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
+import { isVendorBooked } from './workstreams';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -99,7 +100,9 @@ function preProgress(ev, phase, daysOut) {
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
   if (vendors.length) {
-    const gap = vendors.find(v => !/confirmed|booked|contracted/i.test(String(v.status || ''))
+    // POP-1C: canonical status predicate (was a regex that missed 'Deposit
+    // Paid'); the unpaid-deposit guard stays as this surface's extra concern.
+    const gap = vendors.find(v => !isVendorBooked(v)
       || (num(v.depositAmt) > 0 && v.depositPaid !== true));
     add('vendors', true, !gap, gap ? `Follow up with ${gap.name}` : null, gap ? { tab: 'Vendors', vendorId: gap.id } : null, 7);
   }
