@@ -49,7 +49,8 @@ import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
-import { attendanceAdjustment } from '@app/lib/hostIntel';
+import { attendanceAdjustment, summarizeHostIntel, clearAllMemory } from '@app/lib/hostIntel';
+import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -423,7 +424,7 @@ export default function HostShellV2() {
   useEffect(() => {
     let dead = false;
     const m = /,\s*([A-Za-z]{2})\s*$/.exec(String(event.venueCity || ''));
-    const state = m ? m[1].toUpperCase() : null;
+    const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
     if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null }); return undefined; }
     (async () => {
       try {
@@ -435,10 +436,47 @@ export default function HostShellV2() {
   }, [event.id, event.venueCity]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
-  // ── The production profile, adopted read-only (ngw-profile — the SAME key
-  // the original app + Supabase studio_settings hydrate). Host name signs the
-  // drafts, hostIntelligence feeds attendance learning. V2 never writes it.
-  const profile = useMemo(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } }, []);
+  // ── The production profile (ngw-profile — the SAME key the original app +
+  // Supabase studio_settings hydrate). Host name signs the drafts,
+  // hostIntelligence feeds attendance learning. V2 writes MERGE-ONLY so every
+  // production field it doesn't know about survives untouched; the original
+  // app's own debounced cloud save picks the changes up next time it runs.
+  const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+  // ── Session (the SAME Supabase client + storage the original app uses —
+  // signing in anywhere on this origin signs in everywhere on it).
+  const [session, setSession] = useState(null);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authEmail, setAuthEmail] = useState('');
+  const [authSent, setAuthSent] = useState(false);
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return undefined;
+    let dead = false;
+    supabase.auth.getSession().then(({ data }) => { if (!dead) setSession(data && data.session ? data.session : null); }).catch(() => {});
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) setSession(s || null); });
+    return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
+  }, []);
+  const sendMagicLink = async () => {
+    const em = authEmail.trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('A real email address — the sign-in link goes there.'); return; }
+    setAuthBusy(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
+      if (error) throw error;
+      setAuthSent(true);
+    } catch { toast('Couldn’t send the link — try again in a minute.'); }
+    setAuthBusy(false);
+  };
+
+  const patchProfile = (fields, msg) => {
+    let next = null;
+    try {
+      const cur = JSON.parse(localStorage.getItem('ngw-profile')) || {};
+      next = { ...cur, ...fields };
+      localStorage.setItem('ngw-profile', JSON.stringify(next));
+    } catch { next = { ...(profile || {}), ...fields }; }
+    setProfileState(next);
+    if (msg) toast(msg);
+  };
   const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
@@ -612,7 +650,9 @@ export default function HostShellV2() {
         // A bare home word ("Backyard") geocodes to junk — the town is the
         // real locator for at-home events; skip entirely when neither exists.
         const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String(event.venue || '').trim());
-        const q = String(event.venueCity || '').trim() || (!homeish ? String(event.venue || '').trim() : '');
+        const q = String(event.venueCity || '').trim()
+          || (!homeish ? String(event.venue || '').trim() : '')
+          || String((profile && profile.city) || '').trim(); // your usual area backs up a bare backyard
         if (!q) return;
         const coords = await geocodeVenue(q);
         if (dead || !coords) return;
@@ -1625,6 +1665,7 @@ export default function HostShellV2() {
                 {(eventId === 'custom' ? ((custom && custom.name) || 'Yours') : (/crab/i.test(String(event.name || '')) ? 'My Crab Feast' : event.type))} ▾
               </button>
               <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setMuted(m => !m)}>{muted ? 'Muted' : 'Sound on'}</button>
+              <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setSheet({ kind: 'settings' })}>You</button>
             </div>
           </div>
 
@@ -2688,7 +2729,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -3094,6 +3135,68 @@ export default function HostShellV2() {
                     </div>
                   )}
                   <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Every note is built from what’s on file — their arrival time, your date and place. Nothing invented, nothing auto-sent.</p>
+                </>
+              );
+            })()}
+            {sheet.kind === 'settings' && (() => {
+              const mem = (() => { try { return summarizeHostIntel(profile); } catch { return { present: false, groups: [] }; } })();
+              return (
+                <>
+                  <div className="shelf-label" style={{ margin: '2px 0 6px' }}>You</div>
+                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Your name — it signs every note we draft"
+                    defaultValue={(profile && profile.name) || ''} aria-label="Your name"
+                    onBlur={e => { const v = e.target.value.trim(); if (v !== ((profile && profile.name) || '')) patchProfile({ name: v }, v ? 'Your notes now sign as ' + v + '.' : 'Signature cleared.'); }} />
+                  <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Your area</div>
+                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Town or city — “Annapolis, MD”"
+                    defaultValue={(profile && profile.city) || ''} aria-label="Your area"
+                    onBlur={e => {
+                      const v = e.target.value.trim();
+                      if (v === ((profile && profile.city) || '')) return;
+                      if (v && !isPlausibleCityText(v)) { toast('A town name — “Annapolis” or “Silver Spring, MD”.'); return; }
+                      const m = /,\s*([A-Za-z]{2})\s*$/.exec(v);
+                      patchProfile({ city: v, ...(m ? { state: m[1].toUpperCase() } : {}) }, v ? 'Area saved — local prices and weather line up to it.' : 'Area cleared.');
+                    }} />
+                  <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
+
+                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>What Event Boss remembers</div>
+                  {mem.present && mem.groups.length ? (
+                    <>
+                      {mem.groups.map(g => (
+                        <div key={g.domain} style={{ marginBottom: 6 }}>
+                          <p className="grounding" style={{ margin: 0, fontWeight: 650, color: 'var(--ink-soft)' }}>{g.title}</p>
+                          {(g.lines || []).map((l, i) => <p key={i} className="grounding" style={{ margin: '1px 0 0' }}>{l}</p>)}
+                        </div>
+                      ))}
+                      <div className="actions-row" style={{ marginTop: 6 }}>
+                        <button className="mini" onClick={() => { patchProfile(clearAllMemory(profile || {}), 'Memory cleared — Event Boss starts fresh.'); }}>Clear what it remembers</button>
+                      </div>
+                    </>
+                  ) : (
+                    <p className="grounding" style={{ margin: 0 }}>Nothing yet — after an event wraps, noting how it really went teaches the plans that follow.</p>
+                  )}
+
+                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Your account</div>
+                  {!isSupabaseConfigured() ? (
+                    <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
+                  ) : session ? (
+                    <>
+                      <p className="grounding" style={{ margin: '0 0 8px' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your profile and events sync through the main app.</p>
+                      <div className="actions-row">
+                        <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
+                      </div>
+                    </>
+                  ) : authSent ? (
+                    <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in Event Boss, and this shell picks the session up automatically.</p>
+                  ) : (
+                    <>
+                      <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
+                        onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
+                      <div className="actions-row" style={{ marginTop: 8 }}>
+                        <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
+                      </div>
+                      <p className="grounding" style={{ margin: '8px 0 0', opacity: .75 }}>No password — the link signs you in. One account, both apps, this device and your others.</p>
+                    </>
+                  )}
                 </>
               );
             })()}
