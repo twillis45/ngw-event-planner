@@ -54,6 +54,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
+import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -473,8 +474,14 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!isSupabaseConfigured()) return undefined;
     let dead = false;
-    supabase.auth.getSession().then(({ data }) => { if (!dead) setSession(data && data.session ? data.session : null); }).catch(() => {});
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) setSession(s || null); });
+    // On sign-in, pull the cloud profile (studio_settings) into localStorage +
+    // state — cloud wins, so a fresh device inherits the host's real identity.
+    const hydrate = () => { cloudLoadProfile().then(p => { if (!dead && p) setProfileState(p); }).catch(() => {}); };
+    supabase.auth.getSession().then(({ data }) => {
+      const s = data && data.session ? data.session : null;
+      if (!dead) { setSession(s); if (s) hydrate(); }
+    }).catch(() => {});
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => { if (!dead) { setSession(s || null); if (s) hydrate(); } });
     return () => { dead = true; try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch { /* gone */ } };
   }, []);
   const sendMagicLink = async () => {
@@ -497,6 +504,9 @@ export default function HostShellV2() {
       localStorage.setItem('ngw-profile', JSON.stringify(next));
     } catch { next = { ...(profile || {}), ...fields }; }
     setProfileState(next);
+    // Push to the cloud when signed in — no longer dependent on the main app's
+    // debounced save. Fire-and-forget; saveProfile already wrote localStorage.
+    if (next && session) { try { cloudSaveProfile(next); } catch { /* offline — localStorage holds it */ } }
     if (msg) toast(msg);
   };
   const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -3353,7 +3363,7 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
                   ) : session ? (
                     <>
-                      <p className="grounding" style={{ margin: '0 0 8px' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your profile and events sync through the main app.</p>
+                      <p className="grounding" style={{ margin: '0 0 8px' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what Event Boss remembers sync to your account across devices.</p>
                       <div className="actions-row">
                         <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
