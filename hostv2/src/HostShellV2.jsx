@@ -62,6 +62,20 @@ import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 let APP_EVENTS = [];
 try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch { APP_EVENTS = []; }
 const appCrab = APP_EVENTS.find(e => e && /crab/i.test(String(e.name || '') + ' ' + String(e.type || '')));
+// Every OTHER real event adopts too (activation: your actual events, right
+// here) — read-only base with the V2 patch overlay; demo/seed rows excluded.
+const REAL_EVENTS = APP_EVENTS.filter(e =>
+  e && e.id && e !== appCrab && String(e.recordKind || 'host_event') === 'host_event'
+  && !/^demo-/.test(String(e.id)) && String(e.name || '').trim())
+  .sort((a, b) => {
+    // upcoming first (soonest on top), then past by recency — the sheet
+    // shows what matters without a cap
+    const da = a.date ? new Date(a.date + 'T12:00:00') - new Date() : Infinity;
+    const db = b.date ? new Date(b.date + 'T12:00:00') - new Date() : Infinity;
+    const fa = da >= 0 ? da : Infinity - 1, fb = db >= 0 ? db : Infinity - 1;
+    if (da >= 0 || db >= 0) return fa - fb;
+    return db - da;
+  });
 const inThreeWeeks = (() => { const d = new Date(); d.setDate(d.getDate() + 21); return d.toISOString().slice(0, 10); })();
 const MY_CRAB_FEAST = appCrab || {
   id: 'my-crab-feast', rsvpCode: 'crab',
@@ -111,7 +125,7 @@ const TEST_TWO_DAYS = mkTest('test-two-days', 'Test — Game Night (in 2 days)',
 
 // Exported for the public invite page (InviteV2) — it resolves rsvpCode links
 // against the SAME pool + patch layers the host shell reads (one truth).
-export const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
+export const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, ...REAL_EVENTS];
 
 const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
 const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
@@ -146,8 +160,13 @@ function useCountUp(target, dur = 650) {
       setV(Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3))));
       if (p < 1) raf = requestAnimationFrame(tick);
     };
+    // rAF pauses in background tabs — without a floor the count freezes at
+    // its previous value until the tab refocuses. Hidden → land instantly;
+    // visible → a timeout backstop guarantees the final value regardless.
+    if (typeof document !== 'undefined' && document.hidden) { setV(target); return; }
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const settle = setTimeout(() => setV(target), dur + 120);
+    return () => { cancelAnimationFrame(raf); clearTimeout(settle); };
   }, [target, dur]);
   return v;
 }
@@ -2972,6 +2991,26 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'events' && (
               <>
+                {REAL_EVENTS.length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours — from the app</div>
+                    {REAL_EVENTS.map((e, i) => {
+                      const isActive = e.id === eventId;
+                      const d = daysUntil(e.date);
+                      return (
+                        <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                          onClick={() => { switchEvent(e.id); setSheet(null); }}>
+                          <span className="f-main">
+                            <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
+                            <span className="v-meta">{[e.type, e.venue].filter(Boolean).join(' · ')}</span>
+                          </span>
+                          <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
+                        </button>
+                      );
+                    })}
+                    <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples & tests</div>
+                  </>
+                )}
                 {[...ROSTER, ...(custom ? [{ id: 'custom', _custom: true }] : [])].map((e, i) => {
                   const isActive = e.id === eventId || (e._custom && eventId === 'custom');
                   const src = e._custom ? custom : e;
