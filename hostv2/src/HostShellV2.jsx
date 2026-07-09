@@ -2037,13 +2037,12 @@ export default function HostShellV2() {
                         }
                         return 'Nothing waiting on you right now.';
                       }
-                      const bits = [];
-                      if (phaseCues && phaseCues.totalCount && phaseCues.completedCount < phaseCues.totalCount) {
-                        bits.push(phaseCues.completedCount + ' of ' + phaseCues.totalCount + ' essentials handled');
-                      }
+                      // ORDER-OF-INFORMATION (host, 2026-07-09): the essentials
+                      // count is the Where-you-stand tile's one job, directly
+                      // above — restating it here was the last double-telling
+                      // on the hero. NEXT names only the first thing.
                       const first = String(actions[0].title || '').replace(/\.+$/, '');
-                      bits.push('first: ' + (first.length > 44 ? first.slice(0, 44) + '…' : first) + ' ↓');
-                      return bits.join(' · ');
+                      return 'first: ' + (first.length > 52 ? first.slice(0, 52) + '…' : first) + ' ↓';
                     })()}
                   </div>
                 </button>
