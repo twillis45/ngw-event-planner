@@ -438,7 +438,7 @@ export default function HostShellV2() {
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
-  const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || FALLBACK);
+  const base = eventId === 'custom' ? custom : (ALL_SAMPLES.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId) || FALLBACK);
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(eventId === 'custom' ? {} : patch) }), [base, patch, eventId]);
 
   // ── Regional price factor (queue item 3) — the production pipeline:
@@ -469,7 +469,7 @@ export default function HostShellV2() {
   // ── Session (the SAME Supabase client + storage the original app uses —
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
-  const [cloudEventsWaiting, setCloudEventsWaiting] = useState(0); // events synced from cloud not yet on this device's roster
+  const [hydratedEvents, setHydratedEvents] = useState([]); // real events pulled from cloud that weren't on this device at load
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
@@ -485,8 +485,8 @@ export default function HostShellV2() {
         if (dead || !Array.isArray(evs)) return;
         const known = new Set((APP_EVENTS || []).map(e => e && e.id));
         const fresh = evs.filter(e => e && e.id && !known.has(e.id)
-          && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)));
-        if (fresh.length) setCloudEventsWaiting(fresh.length);
+          && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)) && String(e.name || '').trim());
+        if (fresh.length) setHydratedEvents(fresh);
       }).catch(() => {});
     };
     supabase.auth.getSession().then(({ data }) => {
@@ -1237,8 +1237,8 @@ export default function HostShellV2() {
       const nextPatch = { ...p, ...obj };
       // Real-event edits persist to the cloud (superset merge, never drops a
       // base field). Session-gated; sample/demo events stay local-only.
-      if (session && REAL_EVENTS.some(e => e.id === eventId)) {
-        const realBase = REAL_EVENTS.find(e => e.id === eventId);
+      const realBase = REAL_EVENTS.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId);
+      if (session && realBase) {
         try { cloudSaveEvent({ ...realBase, ...nextPatch }); } catch { /* offline — patch holds it */ }
       }
       return nextPatch;
@@ -3075,17 +3075,10 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'events' && (
               <>
-                {cloudEventsWaiting > 0 && (
-                  <button className="card" style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', marginBottom: 12, padding: '12px 15px', background: 'var(--steel-tint)' }}
-                    onClick={() => window.location.reload()}>
-                    <span className="f-name" style={{ color: 'var(--steel-soft)' }}>{cloudEventsWaiting} event{cloudEventsWaiting === 1 ? '' : 's'} synced from your account</span>
-                    <span className="v-meta">Refresh to load {cloudEventsWaiting === 1 ? 'it' : 'them'} onto this device.</span>
-                  </button>
-                )}
-                {REAL_EVENTS.length > 0 && (
+                {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0) && (
                   <>
-                    <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours — from the app</div>
-                    {REAL_EVENTS.map((e, i) => {
+                    <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours{hydratedEvents.length ? ' — synced to your account' : ' — from the app'}</div>
+                    {[...REAL_EVENTS, ...hydratedEvents.filter(he => !REAL_EVENTS.some(re => re.id === he.id))].map((e, i) => {
                       const isActive = e.id === eventId;
                       const d = daysUntil(e.date);
                       return (
@@ -3392,6 +3385,9 @@ export default function HostShellV2() {
                   ) : session ? (
                     <>
                       <p className="grounding" style={{ margin: '0 0 8px' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what Event Boss remembers sync to your account across devices.</p>
+                      {profile && profile.accountType === 'planner' && (
+                        <p className="grounding" style={{ margin: '0 0 8px', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
+                      )}
                       <div className="actions-row">
                         <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
                       </div>
