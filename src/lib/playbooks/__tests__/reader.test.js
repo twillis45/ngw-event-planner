@@ -144,8 +144,8 @@ describe('55D registration + canonical alias resolution', () => {
   test('aliases + free-text resolve through the taxonomy', () => {
     expect(getPlaybook('Birthday Party').type).toBe('Birthday');
     expect(getPlaybook('Graduation Party').type).toBe('Graduation');
-    expect(getPlaybook('Backyard BBQ').type).toBe('Get-Together');
-    expect(getPlaybook('cookout').type).toBe('Get-Together');
+    expect(getPlaybook('Backyard BBQ').type).toBe('The Cookout');
+    expect(getPlaybook('cookout').type).toBe('The Cookout');
     expect(getPlaybook('potluck').type).toBe('Get-Together');
   });
   test('non-host / unsupported types stay null (existing fallback intact)', () => {
@@ -590,7 +590,7 @@ describe('event-type wiring (create → event → reader)', () => {
     expect(getPlaybook('Game Day Party').type).toBe('Watch Party');
     expect(getPlaybook('Cocktail Party').type).toBe('Dinner Party');
     expect(getPlaybook('Brunch').type).toBe('Dinner Party');
-    expect(getPlaybook('Backyard BBQ').type).toBe('Get-Together');
+    expect(getPlaybook('Backyard BBQ').type).toBe('The Cookout');
   });
 });
 

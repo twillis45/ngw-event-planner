@@ -3,7 +3,9 @@
 
 import { buildDayBeforePlan } from '../dayBefore';
 
-const iso = (d) => d.toISOString().slice(0, 10);
+// LOCAL date parts — toISOString() is UTC and drifts a day ahead of local
+// between 8 PM and midnight Eastern, making the window tests time-of-day flaky.
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return iso(d); };
 
 const ev = (over = {}) => ({

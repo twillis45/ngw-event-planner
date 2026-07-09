@@ -46,7 +46,10 @@ test('7 · reply-pressure surfaces in App.js are gated on showsReplyTracking (so
   const app = fs.readFileSync(path.join(__dirname, '..', '..', 'App.js'), 'utf8');
   // the RSVP chase button, non-responder alert, HostHome nudge, and event-day
   // rsvp-pending alert all reference the shared gate
-  expect((app.match(/showsReplyTracking\(/g) || []).length).toBeGreaterThanOrEqual(5);
-  expect(app).toMatch(/pendingRsvp > 0 && showsReplyTracking\(event\)/);
+  expect((app.match(/showsReplyTracking\(/g) || []).length).toBeGreaterThanOrEqual(4);
+  // the event-day rsvp-pending alert moved into lib/dayAlerts with the
+  // computeDayAlerts extraction — the gate travels with it
+  const dayAlerts = fs.readFileSync(path.join(__dirname, '..', 'dayAlerts.js'), 'utf8');
+  expect(dayAlerts).toMatch(/pendingRsvp > 0 && showsReplyTracking\(event\)/);
   expect(app).toMatch(/awaiting > 0 && showsReplyTracking\(event\)/);
 });
