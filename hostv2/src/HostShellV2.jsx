@@ -36,6 +36,7 @@ import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState } from '@app/lib/vendorIntelligence';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
+import { isPlausibleCityText } from '@app/lib/cityText';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 
@@ -136,7 +137,10 @@ function useCountUp(target, dur = 650) {
 }
 
 
-const guestNumber = e => Number(e.guestEstimate) || Number(e.catererCount) || (e.guests || []).length || 0;
+// ENGINE precedence (guestCountResolved): the CONFIRMED count wins, then the
+// estimate, then the roster. (Audit fix: V2 wrote guestCount from the
+// confirm-count panel but never read it back — tiles kept the old estimate.)
+const guestNumber = e => Number(e.guestCount) || Number(e.guestEstimate) || (e.guests || []).length || 0;
 
 const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors: 'Vendors', date: 'Plan', start: 'Guests' };
 
@@ -255,7 +259,7 @@ export default function HostShellV2() {
     patchEvent({
       venue: v,
       venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : (event.venueKind || ''),
-      ...(pendingCity ? { venueCity: pendingCity } : {}),
+      ...(pendingCity && isPlausibleCityText(pendingCity) ? { venueCity: pendingCity } : {}),
     }, 'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
@@ -264,7 +268,9 @@ export default function HostShellV2() {
   const needsCity = () => event.venueKind === 'home' && !String(event.venueCity || '').trim();
   const saveCity = () => {
     const c = cityDraft.trim();
-    if (!/^\d{5}(-\d{4})?$/.test(c) && (c.length < 2 || !/^[a-zA-Z][a-zA-Z .,'-]*$/.test(c))) { toast('A town name or ZIP — “Annapolis”, “Silver Spring, MD”, “21401”.'); return; }
+    // CITY-LEAK-1's canonical gate — the same isPlausibleCityText every
+    // venueCity seam in production uses; V2's looser inline regex let junk by.
+    if (!isPlausibleCityText(c)) { toast('A town name or ZIP — “Annapolis”, “Silver Spring, MD”, “21401”.'); return; }
     patchEvent({ venueCity: c }, 'City noted — weather and the venue check now line up.');
     setCityDraft('');
   };
@@ -622,7 +628,7 @@ export default function HostShellV2() {
           'Does that change anything on your end — setup spot, cover, timing? Anything you need from us, say the word.', '', 'Thanks so much!'].join('\n'),
       };
     }
-    return guestRainMessage(event, null);
+    return guestRainMessage(event, wx || null);
   };
 
   // ── Watch the sky — Notification API opt-in, per event. Fires on CHANGES
@@ -1222,7 +1228,7 @@ export default function HostShellV2() {
           {[30, 50, 60, 75, 90, 120].map(n => (
             <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
           ))}
-          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Use the invite we wrote</button>
+          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
           {/* a confirmed-headcount event doesn't get pushed toward a roster —
               the mode chips below make the choice explicit instead */}
           {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
@@ -1445,7 +1451,7 @@ export default function HostShellV2() {
       name: effName ? effName + '’s ' + short : 'My ' + short,
       honoree: effName || '',
       type: effType, date: effDate || '', venue: parsed.venue || '', venueKind: parsed.venueKind || '',
-      venueCity: (/^\d{5}(-\d{4})?$/.test(fCity.trim()) || /^[a-zA-Z][a-zA-Z .,'-]{1,}$/.test(fCity.trim())) ? fCity.trim() : '',
+      venueCity: isPlausibleCityText(fCity.trim()) ? fCity.trim() : '',
       guestMode: 'count',
       guestEstimate: effGuests || '',
       totalBudget: '',
@@ -1485,7 +1491,7 @@ export default function HostShellV2() {
     : ['Reading your answers…', 'Sizing the crowd…', 'Pricing the spread…', 'Lining up your steps…'][Math.min(Math.max(revealStep - 1, 0), 3)];
   const customPlan = useMemo(() => {
     if (!revealed || !custom) return null;
-    try { return eventPlan(custom, null); } catch { return null; }
+    try { return eventPlan(custom, buildExperienceContext(custom, null, 1)); } catch { return null; }
   }, [revealed, custom]);
 
   // Run of show — the app's single source: playbook-derived (tracks the event's
@@ -2140,7 +2146,7 @@ export default function HostShellV2() {
               {outdoor && event.rainPlan && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>If it rains: {String(event.rainPlan).slice(0, 60)}{String(event.rainPlan).length > 60 ? '…' : ''}</span>
-                  <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
+                  <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, wx || null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
                   <button className="mini" onClick={() => patchEvent({ rainPlan: '' }, 'Rain backup cleared — worth re-naming one.')}>Change</button>
                 </div>
               )}
@@ -3004,7 +3010,7 @@ export default function HostShellV2() {
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Written for you — every audience</div>
                     <div className="actions-row">
-                      <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
+                      <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, wx || null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
                       <button className="mini" onClick={() => openDraft('Heads-up for your helpers', rainNoteFor('helpers'))}>Helper heads-up</button>
                       {reconfirmables.length > 0 && <button className="mini" onClick={() => openDraft('Weather note to vendors', rainNoteFor('vendors'))}>Vendor heads-up</button>}
                     </div>
