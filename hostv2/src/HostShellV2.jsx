@@ -49,7 +49,7 @@ import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
-import { attendanceAdjustment, summarizeHostIntel, clearAllMemory } from '@app/lib/hostIntel';
+import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -2689,6 +2689,39 @@ export default function HostShellV2() {
                       <p className="grounding" style={{ margin: '8px 0 0' }}>“Thanked” feeds the wrap-up meter up top; gifts are just for your memory — and the note below writes itself from what actually happened.</p>
                     </div></div>
                   </>
+                );
+              })()}
+              {/* The final number — teaches attendance learning (INTEL R1).
+                  Production contract verbatim: applyReconciliation entry
+                  {eventId, date, attendance:{planned, actual}} onto
+                  profile.hostIntelligence. Once per event; past events only. */}
+              {isPast && (() => {
+                const done = (() => { try { return isReconciled(profile, event.id); } catch { return false; } })();
+                const planned = guests || 0;
+                if (!planned) return null;
+                if (done) return (
+                  <p className="grounding" style={{ marginTop: 12 }}>Turnout recorded — the next plan sizes smarter for it.</p>
+                );
+                return (
+                  <div style={{ marginTop: 12 }}>
+                    <div className="shelf-label" style={{ marginBottom: 6 }}>The final number — how many actually came?</div>
+                    <div className="actions-row" style={{ alignItems: 'center' }}>
+                      <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 15 }}
+                        placeholder={String(planned)} aria-label="Actual attendance" id="v2-actual-attendance" />
+                      <span className="of">of {planned} planned</span>
+                      <button className="mini" onClick={() => {
+                        const el = document.getElementById('v2-actual-attendance');
+                        const actual = Number(el && el.value);
+                        if (!Number.isFinite(actual) || actual < 0) { toast('The real headcount — a number.'); return; }
+                        try {
+                          const entry = { eventId: event.id, date: (event.date && String(event.date).slice(0, 10)) || undefined, attendance: { planned, actual } };
+                          patchProfile({ hostIntelligence: applyReconciliation(profile && profile.hostIntelligence, entry) },
+                            'Recorded — Event Boss learns from the real number.');
+                        } catch { toast('Couldn’t record it.'); }
+                      }}>Record it</button>
+                    </div>
+                    <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>One number, once — future plans quietly adjust to how your crowds really show.</p>
+                  </div>
                 );
               })()}
               {/* Event memory capture — writes event.lessons via the canonical
