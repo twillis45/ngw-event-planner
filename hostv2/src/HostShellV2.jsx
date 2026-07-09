@@ -38,7 +38,7 @@ import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText } from '@app/lib/cityText';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
-import { quickAccountabilityForVendor } from '@app/lib/vendorAccountability/derive';
+import { quickAccountabilityForVendor, inferPromisesFromVendor } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
@@ -2082,10 +2082,13 @@ export default function HostShellV2() {
                   )}
                   {(() => {
                     if (!readiness) return null;
-                    // Family doctrine: home-hosted events have no vendors/paperwork
-                    // expectation — those pillars don't apply, so they never show.
-                    const fam = (EVENT_TAXONOMY[event.type] && EVENT_TAXONOMY[event.type].family) || '';
-                    const home = fam === 'home_hosted';
+                    // Host-leakage gate (production doctrine, matched exactly):
+                    // a host with no vendors on the roster gets no vendor/paperwork
+                    // expectation, full stop — DATA-driven (real vendors.length), not
+                    // just taxonomy family. A backyard Birthday (family 'host_driven',
+                    // not 'home_hosted') with zero vendors was leaking an empty "People:
+                    // No vendors" pillar before this — taxonomy alone under-covered it.
+                    const home = (event.vendors || []).length === 0;
                     const anyOverdue = (decisionBoard.open || []).some(r => r && r.status === 'overdue');
                     const callsPill = (decisionBoard.open || []).length
                       ? { status: anyOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
@@ -3952,9 +3955,49 @@ export default function HostShellV2() {
                           </div>
                         )}
                         <div className="vc-more" onClick={ev => ev.stopPropagation()}>
-                          {worry && <p className="vc-detail">{worry}</p>}
-                          {coiAct && <p className="vc-detail">{coiAct.title} {coiAct.consequence}</p>}
-                          {memLine && (worry || coiAct) && <p className="vc-detail">{memLine}</p>}
+                          {/* Every open promise is CLEARABLE — the same promiseEvidence
+                              override production's vendor detail uses ("Mark proof on
+                              file"), so the worry chip can actually resolve, not just
+                              describe. Honest: it's the host asserting they have it,
+                              not a fake upload. */}
+                          {(() => {
+                            let openPromises = [];
+                            try {
+                              openPromises = (inferPromisesFromVendor(v, event) || [])
+                                .filter(p => p.status !== 'completed' && p.status !== 'not_required' && p.status !== 'confirmed');
+                            } catch { openPromises = []; }
+                            if (!openPromises.length) return null;
+                            // cap the visible list — a fresh vendor can carry a whole
+                            // playbook's worth of unconfirmed promises; show what's
+                            // actionable now, not an audit of everything at once.
+                            const shown = openPromises.slice(0, 3);
+                            const more = openPromises.length - shown.length;
+                            return [...shown.map(p => (
+                              <div key={p.promiseKey} className="line" style={{ alignItems: 'center', padding: '4px 0' }}>
+                                <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + p.dueDate : ''}</span>
+                                <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
+                                  p.promiseText + ' — marked confirmed.')}>
+                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark confirmed'}
+                                </button>
+                              </div>
+                            )), more > 0 ? (
+                              <p key="more" className="vc-detail" style={{ opacity: .7 }}>+{more} more open — the vendor's own brief covers the rest.</p>
+                            ) : null];
+                          })()}
+                          {coiAct && (
+                            <div className="line" style={{ alignItems: 'flex-start', padding: '4px 0' }}>
+                              <span className="vc-detail" style={{ margin: 0 }}>{coiAct.title} {coiAct.consequence}</span>
+                              <button className="mini" style={{ flexShrink: 0 }} onClick={() => {
+                                // The same status ladder coiNextAction reads: requested → received → verified.
+                                let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
+                                if (coi && coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, 'COI marked received.');
+                                else if (coi && coi.status === 'received') writeVendor(v.id, { coiVerified: true }, 'COI verified.');
+                                else if (coi && coi.status === 'expired') writeVendor(v.id, { coiStatus: 'requested', coiVerified: false, coiExpiryDate: null }, 'Asked for a current COI.');
+                                else writeVendor(v.id, { coiStatus: 'requested' }, 'COI marked requested.');
+                              }}>{coiAct.ctaCopy || 'Mark COI requested'}</button>
+                            </div>
+                          )}
+                          {memLine && <p className="vc-detail">{memLine}</p>}
                           <div className="vc-actions">
                             <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
                             {Number(v.cost) > 0 && !v.balancePaid && (
