@@ -49,6 +49,7 @@ import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
+import { attendanceAdjustment } from '@app/lib/hostIntel';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -434,7 +435,11 @@ export default function HostShellV2() {
   }, [event.id, event.venueCity]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
-  const ctx = useMemo(() => { try { return buildExperienceContext(event, null, 1); } catch { return null; } }, [event]);
+  // ── The production profile, adopted read-only (ngw-profile — the SAME key
+  // the original app + Supabase studio_settings hydrate). Host name signs the
+  // drafts, hostIntelligence feeds attendance learning. V2 never writes it.
+  const profile = useMemo(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } }, []);
+  const ctx = useMemo(() => { try { return buildExperienceContext(event, profile, 1); } catch { return null; } }, [event, profile]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
@@ -1236,7 +1241,7 @@ export default function HostShellV2() {
           {[30, 50, 60, 75, 90, 120].map(n => (
             <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
           ))}
-          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
+          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
           {/* a confirmed-headcount event doesn't get pushed toward a roster —
               the mode chips below make the choice explicit instead */}
           {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
@@ -1474,7 +1479,7 @@ export default function HostShellV2() {
     // (buildAssembleRevealStages): identity, blockers, domains, risks.
     clearRevealTimers();
     let lineCount = 4;
-    try { lineCount = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), null, 1) || []).length, 5) + 1; } catch { /* default */ }
+    try { lineCount = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), profile, 1) || []).length, 5) + 1; } catch { /* default */ }
     if (REDUCE_MOTION) { setRevealStep(lineCount + 2); return; }
     setRevealStep(0);
     for (let i = 0; i < lineCount; i++) {
@@ -1487,14 +1492,14 @@ export default function HostShellV2() {
   // confidence .8 / isCompound false — compound events got a false single-
   // identity reveal). One ctx build serves identity, stages, and eventPlan.
   const revealIdentityFor = (ev) => {
-    try { return buildExperienceContext(ev, null, 1).eventIdentity; }
+    try { return buildExperienceContext(ev, profile, 1).eventIdentity; }
     catch { return { primaryEventType: (ev && ev.type) || 'Event', secondaryEventTypes: [], isCompound: false, complexity: 'standard', ceremonyComponents: [], participants: [], confidence: 0 }; }
   };
   // Production reveal stages for the created event — identity, blockers,
   // planning domains (with real $), risk preview.
   const revealStages = useMemo(() => {
     if (!revealed || !custom) return [];
-    try { return (buildAssembleRevealStages(custom, revealIdentityFor(custom), null, 1) || []).slice(0, 5); }
+    try { return (buildAssembleRevealStages(custom, revealIdentityFor(custom), profile, 1) || []).slice(0, 5); }
     catch { return []; }
   }, [revealed, custom]);
   const revealLineCount = revealStages.length + 1;
@@ -1502,7 +1507,7 @@ export default function HostShellV2() {
     : ['Reading your answers…', 'Sizing the crowd…', 'Pricing the spread…', 'Lining up your steps…'][Math.min(Math.max(revealStep - 1, 0), 3)];
   const customPlan = useMemo(() => {
     if (!revealed || !custom) return null;
-    try { return eventPlan(custom, buildExperienceContext(custom, null, 1)); } catch { return null; }
+    try { return eventPlan(custom, buildExperienceContext(custom, profile, 1)); } catch { return null; }
   }, [revealed, custom]);
 
   // Run of show — the app's single source: playbook-derived (tracks the event's
@@ -2087,7 +2092,7 @@ export default function HostShellV2() {
                     </button>
                   ))}
                   <div className="actions-row" style={{ marginTop: 8 }}>
-                    <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, null, {})); } catch { toast('Couldn’t draft it.'); } }}>Send everyone the details</button>
+                    <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, profile, {})); } catch { toast('Couldn’t draft it.'); } }}>Send everyone the details</button>
                   </div>
                 </div>
               )}
@@ -2198,7 +2203,7 @@ export default function HostShellV2() {
                       ? 'The moment that must happen: ' + (String(event.must_have_moment || event.meaning_why || event.honoree_story).slice(0, 52)) + (String(event.must_have_moment || event.meaning_why || event.honoree_story).length > 52 ? '…' : '')
                       : 'Make it yours — the story, the feeling, the one moment that must happen'}
                   </span>
-                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
+                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
                   <button className="mini" onClick={openMeaning}>{hasMeaning ? 'Edit' : 'Add it'}</button>
                 </div>
               )}
@@ -2496,7 +2501,7 @@ export default function HostShellV2() {
                     </div>
                   ))}
                   <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="cta soft" onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, null, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
+                    <button className="cta soft" onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
                       Send everyone their part
                     </button>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
@@ -2668,8 +2673,8 @@ export default function HostShellV2() {
                 </div>
               )}
               <div className="actions-row" style={{ marginTop: 14 }}>
-                <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, null))}>Draft the thank-you</button>
-                <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
+                <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>Draft the thank-you</button>
+                <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
                 <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
               </div>
             </section>
@@ -3055,7 +3060,7 @@ export default function HostShellV2() {
                   <p className="grounding" style={{ margin: '0 0 12px', fontVariantNumeric: 'tabular-nums' }}>{reconfirmedN} of {total} answered</p>
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
-                    const d = draftVendorReconfirm(event, v, null);
+                    const d = draftVendorReconfirm(event, v, profile);
                     const phone = String(v.dayOfPhone || v.phone || '').trim();
                     const arrival = String(v.arrivalTime || v.loadIn || v.arrival || '').trim();
                     return (
@@ -3101,7 +3106,7 @@ export default function HostShellV2() {
               const noteFor = (g) => {
                 const first = String(g.name || '').trim().split(/\s+/)[0] || 'friend';
                 let base = { body: '' };
-                try { base = draftThankYou(event, null); } catch { /* draft optional */ }
+                try { base = draftThankYou(event, profile); } catch { /* draft optional */ }
                 const gift = g.giftReceived ? ' And thank you for the gift — it meant a lot.' : '';
                 return (first + ' — ' + String(base.body || 'Thank you for celebrating with us.').replace(/^\s*(hi|hey|hello)[^,\n]*,?\s*/i, '')).trim() + gift;
               };
@@ -3426,8 +3431,8 @@ export default function HostShellV2() {
                   </>
                 )}
                 <div className="actions-row" style={{ margin: '0 0 6px' }}>
-                  <button className="mini" onClick={() => openDraft('Your shopping list', draftShoppingList(event, null))}>Copy the shopping list</button>
-                  <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
+                  <button className="mini" onClick={() => openDraft('Your shopping list', draftShoppingList(event, profile))}>Copy the shopping list</button>
+                  <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
                 </div>
                 {nudgeFor('food')}
                 <div className="actions-row" style={{ margin: '0 0 6px', display: 'none' }}>
@@ -3678,7 +3683,7 @@ export default function HostShellV2() {
                         </div>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                           <span className="tag vendors">{v.status || '—'}</span>
-                          <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, null)); }}>Draft note</button>
+                          <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile)); }}>Draft note</button>
                           {Number(v.cost) > 0 && !v.balancePaid && (
                             <button className="mini" onClick={(ev) => { ev.stopPropagation(); try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
                           )}
@@ -3875,9 +3880,9 @@ export default function HostShellV2() {
                   <div className="actions-row" style={{ margin: '0 0 8px' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
-                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, null, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
+                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
                     <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
                   </div>
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the
@@ -3904,6 +3909,14 @@ export default function HostShellV2() {
                     </div>
                   )}
                   {countingChips}
+                  {(() => { // INTEL R1 — the only hostIntelligence read-forward: gated + clamped by the engine
+                    try {
+                      const adj = attendanceAdjustment(profile, event);
+                      return adj && adj.applied && adj.because
+                        ? <p className="grounding" style={{ margin: '0 0 8px' }}>{adj.because}</p>
+                        : null;
+                    } catch { return null; }
+                  })()}
                   {nudgeFor('guests')}
                   {(() => {
                     // Grouped roster: when the host has sorted people into groups,
@@ -3948,7 +3961,7 @@ export default function HostShellV2() {
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
                               // PER-GUEST chase — the engine's nudge (with the real
                               // RSVP link) straight to THIS person's phone or inbox.
-                              const d = draftRsvpChase(event, null, { rsvpUrl: inviteLinkUrl() });
+                              const d = draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() });
                               const body = [d.subject, d.body].filter(Boolean).join('\n\n');
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               return (
@@ -3990,6 +4003,14 @@ export default function HostShellV2() {
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
                   {nudgeFor('guests') || nudgeFor('message')}
                   {countingChips}
+                  {(() => { // INTEL R1 — the only hostIntelligence read-forward: gated + clamped by the engine
+                    try {
+                      const adj = attendanceAdjustment(profile, event);
+                      return adj && adj.applied && adj.because
+                        ? <p className="grounding" style={{ margin: '0 0 8px' }}>{adj.because}</p>
+                        : null;
+                    } catch { return null; }
+                  })()}
                   {nudgeFor('guests')}
                   {quickAdd}
                   {csvBlock}
