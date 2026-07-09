@@ -15,7 +15,7 @@ import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEven
 import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
+import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -556,7 +556,9 @@ export default function HostShellV2() {
           due = d0.toISOString().slice(0, 10);
           try { dd = daysUntil(due); } catch { dd = null; }
         }
-        out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step' });
+        const dte = (() => { try { return daysUntil(event.date); } catch { return null; } })();
+        const status = m ? taskTimeStatus(parseInt(m[1], 10), dte) : 'unknown';
+        out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step', status });
       });
     } catch {}
     return out
@@ -1637,6 +1639,9 @@ export default function HostShellV2() {
   }, [liveDay, event, foodPlan, money.planned, money.committed, outdoor, guests]);
   // Who's helping — DERIVED people (ros owners + arriving confirmed vendors),
   // never a CRM. Caterer rows drop when the host is cooking (original rule).
+  // RULED (parity audit): dayHelpers is V2-only day-crew intelligence with no
+  // lib equivalent; graduation should extract it INTO a lib rather than the
+  // shell re-deriving. Kept here deliberately until then.
   const dayHelpers = useMemo(() => {
     // Computed any day (the print sheet needs it too); the live view is just
     // one of its readers.
@@ -1995,7 +2000,11 @@ export default function HostShellV2() {
                         // Calm ≠ blank: name the next DATED thing (human intelligence).
                         if (upNext.length) {
                           const u = upNext[0];
-                          return 'next: ' + u.label + (u.due ? ' · by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') + ' ↓';
+                          const when = u.status === 'overdue' ? ' · past due'
+                            : u.status === 'due' ? ' · due today'
+                            : u.status === 'due-soon' ? ' · due soon'
+                            : (u.due ? ' · by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
+                          return 'next: ' + u.label + when + ' ↓';
                         }
                         return 'Nothing waiting on you right now.';
                       }
