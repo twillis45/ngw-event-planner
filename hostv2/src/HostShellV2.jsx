@@ -41,7 +41,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 import { quickAccountabilityForVendor } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
-import { deriveEventContextNudges } from '@app/lib/eventContextNudges';
+import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy } from '@app/lib/budgetCopy';
 import { rosOverlapCount } from '@app/lib/rosOverlap';
@@ -815,6 +815,23 @@ export default function HostShellV2() {
 
   // Row-level landings inside the prototype — a route with a real destination
   // here opens the sheet on the exact row, instead of toasting.
+
+  // ONE cultural nudge per surface, where the decision happens (the lib's own
+  // timing doctrine) — never ambient on Plan. Dismiss uses the lib's field.
+  const nudgeFor = (surface) => {
+    let n = null; try { n = eventContextNudge(event, surface); } catch { n = null; }
+    if (!n) return null;
+    return (
+      <div className="later-row" style={{ marginTop: 12 }}>
+        <span className="t" style={{ color: 'var(--muted)', fontWeight: 550, fontSize: 12.5 }}>{n.text}</span>
+        <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{n.actionLabel || 'Open'}</button>}
+          <button className="mini" onClick={() => patchEvent({ contextNudges: { ...(event.contextNudges || {}), [n.id]: 'dismissed' } }, 'Noted.')}>Dismiss</button>
+        </span>
+      </div>
+    );
+  };
+
   const routeSheet = (route) => {
     if (!route || !route.tab) return false;
     if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null }); return true; }
@@ -1779,21 +1796,6 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
-              {/* Cultural nudges — source-bounded (explicit host text only),
-                  max 3, dismiss writes the lib's own suppression field. */}
-              {(() => {
-                let nd = null; try { nd = deriveEventContextNudges(event); } catch { nd = null; }
-                if (!nd || !(nd.nudges || []).length) return null;
-                return nd.nudges.slice(0, 3).map(n => (
-                  <div key={n.id} className="later-row" style={{ marginTop: 6 }}>
-                    <span className="t" style={{ color: 'var(--muted)', fontWeight: 550, fontSize: 13 }}>{n.text}</span>
-                    <span style={{ display: 'flex', gap: 6 }}>
-                      {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{n.actionLabel || 'Open'}</button>}
-                      <button className="mini" onClick={() => patchEvent({ contextNudges: { ...(event.contextNudges || {}), [n.id]: 'dismissed' } }, 'Noted.')}>Dismiss</button>
-                    </span>
-                  </div>
-                ));
-              })()}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (
@@ -2362,6 +2364,7 @@ export default function HostShellV2() {
                   </span>
                 </div>
               )}
+              {nudgeFor('program')}
               {dayAlerts.map(a => (
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
@@ -3347,6 +3350,9 @@ export default function HostShellV2() {
                   <button className="mini" onClick={() => openDraft('Your shopping list', draftShoppingList(event, null))}>Copy the shopping list</button>
                   <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
                 </div>
+                {nudgeFor('food')}
+                <div className="actions-row" style={{ margin: '0 0 6px', display: 'none' }}>
+                </div>
                 {/* Sourcing tier — the plan's real cook/order axis; switching
                     re-prices proteins and changes where each line says to buy. */}
                 {(foodPlan.sourcingTiers || []).length > 0 && (
@@ -3565,6 +3571,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })}
+                  {nudgeFor('vendors')}
                 </>
               ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
             })()}
@@ -3777,6 +3784,7 @@ export default function HostShellV2() {
                     </div>
                   )}
                   {countingChips}
+                  {nudgeFor('guests')}
                   {(() => {
                     // Grouped roster: when the host has sorted people into groups,
                     // the list reads by group; indexes stay the ORIGINAL array
@@ -3860,7 +3868,9 @@ export default function HostShellV2() {
                     <button className="mini" onClick={showQr}>Show the QR</button>
                   </div>
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
+                  {nudgeFor('guests') || nudgeFor('message')}
                   {countingChips}
+                  {nudgeFor('guests')}
                   {quickAdd}
                   {csvBlock}
                 </>
