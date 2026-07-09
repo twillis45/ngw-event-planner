@@ -41,6 +41,7 @@ import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices'
 import { quickAccountabilityForVendor } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
+import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy } from '@app/lib/budgetCopy';
@@ -3926,6 +3927,8 @@ export default function HostShellV2() {
               // an overage (safe cuts / tradeoffs / protected), never invented $.
               let recovery = null;
               try { recovery = buildBudgetRecoveryPlan(event, foodPP.priceFactor); } catch { recovery = null; }
+              let swapPick = null;
+              try { swapPick = recovery && recovery.status === 'recovery_available' ? pickDroppableBudgetRow(event, foodPP.priceFactor) : null; } catch { swapPick = null; }
               return (
                 <>
                   <div className="line" style={{ padding: '2px 0 10px' }}>
@@ -3966,6 +3969,11 @@ export default function HostShellV2() {
                           {s.amount ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.amount)}</span> : null}
                         </div>
                       ))}
+                      {swapPick && swapPick.row && (
+                        <p className="grounding" style={{ margin: '6px 0 0', fontWeight: 650, color: 'var(--ink-soft)' }}>
+                          The one-line fix: drop “{swapPick.row.category || swapPick.row.label}” (~{fmt(swapPick.drop)}) and you’re back under.
+                        </p>
+                      )}
                       {(recovery.protectedItems || []).length > 0 && (
                         <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Protected — not on the cut list: {(recovery.protectedItems || []).slice(0, 3).map(x => x.label || x).join(', ')}.</p>
                       )}
