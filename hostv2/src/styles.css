@@ -585,6 +585,25 @@ button{font-family:inherit}
 .fstatus .fs-l{font-size:10.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
 .fstatus .fs-v{font-size:12.5px; font-weight:650; margin-top:2px}
 
+
+/* ── Quiet index — below-fold wayfinding. Every secondary surface is ONE
+   featherweight row: uniform metrics, hairline separators, zero card
+   chrome. The eye scans a column of labels + right-aligned status; nothing
+   competes with the action cards above it. ── */
+.qidx{margin-top:28px}
+.qidx-row{display:flex; align-items:center; gap:12px; width:100%; padding:13px 2px;
+  background:none; border:none; border-top:1px solid var(--line-soft);
+  font:inherit; color:inherit; cursor:pointer; text-align:left}
+.qidx-row:last-child{border-bottom:1px solid var(--line-soft)}
+.qidx-row:hover .qidx-l{color:var(--ink)}
+.qidx-l{font-size:13.5px; font-weight:650; color:var(--ink-soft); white-space:nowrap;
+  transition:color var(--ms-press) var(--ease-out)}
+.qidx-s{flex:1; min-width:0; font-size:12.5px; font-weight:500; color:var(--muted);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right;
+  font-variant-numeric:tabular-nums}
+.qidx-s.attn{color:var(--warn); font-weight:600}
+.qidx-row .chev{position:static; color:var(--faint); flex-shrink:0}
+
 /* ── Vendors: modern card system (host directive 2026-07-08 late) ──
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */

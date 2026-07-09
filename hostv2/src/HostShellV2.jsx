@@ -222,7 +222,6 @@ export default function HostShellV2() {
   });
   const [toastMsg, setToastMsg] = useState(null);
   const [handledOpen, setHandledOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false); // below-fold status links, collapsed by default (mobile density)
   const toastTimer = useRef(null);
   const appRef = useRef(null);
 
@@ -2383,76 +2382,47 @@ export default function HostShellV2() {
                 </>
               )}
 
-              {/* QUIET / COLLAPSE (host directive): none of this is something
-                  the host must act on right now — it's status, not action.
-                  One toggle instead of a standing stack of up to 5 rows. */}
+              {/* QUIET INDEX (Fable redo): the first pass hid these rows in a
+                  "More" junk drawer — but they're the ONLY route to their
+                  sheets, and hiding wayfinding costs more than it saves. The
+                  real density problem was five different component types with
+                  five different visual weights. One featherweight row per
+                  surface, uniform metrics, importance-ordered: attention
+                  first, meaning last. */}
               {(() => {
-                const hasRollup = rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0);
-                const items = [
+                const trunc = (s, n) => { const t = String(s || ''); return t.length > n ? t.slice(0, n) + '…' : t; };
+                const meaningText = String(event.must_have_moment || event.meaning_why || event.honoree_story || '');
+                const rows = [
+                  rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0)
+                    ? { key: 'people', label: 'People you’re hiring', sub: rollup.counts.ready + ' of ' + rollup.counts.total + ' ready', attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
                   foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount
                     ? { key: 'food', label: 'The spread & shopping', sub: foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought', go: () => setSheet({ kind: 'food' }) } : null,
                   crab.relevant
                     ? { key: 'crab', label: 'The crab order', sub: crab.lines && crab.lines.length ? (crab.mixedSummary || ('about ' + crab.totalEstimatedCrabs + ' crabs')) : 'not started', go: () => setSheet({ kind: 'crabs' }) } : null,
                   ((capacity && (capacity.items || []).length > 0) || helpers.length > 0)
-                    ? { key: 'space', label: 'Space, seats & helpers', sub: helperPeople.length ? helperPeople.length + ' helping' : null, go: () => setSheet({ kind: 'space' }) } : null,
+                    ? { key: 'space', label: 'Space, seats & helpers', sub: helperPeople.length ? helperPeople.length + ' helping' : 'sized to your count', go: () => setSheet({ kind: 'space' }) } : null,
                   risks && risks.count > 0
                     ? { key: 'risks', label: 'What could go wrong', sub: risks.count + ' to know about', go: () => setSheet({ kind: 'risks' }) } : null,
+                  !isPast
+                    ? { key: 'meaning', label: hasMeaning ? 'The moment that must happen' : 'Make it yours', sub: hasMeaning ? trunc(meaningText, 36) : 'the story, the feeling', go: openMeaning } : null,
                 ].filter(Boolean);
-                if (!items.length && !hasRollup) return null;
-                if (!moreOpen) {
-                  return (
-                    <button className="fold-btn" style={{ marginTop: 22 }} onClick={() => setMoreOpen(true)}>
-                      More — {items.length + (hasRollup ? 1 : 0)} thing{(items.length + (hasRollup ? 1 : 0)) === 1 ? '' : 's'} not urgent
-                      <span className="chev">›</span>
-                    </button>
-                  );
-                }
+                if (!rows.length) return null;
                 return (
-                  <>
-                    <div className="shelf-label" style={{ margin: '22px 0 6px' }}>More — not urgent
-                      <button className="mini" style={{ marginLeft: 8 }} onClick={() => setMoreOpen(false)}>hide</button>
-                    </div>
-                    {items.map(it => (
-                      <button key={it.key} className="fold-btn" style={{ marginTop: 0 }} onClick={it.go}>
-                        {it.label}{it.sub ? ' — ' + it.sub : ''}
+                  <div className="qidx">
+                    {rows.map(r => (
+                      <button key={r.key} className="qidx-row" onClick={r.go}>
+                        <span className="qidx-l">{r.label}</span>
+                        <span className={'qidx-s' + (r.attn ? ' attn' : '')}>{r.sub}</span>
                         <span className="chev">›</span>
                       </button>
                     ))}
-                    {hasRollup && (
-                      <div className="day-node" style={{ marginTop: 10 }}>
-                        <div className="eyebrow">People you’re hiring · {rollup.counts.ready} of {rollup.counts.total} ready</div>
-                        <h3>{rollup.label}</h3>
-                        {rollup.nextAction && <p>{rollup.nextAction}</p>}
-                        {rollup.ctaLabel && (
-                          <button className="cta" onClick={() => { if (!routeSheet(rollup.target)) toast('In the app this opens: ' + (describeRoute(rollup.target) || 'Vendors')); }}>
-                            {rollup.ctaLabel}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </>
+                  </div>
                 );
               })()}
-
-              {/* LOWEST priority — optional, emotional, no urgency: last on
-                  the page, after everything actionable or dated. */}
-              {!isPast && (
-                <div className="later-row" style={{ marginTop: 26 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
-                    {hasMeaning
-                      ? 'The moment that must happen: ' + (String(event.must_have_moment || event.meaning_why || event.honoree_story).slice(0, 52)) + (String(event.must_have_moment || event.meaning_why || event.honoree_story).length > 52 ? '…' : '')
-                      : 'Make it yours — the story, the feeling, the one moment that must happen'}
-                  </span>
-                  {hasToastMaterial(event) && <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Toast</button>}
-                  <button className="mini" onClick={openMeaning}>{hasMeaning ? 'Edit' : 'Add it'}</button>
-                </div>
-              )}
               {lastLesson && (
-                <div className="later-row" style={{ marginTop: 10 }}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
-                    From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
-                  </span>
-                </div>
+                <p className="grounding" style={{ margin: '14px 0 0' }}>
+                  From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
+                </p>
               )}
               {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
                 <div className="later-row" style={{ marginTop: 18 }}>
@@ -3040,7 +3010,7 @@ export default function HostShellV2() {
                     setSheet(null);
                   }}>Save it</button>
                   {hasToastMaterial({ ...event, ...meaningDraft }) && (
-                    <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast({ ...event, ...meaningDraft }, null)); } catch { toast('Couldn’t draft it.'); } }}>
+                    <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast({ ...event, ...meaningDraft }, profile)); } catch { toast('Couldn’t draft it.'); } }}>
                       Draft the toast
                     </button>
                   )}
