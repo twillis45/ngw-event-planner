@@ -60,10 +60,8 @@ import { isDormant, upcomingRail } from './lib/disclosure';
 import { labelFor, labelsOn } from './lib/presentationLabels'; // Sprint 57C Phase 2: vocabulary layer (host labels; pi.labels flag, default OFF)
 // Sprint 57H: Because Layer — exposes existing reasoning on a Planning Health row
 // (pi.because flag, presentation-only; `because` strings are built from real factors).
-import { becauseActive } from './lib/becauseLayer';
 // Sprint 57K: Value-Level Confidence — Pattern 014 certainty attached to a value
 // (pi.valueConfidence flag, presentation-only; classified by provenance).
-import { valueConfidence, valueConfidenceActive, valueWord } from './lib/valueConfidence';
 // Stage C (single-source task convergence): readiness counts engine-satisfied work
 // even when the host never ticks a box. effectiveDone = task.done || taskSatisfied.
 import { effectiveDone, taskSatisfied } from './lib/taskEngine';
@@ -2555,26 +2553,13 @@ function HealthRow({ h, isFirst, onTabChange, event, grammar }) {
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
         <div style={{ fontSize: type.size.base, fontWeight: 600, color: P.textPrimary }}>{dispLabel}</div>
         <div style={{ fontSize: type.size.sm, color: P.textSecondary }}>
-          {/* Sprint 57K: Value-Level Confidence — Pattern 014 word travels WITH the
-              value (small steel pill before the number), only when pi.valueConfidence
-              is on AND this row's value provenance is classifiable. */}
-          {valueConfidenceActive() && h.valueLevel && (
-            <span style={{
-              display: 'inline-block', fontSize: type.size["2xs"], fontWeight: 700, letterSpacing: '0.06em',
-              color: P.textSecondary, border: `1px solid ${P.borderSubtle}`, borderRadius: 4,
-              padding: '0px 4px', marginRight: 6, verticalAlign: '1px', textTransform: 'uppercase',
-            }}>{valueWord(h.valueLevel, event)}</span>
-          )}
+          {/* POP-1D: the value-level pill and the "Because" line below were both
+              inert — h.valueLevel and h.because are never set on any health row
+              (stat() and the inline builders don't produce them). Removed the
+              two dead branches + their dead modules (valueConfidence, becauseLayer);
+              confidenceFor above is the one live, canonical explainability path. */}
           {h.note}
         </div>
-        {/* Sprint 57H: existing reasoning, exposed. Quiet steel line, one notch below
-            the note (tier-3 whisper); renders only when pi.because is on AND this row
-            carries a traceable `because`. */}
-        {becauseActive() && h.because && (
-          <div style={{ fontSize: type.size.xs, color: P.textTertiary, marginTop: 1 }}>
-            <span style={{ fontWeight: 700, letterSpacing: '0.04em' }}>Because</span> {h.because}
-          </div>
-        )}
       </div>
       <span style={{ fontSize: type.size.xs, fontWeight: 600, color: dotC, letterSpacing: '0.10em', flexShrink: 0 }}>{dispStatus}</span>
       {clickable && <span aria-hidden style={{ color: P.textTertiary, fontSize: type.size.lg, flexShrink: 0, marginLeft: 2 }}>›</span>}
