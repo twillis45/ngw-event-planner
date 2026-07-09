@@ -748,7 +748,7 @@ export function topPlaybookDecision(event, asOf) {
 
   if (blocksCount) {
     const pendingMsg = gc.reason === 'pending-rsvps'
-      ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the locked count.`
+      ? `${gc.pending} guest${gc.pending === 1 ? '' : 's'} still pending — chase the maybes, then buy to the confirmed count.`
       : 'Add a final guest count so every quantity is sized before you shop.';
     return {
       id: `pb-decision-${event.id}-guestCount`,

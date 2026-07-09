@@ -187,6 +187,7 @@ export default function HostShellV2() {
   // only as corrections layered over the parse (host-shell logic, not a form).
   const [smartText, setSmartText] = useState('');
   const [fName, setFName] = useState('');
+  const [fCity, setFCity] = useState(''); // town for weather + maps, asked at creation
   const [fType, setFType] = useState(null);
   const [fDate, setFDate] = useState('');
   const [fGuests, setFGuests] = useState(null);
@@ -1214,15 +1215,24 @@ export default function HostShellV2() {
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
   const renderEditor = (a) => {
     const kind = wiredKind(a);
-    if (kind === 'guests') return (
-      <div className="chips hc-row">
-        {[30, 50, 60, 75, 90, 120].map(n => (
-          <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
-        ))}
-        <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Use the invite we wrote</button>
-        <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>
-      </div>
-    );
+    if (kind === 'guests') {
+      const counted = event.guestMode === 'count';
+      return (
+        <div className="chips hc-row">
+          {[30, 50, 60, 75, 90, 120].map(n => (
+            <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
+          ))}
+          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, null))}>Use the invite we wrote</button>
+          {/* a confirmed-headcount event doesn't get pushed toward a roster —
+              the mode chips below make the choice explicit instead */}
+          {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
+          <button className="chip" aria-pressed={counted}
+            onClick={() => patchEvent({ guestMode: 'count' }, 'Headcount event — food and seats size to the number; replies optional.')}>By headcount</button>
+          <button className="chip" aria-pressed={!counted && event.guestMode === 'list'}
+            onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>By guest list</button>
+        </div>
+      );
+    }
     if (kind === 'rain') return rainEditorBlock();
     if (kind === 'diet') {
       // The ENGINE's dietary model: dietCounts adds a real priced veg main and
@@ -1260,6 +1270,16 @@ export default function HostShellV2() {
     if (kind === 'lockcount') {
       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
       const planned = guests || 0;
+      const confirmedAt = event.guestMode === 'count' ? Number(event.guestCount) || 0 : 0;
+      if (confirmedAt > 0) {
+        return (
+          <div className="chips hc-row">
+            <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>Confirmed at {confirmedAt}</span>
+            <button className="chip" onClick={() => patchEvent({ guestCount: '' }, 'Count reopened — settle it when the maybes answer.')}>Reopen the count</button>
+            <button className="chip" onClick={() => { patchEvent({ guestMode: 'list' }, 'Switched to a guest list — the roster drives the count now.'); setSheet({ kind: 'guests' }); }}>Switch to a guest list</button>
+          </div>
+        );
+      }
       return (
         <div className="chips hc-row">
           {yes > 0 && (
@@ -1425,6 +1445,7 @@ export default function HostShellV2() {
       name: effName ? effName + '’s ' + short : 'My ' + short,
       honoree: effName || '',
       type: effType, date: effDate || '', venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      venueCity: (/^\d{5}(-\d{4})?$/.test(fCity.trim()) || /^[a-zA-Z][a-zA-Z .,'-]{1,}$/.test(fCity.trim())) ? fCity.trim() : '',
       guestMode: 'count',
       guestEstimate: effGuests || '',
       totalBudget: '',
@@ -1631,6 +1652,9 @@ export default function HostShellV2() {
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
                         {parsed.venue ? <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{parsed.venue}</span> : null}
+                        <button className="chip" aria-pressed={!!fCity.trim()} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
+                          {fCity.trim() || 'Which town?'}
+                        </button>
                       </div>
                       {(createEdit === 'type' || !effType) && (
                         <div className="typebrowser" style={{ marginTop: 12 }}>
@@ -1681,6 +1705,13 @@ export default function HostShellV2() {
                       {createEdit === 'name' && (
                         <div className="hc-row">
                           <input className="field" placeholder="Who’s it for?" value={effName} onChange={e => setFName(e.target.value)} aria-label="Who is it for" />
+                        </div>
+                      )}
+                      {createEdit === 'city' && (
+                        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
+                          <input className="field" placeholder="Annapolis · Silver Spring, MD · 21401"
+                            value={fCity} onChange={e => setFCity(e.target.value)} aria-label="Town or ZIP" />
+                          <p className="grounding" style={{ margin: 0 }}>The town is how weather and maps find a backyard — it rides into the plan from day one.</p>
                         </div>
                       )}
                       {effType && (
