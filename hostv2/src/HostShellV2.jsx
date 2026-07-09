@@ -541,6 +541,7 @@ export default function HostShellV2() {
   }, []);
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
+  const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // MEANING CAPTURE — the raw fields the engines already read (single truth:
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
@@ -2644,6 +2645,7 @@ export default function HostShellV2() {
               <div className="actions-row" style={{ marginTop: 14 }}>
                 <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, null))}>Draft the thank-you</button>
                 <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, null)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
+                <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
               </div>
             </section>
           )}
@@ -2656,7 +2658,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-label="Details">
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : 'Guest list'}</strong>
+              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? 'Scan to RSVP' : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -3065,6 +3067,47 @@ export default function HostShellV2() {
                 </>
               );
             })()}
+            {sheet.kind === 'thanks' && (() => {
+              const yes = (event.guests || []).map((g, i) => ({ g, i })).filter(x => x.g && x.g.rsvp === 'Yes');
+              const sent = yes.filter(x => x.g.thankYouSent).length;
+              const queue = yes.filter(x => !x.g.thankYouSent);
+              const cur = queue[0] || null;
+              const pct = yes.length ? Math.round((sent / yes.length) * 100) : 0;
+              const noteFor = (g) => {
+                const first = String(g.name || '').trim().split(/\s+/)[0] || 'friend';
+                let base = { body: '' };
+                try { base = draftThankYou(event, null); } catch { /* draft optional */ }
+                const gift = g.giftReceived ? ' And thank you for the gift — it meant a lot.' : '';
+                return (first + ' — ' + String(base.body || 'Thank you for celebrating with us.').replace(/^\s*(hi|hey|hello)[^,\n]*,?\s*/i, '')).trim() + gift;
+              };
+              return (
+                <>
+                  <div className="bar" aria-hidden style={{ marginBottom: 4 }}><span style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <p className="grounding" style={{ margin: '0 0 12px', fontVariantNumeric: 'tabular-nums' }}>{sent} of {yes.length} thanked — one at a time, each note already knows who came and what they brought.</p>
+                  {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
+                  {yes.length > 0 && !cur && <p className="grounding" style={{ color: 'var(--ok)', fontWeight: 600 }}>That’s everyone — every yes has a thank-you.</p>}
+                  {cur && (() => {
+                    const { g, i } = cur;
+                    const body = noteFor(g);
+                    const phone = String(g.phone || '').trim();
+                    return (
+                      <div className="brow" style={{ padding: '14px 16px' }}>
+                        <div className="f-name" style={{ fontSize: 16 }}>{g.name}</div>
+                        {g.giftReceived && <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--warn)' }}>gift noted</p>}
+                        <p className="grounding" style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{body}</p>
+                        <div className="actions-row" style={{ marginTop: 10 }}>
+                          {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
+                          <button className="mini" onClick={() => { try { navigator.clipboard.writeText(body); toast('Copied.'); } catch { /* nothing */ } }}>Copy</button>
+                          <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : 'That was the last one — every yes is thanked.')}>Sent — next</button>
+                          <button className="mini" onClick={() => writeGuest(i, { thankYouSent: true }, 'Skipped — marked handled.')}>Skip</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {queue.length > 1 && <p className="grounding" style={{ opacity: .7 }}>Up next: {queue.slice(1, 4).map(x => String(x.g.name || '').split(' ')[0]).join(', ')}{queue.length > 4 ? '…' : ''}</p>}
+                </>
+              );
+            })()}
             {sheet.kind === 'qr' && (
               <>
                 <p className="grounding" style={{ margin: '2px 0 12px' }}>
@@ -3370,12 +3413,23 @@ export default function HostShellV2() {
                   </>
                 )}
                 {(() => {
-                  const items = (foodPlan.list || []).filter(it => it && !it.skipped);
+                  const allItems = (foodPlan.list || []).filter(it => it && !it.skipped);
+                  // ── Shopping-run mode: "I'm at X" — the list collapses to THIS
+                  // store's unbought lines with a walk-in total. Store truth =
+                  // the host's pick (foodWhere) first, else the plan's buyAt /
+                  // first where option. Session-only; never an event write.
+                  const storeOf = (it) => (event.foodWhere || {})[it.id] || (Array.isArray(it.where) && it.where[0]) || null; // buyAt is WHEN, never a store
+                  const stores = [...new Set(allItems.map(storeOf).filter(Boolean))];
+                  const inStore = (it) => !shopStore || storeOf(it) === shopStore || (Array.isArray(it.where) && it.where.includes(shopStore));
+                  const items = shopStore ? allItems.filter(inStore) : allItems;
+                  const runLeft = shopStore ? items.filter(it => !(event.foodGot || {})[it.id]) : [];
+                  const runLo = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.low) || 0), 0);
+                  const runHi = runLeft.reduce((t, it) => t + (Number(it.locked != null ? it.locked : it.high) || 0), 0);
                   const groups = (foodPlan.groups && foodPlan.groups.length ? foodPlan.groups : [...new Set(items.map(it => it.group || 'Other'))]);
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
-                  return groups.map(g => {
+                  const groupRows = groups.map(g => {
                     const gItems = items.filter(it => (it.group || 'Other') === g);
                     if (!gItems.length) return null;
                     const gBought = gItems.filter(it => (event.foodGot || {})[it.id]).length;
@@ -3385,7 +3439,7 @@ export default function HostShellV2() {
                     // Accordion (never-dense): a group opens when tapped, when a
                     // deep-link targets one of its lines, or while tuning one.
                     const focusHere = gItems.some(it => it.id === sheet.focus || it.id === foodTune);
-                    const isOpen = !!foodGroupsOpen[g] || focusHere;
+                    const isOpen = !!foodGroupsOpen[g] || focusHere || !!shopStore; // run mode opens the shelves
                     return (
                     <div key={g}>
                       <button className="fold-btn" style={{ marginTop: 10, ...(gBought === gItems.length ? { color: 'var(--ok)' } : {}) }} onClick={() => setFoodGroupsOpen(m => ({ ...m, [g]: !isOpen }))}>
@@ -3524,6 +3578,28 @@ export default function HostShellV2() {
                     </div>
                     );
                   });
+                  return (
+                    <>
+                      {stores.length > 1 && (
+                        <div className="actions-row" style={{ margin: '2px 0 10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span className="of">shopping at:</span>
+                          {stores.slice(0, 5).map(s => (
+                            <button key={s} className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} aria-pressed={shopStore === s}
+                              onClick={() => setShopStore(shopStore === s ? null : s)}>{shopStore === s ? 'At ' + s : s}</button>
+                          ))}
+                          {shopStore && <button className="chip" style={{ padding: '5px 11px', fontSize: 11.5 }} onClick={() => setShopStore(null)}>Everything</button>}
+                        </div>
+                      )}
+                      {shopStore && (
+                        <p className="grounding" style={{ margin: '0 0 10px' }}>
+                          {runLeft.length === 0
+                            ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
+                            : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Checking off asks the real price.'}
+                        </p>
+                      )}
+                      {groupRows}
+                    </>
+                  );
                 })()}
                 {(foodPlan.specialDiets || []).length > 0 && (
                   <p className="grounding" style={{ marginTop: 10 }}>
