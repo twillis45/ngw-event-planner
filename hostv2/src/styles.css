@@ -555,6 +555,52 @@ button{font-family:inherit}
 .inv2-more.open{ opacity:1; max-height:1400px; }
 @media (prefers-reduced-motion: reduce){ .inv2-more{ transition:none; } }
 
+
+/* ── Vendors: modern card system (host directive 2026-07-08 late) ──
+   Monogram cards, semantic status pills, alert CHIPS not paragraphs,
+   workstream strip, tap-to-expand with a real motion curve. */
+.wstrip{display:flex; gap:8px; overflow-x:auto; padding:2px 0 12px; scrollbar-width:none}
+.wstrip::-webkit-scrollbar{display:none}
+.wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
+  border:1px solid var(--line-soft); background:var(--bg-band); border-radius:14px;
+  padding:9px 14px; font:inherit; cursor:pointer; color:var(--ink);
+  transition:border-color var(--ms-press) var(--ease-out)}
+.wchip:hover{border-color:var(--steel)}
+.wchip .wl{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.wchip .wn{font-size:13.5px; font-weight:750; font-variant-numeric:tabular-nums}
+.wchip.done .wn{color:var(--ok)}
+.wchip.attn{border-color:var(--warn-tint); background:var(--warn-tint)}
+.wchip.attn .wn{color:var(--warn)}
+.conflictbar{width:100%; text-align:left; font:inherit; border:none; cursor:pointer;
+  background:var(--warn-tint); color:var(--warn); border-radius:14px; padding:11px 14px;
+  font-size:12.5px; font-weight:650; margin:0 0 12px;
+  display:flex; justify-content:space-between; align-items:center; gap:10px}
+.vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:18px;
+  padding:14px 16px; margin-bottom:10px; cursor:pointer;
+  transition:border-color var(--ms-ambient) var(--ease-standard), box-shadow var(--ms-ambient) var(--ease-standard)}
+.vcard.open{border-color:var(--steel-tint); box-shadow:0 10px 30px -18px rgba(0,0,0,.3)}
+.vc-head{display:flex; align-items:center; gap:12px}
+.vc-avatar{width:40px; height:40px; border-radius:12px; flex-shrink:0;
+  background:var(--steel-tint); color:var(--steel-soft);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:800; letter-spacing:-.02em}
+.vc-id{min-width:0; flex:1}
+.vc-name{font-size:14.5px; font-weight:750; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.vc-cat{font-size:11.5px; color:var(--muted); margin-top:1px}
+.vc-pill{flex-shrink:0; font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  padding:4px 10px; border-radius:999px; color:var(--muted); background:var(--bg-band)}
+.vc-pill.good{color:var(--ok); background:var(--ok-tint)}
+.vc-pill.mid{color:var(--steel-soft); background:var(--steel-tint)}
+.vc-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
+.vc-chip{font-size:10.5px; font-weight:700; padding:3.5px 10px; border-radius:999px;
+  color:var(--warn); background:var(--warn-tint)}
+.vc-chip.quiet{color:var(--steel-soft); background:var(--steel-tint)}
+.vc-more{max-height:0; opacity:0; overflow:hidden;
+  transition:max-height .38s var(--ease-standard), opacity .3s var(--ease-standard)}
+.vcard.open .vc-more{max-height:340px; opacity:1}
+.vc-detail{font-size:12.5px; color:var(--muted); line-height:1.5; margin:10px 0 0}
+.vc-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+
 /* ── T-72h reconfirm sweep: a live-moment banner + staged sweep sheet ── */
 .sweepcard{
   position:relative; margin:22px 0 0; border-radius:20px; padding:15px 18px 15px 21px;

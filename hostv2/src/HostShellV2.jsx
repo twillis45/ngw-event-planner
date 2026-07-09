@@ -1276,7 +1276,7 @@ export default function HostShellV2() {
     if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
-    if (/final guest count|confirm .*guest count/i.test(a.title || '')) return 'lockcount';
+    if (/final (guest|catering) count|confirm .*(guest|catering) count/i.test(a.title || '')) return 'lockcount';
     if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
     if (a.domain === 'start') return 'guests';
     return null;
@@ -3847,25 +3847,32 @@ export default function HostShellV2() {
               try { conflicts = deriveVendorPromiseConflicts(event) || []; } catch { conflicts = []; }
               const streams = (plan && plan.workstreams) || [];
               const showStreams = streams.length > 1 || streams.some(w => w.status !== 'ready' && w.status !== 'not_started');
+              const GOOD = ['Confirmed', 'Paid', 'Deposit Paid', 'Contracted'];
+              const chipify = (s) => String(s || '').split(' — ')[0].split('.')[0].slice(0, 42);
               return (event.vendors || []).length ? (
                 <>
-                  {showStreams && streams.map(w => (
-                    <button key={w.id} className="frow" style={{ padding: '8px 2px' }}
-                      onClick={() => { if (!(w.deepLink && routeSheet(w.deepLink))) setSheet({ kind: 'vendors' }); }}>
-                      <span className="f-main">
-                        <span className="f-name" style={{ fontSize: 13.5 }}>{w.label}
-                          {w.blocked ? <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>blocked</span> : null}
-                        </span>
-                        <span className="v-meta">
-                          {(w.readiness && w.readiness.total) ? w.readiness.booked + ' of ' + w.readiness.total + ' booked' : ''}
-                          {w.nextDecision ? (w.readiness && w.readiness.total ? ' · ' : '') + w.nextDecision : ''}
-                        </span>
-                      </span>
-                      <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  {showStreams && (
+                    <div className="wstrip">
+                      {streams.map(w => {
+                        const done = w.readiness && w.readiness.total > 0 && w.readiness.booked >= w.readiness.total;
+                        const attn = w.blocked || (w.readiness && w.readiness.needsAttention > 0);
+                        return (
+                          <button key={w.id} className={'wchip' + (done ? ' done' : attn ? ' attn' : '')}
+                            onClick={() => { if (!(w.deepLink && routeSheet(w.deepLink))) setSheet({ kind: 'vendors' }); }}>
+                            <span className="wl">{w.label}</span>
+                            <span className="wn">{w.readiness ? w.readiness.booked + ' of ' + w.readiness.total : '—'}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {conflicts.length > 0 && (
+                    <button className="conflictbar" onClick={() => setSheet(s => ({ ...s, conflictsOpen: !s.conflictsOpen }))}>
+                      <span>{conflicts.length} thing{conflicts.length === 1 ? '' : 's'} between vendors need{conflicts.length === 1 ? 's' : ''} a look</span>
+                      <span style={{ transform: sheet.conflictsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 200ms var(--ease-out)' }}>›</span>
                     </button>
-                  ))}
-                  {showStreams && <div style={{ height: 8 }} />}
-                  {conflicts.slice(0, 3).map((c, i) => (
+                  )}
+                  {sheet.conflictsOpen && conflicts.slice(0, 4).map((c, i) => (
                     <div key={c.id || i} className="brow" style={{ borderColor: 'var(--warn-tint)' }}>
                       <p className="grounding" style={{ margin: 0, color: 'var(--warn)', fontWeight: 600 }}>{c.title}</p>
                       <p className="grounding" style={{ margin: '2px 0 0' }}>{c.explanation}{c.recommendedAction ? ' ' + c.recommendedAction : ''}</p>
@@ -3879,49 +3886,51 @@ export default function HostShellV2() {
                     try { coiAct = coiNextAction(v, event, v.name || 'this vendor'); } catch { coiAct = null; }
                     let memLine = '';
                     try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
-                    // ONE line, highest stakes first — never a stack of three
-                    const statusLine = worry || (coiAct && coiAct.title) || memLine || null;
-                    const statusTone = worry || coiAct ? 'var(--warn)' : 'var(--steel-soft)';
                     const isOpen = sheet.focus === v.id;
+                    const good = GOOD.includes(v.status);
                     return (
-                      <div key={v.id} className={'vrow' + (isOpen ? ' focus' : '')} style={{ cursor: 'pointer' }}
+                      <div key={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
                         onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <div className="v-name">{v.name || 'Unnamed'}</div>
-                          <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
-                          {statusLine ? <div className="v-meta" style={{ color: statusTone }}>{statusLine}</div> : null}
-                          {isOpen && (
-                            <>
-                              {/* the tap earned the detail: remaining status lines + every action */}
-                              {worry && coiAct ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{coiAct.title} {coiAct.consequence}</div> : null}
-                              {statusLine !== memLine && memLine ? <div className="v-meta" style={{ color: 'var(--steel-soft)' }}>{memLine}</div> : null}
-                              <div className="actions-row" style={{ marginTop: 8 }} onClick={ev => ev.stopPropagation()}>
-                                <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
-                                {Number(v.cost) > 0 && !v.balancePaid && (
-                                  <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
-                                )}
-                                {(() => { try {
-                                  const m = getSuggestedPayMethod(v); if (!m) return null;
-                                  const link = buildPayLink(m, v, null); if (!link) return null;
-                                  return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
-                                } catch { return null; } })()}
-                                {String(v.dayOfPhone || v.phone || '').trim() && (
-                                  <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
-                                )}
-                              </div>
-                            </>
-                          )}
+                        <div className="vc-head">
+                          <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
+                          <div className="vc-id">
+                            <div className="vc-name">{v.name || 'Unnamed'}</div>
+                            <div className="vc-cat">{v.category || 'Vendor'}{v.arrivalTime ? ' · arrives ' + v.arrivalTime : ''}</div>
+                          </div>
+                          <span className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}>{v.status || 'no status'}</span>
                         </div>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                          <span className="tag vendors">{v.status || '—'}</span>
-                          <span className="chev" style={{ position: 'static', color: 'var(--faint)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 200ms var(--ease-out)' }}>›</span>
-                        </span>
+                        {(worry || coiAct || memLine) && (
+                          <div className="vc-chips">
+                            {worry && <span className="vc-chip">{chipify(worry)}</span>}
+                            {coiAct && <span className="vc-chip">COI needed</span>}
+                            {!worry && !coiAct && memLine && <span className="vc-chip quiet">{chipify(memLine)}</span>}
+                          </div>
+                        )}
+                        <div className="vc-more" onClick={ev => ev.stopPropagation()}>
+                          {worry && <p className="vc-detail">{worry}</p>}
+                          {coiAct && <p className="vc-detail">{coiAct.title} {coiAct.consequence}</p>}
+                          {memLine && (worry || coiAct) && <p className="vc-detail">{memLine}</p>}
+                          <div className="vc-actions">
+                            <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
+                            {Number(v.cost) > 0 && !v.balancePaid && (
+                              <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                            )}
+                            {(() => { try {
+                              const m = getSuggestedPayMethod(v); if (!m) return null;
+                              const link = buildPayLink(m, v, null); if (!link) return null;
+                              return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                            } catch { return null; } })()}
+                            {String(v.dayOfPhone || v.phone || '').trim() && (
+                              <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
-                </>
-              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
+                  {nudgeFor('vendors')}
+                </>              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
             })()}
             {sheet.kind === 'budget' && (() => {
               // HOST MODEL: one number, and "where it's going" priced by the plan
