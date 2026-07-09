@@ -55,6 +55,7 @@ import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconcil
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -468,6 +469,7 @@ export default function HostShellV2() {
   // ── Session (the SAME Supabase client + storage the original app uses —
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
+  const [cloudEventsWaiting, setCloudEventsWaiting] = useState(0); // events synced from cloud not yet on this device's roster
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
@@ -476,7 +478,17 @@ export default function HostShellV2() {
     let dead = false;
     // On sign-in, pull the cloud profile (studio_settings) into localStorage +
     // state — cloud wins, so a fresh device inherits the host's real identity.
-    const hydrate = () => { cloudLoadProfile().then(p => { if (!dead && p) setProfileState(p); }).catch(() => {}); };
+    const hydrate = () => {
+      cloudLoadProfile().then(p => { if (!dead && p) setProfileState(p); }).catch(() => {});
+      // Pull cloud events into ngw-events; if any are new to this device, nudge.
+      cloudLoadEvents().then(evs => {
+        if (dead || !Array.isArray(evs)) return;
+        const known = new Set((APP_EVENTS || []).map(e => e && e.id));
+        const fresh = evs.filter(e => e && e.id && !known.has(e.id)
+          && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)));
+        if (fresh.length) setCloudEventsWaiting(fresh.length);
+      }).catch(() => {});
+    };
     supabase.auth.getSession().then(({ data }) => {
       const s = data && data.session ? data.session : null;
       if (!dead) { setSession(s); if (s) hydrate(); }
@@ -1221,7 +1233,16 @@ export default function HostShellV2() {
 
   const patchEvent = (obj, msg) => {
     if (eventId === 'custom') setCustom(c => ({ ...c, ...obj }));
-    else setPatch(p => ({ ...p, ...obj }));
+    else setPatch(p => {
+      const nextPatch = { ...p, ...obj };
+      // Real-event edits persist to the cloud (superset merge, never drops a
+      // base field). Session-gated; sample/demo events stay local-only.
+      if (session && REAL_EVENTS.some(e => e.id === eventId)) {
+        const realBase = REAL_EVENTS.find(e => e.id === eventId);
+        try { cloudSaveEvent({ ...realBase, ...nextPatch }); } catch { /* offline — patch holds it */ }
+      }
+      return nextPatch;
+    });
     feedback('act');
     if (msg) toast(msg);
   };
@@ -3054,6 +3075,13 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'events' && (
               <>
+                {cloudEventsWaiting > 0 && (
+                  <button className="card" style={{ width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', marginBottom: 12, padding: '12px 15px', background: 'var(--steel-tint)' }}
+                    onClick={() => window.location.reload()}>
+                    <span className="f-name" style={{ color: 'var(--steel-soft)' }}>{cloudEventsWaiting} event{cloudEventsWaiting === 1 ? '' : 's'} synced from your account</span>
+                    <span className="v-meta">Refresh to load {cloudEventsWaiting === 1 ? 'it' : 'them'} onto this device.</span>
+                  </button>
+                )}
                 {REAL_EVENTS.length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours — from the app</div>
