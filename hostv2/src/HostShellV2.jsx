@@ -611,6 +611,7 @@ export default function HostShellV2() {
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
+  const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
   const [foodSect, setFoodSect] = useState({}); // dietary/choices/sourcing folds
   // MEANING CAPTURE — the raw fields the engines already read (single truth:
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
@@ -3873,37 +3874,52 @@ export default function HostShellV2() {
                   {(event.vendors || []).map(v => {
                     let acct = null;
                     try { acct = quickAccountabilityForVendor(v, event); } catch { acct = null; }
-                    const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length;
+                    const worry = acct && acct.tier && acct.tier !== 'on_track' && (acct.reasons || []).length ? acct.reasons[0] : null;
                     let coiAct = null;
                     try { coiAct = coiNextAction(v, event, v.name || 'this vendor'); } catch { coiAct = null; }
                     let memLine = '';
                     try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
+                    // ONE line, highest stakes first — never a stack of three
+                    const statusLine = worry || (coiAct && coiAct.title) || memLine || null;
+                    const statusTone = worry || coiAct ? 'var(--warn)' : 'var(--steel-soft)';
+                    const isOpen = sheet.focus === v.id;
                     return (
-                      <div key={v.id} className={'vrow' + (sheet.focus === v.id ? ' focus' : '')}
-                        ref={el => { if (el && sheet.focus === v.id) el.scrollIntoView({ block: 'center' }); }}>
-                        <div>
+                      <div key={v.id} className={'vrow' + (isOpen ? ' focus' : '')} style={{ cursor: 'pointer' }}
+                        ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
+                        onClick={() => setSheet(s => ({ ...s, focus: isOpen ? null : v.id }))}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
                           <div className="v-name">{v.name || 'Unnamed'}</div>
                           <div className="v-meta">{[v.category, v.status].filter(Boolean).join(' · ')}</div>
-                          {worry ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{acct.reasons[0]}</div> : null}
-                          {coiAct ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{coiAct.title} {coiAct.consequence}</div> : null}
-                          {memLine ? <div className="v-meta" style={{ color: 'var(--steel-soft)' }}>{memLine}</div> : null}
-                        </div>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="tag vendors">{v.status || '—'}</span>
-                          <button className="mini" onClick={(ev) => { ev.stopPropagation(); openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile)); }}>Draft note</button>
-                          {Number(v.cost) > 0 && !v.balancePaid && (
-                            <button className="mini" onClick={(ev) => { ev.stopPropagation(); try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                          {statusLine ? <div className="v-meta" style={{ color: statusTone }}>{statusLine}</div> : null}
+                          {isOpen && (
+                            <>
+                              {/* the tap earned the detail: remaining status lines + every action */}
+                              {worry && coiAct ? <div className="v-meta" style={{ color: 'var(--warn)' }}>{coiAct.title} {coiAct.consequence}</div> : null}
+                              {statusLine !== memLine && memLine ? <div className="v-meta" style={{ color: 'var(--steel-soft)' }}>{memLine}</div> : null}
+                              <div className="actions-row" style={{ marginTop: 8 }} onClick={ev => ev.stopPropagation()}>
+                                <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
+                                {Number(v.cost) > 0 && !v.balancePaid && (
+                                  <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
+                                )}
+                                {(() => { try {
+                                  const m = getSuggestedPayMethod(v); if (!m) return null;
+                                  const link = buildPayLink(m, v, null); if (!link) return null;
+                                  return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer">Pay via {m}</a>;
+                                } catch { return null; } })()}
+                                {String(v.dayOfPhone || v.phone || '').trim() && (
+                                  <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(v.dayOfPhone || v.phone).replace(/[^+\d]/g, '')}>Call</a>
+                                )}
+                              </div>
+                            </>
                           )}
-                          {(() => { try {
-                            const m = getSuggestedPayMethod(v); if (!m) return null;
-                            const link = buildPayLink(m, v, null); if (!link) return null;
-                            return <a className="mini" style={{ textDecoration: 'none' }} href={link} target="_blank" rel="noreferrer" onClick={ev => ev.stopPropagation()}>Pay via {m}</a>;
-                          } catch { return null; } })()}
+                        </div>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                          <span className="tag vendors">{v.status || '—'}</span>
+                          <span className="chev" style={{ position: 'static', color: 'var(--faint)', transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 200ms var(--ease-out)' }}>›</span>
                         </span>
                       </div>
                     );
                   })}
-                  {nudgeFor('vendors')}
                 </>
               ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
             })()}
@@ -3929,35 +3945,52 @@ export default function HostShellV2() {
               try { recovery = buildBudgetRecoveryPlan(event, foodPP.priceFactor); } catch { recovery = null; }
               let swapPick = null;
               try { swapPick = recovery && recovery.status === 'recovery_available' ? pickDroppableBudgetRow(event, foodPP.priceFactor) : null; } catch { swapPick = null; }
+              const left = money.planned ? money.planned - money.committed : null;
               return (
                 <>
-                  <div className="line" style={{ padding: '2px 0 10px' }}>
-                    <span>Your budget</span>
-                    <span className="amt">{money.planned ? fmt(money.planned) : 'not set yet'}</span>
-                  </div>
+                  {/* PRINCIPLES REDESIGN (host directive): summary before detail —
+                      the host's question is "am I OK?", so the STATE leads. One
+                      narrative (the canonical engine copy), not three number
+                      readouts of the same fact. */}
+                  {money.planned ? (
+                    <div style={{ padding: '2px 0 6px' }}>
+                      <div className="line" style={{ padding: 0 }}>
+                        <span className="shelf-label" style={{ margin: 0 }}>{left != null && left < 0 ? 'Over by' : 'Left to spend'}</span>
+                        <span className="amt" style={{ fontSize: 22, fontWeight: 800, color: left != null && left < 0 ? 'var(--danger)' : 'var(--ok)' }}>{fmt(Math.abs(left || 0))}</span>
+                      </div>
+                      <p className="grounding" style={{ margin: '4px 0 0' }}>
+                        {fmt(money.committed)} spoken for of your {fmt(money.planned)}{money.spent ? ' · ' + fmt(money.spent) + ' actually spent' : ''}.
+                      </p>
+                    </div>
+                  ) : (
+                    heroCopy && heroCopy.title ? <p className="grounding" style={{ margin: '2px 0 8px' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p> : null
+                  )}
                   {hostRows.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '4px 0 6px' }}>Where it’s going — priced by your plan</div>
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Where it’s going — priced by your plan</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;
+                        const allBought = r.est > 0 && r.got >= r.est;
                         return (
                           <button className="brow" key={r.label}
                             style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
                             onClick={r.go} aria-label={'Open ' + r.label}>
                             <div className="line" style={{ padding: '0 0 5px' }}>
                               <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
-                              <span className="amt">{fmt(r.got)} <span className="of">bought of ~{fmt(r.est)}</span></span>
+                              {/* "$0 bought" ×3 before any buying is noise — the
+                                  bought figure earns its place once buying starts */}
+                              {allBought
+                                ? <span className="amt" style={{ color: 'var(--ok)' }}>{fmt(r.got)} <span className="of" style={{ color: 'var(--ok)' }}>bought</span></span>
+                                : r.got > 0
+                                  ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
+                                  : <span className="amt">~{fmt(r.est)}</span>}
                             </div>
                             <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
                           </button>
                         );
                       })}
                     </>
-                  )}
-                  <div className="line total"><span>Spoken for so far</span><span className="amt">{fmt(money.committed)}{money.planned ? ' of ' + fmt(money.planned) : ''}</span></div>
-                  {heroCopy && heroCopy.title && (
-                    <p className="grounding" style={{ margin: '10px 0 0' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (
                     <div style={{ marginTop: 12 }}>
@@ -3979,8 +4012,25 @@ export default function HostShellV2() {
                       )}
                     </div>
                   )}
-                  <div className="shelf-label" style={{ margin: '16px 0 8px' }}>Change it</div>
-                  {budgetEditorBlock()}
+                  {/* the editor is settled work once a number exists — it folds;
+                      no number yet → it IS the ask, so it stays open */}
+                  {money.planned ? (
+                    budgetFoldOpen ? (
+                      <div style={{ marginTop: 14 }}>
+                        <div className="shelf-label" style={{ margin: '0 0 8px' }}>Change the number <button className="mini" style={{ marginLeft: 6 }} onClick={() => setBudgetFoldOpen(false)}>done</button></div>
+                        {budgetEditorBlock()}
+                      </div>
+                    ) : (
+                      <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setBudgetFoldOpen(true)}>
+                        Your budget — {fmt(money.planned)}<span className="chev">›</span>
+                      </button>
+                    )
+                  ) : (
+                    <div style={{ marginTop: 14 }}>
+                      <div className="shelf-label" style={{ margin: '0 0 8px' }}>Set the number</div>
+                      {budgetEditorBlock()}
+                    </div>
+                  )}
                 </>
               );
             })()}
