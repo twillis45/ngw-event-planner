@@ -51,6 +51,7 @@ import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
+import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -2108,18 +2109,29 @@ export default function HostShellV2() {
                       ['Checklist', checklistPill],
                     ].filter(([, r]) => r && r.status !== 'ON_TRACK'); // action-only: on-track never renders
                     if (!pillars.length) return <p className="grounding" style={{ margin: '2px 0 6px' }}>All quiet — nothing flagged.</p>;
+                    // confidenceGrammar (production, live for hosts too): the pill's
+                    // WORD reflects actual certainty, not just status — "worth a look"
+                    // for a real partial vs. the same red/amber word for a guess.
+                    // getEventReadiness rows use {status:'AT_RISK'|...}; the grammar
+                    // reads {statusLabel:'AT RISK'|...} — translate, don't reimplement.
+                    const grammar = confidencePersona(event);
+                    const STATUS_WORD = { ON_TRACK: 'ON TRACK', ATTENTION: 'ATTENTION', AT_RISK: 'AT RISK' };
                     return (
                       <div className="pills">
-                        {pillars.map(([label, r]) => (
-                          <button key={label} className={'pill ' + (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk')}
-                            onClick={() => {
-                              if (label === 'Checklist') setSheet({ kind: 'tasks', focus: null });
-                              else if (label === 'Calls to make') setSheet({ kind: 'decisions', focus: null });
-                              else toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''));
-                            }}>
-                            {label}<span className="pill-note">{r.note}</span>
-                          </button>
-                        ))}
+                        {pillars.map(([label, r]) => {
+                          const conf = grammar ? confidenceFor({ statusLabel: STATUS_WORD[r.status] || r.status, note: r.note }, grammar) : null;
+                          return (
+                            <button key={label} className={'pill ' + (conf ? (conf.tier === 'red' ? 'p-risk' : 'p-warn') : (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk'))}
+                              title={conf ? conf.word : undefined}
+                              onClick={() => {
+                                if (label === 'Checklist') setSheet({ kind: 'tasks', focus: null });
+                                else if (label === 'Calls to make') setSheet({ kind: 'decisions', focus: null });
+                                else toast(label + ' — ' + (r.label || '') + (r.note ? ': ' + r.note : ''));
+                              }}>
+                              {label}<span className="pill-note">{conf ? conf.word + ' — ' : ''}{r.note}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     );
                   })()}
