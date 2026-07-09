@@ -18,7 +18,7 @@ import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor } from '@app/lib/dates';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
-import { purgeStaleOutbox } from '@app/lib/api/rsvp';
+import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
 import { effectiveDoneDetail } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
@@ -1088,10 +1088,63 @@ export default function HostShellV2() {
     if (msg) toast(msg);
   };
 
-  // ── Guest replies land here. The public invite (?rsvp=CODE) writes the
-  // ORIGINAL app's outbox (ngw-rsvp-queue-<eventId>); on load we merge with the
-  // ORIGINAL's name-match rules (exact → last+first(≥3) → first-only(≥4)) so
-  // both apps read the same roster, then clear the queue (raw feeds truth).
+  // ── Guest replies land here. TWO sources, ONE merge (the ORIGINAL's
+  // name-match rules: exact → last+first(≥3) → first-only(≥4)):
+  //   1. the local outbox (ngw-rsvp-queue-<eventId>) — same-browser replies
+  //   2. the backend (fetchEventRsvps) — replies DELIVERED from other devices;
+  //      without this pull a successfully-delivered reply never reaches this
+  //      roster (audit find 2026-07-08: delivery success made replies vanish).
+  const mergeGuestReplies = (gsBase, subs) => {
+    const gs = [...gsBase];
+    let merged = 0, added = 0, yesCount = 0;
+    for (const data of subs) {
+      const full = String(data.name || '').trim();
+      if (!full) continue;
+      const toks = full.toLowerCase().split(/\s+/);
+      const first = toks[0] || '';
+      const last = toks.length > 1 ? toks[toks.length - 1] : '';
+      const ix = gs.findIndex(g => {
+        const gn = String((g && g.name) || '').trim().toLowerCase();
+        if (!gn) return false;
+        if (gn === full.toLowerCase()) return true;
+        const gp = gn.split(/\s+/);
+        const gFirst = gp[0] || '', gLast = gp.length > 1 ? gp[gp.length - 1] : '';
+        if (last.length >= 3 && gLast === last && gFirst === first) return true;
+        if (first.length >= 4 && gFirst === first) return true;
+        return false;
+      });
+      if (data.rsvp === 'Yes') yesCount += 1;
+      if (ix >= 0) {
+        const g = gs[ix];
+        const next = {
+          ...g, rsvp: data.rsvp,
+          meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal,
+          needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne,
+          plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds,
+          kids: data.kids || g.kids, address: data.mailingAddress || g.address,
+          partyNotes: data.note || g.partyNotes,
+        };
+        // Server rows re-arrive on every visit — only count real changes.
+        if (JSON.stringify(next) !== JSON.stringify(g)) { gs[ix] = next; merged += 1; }
+      } else {
+        gs.push({
+          id: 'g-rsvp-' + (data.idempotencyKey || Math.random().toString(36).slice(2, 10)),
+          name: full, group: 'Friends', rsvp: data.rsvp || '', meal: data.meal || '—',
+          needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—',
+          plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0,
+          address: data.mailingAddress || '', partyNotes: data.note || '',
+        });
+        added += 1;
+      }
+    }
+    return { gs, merged, added, yesCount };
+  };
+  const announceReplies = (gs, n, yesCount) => {
+    if (!n) return;
+    const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
+    patchEvent({ guests: gs, kidsCount },
+      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.');
+  };
   useEffect(() => {
     try {
       const key = 'ngw-rsvp-queue-' + event.id;
@@ -1099,54 +1152,29 @@ export default function HostShellV2() {
       if (!Array.isArray(raw) || !raw.length) return;
       const queue = purgeStaleOutbox(raw);
       if (!queue.length) { localStorage.removeItem(key); return; }
-      const gs = [...(event.guests || [])];
-      let merged = 0, added = 0, yesCount = 0;
-      for (const data of queue) {
-        const full = String(data.name || '').trim();
-        if (!full) continue;
-        const toks = full.toLowerCase().split(/\s+/);
-        const first = toks[0] || '';
-        const last = toks.length > 1 ? toks[toks.length - 1] : '';
-        const ix = gs.findIndex(g => {
-          const gn = String((g && g.name) || '').trim().toLowerCase();
-          if (!gn) return false;
-          if (gn === full.toLowerCase()) return true;
-          const gp = gn.split(/\s+/);
-          const gFirst = gp[0] || '', gLast = gp.length > 1 ? gp[gp.length - 1] : '';
-          if (last.length >= 3 && gLast === last && gFirst === first) return true;
-          if (first.length >= 4 && gFirst === first) return true;
-          return false;
-        });
-        if (data.rsvp === 'Yes') yesCount += 1;
-        if (ix >= 0) {
-          const g = gs[ix];
-          gs[ix] = {
-            ...g, rsvp: data.rsvp,
-            meal: data.rsvp === 'Yes' ? (data.meal || g.meal) : g.meal,
-            needs: data.needs || g.needs, plusOne: data.plusOne || g.plusOne,
-            plusOneMeal: data.plusOneMeal || g.plusOneMeal, plusOneNeeds: data.plusOneNeeds || g.plusOneNeeds,
-            kids: data.kids || g.kids, address: data.mailingAddress || g.address,
-            partyNotes: data.note || g.partyNotes,
-          };
-          merged += 1;
-        } else {
-          gs.push({
-            id: 'g-rsvp-' + (data.idempotencyKey || Math.random().toString(36).slice(2, 10)),
-            name: full, group: 'Friends', rsvp: data.rsvp || '', meal: data.meal || '—',
-            needs: data.needs || '', plusOne: data.plusOne || '', plusOneMeal: data.plusOneMeal || '—',
-            plusOneNeeds: data.plusOneNeeds || '', kids: data.kids || 0,
-            address: data.mailingAddress || '', partyNotes: data.note || '',
-          });
-          added += 1;
-        }
-      }
+      const { gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], queue);
       localStorage.removeItem(key);
-      const n = merged + added;
-      if (!n) return;
-      const kidsCount = gs.reduce((t, g) => t + (Number(g && g.kids) || 0), 0);
-      patchEvent({ guests: gs, kidsCount },
-        n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.');
+      announceReplies(gs, merged + added, yesCount);
     } catch { /* queue unreadable — leave it for the original app */ }
+  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!isRsvpApiConfigured()) return undefined;
+    let dead = false;
+    (async () => {
+      try {
+        const rows = await fetchEventRsvps(event.id);
+        if (dead || !rows.length) return;
+        // Server snake_case → the merge's field names (production's normalize).
+        const subs = rows.map(r => ({
+          name: r.guest_name, rsvp: r.rsvp, meal: r.meal, needs: r.needs,
+          plusOne: r.plus_one, plusOneMeal: r.plus_one_meal, plusOneNeeds: r.plus_one_needs,
+          kids: r.kids, note: r.note, idempotencyKey: r.idempotency_key,
+        }));
+        const { gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
+        if (!dead) announceReplies(gs, merged + added, yesCount);
+      } catch { /* offline or unauthorized — the local queue path still works */ }
+    })();
+    return () => { dead = true; };
   }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Which engine actions have a real in-place edit here. Everything else stays an

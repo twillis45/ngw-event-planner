@@ -389,7 +389,11 @@ export default function InviteV2({ code }) {
                 </div>
                 {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
 
-                <div className={'inv2-more' + (rsvp ? ' open' : '')} aria-hidden={!rsvp}>
+                <div className={'inv2-more' + (rsvp ? ' open' : '')} aria-hidden={!rsvp}
+                  // inert while closed: max-height:0 hides visually but fields would
+                  // still take keyboard focus — a Tab trap into invisible inputs.
+                  // (set imperatively — React 18 drops the inert attribute prop)
+                  ref={el => { if (el) { if (rsvp) el.removeAttribute('inert'); else el.setAttribute('inert', ''); } }}>
                   <div className="inv2-label lp" style={{ textAlign: 'left', margin: '16px 0 6px' }}>
                     {rsvp === 'Yes' ? 'Wonderful — just a few taps' : rsvp === 'Maybe' ? 'Noted — leave a name at least' : 'Thanks for telling us straight'}
                   </div>
