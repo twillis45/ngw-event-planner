@@ -34,8 +34,15 @@ export function sourcingFactor(id) {
 // Is this purchase a PROTEIN (the thing sourcing reshapes)? Keyword-matched on the food
 // lines; never touches sides/drinks/supplies.
 const PROTEIN_RE = /\b(rib|ribs|chicken|brisket|sausage|hot ?link|half-?smoke|pork|beef|turkey|seafood|shrimp|fish|crab|crawfish|lamb|wing|oxtail|meatball|steak|burger|salmon|prawn|bacon|ham)\b/i;
+// Carrier goods are never the protein, even when their authored name is worded after
+// what they hold ("Burger + hot dog buns" contains "burger" but IS bread, not beef) —
+// without this, that line matched PROTEIN_RE and inherited ground-beef $/lb pricing
+// under a non-default sourcing tier (a $0.30-0.60 bun repriced to $3-8 each).
+const CARRIER_RE = /\b(bun|buns|bread|roll|rolls|bagel|bagels|tortilla|tortillas)\b/i;
 export function isProteinItem(name) {
-  return PROTEIN_RE.test(String(name || ''));
+  const s = String(name || '');
+  if (CARRIER_RE.test(s)) return false;
+  return PROTEIN_RE.test(s);
 }
 
 // CANONICAL per-channel protein prices ($/lb), researched once and shared by every

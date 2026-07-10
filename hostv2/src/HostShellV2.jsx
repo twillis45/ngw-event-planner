@@ -22,7 +22,7 @@ import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@a
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
-import { effectiveDoneDetail } from '@app/lib/taskEngine';
+import { effectiveDone } from '@app/lib/taskEngine';
 import Papa from 'papaparse';
 import QRCode from 'qrcode';
 import { PLATFORMS, transformRows, validateRows, computeMergeSummary, applyMerge } from '@app/lib/csvParsers';
@@ -575,6 +575,28 @@ export default function HostShellV2() {
   // in (CRAB-PRICING-1 hard rule: no fake market prices).
   const crabLadder = useMemo(() => { try { return crabPriceLadder(); } catch { return null; } }, []);
 
+  // A timeline step counts as handled once real event state proves it, not just when
+  // the host taps it — the SAME derive-don't-store predicate the checklist already
+  // shows (taskEngine.effectiveDone: date/venue/budget/guest-count/vendor/food-plan),
+  // extended with the one signal that needs the live priced spread: a buy/shop step
+  // closes once every active line is actually bought. General by subject-matching,
+  // not any one label — so a resolved decision drops out of "Coming up" everywhere
+  // it applies, the same way it already does in the checklist's "tap to confirm" tag.
+  const isTimelineStepResolved = (t) => {
+    if (!t) return false;
+    try { if (effectiveDone(event, t)) return true; } catch {}
+    if (/\b(buy|shop)\b|shopping/i.test(String(t.task || ''))) {
+      try {
+        const fp = playbookFoodPlan(event);
+        const active = ((fp && fp.list) || []).filter(it => it && !it.skipped);
+        if (!active.length) return false;
+        const got = event.foodGot || {};
+        return active.every(it => got[it.id] === true);
+      } catch { return false; }
+    }
+    return false;
+  };
+
   // "Coming up" — the human-intelligence layer for CALM states: name what's
   // next and WHEN IT'S DUE even when nothing is urgent. Sources: the decision
   // board's real due dates + undone checklist steps' T-offsets vs the date.
@@ -586,7 +608,7 @@ export default function HostShellV2() {
       });
     } catch {}
     try {
-      (event.timeline || []).filter(t => t && !t.done).forEach(t => {
+      (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).forEach(t => {
         const m = /T-(\d+)\s*d/i.exec(String(t.week || ''));
         let due = null, dd = null;
         if (m && event.date) {
@@ -2039,7 +2061,7 @@ export default function HostShellV2() {
                       const hasCues = !!(phaseCues && phaseCues.totalCount);
                       const essDone = hasCues ? phaseCues.completedCount : plan.progress.done;
                       const essTotal = hasCues ? phaseCues.totalCount : plan.progress.total;
-                      const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
+                      const openTasks = (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
                       const nextCue = hasCues ? phaseCues.nextCue : null;
                       const basicsLine = plan.progress.total ? `basics ${plan.progress.done} of ${plan.progress.total}` : null;
                       let sub;
@@ -2114,7 +2136,7 @@ export default function HostShellV2() {
                       if (days === 0) {
                         // Day-of truth: count what's actually left today, not "1 thing".
                         const moments = ros.filter(r => r && !r.done).length;
-                        const openTasks = (event.timeline || []).filter(t => t && !t.done).length;
+                        const openTasks = (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
                         const bits = [];
                         if (moments) bits.push(moments + ' moment' + (moments === 1 ? '' : 's') + ' queued');
                         if (openTasks) bits.push(openTasks + ' steps open');
@@ -3659,7 +3681,7 @@ export default function HostShellV2() {
                     // already prove handled (date set, caterer booked…) reads as
                     // inferred-done — the checklist never nags about proven work.
                     const openRows = (event.timeline || []).filter(t => t && !t.done);
-                    const inferredN = openRows.filter(t => { try { const d = effectiveDoneDetail(event, t); return d.done && d.inferred; } catch { return false; } }).length;
+                    const inferredN = openRows.filter(t => isTimelineStepResolved(t)).length;
                     return (
                       <div className="v-meta" style={{ padding: '2px 2px 10px' }}>
                         {openRows.length - inferredN} open of {(event.timeline || []).length}
@@ -3672,8 +3694,7 @@ export default function HostShellV2() {
                       the handled sections everywhere else. */}
                   {(event.timeline || []).map((t, i) => {
                     if (!t || t.done) return null;
-                    let inferred = false;
-                    try { const d = effectiveDoneDetail(event, t); inferred = d.done && d.inferred; } catch { inferred = false; }
+                    const inferred = isTimelineStepResolved(t);
                     return (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
