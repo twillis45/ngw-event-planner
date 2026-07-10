@@ -1585,7 +1585,7 @@ export function playbookDecisionBoard(event, asOf) {
         // NOT a blameworthy "overdue" that inflates the "N past their easy
         // window" count on a brand-new event.
         status = 'ready';
-        because = 'Tight timeline — worth doing first.';
+        because = 'A good place to start.';
       }
     } else if (unmet.length) {
       status = 'waiting';

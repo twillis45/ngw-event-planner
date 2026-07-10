@@ -102,8 +102,10 @@ describe('decision status derivation', () => {
     );
     const fmt = b.open.find((r) => r.id === 'format');
     expect(fmt.status).toBe('ready');              // not 'overdue' — no blame on a fresh event
-    expect(fmt.because).toMatch(/Tight timeline/);
+    // warm, forward copy — a first move, not a deadline or a scold
+    expect(fmt.because).toMatch(/good place to start/i);
     expect(fmt.because).not.toMatch(/Was due/);
+    expect(fmt.because).not.toMatch(/tight/i);     // no pressure word in the first thirty seconds
     // and it does NOT inflate the overdue count that drives "N past their easy window"
     expect(b.open.filter((r) => r.status === 'overdue').length).toBe(0);
   });
