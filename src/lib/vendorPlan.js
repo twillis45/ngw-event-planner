@@ -16,7 +16,7 @@
 //   - every multiplier applied is named in `factorsApplied` so the UI can
 //     always answer "why is this more/less expensive than the base range"
 
-import { getPlaybook } from './playbooks';
+import { getPlaybook, resolveAnsweredCopy } from './playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
@@ -86,7 +86,7 @@ export function buildVendorPlan(event, opts = {}) {
       category: cat.category,
       required: !!cat.required,
       when: cat.when || null,
-      altToDIY: cat.altToDIY || null,
+      altToDIY: resolveAnsweredCopy(cat.altToDIY, cat.copyByAnswer, ev) || null,
       costUnit: perGuest ? 'per guest' : 'flat',
       baseRange: Array.isArray(cat.costRange) ? cat.costRange : null,
       estimateLow,

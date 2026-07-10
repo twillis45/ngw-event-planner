@@ -461,6 +461,29 @@ export function choiceShown(event, whenChoice) {
   return v == null ? true : (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
 }
 
+// ── Decision-ANSWERED copy override (never assume an unconfirmed default) ─────
+// A schedule/task/vendor entry's instructional text (`what` / `label` / `altToDIY`)
+// may carry `copyByAnswer: { [decisionId]: { [answeredValue]: overrideText } }` so
+// copy that assumes a specific CHOREOGRAPHY (e.g. retirementParty's Day-of "brief
+// the co-conspirator and the lookout" surprise staging) only fires when the host
+// actually picked that option. Deliberately distinct from choicePickFor()/
+// choiceShown() above (which fall back to the playbook's authored default so
+// quantities/visibility render sensibly before any pick is made) — this reads
+// ONLY event.foodChoices[decisionId], mirroring the Decisions board's isLocked()
+// predicate (picks[d.id], never the default), so an unanswered decision never
+// silently reads as though the host chose the default option. No-op (returns
+// `base` unchanged) for any entry without `copyByAnswer` — every other
+// playbook/entry is unaffected.
+export function resolveAnsweredCopy(base, copyByAnswer, event) {
+  if (!copyByAnswer) return base;
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  for (const decisionId of Object.keys(copyByAnswer)) {
+    const answered = picks[decisionId];
+    if (answered && copyByAnswer[decisionId][answered] != null) return copyByAnswer[decisionId][answered];
+  }
+  return base;
+}
+
 // ── Food approach: caterer vs the host handling food themselves ───────────────
 // THE single-source lever for "is a caterer in scope for this event?" Every caterer
 // reference (readiness warnings, vendor suggestions, timeline tips, the reconciliation
@@ -544,7 +567,7 @@ export function playbookChecklist(event, asOf) {
     const eventDay = offset != null && offset >= 0;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
-      task: t.label,
+      task: resolveAnsweredCopy(t.label, t.copyByAnswer, event),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
       phase: t.phase || 'planning',
@@ -869,7 +892,7 @@ export function playbookRunOfShow(event) {
         id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
         time: `${rosPad2(Math.floor(total / 60))}:${String(((total % 60) + 60) % 60).padStart(2, '0')}`,
         _min: total,
-        segment: entry.what,
+        segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
         location: '',
         type: kind.segType,
         owner: 'Host',
