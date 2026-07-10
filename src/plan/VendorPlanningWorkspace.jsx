@@ -331,11 +331,16 @@ const statusChip = (c) => ({
 // Board re-audit: the detail's reference sections group under 4 plain-language
 // ZONES (Deliverables · Money & contract · Day-of & after · Reference) so the
 // cockpit reads as 4 areas, not ~10 flat peers.
+// UX_01: "Section title: 15-17px, 600 weight... zone labels." Was styled at
+// the 10px Caption tier — identical size to row content and secondary hints,
+// so nothing anchored the hierarchy and the whole cockpit read as one flat
+// wall of small text. type.size.section (17) is the doctrine's own named
+// section-title tier, already defined in tokens.js and unused here.
 const ZONE_LABEL = {
-  marginTop: space[5], marginBottom: space[2], paddingTop: space[3],
+  marginTop: space[6], marginBottom: space[3], paddingTop: space[4],
   borderTop: `1px solid ${P.borderSubtle}`,
-  fontSize: type.size['xs'], fontWeight: 800, letterSpacing: '0.16em',
-  textTransform: 'uppercase', color: P.steelBlue, fontFamily: FF,
+  fontSize: type.size['section'], fontWeight: 600, letterSpacing: '-0.2px',
+  color: P.textPrimary, fontFamily: FF,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -407,10 +412,11 @@ function CollapsibleSection({ label, summary, hintColor, isOpen, onToggle, child
       >
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
+          {/* Sub-section header, one tier below ZONE_LABEL — still clearly
+              bigger than the 10-11px caption/hint text beside it. */}
           <span style={{
-            fontSize: type.size['xs'], fontWeight: 800,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.steelBlue, fontFamily: FF,
+            fontSize: type.size['md'], fontWeight: 650,
+            color: P.textPrimary, fontFamily: FF,
           }}>{label}</span>
         </span>
         {summary && (
@@ -2068,7 +2074,7 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const attentionCount = rows.filter(r => r.status === 'missing' || r.status === 'attention' || r.status === 'pending').length;
   const collapsedHint = !isOpen && attentionCount > 0
-    ? `${attentionCount} need${attentionCount === 1 ? 's' : ''} attention`
+    ? `${attentionCount} payment item${attentionCount === 1 ? '' : 's'} need${attentionCount === 1 ? 's' : ''} attention`
     : hint;
   return (
     <div>
@@ -2086,9 +2092,8 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: type.size['xs'], fontWeight: 800,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.steelBlue, fontFamily: FF,
+            fontSize: type.size['md'], fontWeight: 650,
+            color: P.textPrimary, fontFamily: FF,
           }}>{label}</span>
         </span>
         {collapsedHint && (
@@ -2158,9 +2163,8 @@ function RequiredQuestionsSection({ vendor, questions, onAddressRow, host = fals
         <span style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span style={{ color: P.steelBlue, fontSize: type.size['sm'], width: 12, display: 'inline-block' }}>{isOpen ? '▾' : '▸'}</span>
           <span style={{
-            fontSize: type.size['xs'], fontWeight: 800,
-            letterSpacing: '0.14em', textTransform: 'uppercase',
-            color: P.steelBlue, fontFamily: FF,
+            fontSize: type.size['md'], fontWeight: 650,
+            color: P.textPrimary, fontFamily: FF,
           }}>{host ? `Still to figure out · ${cat}` : `Required Questions · ${cat}`}</span>
         </span>
         <span style={{
@@ -3623,7 +3627,7 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, ho
       padding: space[4], marginBottom: space[4],
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3] }}>
-        <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: headColor, fontFamily: FF }}>
+        <span style={{ fontSize: type.size['md'], fontWeight: 650, color: headColor, fontFamily: FF }}>
           {/* "Lock-in progress" is planner pipeline-speak; a host reads the
               same signal as "Where you stand" (matches V2's identical
               phrase for this concept — one vocabulary across both apps). */}
