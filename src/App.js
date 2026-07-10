@@ -44423,6 +44423,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           <span style={{ fontSize: T.secondary, color: C.muted, fontWeight: FW.medium, whiteSpace: 'nowrap' }}>
             {event.type}{event.secondaryType ? ` + ${event.secondaryType}` : ''}
             {event.honoree ? ` · for ${event.honoree}` : ''}
+            {event.theme ? ` · ${event.theme} theme` : ''}
             {event.date ? ` · ${new Date(event.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}` : ''}
             {days !== null && event.date ? ' · ' : ''}
           </span>

@@ -1928,11 +1928,13 @@ export default function HostShellV2() {
               <div className="hero">
               {/* Event masthead — kicker / readable title / quiet venue.
                   (The old all-caps eyebrow crushed long names into three
-                  unreadable letterspaced lines.) */}
+                  unreadable letterspaced lines.) Theme/colors (event.theme)
+                  rides the same quiet line as venue — real host-entered data,
+                  shown only when set, no new row added. */}
               <div className="ev-head">
                 <div className="ev-kicker">{event.type}</div>
                 <div className="ev-title">{event.name}</div>
-                {event.venue ? <div className="ev-venue">{event.venue}</div> : null}
+                {(event.venue || event.theme) ? <div className="ev-venue">{[event.venue, event.theme].filter(Boolean).join(' · ')}</div> : null}
               </div>
               <div className="mega">
                 {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : `${daysAnim} days`}
