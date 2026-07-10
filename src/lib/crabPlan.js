@@ -61,7 +61,18 @@ export function buildCrabPlan(event) {
   const lines = (cp && Array.isArray(cp.lines)) ? cp.lines.filter(Boolean) : [];
   const guestFallback = num(ev.guestCount) || num(ev.guestEstimate)
     || (Array.isArray(ev.guests) ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))).length : 0);
-  const heads = (cp && num(cp.crabEatingHeadcount) > 0) ? num(cp.crabEatingHeadcount) : guestFallback;
+  const rawPickers = (cp && num(cp.crabEatingHeadcount) > 0) ? num(cp.crabEatingHeadcount) : null;
+  // PICKERS-GUARDRAIL: pickers are a subset of the event's guests — a count
+  // higher than the guest list is impossible and would size the whole order
+  // off a number that can't be true. Clamp the MATH, not the host's stored
+  // input (they may add guests later); say so instead of silently rewriting
+  // what they typed.
+  let heads = rawPickers != null ? rawPickers : guestFallback;
+  let pickerNote = null;
+  if (rawPickers != null && guestFallback > 0 && rawPickers > guestFallback) {
+    heads = guestFallback;
+    pickerNote = `Pickers can’t outnumber your ${guestFallback} guests — using ${guestFallback} for coverage.`;
+  }
   const target = (cp && num(cp.targetCrabsPerPerson) > 0) ? num(cp.targetCrabsPerPerson) : (TARGET_BY_ROLE[role] || 3);
 
   const issues = [];
@@ -157,6 +168,7 @@ export function buildCrabPlan(event) {
     relevant: true,
     role,
     crabEatingHeadcount: heads || null,
+    pickerNote,
     targetCrabsPerPerson: target,
     lines,
     totalEstimatedCrabs,

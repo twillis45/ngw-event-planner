@@ -9419,6 +9419,9 @@ function CrabPlanCard({ event, onPatchEvent, isMobile = false }) {
           onChange={(e) => patch({ crabEatingHeadcount: Math.max(0, Math.round(Number(e.target.value) || 0)) })} />
         <span style={{ fontSize: T.caption, color: C.muted }}>aiming for about {plan.targetCrabsPerPerson} crabs per person</span>
       </div>
+      {plan.pickerNote && (
+        <div style={{ fontSize: T.caption, color: C.warn || C.accent, paddingBottom: 8 }}>{plan.pickerNote}</div>
+      )}
       {plan.coverageCopy && (
         <div data-testid="crab-coverage" style={{ fontSize: T.secondary, color: statusColor, fontWeight: FW.semibold, lineHeight: 1.5, paddingBottom: 10 }}>{plan.coverageCopy}</div>
       )}

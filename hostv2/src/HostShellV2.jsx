@@ -3256,6 +3256,7 @@ export default function HostShellV2() {
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
                     <span className="of" style={{ flex: 1 }}>serious pickers — kids and light eaters don’t drive the crab count</span>
                   </div>
+                  {crab.pickerNote && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--warn)' }}>{crab.pickerNote}</p>}
                   <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: '16px 0 6px', borderRadius: 8 }}>Add to the order</div>
                   <div className="chips">
                     {['medium', 'large', 'extra_large', 'jumbo'].map(sz => (
@@ -4190,7 +4191,12 @@ export default function HostShellV2() {
                   )}
                   {hostRows.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Where it’s going — priced by your plan</div>
+                      {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
+                          budget breakdown — a direct clash with heroCopy's "Set a
+                          budget" ask right above when no ceiling exists yet. This
+                          row total is real (the plan's own cost estimate), just not
+                          a budget, so the label says so instead of implying one. */}
+                      <div className="shelf-label" style={{ margin: '10px 0 6px' }}>{money.planned ? 'Where it’s going — priced by your plan' : 'What your plan adds up to so far'}</div>
                       {hostRows.map((r, i) => {
                         const alloc = money.planned ? Math.min(100, Math.round((r.est / money.planned) * 100)) : 0;
                         const got = r.est ? Math.min(100, Math.round((r.got / r.est) * 100)) : 0;

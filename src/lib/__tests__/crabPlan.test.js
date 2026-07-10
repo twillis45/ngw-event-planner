@@ -51,6 +51,22 @@ test('NO-ORDER-YET: headcount known but zero lines entered reads as "no order ye
   expect(p.coverageCopy).not.toMatch(/0 crabs per person/i);
 });
 
+test('PICKERS-GUARDRAIL: a picker count above the guest list is clamped for coverage math, not silently stored over', () => {
+  // 25 guests (the ev() default), host types 75 pickers — impossible, since
+  // pickers are a subset of guests. Coverage math must use 25, not 75, and
+  // the host must be told why (never a silent override).
+  const p = buildCrabPlan(ev({ crabEatingHeadcount: 75, lines: [line({ unit: 'bushel' })] }));
+  expect(p.crabEatingHeadcount).toBe(25);
+  expect(p.pickerNote).toMatch(/can.t outnumber your 25 guests/i);
+  expect(p.coveredCrabsPerPerson).toBe(72 / 25);
+});
+
+test('PICKERS-GUARDRAIL: pickers within the guest count pass through with no note', () => {
+  const p = buildCrabPlan(ev({ crabEatingHeadcount: 18, lines: [line({ unit: 'bushel' })] }));
+  expect(p.crabEatingHeadcount).toBe(18);
+  expect(p.pickerNote).toBeNull();
+});
+
 test('7 · mixed/unknown size bushel without vendor count → needs_count_per_unit', () => {
   const p = buildCrabPlan(ev({ crabEatingHeadcount: 20, lines: [line({ size: 'mixed', unit: 'bushel' })] }));
   expect(p.coverageStatus).toBe('needs_count_per_unit');
@@ -101,10 +117,13 @@ test('14 · no cheaper/best-price/market claims anywhere in output', () => {
 });
 
 test('15 · mixed-size coverage copy: "about N crabs per person"', () => {
+  // guestCount raised to 40 so the 31-picker fixture stays under the
+  // PICKERS-GUARDRAIL ceiling (pickers can't exceed guests) — this test is
+  // about the per-person copy format, not the guardrail.
   const p = buildCrabPlan(ev({ crabEatingHeadcount: 31, lines: [
     line({ id: 'a', unit: 'bushel', size: 'large' }),
     line({ id: 'b', unit: 'dozen', size: 'jumbo', quantity: 2 }),
-  ] }));
+  ] }, { guestCount: 40 }));
   expect(p.coverageCopy).toMatch(/about 3.1 crabs per person/);
 });
 
