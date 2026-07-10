@@ -907,6 +907,7 @@ export default function HostShellV2() {
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
+  const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
   const [spot, setSpot] = useState(null);     // attention system: spotlighted card key
   const spotTimer = useRef(null);
@@ -1355,19 +1356,45 @@ export default function HostShellV2() {
     const kind = wiredKind(a);
     if (kind === 'guests') {
       const counted = event.guestMode === 'count';
+      const guestN = Number(guests) || 0;
+      const commitDraft = () => {
+        const n = parseInt(guestDraft, 10);
+        if (n > 0) setGuests(n);
+        setGuestDraft('');
+      };
+      const bump = (delta) => { setGuestDraft(''); setGuests(Math.max(1, guestN + delta)); };
       return (
-        <div className="chips hc-row">
-          {[30, 50, 60, 75, 90, 120].map(n => (
-            <button key={n} className="chip" aria-pressed={guests === n} onClick={() => setGuests(n)}>{n}</button>
-          ))}
-          <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
-          {/* a confirmed-headcount event doesn't get pushed toward a roster —
-              the mode chips below make the choice explicit instead */}
-          {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
-          <button className="chip" aria-pressed={counted}
-            onClick={() => patchEvent({ guestMode: 'count' }, 'Headcount event — food and seats size to the number; replies optional.')}>By headcount</button>
-          <button className="chip" aria-pressed={!counted && event.guestMode === 'list'}
-            onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>By guest list</button>
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+          {/* exact-number entry: a +/- stepper plus a typed field, for hosts
+              who already know their count instead of picking a nearby preset */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button className="mini" onClick={() => bump(-1)} aria-label="Fewer guests">−</button>
+            <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 15, padding: '10px 6px' }}
+              type="number" inputMode="numeric" min="1"
+              value={guestDraft !== '' ? guestDraft : (guestN || '')}
+              onFocus={() => setGuestDraft(String(guestN || ''))}
+              onChange={e => setGuestDraft(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitDraft(); else if (e.key === 'Escape') setGuestDraft(''); }}
+              onBlur={commitDraft}
+              aria-label="Exact guest count" />
+            <button className="mini" onClick={() => bump(1)} aria-label="More guests">+</button>
+            <span className="of">guests</span>
+          </div>
+          <div className="chips hc-row" style={{ margin: 0 }}>
+            {[30, 50, 60, 75, 90, 120].map(n => (
+              <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(''); setGuests(n); }}>{n}</button>
+            ))}
+          </div>
+          <div className="chips hc-row" style={{ margin: 0 }}>
+            <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
+            {/* a confirmed-headcount event doesn't get pushed toward a roster —
+                the mode chips below make the choice explicit instead */}
+            {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
+            <button className="chip" aria-pressed={counted}
+              onClick={() => patchEvent({ guestMode: 'count' }, 'Headcount event — food and seats size to the number; replies optional.')}>By headcount</button>
+            <button className="chip" aria-pressed={!counted && event.guestMode === 'list'}
+              onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>By guest list</button>
+          </div>
         </div>
       );
     }
@@ -4631,6 +4658,22 @@ export default function HostShellV2() {
                 <>
                   <div className="v-meta" style={{ padding: '14px 2px 4px' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 0 10px' }}>
+                    <button className="mini" onClick={() => { setGuestDraft(''); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
+                    <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 14, padding: '8px 6px' }}
+                      type="number" inputMode="numeric" min="1"
+                      value={guestDraft !== '' ? guestDraft : (Number(guests) || '')}
+                      onFocus={() => setGuestDraft(String(Number(guests) || ''))}
+                      onChange={e => setGuestDraft(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(''); }
+                        else if (e.key === 'Escape') setGuestDraft('');
+                      }}
+                      onBlur={() => { const n = parseInt(guestDraft, 10); if (n > 0) setGuests(n); setGuestDraft(''); }}
+                      aria-label="Exact guest count" />
+                    <button className="mini" onClick={() => { setGuestDraft(''); setGuests((Number(guests) || 0) + 1); }} aria-label="More guests">+</button>
+                    <span className="of">guests</span>
                   </div>
                   <div className="actions-row" style={{ margin: '0 0 4px' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
