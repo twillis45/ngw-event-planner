@@ -99,6 +99,7 @@ button{font-family:inherit}
 
 .lenses{display:flex; gap:8px; flex-wrap:wrap; margin:30px 0 -18px}
 .lens{
+  transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
   font-size:13px; font-weight:700; color:var(--ink-soft); background:transparent;
   border:1px solid var(--line); border-radius:999px; padding:8px 15px; cursor:pointer;
   transition:all var(--ms-press) var(--ease-out);
@@ -183,15 +184,18 @@ button{font-family:inherit}
 .dock button{
   font-size:12.5px; font-weight:700; color:var(--muted); background:none; border:none;
   border-radius:999px; padding:10px 16px; cursor:pointer; white-space:nowrap;
+  transition:background var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .dock button[aria-current="true"]{background:var(--steel); color:var(--ink)}
 
 .toast{
-  position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:60;
+  position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
   background:var(--ink); color:var(--card); font-size:13px; font-weight:550;
   padding:12px 20px; border-radius:16px; width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
   box-shadow:0 12px 40px rgba(0,0,0,.3);
+  animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
+@keyframes toastin{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
 
 /* ── Create stage ── */
 .q{margin:30px 0 0}

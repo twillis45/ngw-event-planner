@@ -58,7 +58,13 @@ export function applyStudioMatte() {
   // ── Motion: choreography timings, no bounce ever ──
   set('--ease-out', easings.out || 'cubic-bezier(0,0,.2,1)');
   set('--ease-standard', easings.standard || 'cubic-bezier(.2,0,0,1)');
+  set('--ease-sharp', easings.sharp || 'cubic-bezier(.05,.7,.1,1)');
+  set('--ease-in-out', easings.inOut || 'cubic-bezier(.45,0,.2,1)');
   set('--ms-press', (durations.press || 120) + 'ms');
   set('--ms-ambient', (durations.ambient || 220) + 'ms');
   set('--ms-sheet', (durations.sheetRise || 260) + 'ms');
+  set('--ms-sheet-dismiss', (durations.sheetDismiss || 360) + 'ms');
+  set('--ms-escalation', (durations.escalation || 230) + 'ms');
+  set('--ms-emergency', (durations.emergency || 200) + 'ms');
+  set('--ms-recovery', (durations.recovery || 360) + 'ms');
 }
