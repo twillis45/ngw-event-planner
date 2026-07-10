@@ -6377,6 +6377,16 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             ))}
           </select>
 
+          {/* HOST-APPROPRIATE-VENDOR-UI: a friend/family helper isn't a paid
+              booking — they don't need COI/contract/deposit/reliability
+              tracking forced on them. This toggle gates that block below. */}
+          <label onClick={() => onChange('isInformal', !vendor.isInformal)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', marginTop: 12 }}>
+            <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${vendor.isInformal ? C.success : C.border}`, background: vendor.isInformal ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {vendor.isInformal && <span style={{ fontSize: T.caption, color: '#fff', fontWeight: FW.bold }}>✓</span>}
+            </div>
+            <span style={{ fontSize: T.secondary, color: vendor.isInformal ? C.success : C.muted }}>A friend or family member helping out — not a paid booking</span>
+          </label>
+
           {/* Attribute tags — cross-cutting qualities used for filtering/shortlisting. */}
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 6 }}>Attributes <span style={{ opacity: 0.7 }}>(optional)</span></div>
@@ -6877,6 +6887,24 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             );
           })()}
 
+          {/* HOST-APPROPRIATE-VENDOR-UI: Pricing Structure through Operational
+              & Reliability below is the "paid professional booking" apparatus
+              (contract, COI, deposit/balance, reliability score). None of it
+              applies to an informal helper, so it's skipped entirely rather
+              than rendered empty — a host managing their cousin bringing
+              chairs should never see paperwork-due fields for them. */}
+          {vendor.isInformal ? (
+            <div style={{ marginBottom: 20 }}>
+              <div style={vendorSectionTitle}>What they're helping with</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>Cost, if any <span style={{ fontWeight: FW.regular }}>(optional — gas money, a thank-you gift; leave blank if unpaid)</span></label>
+                  <input style={s.input} type="number" min="0" value={vendor.cost || ''} placeholder="0" onChange={e => onChange('cost', Number(e.target.value) || 0)} />
+                </div>
+              </div>
+            </div>
+          ) : (
+          <>
           {/* Pricing Structure */}
           <div style={{ marginBottom: 20 }}>
             <div style={vendorSectionTitle}>Pricing Structure</div>
@@ -7473,6 +7501,8 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               </div>
             )}
           </div>
+          </>
+          )}
 
           {/* ── Specialties & Tags (collapsible) — discovery context ── */}
           <div style={{ marginBottom: 16, border: `1px solid ${C.border}`, borderRadius: 10, overflow: 'hidden' }}>
@@ -38691,11 +38721,15 @@ function EventVendorsTab({ event, setEvent, setVendors, budget, openId, openSect
     const num = (x) => { const n = Number(x); return Number.isFinite(n) && n > 0 ? n : 0; };
     const cost = num(details.cost);
     const depositAmt = num(details.depositAmt);
-    const coiRequired = !!details.coiRequired;
+    // HOST-APPROPRIATE-VENDOR-UI: isInformal always wins, regardless of what
+    // Step 2's checkbox state happened to be — a friend/family helper never
+    // gets COI paperwork seeded at creation.
+    const coiRequired = !!details.coiRequired && !identity.isInformal;
     const newVendor = {
       id: uid(),
       name: identity.name.trim(),
       category: identity.category,
+      isInformal: !!identity.isInformal,
       // Tie the new vendor into the event budget from the start — without a
       // budgetCategory it never shows up in the Budget sections (board: "budget
       // sections not working on vendor creation").
@@ -38911,7 +38945,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
   }, []);
   const [step, setStep] = useState(1);
   const [identity, setIdentity] = useState({
-    name: '', category: '', tags: [], contactName: '', email: '', phone: '', website: '',
+    name: '', category: '', tags: [], contactName: '', email: '', phone: '', website: '', isInformal: false,
   });
   const [saveToBank, setSaveToBank] = useState(false);
   // Board #2: capture the operational VALUES at creation. At-home gatherings are
@@ -39111,6 +39145,14 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   <div style={{ fontSize: T.caption, color: C.muted, marginBottom: 6 }}>Attributes <span style={{ opacity: 0.7 }}>(optional)</span></div>
                   <TagChips value={identity.tags} onChange={(tags) => setIdentity(d => ({ ...d, tags }))} options={attrsForVendorCategory(identity.category)} />
                 </div>
+                {/* HOST-APPROPRIATE-VENDOR-UI: a friend/family helper isn't a
+                    paid booking — skip COI/deposit/contract paperwork below. */}
+                <label onClick={() => setIdentity(d => ({ ...d, isInformal: !d.isInformal }))} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none', marginTop: 12 }}>
+                  <div style={{ width: 18, height: 18, borderRadius: 4, border: `2px solid ${identity.isInformal ? C.success : C.border}`, background: identity.isInformal ? C.success : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {identity.isInformal && <span style={{ fontSize: T.caption, color: '#fff', fontWeight: FW.bold }}>✓</span>}
+                  </div>
+                  <span style={{ fontSize: T.secondary, color: identity.isInformal ? C.success : C.muted }}>A friend or family member helping out — not a paid booking</span>
+                </label>
               </div>
 
               <div style={{ marginBottom: 12 }}>
@@ -39260,8 +39302,9 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   </div>
                 </div>
                 {/* COI — only for business events; an at-home gathering doesn't ask a
-                    friend bringing food for a certificate of insurance. */}
-                {!atHome && (
+                    friend bringing food for a certificate of insurance. Same logic
+                    extends to an explicitly-marked informal helper at any venue. */}
+                {!atHome && !identity.isInformal && (
                   <div style={{ marginTop: 12, border: `1px solid ${C.border}`, borderRadius: 10, padding: '11px 13px' }}>
                     <label onClick={() => setDet('coiRequired', !details.coiRequired)} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
                       <div style={{ width: 18, height: 18, borderRadius: 4, marginTop: 1, border: `2px solid ${details.coiRequired ? C.accent : C.muted}`, background: details.coiRequired ? C.accent : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -39298,6 +39341,7 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                   { label: 'Vendor added to',     value: event?.name || 'this event' },
                   { label: 'Vendor name',         value: identity.name.trim() || '—' },
                   { label: 'Category',            value: identity.category || '—' },
+                  ...(identity.isInformal ? [{ label: 'Type', value: 'Friend/family helper — no paperwork tracked' }] : []),
                   { label: 'Saved to vendor bank', value: saveToBank && bankAvailable ? (alreadyInBankHit ? 'Already in bank — no duplicate' : 'Yes') : 'No' },
                   { label: 'Estimated cost',      value: details.cost ? fmtD(Number(details.cost)) : 'Not set yet' },
                   { label: 'Deposit',             value: details.depositAmt ? `${fmtD(Number(details.depositAmt))}${details.payDueDate ? ` · due ${details.payDueDate}` : ''}` : (details.payDueDate ? `Due ${details.payDueDate}` : 'Not set yet') },

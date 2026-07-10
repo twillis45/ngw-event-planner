@@ -76,6 +76,15 @@ const RE_VENUEREQ = /\bcoi\b|certificate of insurance|proof of insurance|insuran
 
 export function vendorCoiRequirement(vendor, event) {
   if (!vendor) return null;
+
+  // 0 · Informal helper (friend/family, not a paid booking) — never gate on
+  // COI. Outranks even an explicit coiStatus, since HOST-APPROPRIATE-VENDOR-UI
+  // hides that control entirely once isInformal is set (App.js VendorModal).
+  if (vendor.isInformal) {
+    return { level: 'not_needed', reason: 'Informal helper, not a paid vendor booking.', source: 'explicit',
+      hostCopy: 'No paperwork needed — this is someone helping out, not a paid vendor.' };
+  }
+
   const t = COI_TEXT(vendor);
   const venueText = [(event && event.houseRules), (event && event.venueNotes), (event && event.venueRules)]
     .filter(Boolean).join(' · ').toLowerCase();
