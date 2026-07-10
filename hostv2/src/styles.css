@@ -177,14 +177,15 @@ button{font-family:inherit}
 .dock{
   position:absolute; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:30;
   display:flex; gap:2px; padding:4px; border-radius:999px;
-  background:color-mix(in srgb, var(--card) 32%, transparent);
-  -webkit-backdrop-filter:blur(30px) saturate(1.15); backdrop-filter:blur(30px) saturate(1.15);
-  border:1px solid rgba(255,255,255,.08); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 rgba(255,255,255,.06);
+  background:color-mix(in srgb, var(--card) 15%, transparent);
+  -webkit-backdrop-filter:blur(34px) saturate(1.2); backdrop-filter:blur(34px) saturate(1.2);
+  border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 rgba(255,255,255,.08);
 }
-/* Liquid-Glass-style edge: a faint top highlight only — real Apple regular-
-   variant material on dark UI reads as a mostly-opaque, muted surface with
-   soft blur, not a vividly saturated see-through pane (verified against
-   Apple's own HIG reference images and a real iOS 26 tab bar screenshot). */
+/* On this app's near-black dark-on-dark UI, Apple's real "regular"-variant
+   opacity read as opaque in practice — too little color contrast behind it
+   for the blur to visibly reveal. Pushed tint down further per direct
+   feedback; kept saturate modest (not vivid/candy-colored) so it stays
+   restrained rather than repeating the earlier over-saturation mistake. */
 .dock::before{
   content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 40%);
