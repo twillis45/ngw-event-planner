@@ -2134,7 +2134,7 @@ function PhaseSection({ label, hint, rows, defaultOpen = true, onAddressRow }) {
 // Vendor Readiness Pass: collapsible. Open by default when any question is
 // unanswered (signal-first); collapses to a one-line "All answered" summary
 // once the vendor's checklist is complete.
-function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
+function RequiredQuestionsSection({ vendor, questions, onAddressRow, host = false }) {
   const cat = vendor.category || 'this vendor';
   const open = questions.filter(q => q.status !== 'answered').length;
   // Redesign (2026-06-10, "too busy"): collapsed by default. A wall of
@@ -2161,14 +2161,14 @@ function RequiredQuestionsSection({ vendor, questions, onAddressRow }) {
             fontSize: type.size['xs'], fontWeight: 800,
             letterSpacing: '0.14em', textTransform: 'uppercase',
             color: P.steelBlue, fontFamily: FF,
-          }}>{`Required Questions · ${cat}`}</span>
+          }}>{host ? `Still to figure out · ${cat}` : `Required Questions · ${cat}`}</span>
         </span>
         <span style={{
           fontSize: type.size['xs'],
           color: open > 0 ? P.amber : P.textTertiary,
           fontFamily: FF, fontStyle: 'italic',
         }}>
-          {open > 0 ? `${open} unanswered` : 'All answered'}
+          {open > 0 ? `${open} question${open === 1 ? '' : 's'} not yet answered` : 'All answered'}
         </span>
       </button>
       {isOpen && (
@@ -2373,16 +2373,18 @@ function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) 
     : undefined;
 
   // Sprint 60.C: collapsible. Summary mirrors the contract status so the
-  // collapsed header still signals "Signed" / "Pending" / "Missing".
+  // collapsed header still signals "Signed" / "Contract needs attention" /
+  // "Contract missing" — named, not a bare status word (UX_06).
   const summary = contractStatus === 'done' ? 'Signed'
-    : contractStatus === 'attention' ? 'Needs attention'
-    : 'Missing';
+    : contractStatus === 'attention' ? 'Contract needs attention'
+    : 'Contract missing';
   const summaryColor = contractStatus === 'done' ? P.green
     : contractStatus === 'attention' ? P.amber
     : P.red;
+  const host = isHostView(event);
 
   return (
-    <CollapsibleSection label="Files & contract" summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
+    <CollapsibleSection label={host ? 'Paperwork' : 'Files & contract'} summary={summary} hintColor={summaryColor} isOpen={isOpen} onToggle={onToggle}>
       <div style={{
         background: P.card, border: `1px solid ${P.borderSubtle}`,
         borderRadius: radius.md, padding: `0 ${space[5]}px`,
@@ -2497,7 +2499,7 @@ function DocumentsSection({ vendor, event, isOpen, onToggle, onAction = null }) 
           borderBottom: `1px solid ${P.borderSubtle}`,
         }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>COI / Insurance</div>
+            <div style={{ fontSize: type.size['caption'], fontWeight: type.weight.semibold, color: P.textPrimary, marginBottom: 2 }}>Insurance</div>
             <div style={{ fontSize: type.size['sm'], color: P.textTertiary }}>{vendor.insuranceStatus || 'Not on file'}</div>
             {/* COI-LOGIC-1: service-mode-aware guidance — pickup/drop-off reads
                 "probably not needed", unknown reads "check", never "missing". */}
@@ -3432,7 +3434,10 @@ function PromiseTrackerSection({ vendor, event, isOpen, onToggle, onAddressRow, 
   );
   const openCount  = promises.filter(p => !['confirmed', 'completed'].includes(p.status)).length;
   const riskyCount = promises.filter(p => ['overdue', 'at_risk'].includes(p.status)).length;
-  const summary = riskyCount > 0 ? `${riskyCount} need attention` : openCount > 0 ? `${openCount} open` : 'All confirmed';
+  // UX_06: a bare count ("3 open") doesn't say what's open or why it
+  // matters — name the thing being counted, same as every other summary
+  // chip in this cockpit.
+  const summary = riskyCount > 0 ? `${riskyCount} deliverable${riskyCount === 1 ? '' : 's'} overdue or at risk` : openCount > 0 ? `${openCount} deliverable${openCount === 1 ? '' : 's'} not yet confirmed` : 'All confirmed';
   const summaryColor = riskyCount > 0 ? P.red : openCount > 0 ? P.amber : P.green;
   const ownerLabel = (o) => o ? o.charAt(0).toUpperCase() + o.slice(1) : '—';
 
@@ -3578,7 +3583,11 @@ const LOCKIN_GATES = [
   { key: 'contract', label: 'Contract' },
   { key: 'deposit',  label: 'Deposit' },
   { key: 'balance',  label: 'Final pay' },
-  { key: 'coi',      label: 'COI' },
+  // "COI" is a real insurance-industry acronym a first-time host has no
+  // reason to know (UX_06: copy must make sense to a first-time reader).
+  // "Insurance" carries the same meaning without the jargon, for planner
+  // and host views alike.
+  { key: 'coi',      label: 'Insurance' },
   { key: 'arrival',  label: 'Arrival' },
 ];
 // Reversal patches for "uncheck for unpaid / undo mark" — payment gates only.
@@ -3589,7 +3598,7 @@ const GATE_REVERSAL = {
   deposit: { patch: { depositPaid: false, depositPaidAt: null, depositMethod: null }, label: 'Deposit', log: 'Deposit un-marked — back to unpaid (correction via cockpit).' },
   balance: { patch: { balancePaid: false, balancePaidAt: null, balanceMethod: null }, label: 'Final payment', log: 'Final payment un-marked — back to unpaid (correction via cockpit).' },
 };
-function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) {
+function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, host = false }) {
   const [confirmKey, setConfirmKey] = useState(null);
   const gates = LOCKIN_GATES.map(g => {
     const r = (rows || []).find(x => x.key === g.key);
@@ -3615,7 +3624,10 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow }) 
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: space[3] }}>
         <span style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.14em', textTransform: 'uppercase', color: headColor, fontFamily: FF }}>
-          {allDone ? 'Fully locked in' : 'Lock-in progress'}
+          {/* "Lock-in progress" is planner pipeline-speak; a host reads the
+              same signal as "Where you stand" (matches V2's identical
+              phrase for this concept — one vocabulary across both apps). */}
+          {host ? (allDone ? 'All set' : 'Where you stand') : (allDone ? 'Fully locked in' : 'Lock-in progress')}
         </span>
         <span style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>{done} of {total}</span>
       </div>
@@ -3881,7 +3893,7 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
 
         {/* Lock-in progress — "X of N" at a glance (makes the auto-advance
             behavior visible). Desktop/tablet; mobile leads with MobileVendorSummary. */}
-        {!isMobile && <LockInTracker rows={planning} vendor={vendor} onPatchVendor={onPatchVendor} onAddLog={onAddLog} onAddressRow={addressRow} />}
+        {!isMobile && <LockInTracker rows={planning} vendor={vendor} onPatchVendor={onPatchVendor} onAddLog={onAddLog} onAddressRow={addressRow} host={isHostView(event)} />}
 
         {/* Consolidation (2026-06-10): the standalone "What needs attention"
             digest was merged INTO the Next Action card above (next action = the
@@ -3909,12 +3921,12 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
           onAddLog={onAddLog}
         />
         <div ref={questionsRef} style={flashStyle('questions')}>
-          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} />
+          <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} host={isHostView(event)} />
         </div>
 
         {/* ── Zone 2 · Money & contract ─────────────────────────────── */}
-        <div style={ZONE_LABEL}>Money &amp; contract</div>
-        <PhaseSection label="Payments & booking" hint="The deal" rows={planning} defaultOpen={false} onAddressRow={addressRow} />
+        <div style={ZONE_LABEL}>{isHostView(event) ? 'Paying people' : 'Money & contract'}</div>
+        <PhaseSection label={isHostView(event) ? 'What you owe' : 'Payments & booking'} hint="The deal" rows={planning} defaultOpen={false} onAddressRow={addressRow} />
         <div ref={documentsRef} style={flashStyle('documents')}>
           <DocumentsSection vendor={vendor} event={event} isOpen={collapse.documents} onToggle={() => toggle('documents')}
             /* ACTIONABLE-ROWS-1: a missing/at-risk file row must FIX, not warn.
