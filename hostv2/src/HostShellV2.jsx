@@ -2350,6 +2350,16 @@ export default function HostShellV2() {
                           <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route) || 'the right spot')); }}>Sort it out</button>
                         </div>
                       )}
+                      {/* No tab/field to route to, but a real fixed set of
+                          options — resolves right here instead of leaving
+                          nextDecision's text with nowhere to act on it. */}
+                      {!isVenueBlock && !b.route && b.fieldKey && Array.isArray(b.options) && (
+                        <div className="actions-row" style={{ flexWrap: 'wrap' }}>
+                          {b.options.map(opt => (
+                            <button key={opt.value} className="chip" onClick={() => patchEvent({ [b.fieldKey]: opt.value })}>{opt.label}</button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </article>
                 );
@@ -4236,11 +4246,18 @@ export default function HostShellV2() {
                       Estimates below: {unbookedSuggestions[0].factorsApplied.map(f => f.explanation).join(' ')}
                     </p>
                   )}
+                  {/* Category name was inheriting .line's 14px/ink-soft with only a
+                      fontWeight bump — 1px and 100-weight away from .grounding's
+                      13px/550 secondary text below it. Nothing to anchor the eye.
+                      Reusing .vc-name's exact treatment (14.5px/750/full-ink) —
+                      the same "this is the primary thing in the row" contrast
+                      already established for booked-vendor names just above this
+                      list, not a new pattern. */}
                   {unbookedSuggestions.map(cat => (
-                    <div key={cat.category} className="line" style={{ alignItems: 'flex-start', padding: '8px 0', borderTop: '1px solid var(--line-soft)' }}>
+                    <div key={cat.category} className="line" style={{ alignItems: 'flex-start', padding: '10px 0', borderTop: '1px solid var(--line-soft)' }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 650 }}>{cat.category}</div>
-                        {cat.estimateCopy && <p className="grounding" style={{ margin: '2px 0 0' }}>{cat.estimateCopy}</p>}
+                        <div className="vc-name">{cat.category}</div>
+                        {cat.estimateCopy && <p className="grounding" style={{ margin: '3px 0 0' }}>{cat.estimateCopy}</p>}
                         {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>{cat.altToDIY}</p>}
                       </div>
                       <button className="mini" style={{ flexShrink: 0 }} onClick={() => addVendorCategory(cat.category)}>Add</button>

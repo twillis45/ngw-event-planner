@@ -406,6 +406,32 @@ describe('F4: Assemble Reveal Enhancement', () => {
       expect(buildBlockerStage({ type: 'something-unknown', urgency: 'low', reasoning: 'x' }).route).toBeNull();
     });
 
+    // Host complaint: "Choose the timing." rendered as plain text with no
+    // route AND no way to act on it — a dead-end instruction. ceremony-timing
+    // is the one routeless blocker with a real, small, fixed answer set, so it
+    // resolves inline instead (fieldKey + options) rather than staying stuck.
+    test('ceremony-timing carries fieldKey + options for inline resolution (routeless, but not actionless)', () => {
+      const stage = buildBlockerStage({ type: 'ceremony-timing', urgency: 'critical', reasoning: 'x' });
+      expect(stage.route).toBeNull();
+      expect(stage.fieldKey).toBe('ceremonyTiming');
+      expect(stage.options).toEqual([
+        { value: 'before', label: 'Before the celebration' },
+        { value: 'during', label: 'During the celebration' },
+        { value: 'after',  label: 'After the celebration' },
+      ]);
+    });
+
+    test('dress-code-confirmation and unknown blockers have no fieldKey/options — genuinely nowhere to resolve inline', () => {
+      expect(buildBlockerStage({ type: 'dress-code-confirmation', urgency: 'medium', reasoning: 'x' }).fieldKey).toBeNull();
+      expect(buildBlockerStage({ type: 'dress-code-confirmation', urgency: 'medium', reasoning: 'x' }).options).toBeNull();
+      expect(buildBlockerStage({ type: 'something-unknown', urgency: 'low', reasoning: 'x' }).fieldKey).toBeNull();
+    });
+
+    test('blockers WITH a real route (venue, guest count) carry no options — route wins, no redundant inline picker', () => {
+      expect(buildBlockerStage({ type: 'venue-selection', urgency: 'critical', reasoning: 'x' }).options).toBeNull();
+      expect(buildBlockerStage({ type: 'guest-count-confirmation', urgency: 'high', reasoning: 'x' }).options).toBeNull();
+    });
+
     test('routes never point at the dead "Details" tab id (real id is "Event Details")', () => {
       ['venue-selection', 'guest-count-confirmation', 'ceremony-timing', 'dress-code-confirmation'].forEach(type => {
         const stage = buildBlockerStage({ type, urgency: 'high', reasoning: 'x' });
@@ -464,6 +490,17 @@ describe('F4: Assemble Reveal Enhancement', () => {
       const stages = unresolvedBlockerStages({ decisionBlockers: [{ type: 'ceremony-timing', urgency: 'critical', reasoning: 'x' }] });
       expect(stages).toHaveLength(1);
       expect(stages[0].route).toBeNull();
+    });
+
+    // This is the exact object shape App.js's BlockedDecisionsReminder /
+    // AssembleReveal and HostShellV2's blocker card actually render — proves
+    // the fix reaches the real consumer path, not just buildBlockerStage in
+    // isolation.
+    test('ceremony-timing reaches the ongoing view with fieldKey/options intact, ready for inline resolution', () => {
+      const stages = unresolvedBlockerStages({ decisionBlockers: [{ type: 'ceremony-timing', urgency: 'critical', reasoning: 'x' }] });
+      expect(stages[0].fieldKey).toBe('ceremonyTiming');
+      expect(stages[0].options).toHaveLength(3);
+      expect(stages[0].options.map(o => o.value)).toEqual(['before', 'during', 'after']);
     });
   });
 

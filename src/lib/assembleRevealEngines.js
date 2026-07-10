@@ -138,7 +138,17 @@ function buildBlockerStage(blocker) {
       title: 'Ceremony Timing',
       what: 'When does the ceremony happen? Before, during, or after the celebration?',
       why: 'This decision cascades: it affects your timeline, guest experience, vendor sequence, and risk profile.',
-      nextDecision: 'Choose the timing.'
+      nextDecision: 'Choose the timing.',
+      // No in-app tab/field to ROUTE to (route stays null, below) — but this is
+      // a plain 3-way pick with nowhere else it needs to live, so it resolves
+      // inline on the card itself rather than being a dead-end instruction with
+      // no way to act on it. fieldKey names the exact event field it writes.
+      fieldKey: 'ceremonyTiming',
+      options: [
+        { value: 'before', label: 'Before the celebration' },
+        { value: 'during', label: 'During the celebration' },
+        { value: 'after',  label: 'After the celebration' },
+      ],
     },
     'venue-selection': {
       title: 'Venue',
@@ -170,9 +180,13 @@ function buildBlockerStage(blocker) {
     why: blocker.reasoning,
     nextDecision: 'Make this choice.'
   };
-  // ceremony-timing / dress-code have no in-app field to land on yet — those
-  // stay routeless (the CTA simply doesn't render) rather than lying about a
-  // destination. Never invent a route.
+  // dress-code has no in-app field to land on and no simple fixed option set —
+  // it stays routeless (the CTA simply doesn't render) rather than lying about
+  // a destination. Never invent a route. ceremony-timing is different: it's a
+  // plain 3-way pick with nowhere else that needs to live, so it carries
+  // fieldKey/options and resolves inline on the card (see App.js/HostShellV2
+  // consumers) instead of being a dead-end instruction with no way to act on
+  // it — same "never fake it" principle, opposite resolution.
 
   return {
     key: `blocker-${blocker.type}`,
@@ -183,6 +197,10 @@ function buildBlockerStage(blocker) {
     // POP-1 continuity: where this blocker gets RESOLVED (not just acknowledged).
     // null when no in-app destination exists — consumers render no CTA then.
     route: copy.route || null,
+    // Inline resolution for simple fixed-choice blockers (see comment above).
+    // null for anything without a real, non-invented set of options.
+    fieldKey: copy.fieldKey || null,
+    options: copy.options || null,
     icon: 'alert',
     title: copy.title,
     what: copy.what,

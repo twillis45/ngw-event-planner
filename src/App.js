@@ -9391,7 +9391,7 @@ function ExperienceContinuityNote({ ctx, card, eyebrow, C, T, label = 'What we r
 // ctx.decisionBlockers — already status-filtered — through buildBlockerStage);
 // acknowledged/dismissed blockers never appear, routeless blockers get no CTA.
 // Attention-safe: renders nothing when there's nothing unresolved.
-function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
+function BlockedDecisionsReminder({ ctx, onRoute, onPatchEvent = null, isMobile = false }) {
   const C = useT();
   const T = useType();
   const stages = (() => { try { return unresolvedBlockerStages(ctx); } catch { return []; } })();
@@ -9409,6 +9409,20 @@ function BlockedDecisionsReminder({ ctx, onRoute, isMobile = false }) {
                 style={{ background: 'none', border: 'none', padding: 0, marginTop: 5, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>
                 Handle it now →
               </button>
+            )}
+            {/* No tab/field to route to, but a real fixed set of options —
+                resolves right here instead of leaving "Choose the timing."
+                as an instruction with nowhere to act on it. */}
+            {!st.route && st.fieldKey && Array.isArray(st.options) && onPatchEvent && (
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {st.options.map(opt => (
+                  <button key={opt.value} type="button" data-testid={`blocked-decision-${st.blockerType}-${opt.value}`}
+                    onClick={() => onPatchEvent({ [st.fieldKey]: opt.value })}
+                    style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 999, padding: '4px 10px', cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, fontFamily: 'inherit' }}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         ))}
@@ -23170,6 +23184,16 @@ function AssembleReveal({ ev, profile, onDone, onPatchEvent = null, onRoute = nu
                         {onRoute && st.route && (
                           <button type="button" data-testid={`reveal-resolve-${st.blockerType}`} onClick={() => onRoute(st.route)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.bold, color: C.accent }}>Handle it now →</button>
                         )}
+                        {/* No tab/field to route to, but a real fixed set of
+                            options — resolves right here instead of leaving
+                            "Choose the timing." with nowhere to act on it. */}
+                        {!st.route && st.fieldKey && Array.isArray(st.options) && onPatchEvent && st.options.map(opt => (
+                          <button key={opt.value} type="button" data-testid={`reveal-resolve-${st.blockerType}-${opt.value}`}
+                            onClick={() => onPatchEvent({ [st.fieldKey]: opt.value })}
+                            style={{ background: 'none', border: `1px solid ${C.border}`, borderRadius: 999, padding: '3px 9px', cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.text, fontFamily: 'inherit' }}>
+                            {opt.label}
+                          </button>
+                        ))}
                         {onPatchEvent && <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'acknowledged' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Acknowledge</button>}
                         {onPatchEvent && <button type="button" onClick={() => onPatchEvent({ decisionBlockerStatus: { ...(ev.decisionBlockerStatus || {}), [st.blockerType]: 'dismissed' } })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, color: C.muted }}>Dismiss</button>}
                       </span>
@@ -43337,7 +43361,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           {!dayMode && <WeatherAlert event={event} onNavTo={(t, opts) => go(t, null, opts)} />}
           {/* POP-1: ongoing home for unresolved decision blockers after Reveal closes —
               same copy + same resolution route the Reveal cards use. */}
-          {!dayMode && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => go(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} />}
+          {!dayMode && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => go(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
           {/* DAYBEFORE-DIFM-1 — the day-before plan: one calm card compressing
               five surfaces at peak host stress (T-2 → T-1). What still matters
               leads; settled sections say so plainly (stop worrying); every row
@@ -44704,7 +44728,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {!dayMode && tab === 'Command' && <WeatherAlert event={event} onNavTo={(t, opts) => handleTabChange(t, null, opts)} />}
       {/* POP-1: ongoing home for unresolved decision blockers (host persona) —
           same copy + same resolution route as Reveal; see BlockedDecisionsReminder. */}
-      {!dayMode && tab === 'Command' && hostNavActive(event) && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => handleTabChange(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} />}
+      {!dayMode && tab === 'Command' && hostNavActive(event) && <BlockedDecisionsReminder ctx={ctx} isMobile={isMobile} onRoute={(route) => handleTabChange(route.tab, null, route.focusField ? { focusField: route.focusField } : undefined)} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} />}
 
       {/* Day-of severity surface. Host (hostNavActive/recordKind=event): the calm
           3-tier CARD STACK (Figma B2 1558:49) — colored left rails, "→ your move"
