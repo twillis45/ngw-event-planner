@@ -80,6 +80,14 @@ export function buildCrabPlan(event) {
   if (!heads) {
     coverageStatus = 'needs_headcount';
     issues.push({ type: 'headcount', copy: 'Set how many people are eating crabs so we can calculate coverage.', actionLabel: 'Set crab headcount', route: { focusField: 'crab-headcount' } });
+  } else if (!lines.length) {
+    // NO-ORDER-YET FIX: zero lines entered is "haven't started," not "started
+    // and fell short." Without this branch, totalEstimatedCrabs/heads = 0 fell
+    // through to the ratio math below and read as coverageStatus 'under' —
+    // "This covers about 0 crabs per person," the exact wording of an order
+    // that undershot. A host who hasn't ordered yet needs a calm starting
+    // state, not a false shortfall.
+    coverageStatus = 'no_order';
   } else if (lines.length && !countsComplete && totalEstimatedCrabs === 0) {
     coverageStatus = 'needs_count_per_unit';
   } else {
@@ -136,6 +144,7 @@ export function buildCrabPlan(event) {
   else if (coverageStatus === 'covered') coverageCopy = `This covers about ${fmt1(coveredCrabsPerPerson)} crabs per person.`;
   else if (coverageStatus === 'extra') coverageCopy = `This covers about ${fmt1(coveredCrabsPerPerson)} crabs per person. That may be extra unless crabs are the main event.`;
   else if (coverageStatus === 'needs_headcount') coverageCopy = 'Set the crab-eating headcount to see coverage.';
+  else if (coverageStatus === 'no_order') coverageCopy = 'No crab order yet — add a line to see coverage.';
   else if (coverageStatus === 'needs_count_per_unit') coverageCopy = 'Add the vendor’s estimated count per unit so we can calculate coverage.';
 
   // ── Handled (green-dot) — real completeness only ───────────────────────────

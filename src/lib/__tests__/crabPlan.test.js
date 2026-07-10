@@ -38,6 +38,19 @@ test('6 · no headcount anywhere → needs_headcount with a routed fix', () => {
   expect(p.issues.find(i => i.type === 'headcount').route.focusField).toBe('crab-headcount');
 });
 
+test('NO-ORDER-YET: headcount known but zero lines entered reads as "no order yet," not "under-ordered at 0"', () => {
+  // Regression: totalEstimatedCrabs/heads = 0 must NOT fall through to the
+  // under/covered/extra ratio math and read as coverageStatus 'under' with
+  // "This covers about 0 crabs per person" — a false shortfall on a host who
+  // simply hasn't started ordering.
+  const p = buildCrabPlan(ev({ crabEatingHeadcount: 24, lines: [] }));
+  expect(p.coverageStatus).toBe('no_order');
+  expect(p.coverageStatus).not.toBe('under');
+  expect(p.coveredCrabsPerPerson).toBeNull();
+  expect(p.coverageCopy).toMatch(/no crab order yet/i);
+  expect(p.coverageCopy).not.toMatch(/0 crabs per person/i);
+});
+
 test('7 · mixed/unknown size bushel without vendor count → needs_count_per_unit', () => {
   const p = buildCrabPlan(ev({ crabEatingHeadcount: 20, lines: [line({ size: 'mixed', unit: 'bushel' })] }));
   expect(p.coverageStatus).toBe('needs_count_per_unit');
