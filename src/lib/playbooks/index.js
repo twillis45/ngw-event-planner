@@ -1566,9 +1566,27 @@ export function playbookDecisionBoard(event, asOf) {
     const unmet = deps.filter((x) => !depMet(x));
     let status; let because;
     if (daysOut !== null && daysOut < 0) {
-      status = 'overdue';
+      // OVERDUE-ON-CREATION FIX: a decision is only genuinely "past its easy
+      // window" if it was ever REACHABLE — i.e. there was runway between when
+      // the host created the event and when the decision's window closed. An
+      // event created two days out never had a chance at a 21-day-lead
+      // decision, so that's a tight timeline, not the host being late.
+      // (event.createdAt exists in the data model; unknown ⇒ assume reachable,
+      // preserving prior behavior for legacy events with no timestamp.)
+      const runwayAtCreation = event.createdAt ? daysToEvent(event.date, event.createdAt) : null;
+      const wasReachable = runwayAtCreation === null
+        || (offset !== null && (runwayAtCreation + offset) >= 0);
       const od = Math.abs(daysOut);
-      because = `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+      if (wasReachable) {
+        status = 'overdue';
+        because = `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+      } else {
+        // never in the easy window — surface as an open, do-this-first item,
+        // NOT a blameworthy "overdue" that inflates the "N past their easy
+        // window" count on a brand-new event.
+        status = 'ready';
+        because = 'Tight timeline — worth doing first.';
+      }
     } else if (unmet.length) {
       status = 'waiting';
       const nouns = unmet.map((x) => decisionDepNoun(x, decisions));

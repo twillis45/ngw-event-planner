@@ -1557,6 +1557,7 @@ export default function HostShellV2() {
     const short = effType.replace(' Party', '');
     const ev = {
       id: 'custom', rsvpCode: 'mine',
+      createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       name: effName ? effName + '’s ' + short : 'My ' + short,
       honoree: effName || '',
       type: effType, date: effDate || '', venue: parsed.venue || '', venueKind: parsed.venueKind || '',

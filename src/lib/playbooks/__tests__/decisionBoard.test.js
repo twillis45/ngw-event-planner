@@ -93,6 +93,33 @@ describe('decision status derivation', () => {
     expect(fmt.because).toMatch(/Was due/);
   });
 
+  test('OVERDUE-ON-CREATION: an event just created close to its date is TIGHT, not overdue', () => {
+    // Created 2026-01-01, event 2026-01-05 (4 days out). The format decision has a
+    // 21-day lead — it was NEVER reachable, so it must read "tight," not "overdue."
+    const b = playbookDecisionBoard(
+      { id: 'e', type: 'Dinner Party', date: '2026-01-05', createdAt: '2026-01-01T09:00:00Z', guests: roster(22, 6, 12) },
+      '2026-01-01',
+    );
+    const fmt = b.open.find((r) => r.id === 'format');
+    expect(fmt.status).toBe('ready');              // not 'overdue' — no blame on a fresh event
+    expect(fmt.because).toMatch(/Tight timeline/);
+    expect(fmt.because).not.toMatch(/Was due/);
+    // and it does NOT inflate the overdue count that drives "N past their easy window"
+    expect(b.open.filter((r) => r.status === 'overdue').length).toBe(0);
+  });
+
+  test('OVERDUE-ON-CREATION: a decision reachable at creation but ignored IS still overdue', () => {
+    // Created 2025-12-01 (35 days of runway), event 2026-01-05, now 2026-01-01.
+    // The 21-day-lead format decision WAS reachable at creation, so ignoring it → genuinely overdue.
+    const b = playbookDecisionBoard(
+      { id: 'e', type: 'Dinner Party', date: '2026-01-05', createdAt: '2025-12-01T09:00:00Z', guests: roster(22, 6, 12) },
+      '2026-01-01',
+    );
+    const fmt = b.open.find((r) => r.id === 'format');
+    expect(fmt.status).toBe('overdue');
+    expect(fmt.because).toMatch(/Was due/);
+  });
+
   test('a made pick locks the decision out of OPEN into LOCKED', () => {
     const b = playbookDecisionBoard(
       { id: 'e', type: 'Dinner Party', date: '2026-02-01', guests: roster(22, 6, 12), foodChoices: { format: 'Family-style' } },
