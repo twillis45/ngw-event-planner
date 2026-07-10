@@ -3939,15 +3939,51 @@ export default function HostShellV2() {
                                   ].filter(Boolean).join(' · ')}
                                 </span>
                               </span>
-                              <span className="amt">
-                                {foodPlan.hasRealCount
-                                  ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
-                                  : '—'}
-                              </span>
+                              {/* Frictionless price entry: the amount itself is the
+                                  input, not a link to a panel two taps away. Tap the
+                                  estimate range, type what you actually paid, Enter or
+                                  tap away commits it — same foodLocked write the old
+                                  "tune → set it" flow used, just without the detour.
+                                  Locked (already-real) prices still route through tune
+                                  to reach "back to estimate" — editing a committed
+                                  number is the rarer path and can afford one more tap. */}
+                              {tuning && it.locked == null ? (
+                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                  <input className="field" style={{ width: 64, fontSize: 13, padding: '4px 8px' }} type="number" min="0"
+                                    inputMode="decimal" placeholder="$ paid" autoFocus
+                                    aria-label={'Real cost for ' + (it.short || it.item)}
+                                    value={tuneCost} onChange={e => setTuneCost(e.target.value)}
+                                    onKeyDown={e => {
+                                      if (e.key === 'Enter' && parseFloat(tuneCost) >= 0 && tuneCost !== '') {
+                                        const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
+                                        setTuneCost(''); setFoodTune(null);
+                                      } else if (e.key === 'Escape') { setTuneCost(''); setFoodTune(null); }
+                                    }}
+                                    onBlur={() => {
+                                      if (parseFloat(tuneCost) >= 0 && tuneCost !== '') {
+                                        const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
+                                        setTuneCost('');
+                                      }
+                                    }} />
+                                </span>
+                              ) : (
+                                <span className="amt" role="button" tabIndex={0}
+                                  onClick={e => { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); }}
+                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); } }}
+                                  title="Tap to enter the real price">
+                                  {foodPlan.hasRealCount
+                                    ? (it.locked != null ? fmt(it.locked) : fmt(it.low) + '–' + fmt(it.high))
+                                    : '—'}
+                                </span>
+                              )}
                               <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
                                 onClick={e => { e.stopPropagation(); setFoodTune(tuning ? null : it.id); }}
                                 onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setFoodTune(tuning ? null : it.id); } }}>
-                                {tuning ? 'done' : 'tune'}
+                                {tuning ? 'more' : 'tune'}
                               </span>
                             </button>
                             {tuning && (
@@ -3968,34 +4004,20 @@ export default function HostShellV2() {
                                   }}>+</button>
                                   <button className="mini" onClick={() => patchEvent({ foodSkip: { ...(event.foodSkip || {}), [it.id]: true } }, (it.short || it.item) + ' skipped — the total just dropped.')}>skip it</button>
                                 </div>
-                                {/* ORIGINAL parity — lock the real cost: event.foodLocked[id]
-                                    = the committed dollar amount ("picked a source/price");
-                                    the engine turns the range into a fixed line. */}
-                                <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
-                                  <span className="of">cost:</span>
-                                  {it.locked != null ? (
-                                    <>
-                                      <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
-                                      <button className="mini" onClick={() => {
-                                        const m = { ...(event.foodLocked || {}) }; delete m[it.id];
-                                        patchEvent({ foodLocked: m }, (it.short || it.item) + ' back to the estimate range.');
-                                      }}>back to estimate</button>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <input className="field" style={{ maxWidth: 90, fontSize: 13, padding: '6px 10px' }} type="number" min="0" placeholder="$ actual"
-                                        aria-label={'Real cost for ' + (it.short || it.item)}
-                                        value={tuneCost} onChange={e => setTuneCost(e.target.value)} />
-                                      <button className="mini" disabled={!(parseFloat(tuneCost) >= 0 && tuneCost !== '')}
-                                        onClick={() => {
-                                          const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
-                                          patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
-                                            (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
-                                          setTuneCost('');
-                                        }}>set it</button>
-                                    </>
-                                  )}
-                                </div>
+                                {/* Real-cost entry now lives inline on the row itself
+                                    (tap the amount) — the frictionless path. This stays
+                                    only for the already-locked reset case; "back to
+                                    estimate" has no other home. */}
+                                {it.locked != null && (
+                                  <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                                    <span className="of">cost:</span>
+                                    <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
+                                    <button className="mini" onClick={() => {
+                                      const m = { ...(event.foodLocked || {}) }; delete m[it.id];
+                                      patchEvent({ foodLocked: m }, (it.short || it.item) + ' back to the estimate range.');
+                                    }}>back to estimate</button>
+                                  </div>
+                                )}
                                 {Array.isArray(it.where) && it.where.length > 1 && (
                                   <div className="chips" style={{ marginTop: 8 }}>
                                     {it.where.slice(0, 4).map(w => (
