@@ -981,14 +981,16 @@ export default function HostShellV2() {
     if (route.tab === 'Budget') { setSheet({ kind: 'budget', focus: null }); return true; }
     if (route.tab === 'Guests') { setSheet({ kind: 'guests', focus: null }); return true; }
     if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(String(route.focusField || '')))) {
-      setSheet({ kind: 'food', focus: route.foodFocus || null }); return true;
-    }
-    if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
-      setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
+      const rowId = /^foodrow-(.+)$/.exec(String(route.focusField || ''));
+      setSheet({ kind: 'food', focus: route.foodFocus || (rowId ? rowId[1] : null) }); return true;
     }
     if (route.focusField === 'rain-plan') { setSheet({ kind: 'rain' }); return true; }
     if (route.focusField === 'crab-plan') { setSheet({ kind: 'crabs' }); return true; }
     if (/^fp-diet/.test(String(route.focusField || ''))) { setSheet({ kind: 'food', focus: 'diet' }); return true; }
+    if (/^caprow-/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
+    if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
+      setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
+    }
     return false;
   };
 
@@ -4417,9 +4419,15 @@ export default function HostShellV2() {
                       <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--warn)' }}>A way back under</div>
                       {recovery.headline && <p className="grounding" style={{ margin: '0 0 6px' }}>{recovery.headline}</p>}
                       {(recovery.suggestions || []).slice(0, 4).map((s, i) => (
-                        <div key={s.id || i} className="line" style={{ alignItems: 'flex-start' }}>
-                          <span style={{ fontSize: 13 }}>{s.copy || s.label || s.title}</span>
-                          {s.amount ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.amount)}</span> : null}
+                        <div key={s.id || i} className="line" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
+                          <span style={{ fontSize: 13, flex: '1 1 auto' }}>
+                            {s.copy || s.label || s.title}
+                            {s.why ? <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>{s.why}</span> : null}
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                            {(s.estimatedSavings || s.amount) ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.estimatedSavings || s.amount)}</span> : null}
+                            {s.route && <button className="mini" onClick={() => { if (!routeSheet(s.route)) toast('In the app this opens: ' + (describeRoute(s.route) || 'the right spot')); }}>{s.actionLabel || 'Open'}</button>}
+                          </span>
                         </div>
                       ))}
                       {swapPick && swapPick.row && (
