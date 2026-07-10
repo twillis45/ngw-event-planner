@@ -4227,16 +4227,20 @@ export default function HostShellV2() {
                   <div className="shelf-label" style={{ margin: hasVendors ? '16px 0 6px' : '0 0 6px' }}>
                     {hasVendors ? 'Other roles this kind of event usually needs' : 'People this kind of event usually needs'}
                   </div>
+                  {/* factorsApplied (metro market, timeline rush) is an EVENT-level
+                      adjustment, identical for every category — it was rendering
+                      once per row, repeating the same two sentences 6-9 times in a
+                      row. Shown once here instead. */}
+                  {unbookedSuggestions[0] && unbookedSuggestions[0].factorsApplied.length > 0 && (
+                    <p className="grounding" style={{ margin: '0 0 10px', opacity: .75 }}>
+                      Estimates below: {unbookedSuggestions[0].factorsApplied.map(f => f.explanation).join(' ')}
+                    </p>
+                  )}
                   {unbookedSuggestions.map(cat => (
                     <div key={cat.category} className="line" style={{ alignItems: 'flex-start', padding: '8px 0', borderTop: '1px solid var(--line-soft)' }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ fontWeight: 650 }}>{cat.category}</div>
                         {cat.estimateCopy && <p className="grounding" style={{ margin: '2px 0 0' }}>{cat.estimateCopy}</p>}
-                        {cat.factorsApplied.length > 0 && (
-                          <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>
-                            {cat.factorsApplied.map(f => f.explanation).join(' ')}
-                          </p>
-                        )}
                         {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>{cat.altToDIY}</p>}
                       </div>
                       <button className="mini" style={{ flexShrink: 0 }} onClick={() => addVendorCategory(cat.category)}>Add</button>
