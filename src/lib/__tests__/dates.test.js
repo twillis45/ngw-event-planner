@@ -1,4 +1,4 @@
-import { getToday, daysUntil } from '../dates';
+import { getToday, daysUntil, eventDateStatus } from '../dates';
 
 const iso = (offsetDays) => {
   const d = getToday();
@@ -31,5 +31,31 @@ describe('dates — canonical day-count (single source of truth)', () => {
 
   test('tolerates a datetime string by reading the date part', () => {
     expect(daysUntil(iso(3) + 'T18:30:00')).toBe(3);
+  });
+});
+
+describe('DATE-GUARDRAIL — eventDateStatus blocks a corrupted year before it can be written', () => {
+  // Regression: a native <input type="date"> fed the raw string "10/09/2026"
+  // corrupted to "0002-10-09" (year 2 AD) with zero validation upstream,
+  // rendering as "739158d ago — this one is behind you" with no sanity check.
+  // The host-facing date setters in both apps now gate every write through
+  // eventDateStatus and reject anything it marks blocking.
+  test('a wildly-wrong year (0002) is blocking, not silently accepted', () => {
+    const status = eventDateStatus('0002-10-09');
+    expect(status.blocking).toBe(true);
+    expect(status.status).toBe('past');
+    expect(status.reason).toMatch(/ago/i);
+  });
+
+  test('unparseable input is blocking with a clear reason', () => {
+    const status = eventDateStatus('not-a-date');
+    expect(status.blocking).toBe(true);
+    expect(status.status).toBe('invalid');
+  });
+
+  test('a real future date is never blocking', () => {
+    const status = eventDateStatus(iso(92));
+    expect(status.blocking).toBe(false);
+    expect(status.valid).toBe(true);
   });
 });

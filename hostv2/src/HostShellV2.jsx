@@ -1415,7 +1415,18 @@ export default function HostShellV2() {
     if (kind === 'date') return (
       <div className="hc-row">
         <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
-          onChange={e => { if (e.target.value) patchEvent({ date: e.target.value }, 'Date set — every countdown in the plan just moved.'); }} />
+          onChange={e => {
+            const v = e.target.value;
+            if (!v) return;
+            // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted
+            // paste, a broken segment in the native picker) can otherwise write
+            // straight through to event.date and render as "739158d ago" with
+            // no sanity check. eventDateStatus is the one shared time-intelligence
+            // source — reuse its own blocking verdict instead of a second rule.
+            const check = eventDateStatus(v);
+            if (check.blocking) { toast(check.reason || "That date doesn't look right — check it."); return; }
+            patchEvent({ date: v }, 'Date set — every countdown in the plan just moved.');
+          }} />
       </div>
     );
     if (kind === 'food') return (

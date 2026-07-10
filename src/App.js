@@ -41175,6 +41175,7 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
   const C = useT();
   const T = useType();
   const s = makeS(C);
+  const showToast = useToast();
   const detailsIsHost = (() => { try { return hostNavActive(event); } catch { return false; } })();
   const vph = venuePlaceholders(event.venueKind || 'home'); // Board #11 — kind-aware placeholders
   // #5 attention/progressive disclosure: lead with the essentials, collapse the
@@ -41276,7 +41277,17 @@ function EventDetailsTab({ event, setEvent, isMobile, onBack }) {
           {/* id="event-date": landing anchor for the 'Set date' foundation CTA's
               focusField (same id-wrapper pattern as rain-plan / guests-entry). */}
           <div id="event-date" style={{ scrollMarginTop: 16 }}>
-            <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }))} type="date" />
+            <EDTField C={C} s={s} label="Date"         value={event.date}      onChange={v => {
+              if (!v) { setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false })); return; }
+              // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted
+              // paste, a broken native-picker segment) can otherwise commit and
+              // render as an absurd "739158d ago" with no sanity check.
+              // eventDateStatus is the one shared time-intelligence source —
+              // reuse its own blocking verdict rather than a second rule.
+              const check = eventDateStatus(v);
+              if (check.blocking) { showToast(check.reason || "That date doesn't look right — check it."); return; }
+              setEvent(e => ({ ...e, date: v, ros: [], rosEdited: false }));
+            }} type="date" />
           </div>
           <EDTField C={C} s={s}
             label="Time of day"
