@@ -90,6 +90,20 @@ function detectMilestones(text, primaryType) {
     if (!detected.includes('family-reunion')) detected.push('family-reunion');
   }
 
+  // Birthday — as a SECONDARY milestone only. When primaryType is already
+  // 'Birthday', the text describing itself ("planning my birthday party")
+  // must not also register as a compound secondary milestone — that's the
+  // event, not an add-on. This is the real-world gap a retirement party
+  // that's ALSO someone's milestone birthday exposed: a Retirement Party
+  // whose free text mentions "50th birthday" had no keyword path to ever
+  // register the birthday half, so isCompound stayed false and the
+  // ceremony-timing blocker (which depends on isCompound) could never fire
+  // for that scenario — asymmetric with the Birthday-primary + retirement-
+  // secondary case, which already worked via the 'retire' check below.
+  if (primaryType !== 'Birthday' && lowerText.includes('birthday')) {
+    if (!detected.includes('birthday')) detected.push('birthday');
+  }
+
   return detected;
 }
 
@@ -166,6 +180,9 @@ function inferKnowledgeDomains(primaryType, secondaryTypes, participants, text) 
       }
     }
     if (secondary === 'graduation') {
+      domains.add(KNOWLEDGE_DOMAINS.BIRTHDAY);
+    }
+    if (secondary === 'birthday') {
       domains.add(KNOWLEDGE_DOMAINS.BIRTHDAY);
     }
   });

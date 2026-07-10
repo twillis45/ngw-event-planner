@@ -37,6 +37,36 @@ describe('Sprint A: Event Identity Engine', () => {
       expect(identity.complexity).toBe(EVENT_COMPLEXITY.COMPOUND);
     });
 
+    // The reverse direction of the test above: a Retirement Party (primary)
+    // that's ALSO someone's milestone birthday (secondary, in free text).
+    // Before this fix, detectMilestones had no 'birthday' keyword at all, so
+    // this exact real-world shape (the app's own canonical flagship test
+    // event — see project memory) could never register as compound, which
+    // meant the ceremony-timing blocker could never fire for it either.
+    test('detects retirement party + 50th birthday as compound (reverse of the Birthday-primary case)', () => {
+      const identity = resolveEventIdentity(
+        {},
+        'Retirement Party',
+        'self',
+        "Planning my mom's retirement celebration — it's also her 50th birthday."
+      );
+      expect(identity.primaryEventType).toBe('Retirement Party');
+      expect(identity.secondaryEventTypes).toContain('birthday');
+      expect(identity.isCompound).toBe(true);
+      expect(identity.complexity).toBe(EVENT_COMPLEXITY.COMPOUND);
+    });
+
+    test('a Birthday-primary event describing itself does not falsely register birthday as a secondary milestone', () => {
+      const identity = resolveEventIdentity(
+        {},
+        'Birthday',
+        'self',
+        'Planning her birthday party — turning 50 this year.'
+      );
+      expect(identity.secondaryEventTypes).not.toContain('birthday');
+      expect(identity.isCompound).toBe(false);
+    });
+
     test('detects military ceremony components', () => {
       const identity = resolveEventIdentity(
         {},
