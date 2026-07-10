@@ -10,6 +10,8 @@ import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/ass
 import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine } from '@app/lib/helperResponsibility';
 import { buildCrabPlan, defaultCountPerUnit } from '@app/lib/crabPlan';
+import { buildVendorPlan } from '@app/lib/vendorPlan';
+import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '@app/lib/vendorEstimator';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
@@ -557,6 +559,17 @@ export default function HostShellV2() {
   const compression = useMemo(() => { try { return deriveEventCompressionSummary(event, daysUntil); } catch { return null; } }, [event]);
   const heartMoments = useMemo(() => { try { return playbookHeartMoments(event) || []; } catch { return []; } }, [event]);
   const crab = useMemo(() => { try { return buildCrabPlan(event); } catch { return { relevant: false }; } }, [event]);
+  const rushFactor = useMemo(() => { try { return getRushFactor(event.date); } catch { return { multiplier: 1, label: null, explanation: null }; } }, [event.date]);
+  const metroMkt = event.metroMarket ? METRO_MARKETS.find(m => m.id === event.metroMarket) : null;
+  const vendorPlan = useMemo(() => {
+    try {
+      return buildVendorPlan(event, {
+        metroFactor: getMetroFactor(event.metroMarket),
+        metroLabel: metroMkt ? metroMkt.label : null,
+        rush: rushFactor,
+      });
+    } catch { return { relevant: false, categories: [] }; }
+  }, [event, rushFactor, metroMkt]);
   // Captain White's July 2026 reference ladder — from the playbook's verified
   // knowledge. Shown as REFERENCE; a price only counts when the host taps it
   // in (CRAB-PRICING-1 hard rule: no fake market prices).
@@ -828,6 +841,16 @@ export default function HostShellV2() {
   const writeVendor = (id, patch, msg) => {
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
     patchEvent({ vendors: vs }, msg);
+  };
+  // HOST-APPROPRIATE-VENDOR-UI: creation adds only category + name — no
+  // forced COI/contract/deposit fields. Those tracking fields only ever
+  // populate from a later explicit host or engine action, never at creation,
+  // so a friend-or-family "vendor" never starts life looking like a paid
+  // booking with paperwork due.
+  const addVendorCategory = (category, name) => {
+    const v = { id: 'v-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), category, name: name || '' };
+    patchEvent({ vendors: [...(event.vendors || []), v] }, (name || category) + ' added — open it to add what you know.');
+    setSheet(s => ({ ...s, focus: v.id }));
   };
   const runSweepDrafts = () => {
     sweepTimers.current.forEach(clearTimeout); sweepTimers.current = [];
@@ -2484,6 +2507,15 @@ export default function HostShellV2() {
                 const rows = [
                   rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0)
                     ? { key: 'people', label: 'People you’re hiring', sub: rollup.counts.ready + ' of ' + rollup.counts.total + ' ready', attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
+                  // VENDOR-ENTRY-POINT FIX: the row above only ever appears once
+                  // vendors already exist AND need attention — a fresh event with
+                  // zero vendors had no reachable way in at all (sheet.kind:'vendors'
+                  // existed and rendered "No vendors on this event yet." with no add
+                  // action, but nothing ever opened it). This calm, non-urgent row
+                  // is the actual first door in; it steps aside once real vendors
+                  // exist and the urgent row above takes over.
+                  (!rollup || !rollup.counts || rollup.counts.total === 0) && vendorPlan.relevant
+                    ? { key: 'vendors_suggest', label: 'People you might hire', sub: vendorPlan.categories.length + ' roles this kind of event usually needs', go: () => setSheet({ kind: 'vendors' }) } : null,
                   foodPlan && foodPlan.itemCount > 0 && foodPlan.boughtCount < foodPlan.itemCount
                     ? { key: 'food', label: 'The spread & shopping', sub: foodPlan.boughtCount + ' of ' + foodPlan.itemCount + ' bought', go: () => setSheet({ kind: 'food' }) } : null,
                   crab.relevant
@@ -4035,7 +4067,37 @@ export default function HostShellV2() {
               const showStreams = streams.length > 1 || streams.some(w => w.status !== 'ready' && w.status !== 'not_started');
               const GOOD = ['Confirmed', 'Paid', 'Deposit Paid', 'Contracted'];
               const chipify = (s) => String(s || '').split(' — ')[0].split('.')[0].slice(0, 42);
-              return (event.vendors || []).length ? (
+              const unbookedSuggestions = vendorPlan.relevant ? vendorPlan.categories.filter(c => !c.booked) : [];
+              const hasVendors = (event.vendors || []).length > 0;
+              return (
+              <>
+              {vendorPlan.relevant && (
+                <div style={{ marginBottom: 12 }}>
+                  <label className="shelf-label" style={{ display: 'block', margin: '0 0 4px' }} htmlFor="metro-market-pick">Which market are you in?</label>
+                  <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
+                    onChange={e => {
+                      const id = e.target.value;
+                      const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
+                      patchEvent({ metroMarket: id || null },
+                        m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
+                    }}>
+                    <option value="">National baseline — no market set</option>
+                    {[1, 2, 3, 4].map(tier => (
+                      <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
+                        {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
+                          <option key={m.id} value={m.id}>{m.label}</option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                  {metroMkt && (
+                    <p className="grounding" style={{ margin: '4px 0 0' }}>
+                      {metroMkt.label} typically runs {metroMkt.factor > 1 ? 'above' : metroMkt.factor < 1 ? 'below' : 'at'} the national baseline{metroMkt.factor !== 1 ? ` (${metroMkt.factor > 1 ? '+' : ''}${Math.round((metroMkt.factor - 1) * 100)}%)` : ''} used for the ranges below.
+                    </p>
+                  )}
+                </div>
+              )}
+              {hasVendors ? (
                 <>
                   {showStreams && (
                     <div className="wstrip">
@@ -4156,7 +4218,32 @@ export default function HostShellV2() {
                     );
                   })}
                   {nudgeFor('vendors')}
-                </>              ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>;
+                </>
+              ) : null}
+              {unbookedSuggestions.length > 0 ? (
+                <>
+                  <div className="shelf-label" style={{ margin: hasVendors ? '16px 0 6px' : '0 0 6px' }}>
+                    {hasVendors ? 'Other roles this kind of event usually needs' : 'People this kind of event usually needs'}
+                  </div>
+                  {unbookedSuggestions.map(cat => (
+                    <div key={cat.category} className="line" style={{ alignItems: 'flex-start', padding: '8px 0', borderTop: '1px solid var(--line-soft)' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 650 }}>{cat.category}</div>
+                        {cat.estimateCopy && <p className="grounding" style={{ margin: '2px 0 0' }}>{cat.estimateCopy}</p>}
+                        {cat.factorsApplied.length > 0 && (
+                          <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>
+                            {cat.factorsApplied.map(f => f.explanation).join(' ')}
+                          </p>
+                        )}
+                        {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>{cat.altToDIY}</p>}
+                      </div>
+                      <button className="mini" style={{ flexShrink: 0 }} onClick={() => addVendorCategory(cat.category)}>Add</button>
+                    </div>
+                  ))}
+                </>
+              ) : (!hasVendors && <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>)}
+              </>
+              );
             })()}
             {sheet.kind === 'budget' && (() => {
               // HOST MODEL: one number, and "where it's going" priced by the plan

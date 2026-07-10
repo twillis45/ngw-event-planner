@@ -62,6 +62,7 @@ import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk
 import { derivePlaceIntelligence } from './lib/placeIntelligence';
 import { buildDayBeforePlan } from './lib/dayBefore';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
+import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from './lib/vendorEstimator';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
 import US_CITIES from './lib/usCities';
@@ -15796,7 +15797,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
   const isInternal   = linkedType ? isCorporateType(linkedType) : false;
   const feeRange     = linkedType ? (FEE_RANGES[linkedType] || null) : null;
   const evtBudget    = linkedEvent ? (linkedEvent.budget || []).reduce((s, r) => s + (r.budgeted || 0), 0) : 0;
-  const metroFactor  = getMetroFactor(profile);
+  const metroFactor  = getMetroFactor(profile?.metroMarket);
   const adjLow       = feeRange ? Math.round(feeRange.low  * metroFactor) : 0;
   const adjHigh      = feeRange ? Math.round(feeRange.high * metroFactor) : 0;
   const metroMkt     = profile?.metroMarket ? METRO_MARKETS.find(m => m.id === profile.metroMarket) : null;
@@ -16216,7 +16217,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               </span>
               {feeOpen && feeRange && !isInternal && (
                 <span style={{ fontSize: T.caption, color: C.muted }}>
-                  {metroMkt ? <>{metroTier?.icon} {metroMkt.label}: </> : 'Industry range: '}
+                  {metroMkt ? <>{metroMkt.label}: </> : 'Industry range: '}
                   <span style={{ color: C.accent2, fontWeight: FW.semibold }}>{fmtD(adjLow)}–{fmtD(adjHigh)}</span>
                   {metroMkt && metroFactor !== 1.0 && (
                     <span style={{ color: C.muted, marginLeft: 3 }}>({metroFactor > 1 ? '+' : ''}{Math.round((metroFactor - 1) * 100)}% vs. national avg)</span>
@@ -16348,41 +16349,8 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
 }
 
 // ─── Metro Market cost-index data ─────────────────────────────────────────────
-const METRO_MARKETS = [
-  // Tier 1 — Premium (1.4–1.65×)
-  { id: 'nyc',   label: 'New York / New Jersey',    region: 'Northeast',    tier: 1, factor: 1.65 },
-  { id: 'sf',    label: 'San Francisco / Bay Area',  region: 'West Coast',   tier: 1, factor: 1.60 },
-  { id: 'la',    label: 'Los Angeles',               region: 'West Coast',   tier: 1, factor: 1.50 },
-  { id: 'bos',   label: 'Boston',                    region: 'Northeast',    tier: 1, factor: 1.45 },
-  { id: 'dc',    label: 'Washington DC / NoVA',      region: 'Mid-Atlantic', tier: 1, factor: 1.45 },
-  { id: 'sea',   label: 'Seattle',                   region: 'West Coast',   tier: 1, factor: 1.40 },
-  // Tier 2 — Above Average (1.10–1.35×)
-  { id: 'chi',   label: 'Chicago',                   region: 'Midwest',      tier: 2, factor: 1.35 },
-  { id: 'mia',   label: 'Miami / Fort Lauderdale',   region: 'Southeast',    tier: 2, factor: 1.30 },
-  { id: 'sd',    label: 'San Diego',                 region: 'West Coast',   tier: 2, factor: 1.25 },
-  { id: 'den',   label: 'Denver',                    region: 'Mountain',     tier: 2, factor: 1.20 },
-  { id: 'aus',   label: 'Austin',                    region: 'South',        tier: 2, factor: 1.20 },
-  { id: 'dal',   label: 'Dallas / Fort Worth',       region: 'South',        tier: 2, factor: 1.15 },
-  { id: 'atl',   label: 'Atlanta',                   region: 'Southeast',    tier: 2, factor: 1.15 },
-  { id: 'phi',   label: 'Philadelphia',              region: 'Mid-Atlantic', tier: 2, factor: 1.15 },
-  { id: 'por',   label: 'Portland',                  region: 'West Coast',   tier: 2, factor: 1.15 },
-  { id: 'nas',   label: 'Nashville',                 region: 'South',        tier: 2, factor: 1.15 },
-  { id: 'min',   label: 'Minneapolis',               region: 'Midwest',      tier: 2, factor: 1.10 },
-  { id: 'phx',   label: 'Phoenix',                   region: 'Mountain',     tier: 2, factor: 1.10 },
-  // Tier 3 — Market Rate (0.88–1.05×)
-  { id: 'hou',   label: 'Houston',                   region: 'South',        tier: 3, factor: 1.05 },
-  { id: 'tam',   label: 'Tampa / Orlando',           region: 'Southeast',    tier: 3, factor: 1.00 },
-  { id: 'cha',   label: 'Charlotte',                 region: 'Southeast',    tier: 3, factor: 1.00 },
-  { id: 'slc',   label: 'Salt Lake City',            region: 'Mountain',     tier: 3, factor: 0.95 },
-  { id: 'col',   label: 'Columbus',                  region: 'Midwest',      tier: 3, factor: 0.95 },
-  { id: 'pit',   label: 'Pittsburgh',                region: 'Northeast',    tier: 3, factor: 0.90 },
-  { id: 'ind',   label: 'Indianapolis',              region: 'Midwest',      tier: 3, factor: 0.90 },
-  { id: 'kc',    label: 'Kansas City',               region: 'Midwest',      tier: 3, factor: 0.90 },
-  { id: 'stl',   label: 'St. Louis',                 region: 'Midwest',      tier: 3, factor: 0.88 },
-  // Tier 4 — Value / Small Market (0.75–0.82×)
-  { id: 'rural', label: 'Rural / Small Market',      region: 'Other',        tier: 4, factor: 0.80 },
-  { id: 'other', label: 'Other / International',     region: 'Other',        tier: 4, factor: 1.00 },
-];
+// METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor now live in
+// lib/vendorEstimator.js (shared with V2 via the @app alias) — imported above.
 
 // Representative city + 2-letter state per metro, so the host's metro pick feeds
 // the regional APIs: BLS food pricing (needs a state) + weather geocoding (needs a
@@ -16557,54 +16525,6 @@ function zonedWallTimeToUtcStamp(ymd, h, m, zone) {
   }
 }
 
-const METRO_TIER_LABEL = {
-  1: { icon: '💎', label: 'Premium Market',       color: '#a78bfa' },
-  2: { icon: '📈', label: 'Above-Average Market', color: '#60a5fa' },
-  3: { icon: '✓',  label: 'Market Rate',          color: '#34d399' },
-  4: { icon: '💡', label: 'Value Market',          color: '#fbbf24' },
-};
-
-// Helper: look up the metro factor from a profile
-const getMetroFactor = (profile) => {
-  if (!profile?.metroMarket) return 1.0;
-  return METRO_MARKETS.find(m => m.id === profile.metroMarket)?.factor || 1.0;
-};
-
-// Sprint 57e — rush factor for budget estimates. Events with ambitious (short)
-// timelines drive higher vendor prices. Industry-typical premiums (planner
-// surveys + Wedding Wire / The Knot patterns):
-//   <30 days  → ~25% (heavy rush — limited vendor pool, last-minute booking
-//                     fees, catering minimums often scale up)
-//   30-60 d   → ~12% (compressed — moderate premium for fast turnaround)
-//   60-120 d  → ~5%  (tight but workable — small premium for some categories)
-//   120+ d    → no premium (industry-standard lead time)
-//
-// Returns { multiplier, days, label, badge, explanation } so the estimator can
-// both apply the math AND show the planner why the totals went up.
-const getRushFactor = (eventDate) => {
-  if (!eventDate) return { multiplier: 1, days: null, label: null, badge: null, explanation: null };
-  const days = daysUntil(eventDate);
-  if (days === null || days < 0) return { multiplier: 1, days, label: null, badge: null, explanation: null };
-  if (days < 30) return {
-    multiplier: 1.25, days,
-    label: 'RUSH',
-    badge: '⏱ RUSH',
-    explanation: `Less than 30 days out — vendors typically charge premium for short-notice bookings, catering minimums tend to scale up, and venue options narrow.`,
-  };
-  if (days < 60) return {
-    multiplier: 1.12, days,
-    label: 'COMPRESSED',
-    badge: '⏱ COMPRESSED',
-    explanation: `Tight timeline (~${days} days) — small premium typical for catering and last-minute vendor commitments.`,
-  };
-  if (days < 120) return {
-    multiplier: 1.05, days,
-    label: 'TIGHT',
-    badge: '⏱ TIGHT',
-    explanation: `Tight but workable (~${days} days) — small premium for some vendor categories at this stage.`,
-  };
-  return { multiplier: 1, days, label: null, badge: null, explanation: null };
-};
 
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
@@ -18554,7 +18474,7 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
               >
                 <option value="">— Not set —</option>
                 {[1,2,3,4].map(tier => (
-                  <optgroup key={tier} label={`${METRO_TIER_LABEL[tier].icon} Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
+                  <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
                     {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
                       <option key={m.id} value={m.id}>{m.label}</option>
                     ))}
@@ -18563,7 +18483,6 @@ function ProfileModal({ profile, onClose, onOpenMembers, onChange, events = [], 
               </select>
               {metroObj && tierInfo && (
                 <div style={{ marginTop: 8, padding: '8px 12px', borderRadius: 8, background: tierInfo.color + '18', border: `1px solid ${tierInfo.color}44`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: T.body }}>{tierInfo.icon}</span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: tierInfo.color }}>{tierInfo.label} · {metroObj.factor.toFixed(2)}× cost index</div>
                     <div style={{ fontSize: T.caption, color: C.muted, marginTop: 1 }}>
@@ -28219,7 +28138,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
   const [estServiceTax,  setEstServiceTax]  = useState(SERVICE_TAX_DEFAULT_ON);
   const [estContingency, setEstContingency] = useState(CONTINGENCY_DEFAULT_ON);
   const [estBreakdownOpen, setEstBreakdownOpen] = useState(false);
-  const metroFactor  = getMetroFactor(profile);
+  const metroFactor  = getMetroFactor(profile?.metroMarket);
   // Sprint 57e: rush factor applied to per-tier totals using the event date.
   // Surfaces a transparent rush badge + plain-English explanation so the
   // planner can have a clear conversation about timeline tradeoffs.
@@ -28463,10 +28382,10 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
             <div style={s.cardTitle}>Budget Estimator</div>
             {metroMkt && (
               <span style={{ fontSize: T.caption, fontWeight: FW.bold, color: metroTierLbl?.color || C.muted, background: (metroTierLbl?.color || C.muted) + '15', border: `1px solid ${(metroTierLbl?.color || C.muted) + '40'}`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
-                {metroTierLbl?.icon} {metroMkt.label} {metroFactor !== 1.0 ? `· ${metroFactor > 1 ? '+' : ''}${Math.round((metroFactor - 1) * 100)}%` : ''}
+                {metroMkt.label} {metroFactor !== 1.0 ? `· ${metroFactor > 1 ? '+' : ''}${Math.round((metroFactor - 1) * 100)}%` : ''}
               </span>
             )}
-            {rushFactor.badge && (() => {
+            {rushFactor.label && (() => {
               // Studio Matte / confidence-lock: an informational pricing chip never spends
               // the reserved danger-red accent (that belongs to the over-budget hero alone).
               // RUSH reads as steel/muted — same calm treatment as COMPRESSED — so urgency
@@ -28476,7 +28395,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                               : C.accent2;
               return (
                 <span title={rushFactor.explanation} style={{ fontSize: T.caption, fontWeight: FW.bold, color: rushColor, background: rushColor + '18', border: `1px solid ${rushColor}44`, borderRadius: 12, padding: '2px 8px', letterSpacing: '0.04em' }}>
-                  {rushFactor.badge} · +{Math.round((rFactor - 1) * 100)}%
+                  {rushFactor.label} · +{Math.round((rFactor - 1) * 100)}%
                 </span>
               );
             })()}
@@ -28687,7 +28606,7 @@ function Budget({ budget, setBudget, onSetTotalBudget, vendors, client, setClien
                 serviceTax:  stxFactor,
                 contingency: ctgFactor,
                 metroLabel:  metroMkt ? `Metro · ${metroMkt.label}` : null,
-                rushLabel:   rushFactor.badge ? `Timeline · ${rushFactor.label}` : null,
+                rushLabel:   rushFactor.label ? `Timeline · ${rushFactor.label}` : null,
               });
               return (
                 <div style={{ marginTop: 12 }}>
