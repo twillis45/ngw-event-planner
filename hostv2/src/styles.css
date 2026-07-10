@@ -239,7 +239,7 @@ button{font-family:inherit}
 .line .amt{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:700; white-space:nowrap}
 .line .amt.under{color:var(--ok)}
 .line.total{border-top:1px solid var(--line-soft); margin-top:6px; padding-top:12px}
-.line .of{font-weight:550; color:var(--muted); font-size:12px}
+.of{font-weight:550; color:var(--muted); font-size:12px}
 .card.no-hover:hover{transform:none; box-shadow:none}
 .memory-note{display:flex; gap:9px; align-items:baseline; font-size:13px; font-weight:550; color:var(--muted); margin:16px 0 0}
 .memory-note::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--ok); flex-shrink:0; transform:translateY(-1px)}
