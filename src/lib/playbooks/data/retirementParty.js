@@ -57,7 +57,16 @@ const retirementParty = {
   milestones: [
     { id: 'rp_setdate', name: 'Lock date, honoree, guest count, budget, surprise-or-not', offsetDays: 35, owner: 'host', category: 'planning', risk: null },
     { id: 'rp_venue', name: 'Confirm venue (home / book restaurant or hall) + check accessibility', offsetDays: 32, owner: 'host', dependsOn: ['rp_setdate'], category: 'logistics', risk: { ifDelayed: 'Private rooms / halls book out 4-6 weeks ahead; a no-stairs accessible room is harder to find late', severity: 'high' } },
-    { id: 'rp_invite', name: 'Send invites + ask dietary/allergy + accessibility + RSVP-by (mark SURPRISE)', offsetDays: 28, owner: 'host', dependsOn: ['rp_setdate'], category: 'guest', risk: { ifDelayed: 'No headcount → cannot size food, bar, seating, or rentals; surprise can leak', severity: 'high' } },
+    { id: 'rp_invite', name: 'Send invites + ask dietary/allergy + accessibility + RSVP-by', offsetDays: 28, owner: 'host', dependsOn: ['rp_setdate'], category: 'guest',
+      copyByAnswer: { surprise: {
+        'Full surprise': 'Send invites + ask dietary/allergy + accessibility + RSVP-by (mark SURPRISE)',
+        'Soft surprise (honoree knows, not the details)': 'Send invites + ask dietary/allergy + accessibility + RSVP-by (note the arrival timing quietly)',
+      } },
+      risk: { ifDelayed: 'No headcount → cannot size food, bar, seating, or rentals', severity: 'high',
+        copyByAnswer: { surprise: {
+          'Full surprise': 'No headcount → cannot size food, bar, seating, or rentals; surprise can leak',
+          'Soft surprise (honoree knows, not the details)': 'No headcount → cannot size food, bar, seating, or rentals; arrival timing gets harder to coordinate',
+        } } } },
     { id: 'rp_memory', name: 'Start the memory collection: ask guests for photos, notes, and well-wishes', offsetDays: 28, owner: 'host', dependsOn: ['rp_setdate'], category: 'program', risk: { ifDelayed: 'Slideshow/photo display + signed card need 3-4 weeks to gather; this is the heart of the event', severity: 'med' } },
     { id: 'rp_menu', name: 'Lock the menu (buffet ~0.5 lb protein/guest OR ~10-12 bites/guest; veg + GF)', offsetDays: 21, owner: 'host', dependsOn: ['rp_invite'], category: 'food', risk: { ifDelayed: 'No shopping list or catering order possible', severity: 'high' } },
     { id: 'rp_bar', name: 'Finalize bar + source the honoree\'s favorite drink', offsetDays: 18, owner: 'host', dependsOn: ['rp_menu'], category: 'beverage', risk: { ifDelayed: 'A specific scotch / wine / regional beer may need to be special-ordered', severity: 'med' } },
@@ -68,12 +77,21 @@ const retirementParty = {
     { id: 'rp_shop_pantry', name: 'Buy alcohol, non-perishables, decor, memory-display materials, card', offsetDays: 3, owner: 'host', dependsOn: ['rp_bar', 'rp_rsvp_close'], category: 'shopping', risk: null },
     { id: 'rp_prep', name: 'Print photos / finalize slideshow, prep make-ahead food, assemble displays', offsetDays: 1, owner: 'host', dependsOn: ['rp_menu', 'rp_tribute_plan'], category: 'program', risk: { ifDelayed: 'Host trapped finishing the slideshow instead of running the room', severity: 'med' } },
     { id: 'rp_shop_fresh', name: 'Buy fresh produce, deli/proteins, flowers, cake, ice', offsetDays: 1, owner: 'host', dependsOn: ['rp_menu', 'rp_rsvp_close'], category: 'shopping', risk: { ifDelayed: 'Wilted florals / warm bar / no cake', severity: 'med' } },
-    { id: 'rp_setup', name: 'Set the room (accessible seating + buffet + bar), stage memory display, test the mic', offsetDays: 0, owner: 'host', dependsOn: ['rp_rentals', 'rp_prep'], category: 'setup', risk: { ifDelayed: 'Guests arrive before the surprise is staged; mic untested when speeches start', severity: 'high' } },
+    { id: 'rp_setup', name: 'Set the room (accessible seating + buffet + bar), stage memory display, test the mic', offsetDays: 0, owner: 'host', dependsOn: ['rp_rentals', 'rp_prep'], category: 'setup',
+      risk: { ifDelayed: 'Guests arrive before the room is ready; mic untested when speeches start', severity: 'high',
+        copyByAnswer: { surprise: {
+          'Full surprise': 'Guests arrive before the surprise is staged; mic untested when speeches start',
+          'Soft surprise (honoree knows, not the details)': 'Guests arrive before the honoree\'s arrival is timed; mic untested when speeches start',
+        } } } },
     { id: 'event', name: 'The retirement party', offsetDays: 0, owner: 'host', dependsOn: ['rp_setup'], category: 'event', risk: null },
   ],
 
   tasks: [
-    { id: 't_invite', milestoneId: 'rp_invite', phase: 'guest', label: 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; mark SURPRISE + a guests-arrive-by time', when: 'T-28d' },
+    { id: 't_invite', milestoneId: 'rp_invite', phase: 'guest', label: 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by', when: 'T-28d',
+      copyByAnswer: { surprise: {
+        'Full surprise': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; mark SURPRISE + a guests-arrive-by time',
+        'Soft surprise (honoree knows, not the details)': 'Send invite: date, time, address, dress, "no gifts / cards welcome", dietary + accessibility ask, RSVP-by; note the arrival timing quietly',
+      } } },
     { id: 't_memory_collect', milestoneId: 'rp_memory', phase: 'program', label: 'Set up a shared photo/notes drop (link or email) and ask coworkers + family for photos, stories, and well-wishes', when: 'T-28d' },
     { id: 't_menu_lock', milestoneId: 'rp_menu', phase: 'food', label: 'Lock buffet (~0.5 lb protein/guest, 2-3 sides) or heavy apps (~10-12 bites/guest); always include a veg + GF option', when: 'T-21d' },
     { id: 't_fav_drink', milestoneId: 'rp_bar', phase: 'beverage', label: "Source the honoree's actual favorite drink; special-order if it's a specific scotch/wine/regional beer", when: 'T-18d' },

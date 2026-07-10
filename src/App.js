@@ -19,7 +19,7 @@ import { SAMPLE_CLIENTS_EXTRA, SAMPLE_CLIENT_IDS_EXTRA } from './data/sampleClie
 import { SAMPLE_EVENTS_DMV, SAMPLE_EVENT_IDS_DMV } from './data/sampleEventsDMV';
 import { SAMPLE_HOST_DINNER_DEMO, SAMPLE_HOST_DINNER_DEMO_ID } from './data/sampleHostPlaybookDemo';
 import { enginePreview as engineSolvePreview } from './lib/eventSolveAdapter';
-import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach, classifyRos } from './lib/playbooks';
+import { effectiveRos, getPlaybook as getEventPlaybook, playbookFoodPlan, playbookAbout, playbookCapacity, playbookDayOfChecklist, playbookChecklist, guestCountResolved, attendanceBand, attendanceBandLabel, playbookContingencyForWeather, playbookHeartMoments, playbookSetupPreview, playbookRisks, playbookAreaNextStep, playbookDecisionBoard, playbookDecisionOptions, supplyIntel, supplyRetailLinks, normalizeAlternative, hostIsCooking, foodApproach, classifyRos, resolveAnsweredCopy } from './lib/playbooks';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from './lib/assembleRevealEngines';
 // Sprint IS-1: AssembleReveal's Identity stage must consume Sprint A's Event Identity
 // Engine (compound/complexity/ceremony detection), not the legacy meaning/honoree
@@ -3005,19 +3005,30 @@ const offsetDaysToPhase = (offsetDays) => {
   }
   return best;
 };
-const playbookTimelineEntries = (eventType) => {
+// Accepts the full event (not just eventType) so milestone/risk copy that
+// depends on an answered decision (e.g. retirementParty's `surprise`) can
+// resolve correctly via resolveAnsweredCopy — same mechanism already used
+// for tasks/vendor altToDIY copy. `event` may be a partial/unsaved form
+// during creation (no foodChoices yet); resolveAnsweredCopy degrades to the
+// neutral base text in that case, same as an unanswered decision on a real
+// event.
+const playbookTimelineEntries = (event) => {
+  const eventType = event && event.type;
   const pb = getEventPlaybook(eventType);
   if (!pb || !Array.isArray(pb.milestones)) return [];
   return pb.milestones
     .filter(m => m && m.id !== 'event' && m.category !== 'event' && m.name)
-    .map(m => ({
-      week:  offsetDaysToPhase(m.offsetDays),
-      offsetDays: typeof m.offsetDays === 'number' ? m.offsetDays : null,  // 60G: keep the real timing
-      task:  m.name,
-      owner: m.owner === 'host' ? 'Host' : (m.owner || ''),
-      notes: m.risk?.ifDelayed ? `If delayed: ${m.risk.ifDelayed}` : '',
-      milestoneId: m.id,
-    }));
+    .map(m => {
+      const ifDelayed = m.risk && resolveAnsweredCopy(m.risk.ifDelayed, m.risk.copyByAnswer, event);
+      return {
+        week:  offsetDaysToPhase(m.offsetDays),
+        offsetDays: typeof m.offsetDays === 'number' ? m.offsetDays : null,  // 60G: keep the real timing
+        task:  resolveAnsweredCopy(m.name, m.copyByAnswer, event),
+        owner: m.owner === 'host' ? 'Host' : (m.owner || ''),
+        notes: ifDelayed ? `If delayed: ${ifDelayed}` : '',
+        milestoneId: m.id,
+      };
+    });
 };
 
 const ROS_CLR   = (C) => ({ vendor: C.accent2, prep: C.muted, event: C.accent });
@@ -11997,7 +12008,7 @@ function NewEventModal({ onClose, onCreate, onOpenEvent = () => {}, onOpenAddCli
     // The legacy TIMELINE_TEMPLATES is only a fallback for types no playbook
     // covers yet.
     const rawTimeline = getEventPlaybook(form.type)
-      ? playbookTimelineEntries(form.type)
+      ? playbookTimelineEntries(form)
       : (mergeTimelineTemplate(...types) || []);
     const timeline = kitCfg.t
       ? rawTimeline.map(t => {
@@ -45975,7 +45986,7 @@ export default function App() {
     let changed = false;
     const next = (events || []).map(ev => {
       if (Array.isArray(ev?.timeline) && ev.timeline.length > 0) return ev;
-      const entries = playbookTimelineEntries(ev?.type);
+      const entries = playbookTimelineEntries(ev);
       if (!entries.length) return ev;
       const d = daysUntil(ev?.date);
       changed = true;
