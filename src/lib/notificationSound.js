@@ -21,6 +21,17 @@ function getCtx() {
 export function setMessageSoundMuted(m) { _muted = !!m; }
 export function isMessageSoundMuted() { return _muted; }
 
+// Chimes fire later from timers/async callbacks (a reveal-step delay, a day-of
+// cue clearing) — never from inside the click itself — so the FIRST-ever
+// AudioContext.resume() can land outside the user-gesture window some
+// browsers require, silently leaving it suspended forever after. Call this
+// directly from a real click/tap handler (e.g. the sound toggle) so the
+// context is created and resumed while the gesture is still live.
+export function primeMessageSound() {
+  const ac = getCtx();
+  if (ac && ac.state === 'suspended') { try { ac.resume(); } catch (e) { /* ignore */ } }
+}
+
 // Two ascending sine notes — a friendly, quiet alert pop.
 export function playMessageChime() {
   if (_muted) return;

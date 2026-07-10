@@ -15,7 +15,7 @@ import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
-import { playMessageChime, setMessageSoundMuted } from '@app/lib/notificationSound';
+import { playMessageChime, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder } from '@app/lib/doItForMe';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
@@ -1227,6 +1227,16 @@ export default function HostShellV2() {
   // synthesized chime reserved for magic moments. Muted preference persists.
   const [muted, setMuted] = useState(() => { try { return localStorage.getItem('ngw-hostv2-muted') === '1'; } catch { return false; } });
   useEffect(() => { setMessageSoundMuted(muted); try { localStorage.setItem('ngw-hostv2-muted', muted ? '1' : '0'); } catch {} }, [muted]);
+  // Sound defaults ON, so most hosts never touch the toggle — priming only on
+  // that click would leave the AudioContext unresumed for everyone else. Every
+  // later chime fires from a timer/async callback, outside the user-gesture
+  // window some browsers require to resume audio, so it unlocks silently and
+  // forever otherwise. Prime on the app's first tap anywhere instead.
+  useEffect(() => {
+    const unlock = () => { primeMessageSound(); document.removeEventListener('pointerdown', unlock); };
+    document.addEventListener('pointerdown', unlock, { once: true });
+    return () => document.removeEventListener('pointerdown', unlock);
+  }, []);
   // Screen Wake Lock — the device must not sleep while the app is up (above
   // all on The Day: messy-handed hosts can't keep re-unlocking). Re-acquired
   // whenever the tab becomes visible again; released on unmount. No-ops
@@ -1810,7 +1820,7 @@ export default function HostShellV2() {
                 onClick={() => setSheet({ kind: 'events' })} aria-haspopup="true">
                 {(eventId === 'custom' ? ((custom && custom.name) || 'Yours') : (/crab/i.test(String(event.name || '')) ? 'My Crab Feast' : event.type))} ▾
               </button>
-              <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setMuted(m => !m)}>{muted ? 'Muted' : 'Sound on'}</button>
+              <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => { primeMessageSound(); setMuted(m => !m); }}>{muted ? 'Muted' : 'Sound on'}</button>
               <button className="sheet-x" style={{ padding: '3px 10px', fontSize: 10.5 }} onClick={() => setSheet({ kind: 'settings' })}>You</button>
             </div>
           </div>
@@ -3901,14 +3911,40 @@ export default function HostShellV2() {
                 {(foodPlan.sourcingTiers || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 8px' }}>How it’s sourced</div>
-                    <div className="chips" style={{ marginBottom: 4 }}>
-                      {(foodPlan.sourcingTiers || []).map(t => t && (
-                        <button key={t.id || t.key || t.label} className="chip" aria-pressed={foodPlan.sourcing === (t.id || t.key)}
-                          onClick={() => patchEvent({ sourcing: t.id || t.key }, 'Sourcing: ' + (t.label || t.id) + ' — proteins re-priced, stores updated.')}>
-                          {t.label || t.id}
-                        </button>
-                      ))}
-                    </div>
+                    {(() => {
+                      const key = foodPlan.sourcingKey;
+                      const byTier = (key && key.byTier) || {};
+                      const curCost = byTier[foodPlan.sourcing] || 0;
+                      return (foodPlan.sourcingTiers || []).map(t => {
+                        if (!t) return null;
+                        const id = t.id || t.key;
+                        const on = foodPlan.sourcing === id;
+                        const cost = byTier[id] || 0;
+                        // Decision delta vs the CURRENT tier — the same honest-empty rule
+                        // as the legacy card: only shown when both sides have a real number.
+                        const delta = cost - curCost;
+                        const deltaLabel = (!on && cost && curCost && delta !== 0)
+                          ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
+                          : '';
+                        return (
+                          <button key={id} className="line" aria-pressed={on}
+                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0', alignItems: 'flex-start' }}
+                            onClick={() => patchEvent({ sourcing: id }, 'Sourcing: ' + (t.label || id) + ' — proteins re-priced, stores updated.')}>
+                            <span style={{ flex: 1 }}>
+                              <span className="vc-name" style={{ display: 'block' }}>{t.label || id}</span>
+                              {(t.note || cost > 0) && (
+                                <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>
+                                  {t.note}{t.note && cost > 0 ? ' · ' : ''}
+                                  {cost > 0 ? '~' + fmt(cost) + ' ' + String((key && key.item) || '').toLowerCase() : ''}
+                                  {deltaLabel}
+                                </span>
+                              )}
+                            </span>
+                            <span className="of" style={{ flexShrink: 0, marginLeft: 8, fontWeight: on ? 700 : 550, color: on ? 'var(--steel-soft)' : 'var(--muted)' }}>{on ? 'current' : 'switch'}</span>
+                          </button>
+                        );
+                      });
+                    })()}
                     <p className="grounding" style={{ marginBottom: 10 }}>The tier re-prices the proteins and changes where each line says to buy.</p>
                   </>
                 )}
