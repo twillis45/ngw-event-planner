@@ -398,18 +398,47 @@ export default function HostShellV2() {
   // Audit finding (2026-07-11): no leader shows a multi-second brand film on
   // EVERY cold boot — Apple's HIG explicitly rejects launch-screen theater;
   // Arc/Family run their long choreography once. So: full ~4.95s
-  // choreography only the first time this browser has ever booted the app;
-  // every boot after gets a short ~1.2s settled hold (.splash-quick pins the
-  // entrance to its resolved end-state — same asset the reduced-motion path
-  // already builds — while the glow drift and dot breathe keep running, so
-  // it reads as "the mark, briefly" rather than a hard freeze-frame).
-  // Reduced motion overrides both: always the 400ms still frame.
+  // choreography only the first time this browser has booted the app, OR
+  // after a genuine absence; every boot in between gets a short ~1.2s
+  // settled hold (.splash-quick pins the entrance to its resolved end-state
+  // — same asset the reduced-motion path already builds — while the glow
+  // settle and dot breathe keep running, so it reads as "the mark, briefly"
+  // rather than a hard freeze-frame). Reduced motion overrides both: always
+  // the 400ms still frame.
+  // POLICY (10+ reaudit, boot-frequency track): researched against Apple HIG
+  // (forbids a launch screen from being a branding moment at all — every
+  // load, forever), Android's SplashScreen API (bounded ≤1s, but shown on
+  // EVERY cold/warm start, never suppressed permanently), and Superhuman
+  // (no brand moment to reason about — solved via raw speed). No leader or
+  // platform precedent supports "full film once ever, then permanently
+  // stripped, no way back" — the closest real analog found was onboarding
+  // tutorials (different thing: a walkthrough, not a brand splash). This
+  // product's own standard is a deliberate premium/ceremonial moment
+  // though, not a bare utility screen, so the fix isn't "never show it
+  // again" — it's "earn it again after a real absence." LS_SPLASH_SEEN now
+  // stores a TIMESTAMP (last full-film boot), not a boolean; the full film
+  // replays once SPLASH_REPLAY_DAYS have passed since — a "welcome back"
+  // beat instead of a one-time-forever gate.
   const LS_SPLASH_SEEN = 'ngw-v2-splash-seen';
+  // sessionStorage fallback: if localStorage is unavailable (locked-down
+  // private modes, storage disabled), this at least degrades to the
+  // quick-cut for the REST of this session instead of the full film on
+  // every single reload within it.
+  const SS_SPLASH_SEEN = 'ngw-v2-splash-seen-session';
+  const SPLASH_REPLAY_DAYS = 21;
   const [splash, setSplash] = useState('up');
   const splashTimer = useRef(null);
   const endSplash = () => setSplash(s => {
     if (s !== 'up') return s;
-    try { localStorage.setItem(LS_SPLASH_SEEN, '1'); } catch { /* private mode — full film every time, never blocks */ }
+    const now = new Date().toISOString();
+    try { localStorage.setItem(LS_SPLASH_SEEN, now); } catch {
+      try { sessionStorage.setItem(SS_SPLASH_SEEN, now); } catch { /* nothing persists — full film every time, never blocks */ }
+    }
+    // Cross-device consistency: signed-in hosts push the timestamp to the
+    // synced profile, so a second device inherits "already seen recently"
+    // instead of replaying the full film there too (see the pull side in
+    // the profile-hydration effect below).
+    if (session) { try { patchProfile({ splashLastSeen: now }); } catch { /* best-effort, localStorage already holds it */ } }
     return 'leaving';
   });
   // ?splashhold keeps it up indefinitely for design review (any tap still
@@ -423,10 +452,23 @@ export default function HostShellV2() {
     splashHold = q.has('splashhold');
     splashForceFull = q.has('splashfull');
   } catch { /* leave both false */ }
-  const splashSeenBefore = (() => {
-    try { return localStorage.getItem(LS_SPLASH_SEEN) === '1'; } catch { return false; }
+  const splashSeenRecently = (() => {
+    const now = Date.now();
+    const withinWindow = (iso) => {
+      const t = Date.parse(iso);
+      return Number.isFinite(t) && (now - t) < SPLASH_REPLAY_DAYS * 86400000;
+    };
+    try {
+      const local = localStorage.getItem(LS_SPLASH_SEEN);
+      if (local) return withinWindow(local);
+    } catch { /* fall through to the session fallback below */ }
+    try {
+      const sess = sessionStorage.getItem(SS_SPLASH_SEEN);
+      if (sess) return withinWindow(sess);
+    } catch { /* nothing available — full film every time, never blocks */ }
+    return false;
   })();
-  const splashQuick = splashSeenBefore && !splashForceFull;
+  const splashQuick = splashSeenRecently && !splashForceFull;
   useEffect(() => {
     if (splash === 'up') {
       let reduced = false;
@@ -746,7 +788,26 @@ export default function HostShellV2() {
     // On sign-in, pull the cloud profile (studio_settings) into localStorage +
     // state — cloud wins, so a fresh device inherits the host's real identity.
     const hydrate = () => {
-      cloudLoadProfile().then(p => { if (!dead && p) setProfileState(p); }).catch(() => {});
+      cloudLoadProfile().then(p => {
+        if (dead || !p) return;
+        setProfileState(p);
+        // Cross-device consistency (10+ reaudit, boot-frequency track): adopt
+        // the cloud's splashLastSeen if it's more recent than (or absent
+        // from) this device's own flag, so a second device the host signs
+        // into doesn't replay the full film when they've already seen it
+        // recently elsewhere. Doesn't change THIS boot (already decided at
+        // mount, before any network round-trip could answer) — takes effect
+        // starting next load, which is the honest limit of a synchronous,
+        // no-network-wait splash decision.
+        if (p.splashLastSeen) {
+          try {
+            const localTs = localStorage.getItem(LS_SPLASH_SEEN);
+            if (!localTs || Date.parse(p.splashLastSeen) > Date.parse(localTs)) {
+              localStorage.setItem(LS_SPLASH_SEEN, p.splashLastSeen);
+            }
+          } catch { /* best-effort — worst case this device just replays once more */ }
+        }
+      }).catch(() => {});
       // Pull cloud events into ngw-events; if any are new to this device, nudge.
       cloudLoadEvents().then(evs => {
         if (dead || !Array.isArray(evs)) return;
