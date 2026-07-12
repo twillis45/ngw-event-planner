@@ -930,11 +930,48 @@ export default function HostShellV2() {
   const helpers = helperData.responsibilities || [];
   const helperPeople = helperData.helpers || [];
   const risks = useMemo(() => { try { return playbookRisks(event); } catch { return null; } }, [event]);
+  // Static playbook risks the host hasn't dismissed. PARITY (re-audit P1):
+  // ctx.activeRisks is already riskStatus-filtered and dismissible; the authored
+  // playbook rows were not — a host could not clear one they'd handled. They now
+  // dismiss the same way, keyed on their stable r.id, so "Handled" clears the row
+  // here AND drops it from the count below (the two must never disagree).
+  const staticRisks = useMemo(() => {
+    const items = (risks && risks.items) || [];
+    const st = (event.riskStatus && typeof event.riskStatus === 'object') ? event.riskStatus : {};
+    return items.filter(r => r && st[r.id] !== 'dismissed');
+  }, [risks, event.riskStatus]);
   // RECON (2026-07-11): the ONE risk count — exactly the rows the risks sheet
-  // renders (ctx.activeRisks, already riskStatus-filtered, + the playbook's
-  // authored risks). Quiet index row and the sheet hero both read this, so the
+  // renders (ctx.activeRisks, already riskStatus-filtered, + the undismissed
+  // playbook risks). Quiet index row and the sheet hero both read this, so the
   // number on the way in always equals the rows on arrival.
-  const riskCount = ((ctx && ctx.activeRisks) || []).length + ((risks && risks.items) || []).length;
+  const riskCount = ((ctx && ctx.activeRisks) || []).length + staticRisks.length;
+  // Row-level routing for a risk (re-audit P1 + the standing Row-Level CTA rule):
+  // map a risk to the surface that actually addresses it, most specific first.
+  // Returns a routeSheet() route or null — no route means no button, never a dead
+  // CTA. rain-plan/crab-plan land on the exact plan; the rest on the right sheet.
+  const riskRouteFor = (r) => {
+    const t = (String((r && (r.trigger || r.description)) || '') + ' ' + String((r && r.mitigation) || '')).toLowerCase();
+    if (/rain|weather|forecast|outdoor|storm|heat wave|\bsky\b/.test(t)) return { focusField: 'rain-plan' };
+    if (/crab|shellfish|\bboil\b/.test(t)) return { focusField: 'crab-plan' };
+    if (/vendor|\bcoi\b|insurance|deposit|contract|photographer|caterer|\bdj\b|rental/.test(t)) return { tab: 'Vendors' };
+    if (/seat|accessible|wheelchair|mobility|\btable\b|capacity|\bfit\b/.test(t)) return { tab: 'Seating' };
+    if (/timeline|schedule|arrival|compress|run of show|running late|behind|time window/.test(t)) return { tab: 'Timeline' };
+    if (/budget|\bcost\b|overspend|\bspend\b|\bmoney\b/.test(t)) return { tab: 'Budget' };
+    if (/\bfood\b|portion|allergen|\bdiet\b|\bmeal\b|\bmenu\b/.test(t)) return { tab: 'Planning', focusField: 'food' };
+    return null;
+  };
+  // Grounded "why this applies" (re-audit candidate a): append a clause drawn ONLY
+  // from real event facts — never invented, empty when the fact is absent. Weather
+  // is the canonical case the audit flagged: the risk copy is authored, but the
+  // forecast the app already resolved (wx) is what makes it concrete right now.
+  const riskWhy = (r) => {
+    const t = (String((r && (r.trigger || r.description)) || '') + ' ' + String((r && r.mitigation) || '')).toLowerCase();
+    if (/rain|weather|forecast|outdoor|storm|\bsky\b/.test(t) && wx && Number.isFinite(Number(wx.pop))) {
+      const pop = Math.round(Number(wx.pop));
+      if (pop >= 20) return `Forecast now: ${pop}% chance in the day window${wx.rainWindow && wx.rainWindow.label ? ', most likely ' + wx.rainWindow.label : ''}.`;
+    }
+    return '';
+  };
   // The essentials rail (phaseProgress), tight-timeline summary, and the
   // playbook's heart moments — the last of the audit list.
   const phaseCues = useMemo(() => { try { return deriveEventPhaseProgress(event); } catch { return null; } }, [event]);
@@ -5650,27 +5687,44 @@ export default function HostShellV2() {
                 {/* ctx.activeRisks (PC-2): the reveal's risk deriver, already
                     filtered through event.riskStatus — dismissing here writes
                     the SAME field production writes, one loop everywhere. */}
-                {ctx && (ctx.activeRisks || []).map((r, i) => (
+                {ctx && (ctx.activeRisks || []).map((r, i) => {
+                  const why = riskWhy(r);
+                  const route = riskRouteFor(r);
+                  return (
                   <div key={'ctx-' + (r.type || i)} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
                       <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
+                    {why && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--faint)' }}>{why}</p>}
                     <div className="actions-row" style={{ marginTop: 6 }}>
+                      {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
                       <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
                     </div>
                   </div>
-                ))}
-                {risks && (risks.items || []).map((r, i) => (
+                  );
+                })}
+                {staticRisks.map((r, i) => {
+                  const why = riskWhy(r);
+                  const route = riskRouteFor(r);
+                  return (
                   <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
-                      <span className={'tag ' + (r.severity === 'high' ? 'plan' : 'plan')} style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
+                    {why && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--faint)' }}>{why}</p>}
+                    {(route || r.id) && (
+                      <div className="actions-row" style={{ marginTop: 6 }}>
+                        {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
+                        {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
+                      </div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </>
             )}
             {sheet.kind === 'meaning' && meaningDraft && (
