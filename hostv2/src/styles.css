@@ -1189,12 +1189,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 }
 /* Transform only — held aloft with a small ambient drift (0–44%), a dead-calm
    beat (44–55%) as anticipation, then the real accelerating fall (55–76%),
-   landing squash (76–80%), rebound (80–86%), settle (86–100%). */
+   landing squash (76–80%), rebound (80–86%), settle (86–100%).
+   PRESENCE ARC (10+ reaudit — host: "can we improve the bead's
+   characteristics?"): the bead used to hold its final, period-exact size
+   the entire time — meaning the one thing carrying a multi-second solo
+   beat as the sole subject on screen never actually looked like more than
+   a small punctuation mark waiting its turn. Now it's visibly larger while
+   it's alone and establishing itself (1.3×), and shrinks to its true,
+   type-exact size exactly as it lands and takes up its typographic duty —
+   the inversion's thesis (it was always going to end up as "merely" the
+   period) reads in the bead's own size, not just its position. */
 @keyframes sp-bead-fall{
-  0%{transform:translateY(-240px) scale(1); animation-timing-function:var(--ease-in-out)}
-  22%{transform:translateY(-234px) scale(1); animation-timing-function:var(--ease-in-out)}
-  44%{transform:translateY(-240px) scale(1); animation-timing-function:linear}
-  55%{transform:translateY(-240px) scale(1); animation-timing-function:cubic-bezier(.5,0,1,.6)}
+  0%{transform:translateY(-240px) scale(1.3); animation-timing-function:var(--ease-in-out)}
+  22%{transform:translateY(-234px) scale(1.32); animation-timing-function:var(--ease-in-out)}
+  44%{transform:translateY(-240px) scale(1.3); animation-timing-function:linear}
+  55%{transform:translateY(-240px) scale(1.3); animation-timing-function:cubic-bezier(.5,0,1,.6)}
   76%{transform:translateY(0) scale(1); animation-timing-function:var(--ease-out)}
   80%{transform:translateY(0) scaleX(1.22) scaleY(.74); animation-timing-function:var(--ease-out)}
   86%{transform:translateY(0) scaleX(.94) scaleY(1.05); animation-timing-function:var(--ease-in-out)}
