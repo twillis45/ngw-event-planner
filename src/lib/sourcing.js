@@ -66,8 +66,14 @@ export const CANONICAL_PROTEIN_PRICES = [
 
 // canonicalProteinPrice(name, tier) → [lo,hi] per-channel range, or null. Used as the
 // ENGINE fallback for proteins lacking their own sourcingPrices, on NON-default tiers.
+// Same carrier exclusion as isProteinItem() — "Burger + hot dog buns / bread" (theCookout's
+// p_buns) matches the sausage/beef regexes below on "hot dog"/"burger" alone, which would
+// otherwise reprice a $0.30-0.60 bun at $3-8. Guarded here too so this function is safe to
+// call directly, not just behind a caller's isProteinItem() pre-filter.
 export function canonicalProteinPrice(name, tier) {
-  const m = CANONICAL_PROTEIN_PRICES.find((c) => c.re.test(String(name || '')));
+  const s = String(name || '');
+  if (CARRIER_RE.test(s)) return null;
+  const m = CANONICAL_PROTEIN_PRICES.find((c) => c.re.test(s));
   return m && Array.isArray(m[tier]) ? m[tier] : null;
 }
 

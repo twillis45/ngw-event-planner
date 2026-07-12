@@ -1,0 +1,266 @@
+// ─── seatingPlan — Sprint 1 "One app": tables + guest-assignment engine ──────
+//
+// Extracted verbatim from App.js's legacy Seating component (the last L4 tab
+// with no V2 equivalent) so the V2 UI slice can wire seating without
+// re-implementing the math — same extraction pattern as eventGeoQuery /
+// importHistory, same thin-domain-helper shape as crabPlan / travelPlan.
+// Pure readers over event state + pure write-shape helpers; no React, no DOM,
+// no storage, no fetching.
+//
+// DATA MODEL (as found in App.js — nothing here is invented):
+//   event.tables      — a NUMBER: how many tables exist (default 5 via
+//                       `event.tables || 5` at every legacy read site).
+//                       There is NO per-table seat capacity anywhere in the
+//                       model — "capacity" in legacy is only the derived
+//                       average (confirmed ÷ tableCount) and the evenness
+//                       check (max−min occupancy ≤ 1). This engine therefore
+//                       exposes occupancy + avgPerTable + tablesEven and does
+//                       NOT fabricate a seats-per-table limit or an
+//                       over-capacity flag off data that doesn't exist.
+//   event.tableNames  — string[] indexed by tableNum−1; '' / missing means
+//                       the default "Table N" label.
+//   event.guests[i]   — { id, name, rsvp, table, group, meal, kids, needs }
+//                       · rsvp === 'Yes' (strict) is "confirmed" — the only
+//                         guests seating considers (matches legacy Seating
+//                         AND Command Center's unseated nudge).
+//                       · table — 1-based table number, or null/undefined
+//                         when unassigned. Legacy compares with strict ===.
+//                       · meal — 'Standard' | 'Vegetarian' | 'Vegan' |
+//                         'Gluten-Free' | '—'; kids — number; needs — free
+//                         text ("wheelchair" etc.).
+//
+// HARD RULES (same doctrine as crabPlan / travelPlan):
+//   - headcount-only events (no guest roster) degrade: tables come back with
+//     empty occupancy and roster-derived arrays come back EMPTY — guests are
+//     never invented from a headcount.
+//   - write helpers are pure: they return the NEXT array (guests /
+//     tableNames); the UI owns persistence (setGuests / patchEvent).
+//   - behavior-preserving: quirks are kept, not fixed (e.g. auto-assign
+//     round-robins per GUEST, so one group's members scatter across
+//     consecutive tables — that is what shipped; noted, not changed).
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+/** How many tables the legacy default gives an event with none set. */
+export const DEFAULT_TABLE_COUNT = 5;
+
+/** Short meal labels used on seating pills (legacy `mealShort`). */
+export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' };
+
+/**
+ * The event's table count as every legacy read site resolves it:
+ * `event.tables || 5`. 0 / missing / junk → the default.
+ * @param {object} event
+ * @returns {number}
+ */
+export function tableCountOf(event) {
+  return num(event && event.tables) || DEFAULT_TABLE_COUNT;
+}
+
+/**
+ * Clamp a host-typed table count the way the legacy input handler does:
+ * `Math.max(1, Number(value) || 1)` — never below 1, junk becomes 1.
+ * @param {*} value raw input value
+ * @returns {number}
+ */
+export function clampTableCount(value) {
+  return Math.max(1, Number(value) || 1);
+}
+
+/**
+ * Display label for a table: the host's custom name when set, else "Table N".
+ * @param {string[]|null|undefined} tableNames event.tableNames
+ * @param {number} tableNum 1-based table number
+ * @returns {string}
+ */
+export function tableLabel(tableNames, tableNum) {
+  return (Array.isArray(tableNames) ? tableNames : [])[tableNum - 1] || `Table ${tableNum}`;
+}
+
+/**
+ * Confirmed guests — the only roster seating considers. Strict rsvp === 'Yes',
+ * exactly as legacy Seating and the Command Center nudge filter.
+ * @param {Array|null|undefined} guests
+ * @returns {Array}
+ */
+export function confirmedGuests(guests) {
+  return (Array.isArray(guests) ? guests : []).filter(g => g && g.rsvp === 'Yes');
+}
+
+/**
+ * Name-search filter for guest rows (legacy inline search). Empty query
+ * passes everything; otherwise case-insensitive substring on name.
+ * @param {Array} list guest objects
+ * @param {string} query
+ * @returns {Array}
+ */
+export function filterGuestsByName(list, query) {
+  const q = String(query || '').toLowerCase();
+  if (!q) return Array.isArray(list) ? list : [];
+  return (Array.isArray(list) ? list : []).filter(g => String((g && g.name) || '').toLowerCase().includes(q));
+}
+
+/**
+ * Diet / accessibility rollup chips over confirmed guests (legacy host-hero
+ * chips). Derived ONLY from real guest fields; empty roster → no chips.
+ * @param {Array} confirmed confirmed guest objects
+ * @returns {string[]} e.g. ['Veg 3', 'GF 1', 'Kids 4', 'Wheelchair 1']
+ */
+export function dietChipsFor(confirmed) {
+  if (!Array.isArray(confirmed) || !confirmed.length) return [];
+  let veg = 0, gf = 0, kids = 0, wheel = 0;
+  for (const g of confirmed) {
+    const meal = String((g && g.meal) || '');
+    if (/veg(etarian|an)?/i.test(meal)) veg++;
+    if (/gluten|^gf$/i.test(meal)) gf++;
+    if (g && g.kids) kids += Number(g.kids) || 0;
+    if (/wheel|accessib|\bada\b/i.test(String((g && g.needs) || ''))) wheel++;
+  }
+  const out = [];
+  if (veg) out.push(`Veg ${veg}`);
+  if (gf) out.push(`GF ${gf}`);
+  if (kids) out.push(`Kids ${kids}`);
+  if (wheel) out.push(`Wheelchair ${wheel}`);
+  return out;
+}
+
+/**
+ * ONE reader that turns event state into the whole seating picture.
+ * Reads event.guests / event.tables / event.tableNames only.
+ *
+ * @param {object} event
+ * @returns {{
+ *   enabled: boolean,            // seating always exists — tables are configurable on any event
+ *   hasRoster: boolean,          // false for headcount-only events (guests never invented)
+ *   tableCount: number,
+ *   tables: Array<{
+ *     number: number,            // 1-based
+ *     name: string|null,         // host's custom name, or null
+ *     label: string,             // name || "Table N"
+ *     guests: Array,             // confirmed guests seated here (strict table === number)
+ *     count: number,             // occupancy
+ *     kids: number,              // extra kids riding on these guests
+ *     meals: Object<string,number>, // per-meal rollup (legacy: every meal except '—')
+ *   }>,
+ *   confirmed: Array,            // rsvp === 'Yes'
+ *   unassigned: Array,           // confirmed with no table (legacy unseatedAll)
+ *   dietChips: string[],
+ *   totals: {
+ *     confirmed: number, seated: number, unassigned: number, tableCount: number,
+ *     avgPerTable: number|null,  // round(confirmed ÷ tables); null when no confirmed guests
+ *     tablesEven: boolean,       // legacy balance check: non-empty tables within 1 of each other
+ *     allSeated: boolean,        // confirmed > 0 and none unassigned
+ *   },
+ * }}
+ */
+export function buildSeatingPlan(event) {
+  const ev = event || {};
+  const hasRoster = Array.isArray(ev.guests) && ev.guests.length > 0;
+  const tableCount = tableCountOf(ev);
+  const tableNames = Array.isArray(ev.tableNames) ? ev.tableNames : [];
+  const confirmed = confirmedGuests(ev.guests);
+  const unassigned = confirmed.filter(g => !g.table);
+  const seated = confirmed.length - unassigned.length;
+
+  const tables = Array.from({ length: tableCount }, (_, i) => {
+    const number = i + 1;
+    const guests = confirmed.filter(g => g.table === number); // strict ===, as legacy
+    const meals = guests.reduce((acc, g) => { if (g.meal !== '—') acc[g.meal] = (acc[g.meal] || 0) + 1; return acc; }, {});
+    const kids = guests.reduce((sum, g) => sum + (g.kids || 0), 0);
+    const name = tableNames[i] || null;
+    return { number, name, label: name || `Table ${number}`, guests, count: guests.length, kids, meals };
+  });
+
+  // Legacy evenness: false until someone is seated; a single occupied table is
+  // "even"; otherwise every non-empty table within 1 guest of the others.
+  const tablesEven = (() => {
+    if (seated === 0) return false;
+    const counts = tables.map(t => t.count).filter(n => n > 0);
+    if (counts.length < 2) return true;
+    return (Math.max(...counts) - Math.min(...counts)) <= 1;
+  })();
+
+  return {
+    enabled: true,
+    hasRoster,
+    tableCount,
+    tables,
+    confirmed,
+    unassigned,
+    dietChips: dietChipsFor(confirmed),
+    totals: {
+      confirmed: confirmed.length,
+      seated,
+      unassigned: unassigned.length,
+      tableCount,
+      avgPerTable: confirmed.length ? Math.round(confirmed.length / tableCount) : null,
+      tablesEven,
+      allSeated: confirmed.length > 0 && unassigned.length === 0,
+    },
+  };
+}
+
+// ── Write-shape helpers — pure; the UI persists the returned array ───────────
+
+/**
+ * Next guests array with one guest assigned to a table.
+ * @param {Array} guests full guest array (not just confirmed)
+ * @param {*} guestId
+ * @param {number} tableNum 1-based
+ * @returns {Array} next guests array
+ */
+export function assignGuestToTable(guests, guestId, tableNum) {
+  return (Array.isArray(guests) ? guests : []).map(g => (g && g.id === guestId ? { ...g, table: tableNum } : g));
+}
+
+/**
+ * Next guests array with one guest removed from their table (table: null,
+ * exactly what legacy unassign wrote).
+ * @param {Array} guests full guest array
+ * @param {*} guestId
+ * @returns {Array} next guests array
+ */
+export function unassignGuest(guests, guestId) {
+  return (Array.isArray(guests) ? guests : []).map(g => (g && g.id === guestId ? { ...g, table: null } : g));
+}
+
+/**
+ * Legacy "Auto-assign by group": every UNSEATED confirmed guest who has a
+ * group gets the next table, round-robin. Preserved quirk: the index advances
+ * per GUEST (not per group), so a group's members land on CONSECUTIVE tables
+ * rather than together — that is what shipped, kept verbatim. Guests without
+ * a group, already-seated guests, and non-confirmed guests are untouched.
+ * @param {Array} guests full guest array
+ * @param {number} tableCount
+ * @returns {Array} next guests array
+ */
+export function autoAssignByGroup(guests, tableCount) {
+  const all = Array.isArray(guests) ? guests : [];
+  const count = clampTableCount(tableCount);
+  const confirmed = all.filter(g => g && g.rsvp === 'Yes');
+  const groups = [...new Set(confirmed.map(g => g.group).filter(Boolean))];
+  let tableIdx = 0;
+  const updates = {};
+  groups.forEach(group => {
+    const members = confirmed.filter(g => g.group === group && !g.table);
+    members.forEach(g => {
+      updates[g.id] = (tableIdx % count) + 1;
+      tableIdx++;
+    });
+  });
+  return all.map(g => (g && updates[g.id] ? { ...g, table: updates[g.id] } : g));
+}
+
+/**
+ * Next tableNames array with one table renamed (trimmed, as the legacy
+ * rename-on-blur wrote it; '' clears back to the default "Table N" label).
+ * @param {string[]|null|undefined} tableNames current event.tableNames
+ * @param {number} tableNum 1-based
+ * @param {string} name raw typed name
+ * @returns {string[]} next tableNames array
+ */
+export function renameTable(tableNames, tableNum, name) {
+  const names = [...(Array.isArray(tableNames) ? tableNames : [])];
+  names[tableNum - 1] = String(name || '').trim();
+  return names;
+}

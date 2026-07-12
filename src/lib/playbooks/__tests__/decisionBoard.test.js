@@ -214,3 +214,33 @@ describe('ordering guard (kept)', () => {
     expect(seq).toEqual(sorted);
   });
 });
+
+describe('POP-1C — vendor-blocked route uses the canonical isVendorBooked, not an inline regex', () => {
+  // Anniversary's "help" decision has blocks:['vendors'] with no options overlap
+  // with food-choice, so its route always resolves via _firstUndoneVendorRoute.
+  const anniversaryEvent = (vendors) => ({ id: 'e', type: 'Anniversary', date: '2026-03-01', guests: roster(20, 2, 3), vendors });
+
+  test('a "Deposit Paid" vendor is treated as booked — route prioritizes the genuinely undone vendor over it', () => {
+    const b = playbookDecisionBoard(anniversaryEvent([
+      { id: 'v1', name: 'DJ Co', status: 'Deposit Paid' },
+      { id: 'v2', name: 'Bartender Co', status: 'Considering' },
+    ]), '2026-01-01');
+    const help = [...b.open, ...b.locked].find((r) => r.id === 'help');
+    expect(help.route.vendorId).toBe('v2'); // the old buggy regex would have matched v1 as "undone" too and picked whichever sorted first
+  });
+
+  test('a "Contracted" vendor is treated as booked the same way', () => {
+    const b = playbookDecisionBoard(anniversaryEvent([
+      { id: 'v1', name: 'Caterer Co', status: 'Contracted' },
+      { id: 'v2', name: 'Bartender Co', status: 'Considering' },
+    ]), '2026-01-01');
+    const help = [...b.open, ...b.locked].find((r) => r.id === 'help');
+    expect(help.route.vendorId).toBe('v2');
+  });
+
+  test('a genuinely un-booked vendor (e.g. "Considering") still gets routed to', () => {
+    const b = playbookDecisionBoard(anniversaryEvent([{ id: 'v1', name: 'Bartender Co', status: 'Considering' }]), '2026-01-01');
+    const help = [...b.open, ...b.locked].find((r) => r.id === 'help');
+    expect(help.route.vendorId).toBe('v1');
+  });
+});

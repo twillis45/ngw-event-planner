@@ -1,6 +1,6 @@
 // "Do it for me" draft engine — proves the app WRITES a ready-to-send message from
 // the event facts it already has, never inventing what the host didn't give.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, buildShoppingPlan, localityAnchor, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase } from '../doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftDietaryNote, draftShoppingList, buildShoppingPlan, localityAnchor, draftDayBeforeDetails, draftVendorReconfirm, draftToast, hasToastMaterial, eventCulturalMeta, isAtHome, fmtLongDate, placePhrase, timePhrase, draftLodgingNote, draftRidesNote, draftGettingHereNote } from '../doItForMe';
 
 const maya = { name: "Maya's Graduation", type: 'Graduation', date: '2026-07-07', timeOfDay: 'afternoon', venue: "Host's home", honoree: 'Maya', guestEstimate: '35' };
 const profile = { name: 'Todd' };
@@ -151,6 +151,34 @@ describe('draftHelperBrief', () => {
   test('no ros → honest placeholder, never invented duties', () => {
     const { body } = draftHelperBrief({ ...maya, ros: [] }, profile);
     expect(body).toMatch(/isn’t filled in yet/);
+  });
+});
+
+describe('draftHelperConfirm', () => {
+  test('personalizes to the one helper, lists only their own assignments', () => {
+    const helper = { id: 'g-1', guestId: 'g-1', name: 'Uncle Ray', role: 'food · task' };
+    const resp = [
+      { helperId: 'g-1', label: 'Pitmaster', itemType: 'task' },
+      { helperId: 'g-1', label: 'Protein pickup', itemType: 'food' },
+    ];
+    const { subject, body } = draftHelperConfirm(maya, profile, helper, resp);
+    expect(subject).toContain("Maya's Graduation");
+    expect(body).toContain('Hi Uncle');
+    expect(body).toContain('Pitmaster');
+    expect(body).toContain('Protein pickup');
+    expect(body).toContain('Todd');
+    // never another helper's items — this is a per-person, not a group, message
+    expect(body).not.toContain('Marcus');
+  });
+  test('no responsibilities passed → honest generic confirm, never invented duties', () => {
+    const helper = { id: 'g-2', guestId: 'g-2', name: 'Cindy' };
+    const { body } = draftHelperConfirm(maya, profile, helper, []);
+    expect(body).toMatch(/still able to help out/);
+    expect(body).not.toMatch(/You're on for/);
+  });
+  test('no event or helper → empty draft, never throws', () => {
+    expect(draftHelperConfirm(null, profile, { name: 'X' }, [])).toEqual({ subject: '', body: '' });
+    expect(draftHelperConfirm(maya, profile, null, [])).toEqual({ subject: '', body: '' });
   });
 });
 
@@ -385,5 +413,227 @@ describe('draftToast', () => {
     expect(body).toMatch(/remember|hold each other|because of Joe/i);
     expect(body).not.toMatch(/raise your glass/i);
     expect(body.split('\n').filter(Boolean).length).toBeLessThanOrEqual(5);
+  });
+});
+
+// DESTINATION-2 slice 1 — the where-to-stay note. Doctrine under test: DRAFT
+// content comes ONLY from event.lodging (the fields lib/travelPlan reads);
+// missing fields are omitted, never bracket-filled or invented; no place name
+// means an empty body (the UI's "nothing to draft yet" guard); plain host
+// language ("group rate goes away"), never hospitality jargon.
+describe('draftLodgingNote', () => {
+  const dest = {
+    name: 'The Chen Reunion',
+    isDestination: true,
+    lodging: {
+      hotelName: 'Harborview Inn',
+      rate: 189,
+      code: 'CHEN25',
+      deadline: '2026-08-12',
+      backupOptions: [{ name: 'Bayside Suites', note: '10 min farther, usually cheaper' }],
+    },
+  };
+  test('composes the full note from every host-entered field', () => {
+    const { subject, body } = draftLodgingNote(dest);
+    expect(subject).toBe('Where to stay for The Chen Reunion');
+    expect(body).toContain('We’ve lined up rooms at Harborview Inn.');
+    expect(body).toContain('The group rate is $189 a night — give them the code CHEN25 when you book.');
+    expect(body).toContain('Book by Wednesday, August 12 — after that the group rate goes away');
+    expect(body).toContain('- Bayside Suites — 10 min farther, usually cheaper');
+    expect(body).toContain('If it fills up, or you’d rather stay somewhere else:');
+  });
+  test('omits lines for missing fields instead of inventing them', () => {
+    const { body } = draftLodgingNote({ name: 'The Chen Reunion', lodging: { hotelName: 'Harborview Inn' } });
+    expect(body).toContain('Harborview Inn');
+    expect(body).not.toContain('$');            // no rate line
+    expect(body).not.toContain('code');         // no booking-code line
+    expect(body).not.toContain('Book by');      // no deadline line
+    expect(body).not.toContain('fills up');     // no backup section
+    expect(body).not.toContain('[');            // and never a bracket placeholder
+  });
+  test('code-only variant still tells guests how to get the group rate', () => {
+    const { body } = draftLodgingNote({ lodging: { hotelName: 'Harborview Inn', code: 'CHEN25' } });
+    expect(body).toContain('Give them the code CHEN25 when you book to get the group rate.');
+    expect(body).not.toContain('$');
+  });
+  test('no place name → empty body (the UI guard, not a guessed hotel)', () => {
+    expect(draftLodgingNote({ name: 'X', lodging: { rate: 200, code: 'ABC' } }).body).toBe('');
+    expect(draftLodgingNote({}).body).toBe('');
+    expect(draftLodgingNote(null).body).toBe('');
+  });
+  test('backup options cap at 2 and skip nameless entries', () => {
+    const { body } = draftLodgingNote({
+      lodging: {
+        hotelName: 'Harborview Inn',
+        backupOptions: [{ name: '', note: 'ghost' }, { name: 'A' }, { name: 'B' }, { name: 'C' }],
+      },
+    });
+    expect(body).toContain('- A');
+    expect(body).toContain('- B');
+    expect(body).not.toContain('- C');
+    expect(body).not.toContain('ghost');
+  });
+  test('unreadable deadline is dropped, never asserted', () => {
+    const { body } = draftLodgingNote({ lodging: { hotelName: 'Harborview Inn', deadline: 'soonish' } });
+    expect(body).not.toContain('Book by');
+  });
+});
+
+// DESTINATION-2 slice 2 — the getting-around note. Doctrine under test: DRAFT
+// content comes ONLY from event.groundTransport (the host's own words — the
+// late-night note VERBATIM) plus the dest_transport decision answer via
+// transportDecision (Phase 1's single source); an undecided shuttle is
+// silence, never a guess; nothing real to say means an empty body (the UI's
+// "nothing to draft yet" guard); matching stays host-mediated — the note
+// invites replies, it never assigns anyone a car.
+describe('draftRidesNote', () => {
+  const dest = {
+    name: 'The Chen Reunion',
+    isDestination: true,
+    foodChoices: { dest_transport: 'Yes, a shuttle or van' },
+    groundTransport: {
+      lastReturnNote: 'no rideshare after 9pm — last shuttle 11:30',
+      pickupPoints: [{ name: 'Hotel lobby', note: 'on the hour' }, { name: 'Venue gate' }],
+    },
+  };
+  test('composes the full note: decision answer, pickup spots, late-night note verbatim', () => {
+    const { subject, body } = draftRidesNote(dest);
+    expect(subject).toBe('Getting around for The Chen Reunion');
+    expect(body).toContain('We’re arranging a shuttle or van for the group');
+    expect(body).toContain('Pickup spots:');
+    expect(body).toContain('- Hotel lobby — on the hour');
+    expect(body).toContain('- Venue gate');
+    expect(body).toContain('Getting back at night: no rideshare after 9pm — last shuttle 11:30');
+    // Shuttle decided → the plain questions closer, not the pair-up ask.
+    expect(body).toContain('Questions about getting around? Just reply here.');
+  });
+  test('self-manage answer says so plainly and invites host-mediated pairing', () => {
+    const { body } = draftRidesNote({ ...dest, foodChoices: { dest_transport: 'No, guests self-manage' } });
+    expect(body).toContain('There’s no group shuttle');
+    expect(body).toContain('Reply here and I’ll pair people up.');
+    expect(body).not.toContain('We’re arranging');
+  });
+  test('undecided shuttle is silence — never a claimed plan either way', () => {
+    const { body } = draftRidesNote({ ...dest, foodChoices: {} });
+    expect(body).not.toContain('We’re arranging');
+    expect(body).not.toContain('There’s no group shuttle');
+    // The host's real fields still carry the note.
+    expect(body).toContain('Getting back at night: no rideshare after 9pm — last shuttle 11:30');
+    expect(body).toContain('- Hotel lobby — on the hour');
+  });
+  test('"Not sure yet" is a real non-answer — treated as undecided, not as no', () => {
+    const { body } = draftRidesNote({ ...dest, foodChoices: { dest_transport: 'Not sure yet' } });
+    expect(body).not.toContain('There’s no group shuttle');
+    expect(body).not.toContain('We’re arranging');
+  });
+  test('nothing real to say → empty body (the UI guard)', () => {
+    expect(draftRidesNote({ name: 'X' }).body).toBe('');
+    expect(draftRidesNote({ groundTransport: {} }).body).toBe('');
+    expect(draftRidesNote({ groundTransport: { pickupPoints: [{ note: 'nameless' }] }, foodChoices: { dest_transport: 'Not sure yet' } }).body).toBe('');
+    expect(draftRidesNote(null).body).toBe('');
+    expect(draftRidesNote({}).body).toBe('');
+  });
+  test('a decided shuttle alone is real enough to send', () => {
+    const { body } = draftRidesNote({ foodChoices: { dest_transport: 'Yes, a shuttle or van' } });
+    expect(body).toContain('We’re arranging a shuttle or van for the group');
+    expect(body).not.toContain('Pickup spots');
+    expect(body).not.toContain('Getting back at night');
+  });
+  test('pickup spots cap at 2 and skip nameless entries; missing fields are omitted', () => {
+    const { body } = draftRidesNote({
+      groundTransport: { pickupPoints: [{ name: '', note: 'ghost' }, { name: 'A' }, { name: 'B' }, { name: 'C' }] },
+    });
+    expect(body).toContain('- A');
+    expect(body).toContain('- B');
+    expect(body).not.toContain('- C');
+    expect(body).not.toContain('ghost');
+    expect(body).not.toContain('Getting back at night');
+    expect(body).not.toContain('[');
+  });
+  test('legacy explicit boolean field still reads when no decision answer exists', () => {
+    const { body } = draftRidesNote({ groundTransport: { providing: true } });
+    expect(body).toContain('We’re arranging a shuttle or van for the group');
+  });
+});
+
+// DESTINATION-2 slice 3 — the getting-here note. Doctrine under test: DRAFT
+// content comes ONLY from the host's own airport options (with their honest
+// tradeoff notes, cap 3), the event's real date fields, and the dest_transport
+// decision via transportDecision (Phase 1's single source); arrive-by guidance
+// derives from event.date / the host's own start time — a time is never
+// invented; no airports means an empty body (the UI's "nothing to draft yet"
+// guard); missing pieces are omitted, never bracket-filled.
+describe('draftGettingHereNote', () => {
+  const dest = {
+    name: 'The Chen Reunion',
+    isDestination: true,
+    date: '2026-09-12',
+    airportOptions: [
+      { name: 'Baltimore/Washington Intl', code: 'BWI', note: 'closer, fewer flights' },
+      { name: 'Reagan National', code: 'DCA' },
+    ],
+    foodChoices: { dest_transport: 'Yes, a shuttle or van' },
+  };
+  test('composes the full note: airports with tradeoffs, the real date, the decision answer', () => {
+    const { subject, body } = draftGettingHereNote(dest);
+    expect(subject).toBe('Getting here for The Chen Reunion');
+    expect(body).toContain('Airports worth comparing:');
+    expect(body).toContain('- Baltimore/Washington Intl (BWI) — closer, fewer flights');
+    expect(body).toContain('- Reagan National (DCA)');
+    expect(body).toContain('The day itself is Saturday, September 12. Plan to land before then.');
+    expect(body).toContain('we’re arranging a shuttle or van for the group');
+    expect(body).toContain('Questions about flights or timing? Just reply here.');
+    expect(body).not.toContain('[');
+  });
+  test('a single airport reads as the plain instruction, not a comparison', () => {
+    const { body } = draftGettingHereNote({ airportOptions: [{ code: 'BWI' }] });
+    expect(body).toContain('Fly into:');
+    expect(body).toContain('- BWI');
+    expect(body).not.toContain('worth comparing');
+  });
+  test('multi-day window uses both real dates — land before, fly home after', () => {
+    const { body } = draftGettingHereNote({ ...dest, endDate: '2026-09-14' });
+    expect(body).toContain('It runs Saturday, September 12 through Monday, September 14 — plan to land before it starts, and book the flight home for after it ends.');
+    expect(body).not.toContain('The day itself');
+  });
+  test('the start time appears ONLY when the host actually gave one', () => {
+    const withTime = draftGettingHereNote({ ...dest, startTime: '2pm' }).body;
+    expect(withTime).toContain('it starts at 2pm');
+    const withPartOfDay = draftGettingHereNote({ ...dest, timeOfDay: 'afternoon' }).body;
+    expect(withPartOfDay).toContain('it starts in the afternoon');
+    expect(draftGettingHereNote(dest).body).not.toContain('it starts');
+  });
+  test('no date → no land-by line, never a guessed one', () => {
+    const { body } = draftGettingHereNote({ ...dest, date: null });
+    expect(body).not.toContain('Plan to land');
+    expect(body).not.toContain('The day itself');
+    expect(body).toContain('- Baltimore/Washington Intl (BWI)');
+  });
+  test('undecided transport is silence — never a claimed plan either way', () => {
+    const { body } = draftGettingHereNote({ ...dest, foodChoices: {} });
+    expect(body).not.toContain('shuttle');
+    expect(body).not.toContain('rental car');
+  });
+  test('self-manage answer says so plainly', () => {
+    const { body } = draftGettingHereNote({ ...dest, foodChoices: { dest_transport: 'No, guests self-manage' } });
+    expect(body).toContain('getting around is on your own wheels');
+    expect(body).not.toContain('we’re arranging');
+  });
+  test('no airports → empty body (the UI guard), even with everything else set', () => {
+    expect(draftGettingHereNote({ ...dest, airportOptions: [] }).body).toBe('');
+    expect(draftGettingHereNote({ ...dest, airportOptions: [{ note: 'nameless' }] }).body).toBe('');
+    expect(draftGettingHereNote({ name: 'X', date: '2026-09-12' }).body).toBe('');
+    expect(draftGettingHereNote(null).body).toBe('');
+    expect(draftGettingHereNote({}).body).toBe('');
+  });
+  test('airports cap at 3 and skip entries with neither a name nor a code', () => {
+    const { body } = draftGettingHereNote({
+      airportOptions: [{ note: 'ghost' }, { code: 'A' }, { code: 'B' }, { code: 'C' }, { code: 'D' }],
+    });
+    expect(body).toContain('- A');
+    expect(body).toContain('- B');
+    expect(body).toContain('- C');
+    expect(body).not.toContain('- D');
+    expect(body).not.toContain('ghost');
   });
 });

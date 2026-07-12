@@ -1,4 +1,4 @@
-import { attendanceClass, attendanceShift, expectedFromPlanned, ATTENDANCE_SOURCES } from '../attendanceModel';
+import { attendanceClass, attendanceShift, expectedFromPlanned, implausibleGuestNote, ATTENDANCE_SOURCES } from '../attendanceModel';
 
 describe('attendanceModel — researched headcount shift', () => {
   test('classifies event types by formality', () => {
@@ -49,6 +49,27 @@ describe('attendanceModel — researched headcount shift', () => {
   test('non-positive count → null', () => {
     expect(expectedFromPlanned(0, 'The Cookout')).toBeNull();
     expect(expectedFromPlanned(-5, 'Wedding')).toBeNull();
+  });
+
+  describe('NO-UPPER-CLAMP-1 — implausibleGuestNote / expectedFromPlanned.note', () => {
+    test('an ordinary count returns no note', () => {
+      expect(implausibleGuestNote(40, 'The Cookout')).toBe('');
+    });
+    test('an implausible count (relative to a small-typical event) returns a real, honest note', () => {
+      const note = implausibleGuestNote(5000, 'Crab Feast', { meta: { typicalGuests: { default: 18 } } });
+      expect(note).toMatch(/double-checking/i);
+      expect(note).toMatch(/Crab Feast/);
+    });
+    test('the threshold scales with typicalGuests — a wedding-scale number is not flagged for a wedding', () => {
+      const wedding = implausibleGuestNote(1000, 'Wedding', { meta: { typicalGuests: { default: 120 } } });
+      expect(wedding).toBe('');
+    });
+    test('expectedFromPlanned.note is this app\'s single reachable render point — every direct caller (not just attendanceBand) gets the honest note automatically', () => {
+      const e = expectedFromPlanned(5000, 'Crab Feast', { meta: { typicalGuests: { default: 18 } } });
+      expect(e.note).toMatch(/double-checking/i);
+      const ordinary = expectedFromPlanned(18, 'Crab Feast', { meta: { typicalGuests: { default: 18 } } });
+      expect(ordinary.note).not.toMatch(/double-checking/i);
+    });
   });
 
   test('ships its citations (grounded, not invented)', () => {

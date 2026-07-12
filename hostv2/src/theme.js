@@ -4,6 +4,11 @@
 // host surfaces = the palette's Light mode, The Day = the Dark carbon ramp,
 // identity/CTAs = the locked steel-blue gradient. Change the doctrine file,
 // this prototype follows.
+//
+// TYPE is NOT set here. The host-app type scale lives as static CSS custom
+// properties (--t-*) in styles.css's :root block — that's the single type
+// source (UX_01 type-scale table names the tokens). theme.js stays colors
+// and motion only; do not mirror or move the type tokens into JS.
 import { dark, carbonNeutral } from '@app/theme/palette';
 import { durations, easings } from '@app/design/motion';
 
@@ -27,8 +32,14 @@ export function applyStudioMatte() {
   set('--card', c.panel);
   set('--ink', dark.textPrimary);
   set('--ink-soft', dark.textSecondary);
-  set('--muted', dark.textSecondary);
-  set('--faint', tint(dark.textSecondary, 0.55));
+  // --muted was aliased to the SAME textSecondary as --ink-soft (and both
+  // sit in the steel-blue hue family) — indistinguishable from each other
+  // and from the identity accent everywhere they appear together (e.g. the
+  // home quiet-index rows' label/value, found 2026-07-11). textMuted is now
+  // a genuinely de-blued neutral gray in the palette — use it here so
+  // "de-emphasized" reads as a different tone, not a dimmer blue.
+  set('--muted', dark.textMuted);
+  set('--faint', tint(dark.textMuted, 0.55));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
@@ -37,6 +48,10 @@ export function applyStudioMatte() {
   set('--steel-dark', dark.steelBlueDark);
   set('--steel-soft', dark.steelBlueMuted);       // text-legible steel on carbon
   set('--steel-tint', tint(dark.steelBlue, 0.16));
+  // Overhead-light material response (brand direction, splash work 2026-07-11):
+  // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
+  // steel anchor — same light source as the .app background radial.
+  set('--sheen', tint(dark.steelBlueMuted, 0.10));
   set('--cta-grad', `linear-gradient(180deg, ${dark.steelBlueGradientTop} 0%, ${dark.steelBlueGradientBottom} 100%)`);
 
   // ── Status anchors (Dark calibrations) ──
@@ -52,7 +67,7 @@ export function applyStudioMatte() {
   set('--carbon-panel', dark.carbonPanel);
   set('--carbon-line', dark.carbonBorder);
   set('--carbon-text', dark.textPrimary);
-  set('--carbon-muted', dark.textSecondary);
+  set('--carbon-muted', dark.textMuted);
   set('--steel-muted', dark.steelBlueMuted);
 
   // ── Motion: choreography timings, no bounce ever ──

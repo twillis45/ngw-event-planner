@@ -82,6 +82,15 @@ export const CURATED_VENDORS = {
   'Other':             ['Venue', 'Catering', 'Bar / Beverage', 'Photography', 'Entertainment', 'Decor', 'Rentals', 'AV / Tech'],
 };
 
+// DESTINATION-1: additive vendor categories for a destination-flagged event,
+// layered on top of whatever base roster the type already returns — never a
+// replacement. Same 3 categories as playbooks/index.js's
+// DESTINATION_VENDOR_CATEGORIES (kept in sync manually since this file's
+// output is plain labels, not the richer {category,costRange,...} shape
+// buildVendorPlan reads). No Flights/Air Travel here either — guests
+// self-pay for travel by default, so it isn't a host vendor line.
+const DESTINATION_VENDOR_LABELS = ['Lodging / Concierge', 'Transport', 'Childcare / Kids’ Program'];
+
 /**
  * The proposed vendor categories for an event type.
  * Returns the curated, on-trend roster when available; otherwise derives a
@@ -89,9 +98,16 @@ export const CURATED_VENDORS = {
  * Type→roster-key normalisation (intake/public-form + modal vocabularies, plus
  * off-taxonomy names) runs through the canonical taxonomy's shared resolver, so
  * a curated key is found whenever any other engine recognises the same name.
+ * opts.isDestination layers the 3 destination categories on top — optional,
+ * backward-compatible (every existing call site passing just eventType is
+ * unaffected).
  */
-export function proposedVendorCategories(eventType) {
+export function proposedVendorCategories(eventType, opts = {}) {
   const key = curatedRosterKeyFor(eventType);
-  if (key && CURATED_VENDORS[key]) return CURATED_VENDORS[key];
-  return Object.keys(getCategoryShares(eventType)).map(k => SHARE_LABELS[k]).filter(Boolean);
+  const base = (key && CURATED_VENDORS[key])
+    ? CURATED_VENDORS[key]
+    : Object.keys(getCategoryShares(eventType)).map(k => SHARE_LABELS[k]).filter(Boolean);
+  if (!opts.isDestination) return base;
+  const extra = DESTINATION_VENDOR_LABELS.filter((c) => !base.includes(c));
+  return [...base, ...extra];
 }

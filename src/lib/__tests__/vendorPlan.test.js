@@ -83,3 +83,31 @@ test('9 · a vendor entry with no real cost (quote not in yet) does not count as
   expect(photog.booked).toBe(true); // matched by category, just unpriced
   expect(photog.estimateCopy).toMatch(/before your quotes/i);
 });
+
+describe('DESTINATION-1 — additive destination vendor categories', () => {
+  test('isDestination adds Lodging/Transport/Childcare on top of the base playbook roster', () => {
+    const p = buildVendorPlan(ev({ isDestination: true }));
+    const names = p.categories.map((c) => c.category);
+    expect(names).toContain('Lodging / Concierge');
+    expect(names).toContain('Transport');
+    expect(names).toContain('Childcare / Kids’ Program');
+    expect(names).toContain('Photographer'); // Retirement Party's own roster still present
+  });
+
+  test('no isDestination flag → no destination categories, unchanged from before', () => {
+    const p = buildVendorPlan(ev());
+    const names = p.categories.map((c) => c.category);
+    expect(names).not.toContain('Lodging / Concierge');
+  });
+
+  test('never adds a Flights/Air Travel host-cost line — guests self-pay by default', () => {
+    const p = buildVendorPlan(ev({ isDestination: true }));
+    expect(p.categories.some((c) => /flight|air travel/i.test(c.category))).toBe(false);
+  });
+
+  test('does not duplicate a category the base playbook already authors (Team Retreat has its own Lodging/Transport)', () => {
+    const p = buildVendorPlan({ id: 'e', type: 'Team Retreat', guestCount: 20, date: '2027-01-01', vendors: [], isDestination: true });
+    const lodgingRows = p.categories.filter((c) => c.category === 'Lodging / room block' || c.category === 'Lodging / Concierge');
+    expect(lodgingRows.length).toBe(1); // Team Retreat's own "Lodging / room block" wins, no duplicate added
+  });
+});

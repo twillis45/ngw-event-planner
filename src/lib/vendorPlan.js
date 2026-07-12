@@ -16,7 +16,7 @@
 //   - every multiplier applied is named in `factorsApplied` so the UI can
 //     always answer "why is this more/less expensive than the base range"
 
-import { getPlaybook, resolveAnsweredCopy } from './playbooks';
+import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES } from './playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
@@ -26,7 +26,20 @@ const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
 export function buildVendorPlan(event, opts = {}) {
   const ev = event || {};
   const playbook = getPlaybook(ev.type);
-  const categories = (playbook && Array.isArray(playbook.vendors)) ? playbook.vendors.filter(Boolean) : [];
+  const base = (playbook && Array.isArray(playbook.vendors)) ? playbook.vendors.filter(Boolean) : [];
+  // DESTINATION-1: additive on top of whatever base playbook is active — never
+  // gated on type, only on the host-set isDestination modifier (same
+  // architecture as the decisions/tasks injection in playbooks/index.js).
+  // Skips a category the base roster already covers by KEYWORD, not exact
+  // string match — a travel-tagged playbook like Team Retreat already has its
+  // own "Lodging / room block" / "Transport (flights / shuttle / transfers)"
+  // worded differently than the generic destination additions, and those
+  // should win rather than duplicate.
+  const DEST_KEYWORDS = { 'Lodging / Concierge': /lodging/i, 'Transport': /transport/i, 'Childcare / Kids’ Program': /childcare|kids.{0,4}program/i };
+  const baseHasKeyword = (re) => base.some((c) => c && re.test(c.category || ''));
+  const categories = ev.isDestination
+    ? [...base, ...DESTINATION_VENDOR_CATEGORIES.filter((c) => !baseHasKeyword(DEST_KEYWORDS[c.category]))]
+    : base;
   if (!categories.length) return { relevant: false, categories: [] };
 
   const guests = num(ev.guestCount) || num(ev.guestEstimate)

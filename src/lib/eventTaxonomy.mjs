@@ -188,7 +188,12 @@ const KEYWORDS = [
   [/cook.?out|\bbbq\b|barbecue|barbeque/, 'The Cookout'],
   [/get.?together|game\s*night|potluck|\bboil\b|brunch|happy\s*hour|watch\s*party|cocktail\s*party|block\s*party|picnic/, 'Get-Together'],
   // ── Generic travel (after team retreat / wellness specifics) ──
-  [/honeymoon|getaway|\bcruise\b|girls?\s*trip|guys?\s*trip|\bretreat\b|destination\b/, 'Wellness Retreat'],
+  // "destination" alone is a MODIFIER on another event ("destination birthday",
+  // "destination anniversary") — it must not hijack type resolution before
+  // that other type's own regex gets a chance. Only "destination trip/getaway/
+  // vacation" (no other real subject) resolves here; "destination wedding" is
+  // its own earlier, more specific rule above.
+  [/honeymoon|getaway|\bcruise\b|girls?\s*trip|guys?\s*trip|\bretreat\b|destination\s*(trip|getaway|vacation)\b/, 'Wellness Retreat'],
   // ── Generic celebrations (after specifics) ──
   [/wedding|nuptial|marriage|matrimony/, 'Wedding'],
   [/birthday|\bb.?day\b|milestone\s*birthday/, 'Birthday'],

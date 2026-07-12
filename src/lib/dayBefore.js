@@ -14,6 +14,8 @@
 import { playbookFoodPlan, playbookCapacity, effectiveRos } from './playbooks';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
+import { isVendorBooked } from './workstreams';
+import { effectiveDone } from './taskEngine';
 
 const daysTo = (dateStr, now = new Date()) => {
   if (!dateStr) return null;
@@ -34,18 +36,32 @@ export function buildDayBeforePlan(event, now = new Date()) {
 
   // 1 · Open plan steps — undone timeline tasks. At T-1 everything still open
   // matters; no urgency re-scoring, no invention.
+  // RECON-I2: count on effectiveDone (ticked OR engine-satisfied), the SAME
+  // predicate the hero and Coming up score on — raw t.done made this counter
+  // disagree with every other checklist number on the screen. Known residual:
+  // the V2 shell layers two local extras on top (arrivals-grid, buy/shop
+  // resolution) that stay V2-side; this engine reads the shared predicate only.
   const timeline = Array.isArray(ev.timeline) ? ev.timeline.filter(t => t && t.task) : [];
-  const openTasks = timeline.filter(t => !t.done);
+  const openTasks = timeline.filter(t => {
+    try { return !effectiveDone(ev, t); } catch { return !t.done; }
+  });
 
   // 2 · Still to get — unbought food lines + unchecked supplies (same single
   // sources the Plan tab checks off against).
-  let unboughtFood = 0; let unboughtSupplies = 0; let firstUnboughtFoodId = null;
+  // RECON-I5: the food count matches playbookFoodPlan's own itemCount/boughtCount
+  // scope (isFood — the list's Supplies group is a separate $ line there); the
+  // list's Supplies lines count with the capacity gear instead. openFood +
+  // openSupplies decompose the row so the UI can name each part.
+  let unboughtFood = 0; let unboughtListSupplies = 0; let unboughtGear = 0; let firstUnboughtFoodId = null;
   try {
     const plan = playbookFoodPlan(ev);
     if (plan && Array.isArray(plan.list)) {
       const unboughtList = plan.list.filter(i => i && !i.skipped && !((ev.foodGot || {})[i.id]));
-      unboughtFood = unboughtList.length;
-      firstUnboughtFoodId = unboughtList.length ? unboughtList[0].id : null;
+      const unboughtFoodList = unboughtList.filter(i => i.group !== 'Supplies');
+      unboughtFood = unboughtFoodList.length;
+      unboughtListSupplies = unboughtList.length - unboughtFood;
+      const firstLine = unboughtFoodList[0] || unboughtList[0] || null;
+      firstUnboughtFoodId = firstLine ? firstLine.id : null;
     }
   } catch (e) { /* no playbook — honest zero */ }
   try {
@@ -53,14 +69,20 @@ export function buildDayBeforePlan(event, now = new Date()) {
     const checked = (ev.capacityChecked && typeof ev.capacityChecked === 'object') ? ev.capacityChecked : {};
     const owned = (ev.capacityOwned && typeof ev.capacityOwned === 'object') ? ev.capacityOwned : {};
     const items = (cap && Array.isArray(cap.groups)) ? cap.groups.flatMap(g => g.items || []) : [];
-    unboughtSupplies = items.filter(i => i && !i.skipped && !checked[i.key] && !owned[i.key] && !i.owned).length;
+    unboughtGear = items.filter(i => i && !i.skipped && !checked[i.key] && !owned[i.key] && !i.owned).length;
   } catch (e) { /* honest zero */ }
+  const unboughtSupplies = unboughtListSupplies + unboughtGear;
   const stillToGet = unboughtFood + unboughtSupplies;
 
   // 3 · Vendor gaps — explicit fields only, first-undone ordering.
-  const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
+  // RECON-I5: the "of N" denominator is the rollup's (workstreams.js counts every
+  // vendor entry) — the old unnamed-vendor filter made this row's denominator
+  // disagree with the vendor readiness rollup on the same screen.
+  const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(Boolean);
+  // POP-1C: isVendorBooked is the canonical vendor-status reader (workstreams.js) —
+  // the inline regex here used to miss 'Deposit Paid' and 'Contracted'.
   const vendorGaps = vendors.filter(v =>
-    !/confirmed|booked/i.test(String(v.status || ''))
+    !isVendorBooked(v)
     || (Number(v.depositAmt) > 0 && v.depositPaid !== true)
     || v.coiStatus === 'required'
     || !String(v.arrivalTime || '').trim());
@@ -89,6 +111,9 @@ export function buildDayBeforePlan(event, now = new Date()) {
     },
     {
       key: 'shopping', label: 'Still to get', open: stillToGet,
+      // RECON-I5 split: openFood matches playbookFoodPlan's itemCount − boughtCount
+      // exactly; openSupplies = the list's Supplies lines + unowned capacity gear.
+      openFood: unboughtFood, openSupplies: unboughtSupplies,
       detail: stillToGet
         ? `${stillToGet} item${stillToGet === 1 ? '' : 's'} not checked off — one store run covers it.`
         : 'Everything’s bought or in hand.',

@@ -67,7 +67,14 @@ const TOKENS = {
   // Text ---------------------------------------------------------------
   textPrimary:   { dark: '#eef0f4', mid: '#e8edf2', light: '#0d0f12' },
   textSecondary: { dark: '#849eb8', mid: '#849eb8', light: '#527088' },
-  textMuted:     { dark: '#849eb8', mid: '#849eb8', light: '#527088' },
+  // textMuted was identical to textSecondary (same blue-gray, blue channel
+  // +52 over red) — indistinguishable from each other AND from the
+  // steelBlue identity accent everywhere they sit near it (found 2026-07-11,
+  // "monochrome all blue" report). De-blued to a true neutral gray (blue
+  // channel +6 over red, matching the carbonNeutral ramp's own "hair
+  // cool-balanced, never steel" target below) so muted text reads as
+  // genuinely de-emphasized, not as a dimmer copy of the brand hue.
+  textMuted:     { dark: '#9a9ca0', mid: '#9a9ca0', light: '#6b6f74' },
 };
 
 // The production default mode. Until a user-level "Theme" toggle ships,

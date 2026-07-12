@@ -93,7 +93,7 @@ export function buildExperienceContext(event, profile, foodPP) {
 
   return {
     eventIdentity: eventIdentityResult,
-    persona: null, // Sprint A's resolvePersona()/resolveShell() remain PARKED per IS-2 — not wired here or anywhere; see HQ-3 Section 4/14.
+    persona: null, // No persona resolver exists — Sprint A's parked resolvePersona()/resolveShell() were DELETED (dead under host-only, per IS-2; re-verified zero callers). Field kept null so consumers' shape is stable.
     complexity: eventIdentityResult ? eventIdentityResult.complexity : null,
     compound: eventIdentityResult ? !!eventIdentityResult.isCompound : false,
     humanContext: humanContextResult,

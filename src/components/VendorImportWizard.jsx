@@ -4,6 +4,7 @@ import {
   transformVendorRows, validateVendorRows,
   computeVendorMergeSummary, applyVendorMerge,
 } from '../lib/csvParsers';
+import { newImportBatchId, computeImportAuditMeta } from '../lib/importHistory';
 
 const C = {
   bg: '#0f0f11', surface: '#18181c', border: '#2a2a32',
@@ -55,14 +56,9 @@ export default function VendorImportWizard({ existingVendors, onImport, onClose 
   const handleCommit = () => {
     if (mergeMode === 'replace' && !confirmReplace) { setConfirmReplace(true); return; }
     setConfirmReplace(false);
-    const batchId     = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const batchId     = newImportBatchId();
     const newVendors  = applyVendorMerge(existingVendors, rows, mergeMode, batchId);
-    const valid       = rows.filter(r => r._valid);
-    const inserted    = summary ? summary.willAdd    : valid.length;
-    const updated     = summary ? summary.willUpdate : 0;
-    const removed     = summary ? summary.willRemove : 0;
-    const skipped     = rows.length - valid.length;
-    const warnCount   = rows.filter(r => (r._warnings || []).length > 0).length;
+    const { inserted, updated, removed, skipped, warnCount } = computeImportAuditMeta(rows, summary);
     onImport(newVendors, batchId, { mergeMode, inserted, updated, removed, skipped, warnCount });
     setResult({ inserted, updated, removed, skipped });
     setStep(3);

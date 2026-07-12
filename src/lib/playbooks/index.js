@@ -51,9 +51,11 @@ import { resolveCanonicalType } from '../eventTaxonomyAdapter';
 import { audiencePersona } from '../nextActionRenderer';
 import { quantityBasis } from '../quantities/quantityBasis';
 import { taskSatisfied } from '../taskEngine';
-import { expectedFromPlanned, attendanceShift } from '../attendanceModel';
+import { expectedFromPlanned, attendanceShift, implausibleGuestNote } from '../attendanceModel';
 import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProteinItem, canonicalProteinPrice, nonProteinFactor, extraSupplyStores, canonicalSubstitutes } from '../sourcing';
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
+import { buildCrabPlan } from '../crabPlan';
+import { isVendorBooked } from '../workstreams';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -294,16 +296,22 @@ export function attendanceBand(event) {
   const roster = event.guestMode !== 'count' && list.length > 0;
   const norm = (g) => String((g && g.rsvp) || '').trim().toLowerCase();
   if (roster) {
-    let confirmed = 0, maybe = 0, pending = 0, declined = 0;
+    // Each roster row is one invited adult; `g.kids` ("Children in Party") is an
+    // ADDITIVE count of kids that adult brings — not a separate row, not a subset
+    // of list.length. A declined row's kids never attend either, so they're only
+    // summed for rows that haven't said no — the same set low/high already count.
+    let confirmed = 0, maybe = 0, pending = 0, declined = 0, kidsConfirmed = 0, kidsOut = 0;
     for (const g of list) {
       const r = norm(g);
-      if (r === 'yes' || r === 'attending' || r === 'accepted') confirmed++;
-      else if (r === 'maybe') maybe++;
+      const gKids = Math.max(0, Math.round(Number(g && g.kids) || 0));
+      if (r === 'yes' || r === 'attending' || r === 'accepted') { confirmed++; kidsConfirmed += gKids; }
+      else if (r === 'maybe') { maybe++; kidsOut += gKids; }
       else if (r === 'no' || r === 'declined' || r === 'regret' || r === 'regrets') declined++;
-      else pending++; // '' / unknown → not yet replied
+      else { pending++; kidsOut += gKids; } // '' / unknown → not yet replied
     }
-    const low = confirmed;
-    const high = confirmed + maybe + pending; // everyone who hasn't said no
+    const kids = kidsConfirmed + kidsOut; // total kids among everyone who hasn't said no
+    const low = confirmed + kidsConfirmed; // only a CONFIRMED row's kids are locked in
+    const high = confirmed + maybe + pending + kids; // everyone who hasn't said no, plus the kids they bring
     const out = maybe + pending;
     const band = high > low; // a real range only when replies are still outstanding
     const because = band
@@ -313,7 +321,7 @@ export function attendanceBand(event) {
       applicable: high > 0,
       basis: 'rsvp', band,
       low, high, planning: high,
-      confirmed, maybe, pending, declined, invited: list.length,
+      confirmed, maybe, pending, declined, kids, invited: list.length,
       because,
     };
   }
@@ -323,6 +331,11 @@ export function attendanceBand(event) {
   // kind of event behaves. Real RSVPs (the branch above) always trump this.
   const n = Number(event.guestCount) || Number(event.guestEstimate) || list.length || 0;
   if (n <= 0) return { applicable: false, band: false };
+  // NO-UPPER-CLAMP-1: never clamps the stored count (a host may genuinely run
+  // something this large) — just names an implausible one, honestly. Single source
+  // (implausibleGuestNote) shared with expectedFromPlanned, so this reads identically
+  // wherever a planned/estimated count is surfaced, not just through this wrapper.
+  const _highNote = implausibleGuestNote(n, event.type, getPlaybook(event.type));
   // A LOCKED final count the host has committed isn't an estimate — honor it exactly
   // (no modeled spread on a number they've finalized).
   const locked = event.guestCountLocked === true || event.headcountLocked === true;
@@ -331,16 +344,16 @@ export function attendanceBand(event) {
     return {
       applicable: true, basis: 'count', band: false,
       low: n, high: n, planning: n,
-      confirmed: n, maybe: 0, pending: 0, declined: 0, invited: n,
-      planned: n, because: '',
+      confirmed: n, maybe: 0, pending: 0, declined: 0, kids: 0, invited: n,
+      planned: n, because: _highNote,
     };
   }
   return {
     applicable: true, basis: 'estimate', band: true,
     low: exp.low, high: exp.high, planning: exp.high,
-    confirmed: 0, maybe: 0, pending: 0, declined: 0, invited: n,
+    confirmed: 0, maybe: 0, pending: 0, declined: 0, kids: 0, invited: n,
     planned: n, shift: attendanceShift(event.type, getPlaybook(event.type)),
-    because: `Planned for ${n} · ${exp.low}–${exp.high} typically show`,
+    because: `Planned for ${n} · ${exp.low}–${exp.high} typically show${_highNote ? ' ' + _highNote : ''}`,
     note: exp.note,
   };
 }
@@ -453,7 +466,14 @@ export function choicePickFor(event, id) {
   if (picks[id]) return picks[id];
   const pb = getPlaybook(event.type);
   const dec = pb && Array.isArray(pb.decisions) ? pb.decisions.find((d) => d.id === id) : null;
-  return (dec && dec.default) || null;
+  if (dec) return dec.default || null;
+  // DESTINATION-4: destination decisions live OUTSIDE the playbook (they're the
+  // isDestination modifier's own table, not any type's decisions[]), so the
+  // authored-default fallback must look there too — otherwise a whenChoice gate
+  // on a dest_* decision reads null and shows the item before any answer.
+  // Only consulted when the modifier is actually on.
+  const dd = event.isDestination ? DESTINATION_DECISIONS.find((d) => d.id === id) : null;
+  return (dd && dd.default) || null;
 }
 export function choiceShown(event, whenChoice) {
   if (!whenChoice || !whenChoice.id) return true;
@@ -534,6 +554,132 @@ function taskPhaseLabel(offset) {
   return `${Math.round(d / 30)} months out`;
 }
 
+// ── DESTINATION-1 — the cross-cutting travel modifier ─────────────────────────
+// event.isDestination is a generic, type-independent event field — same
+// architecture as kidsCount/dietCounts (playbookFoodPlan reads those regardless
+// of which of the 39 playbooks is active). It layers travel content ADDITIVELY
+// on top of whatever base type is active, rather than requiring its own type or
+// completing the (non-existent) Wellness Retreat playbook. Content here is
+// deliberately generic across any occasion — a destination birthday, reunion,
+// or anniversary all get the same starting set, editable/removable like any
+// other decision or task.
+const DESTINATION_DECISIONS = [
+  { id: 'dest_lodging', label: 'How are guests staying?', options: ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'], default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors'], why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
+  { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
+  { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
+  { id: 'dest_childcare', label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
+  // DESTINATION-4: deliberately asks about HEALTH, not age — the research this
+  // came from (a meta-analysis on altitude sickness) found no age link at all;
+  // heart and lung health is what actually predicts who struggles. The yes-path
+  // pacing task (dest_t_health below) fires off this answer via whenChoice.
+  { id: 'dest_health', label: 'Any guests with heart or lung conditions?', options: ['Yes', 'No', 'Not sure'], default: 'Not sure', when: 'T-90d', why: 'It’s heart and lung health that struggles with altitude and long, active days — not age by itself. Knowing early lets you pace the schedule instead of scrambling once you’re there.' },
+];
+// DESTINATION-4 — kids-presence predicate (shared). ONE place "are kids actually
+// coming?" is read from: the SAME two sources the food plan's portion skew uses —
+// a roster's per-guest kids counts (attendanceBand sums them for everyone who
+// hasn't said no) in roster mode, the manual event.kidsCount in headcount mode.
+// Never inferred from event type; missing data reads as no kids, never a guess.
+export function eventHasKids(event) {
+  if (!event) return false;
+  const rosterMode = Array.isArray(event.guests) && event.guests.length > 0 && event.guestMode !== 'count';
+  if (rosterMode) {
+    try { return Math.max(0, Math.round(Number(attendanceBand(event).kids) || 0)) > 0; } catch { return false; }
+  }
+  return Math.max(0, Math.round(Number(event.kidsCount) || 0)) > 0;
+}
+// Vendor categories, same shape as playbook.vendors entries (buildVendorPlan
+// reads this shape directly). Deliberately does NOT include flights/airfare —
+// guests self-pay for their own travel in the near-universal default (per the
+// destination-celebration research), so a host cost line here would invent an
+// expense the host isn't actually carrying. Air travel is a tracking concern,
+// not a budget line.
+export const DESTINATION_VENDOR_CATEGORIES = [
+  { category: 'Lodging / Concierge', required: false, altToDIY: 'Guests self-book; share a hotel name and rate instead of negotiating a block', when: 'T-210d', costRange: [800, 4000], costUnit: 'flat' },
+  { category: 'Transport', required: false, altToDIY: 'Guests self-manage — rental car or rideshare', when: 'T-60d', costRange: [40, 120], costUnit: 'per guest' },
+  { category: 'Childcare / Kids’ Program', required: false, altToDIY: 'A family member watches the kids instead of hired childcare', when: 'T-90d', costRange: [75, 150], costUnit: 'flat' },
+];
+const DESTINATION_TASKS = [
+  // DESTINATION-4: kidsLine rides the same hotel call as the room block — the
+  // crib/connecting-room ask is one phone call, not a second task. Appended by
+  // playbookChecklist only when kids are actually coming (eventHasKids).
+  { id: 'dest_t_lodging', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
+  // DESTINATION-4: an accessibility WALK, not a checkbox — venues answer "are you
+  // accessible?" about the room; the trip fails on everything between the car
+  // and the chair. Grounded in accessibility-consultant guidance.
+  { id: 'dest_t_access', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
+  { id: 'dest_t_grid', label: 'Build the arrivals/departures grid — who’s flying in when', when: 'T-60d' },
+  // DESTINATION-4: the yes-path of dest_health — appears only when the host
+  // ANSWERED yes (whenChoice; the 'Not sure' default keeps it hidden, so an
+  // unanswered question never claims a health need). No medical advice beyond
+  // "worth a call to their doctor."
+  { id: 'dest_t_health', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
+  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d' },
+  { id: 'dest_t_info', label: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates', when: 'T-30d' },
+  // DESTINATION-4: kids get a real role in the adult event — not the center of
+  // it, not parked away from it (Priya Parker's framing). Gated on kids actually
+  // coming (whenKids → eventHasKids), never on event type.
+  { id: 'dest_t_kidsjob', label: 'Give the kids a real job in the event — welcome-bag duty, the guestbook, a camera to roam with — so they’re part of it, not parked off to the side', when: 'T-14d', whenKids: true },
+  { id: 'dest_t_welcome', label: 'Drop welcome bags at the hotel for out-of-town guests', when: 'T-1d' },
+];
+
+// ── DESTINATION-5 — the multi-day pacing template ─────────────────────────────
+// A destination event isn't one day — guests arrive, celebrate, and leave across
+// several. This is the authored arrival / main-event / departure rhythm, exposed
+// through the same pure-reader pattern as playbookDayOfChecklist: gated ONLY on
+// the host-set isDestination flag (never event type), additive guidance the host
+// can ignore, invents nothing about this specific event.
+//
+// KIDS-CONTENT AUDIT (why the kids lines stay age-generic): the guest data model
+// carries kids as COUNTS only — a roster row's g.kids ("Children in Party") and
+// the manual event.kidsCount. There is no per-child age, age band, or child row
+// anywhere in the model (the invite RSVP form collects a kids count; ages appear
+// only in free-text notes, which are never parsed as data). Splitting guidance
+// into little kids / school-age / teens would therefore invent ages the host
+// never gave us — so kids lines stay age-generic, gated on the same eventHasKids
+// predicate as every other kids-conditional line. If per-child ages ever join
+// the model, segment here first.
+const DESTINATION_PACING = [
+  {
+    id: 'dest_p_arrival', label: 'Arrival day', focus: 'Keep it easy',
+    guidance: 'People land tired and at different times — keep the first night loose. A casual meal guests can drop into whenever they arrive beats anything with a start time, and nothing important should happen tonight: late flights will miss it.',
+    kidsLine: 'kids come off a travel day the most worn out — give them room to run around before you expect them at a table',
+  },
+  {
+    id: 'dest_p_main', label: 'Main event day', focus: 'One big thing, a slow morning',
+    guidance: 'This is the day everyone came for — keep the morning slow and unscheduled so guests walk into the main event rested, not worn out by a packed lineup of activities before it.',
+    kidsLine: 'plan the kids’ downtime too — a rest or pool hour earlier in the day is what gets them (and their parents) through the evening',
+    healthLine: 'you said some guests have heart or lung conditions — leave a real rest block between anything active and the main event',
+  },
+  {
+    id: 'dest_p_depart', label: 'Departure day', focus: 'A slow goodbye',
+    guidance: 'Checkout times and flights scatter everyone — make the last morning optional. An open breakfast or coffee window people can drift through lets everyone say goodbye without anyone rushing for a plane.',
+  },
+];
+// playbookPacing(event) → { days, count, because } | null. Pure reader over the
+// authored template above. A day's kids line joins its guidance only when kids
+// are actually coming (eventHasKids — the SAME predicate as the checklist's
+// whenKids/kidsLine gates), and the health line only when the host ANSWERED the
+// dest_health question Yes (same whenChoice gate as dest_t_health — the
+// 'Not sure' default never reads as a health need).
+export function playbookPacing(event) {
+  if (!event || !event.isDestination) return null;
+  const kidsComing = eventHasKids(event);
+  const healthYes = choiceShown(event, { id: 'dest_health', in: ['Yes'] });
+  const days = DESTINATION_PACING.map((d) => ({
+    id: d.id,
+    label: d.label,
+    focus: d.focus,
+    guidance: d.guidance
+      + (d.kidsLine && kidsComing ? ` — ${d.kidsLine}` : '')
+      + (d.healthLine && healthYes ? ` — ${d.healthLine}` : ''),
+  }));
+  return {
+    days,
+    count: days.length,
+    because: 'a destination event runs across days — this rhythm keeps guests rested instead of scheduled wall-to-wall',
+  };
+}
+
 // ── Host checklist projection (food sourcing → the task list) ─────────────────
 // playbookChecklist(event, asOf) → ChecklistGenerator-shaped rows[] projecting the
 // playbook's authored operational `tasks` into the host "what's left to do" list,
@@ -555,10 +701,18 @@ export function playbookChecklist(event, asOf) {
   const fa = foodApproach(event);
   const dropCaterer = fa.usesCaterer === false;
   const rows = [];
-  for (const t of playbook.tasks) {
+  // DESTINATION-4: kids-conditional content reads ONE predicate (eventHasKids —
+  // roster kids or event.kidsCount, same sources as the food plan's portion skew).
+  const kidsComing = eventHasKids(event);
+  // DESTINATION-1: generic travel tasks, additive on top of the base playbook's
+  // own — never gating on type, only on the host-set isDestination modifier.
+  const taskList = event.isDestination ? [...playbook.tasks, ...DESTINATION_TASKS] : playbook.tasks;
+  for (const t of taskList) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
+    // Kids gate — a task tagged whenKids appears only when kids are actually coming.
+    if (t.whenKids && !kidsComing) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
     // Keep decision-framing tasks ("…or confirm the host-cooks plan", "vs a caterer").
     if (dropCaterer && /cater(er|ing)/i.test(t.label) && !/\b(vs|instead|or confirm|host[- ]?cook|diy)\b/i.test(t.label)) continue;
@@ -567,7 +721,10 @@ export function playbookChecklist(event, asOf) {
     const eventDay = offset != null && offset >= 0;
     rows.push({
       id: `pbt-${event.id}-${t.id}`,
-      task: resolveAnsweredCopy(t.label, t.copyByAnswer, event),
+      // kidsLine — a sub-line that only exists when kids are coming (the crib/
+      // connecting-room ask on the lodging call). Tasks without one are untouched.
+      task: resolveAnsweredCopy(t.label, t.copyByAnswer, event)
+        + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
       phase: t.phase || 'planning',
@@ -1513,7 +1670,13 @@ export function playbookDecisionBoard(event, asOf) {
 
   // ── Playbook decisions ─────────────────────────────────────────────────────
   const pb = getPlaybook(event.type);
-  const decisions = (pb && Array.isArray(pb.decisions)) ? pb.decisions : [];
+  // DESTINATION-1: generic travel decisions, additive on top of the base
+  // playbook's own — never gating on type, only on the host-set isDestination
+  // modifier (same architecture as kids/diet elsewhere in this file).
+  const decisions = [
+    ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
+    ...(event.isDestination ? DESTINATION_DECISIONS : []),
+  ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
   // A decision is locked when the host picked it (foodChoices[id]) OR the underlying
@@ -1558,7 +1721,11 @@ export function playbookDecisionBoard(event, asOf) {
     // NO route — the board renders it as a calm prompt, never a dead chevron.
     const _firstUndoneVendorRoute = () => {
       const vs = (event.vendors || []).filter((v) => v && String(v.name || '').trim());
-      const undone = vs.find((v) => !/confirmed|booked/i.test(String(v.status || ''))
+      // POP-1C: isVendorBooked is the canonical "is this vendor booked?" predicate
+      // (workstreams.js) — this inline regex used to miss 'Deposit Paid' and
+      // 'Contracted', wrongly routing the host back to a vendor that's actually
+      // booked. Three other call sites were already migrated; this was the one left.
+      const undone = vs.find((v) => !isVendorBooked(v)
         || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
       const tv = undone || vs[0];
       return tv ? { eventId: event.id, tab: 'Vendors', vendorId: tv.id }
@@ -1646,7 +1813,14 @@ export function playbookDecisionBoard(event, asOf) {
 export function playbookDecisionOptions(event, id) {
   if (!event || !id) return null;
   const pb = getPlaybook(event.type);
-  const decisions = (pb && Array.isArray(pb.decisions)) ? pb.decisions : [];
+  // DESTINATION-4: destination decisions settle inline like any other optioned
+  // decision — same additive composition as playbookDecisionBoard, gated only on
+  // the host-set isDestination modifier. (Before this, a dest_* board row had
+  // options the host could never actually pick from on the board.)
+  const decisions = [
+    ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
+    ...(event.isDestination ? DESTINATION_DECISIONS : []),
+  ];
   const d = decisions.find((x) => x && x.id === id);
   // HOST-AUDIT-1: ANY playbook decision with authored options settles inline on
   // the What-to-settle board (seating layout, hiring help — not just menu picks).
@@ -1783,12 +1957,15 @@ export function playbookFoodPlan(event, opts = {}) {
   const playbook = getPlaybook(event.type);
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   // Size the spread from the ONE engine sizer (eventSizing → attendanceBand): the
-  // plan-to ceiling for quantities, and the band floor/ratio so the $ range spans the
-  // expected-attendance band, not just price. Same source the supplies + budget read.
+  // plan-to ceiling for quantities. Every line — low end and high end — is priced at
+  // this SAME ceiling headcount; only the per-unit PRICE varies between them, so the
+  // $ range reflects price uncertainty alone, never attendance uncertainty compounded
+  // on top of it (that used to multiply the two into a misleadingly wide band — a
+  // real host-harm finding). The real attendance spread is still disclosed honestly,
+  // just as its own fact (bandLow/bandHigh below), not folded into the dollar figure.
   const sizing = eventSizing(event, playbook);
   const guests = sizing.ceiling;
   const _guestsLow = sizing.floor;
-  const hcLowRatio = sizing.lowRatio;
   const gc = guestCountResolved(event);
   // hasRealCount — is the spread sized to a REAL number the host gave us, or to the
   // playbook's guessed typical (~8)? Any explicit count/estimate OR a roster is real;
@@ -1888,11 +2065,32 @@ export function playbookFoodPlan(event, opts = {}) {
     if (sourcing === DEFAULT_SOURCING) return null;
     return canonicalProteinPrice(p.item, sourcing);
   };
+  // Per-item store pick (event.foodWhere[id] = a chosen store name, written when
+  // the host taps a specific store on ONE line — HostShellV2.jsx's per-item
+  // "where to buy" chips) is a MORE SPECIFIC signal than the plan-wide sourcing
+  // tier: "I'm buying THIS one at Costco" wins over "the whole spread defaults
+  // to butcher". Reads the SAME real, cited per-tier prices the tier picker
+  // uses (sourcingPrices / canonicalProteinPrice) — never a new number. Was
+  // display-only before (found in the 2026-07-11 food-plan audit); non-protein
+  // items and unmapped store names stay untouched (no sourced per-store data
+  // for produce/hardware — inventing one would be exactly the "invented
+  // pricing policy" the foodWhere feature was built to avoid).
+  const whereMap = (event.foodWhere && typeof event.foodWhere === 'object') ? event.foodWhere : {};
+  const WHERE_TIER_RE = { costco: /costco|warehouse|bulk/i, butcher: /butcher/i, grocery: /grocery/i };
+  const perItemStoreRange = (p) => {
+    if (!(p.category === 'food' && isProteinItem(p.item))) return null;
+    const picked = whereMap[p.id];
+    if (!picked) return null;
+    const tier = Object.keys(WHERE_TIER_RE).find((t) => WHERE_TIER_RE[t].test(picked));
+    if (!tier) return null;
+    if (p.sourcingPrices && Array.isArray(p.sourcingPrices[tier])) return p.sourcingPrices[tier];
+    return canonicalProteinPrice(p.item, tier);
+  };
   // Channel factor: proteins use the deep meat factor (unless they have a tier range);
   // non-protein food + drinks use the modest Costco bulk factor (produce/dairy/staples).
   const srcFactorFor = (p) => {
     if (p.category !== 'food' && p.category !== 'beverage') return 1;
-    if (isProteinItem(p.item)) return srcTierRange(p) ? 1 : srcFactor;
+    if (isProteinItem(p.item)) return (perItemStoreRange(p) || srcTierRange(p)) ? 1 : srcFactor;
     return nonProteinFactor(sourcing);
   };
   // Where-to-shop bias — the chosen tier's store leads the protein rows' store chips.
@@ -1931,20 +2129,54 @@ export function playbookFoodPlan(event, opts = {}) {
   // flat-cost dish. `swappedFrom` carries the original name so the host can revert.
   const swapMap = (event.foodSwap && typeof event.foodSwap === 'object') ? event.foodSwap : {};
 
+  // #16 dietCounts hoisted here (also read below, where the veg main is added) — needed
+  // now so PORTION SKEW can net vegetarians/vegans OUT of the protein guest count. Without
+  // this, a vegetarian was bought their share of the meat protein (full guest count) AND a
+  // separate veg main — a real double-buy, safe-direction but real waste.
+  const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
+  const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
+  const vegN = dietCnt('Vegetarian') + dietCnt('Vegan');
+
   // PORTION SKEW — appetite-driven food (the PROTEINS) is over-bought when the crowd skews to
-  // kids / light eaters. event.kidsCount (default 0 → today's flat math, byte-identical) shifts
-  // ONLY the protein lines: a kid/light eater eats ~40% of an adult's protein (a grounded
-  // catering heuristic; crab/cookout playbooks already say "fewer for kids" but never sized it).
-  // Sides/drinks are far less appetite-elastic, so they keep the full count. Single source →
-  // the food total + budget follow automatically. Never below 1 effective adult-equivalent.
-  const _kids = Math.max(0, Math.round(Number(event.kidsCount) || 0));
+  // kids / light eaters / vegetarians. event.kidsCount (default 0 → today's flat math, byte-
+  // identical) shifts ONLY the protein lines: a kid/light eater eats ~40% of an adult's protein
+  // (a grounded catering heuristic; crab/cookout playbooks already say "fewer for kids" but
+  // never sized it). A vegetarian/vegan eats NONE of it — they get the diet-derived veg main
+  // instead (below), so they're subtracted in full, not at the kid factor. Sides/drinks are far
+  // less appetite-elastic, so they keep the full count. Single source → the food total + budget
+  // follow automatically. Never below 1 effective adult-equivalent.
+  // A roster's own per-guest `kids` ("Children in Party") is the ground truth once a roster
+  // exists — `sizing.band` (attendanceBand) already sums it for non-declined rows, and
+  // `guests` above already folds those kids into the ceiling. event.kidsCount is a SEPARATE
+  // manual field that only applies in headcount/count mode (no roster to derive it from).
+  // Reading whichever one actually applies avoids both legacy's roster-mode gap (kidsCount
+  // was never set there) and double-counting against a roster that already has real data.
+  const _rosterMode = Array.isArray(event.guests) && event.guests.length > 0 && event.guestMode !== 'count';
+  const _kids = _rosterMode
+    ? Math.max(0, Math.round(Number(sizing.band && sizing.band.kids) || 0))
+    : Math.max(0, Math.round(Number(event.kidsCount) || 0));
   const KID_PROTEIN_FACTOR = 0.4;
-  const proteinGuests = _kids > 0 ? Math.max(1, guests - _kids * (1 - KID_PROTEIN_FACTOR)) : guests;
+  const proteinGuests = (_kids > 0 || vegN > 0) ? Math.max(1, guests - _kids * (1 - KID_PROTEIN_FACTOR) - vegN) : guests;
   // The appetite-driven mains a kid/light eater eats less of. Plural-tolerant on purpose
   // (matches "crabs", "ribs", "wings") — broader than the sourcing isProteinItem, whose
   // strict word boundaries miss plurals (that's why crabs weren't scaling). Used ONLY for
   // the kid portion-scale, so it can't shift sourcing/pricing behavior.
   const isAppetiteFood = (name) => /(rib|chicken|brisket|sausage|hot ?link|half-?smoke|pork|beef|turkey|seafood|shrimp|prawn|fish|crab|crawfish|lobster|lamb|oxtail|wing|meatball|steak|burger|salmon|bacon|ham|goat|jerk|drumstick|thigh|fillet|filet|whiting|catfish|porg)/i.test(String(name || ''));
+
+  // CRAB-BUDGET-1: when a real, host-priced crab order exists (event.crabPlan
+  // with at least one priced line), the dedicated crab-order card owns crab
+  // dollars — the spread's own "Blue crabs" line below delegates to those
+  // real numbers instead of an independent per-guest market guess, and its
+  // dollar contribution is excluded from the food total (see isFood/eff
+  // below) so hostSpending's separate crabEstimate/crabBought — which reads
+  // the SAME buildCrabPlan total — never double-counts the same real spend.
+  // No priced order yet ⇒ falls through to today's market-estimate math
+  // unchanged, so a Crab Feast host who hasn't started ordering still sees a
+  // real number to plan against.
+  const _crabOrder = buildCrabPlan(event);
+  const _crabDelegated = !!(_crabOrder && _crabOrder.relevant
+    && Array.isArray(_crabOrder.lines) && _crabOrder.lines.length > 0
+    && _crabOrder.totalEstimatedCost != null);
 
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
@@ -1958,15 +2190,16 @@ export function playbookFoodPlan(event, opts = {}) {
         ? p.alternatives.map(normalizeAlternative).find((a) => a.name === swappedName) : null;
       const effPerGuest = (swapAlt && swapAlt.qtyPerGuest != null) ? swapAlt.qtyPerGuest : p.qtyPerGuest;
       const pForQty = (effPerGuest !== p.qtyPerGuest) ? { ...p, qtyPerGuest: effPerGuest } : p;
-      // Proteins size off the appetite-adjusted count (kids/light eaters at 0.4); everything
-      // else off the full guest count. _kids === 0 ⇒ proteinGuests === guests ⇒ no change.
-      const _qtyGuests = (_kids > 0 && isAppetiteFood(swappedName || p.item)) ? proteinGuests : guests;
+      // Proteins size off the appetite-adjusted count (kids at 0.4, vegetarians/vegans at 0
+      // — they eat the diet-derived veg main instead); everything else off the full guest
+      // count. _kids === 0 && vegN === 0 ⇒ proteinGuests === guests ⇒ no change.
+      const _qtyGuests = ((_kids > 0 || vegN > 0) && isAppetiteFood(swappedName || p.item)) ? proteinGuests : guests;
       const baseQty = resolveQuantity(pForQty, _qtyGuests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
       // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
       const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
       let qty = qOver != null ? qOver : baseQty;
-      const _tierRange = swapAlt ? null : srcTierRange(p);
+      const _tierRange = swapAlt ? null : (perItemStoreRange(p) || srcTierRange(p));
       let [uLow, uHigh] = (swapAlt && Array.isArray(swapAlt.unitCostRange))
         ? swapAlt.unitCostRange
         : (_tierRange || (Array.isArray(p.unitCostRange) ? p.unitCostRange : [0, 0]));
@@ -1989,10 +2222,30 @@ export function playbookFoodPlan(event, opts = {}) {
       const unit = buyable ? shortUnit(buyable.unit, buyable.qty) : shortUnit(p.unit, qty);
       if (buyable) { qty = buyable.qty; uLow = buyable.uLow; uHigh = buyable.uHigh; }
       const units = qty == null ? 1 : qty;
-      // Does this line scale with headcount? per-guest or per-N items do; flat items and
-      // host-overridden quantities don't. Only scaling lines pull their LOW dollar down
-      // to the attendance-band floor (the $ range then reflects "if fewer show").
-      const _scales = qOver == null && (typeof effPerGuest === 'number' || (typeof p.qtyFlat === 'number' && typeof p.qtyPer === 'number'));
+      // CRAB-BUDGET-1: a real priced order delegates this line's qty/$ to
+      // buildCrabPlan's own totals — never both a market guess AND the real
+      // order counted toward the food total. A host-set lock on this specific
+      // line is a deliberate manual override and wins over delegation (rare;
+      // the two mechanisms aren't meant to be used together, but a lock is an
+      // explicit choice and must not be silently discarded).
+      if (p.id === 'p_crabs' && _crabDelegated && !(p.id in lockedMap)) {
+        return {
+          id: p.id, group: foodGroupFor(p), item: swappedName || p.item, short: swappedName || shortItem(p.item),
+          swappedFrom: swappedName ? shortItem(p.item) : null,
+          badge: p.badge || null,
+          qty: _crabOrder.totalEstimatedCrabs, unit: 'crabs', essential: !!p.essential, where: srcStoreFirst(p),
+          cat: p.category || 'other', buyAt: p.buyAt || null,
+          perGuest: null, basis: '',
+          qtyOverridden: false, baseQty,
+          low: _crabOrder.totalEstimatedCost, high: _crabOrder.totalEstimatedCost,
+          units: _crabOrder.totalEstimatedCrabs, unitBase: 'crabs',
+          perUnitLow: null, perUnitHigh: null,
+          skipped: !!skip[p.id], locked: null,
+          note: `Priced by your crab order${_crabOrder.mixedSummary ? ' — ' + _crabOrder.mixedSummary : ''}.`,
+          forgotten: false,
+          crabDelegated: true, excludeFromFoodTotal: true,
+        };
+      }
       return {
         id: p.id, group: foodGroupFor(p), item: swappedName || p.item, short: swappedName || shortItem(p.item),
         // In-place swap: the line wears the alternative's name but keeps its BLS-derived cost;
@@ -2015,12 +2268,13 @@ export function playbookFoodPlan(event, opts = {}) {
         // line was unit-converted (same honesty rule as perGuest above).
         basis: buyable ? '' : quantityBasis(p),
         qtyOverridden: qOver != null, baseQty,
-        low: Math.round(units * uLow * pf * (_scales ? hcLowRatio : 1)), high: Math.round(units * uHigh * pf),
-        // lowFull = the un-compounded low (price-low at the plan-to qty). The headline
-        // total uses `low` (compounded to the band floor) so the $ range reflects the
-        // guest band; PER-GUEST uses lowFull so cost-per-head stays a stable price range
-        // and doesn't shrink just because the band's floor is lower.
-        lowFull: Math.round(units * uLow * pf),
+        // DENOMINATORS-2 (7× food-cost band): both ends price the SAME ceiling-sized
+        // quantity (`units`) — only uLow vs uHigh differ. Previously `low` also
+        // compounded the attendance-band floor ratio on top of the price-low end,
+        // multiplying two independent uncertainties (attendance × price) into one
+        // misleadingly wide range. The real attendance spread is disclosed on its
+        // own (bandLow/bandHigh below), not folded into the dollar figure.
+        low: Math.round(units * uLow * pf), high: Math.round(units * uHigh * pf),
         // 60I — the per-unit math behind the line total ("15 lbs × $4–$8/lb"), so a
         // host understands the price, and sees the regional (pf) adjustment in it.
         // When the guardrail converted the line, the per-unit basis is the buyable
@@ -2076,9 +2330,8 @@ export function playbookFoodPlan(event, opts = {}) {
   // playbook-authored (playbook.vegMain) so it's appropriate to the cuisine — e.g.
   // a cookout gets grilled portobello + veggie skewers, a dinner party a mushroom
   // wellington. Falls back to a real, appetizing default, never a placeholder.
-  const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
-  const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
-  const vegN = dietCnt('Vegetarian') + dietCnt('Vegan');
+  // (dietCounts/dietCnt/vegN are hoisted above, near proteinGuests — same values, no
+  // re-declaration here; the protein base already nets these guests out.)
   if (vegN > 0) {
     const vegDish = (typeof playbook.vegMain === 'string' && playbook.vegMain.trim())
       ? playbook.vegMain.trim()
@@ -2136,6 +2389,11 @@ export function playbookFoodPlan(event, opts = {}) {
       essential: true, where: ['Caterer'], qtyOverridden: false, baseQty: guests,
       low: Math.round(guests * cgLow * pf), high: Math.round(guests * cgHigh * pf),
       units: guests, unitBase: '',
+      // Was missing skipped/locked entirely (found in the 2026-07-11 food-plan
+      // audit) — the caterer line couldn't be skipped OR have a real price
+      // locked in, unlike every other row in this list.
+      skipped: !!skip['fa-catering'],
+      locked: ('fa-catering' in lockedMap) ? Math.max(0, Math.round(Number(lockedMap['fa-catering']) || 0)) : null,
     });
   }
 
@@ -2172,15 +2430,14 @@ export function playbookFoodPlan(event, opts = {}) {
   }
 
   // A locked cost is fixed — it collapses the item's range to one committed number.
-  const eff = (i, k) => (i.locked != null ? i.locked : i[k]);
+  // excludeFromFoodTotal (CRAB-BUDGET-1): this line's real $ already lives in a
+  // separate total elsewhere (buildCrabPlan/hostSpending) — zero its own
+  // contribution here so the food total never double-counts it, while the
+  // line's own low/high fields stay real for its own row's display.
+  const eff = (i, k) => (i.excludeFromFoodTotal ? 0 : (i.locked != null ? i.locked : i[k]));
   const isFood = (i) => i.group !== 'Supplies';   // supplies are a separate $ line
   // Skipped (swapped-out) items leave every total. Food totals exclude Supplies.
   const sum = (k) => list.filter((i) => !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
-  // Price-low at the plan-to qty (NOT compounded to the band floor) — the basis for a
-  // stable per-guest figure, so cost-per-head reads as a price range, not a number that
-  // dips because the band's low headcount is smaller.
-  const effFull = (i) => (i.locked != null ? i.locked : (i.lowFull != null ? i.lowFull : i.low));
-  const sumLowFull = list.filter((i) => !i.skipped && isFood(i)).reduce((s, i) => s + effFull(i), 0);
   const lockedTotal = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).reduce((s, i) => s + i.locked, 0);
   const lockedCount = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).length;
   // Sourcing card data (1597-2): the key protein's BASELINE (factor-1.0) point cost, so
@@ -2243,14 +2500,13 @@ export function playbookFoodPlan(event, opts = {}) {
     sourcingTiers: SOURCING_TIERS,
     foodLow: Math.max(0, Math.round(sum('low') / 5) * 5),
     foodHigh: Math.max(0, Math.round(sum('high') / 5) * 5),
-    // Cost PER HEAD — divide each end by the headcount it was sized to (low total ÷
-    // band floor, high total ÷ ceiling) so the per-guest figure stays a real price
-    // range, not a number warped by the headcount band.
-    // Per-guest derives from the food total at each END of the band ÷ that end's
-    // headcount, so per-guest × count ties back to the headline total (low ÷ floor,
-    // high ÷ ceiling). A real range from foodLow/foodHigh, consistent with the total.
-    perGuestLow: _guestsLow > 0 ? Math.round(sum('low') / _guestsLow) : 0,
+    // Cost PER HEAD — both totals are now priced at the same ceiling headcount (see
+    // above), so both ends divide by `guests` too: per-guest × guests ties back
+    // exactly to foodLow/foodHigh, and the range is pure price spread, matching them.
+    perGuestLow: guests > 0 ? Math.round(sum('low') / guests) : 0,
     perGuestHigh: guests > 0 ? Math.round(sum('high') / guests) : 0,
+    // bandLow/bandHigh still disclose the REAL attendance spread (60-86, say) as its
+    // own honest fact — separate from the dollar figures above, never compounded in.
     bandLow: _guestsLow, bandHigh: guests,
     spentLow: Math.max(0, Math.round(gotSum('low') / 5) * 5),
     spentHigh: Math.max(0, Math.round(gotSum('high') / 5) * 5),

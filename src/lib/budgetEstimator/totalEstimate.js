@@ -44,18 +44,38 @@ export const PER_HEAD_BY_FAMILY = {
 
 /**
  * Planning-grade total budget range for an event.
- * Returns { lowTotal, highTotal } rounded to the nearest $100, or null when
- * type/guests are missing (can't estimate without them).
+ * Returns { lowTotal, highTotal, destinationAdjusted } rounded to the nearest
+ * $100, or null when type/guests are missing (can't estimate without them).
+ *
+ * DESTINATION-3 (budget) — `isDestination` fixes the silent override: an
+ * explicit per-type band (e.g. Birthday $60–250) used to win outright, so a
+ * DESTINATION birthday reflected none of its real cost drivers (lodging,
+ * flights, multi-day scope) even though the travel_led family band already
+ * encodes them. When the host set event.isDestination and the base type is
+ * not itself travel_led, we blend the band TOWARD travel_led by element-wise
+ * max — every output number already exists in the tables above (no invented
+ * figures), a destination event is never estimated below the travel-led
+ * floor, and a type that already exceeds it (e.g. Gala) is left alone.
+ * `destinationAdjusted` tells the surface whether the blend actually moved
+ * the band, so copy can disclose it honestly.
  */
-export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1 }) {
+export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
-  const ph = PER_HEAD_BY_TYPE[type] || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
+  let ph = PER_HEAD_BY_TYPE[type] || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
+  let destinationAdjusted = false;
+  if (isDestination && budgetFamilyForType(type) !== 'travel_led') {
+    const tl = PER_HEAD_BY_FAMILY.travel_led;
+    const blended = { low: Math.max(ph.low, tl.low), high: Math.max(ph.high, tl.high) };
+    destinationAdjusted = blended.low !== ph.low || blended.high !== ph.high;
+    ph = blended;
+  }
   const tod = getTimeOfDayFactor(timeOfDay);
   const datePrem = getDatePremium(date, type);
   const factor = (metroFactor || 1) * (tod.multiplier || 1) * (datePrem.multiplier || 1);
   return {
     lowTotal:  Math.round(ph.low  * guests * factor / 100) * 100,
     highTotal: Math.round(ph.high * guests * factor / 100) * 100,
+    destinationAdjusted,
   };
 }

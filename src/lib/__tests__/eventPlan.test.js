@@ -38,6 +38,25 @@ describe('eventPlan — shape & progress', () => {
     expect(Array.isArray(plan.handled)).toBe(true);
   });
 
+  test('PAST-EVENT-1: a 6-year-past event never surfaces "N things need you" — agrees with the phase engine\'s "this one is behind you"', () => {
+    const sixYearsAgo = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 6); return d.toISOString().slice(0, 10); })();
+    const plan = eventPlan(baseBBQ({ date: sixYearsAgo, guests: [], vendors: [], budget: [] }));
+    expect(plan.nextActions).toEqual([]);
+    expect(plan.planningState.currentPriority).toBeNull();
+    expect(plan.planningState.deepLink).toBeNull();
+  });
+
+  test('PAST-EVENT-1: an upcoming event with the same gaps still surfaces its real next actions (no over-suppression)', () => {
+    const plan = eventPlan(baseBBQ({ guests: [], vendors: [], budget: [] }));
+    expect(plan.nextActions.length).toBeGreaterThan(0);
+  });
+
+  test('PAST-EVENT-1: today (day 0) is not treated as past — still surfaces real actions', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const plan = eventPlan(baseBBQ({ date: today, guests: [], vendors: [], budget: [] }));
+    expect(plan.nextActions.length).toBeGreaterThan(0);
+  });
+
   test('null event → empty plan, never throws', () => {
     // POP-1/WOW-1: vendorReadiness + workstreams + vendorReadinessRollup are additive read-only fields.
     expect(eventPlan(null)).toEqual({

@@ -69,7 +69,7 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // by workstream (Venue/Photography/Food/...) instead of eventPlan/Vendors each
 // computing their own flat vendor tally. See src/lib/workstreams.js header +
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
-import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup } from './lib/workstreams';
+import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup, isVendorBooked } from './lib/workstreams';
 import { buildExperienceContext } from './lib/experienceContext';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -204,7 +204,12 @@ export function taskTiming(task, eventDate) {
 }
 
 // ── Data adapter — derives all Command Center sections from one event ────────
-export function deriveCommandCenterData(event) {
+// foodPP (optional) — the caller's useFoodPriceFactor result ({ priceFactor, ... }),
+// threaded in so the host budget-health row folds food spend at the SAME regional
+// factor the Spending Plan bills at (money-drift fix). Omitted (eventPlan /
+// selectEventNextAction / HostShellV2 paths) it defaults to national factor 1 —
+// exactly the prior behavior, so pure-engine callers are byte-identical.
+export function deriveCommandCenterData(event, foodPP = null) {
   const timeline = event.timeline || [];
   const comms    = event.commClient || [];
   const vendors  = event.vendors || [];
@@ -402,7 +407,7 @@ export function deriveCommandCenterData(event) {
   const _hasVendors = vendors.length > 0;
   const _hasDocs = Array.isArray(event.documents) && event.documents.length > 0;
   let _foodSpent = 0;
-  if (_isHostBudget) { try { const _fp = playbookFoodPlan(event); if (_fp) { _foodSpent = _fp.spentHigh || 0; } } catch (e) { /* non-fatal */ } }
+  if (_isHostBudget) { try { const _fp = playbookFoodPlan(event, foodPP || undefined); if (_fp) { _foodSpent = _fp.spentHigh || 0; } } catch (e) { /* non-fatal */ } }
   const billedActual = totalActual + _foodSpent;
   // Audit fix: the "$X of $Y budget" denominator must be the host's REAL budget — the
   // total they set, else their entered category budgets — NEVER the floating food
@@ -864,11 +869,11 @@ export function getCrossEventAttentionItems(events = []) {
 
     // Vendor issues — unconfirmed vendors with past payment dates or flagged
     for (const v of vendors) {
-      // Sprint 49: Figma F vocabulary — only 'Confirmed' (or legacy 'Booked')
-    // is fully ready. Anything else (Considering / Quoted / Contracted /
-    // Deposit Paid / Pending / Partial / Not Started / Unconfirmed) still
-    // needs the planner's attention in some way.
-    const isConfirmed = v.status === 'Confirmed' || v.status === 'Booked';
+      // RECON-I1 (POP-1C): isVendorBooked (lib/workstreams BOOKED_STATUSES) is the
+      // ONE booked predicate — the old inline Confirmed|Booked set flagged a
+      // 'Deposit Paid'/'Contracted' vendor as needing attention here while the
+      // rollup called the same vendor ready on the same screen.
+      const isConfirmed = isVendorBooked(v);
       if (isConfirmed) continue;
       const overdueP = v.payDueDate && daysFrom(v.payDueDate) < 0;
       items.push({
@@ -913,7 +918,8 @@ export function getEventReadiness(event) {
   const overdueCount   = timeline.filter(t => !effectiveDone(event, t) && isTaskOverdue(t, event.date, event.type)).length;
   const tasksDone      = timeline.filter(t => effectiveDone(event, t)).length;
   const tasksTotal     = timeline.length;
-  const confirmedV     = vendors.filter(v => v.status === 'Confirmed' || v.status === 'Booked').length;
+  // RECON-I1 (POP-1C): the canonical booked predicate — see lib/workstreams.
+  const confirmedV     = vendors.filter(v => isVendorBooked(v)).length;
   const unconfirmedV   = vendors.length - confirmedV;
 
   // Decision health — overdue tasks ARE open decisions.
@@ -928,7 +934,7 @@ export function getEventReadiness(event) {
   // here too so the event-level readiness and the vendor detail never disagree
   // (the "on track" vs "contract conflict" contradiction).
   const confirmedNoContract = vendors.filter(v =>
-    (v.status === 'Confirmed' || v.status === 'Booked') &&
+    isVendorBooked(v) &&
     !(v.contractSigned === true || v.contract_signed === true)
   ).length;
   let vendor;
@@ -963,6 +969,27 @@ export function getEventReadiness(event) {
 // local display state that NEVER enters this score. Do not wire a header/
 // whole-event surface to any local source, and do not label a local source
 // with generic "progress"/"ready" copy.
+// ─── The same "axes that don't apply are EXCLUDED, not scored as failing" rule,
+// shared by every reader of getEventReadiness. A DIY host who never hired a
+// vendor gets vendor: null (not AT_RISK 'No vendors'); same for documents.
+// wholeEventReadinessScore (the header score) already used this inline — the
+// events-index card was found reading getEventReadiness() raw instead, so a
+// no-vendor DIY host was pinned "At risk" forever on that card even though the
+// header right above it correctly showed the event as fine. One source now.
+export function applicableReadinessAxes(event) {
+  if (!event) return null;
+  const r = getEventReadiness(event);
+  let isHost = false;
+  try { isHost = audiencePersona(event) === 'host'; } catch { isHost = false; }
+  const hasVendors = (event.vendors || []).some(v => v && String(v.name || '').trim());
+  const hasDocs = Array.isArray(event.documents) && event.documents.length > 0;
+  return {
+    ...r,
+    vendor:   (isHost && !hasVendors) ? null : r.vendor,
+    document: (isHost && !hasDocs)    ? null : r.document,
+  };
+}
+
 // ─── PROGRESS-1: whole-event readiness score (the header ReadinessTrack) ──────
 // Composes the SAME 4-axis getEventReadiness with one honesty rule: axes that
 // don't apply to this event are EXCLUDED, not scored as failing. Command's own
@@ -973,16 +1000,7 @@ export function getEventReadiness(event) {
 // have. No new engine: same axes, same readinessScore mapping.
 export function wholeEventReadinessScore(event) {
   if (!event) return null;
-  const r = getEventReadiness(event);
-  let isHost = false;
-  try { isHost = audiencePersona(event) === 'host'; } catch { isHost = false; }
-  const hasVendors = (event.vendors || []).some(v => v && String(v.name || '').trim());
-  const hasDocs = Array.isArray(event.documents) && event.documents.length > 0;
-  return readinessScore({
-    ...r,
-    vendor:   (isHost && !hasVendors) ? null : r.vendor,
-    document: (isHost && !hasDocs)    ? null : r.document,
-  });
+  return readinessScore(applicableReadinessAxes(event));
 }
 
 // Aggregate counts across all events — drives the Home Attention Queue
@@ -1429,8 +1447,9 @@ function decomposeSetComposite(cmd, event) {
 //   Discovered → Recommended → Accepted → Working → Blocked → Completed → Archived
 // It invents no field and calls no engine eventPlan doesn't already run — every
 // state is read from a signal that exists above (foundation.done, workstream
-// status/blocked, ctx.decisionBlockers, ctx.activeRisks) or from an event status
-// map (riskStatus/decisionBlockerStatus/contextNudges = the dismissal → Archived
+// status/blocked, ctx.decisionBlockers, ctx.activeRisks, the decision board's
+// own overdue verdict) or from an event status map
+// (riskStatus/decisionBlockerStatus/contextNudges = the dismissal → Archived
 // path). Consumers filter by state (e.g. hide Completed/Archived) instead of
 // each re-deriving "is this done?" — that duplication was the doctrine's target.
 function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, workstreams) {
@@ -1469,6 +1488,28 @@ function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, work
     if (!r || !r.type) return;
     items.push({ id: 'risk:' + r.type, category: 'risk', state: 'Recommended' });
   });
+
+  // LIFECYCLE-VERDICT-1 ("vs The Market Leaders" audit, Trust row #5): the
+  // verdict line ("N decisions are past their easy window") and this
+  // lifecycle's "all clear" suffix (rendered only when NOTHING is Blocked)
+  // sit on the same hero — they must agree by construction, so both read the
+  // SAME playbookDecisionBoard (already run by eventPlan via the next-action
+  // ladder's tier 7.8). An overdue board decision IS a blocked
+  // recommendation — the host's own unmade pick gates the spread, shopping,
+  // and budget sizing. Same gate as the verdict (pre-event, days > 0): on the
+  // day the hero points at the day, and a wrapped event stays wrapped
+  // (PAST-EVENT-1) — no stale planning blame on either layer. Reachability
+  // (overdue-on-creation) is the board's own rule and is inherited, not
+  // re-derived: a brand-new tight-timeline event is calm on BOTH layers.
+  try {
+    const _d = ev.date ? daysFrom(ev.date) : null;
+    if (_d != null && _d > 0) {
+      const _board = playbookDecisionBoard(ev);
+      (((_board && _board.open) || [])).forEach(r => {
+        if (r && r.status === 'overdue') items.push({ id: 'board:' + r.id, category: 'decision', state: 'Blocked' });
+      });
+    }
+  } catch { /* board unavailable — lifecycle projects the rest unchanged */ }
 
   // Archived — the dismissal path, the ONE place recommendations leave the flow:
   // any *Status map entry marked 'dismissed', plus balance-paid (vendor) events.
@@ -1547,6 +1588,13 @@ export function eventPlan(event, ctx = null) {
     seen.add(a.domain);
     nextActions.push(a);
   }
+  // PAST-EVENT-1 — a wrapped event's action list must agree with the phase engine
+  // (deriveEventPhaseProgress already returns 'post_event' / "Wrap-up" for it): it
+  // doesn't help a host to be told "3 things need you" about a party that happened
+  // years ago. Once the event is unambiguously in the past, no domino surfaces as a
+  // next action — progress/handled above still reflect real completion, unaffected.
+  const _eventDays = event.date ? daysFrom(event.date) : null;
+  if (_eventDays != null && _eventDays < 0) nextActions.length = 0;
   // Read-only, additive — does not affect nextActions ranking/ordering.
   // vendorReadiness is now derived FROM workstreams (single computation), not a
   // parallel flat tally, so eventPlan/HostHome and any workstream-aware surface
@@ -1780,7 +1828,7 @@ function _selectEventNextActionInner(event) {
       level: 'attention',
       category: 'caterer',
       title: 'Confirm final catering count.',
-      consequence: `Caterer holds ${event.catererCount}; ${d.yesGuestsCount} guests are confirmed. Out-of-sync headcounts cascade into seating, meal counts, and the run of show.`,
+      consequence: `The caterer is set for ${event.catererCount}, but ${d.yesGuestsCount} ${d.yesGuestsCount === 1 ? 'guest has' : 'guests have'} said yes. Until those match, seating, meal counts, and the day's timing are all working from the wrong number.`,
       primaryCta: 'Fix catering count',
       primaryRoute: { tab: 'Vendors', vendorId: d.cateringVendor.id },
       contextLine: daysSub,
@@ -2385,7 +2433,9 @@ export function milestoneActionRoute(label, event, timelineId) {
       // First-undone-item rule: the first vendor row still needing the host,
       // else the first row, else the add button.
       const vs = ((event && event.vendors) || []).filter(v => v && String(v.name || '').trim());
-      const undone = vs.find(v => !/confirmed|booked/i.test(String(v.status || ''))
+      // POP-1C: isVendorBooked is the canonical vendor-status reader (workstreams.js) —
+      // the inline regex here used to miss 'Deposit Paid' and 'Contracted'.
+      const undone = vs.find(v => !isVendorBooked(v)
         || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
       const targetV = undone || vs[0];
       return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
@@ -3388,10 +3438,10 @@ function DesktopCommandCenter({ event, isHost = false, data, crewSummary, setIte
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT — routes to mobile/desktop based on viewport
 // ─────────────────────────────────────────────────────────────────────────────
-export default function CommandCenter({ event, isHost = false, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest, hideUpNext = false }) {
+export default function CommandCenter({ event, isHost = false, onTabChange, onBack, backLabel, onAddDecision, onAddApproval, onAddRequest, hideUpNext = false, foodPP = null }) {
   const width = useWindowWidth();
   const isMobile = width < 768;
-  const data = useMemo(() => deriveCommandCenterData(event), [event]);
+  const data = useMemo(() => deriveCommandCenterData(event, foodPP), [event, foodPP]);
 
   // Default handlers that route to existing tabs if not supplied
   const addDecision = onAddDecision || (() => onTabChange?.('Planning Tasks'));

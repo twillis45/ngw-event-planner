@@ -33,6 +33,18 @@ export function estimatorConfidence({ hasType, hasDate, hasGuestCount, hasMarket
   return { score, level, spread, label };
 }
 
+// DESTINATION-3 (budget) — the pure travel-logistics exclusions. Defined once
+// so the travel_led family list below and the destination merge in
+// notIncludedFor can never drift apart (no positional slicing). These are the
+// lines that apply to ANY destination event regardless of its base type; the
+// travel_led list's remaining two lines are package-relative and only make
+// sense for types that are natively travel-led.
+export const TRAVEL_LOGISTICS_NOT_INCLUDED = [
+  'Airfare and ground transfers',
+  'Lodging beyond the group block',
+  'Travel insurance, visas, or permits',
+];
+
 // Items NOT included in an estimate — keyed by intake family so a Dinner Party
 // is never told its estimate excludes a honeymoon or a marriage license. The
 // hint surfaces the list for the event's family (Chunk A: family-aware intake).
@@ -67,9 +79,7 @@ export const NOT_INCLUDED_BY_FAMILY = {
     'Pre- or post-event gatherings',
   ],
   travel_led: [
-    'Airfare and ground transfers',
-    'Lodging beyond the group block',
-    'Travel insurance, visas, or permits',
+    ...TRAVEL_LOGISTICS_NOT_INCLUDED,
     'Meals and activities not in the package',
     'Tips for local staff and guides',
   ],
@@ -85,9 +95,24 @@ export function budgetFamilyForType(type) {
 }
 
 // Resolve the exclusion list from an explicit family key OR an event type.
-export function notIncludedFor(familyOrType) {
-  if (NOT_INCLUDED_BY_FAMILY[familyOrType]) return NOT_INCLUDED_BY_FAMILY[familyOrType];
-  return NOT_INCLUDED_BY_FAMILY[budgetFamilyForType(familyOrType)] || NOT_INCLUDED_BY_FAMILY.host_driven;
+//
+// DESTINATION-3 (budget) — opts.isDestination itemizes travel the way
+// travel_led types already do: the shared travel-logistics lines (airfare /
+// lodging / travel insurance — existing travel_led copy, nothing new) are
+// prepended to the base family's list so a destination Birthday's estimate
+// discloses the same travel exclusions a Wellness Retreat's always has.
+// Types already in the travel_led family are returned unchanged (they
+// itemize travel natively).
+export function notIncludedFor(familyOrType, opts = {}) {
+  const base = NOT_INCLUDED_BY_FAMILY[familyOrType]
+    || NOT_INCLUDED_BY_FAMILY[budgetFamilyForType(familyOrType)]
+    || NOT_INCLUDED_BY_FAMILY.host_driven;
+  if (!opts || !opts.isDestination) return base;
+  if (base === NOT_INCLUDED_BY_FAMILY.travel_led) return base;
+  return [
+    ...TRAVEL_LOGISTICS_NOT_INCLUDED,
+    ...base.filter((line) => !TRAVEL_LOGISTICS_NOT_INCLUDED.includes(line)),
+  ];
 }
 
 // Back-compat default (full_service) for any caller still importing the constant.

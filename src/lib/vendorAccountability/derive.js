@@ -44,6 +44,10 @@ function isPast(iso) {
 // ──────────────────────────────────────────────────────────────────────────
 export function deriveVendorExpectedPromises(vendor, event) {
   if (!vendor || !event) return [];
+  // Informal helper (friend/family, not a paid booking) — never expect
+  // professional promises. Mirrors vendorCoiRequirement's isInformal gate
+  // (vendorIntelligence.js) at the accountability-engine root.
+  if (vendor.isInformal) return [];
   const playbook = getVendorPlaybook(vendor.category);
   const eventDate = event.date || null;
   return playbook.commonPromises.map(pp => {
@@ -85,6 +89,14 @@ export function deriveVendorMissingProof(vendor, event, promises = []) {
 export function deriveVendorAccountability(vendor, event, promises = []) {
   if (!vendor || !event) {
     return { tier: 'on_track', score: 100, reasons: [], openIssues: 0, dueSoon: 0, overdue: 0, missingProof: 0, criticalUnconfirmed: 0 };
+  }
+  // Informal helper — nothing to hold accountable. Without this, an empty
+  // `promises` array (from the isInformal-gated deriveVendorExpectedPromises
+  // above) would still read playbook.requiredConfirmations independently and
+  // score every one of them "criticalUnconfirmed", making an informal helper
+  // look WORSE than an untouched vendor instead of exempt.
+  if (vendor.isInformal) {
+    return { tier: 'on_track', score: 100, reasons: [], openIssues: 0, dueSoon: 0, overdue: 0, missingProof: 0, criticalUnconfirmed: 0, missedPromiseCount: 0, eventDays: daysUntil(event.date) };
   }
   const eventDays = daysUntil(event.date);
   const playbook = getVendorPlaybook(vendor.category);
@@ -181,6 +193,7 @@ export function deriveVendorAccountability(vendor, event, promises = []) {
 // ──────────────────────────────────────────────────────────────────────────
 export function deriveVendorFollowUpQuestions(vendor, event, promises = []) {
   if (!vendor) return [];
+  if (vendor.isInformal) return { items: [], suggestedQuestions: [] };
   const playbook = getVendorPlaybook(vendor.category);
   const open = (promises || []).filter(p => p.status !== 'completed' && p.status !== 'not_required' && p.status !== 'confirmed');
   const openKeys = new Set(open.map(p => p.promiseKey));
@@ -206,6 +219,9 @@ export function deriveVendorFollowUpQuestions(vendor, event, promises = []) {
 // ──────────────────────────────────────────────────────────────────────────
 export function deriveVendorBriefReadiness(vendor, event, promises = []) {
   if (!vendor || !event) return { readyCount: 0, totalCount: 0, percentage: 0, missingItems: [], readyItems: [], recommendedNextAction: null };
+  // Informal helper — no vendor brief applies; vacuously "ready" (no
+  // blockers), not "0% ready" which would read as a problem.
+  if (vendor.isInformal) return { readyCount: 0, totalCount: 0, percentage: 100, missingItems: [], readyItems: [], recommendedNextAction: null };
   const playbook = getVendorPlaybook(vendor.category);
   const sections = playbook.briefSections || [];
   // Map brief section -> playbook promise key (best-effort by case-insensitive substring match).

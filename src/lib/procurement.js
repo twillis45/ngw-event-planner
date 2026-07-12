@@ -35,7 +35,7 @@
 //     },
 //   }
 
-import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL, lineCrabCount, defaultCountPerUnit } from './crabPlan';
+import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL, lineCrabCount, recommendCrabOrder } from './crabPlan';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const round = (n) => Math.round(n);
@@ -88,11 +88,17 @@ function crabProvider(event, opts = {}) {
     totalCrabs = plan.totalEstimatedCrabs || lines.reduce((s, l) => s + (lineCrabCount(l) || 0), 0);
     quantityValue = totalCrabs; quantityUnit = 'crabs';
   } else if (heads) {
-    // No lines yet — recommend by the coverage target, in bushels for scale.
-    totalCrabs = heads * target;
-    const perBushel = defaultCountPerUnit('large', 'bushel') || 72;
-    const bushels = Math.max(1, Math.round((totalCrabs / perBushel) * 2) / 2); // nearest half-bushel
-    breakdown = [{ unit: bushels % 1 === 0 ? 'bushel' : 'half_bushel', count: bushels % 1 === 0 ? bushels : Math.round(bushels * 2), size: 'large' }];
+    // No lines yet — recommendCrabOrder is the single source for the starting
+    // mix (bushel/half-bushel/dozen, kid-adjusted headcount) — no separate
+    // re-derivation here.
+    const rec = recommendCrabOrder(event);
+    if (rec) {
+      breakdown = rec.lines.map(l => ({ unit: l.unit, count: l.quantity, size: l.size }));
+      totalCrabs = rec.totalCrabs;
+    } else {
+      totalCrabs = heads * target;
+      breakdown = [];
+    }
     quantityValue = totalCrabs; quantityUnit = 'crabs';
   } else {
     breakdown = []; totalCrabs = 0; quantityValue = 0; quantityUnit = 'crabs';

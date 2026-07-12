@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { toCSV, downloadCSV, COLUMNS } from '../lib/csvParsers';
+import { toCSV, COLUMNS, exportFileSlug } from '../lib/csvParsers';
+import { downloadCSV } from '../lib/download';
 
 const C = {
   bg: '#0f0f11', surface: '#18181c', border: '#2a2a32',
@@ -16,7 +17,7 @@ export default function ExportMenu({ guests, vendors, budget, timeline, eventNam
     return () => document.removeEventListener('mousedown', handle);
   }, []);
 
-  const slug = eventName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'event';
+  const slug = exportFileSlug(eventName);
 
   const exports = [
     { label: 'Guests (.csv)',   action: () => downloadCSV(`${slug}-guests.csv`,   toCSV(guests,   COLUMNS.guests)) },

@@ -49,6 +49,7 @@ function foodBoughtFrom(event, plan) {
   for (const it of plan.list) {
     if (!it || it.skipped) continue;
     if (it.group === 'Supplies') continue; // food line only — supplies are separate
+    if (it.excludeFromFoodTotal) continue; // CRAB-BUDGET-1: real $ tracked separately (crabBought)
     if (!got[it.id]) continue;
     sum += it.locked != null ? num(it.locked) : mid(it.low, it.high);
   }

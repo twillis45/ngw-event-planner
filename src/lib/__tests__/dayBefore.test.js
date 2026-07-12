@@ -2,6 +2,7 @@
 // permission for settled work, first-undone deep links, no guest copy.
 
 import { buildDayBeforePlan } from '../dayBefore';
+import { playbookFoodPlan } from '../playbooks';
 
 // LOCAL date parts — toISOString() is UTC and drifts a day ahead of local
 // between 8 PM and midnight Eastern, making the window tests time-of-day flaky.
@@ -72,6 +73,28 @@ test('deep-link doctrine: every routed section carries an anchor or row id', () 
     // the shopping/helper rows land on the exact food line, not a section top.
     expect(s.route.focusField || s.route.vendorId || s.route.taskId || s.route.foodFocus).toBeTruthy();
   });
+});
+
+// RECON-I5 lock: the day-before shopping row's FOOD scope is playbookFoodPlan's
+// own remainder (itemCount − boughtCount, which excludes the Supplies group) —
+// the list's Supplies lines count with the capacity gear instead, and the split
+// always reassembles the row's total. Same fact, one number, everywhere.
+test('shopping food scope equals playbookFoodPlan itemCount − boughtCount; split reassembles', () => {
+  const base = ev();
+  const plan = playbookFoodPlan(base);
+  expect(plan && plan.itemCount).toBeGreaterThan(0); // the fixture really has a food plan
+  const shopping = buildDayBeforePlan(base).sections.find(s => s.key === 'shopping');
+  expect(shopping.openFood).toBe(plan.itemCount - plan.boughtCount);
+  expect(shopping.openFood + shopping.openSupplies).toBe(shopping.open);
+
+  // buying one FOOD line moves exactly the food part, and stays reconciled
+  const firstFood = plan.list.find(i => i && !i.skipped && i.group !== 'Supplies');
+  const bought = ev({ foodGot: { [firstFood.id]: true } });
+  const plan2 = playbookFoodPlan(bought);
+  const shopping2 = buildDayBeforePlan(bought).sections.find(s => s.key === 'shopping');
+  expect(shopping2.openFood).toBe(plan2.itemCount - plan2.boughtCount);
+  expect(shopping2.openFood).toBe(shopping.openFood - 1);
+  expect(shopping2.openSupplies).toBe(shopping.openSupplies);
 });
 
 test('never marks anything done; headline reflects real open count', () => {

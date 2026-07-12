@@ -39,6 +39,30 @@
 //   merged   — existing rows that actually changed
 //   added    — new rows appended
 //   yesCount — submissions processed whose rsvp === 'Yes'
+// Extracted so any caller resolving a free-text name against the guest list
+// (RSVP merge here, helper/owner-assignment resolution in
+// helperResponsibility.js) shares the exact same match rules — see the
+// name-match priority order documented above. Returns -1 when no guest
+// matches; never invents or fuzzy-guesses beyond these three rules.
+export function matchGuestIndexByName(guests, fullName) {
+  const full = String(fullName || '').trim();
+  if (!full) return -1;
+  const toks = full.toLowerCase().split(/\s+/).filter(Boolean);
+  const first = toks[0] || '';
+  const last = toks[toks.length - 1] || '';
+  return (guests || []).findIndex(g => {
+    const gn = String((g && g.name) || '').trim().toLowerCase();
+    if (!gn) return false;
+    const gp = gn.split(/\s+/).filter(Boolean);
+    const gFirst = gp[0] || '';
+    const gLast = gp[gp.length - 1] || '';
+    if (gn === full.toLowerCase()) return true;
+    if (last && last.length >= 3 && gLast === last && gFirst === first) return true;
+    if (first.length >= 4 && gFirst === first) return true;
+    return false;
+  });
+}
+
 export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
   const guests = [...(existingGuests || [])];
   let merged = 0, added = 0, yesCount = 0;
@@ -46,20 +70,7 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
     if (!sub) continue;
     const full = String(sub.name || '').trim();
     if (!full) continue;
-    const toks = full.toLowerCase().split(/\s+/).filter(Boolean);
-    const first = toks[0] || '';
-    const last = toks[toks.length - 1] || '';
-    const ix = guests.findIndex(g => {
-      const gn = String((g && g.name) || '').trim().toLowerCase();
-      if (!gn) return false;
-      const gp = gn.split(/\s+/).filter(Boolean);
-      const gFirst = gp[0] || '';
-      const gLast = gp[gp.length - 1] || '';
-      if (gn === full.toLowerCase()) return true;
-      if (last && last.length >= 3 && gLast === last && gFirst === first) return true;
-      if (first.length >= 4 && gFirst === first) return true;
-      return false;
-    });
+    const ix = matchGuestIndexByName(guests, full);
     if (sub.rsvp === 'Yes') yesCount += 1;
     if (ix >= 0) {
       const g = guests[ix];

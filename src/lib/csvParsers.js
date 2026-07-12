@@ -502,16 +502,13 @@ export function toCSV(rows, columns) {
   return header + '\n' + body;
 }
 
-export function downloadCSV(filename, content) {
-  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+// downloadCSV (the Blob + anchor-click trigger) lives in lib/download.js —
+// this module stays pure so V2 and tests can import it without a DOM.
+
+// Filename slug for export downloads (from ExportMenu): lowercase, spaces →
+// dashes, everything else stripped; 'event' when nothing survives.
+export function exportFileSlug(eventName) {
+  return String(eventName || '').toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'event';
 }
 
 export const COLUMNS = {

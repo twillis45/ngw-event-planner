@@ -2,7 +2,7 @@
 // market prices, no bushel-is-cheaper claims, estimates never actuals,
 // coverage from real line math only.
 
-import { buildCrabPlan, defaultCountPerUnit, lineCrabCount } from '../crabPlan';
+import { buildCrabPlan, defaultCountPerUnit, lineCrabCount, recommendCrabOrder } from '../crabPlan';
 
 const ev = (crabPlan, over = {}) => ({ id: 'e-crab', type: 'crab feast', guestCount: 25, crabPlan, ...over });
 const line = (over = {}) => ({ id: 'l1', size: 'large', unit: 'dozen', quantity: 1, ...over });
@@ -65,6 +65,24 @@ test('PICKERS-GUARDRAIL: pickers within the guest count pass through with no not
   const p = buildCrabPlan(ev({ crabEatingHeadcount: 18, lines: [line({ unit: 'bushel' })] }));
   expect(p.crabEatingHeadcount).toBe(18);
   expect(p.pickerNote).toBeNull();
+});
+
+test('DENOMINATORS-1: pickers set below the guest count get a neutral reconciling note ("N of your M guests"), not a warning', () => {
+  const p = buildCrabPlan(ev({ crabEatingHeadcount: 18, lines: [line({ unit: 'bushel' })] }));
+  expect(p.pickerReconcileNote).toBe('18 of your 25 guests are picking crabs.');
+  expect(p.pickerNote).toBeNull(); // the clamp warning field stays separate/unused here
+});
+
+test('DENOMINATORS-1: no reconcile note when pickers default to the full guest count (nothing to reconcile)', () => {
+  const p = buildCrabPlan(ev({ lines: [line({ unit: 'bushel' })] }));
+  expect(p.crabEatingHeadcount).toBe(25);
+  expect(p.pickerReconcileNote).toBeNull();
+});
+
+test('DENOMINATORS-1: the clamp case still uses the warning field, not the reconcile field', () => {
+  const p = buildCrabPlan(ev({ crabEatingHeadcount: 75, lines: [line({ unit: 'bushel' })] }));
+  expect(p.pickerNote).toMatch(/can.t outnumber your 25 guests/i);
+  expect(p.pickerReconcileNote).toBeNull();
 });
 
 test('7 · mixed/unknown size bushel without vendor count → needs_count_per_unit', () => {
@@ -153,4 +171,53 @@ test('non-crab event with no crab plan is not relevant', () => {
 test('half-bushel default counts are half the researched bushel', () => {
   expect(defaultCountPerUnit('large', 'half_bushel')).toBe(36);
   expect(lineCrabCount({ size: 'medium', unit: 'half_bushel', quantity: 1 })).toBe(42);
+});
+
+describe('RECOMMEND-1 — recommendCrabOrder: a real starting mix', () => {
+  test('no order yet, small group → dozens, sized to target', () => {
+    // 25 guests × 6/person target = 150... but crabEatingHeadcount unset means
+    // heads = guestCount fallback = 25 by default in ev(); use a small explicit
+    // headcount so the dozen-only branch (<60 total) is exercised.
+    const r = recommendCrabOrder(ev({ crabEatingHeadcount: 6, targetCrabsPerPerson: 3, lines: [] }));
+    expect(r).not.toBeNull();
+    expect(r.lines.every(l => l.unit === 'dozen')).toBe(true);
+    expect(r.totalCrabs).toBeGreaterThanOrEqual(6 * 3 * 0.8); // roughly on target, dozen-rounded
+  });
+
+  test('large group clears the 60-crab threshold → bushels, matching bushelLikelyUseful', () => {
+    const r = recommendCrabOrder(ev({ crabEatingHeadcount: 30, lines: [] })); // 30 × 6 = 180 target
+    expect(r.lines.some(l => l.unit === 'bushel')).toBe(true);
+    expect(r.totalCrabs).toBeGreaterThan(60);
+  });
+
+  test('kids reduce the effective picker count, and it says so', () => {
+    const withKids = recommendCrabOrder(ev({ crabEatingHeadcount: 20, lines: [] }, { kidsCount: 10 }));
+    const noKids = recommendCrabOrder(ev({ crabEatingHeadcount: 20, lines: [] }));
+    expect(withKids.effectivePickers).toBeLessThan(noKids.effectivePickers);
+    expect(withKids.note).toMatch(/kids eat less/i);
+    expect(noKids.note).not.toMatch(/kids eat less/i);
+  });
+
+  test('returned lines are real editable stubs — quantity/unit/size/estimatedCountPerUnit all present', () => {
+    const r = recommendCrabOrder(ev({ crabEatingHeadcount: 30, lines: [] }));
+    r.lines.forEach(l => {
+      expect(typeof l.quantity).toBe('number');
+      expect(typeof l.unit).toBe('string');
+      expect(typeof l.size).toBe('string');
+      expect(typeof l.estimatedCountPerUnit).toBe('number');
+    });
+  });
+
+  test('summary is a real mixed-order sentence, matching mixedSummary style', () => {
+    const r = recommendCrabOrder(ev({ crabEatingHeadcount: 30, lines: [] }));
+    expect(r.summary).toMatch(/large/);
+  });
+
+  test('non-crab event with no crab plan → null (not relevant)', () => {
+    expect(recommendCrabOrder({ id: 'e', type: 'birthday' })).toBeNull();
+  });
+
+  test('no headcount anywhere → null, not a garbage recommendation', () => {
+    expect(recommendCrabOrder({ id: 'e', type: 'crab feast', crabPlan: { lines: [] } })).toBeNull();
+  });
 });

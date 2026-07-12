@@ -126,6 +126,68 @@ describe('no food plan → unchanged (manual-rows-only) behavior', () => {
   });
 });
 
+describe('CRAB-BUDGET-1: a real priced crab order is never counted twice', () => {
+  const CRAB = (over = {}) => ({
+    id: 'e-crab', type: 'Crab Feast', date: '2026-08-01', guestCount: 24, guestMode: 'count',
+    totalBudget: 2000, budget: [], ...over,
+  });
+
+  test('no crabPlan yet: foodEstimate carries the independent market guess, crabEstimate is 0', () => {
+    const sp = hostSpending(CRAB());
+    expect(sp.crabEstimate).toBe(0);
+    expect(sp.foodEstimate).toBeGreaterThan(0);
+  });
+
+  test('a real priced order: the spread\'s own crab line stops contributing dollars, crabEstimate carries the real total', () => {
+    const noCrab = hostSpending(CRAB());
+    const withCrab = hostSpending(CRAB({
+      crabPlan: { lines: [{ id: 'a', size: 'large', unit: 'bushel', quantity: 2, pricePerUnit: 345 }] },
+    }));
+    expect(withCrab.crabEstimate).toBe(690); // 2 × 345, host-entered — real money
+    // The old bug: foodEstimate ALSO included an independent crab guess on top
+    // of crabEstimate. Fixed: foodEstimate drops by (at least) as much as the
+    // crab line no longer contributes — total committed money reflects the
+    // real order once, not the real order PLUS a phantom market guess.
+    expect(withCrab.foodEstimate).toBeLessThan(noCrab.foodEstimate);
+    expect(withCrab.committed).toBe(noCrab.committed - noCrab.foodEstimate + withCrab.foodEstimate + withCrab.crabEstimate);
+  });
+
+  test('checking off the delegated crab line in the generic list does not ALSO add to foodBought', () => {
+    const plan = playbookFoodPlan(CRAB({
+      crabPlan: { lines: [{ id: 'a', size: 'large', unit: 'bushel', quantity: 2, pricePerUnit: 345 }] },
+    }), { priceFactor: 1 });
+    const crabLine = plan.list.find((i) => i.id === 'p_crabs');
+    expect(crabLine.crabDelegated).toBe(true);
+    expect(crabLine.excludeFromFoodTotal).toBe(true);
+    const sp = hostSpending(CRAB({
+      crabPlan: { lines: [{ id: 'a', size: 'large', unit: 'bushel', quantity: 2, pricePerUnit: 345, bought: true }] },
+      foodGot: { p_crabs: true }, // host also (redundantly) checks it off in the generic list
+    }));
+    // crabBought (from the crab order's own bought line) carries the real $690;
+    // foodBought must NOT add a second $690 on top just because foodGot was set.
+    expect(sp.crabBought).toBe(690);
+    expect(sp.spent).toBeLessThan(690 * 2);
+  });
+
+  test('an explicit host lock on the crab line wins over delegation (rare, but a deliberate override)', () => {
+    const plan = playbookFoodPlan(CRAB({
+      crabPlan: { lines: [{ id: 'a', size: 'large', unit: 'bushel', quantity: 2, pricePerUnit: 345 }] },
+      foodLocked: { p_crabs: 250 },
+    }), { priceFactor: 1 });
+    const crabLine = plan.list.find((i) => i.id === 'p_crabs');
+    expect(crabLine.crabDelegated).toBeFalsy();
+    expect(crabLine.locked).toBe(250);
+  });
+
+  test('an unpriced order (quantity only, no price yet) still uses the market-estimate fallback', () => {
+    const plan = playbookFoodPlan(CRAB({
+      crabPlan: { lines: [{ id: 'a', size: 'large', unit: 'bushel', quantity: 2 }] }, // no pricePerUnit
+    }), { priceFactor: 1 });
+    const crabLine = plan.list.find((i) => i.id === 'p_crabs');
+    expect(crabLine.crabDelegated).toBeFalsy();
+  });
+});
+
 describe('honest bounds', () => {
   test('committed never dips below spent', () => {
     const sp = hostSpending(HOST());

@@ -46,6 +46,32 @@ function enqueueMutation(op) {
   setPending(q);
 }
 
+// ─── Queue observability (SYNC-HONESTY-1) ────────────────────────────────────
+// Read-only views + one targeted removal so sync-state readers (lib/api/syncState)
+// can tell the truth about which events have unflushed writes. The queue itself
+// stays the ONE pending-writes source of truth (key: ngw-cache-pending).
+
+/** Ids of events with a queued (unflushed) upsert. */
+export function getPendingEventIds() {
+  return getPending().filter((m) => m && m.type === 'upsert' && m.id != null).map((m) => m.id);
+}
+
+/** True when the given event has a queued (unflushed) upsert. */
+export function hasPendingEventWrite(eventId) {
+  return getPendingEventIds().includes(eventId);
+}
+
+/**
+ * Drop the queued upsert for an event whose LATEST full snapshot just reached
+ * the cloud by a direct save. Without this, a stale queued snapshot (from an
+ * earlier failed save) would later flush OVER the newer cloud row.
+ */
+export function clearPendingEventWrite(eventId) {
+  const q = getPending();
+  const next = q.filter((m) => !(m && m.type === 'upsert' && m.id === eventId));
+  if (next.length !== q.length) setPending(next);
+}
+
 // ─── Public API (signatures unchanged) ─────────────────────────────────────────
 
 /** Load all events for the current studio. Falls back to local cache. */
@@ -72,28 +98,40 @@ export async function loadEvents() {
   }
 }
 
-/** Persist a single event (upsert). Queues locally if cloud write fails. */
+/**
+ * Persist a single event (upsert). Queues locally if cloud write fails.
+ *
+ * SYNC-HONESTY-1: now returns an honest result object so callers (V2 shell via
+ * lib/api/syncState) can distinguish a real cloud success from a swallowed
+ * failure. Existing callers that ignore the return value are unaffected.
+ *   { ok: true }                                        — cloud row confirmed written
+ *   { ok: false, queued: true,  reason: 'no-studio' }   — no studio yet; write queued
+ *   { ok: false, queued: true,  reason: 'error', error } — cloud write failed; queued for retry
+ *   { ok: false, queued: false, reason: 'not-configured' | 'local-studio' } — local-only world
+ */
 export async function saveEvent(event) {
   const local = readLocal();
   writeLocal(local.some((e) => e.id === event.id)
     ? local.map((e) => (e.id === event.id ? event : e))
     : [...local, event]);
 
-  if (!isSupabaseConfigured() || !supabase) return;
+  if (!isSupabaseConfigured() || !supabase) return { ok: false, queued: false, reason: 'not-configured' };
   const sid = await currentStudioId();
-  if (!sid) { enqueueMutation({ type: 'upsert', id: event.id, data: event }); return; }
+  if (!sid) { enqueueMutation({ type: 'upsert', id: event.id, data: event }); return { ok: false, queued: true, reason: 'no-studio' }; }
   // Sprint 58E-B: a non-uuid studio (dev-bypass) has no cloud row — stay local-only
   // (the localStorage write above already persisted it). Do NOT send 'dev-studio'
   // to a uuid column (22P02 400). Real prod studios are uuids and proceed normally.
-  if (!isCloudStudioId(sid)) return;
+  if (!isCloudStudioId(sid)) return { ok: false, queued: false, reason: 'local-studio' };
   try {
     const { error } = await supabase
       .from('events')
       .upsert({ id: event.id, studio_id: sid, data: event }, { onConflict: 'id' });
     if (error) throw error;
+    return { ok: true };
   } catch (e) {
     captureError(e, { where: 'events.saveEvent', id: event.id, onLine: onLine(), pending: getPendingCount() });
     enqueueMutation({ type: 'upsert', id: event.id, data: event });
+    return { ok: false, queued: true, reason: 'error', error: (e && e.message) || String(e) };
   }
 }
 
@@ -117,16 +155,27 @@ export async function deleteEvent(eventId) {
   }
 }
 
-/** Flush pending mutations that failed earlier. Call when back online. */
+/**
+ * Flush pending mutations that failed earlier. Call when back online.
+ *
+ * SYNC-HONESTY-1: the result now also carries per-op detail so sync-state
+ * readers can stamp real successes and explain real failures (extra fields —
+ * existing { flushed, failed } consumers are unaffected):
+ *   flushedIds — event ids whose queued UPSERT reached the cloud this flush
+ *   failedOps  — [{ id, type, error }] for ops that stayed queued
+ */
 export async function flushPendingEvents() {
-  if (!isSupabaseConfigured() || !supabase) return { flushed: 0, failed: 0 };
+  const empty = { flushed: 0, failed: 0, flushedIds: [], failedOps: [] };
+  if (!isSupabaseConfigured() || !supabase) return empty;
   const sid = await currentStudioId();
   // Sprint 58E-B: never retry the queue against a non-uuid (dev) studio — it would
   // 400 forever. Real-studio flushes proceed; stale dev ops stay queued harmlessly.
-  if (!sid || !isCloudStudioId(sid)) return { flushed: 0, failed: 0 };
+  if (!sid || !isCloudStudioId(sid)) return empty;
   const queue = getPending();
-  if (!queue.length) return { flushed: 0, failed: 0 };
+  if (!queue.length) return empty;
   let flushed = 0;
+  const flushedIds = [];
+  const failedOps = [];
   const remaining = [];
   for (const op of queue) {
     try {
@@ -135,18 +184,20 @@ export async function flushPendingEvents() {
           .from('events')
           .upsert({ id: op.id, studio_id: sid, data: op.data }, { onConflict: 'id' });
         if (error) throw error;
+        flushedIds.push(op.id);
       } else if (op.type === 'delete') {
         const { error } = await supabase
           .from('events').delete().eq('id', op.id).eq('studio_id', sid);
         if (error) throw error;
       }
       flushed++;
-    } catch {
+    } catch (e) {
       remaining.push(op);
+      failedOps.push({ id: op.id, type: op.type, error: (e && e.message) || String(e) });
     }
   }
   setPending(remaining);
-  return { flushed, failed: remaining.length };
+  return { flushed, failed: remaining.length, flushedIds, failedOps };
 }
 
 /** Import localStorage events into the current studio (first-time migration). */

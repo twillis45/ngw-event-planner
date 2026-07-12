@@ -69,9 +69,16 @@ export function buildCrabPlan(event) {
   // what they typed.
   let heads = rawPickers != null ? rawPickers : guestFallback;
   let pickerNote = null;
+  // DENOMINATORS-1: neutral, not a warning — the host deliberately set pickers
+  // to something other than the full guest count (not everyone eats crabs).
+  // Kept separate from pickerNote (the actual clamp warning below) so this
+  // routine reconciliation never renders in a "something's wrong" color.
+  let pickerReconcileNote = null;
   if (rawPickers != null && guestFallback > 0 && rawPickers > guestFallback) {
     heads = guestFallback;
     pickerNote = `Pickers can’t outnumber your ${guestFallback} guests — using ${guestFallback} for coverage.`;
+  } else if (rawPickers != null && guestFallback > 0 && rawPickers !== guestFallback) {
+    pickerReconcileNote = `${rawPickers} of your ${guestFallback} guests are picking crabs.`;
   }
   const target = (cp && num(cp.targetCrabsPerPerson) > 0) ? num(cp.targetCrabsPerPerson) : (TARGET_BY_ROLE[role] || 3);
 
@@ -169,6 +176,7 @@ export function buildCrabPlan(event) {
     role,
     crabEatingHeadcount: heads || null,
     pickerNote,
+    pickerReconcileNote,
     targetCrabsPerPerson: target,
     lines,
     totalEstimatedCrabs,
@@ -185,5 +193,80 @@ export function buildCrabPlan(event) {
     bushelExplanation,
     issues,
     handled,
+  };
+}
+
+// ─── recommendCrabOrder — a real starting mix, not just a coverage check ──────
+// buildCrabPlan only ever judges lines the host already typed in. Before any
+// line exists, the host is left to guess bushels-vs-dozens and sizes from
+// scratch. This computes an honest starting mix from the SAME headcount/target
+// buildCrabPlan already resolved (single source — never re-derived), sized in
+// whole/half bushels once the total clears the same 60-crab threshold
+// bushelLikelyUseful already uses, dozens below it. One default size to start
+// — real orders often DO mix sizes across lines (see file header), but a
+// forced two-size guess would be inventing detail the host hasn't chosen yet;
+// the returned lines are plain editable stubs the host can split further.
+const KID_CRAB_FACTOR = 0.4; // kids eat ~40% of an adult's share — same ratio
+// the food engine uses for other appetite-driven mains (KID_PROTEIN_FACTOR in
+// playbooks/index.js); kept as a local constant since this file is a leaf
+// module with no engine imports.
+function effectivePickers(ev, heads) {
+  if (!heads) return heads;
+  const guestFallback = num(ev.guestCount) || num(ev.guestEstimate)
+    || (Array.isArray(ev.guests) ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))).length : 0);
+  const rosterMode = Array.isArray(ev.guests) && ev.guests.length > 0 && ev.guestMode !== 'count';
+  const kids = rosterMode
+    ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))).reduce((s, g) => s + Math.max(0, num(g.kids)), 0)
+    : Math.max(0, Math.round(num(ev.kidsCount)));
+  if (kids <= 0) return heads;
+  // Pickers are often a SUBSET of guests (not everyone picks crabs) — assume
+  // kids are represented among pickers in the same proportion as the picker
+  // count is to the guest count, not "all kids picked," which would overstate
+  // the reduction whenever pickers is a deliberately narrower group.
+  const kidsAmongPickers = guestFallback > 0 ? Math.round(kids * (heads / guestFallback)) : Math.min(kids, heads);
+  const clamped = Math.max(0, Math.min(kidsAmongPickers, heads));
+  if (!clamped) return heads;
+  return Math.max(1, heads - clamped * (1 - KID_CRAB_FACTOR));
+}
+
+export function recommendCrabOrder(event) {
+  const plan = buildCrabPlan(event);
+  if (!plan || !plan.relevant || !plan.crabEatingHeadcount) return null;
+  const heads = plan.crabEatingHeadcount;
+  const target = plan.targetCrabsPerPerson;
+  const eHeads = effectivePickers(event || {}, heads);
+  const totalTarget = Math.max(1, Math.round(eHeads * target));
+
+  const size = 'large'; // the crab-feast playbook's most common default size
+  const perBushel = defaultCountPerUnit(size, 'bushel');
+  const perHalfBushel = defaultCountPerUnit(size, 'half_bushel');
+  const perDozen = 12;
+  const lines = [];
+  if (totalTarget >= 60) {
+    const wholeBushels = Math.floor(totalTarget / perBushel);
+    const remainder = totalTarget - wholeBushels * perBushel;
+    if (wholeBushels > 0) lines.push({ unit: 'bushel', size, quantity: wholeBushels, estimatedCountPerUnit: perBushel });
+    if (remainder >= perHalfBushel * 0.75) {
+      lines.push({ unit: 'half_bushel', size, quantity: 1, estimatedCountPerUnit: perHalfBushel });
+    } else if (remainder >= perDozen / 2) {
+      lines.push({ unit: 'dozen', size, quantity: Math.max(1, Math.round(remainder / perDozen)), estimatedCountPerUnit: perDozen });
+    }
+  } else {
+    lines.push({ unit: 'dozen', size, quantity: Math.max(1, Math.round(totalTarget / perDozen)), estimatedCountPerUnit: perDozen });
+  }
+  const totalCrabs = lines.reduce((s, l) => s + l.quantity * l.estimatedCountPerUnit, 0);
+  const plural = (u, q) => (u === 'dozen' ? 'dozen' : q > 1 ? UNIT_LABEL[u] + 's' : UNIT_LABEL[u]);
+  const summary = lines.map(l => `${l.quantity} ${plural(l.unit, l.quantity)} ${SIZE_LABEL[size]}`).join(' + ');
+  const kidNote = eHeads < heads;
+
+  return {
+    lines,
+    totalCrabs,
+    effectivePickers: Math.round(eHeads * 10) / 10,
+    targetCrabsPerPerson: target,
+    summary,
+    note: kidNote
+      ? `A starting point for ${heads} pickers (kids eat less — figured at about 60% of an adult's share) at about ${target} crabs each.`
+      : `A starting point for ${heads} pickers at about ${target} crabs each.`,
   };
 }

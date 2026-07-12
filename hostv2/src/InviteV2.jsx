@@ -10,9 +10,10 @@
 // Honest states: delivered ("Thanks!") vs queued-offline ("Saved — we'll send
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox } from '@app/lib/api/rsvp';
+import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
+import { buildExperienceContext } from '@app/lib/experienceContext';
 import { geocodeVenue } from '@app/lib/weather';
 import { dark as steelPalette } from '@app/theme/palette';
 import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile } from './HostShellV2.jsx';
@@ -29,6 +30,56 @@ function markUrlFor(event) {
 const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
 // The ORIGINAL's RSVP_ALLERGY_OPTIONS, verbatim (App.js:2506).
 const NEEDS = ['Nut allergy', 'Shellfish', 'Dairy-free', 'Egg', 'Kosher', 'Halal', 'Wheelchair access'];
+
+// Deck line — the celebration copy under the event name (the original's
+// DECK_BY_VOICE concept, scoped to what V2 can honestly claim). Ordered
+// [signal, line] pairs; copy strings unchanged since the remake shipped.
+const DECK_LINES = [
+  [/crab|crawfish|low.?country|fish\s*fry|cook.?out|bbq|barbecue/i, 'Good food, good people'],
+  [/retire/i, 'A career worth celebrating'],
+  [/birthday/i, 'Another year, celebrated right'],
+  [/graduat/i, 'They did the work — come cheer'],
+  [/baby|shower/i, 'Something wonderful is coming'],
+  [/wedding|anniversary/i, 'Two names, one day'],
+];
+const DECK_DEFAULT = 'It wouldn’t be the same without you';
+
+// HQ-3 re-audit NEW-1: this page used to classify the celebration with its own
+// regex over `type + name`, testing /retire/ before /birthday/ — so a compound
+// Birthday + Retirement invite silently read retirement-only, bypassing the
+// canonical identity every host surface consults. Now the CLASSIFICATION comes
+// from the same reader (PC-1's buildExperienceContext → eventIdentity, pure —
+// no profile/session, so it's safe on this public page): the event's PRIMARY
+// milestone is tried first, then its secondaries, so the identity's own order
+// decides the line — not the order of the pairs above. The host's authored
+// deckLine still always wins, and the copy strings are untouched.
+//
+// Degrade, never crash: backend-resolved invites carry only the whitelisted
+// PUBLIC_EVENT_FIELDS (name/type among them — enough for the reader), but if
+// the canonical reader returns nothing or throws for ANY event, the original
+// type+name regex still answers. That fallback also keeps covering free-text
+// signals the identity engine has no vocabulary for (a "Crab Feast" living
+// only in the event NAME).
+function deckLineFor(event, somber) {
+  if (!event) return '';
+  const explicit = String(event.deckLine || '').trim();
+  if (explicit) return explicit;
+  if (somber) return 'In loving memory';
+  try {
+    const ctx = buildExperienceContext(event);
+    const id = ctx && ctx.eventIdentity;
+    if (id) {
+      const labels = [id.primaryEventType, ...(id.secondaryEventTypes || [])].filter(Boolean);
+      for (const label of labels) {
+        const hit = DECK_LINES.find(([re]) => re.test(String(label)));
+        if (hit) return hit[1];
+      }
+    }
+  } catch { /* guest page: fall through to the regex below */ }
+  const t = String(event.type || '') + ' ' + String(event.name || '');
+  const hit = DECK_LINES.find(([re]) => re.test(t));
+  return hit ? hit[1] : DECK_DEFAULT;
+}
 
 // The invite speaks the EVENT'S mood (lib/inviteTone — one truth with the
 // original): light = warm paper, dark = elegant evening, muted = somber. The
@@ -75,10 +126,50 @@ function findInviteEvent(code) {
   } catch { return null; }
 }
 
+// Adapt the backend resolver's PUBLIC event to this page's render shape. The
+// server returns ONLY whitelisted display fields (backend/app/routers/rsvp.py
+// PUBLIC_EVENT_FIELDS) — no id and no roster — so:
+//   · the rsvp code stands in for the missing id (the same outbox/idempotency
+//     keying the original's PublicRsvpRoute uses when only the code is known)
+//   · host parking copy arrives as `parking`; this page reads `parkingNotes`
+//   · rosterUnknown marks that the guest list was never sent — the social
+//     line stays silent instead of claiming "Be the first to say yes".
+function adaptRemoteInvite(remote, code) {
+  if (!remote || typeof remote !== 'object') return null;
+  return {
+    ...remote,
+    id: remote.id || String(code),
+    parkingNotes: remote.parkingNotes || remote.parking || '',
+    rosterUnknown: true,
+  };
+}
+
 const dfmt = (iso, opts) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', opts);
 
 export default function InviteV2({ code }) {
-  const event = useMemo(() => findInviteEvent(code), [code]);
+  // Resolution order: local pool + patch layers FIRST (fast path — same-device
+  // demos keep working offline, exactly as before), then the backend public
+  // resolver for a guest opening the link on their own phone (the original's
+  // PublicRsvpRoute fallback, App.js). With no backend configured, behavior is
+  // unchanged from before: local or the not-found state, no loading flash.
+  const localEvent = useMemo(() => findInviteEvent(code), [code]);
+  // undefined = backend lookup in flight; { event: null } = genuinely not found.
+  const [resolved, setResolved] = useState(() =>
+    (localEvent || !isRsvpApiConfigured()) ? { event: localEvent } : undefined);
+  useEffect(() => {
+    let cancelled = false;
+    if (localEvent) { setResolved({ event: localEvent }); return undefined; }
+    if (!isRsvpApiConfigured()) { setResolved({ event: null }); return undefined; }
+    setResolved(undefined);
+    (async () => {
+      // fetchPublicInvite never throws — null covers not-found AND network
+      // failure, both of which land on the honest "ask your host" state below.
+      const remote = await fetchPublicInvite(code);
+      if (!cancelled) setResolved({ event: adaptRemoteInvite(remote, code) });
+    })();
+    return () => { cancelled = true; };
+  }, [code, localEvent]);
+  const event = (resolved && resolved.event) || null;
   const [guestName, setGuestName] = useState('');
   const [rsvp, setRsvp] = useState('');
   const [meal, setMeal] = useState('Standard');
@@ -120,7 +211,11 @@ export default function InviteV2({ code }) {
     try {
       if (!navigator.geolocation) { setNearState('denied'); return; }
       const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String((event && event.venue) || '').trim());
-      const q = String((event && event.venueCity) || '').trim() || (!homeish ? String((event && event.venue) || '').trim() : '');
+      // Same state-suffix disambiguation as HostShellV2's weather query — a
+      // bare city can silently geocode to the wrong same-named city elsewhere.
+      const vc = String((event && event.venueCity) || '').trim();
+      const vs = String((event && event.venueState) || '').trim();
+      const q = (vc && !/^\d{5}$/.test(vc) && vs ? `${vc}, ${vs}, US` : vc) || (!homeish ? String((event && event.venue) || '').trim() : '');
       if (!q) { setNearState('nocoords'); return; }
       const coords = await geocodeVenue(q);
       if (!coords) { setNearState('nocoords'); return; }
@@ -141,6 +236,10 @@ export default function InviteV2({ code }) {
   const tone = inviteTone(event || {});
   const pal = invitePalette(tone);
   const toneVars = useMemo(() => toneVarsFor(pal), [tone]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Classified ONCE per event — the canonical reader is pure but not free;
+  // it must not re-run on every keystroke of the reply form. Declared before
+  // the loading/not-found returns (hooks can't sit after a conditional).
+  const deck = useMemo(() => deckLineFor(event, tone === 'muted'), [event, tone]);
 
   // Flush anything queued offline for this event once we're back (parity with
   // the original's PublicRsvpRoute; a no-op while no backend is configured).
@@ -152,13 +251,39 @@ export default function InviteV2({ code }) {
     return () => window.removeEventListener('online', flush);
   }, [event, code]);
 
+  // Staged reveal (approved choreography): one element per beat in reading
+  // order. A single flag + per-element transition delays; reduced-motion CSS
+  // lands everything instantly. Declared BEFORE the loading/not-found returns
+  // (hooks can't sit after a conditional return once the event can arrive
+  // async) and armed only once the event exists, so a backend-resolved invite
+  // still gets the full reveal.
+  const [rvOn, setRvOn] = useState(false);
+  useEffect(() => {
+    if (!event) return undefined;
+    const t = setTimeout(() => setRvOn(true), 60);
+    return () => clearTimeout(t);
+  }, [event]);
+
+  // Backend lookup in flight (no local copy, API configured): a quiet, honest
+  // holding state in the invite's own voice — never a premature "not found".
+  if (!resolved) {
+    return (
+      <div className="stagewrap"><div className="app" style={toneVars}><div className="content">
+        <section style={{ paddingTop: 120, textAlign: 'center' }} aria-busy="true">
+          <div className="eyebrow">Invitation</div>
+          <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)' }} aria-live="polite">Loading your invite…</p>
+        </section>
+      </div></div></div>
+    );
+  }
+
   if (!event) {
     return (
       <div className="stagewrap"><div className="app" style={toneVars}><div className="content">
         <section style={{ paddingTop: 120, textAlign: 'center' }}>
           <div className="eyebrow">Invitation</div>
-          <h1 className="mega" style={{ fontSize: 'clamp(26px,8.5cqw,34px)', lineHeight: 1.1 }}>This link isn’t live anymore</h1>
-          <p className="mega-sub" style={{ fontSize: 15 }}>Ask your host for a fresh invite link — this one doesn’t match an event here.</p>
+          <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.1 }}>This link isn’t live anymore</h1>
+          <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)' }}>Ask your host for a fresh invite link — this one doesn’t match an event here.</p>
         </section>
       </div></div></div>
     );
@@ -173,6 +298,10 @@ export default function InviteV2({ code }) {
   // Social proof from the REAL roster only — never a fabricated number.
   const social = (() => {
     if (somber) return null;
+    // Backend-resolved invite: the roster is never sent to a stranger's device
+    // (server whitelist) — unknown is unknown, so say nothing rather than
+    // fabricate "Be the first to say yes".
+    if (event.rosterUnknown) return null;
     const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
     if (!yes.length) return 'Be the first to say yes';
     const names = [];
@@ -299,29 +428,9 @@ export default function InviteV2({ code }) {
   );
   const first = guestName.trim().split(/\s+/)[0] || '';
 
-  // Deck line — a small voice-keyed map (the original's DECK_BY_VOICE concept,
-  // scoped to what V2 can honestly claim). The host's own words win if set.
-  const deck = (() => {
-    const explicit = String(event.deckLine || '').trim();
-    if (explicit) return explicit;
-    const t = String(event.type || '') + ' ' + String(event.name || '');
-    if (somber) return 'In loving memory';
-    if (/crab|crawfish|low.?country|fish\s*fry|cook.?out|bbq|barbecue/i.test(t)) return 'Good food, good people';
-    if (/retire/i.test(t)) return 'A career worth celebrating';
-    if (/birthday/i.test(t)) return 'Another year, celebrated right';
-    if (/graduat/i.test(t)) return 'They did the work — come cheer';
-    if (/baby|shower/i.test(t)) return 'Something wonderful is coming';
-    if (/wedding|anniversary/i.test(t)) return 'Two names, one day';
-    return 'It wouldn’t be the same without you';
-  })();
   const mastRight = event.date ? dfmt(event.date, { month: 'short', year: 'numeric' }) : '';
   const mark = markUrlFor(event);
 
-  // Staged reveal (approved choreography): one element per beat in reading
-  // order. A single flag + per-element transition delays; reduced-motion CSS
-  // lands everything instantly.
-  const [rvOn, setRvOn] = useState(false);
-  useEffect(() => { const t = setTimeout(() => setRvOn(true), 60); return () => clearTimeout(t); }, []);
   let rvIdx = 0;
   const rv = (extra) => ({
     className: 'rv' + (rvOn ? ' in' : '') + (extra ? ' ' + extra : ''),
@@ -373,7 +482,7 @@ export default function InviteV2({ code }) {
                     quirk left the .answered descendant rules matching-but-inert,
                     so the state carries its own styles (transitions stay CSS). */}
                 <div className="inv2-countwrap" style={answered ? { maxHeight: 24, margin: '6px 0 0' } : undefined}>
-                  <div className="inv2-count lp-display" style={answered ? { display: 'inline', fontSize: 10, fontFamily: 'inherit', fontWeight: 800, letterSpacing: '.16em', margin: 0 } : undefined}>{days}</div>
+                  <div className="inv2-count lp-display" style={answered ? { display: 'inline', fontSize: 11, fontFamily: 'inherit', fontWeight: 800, letterSpacing: '.16em', margin: 0 } : undefined}>{days}</div>
                   <div className="inv2-label lp inv2-countlab" style={answered ? { display: 'inline', marginLeft: 5, marginTop: 0 } : { marginTop: 2 }}>{days === 1 ? 'day to go' : 'days to go'}</div>
                 </div>
               </div>
@@ -429,7 +538,7 @@ export default function InviteV2({ code }) {
                               <div className="chips" style={{ marginTop: 8 }}>
                                 {MEALS.map(m => chip(plusOneMeal === m, m, () => setPlusOneMeal(m), 'po-' + m))}
                               </div>
-                              <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Their allergies or needs — optional"
+                              <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Their allergies or needs — optional"
                                 value={plusOneNeeds} onChange={e => setPlusOneNeeds(e.target.value)} aria-label="Plus-one needs" />
                             </div>
                           )}
@@ -445,7 +554,7 @@ export default function InviteV2({ code }) {
                         {NEEDS.map(n => chip(needsSel.includes(n), n,
                           () => setNeedsSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n])))}
                       </div>
-                      <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 14 }} placeholder="Anything else we should know about food or access"
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
                         value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
                     </>
                   )}
@@ -454,7 +563,7 @@ export default function InviteV2({ code }) {
                     <>
                       <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Mailing address — optional</div>
                       <p className="grounding" style={{ margin: '0 0 6px' }}>Your host plans to mail thank-yous or favors. Skip it if you’d rather not.</p>
-                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
+                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
                         value={mailingAddress} onChange={e => setMailingAddress(e.target.value)} aria-label="Mailing address" />
                     </>
                   )}
@@ -462,7 +571,7 @@ export default function InviteV2({ code }) {
                   {rsvp && (
                     <>
                       <div className="shelf-label" style={{ margin: '14px 0 6px' }}>{rsvp === 'No' ? 'Send a note anyway?' : 'A note for your host — optional'}</div>
-                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 14 }}
+                      <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
                         placeholder={rsvp === 'No' ? 'Sorry to miss it — save me a plate!' : 'Can’t wait!'}
                         value={note} onChange={e => setNote(e.target.value)} aria-label="Note to host" />
                       {err && <p className="grounding" role="alert" style={{ marginTop: 10, color: 'var(--danger)' }}>{err}</p>}
@@ -481,7 +590,7 @@ export default function InviteV2({ code }) {
                 <div className="inv2-eyebrow lp" style={{ color: rsvp === 'Yes' ? 'var(--ok)' : undefined }}>
                   {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
                 </div>
-                <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 20, fontFamily: 'Georgia,serif' }}>
+                <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 21, fontFamily: 'var(--serif)' }}>
                   {queued ? 'Saved, ' + (first || 'friend') + ' — we’ll send it as soon as you’re back online.'
                     : rsvp === 'Yes' ? 'See you there, ' + (first || 'friend') + '.'
                     : rsvp === 'Maybe' ? 'Come back to this link when you know, ' + (first || 'friend') + '.'

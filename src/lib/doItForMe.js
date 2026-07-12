@@ -5,6 +5,9 @@
 // only ever uses what the host already told us (name, type, date, time, place,
 // honoree, head count). An AI key can polish later; the honest baseline is here.
 
+import { isVendorBooked } from './workstreams';
+import { transportDecision } from './travelPlan';
+
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
 
@@ -347,6 +350,31 @@ export function draftHelperBrief(event, profile, opts = {}) {
   }
   if (host) lines.push('', `— ${host}`);
   return { subject: `The plan for ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
+}
+
+// Per-helper confirm ask — ONE person's own message, not the whole-group brief
+// draftHelperBrief writes. `helper` is one deduped entry from
+// deriveHelperResponsibilities(event).helpers ({name, role}); `responsibilities`
+// is that SAME person's rows from .responsibilities (explicit param, not
+// re-derived here, so this stays a pure formatter like every other draft).
+// Never invents what they're covering — lists only what's actually assigned.
+export function draftHelperConfirm(event, profile, helper, responsibilities) {
+  if (!event || !helper) return { subject: '', body: '' };
+  const date = fmtLongDate(event.date);
+  const host = hostName(profile);
+  const name = (event.name ? String(event.name) : '').trim() || subjectThing(event);
+  const first = String(helper.name || 'there').trim().split(/\s+/)[0] || 'there';
+  const items = (Array.isArray(responsibilities) ? responsibilities : []).map(r => r.label).filter(Boolean);
+  const lines = [`Hi ${first} — quick check-in for ${name}${date ? ` (${date})` : ''}.`];
+  if (items.length) {
+    lines.push('', `You're on for:`);
+    items.forEach(i => lines.push(`  • ${i}`));
+    lines.push('', `Can you confirm you're still good for ${items.length === 1 ? 'this' : 'these'}? Thanks so much for helping out!`);
+  } else {
+    lines.push('', 'Just confirming you\'re still able to help out — thanks so much!');
+  }
+  if (host) lines.push('', `— ${host}`);
+  return { subject: `Quick confirm for ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }
 
 // Dietary note to the cook/caterer — from the guests' own dietary/needs fields, the app
@@ -741,7 +769,9 @@ export function draftVendorPaymentReminder(event, vendor) {
   const v = vendor || {};
   const name = String(v.name || '').trim();
   const evName = String((event && event.name) || '').trim() || 'our event';
-  const booked = !!v.contractSigned || /contracted|confirmed|booked|deposit paid/i.test(String(v.status || ''));
+  // POP-1C: isVendorBooked is the canonical vendor-status reader (workstreams.js) —
+  // consolidates what this inline regex checked (contracted/confirmed/booked/deposit paid).
+  const booked = !!v.contractSigned || isVendorBooked(v);
   const dep = Number(v.depositAmt) || 0;
   const cost = Number(v.cost) || 0;
   const due = String(v.payDueDate || v.depositDueDate || '').trim();
@@ -890,6 +920,127 @@ export function draftParkingInstructions(event) {
   // Rain-aware tail uses the host's OWN saved plan verbatim — never a guess.
   if (rain) lines.push(`If weather turns: ${rain}`);
   return lines.join(' ');
+}
+
+// ── DESTINATION-2 · slice 1 — the where-to-stay note ─────────────────────────
+// Guest-facing DRAFT (UX_07 Level 5: the host reviews and sends it themselves —
+// the button says Draft, never Send). Reads ONLY event.lodging, the same
+// host-entered fields lib/travelPlan normalizes: place name, nightly rate,
+// booking code, deadline, up to 2 backup options. Missing fields are OMITTED —
+// a line is never invented to fill the gap. Without a place name there is
+// nothing real to point guests at, so the body comes back empty and the UI's
+// standard "nothing to draft yet" guard fires. Plain host language throughout:
+// "the group rate ends", never industry jargon.
+export function draftLodgingNote(event) {
+  const ev = event || {};
+  const lo = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const hotel = String(lo.hotelName || '').trim();
+  if (!hotel) return { subject: '', body: '' };
+  const name = String(ev.name || '').trim();
+  const forName = name ? ` for ${name}` : '';
+  const rate = Number(lo.rate);
+  const hasRate = Number.isFinite(rate) && rate > 0;
+  const code = String(lo.code || '').trim();
+  const deadline = (() => { try { return fmtLongDate(lo.deadline); } catch { return ''; } })();
+  const backups = (Array.isArray(lo.backupOptions) ? lo.backupOptions : [])
+    .filter(b => b && String(b.name || '').trim())
+    .slice(0, 2);
+  const lines = [`Hi everyone — here’s where to stay${forName}:`, ''];
+  lines.push(`We’ve lined up rooms at ${hotel}.`);
+  if (hasRate && code) lines.push(`The group rate is $${rate} a night — give them the code ${code} when you book.`);
+  else if (hasRate) lines.push(`The group rate is $${rate} a night.`);
+  else if (code) lines.push(`Give them the code ${code} when you book to get the group rate.`);
+  if (deadline) lines.push(`Book by ${deadline} — after that the group rate goes away and rooms may cost more.`);
+  if (backups.length) {
+    lines.push('', 'If it fills up, or you’d rather stay somewhere else:');
+    backups.forEach(b => {
+      const note = String(b.note || '').trim();
+      lines.push(`- ${String(b.name).trim()}${note ? ` — ${note}` : ''}`);
+    });
+  }
+  lines.push('', 'Questions about rooms? Just reply here.');
+  return { subject: `Where to stay${forName}`, body: lines.join('\n').trim() };
+}
+
+// ── DESTINATION-2 · slice 2 — the getting-around note ─────────────────────────
+// Guest-facing DRAFT (UX_07 Level 5: the host reviews and sends it themselves).
+// Reads ONLY event.groundTransport (the host's own words: the late-night
+// reliability note VERBATIM, up to 2 pickup points) plus the dest_transport
+// decision answer via lib/travelPlan's transportDecision — the single source
+// Phase 1 already owns. Missing pieces are OMITTED; an undecided shuttle is
+// silence, never a guess. Nothing real to say → empty body (the UI's standard
+// "nothing to draft yet" guard). Ride matching stays HOST-MEDIATED: the note
+// invites replies for the host to pair up — it never assigns anyone a car.
+export function draftRidesNote(event) {
+  const ev = event || {};
+  const gt = (ev.groundTransport && typeof ev.groundTransport === 'object') ? ev.groundTransport : {};
+  const note = String(gt.lastReturnNote || '').trim();
+  const points = (Array.isArray(gt.pickupPoints) ? gt.pickupPoints : [])
+    .filter(p => p && String(p.name || '').trim())
+    .slice(0, 2);
+  const td = (() => { try { return transportDecision(ev); } catch { return { providing: null }; } })();
+  if (!note && !points.length && td.providing == null) return { subject: '', body: '' };
+  const name = String(ev.name || '').trim();
+  const forName = name ? ` for ${name}` : '';
+  const blocks = [`Hi everyone — here’s how getting around works${forName}:`];
+  if (td.providing === true) blocks.push('We’re arranging a shuttle or van for the group — you won’t need a car of your own unless you want one.');
+  else if (td.providing === false) blocks.push('There’s no group shuttle — plan on a rental car, or pair up with someone who has seats to spare.');
+  if (points.length) {
+    blocks.push(['Pickup spots:', ...points.map(p => {
+      const n = String(p.note || '').trim();
+      return `- ${String(p.name).trim()}${n ? ` — ${n}` : ''}`;
+    })].join('\n'));
+  }
+  if (note) blocks.push(`Getting back at night: ${note}`);
+  blocks.push(td.providing === true
+    ? 'Questions about getting around? Just reply here.'
+    : 'Need a ride, or have seats to spare? Reply here and I’ll pair people up.');
+  return { subject: `Getting around${forName}`, body: blocks.join('\n\n').trim() };
+}
+
+// ── DESTINATION-2 · slice 3 — the getting-here note ───────────────────────────
+// Guest-facing DRAFT (UX_07 Level 5: the host reviews and sends it themselves —
+// the button says Draft, never Send). Reads ONLY the host's own fields: the
+// airport options WITH their honest tradeoff notes (event.airportOptions, the
+// same rows lib/travelPlan normalizes, cap 3), the event's real date window,
+// and the dest_transport decision answer via transportDecision (Phase 1's
+// single source). Arrive-by guidance derives from the event's own date/time
+// fields — a time is NEVER invented. Missing pieces are OMITTED; an undecided
+// shuttle is silence. No airports means there is nothing real to point guests
+// at, so the body comes back empty (the UI's standard "nothing to draft yet"
+// guard). Block-join structure, same as draftRidesNote.
+export function draftGettingHereNote(event) {
+  const ev = event || {};
+  const airports = (Array.isArray(ev.airportOptions) ? ev.airportOptions : [])
+    .filter(a => a && (String(a.name || '').trim() || String(a.code || '').trim()))
+    .slice(0, 3);
+  if (!airports.length) return { subject: '', body: '' };
+  const name = String(ev.name || '').trim();
+  const forName = name ? ` for ${name}` : '';
+  const blocks = [`Hi everyone — here’s how to get here${forName}:`];
+  blocks.push([airports.length === 1 ? 'Fly into:' : 'Airports worth comparing:', ...airports.map(a => {
+    const an = String(a.name || '').trim();
+    const code = String(a.code || '').trim();
+    const note = String(a.note || '').trim();
+    const label = an && code ? `${an} (${code})` : (an || code);
+    return `- ${label}${note ? ` — ${note}` : ''}`;
+  })].join('\n'));
+  // The land-by / fly-home-after line comes from the host's own date fields.
+  // Multi-day (a real endDate later than the date) gets the window; a single
+  // day gets the day, plus the start time ONLY when the host actually gave one.
+  const start = (() => { try { return fmtLongDate(ev.date); } catch { return ''; } })();
+  const end = (() => { try { return fmtLongDate(ev.endDate); } catch { return ''; } })();
+  if (start && end && end !== start) {
+    blocks.push(`It runs ${start} through ${end} — plan to land before it starts, and book the flight home for after it ends.`);
+  } else if (start) {
+    const tp = (() => { try { return timePhrase(ev); } catch { return ''; } })();
+    blocks.push(`The day itself is ${start}${tp ? ` — it starts ${/^in the /.test(tp) ? tp : `at ${tp}`}` : ''}. Plan to land before then.`);
+  }
+  const td = (() => { try { return transportDecision(ev); } catch { return { providing: null }; } })();
+  if (td.providing === true) blocks.push('Once you land, we’re arranging a shuttle or van for the group — you won’t need a car of your own unless you want one.');
+  else if (td.providing === false) blocks.push('Once you land, getting around is on your own wheels — plan on a rental car, or pair up with someone who has seats to spare.');
+  blocks.push('Questions about flights or timing? Just reply here.');
+  return { subject: `Getting here${forName}`, body: blocks.join('\n\n').trim() };
 }
 
 export async function shareOrCopy({ title, text }) {

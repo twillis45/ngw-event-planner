@@ -1,4 +1,9 @@
 import { useState } from 'react';
+import {
+  PLATFORM_LABELS, MODE_LABELS,
+  fmtBatchTs as fmtTs,
+  buildImportReportText as buildCopyText,
+} from '../lib/importHistory';
 
 // ─── palette (matches app dark theme; accepts override via props) ─────────────
 const D = {
@@ -6,55 +11,6 @@ const D = {
   accent: '#7c6ef8', text: '#e8e8f0', muted: '#6b6b80',
   danger: '#f87171', success: '#4ade80', warn: '#fbbf24',
 };
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-const PLATFORM_LABELS = {
-  ngw:       'NGW Native',
-  theknot:   'The Knot',
-  zola:      'Zola',
-  paperless: 'Paperless Post',
-};
-
-const MODE_LABELS = {
-  add_new: 'Add New Only',
-  merge:   'Merge',
-  replace: 'Replace All',
-};
-
-function fmtTs(ts) {
-  if (!ts) return '—';
-  const d = new Date(ts);
-  const today = new Date();
-  const yesterday = new Date(today);
-  yesterday.setDate(today.getDate() - 1);
-  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  if (d.toDateString() === today.toDateString())     return `Today ${time}`;
-  if (d.toDateString() === yesterday.toDateString()) return `Yesterday ${time}`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ` ${time}`;
-}
-
-function buildCopyText(batch) {
-  const platform = PLATFORM_LABELS[batch.platform] || batch.platform || 'CSV Import';
-  const mode     = MODE_LABELS[batch.mergeMode]   || batch.mergeMode || '—';
-  const date     = new Date(batch.ts).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-  const lines = [
-    'NGW Import Report',
-    '──────────────────',
-    `Batch:    ${batch.id}`,
-    `Date:     ${date}`,
-    `Platform: ${platform}`,
-    `Mode:     ${mode}`,
-    '',
-    'Results:',
-    `  + ${batch.inserted ?? 0} added`,
-    `  ↻ ${batch.updated  ?? 0} updated`,
-    `  ✕ ${batch.removed  ?? 0} removed`,
-    `  — ${batch.skipped  ?? 0} skipped`,
-    `  ⚠ ${batch.warnCount ?? 0} warnings`,
-  ];
-  return lines.join('\n');
-}
 
 // ─── BatchCard ────────────────────────────────────────────────────────────────
 function BatchCard({ batch, isLast, onUndo, C }) {

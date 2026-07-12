@@ -675,6 +675,20 @@ describe('playbookFoodPlan (the food-choice surface data)', () => {
       expect(after.short).toBe('Mustard greens');
       expect(after.high).toBe(before.high); // no price data on the string alt → unchanged
     });
+    // The swap-chip cost delta shown in the UI (HostShellV2.jsx) reuses the item's own
+    // `units` × the alternative's normalized unitCostRange — never a UI-side re-derivation
+    // of the engine's price factors. This confirms that math actually lines up with what
+    // the engine produces once the swap is applied, so the UI's delta reads a real number.
+    test('a priced alternative\'s low/high matches units × its own unitCostRange (the UI delta\'s basis)', () => {
+      const { normalizeAlternative } = require('../index');
+      const before = playbookFoodPlan(base).list.find((i) => i.id === 'p_ribs');
+      const alt = (before.alternatives || []).map(normalizeAlternative).find((a) => a.name === 'Pork shoulder');
+      expect(alt.unitCostRange).toEqual([3, 6]);
+      const after = playbookFoodPlan({ ...base, foodSwap: { p_ribs: 'Pork shoulder' } }).list.find((i) => i.id === 'p_ribs');
+      expect(after.low).toBe(Math.round(before.units * alt.unitCostRange[0]));
+      expect(after.high).toBe(Math.round(before.units * alt.unitCostRange[1]));
+      expect(after.low).toBeLessThan(before.low);
+    });
   });
 
   // 1597-2 — protein SOURCING tier reshapes the protein lines (not the sides).
@@ -940,6 +954,31 @@ describe('safe-headcount band — attendanceBand()', () => {
   test('no count signal → not applicable (nothing to claim)', () => {
     expect(attendanceBand({ guests: [] }).applicable).toBe(false);
     expect(attendanceBandLabel(attendanceBand({ guests: [] }))).toBe(null);
+  });
+
+  describe('NO-UPPER-CLAMP-1 — an implausible count is named, never silently rewritten', () => {
+    test('an ordinary planned count carries no "double-checking" note', () => {
+      const b = attendanceBand({ type: 'Crab Feast', guestEstimate: 75 });
+      expect(b.because).not.toMatch(/double-checking/);
+    });
+    test('5,000 guests for a backyard crab feast is NOT clamped — the count is honored exactly, only named', () => {
+      const b = attendanceBand({ type: 'Crab Feast', guestEstimate: 5000 });
+      expect(b.planned).toBe(5000); // never silently rewritten
+      expect(b.high).toBeGreaterThan(4000); // still scales — no math clamp either, just a note
+      expect(b.because).toMatch(/double-checking/);
+    });
+    test('a LOCKED extreme count still gets the note (locked only skips the attendance-shift band, not the sanity note)', () => {
+      const b = attendanceBand({ type: 'Crab Feast', guestCount: 5000, guestCountLocked: true });
+      expect(b.band).toBe(false);
+      expect(b.planning).toBe(5000);
+      expect(b.because).toMatch(/double-checking/);
+    });
+    test('the threshold scales with the event type\'s typical size — a big wedding at 1,000 is not flagged, but 1,000 for a casual cookout is', () => {
+      const wedding = attendanceBand({ type: 'Wedding', guestEstimate: 1000 });
+      const cookout = attendanceBand({ type: 'The Cookout', guestEstimate: 1000 });
+      expect(wedding.because).not.toMatch(/double-checking/);
+      expect(cookout.because).toMatch(/double-checking/);
+    });
   });
 });
 

@@ -67,6 +67,22 @@ export function attendanceShift(type, playbook) {
   return { class: cls, low, high, note: base.note };
 }
 
+// NO-UPPER-CLAMP-1 — an implausible count (5,000 for a backyard crab feast) used to
+// scale every downstream quantity/budget/crab estimate linearly with no "that seems
+// high, did you mean 50?" Exported so every consumer of a planned/estimated count —
+// not just attendanceBand()'s wrapper — can surface the same honest note without a
+// parallel threshold. Never clamps the number itself (a host may genuinely run
+// something this large); only names it, the same "explain, never silently rewrite"
+// shape the crab-pickers guardrail already uses. playbook.meta.typicalGuests.default
+// sets the bar relative to what's normal for THIS event type (a big wedding isn't
+// implausible; the same number for a casual cookout is), with a 500-guest floor so
+// small-typical types (e.g. an 18-guest crab feast) don't over-trigger.
+export function implausibleGuestNote(n, type, playbook) {
+  const typical = playbook && playbook.meta && playbook.meta.typicalGuests && playbook.meta.typicalGuests.default;
+  const threshold = Math.max(500, (Number(typical) || 20) * 15);
+  return Number(n) > threshold ? `That's a lot for a typical ${type || 'event'} — worth double-checking the number.` : '';
+}
+
 // expectedFromPlanned(n, type, playbook) → { low, high, planning, note, class } — the
 // expected attendance band around a planned count `n`. planning = the high (size to it
 // so you won't run short). Returns null for a non-positive count.
@@ -76,5 +92,6 @@ export function expectedFromPlanned(n, type, playbook) {
   const sh = attendanceShift(type, playbook);
   const low = Math.round(planned * sh.low);
   const high = Math.round(planned * sh.high);
-  return { planned, low, high, planning: high, note: sh.note, class: sh.class };
+  const highNote = implausibleGuestNote(planned, type, playbook);
+  return { planned, low, high, planning: high, note: highNote ? `${sh.note} ${highNote}` : sh.note, class: sh.class };
 }

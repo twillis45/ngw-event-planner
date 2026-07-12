@@ -468,6 +468,7 @@ function Step4({ data, onChange }) {
         <div style={{ marginBottom: space[6] }}>
           <BudgetEstimateHint
             type={data.type}
+            isDestination={!!data.isDestination}
             guestCount={data.guestEstimate || (data.guests || []).length}
             date={data.date}
             timeOfDay={data.timeOfDay || 'afternoon'}
@@ -513,7 +514,7 @@ function Step4({ data, onChange }) {
         // without a playbook keep the share-based estimate.
         const pbCats = (data.type && Number(guestCount) >= 1)
           ? playbookBudgetCategories(data.type, guestCount) : null;
-        const range = data.type ? estimateTotalRange({ type: data.type, guestCount, date: data.date, timeOfDay: data.timeOfDay || 'afternoon' }) : null;
+        const range = data.type ? estimateTotalRange({ type: data.type, guestCount, date: data.date, timeOfDay: data.timeOfDay || 'afternoon', isDestination: !!data.isDestination }) : null;
         const cats = pbCats || (range ? breakdownByCategory(range.lowTotal, range.highTotal, data.type) : null);
         if (!cats || !cats.length) return null;
         const rowFor = (label) => budget.find(r => r.category === label);

@@ -42,13 +42,17 @@ export default function BudgetEstimateHint({
   palette = DEFAULT_PALETTE,
   compact = false,
   family = null,
+  isDestination = false,
 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
 
   // Sprint 61.G / 60.Y — shared total math (metroFactor neutral at 1.0 so we
   // never claim a market adjustment the component can't derive from the lib).
-  const { lowTotal, highTotal } = estimateTotalRange({ type, guestCount: guests, date, timeOfDay, metroFactor: 1 });
+  // DESTINATION-3 — isDestination blends the band toward the travel-led range
+  // (see estimateTotalRange); destinationAdjusted drives the honest disclosure
+  // in the anchor line below.
+  const { lowTotal, highTotal, destinationAdjusted } = estimateTotalRange({ type, guestCount: guests, date, timeOfDay, metroFactor: 1, isDestination });
 
   const conf = estimatorConfidence({
     hasType:       !!type,
@@ -112,7 +116,7 @@ export default function BudgetEstimateHint({
       </div>
 
       <div style={{ fontSize: 11.5, color: palette.muted, marginTop: 4, lineHeight: 1.5 }}>
-        Anchored to per-head averages{profile?.metroMarket ? ', your saved metro' : ''}{date ? ', date factors' : ''}.
+        Anchored to per-head averages{profile?.metroMarket ? ', your saved metro' : ''}{date ? ', date factors' : ''}{destinationAdjusted ? ', widened to the destination travel range' : ''}.
         {' '}{conf.level === 'low' && 'Adding date and metro will tighten the range.'}
       </div>
 
@@ -153,7 +157,9 @@ export default function BudgetEstimateHint({
             margin: '6px 0 0 16px', padding: 0,
             fontSize: 11, color: palette.muted, lineHeight: 1.55,
           }}>
-            {notIncludedFor(family || type).slice(0, 5).map(item => <li key={item}>{item}</li>)}
+            {/* DESTINATION-3 — destination merge prepends 3 travel lines to the
+                family's 5; show all 8 so the base family's exclusions survive. */}
+            {notIncludedFor(family || type, { isDestination }).slice(0, isDestination ? 8 : 5).map(item => <li key={item}>{item}</li>)}
           </ul>
         </details>
       )}

@@ -1,20 +1,30 @@
 """Unit tests for research_executor.py — pure functions only (no DB, no routes)."""
 
 import asyncio
+import json
 import pytest
+import httpx
 
 from app.research_executor import (
     PROVIDER_TO_FAMILY,
     POLICY_DEFAULTS,
     NON_RETRYABLE,
     RATE_LIMIT_PER_MINUTE,
+    LIVE_PROVIDERS,
     policy_for,
     classify_failure,
     should_retry,
     simulate_provider,
     check_rate_limit,
     execute_provider_async,
+    fetch_fda_foodsafety_live,
+    fetch_crossref_academic_live,
 )
+
+
+def _mock_client(handler):
+    """httpx.AsyncClient wired to a MockTransport — no real network call."""
+    return httpx.AsyncClient(transport=httpx.MockTransport(handler))
 
 
 # ---------------------------------------------------------------------------
@@ -240,3 +250,121 @@ class TestExecuteProviderAsync:
                     "no-such-provider", "pricing", self._FIELD, self._PLAYBOOK, self._ASOF
                 )
             )
+
+    def test_live_mode_unsupported_provider_raises(self):
+        # market-pricing has no real data source wired — must raise, never
+        # silently fall back to fabricated data under a "live" label.
+        with pytest.raises(RuntimeError, match="Live fetch not implemented"):
+            asyncio.run(
+                execute_provider_async(
+                    "market-pricing", "pricing", self._FIELD, self._PLAYBOOK, self._ASOF,
+                    mode="live",
+                )
+            )
+
+    def test_live_providers_are_exactly_fda_and_scholar(self):
+        assert LIVE_PROVIDERS == {"fda-foodsafety", "scholar"}
+
+
+# ---------------------------------------------------------------------------
+# fetch_fda_foodsafety_live — real openFDA integration, mocked transport
+# ---------------------------------------------------------------------------
+
+
+class TestFetchFdaFoodsafetyLive:
+    def test_parses_real_shaped_response(self):
+        def handler(request):
+            assert request.url.host == "api.fda.gov"
+            body = {
+                "results": [
+                    {
+                        "product_description": "Frozen Ribs, 2lb",
+                        "reason_for_recall": "Undeclared allergen",
+                        "status": "Ongoing",
+                        "report_date": "20260601",
+                    }
+                ]
+            }
+            return httpx.Response(200, json=body)
+
+        async def run():
+            async with _mock_client(handler) as client:
+                return await fetch_fda_foodsafety_live("food.p_ribs", "the cookout", 5.0, client=client)
+
+        records = asyncio.run(run())
+        assert len(records) == 1
+        r = records[0]
+        assert r["provider_id"] == "fda-foodsafety"
+        assert r["source"] == "openFDA Food Enforcement"
+        assert "Frozen Ribs" in r["statement"]
+        assert "Undeclared allergen" in r["statement"]
+        assert r["gap_type"] == "safety"
+
+    def test_no_matches_returns_empty_not_error(self):
+        def handler(request):
+            return httpx.Response(404, json={"error": {"code": "NOT_FOUND"}})
+
+        async def run():
+            async with _mock_client(handler) as client:
+                return await fetch_fda_foodsafety_live("food.p_ribs", "the cookout", 5.0, client=client)
+
+        assert asyncio.run(run()) == []
+
+    def test_server_error_raises(self):
+        def handler(request):
+            return httpx.Response(500, json={"error": "boom"})
+
+        async def run():
+            async with _mock_client(handler) as client:
+                return await fetch_fda_foodsafety_live("food.p_ribs", "the cookout", 5.0, client=client)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            asyncio.run(run())
+
+
+# ---------------------------------------------------------------------------
+# fetch_crossref_academic_live — real Crossref integration, mocked transport
+# ---------------------------------------------------------------------------
+
+
+class TestFetchCrossrefAcademicLive:
+    def test_parses_real_shaped_response(self):
+        def handler(request):
+            assert request.url.host == "api.crossref.org"
+            assert "mailto=" in str(request.url)
+            body = {
+                "message": {
+                    "items": [
+                        {
+                            "title": ["Guest Count Forecasting for Outdoor Events"],
+                            "DOI": "10.1234/abcd",
+                            "container-title": ["J. Hospitality Management"],
+                            "issued": {"date-parts": [[2024]]},
+                        }
+                    ]
+                }
+            }
+            return httpx.Response(200, json=body)
+
+        async def run():
+            async with _mock_client(handler) as client:
+                return await fetch_crossref_academic_live("guests.count", "the cookout", 5.0, client=client)
+
+        records = asyncio.run(run())
+        assert len(records) == 1
+        r = records[0]
+        assert r["provider_id"] == "scholar"
+        assert r["source"] == "Crossref"
+        assert "Guest Count Forecasting" in r["statement"]
+        assert r["url"] == "https://doi.org/10.1234/abcd"
+        assert r["extractedFacts"][0]["value"] == "10.1234/abcd"
+
+    def test_empty_items_returns_empty(self):
+        def handler(request):
+            return httpx.Response(200, json={"message": {"items": []}})
+
+        async def run():
+            async with _mock_client(handler) as client:
+                return await fetch_crossref_academic_live("guests.count", "the cookout", 5.0, client=client)
+
+        assert asyncio.run(run()) == []
