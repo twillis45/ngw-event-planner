@@ -126,9 +126,9 @@ button{font-family:inherit}
 .tpuck:active{cursor:grabbing; z-index:2}
 .tpuck.seated{background:var(--steel); border-color:var(--steel); color:var(--carbon-text)}
 .tpuck.seatable{box-shadow:0 0 0 2px var(--steel-soft), 0 2px 8px -3px rgba(0,0,0,.5)}
-.tp-label{font-size:11px; font-weight:750; line-height:1.05; text-align:center; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
-.tp-count{font-size:10px; font-weight:700; opacity:.8; font-variant-numeric:tabular-nums}
-.floorplan-hint{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:10.5px; color:var(--faint); pointer-events:none}
+.tp-label{font-size:var(--t-caption-min); font-weight:750; line-height:1.05; text-align:center; max-width:74px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.tp-count{font-size:var(--t-caption-min); font-weight:700; opacity:.8; font-variant-numeric:tabular-nums}
+.floorplan-hint{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--t-caption-min); color:var(--faint); pointer-events:none}
 .chip{
   font-size:var(--t-chip); font-weight:650; color:var(--ink-soft); background:var(--card);
   border:1px solid var(--line); border-radius:999px; padding:7px 14px; cursor:pointer;
@@ -468,6 +468,10 @@ button{font-family:inherit}
 /* ── Micro-motion: press feedback + entrance settles (choreography timings, no bounce) ── */
 @keyframes cardin{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
 .chip:active, .cta:active, .lens:active, .dock button:active, .tile-d:active{transform:scale(.965)}
+/* Press feedback on the LARGE tap targets too (motion re-audit: the primary
+   checklist/row/chip-row surfaces had only :hover, so on touch — where there's
+   no hover — the biggest targets gave zero press response). */
+.frow:active, .brow:active, .wchip:active, .db-row:active, .fold-btn:active{transform:scale(.985)}
 .chip, .cta, .lens, .dock button{will-change:transform}
 
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
@@ -1392,6 +1396,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    period seated and lit, tagline landed) — shown 400ms, then dismissed. */
 @media(prefers-reduced-motion:reduce){
   .splash .sp-carv{opacity:1}
+  /* tagline lines start at opacity:0 and rely on animation to appear — under
+     reduced motion (animations killed) they'd stay invisible. Pin them shown
+     (motion re-audit bug). */
+  .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
   .splash .sp-l2{transform:none}
   .splash .sp-dot{transform:none; background-color:#eef0f4;
     box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}

@@ -2417,9 +2417,12 @@ export default function HostShellV2() {
     prevInboundCount.current = count;
   }, [event, customs, eventId]);
   const feedback = (kind) => {
-    if (muted) return;
-    try { if (navigator.vibrate) navigator.vibrate(kind === 'magic' ? [12, 70, 12] : 10); } catch { /* no haptics */ }
-    if (kind === 'magic') { try { playMessageChime(); } catch { /* no audio */ } }
+    // The "Sound" setting (muted) gates the AUDIO chime ONLY — a host who
+    // silences sound still gets haptics (motion re-audit: muting sound also
+    // killed all vibration, so silent-haptics was impossible). Distinct patterns
+    // per intent so commit / celebration / error each feel different.
+    try { if (navigator.vibrate) navigator.vibrate(kind === 'magic' ? [12, 70, 12] : kind === 'error' ? [40, 30, 40] : 10); } catch { /* no haptics */ }
+    if (kind === 'magic' && !muted) { try { playMessageChime(); } catch { /* no audio */ } }
   };
 
   // SYNC-HONESTY-1: the exact test patchEvent itself uses to decide whether an
@@ -3436,12 +3439,17 @@ export default function HostShellV2() {
               )}
 
               <div className="bento">
-                <button className="tile tile-a" onClick={() => {
-                  // Tap = take me to what's next, front and center (attention
-                  // system); the caret corner toggles the readouts panel.
-                  if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
-                  else setHandledOpen(o => !o);
-                }}>
+                {/* role=button div, NOT a <button> — it contains its own interactive
+                    "what's counted" caret, and a native button-in-button is invalid
+                    HTML + ambiguous to screen readers (per-screen re-audit). */}
+                <div className="tile tile-a" role="button" tabIndex={0}
+                  onClick={() => {
+                    // Tap = take me to what's next, front and center (attention
+                    // system); the caret corner toggles the readouts panel.
+                    if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
+                    else setHandledOpen(o => !o);
+                  }}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (actions.length) { setEditor(null); spotlight(String(actions[0].id || 0)); } else setHandledOpen(o => !o); } }}>
                   <div className="t-label">Where you stand{' '}
                     <span role="button" tabIndex={0} style={{ opacity: .55, padding: '2px 6px' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
@@ -3499,7 +3507,7 @@ export default function HostShellV2() {
                       );
                     })()}
                   </div>
-                </button>
+                </div>
                 <button className="tile tile-b" onClick={() => setSheet({ kind: 'guests' })}>
                   <div className="t-label">Guests</div>
                   <div>
