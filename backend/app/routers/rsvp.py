@@ -72,6 +72,10 @@ PUBLIC_EVENT_FIELDS = (
     "venue", "venueAddress", "venueCity", "venueState", "address",
     "inviteStyle", "hostNames", "rsvpCode",
     "dressCode", "parking", "bringNote", "hostContact",
+    # Recap keepsake — host-authored content the host chooses to publish to the
+    # shared invite link (a note + a photo-album URL). Both are host-facing-public
+    # by intent, not PII, so they belong in the whitelist for the post-event recap.
+    "recapNote", "albumUrl",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────

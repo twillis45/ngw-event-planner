@@ -1227,6 +1227,12 @@ export default function HostShellV2() {
   // Seed the draft from the saved lesson whenever the event changes (getLesson
   // is the canonical reader; setLesson the writer — 200-char cap lives in lib).
   useEffect(() => { setLessonDraft(getLesson(event)); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Recap keepsake the host publishes to the shared invite link: a note to
+  // guests + a real photo-album URL. Both appear on the invite ONLY after the
+  // event date (the recap state), and only when set — never fabricated.
+  const [recapDraft, setRecapDraft] = useState('');
+  const [albumDraft, setAlbumDraft] = useState('');
+  useEffect(() => { setRecapDraft(String(event.recapNote || '')); setAlbumDraft(String(event.albumUrl || '')); }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event memory: the one persisted field the original uses (event.lessons).
   // Recall reads across the loaded events — a past event of the same type.
   const lastLesson = useMemo(() => {
@@ -4674,6 +4680,38 @@ export default function HostShellV2() {
                     {getLesson(event) && lessonDraft.trim() === getLesson(event) && (
                       <span className="of" style={{ color: 'var(--ok)' }}>on record</span>
                     )}
+                  </div>
+                </div>
+              )}
+              {/* Recap keepsake on the invite link — when a guest reopens the
+                  shared link after the event, it becomes a recap. The host's note
+                  and a real photo-album URL land there. Both optional; blank ones
+                  simply don't show (the recap never fabricates content). */}
+              {isPast && (
+                <div style={{ marginTop: 'var(--sp-4)' }}>
+                  <div className="shelf-label" style={{ marginBottom: 6 }}>On your invite link — guests see this when they reopen it</div>
+                  <textarea className="field" style={{ maxWidth: 'none', minHeight: 52, resize: 'vertical', fontSize: 'var(--t-input)' }}
+                    placeholder="A note to everyone — “What a day. Thank you all for coming.”"
+                    value={recapDraft} onChange={e => setRecapDraft(e.target.value)} aria-label="Recap note for guests" />
+                  <input className="field" style={{ maxWidth: 'none', marginTop: 'var(--sp-2)', fontSize: 'var(--t-input)' }}
+                    type="url" inputMode="url" placeholder="Photo album link — Google Photos, iCloud, a shared drive…"
+                    value={albumDraft} onChange={e => setAlbumDraft(e.target.value)} aria-label="Photo album link" />
+                  {albumDraft.trim() && !/^https?:\/\//i.test(albumDraft.trim()) && (
+                    <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--warn)' }}>Add the full link (starts with https://) so it opens for guests.</p>
+                  )}
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                    {(() => {
+                      const clean = albumDraft.trim();
+                      const albumOk = !clean || /^https?:\/\//i.test(clean);
+                      const dirty = recapDraft.trim() !== String(event.recapNote || '').trim() || clean !== String(event.albumUrl || '').trim();
+                      return (
+                        <button className="cta" disabled={!dirty || !albumOk} style={(!dirty || !albumOk) ? { opacity: .45 } : undefined}
+                          onClick={() => patchEvent({ recapNote: recapDraft.trim(), albumUrl: clean },
+                            (recapDraft.trim() || clean) ? 'Saved — it’s on your invite link’s recap now.' : 'Recap cleared.')}>
+                          {(event.recapNote || event.albumUrl) ? 'Update the recap' : 'Publish the recap'}
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

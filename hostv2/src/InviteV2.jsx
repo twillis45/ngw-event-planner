@@ -171,6 +171,10 @@ function adaptRemoteInvite(remote, code) {
     // Anonymized social proof (rsvp.py adds goingCount to the public event) —
     // a count only, so the invite can show "N going" with the roster withheld.
     goingCount: Number.isFinite(Number(remote.goingCount)) ? Number(remote.goingCount) : null,
+    // Recap keepsake (host-authored, not PII) — carried on the public event so a
+    // backend invite reopened after the date shows the host's note + album link.
+    recapNote: remote.recapNote || '',
+    albumUrl: remote.albumUrl || '',
   };
 }
 
@@ -405,6 +409,12 @@ export default function InviteV2({ code }) {
   const myPriorRsvp = (() => {
     try { const q = JSON.parse(localStorage.getItem('ngw-rsvp-queue-' + event.id) || '[]'); const m = Array.isArray(q) && q.length ? q[q.length - 1] : null; return (m && m.rsvp) || null; } catch { return null; }
   })();
+  // Recap keepsake content — REAL host-provided material only, never fabricated.
+  // recapNote: the host's own words to guests (a thank-you). albumUrl: a real
+  // photo album the host links (Google Photos, iCloud, etc.) — rendered only when
+  // it's a genuine http(s) URL, so a bad/injected value can never become a link.
+  const recapNote = (() => { const s = String(event.recapNote || '').trim(); return s || null; })();
+  const albumUrl = (() => { const s = String(event.albumUrl || '').trim(); return /^https?:\/\//i.test(s) ? s : null; })();
 
   // Structured selections carry to the app as arrays; needsJoined stays a
   // human string for display + the legacy free-text regex consumers.
@@ -606,13 +616,23 @@ export default function InviteV2({ code }) {
 
             {isPast ? (
               <div {...rv('inv2-ask')}>
-                {/* Post-event recap — replaces the RSVP ask when the date has passed. */}
-                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>Afterward</div>
+                {/* Post-event recap — a keepsake close, replacing the RSVP ask once
+                    the date has passed. Everything here is real: the attendance
+                    count, the host's own note, and a real photo album if the host
+                    linked one. Nothing is fabricated; absent pieces stay silent. */}
+                <div className="inv2-label lp" style={{ textAlign: 'center', margin: '0 0 10px' }}>Afterward</div>
+                {recapNote && (
+                  <p className="inv2-deck lp" style={{ margin: '0 0 12px', textAlign: 'center', fontStyle: 'italic' }}>“{recapNote}”</p>
+                )}
                 <p className="grounding" style={{ margin: '0 0 6px', textAlign: 'center' }}>
                   {recapAttendance ? recapAttendance + ' — thank you for celebrating.' : 'Thank you for celebrating.'}
                   {myPriorRsvp === 'Yes' ? ' You were in.' : ''}
                 </p>
-                <div className="actions-row" style={{ marginTop: 8, justifyContent: 'center' }}>
+                {albumUrl
+                  ? <p className="grounding" style={{ margin: '2px 0 0', textAlign: 'center', opacity: .8 }}>The photos from the day are up — take a look.</p>
+                  : <p className="grounding" style={{ margin: '2px 0 0', textAlign: 'center', opacity: .8 }}>Got photos? Share them so everyone can relive it.</p>}
+                <div className="actions-row" style={{ marginTop: 12, justifyContent: 'center', gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                  {albumUrl && <a className="mini" href={albumUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>See the photos</a>}
                   <button className="mini" onClick={() => shareForward(false)}>{shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Share the memory'}</button>
                 </div>
               </div>
