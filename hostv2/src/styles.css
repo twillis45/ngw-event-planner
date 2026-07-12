@@ -5,7 +5,7 @@
 :root{
   color-scheme:dark; /* native controls (date picker, scrollbars) render for dark */
   --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* production's FF_SERIF — hero titles + countdown */
+  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* CEREMONIAL/EDITORIAL surfaces ONLY — welcome gate, guest invite, the create Reveal. Operational host-shell heroes (Plan countdown, Guests, sheet heroes, After) use --sans. (Font audit 2026-07-12: the old "hero titles + countdown" note was wrong — the operational heroes are sans; After was the one serif straggler, now fixed.) */
 
   /* ── Host-app type scale — the SINGLE source of truth (UX_01 type-scale
      table names these same tokens). Tokens are named by ROLE, not value:

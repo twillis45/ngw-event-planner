@@ -4490,7 +4490,11 @@ export default function HostShellV2() {
           {stage === 'after' && (
             <section>
               <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how it’ll wrap up'}</div>
-              <h1 className="mega" style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-xl)', lineHeight: 1.08, letterSpacing: '-.015em' }}>
+              {/* Sans, not serif (font audit): After is an OPERATIONAL host-shell
+                  tab, so its hero matches Plan's "56 days" / the sheet heroes (the
+                  .mega sans display face). Serif stays reserved for the ceremonial
+                  /editorial surfaces — welcome gate, invite, the create Reveal. */}
+              <h1 className="mega" style={{ fontSize: 'var(--t-display-xl)', lineHeight: 1.08 }}>
                 {isPast ? 'How it landed.' : 'How it’ll land.'}
               </h1>
               <p className="mega-sub">
@@ -5795,7 +5799,7 @@ export default function HostShellV2() {
                     <div className="card" style={{ marginBottom: 12, padding: '13px 15px' }}>
                       <div className="line" style={{ padding: 0 }}>
                         <span className="shelf-label" style={{ margin: 0 }}>{proc.explanation.pricingModel === 'host-entered-actual' ? 'Your crab cost' : 'Estimated crab cost'}</span>
-                        <span className="amt" style={{ fontSize: 20, fontWeight: 800 }}>
+                        <span className="amt" style={{ fontSize: 'var(--t-stat-sm)', fontWeight: 800 }}>
                           {proc.cost.low === proc.cost.high ? fmt(proc.cost.low) : fmt(proc.cost.low) + '–' + fmt(proc.cost.high)}
                         </span>
                       </div>
@@ -7918,7 +7922,7 @@ export default function HostShellV2() {
                 return (
                   <div style={{ padding: '2px 2px 12px' }}>
                     <div className="eyebrow">Your people</div>
-                    <div className="mega" style={{ fontSize: 46, margin: '6px 0 2px' }}>{n > 0 ? n : '—'}</div>
+                    <div className="mega" style={{ fontSize: 'var(--t-hero-star)', margin: '6px 0 2px' }}>{n > 0 ? n : '—'}</div>
                     <div className="mega-sub" style={{ fontSize: 'var(--t-body)', minHeight: 0 }}>{sub}</div>
                   </div>
                 );
