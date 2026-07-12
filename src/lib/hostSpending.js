@@ -42,18 +42,26 @@ const mid = (lo, hi) => {
 // present, else the low/high midpoint) the plan itself bills with. Supplies are a
 // separate line in the plan (group 'Supplies'); food spent excludes them, matching
 // the food-total convention in playbookFoodPlan.
+// Returns { total, firm }: `total` is every checked-off food line's cost (locked
+// $ when present, else the low/high midpoint) — unchanged. `firm` is the portion
+// backed by a REAL receipt the host typed (event.foodReal) or a host-added line
+// (cost committed at add time); the rest is estimated. This lets the spend readout
+// say "$X spent · ~$Y still estimated" instead of presenting an estimate as firm.
 function foodBoughtFrom(event, plan) {
-  if (!plan || !Array.isArray(plan.list)) return 0;
+  if (!plan || !Array.isArray(plan.list)) return { total: 0, firm: 0 };
   const got = (event && event.foodGot && typeof event.foodGot === 'object') ? event.foodGot : {};
-  let sum = 0;
+  const real = (event && event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
+  let total = 0, firm = 0;
   for (const it of plan.list) {
     if (!it || it.skipped) continue;
     if (it.group === 'Supplies') continue; // food line only — supplies are separate
     if (it.excludeFromFoodTotal) continue; // CRAB-BUDGET-1: real $ tracked separately (crabBought)
     if (!got[it.id]) continue;
-    sum += it.locked != null ? num(it.locked) : mid(it.low, it.high);
+    const c = it.locked != null ? num(it.locked) : mid(it.low, it.high);
+    total += c;
+    if (it.added || (it.locked != null && real[it.id])) firm += c;
   }
-  return Math.max(0, Math.round(sum));
+  return { total: Math.max(0, Math.round(total)), firm: Math.max(0, Math.round(firm)) };
 }
 
 export function hostSpending(event, priceFactor) {
@@ -79,7 +87,10 @@ export function hostSpending(event, priceFactor) {
     || (() => { try { return !!guestCountResolved(ev).resolved; } catch { return false; } })();
   const hasFood = hasRealCount && !!(plan && (num(plan.foodLow) > 0 || num(plan.foodHigh) > 0));
   const foodEstimate = hasFood ? mid(plan.foodLow, plan.foodHigh) : 0;
-  const foodBought = hasFood ? foodBoughtFrom(ev, plan) : 0;
+  const _fb = hasFood ? foodBoughtFrom(ev, plan) : { total: 0, firm: 0 };
+  const foodBought = _fb.total;
+  const foodBoughtFirm = _fb.firm;                       // real receipts only
+  const foodBoughtEstimated = Math.max(0, foodBought - foodBoughtFirm); // bought but still an estimate
 
   // SUPPLIES WIRING (2026-07-07, "seating & supplies is not wiring into budget"):
   // the spread's Supplies group and the Seating & supplies (capacity) list are
@@ -119,7 +130,12 @@ export function hostSpending(event, priceFactor) {
   const crabRemaining = Math.max(0, crabEstimate - crabBought);
   const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining));
 
-  return { total: Math.round(total), spent, committed, foodEstimate, foodBought, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  // spentEstimated: how much of `spent` is still an estimate (bought-but-unpriced
+  // food). Supplies/capacity are midpoint-costed too, so they're estimated until a
+  // real number replaces them; food is the part the check-off flow makes granular.
+  const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated));
+  const spentFirm = Math.max(0, spent - spentEstimated);
+  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

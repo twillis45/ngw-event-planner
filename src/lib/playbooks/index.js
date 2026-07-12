@@ -2471,6 +2471,11 @@ export function playbookFoodPlan(event, opts = {}) {
   const sum = (k) => list.filter((i) => !i.skipped && isFood(i)).reduce((s, i) => s + eff(i, k), 0);
   const lockedTotal = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).reduce((s, i) => s + i.locked, 0);
   const lockedCount = list.filter((i) => !i.skipped && isFood(i) && i.locked != null).length;
+  // realCount: lines the host PRICED FOR REAL — a typed receipt (event.foodReal)
+  // or a host-added line. lockedCount over-counts these because an accepted
+  // estimate (Value/Premium/bulk) is also `locked`; realCount is the honest tally.
+  const _foodReal = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
+  const realCount = list.filter((i) => !i.skipped && isFood(i) && (i.added || (i.locked != null && _foodReal[i.id]))).length;
   // Sourcing card data (1597-2): the key protein's BASELINE (factor-1.0) point cost, so
   // the card can show "~$X ribs" under each tier. Only present when the spread has a
   // protein to source. No protein → no card (sides-only events don't get the question).
@@ -2545,6 +2550,7 @@ export function playbookFoodPlan(event, opts = {}) {
     itemCount: list.filter((i) => !i.skipped && isFood(i)).length,
     lockedTotal: Math.max(0, Math.round(lockedTotal)),
     lockedCount,
+    realCount,
     dietaryResolved: di.resolved,
     specialDiets, // [{diet, count}] — drives the plant-based line + the host-facing note
     priceFactor: pf,

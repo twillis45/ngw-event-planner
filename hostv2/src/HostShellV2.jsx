@@ -1127,6 +1127,10 @@ export default function HostShellV2() {
     return () => app.removeEventListener('scroll', onScroll);
   }, []);
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
+  // Did the host actually TYPE in the cost field, vs accept the store-based
+  // prefill? Only a typed value is a real receipt (event.foodReal); accepting
+  // the prefill is an honest estimate, not a "real price" — the truth fix.
+  const [tuneEdited, setTuneEdited] = useState(false);
   // Bulk price-lock — parity with legacy's "Use typical prices for the other
   // N items →" (App.js ~11040-11060). ids just locked by the bulk action, kept
   // local (never persisted to the event) so a one-tap undo can unwind exactly
@@ -1477,7 +1481,7 @@ export default function HostShellV2() {
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
-  const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
@@ -2099,20 +2103,21 @@ export default function HostShellV2() {
   // panel instead — an estimate never gets to pose as spend.
   const toggleGot = (it, cost) => {
     const cur = !!(event.foodGot || {})[it.id];
-    // Host-added dishes/items are exempt from the gate below — their cost was
-    // already committed at add time (event.foodAdd's cost, possibly a real $0
-    // for a potluck dish), not a playbook estimate. Matches legacy's identical
-    // exemption (App.js ~11172-11175: "&& !i.added").
-    if (!cur && it.locked == null && !it.added) {
-      setFoodTune(it.id);
-      toast('What did ' + (it.short || it.item) + ' actually cost? Set the real price first — bought is real money, not an estimate.');
-      return;
-    }
+    // Ungated check-off (2026-07-12): a tap marks bought — no price required, so a
+    // store run isn't taxed a price-entry per line. Accuracy is kept a different,
+    // truer way: a bought line keeps its honest cost (a real receipt if the host
+    // typed one — event.foodReal — else the estimate range's midpoint), and the
+    // spend readout labels how much is FIRM vs still ESTIMATED. This is more honest
+    // than the old gate, which forced a number that was usually the pre-filled
+    // estimate midpoint laundered into a "real price." Real prices get nudged
+    // after the fact on the lines that move the budget, not blocked mid-aisle.
     const next = { ...(event.foodGot || {}), [it.id]: !cur };
+    const isFirm = it.added || (it.locked != null && (event.foodReal || {})[it.id]);
     let ns = null;
     try { ns = hostSpending({ ...event, foodGot: next }, foodPP.priceFactor).spent; } catch { ns = null; }
+    const priceNote = cur ? '' : (isFirm ? ' (' + fmt(cost) + ')' : ' (~' + fmt(cost) + ' est.)');
     patchEvent({ foodGot: next },
-      (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + ' (' + fmt(cost) + ')' + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
+      (cur ? 'Put back ' : 'Bought ') + (it.short || it.item) + priceNote + (ns !== null ? ' — spent is now ' + fmt(ns) + '.' : '.'));
   };
   // Ported from App.js's guessFoodCategory (~10549-10559): auto-categorize a
   // typed item name into Food/Drinks/Supplies + a rough aisle, so a host-added
@@ -6677,9 +6682,12 @@ export default function HostShellV2() {
                   if (unpriced.length < 2) return null;
                   const priceAll = () => {
                     const next = { ...(event.foodLocked || {}) };
+                    const realNext = { ...(event.foodReal || {}) };
                     const ids = unpriced.map(it => it.id);
-                    unpriced.forEach(it => { next[it.id] = Math.round(((Number(it.low) || 0) + (Number(it.high) || 0)) / 2); });
-                    patchEvent({ foodLocked: next }, 'Locked ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' to typical prices.');
+                    // Bulk "typical prices" are ESTIMATES, not receipts — mark them so
+                    // the spend readout counts them as estimated, not firm.
+                    unpriced.forEach(it => { next[it.id] = Math.round(((Number(it.low) || 0) + (Number(it.high) || 0)) / 2); realNext[it.id] = false; });
+                    patchEvent({ foodLocked: next, foodReal: realNext }, 'Locked ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' to typical prices.');
                     setBulkPriced(ids);
                   };
                   return (
@@ -6865,43 +6873,45 @@ export default function HostShellV2() {
                                           put, so blur never fires and this onClick is the one write. */}
                                       <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
                                         const n = Math.max(0, Math.round(Number(it.low) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
                                           (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for your sourcing pick.');
-                                        setTuneCost(''); setFoodTune(null);
+                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
                                       }}>Value {fmt(Math.round(Number(it.low) || 0))}</button>
                                       <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
                                         const n = Math.max(0, Math.round(Number(it.high) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: false } },
                                           (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for your sourcing pick.');
-                                        setTuneCost(''); setFoodTune(null);
+                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
                                       }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
                                     </>
                                   ) : null}
                                   <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: '4px 8px' }} type="number" min="0"
                                     inputMode="decimal" placeholder="$ paid" autoFocus
                                     aria-label={'Real cost for ' + (it.short || it.item)}
-                                    value={tuneCost} onChange={e => setTuneCost(e.target.value)}
+                                    value={tuneCost} onChange={e => { setTuneCost(e.target.value); setTuneEdited(true); }}
                                     onKeyDown={e => {
                                       if (e.key === 'Enter' && parseFloat(tuneCost) >= 0 && tuneCost !== '') {
                                         const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
-                                        setTuneCost(''); setFoodTune(null);
-                                      } else if (e.key === 'Escape') { setTuneCost(''); setFoodTune(null); }
+                                        // Real receipt ONLY if the host typed a value; accepting the
+                                        // store-based prefill unchanged stays an honest estimate.
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
+                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
+                                        setTuneCost(''); setTuneEdited(false); setFoodTune(null);
+                                      } else if (e.key === 'Escape') { setTuneCost(''); setTuneEdited(false); setFoodTune(null); }
                                     }}
                                     onBlur={() => {
                                       if (parseFloat(tuneCost) >= 0 && tuneCost !== '') {
                                         const n = Math.max(0, Math.round(parseFloat(tuneCost) || 0));
-                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
-                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — a real price now, not a range.');
-                                        setTuneCost('');
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n }, foodReal: { ...(event.foodReal || {}), [it.id]: tuneEdited } },
+                                          (it.short || it.item) + (tuneEdited ? ' set at ' + fmt(n) + ' — a real price now, not a range.' : ' set at ~' + fmt(n) + ' — the estimate; add the receipt total anytime.'));
+                                        setTuneCost(''); setTuneEdited(false);
                                       }
                                     }} />
                                 </span>
                               ) : (
                                 <span className="amt" role="button" tabIndex={0}
-                                  onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setFoodTune(it.id); }}
-                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(midpointStr(it)); setFoodTune(it.id); } }}
+                                  onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); }}
+                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); } }}
                                   title="Tap to enter the real price">
                                   {/* Host-added lines carry a single committed cost (event.foodAdd's
                                       cost — never a range), so no invented spread. Blank/$0 at add
@@ -6920,8 +6930,8 @@ export default function HostShellV2() {
                                 </span>
                               )}
                               <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                onClick={e => { e.stopPropagation(); if (!tuning) setTuneCost(midpointStr(it)); setFoodTune(tuning ? null : it.id); }}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); if (!tuning) setTuneCost(midpointStr(it)); setFoodTune(tuning ? null : it.id); } }}>
+                                onClick={e => { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); }}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); } }}>
                                 {tuning ? 'more' : 'tune'}
                               </span>
                               {/* Host-added lines are fully deletable (not just skippable) —
@@ -7007,7 +7017,8 @@ export default function HostShellV2() {
                                     <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
                                     <button className="mini" onClick={() => {
                                       const m = { ...(event.foodLocked || {}) }; delete m[it.id];
-                                      patchEvent({ foodLocked: m }, (it.short || it.item) + ' back to the estimate range.');
+                                      const rm = { ...(event.foodReal || {}) }; delete rm[it.id];
+                                      patchEvent({ foodLocked: m, foodReal: rm }, (it.short || it.item) + ' back to the estimate range.');
                                     }}>back to estimate</button>
                                   </div>
                                 )}
@@ -7560,7 +7571,7 @@ export default function HostShellV2() {
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
                       grounding={<>
-                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );
@@ -7606,9 +7617,9 @@ export default function HostShellV2() {
                                 {foodPlan.guests > 0 && foodPlan.foodHigh > 0 && (
                                   <>≈ {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head × {foodPlan.guests} {foodPlan.guests === 1 ? 'guest' : 'guests'}. </>
                                 )}
-                                {foodPlan.lockedCount > 0
-                                  ? <>{foodPlan.lockedCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
-                                  : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — lock a real price as you shop.</>}
+                                {foodPlan.realCount > 0
+                                  ? <>{foodPlan.realCount} of {foodPlan.itemCount} priced for real, the rest estimated.</>
+                                  : <>All {foodPlan.itemCount} item{foodPlan.itemCount === 1 ? '' : 's'} still estimated — add a real price anytime (bought or not).</>}
                                 {foodPP.priceContext && (
                                   <> Prices adjusted for the {foodPP.priceContext.split(' · ')[0]} region.</>
                                 )}
