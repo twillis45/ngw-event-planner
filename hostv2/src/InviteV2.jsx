@@ -836,6 +836,10 @@ export default function InviteV2({ code }) {
             </div>
           )}
           {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.</p>}
+          {/* Guest-visible brand moment (build-map #6): the locked identity — the
+              wordmark + machined brand period — on the one surface every guest
+              touches. Tuned to the stationery's own palette, not the app steel. */}
+          <div {...rv('inv2-wordmark')}>Event Boss<span className="inv2-wm-dot" aria-hidden="true" /></div>
         </section>
       </div></div>
     </div>

@@ -897,6 +897,15 @@ button{font-family:inherit}
 .inv2.answered .inv2-countwrap{ max-height:24px; margin:6px 0 0; }
 .inv2.answered .inv2-count{ display:inline; font-size:11px; font-family:inherit; font-weight:800; letter-spacing:.16em; margin:0; }
 .inv2.answered .inv2-countlab{ display:inline; margin-left:5px; }
+/* Guest-visible brand moment — the wordmark + machined brand period, a maker's
+   mark below the stationery card (in the app-chrome footer, alongside the
+   privacy line), so it uses the app's steel brand period like the real header
+   wordmark, not the cream-card tokens. Ceremonial-bespoke type (exempt from the
+   --tracking-* tokens, like the other .inv2 labels). */
+.inv2-wordmark{ margin-top:16px; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--faint); opacity:.85; display:flex; align-items:baseline; justify-content:center; }
+.inv2-wm-dot{ width:5px; height:5px; border-radius:50%; margin-left:5px; align-self:flex-end; margin-bottom:2px;
+  background:var(--steel); box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint); }
 /* staged reveal — one element per beat; reduced motion lands instantly */
 .inv2 .rv{ opacity:0; transform:translateY(10px);
   transition:opacity .5s var(--ease-standard), transform .5s var(--ease-standard); }
