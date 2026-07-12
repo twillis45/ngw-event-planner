@@ -1178,7 +1178,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sp-dot{position:relative; flex-shrink:0; will-change:transform;
   width:clamp(18px, 7.3vw, 29px); height:clamp(18px, 7.3vw, 29px); border-radius:50%; align-self:flex-end;
   margin:0 0 clamp(8px, 3.1vw, 12px) clamp(10px, 4vw, 16px);
-  background-color:#12171c;
+  background-color:#a8c2d6;
   animation:sp-bead-fall 3600ms linear 100ms both, sp-bead-light 3600ms var(--ease-in-out) 100ms both, sp-breathe 3400ms var(--ease-in-out) 3700ms infinite}
 /* specular highlight — visible from frame one now (the bead is never dark) */
 .sp-dot::before{content:""; position:absolute; left:20%; top:11%; width:34%; height:23%; border-radius:50%;
@@ -1225,33 +1225,43 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    aloft, calm through the fall itself, then the ignite flash lands exactly
    with the squash above before settling to the resting glow sp-breathe
    takes over from at 3700ms.
-   BRIGHTENED (host: "bead will have to be adjusted", right after the
-   wordmark moved to a solid, high-contrast fill): the bead's own glow used
-   to be WEAKER than the wordmark's ambient glow (10px/.28+19px/.16 vs the
-   wordmark's 24px/.35+48px/.2) — backwards for the thing that's supposed
-   to be the light SOURCE. Every stage scaled up so the bead now reads as
-   at least as bright as what it's lighting, at rest exceeding the
-   wordmark's own glow rather than trailing it. */
+   NEVER DARK (host, second pass: "I don't believe the bead can be dark
+   anymore" — right after the wordmark went solid --ink). Brightening the
+   GLOW while the bead's own SURFACE stayed a dark near-black (the previous
+   pass) was half the fix — a bright halo around a dark ball still reads as
+   a dark ball. The body color itself now runs light-steel → near-white
+   throughout, landing exactly on --ink at rest: the bead becomes the same
+   material as the letters it's about to punctuate, not just a source
+   that's now shining harder. Added inset shading (dark, lower-right) so a
+   bright fill doesn't flatten into a plain colored disc — the sphere read
+   now comes from light+shadow across the surface itself, not contrast
+   against a dark base. */
 @keyframes sp-bead-light{
-  0%{background-color:#171e25; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.13), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 18px rgba(var(--sp-glow-core),.36), 0 0 32px rgba(var(--sp-glow-halo),.22)}
-  55%{background-color:#171e25; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  76%{background-color:#1b232b; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  80%{background-color:#26303a; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.22), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.54), 0 0 34px rgba(var(--sp-glow-core),.62), 0 0 58px rgba(var(--sp-glow-halo),.4)}
-  88%{background-color:#1f2831; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.14), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.56), 0 0 20px rgba(var(--sp-glow-core),.36), 0 0 34px rgba(var(--sp-glow-halo),.22)}
-  100%{background-color:#1c242c; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  0%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.55), 3px 4px 6px rgba(var(--sp-shadow-deep),.32), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.22), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.58), 3px 4px 6px rgba(var(--sp-shadow-deep),.3), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.2), 0 0 18px rgba(var(--sp-glow-core),.36), 0 0 32px rgba(var(--sp-glow-halo),.22)}
+  55%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.55), 3px 4px 6px rgba(var(--sp-shadow-deep),.32), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.22), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  76%{background-color:#bcd0e0; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.58), 3px 4px 6px rgba(var(--sp-shadow-deep),.3), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.2), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  80%{background-color:#dae4ee; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.65), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.26), inset -3.4px -4.8px 6px rgba(var(--sp-shadow-deep),.2), 0 0 34px rgba(var(--sp-glow-core),.62), 0 0 58px rgba(var(--sp-glow-halo),.4)}
+  88%{background-color:#e6ecf1; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.6), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.27), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 20px rgba(var(--sp-glow-core),.36), 0 0 34px rgba(var(--sp-glow-halo),.22)}
+  100%{background-color:#eef0f4; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 }
 @keyframes sp-breathe{
-  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
-  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.2), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 32px rgba(126,164,188,.5), 0 0 58px rgba(var(--sp-glow-halo),.3)}
-  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.62), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 32px rgba(126,164,188,.5), 0 0 58px rgba(var(--sp-glow-halo),.3)}
+  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 }
 /* caps land only after BOTH words have resolved (Event finishes ~1972ms,
    Boss ~2112ms absolute) — sequencing, not a computed dependency, is what
    sells "the bead's light revealed this" */
 .sp-caps{position:absolute; left:0; right:0; top:66%; text-align:center; font-weight:700;
   font-size:var(--t-caption-min); letter-spacing:.42em; text-indent:.42em;
-  color:#8fa4b2; /* splash material literal (prototype caps ink) */
+  /* bumped 7.37:1 -> 9.79:1 (host: "yes tagline adjustment") — the wordmark
+     jumping to solid --ink at 16.71:1 left caps/tagline looking dim by
+     comparison, a hierarchy mismatch rather than a contrast failure (both
+     already passed WCAG before). Lifted, not matched — stays clearly
+     secondary to the wordmark, just no longer reads as a leftover from the
+     old, dimmer treatment. */
+  color:#a8bdc9;
   animation:sp-caps 3600ms var(--ease-in-out) 100ms both}
 @keyframes sp-caps{0%{opacity:0} 58%{opacity:0} 66%{opacity:1} 100%{opacity:1}}
 /* tagline — split into two independently-timed lines (audit item:
@@ -1261,7 +1271,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sp-line{position:absolute; left:0; right:0; top:70%; text-align:center;
   font-family:var(--serif); font-style:italic; font-weight:500;
   font-size:clamp(17px, 5.3vw, 21px); line-height:1.45;
-  color:#b4c5d3; /* splash material literal (prototype tagline ink) */
+  color:#cdd9e2; /* bumped 10.78:1 -> 13.27:1, same reasoning as sp-caps above */
 }
 .sp-line span{display:block}
 .sp-line-1{opacity:0; transform:translateY(8px); animation:sp-tag1 3600ms var(--ease-out) 100ms both}
@@ -1332,8 +1342,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 @media(prefers-reduced-motion:reduce){
   .splash .sp-carv{opacity:1}
   .splash .sp-l2{transform:none}
-  .splash .sp-dot{transform:none; background-color:#1c242c;
-    box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  .splash .sp-dot{transform:none; background-color:#eef0f4;
+    box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
   .splash .sp-dot::before{opacity:.7}
   .splash .sp-dot::after{opacity:.22; transform:translateX(-50%) scaleX(.85)}
   .splash .sp-caps, .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
@@ -1356,8 +1366,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .splash-quick .sp-carv{animation:none; opacity:1}
 .splash-quick .sp-l2{animation:none; transform:none}
 .splash-quick .sp-glow{animation:sp-glow-settle 20s var(--ease-in-out) 0ms infinite alternate}
-.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#1c242c;
-  box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#eef0f4;
+  box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 .splash-quick .sp-dot::before{animation:none; opacity:.7}
 .splash-quick .sp-dot::after{animation:none; opacity:.22; transform:translateX(-50%) scaleX(.85)}
 .splash-quick .sp-caps, .splash-quick .sp-line-1, .splash-quick .sp-line-2{animation:none; opacity:1; transform:none}
