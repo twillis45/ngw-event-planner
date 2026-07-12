@@ -502,6 +502,21 @@ button{font-family:inherit}
 .frow:active, .brow:active, .wchip:active, .db-row:active, .fold-btn:active{transform:scale(.985)}
 .chip, .cta, .lens, .dock button{will-change:transform}
 
+/* ── Touch-target floor (WCAG 2.5.5 / Apple HIG ≥44px) ──────────────────────
+   These pills stay visually compact (Studio Matte density) but each gets a
+   transparent ::after that expands the TAP area to ≥44px tall without changing
+   the rendered size. Vertical-only (left/right:0) so hit areas never overlap a
+   horizontally-adjacent chip, and the ~6px vertical overflow stays under the
+   inter-row gap. Matters most on the mobile path where --fit is 1 (desktop
+   scales the whole stage, so these read smaller there but tap fine on a phone).
+   position:relative anchors the ::after; none of these pills have absolutely-
+   positioned children, so it's inert to layout. */
+.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker{ position:relative; }
+.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after{
+  content:''; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
+  height:100%; min-height:44px;
+}
+
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
 .brow{padding:11px 0 var(--sp-3); border-top:1px solid var(--line-soft)}
 .bline{height:8px; border-radius:5px; background:var(--bg-band); overflow:hidden}
