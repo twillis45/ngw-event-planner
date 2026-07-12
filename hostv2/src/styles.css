@@ -1129,9 +1129,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    cross-fades in on opacity — no shadow-value interpolation, so this stays
    on the compositor thread instead of forcing a main-thread repaint every
    frame. */
+/* WORDMARK FILL — Option A from the leader/accessibility reaudit (host:
+   "go with option A"). The same-tone-plus-carved-shadow neumorphic
+   treatment had NO precedent among researched leaders (Airbnb, Uber,
+   Linear, Nike) and sat inside neumorphism's documented, industry-
+   abandoned failure mode — real WCAG contrast failures (1.00:1), not a
+   style nitpick. Solid --ink fill (the app's own primary-text token,
+   #eef0f4) clears WCAG AAA at 16.71:1 against the field. The carved
+   dual-shadow relief is gone; what's left is pure ambient glow — the
+   letters don't have surface relief anymore, they emit. Still a single
+   static, non-animated shadow value (the compositable-relief technique
+   still applies: opacity cross-fades in, the shadow itself never
+   interpolates) so this stays exactly as compositor-cheap as before. */
 .sp-carv{position:relative; font-weight:800; letter-spacing:-.045em; line-height:.94;
-  color:var(--sp-field);
-  text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68);
+  color:var(--ink);
+  text-shadow:0 0 24px rgba(var(--sp-glow-core),.35), 0 0 48px rgba(var(--sp-glow-halo),.2);
   opacity:0;
 }
 /* responsive display sizes: 25.4vw/31.6vw reproduce the 393pt frame's
@@ -1171,8 +1183,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* specular highlight — visible from frame one now (the bead is never dark) */
 .sp-dot::before{content:""; position:absolute; left:20%; top:11%; width:34%; height:23%; border-radius:50%;
   background:radial-gradient(ellipse at center, rgba(var(--sp-bead-light),.8) 0%, transparent 72%);
-  opacity:.35; animation:sp-spec 3600ms var(--ease-in-out) 100ms both}
-@keyframes sp-spec{0%{opacity:.35} 55%{opacity:.4} 76%{opacity:.4} 80%{opacity:.9} 100%{opacity:.7}}
+  opacity:.42; animation:sp-spec 3600ms var(--ease-in-out) 100ms both}
+@keyframes sp-spec{0%{opacity:.42} 55%{opacity:.48} 76%{opacity:.48} 80%{opacity:.95} 100%{opacity:.78}}
 /* contact shadow — new: a soft dark ellipse that flashes under the bead at
    the instant of impact, then relaxes to a faint resting shadow so it reads
    as grounded even once settled, not just lit. */
@@ -1212,20 +1224,27 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* Color/glow only — lit (not dark) from frame one, a gentle breathe while
    aloft, calm through the fall itself, then the ignite flash lands exactly
    with the squash above before settling to the resting glow sp-breathe
-   takes over from at 3700ms. */
+   takes over from at 3700ms.
+   BRIGHTENED (host: "bead will have to be adjusted", right after the
+   wordmark moved to a solid, high-contrast fill): the bead's own glow used
+   to be WEAKER than the wordmark's ambient glow (10px/.28+19px/.16 vs the
+   wordmark's 24px/.35+48px/.2) — backwards for the thing that's supposed
+   to be the light SOURCE. Every stage scaled up so the bead now reads as
+   at least as bright as what it's lighting, at rest exceeding the
+   wordmark's own glow rather than trailing it. */
 @keyframes sp-bead-light{
-  0%{background-color:#12171c; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
-  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 11px rgba(var(--sp-glow-core),.26), 0 0 19px rgba(var(--sp-glow-halo),.15)}
-  55%{background-color:#12171c; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
-  76%{background-color:#14191a; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
-  80%{background-color:#1c232a; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.16), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.58), 0 0 22px rgba(var(--sp-glow-core),.5), 0 0 38px rgba(var(--sp-glow-halo),.3)}
-  88%{background-color:#171d23; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.1), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.6), 0 0 8.5px rgba(var(--sp-glow-core),.22), 0 0 15px rgba(var(--sp-glow-halo),.12)}
-  100%{background-color:#14191f; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
+  0%{background-color:#171e25; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.13), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 18px rgba(var(--sp-glow-core),.36), 0 0 32px rgba(var(--sp-glow-halo),.22)}
+  55%{background-color:#171e25; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  76%{background-color:#1b232b; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.5), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
+  80%{background-color:#26303a; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.22), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.54), 0 0 34px rgba(var(--sp-glow-core),.62), 0 0 58px rgba(var(--sp-glow-halo),.4)}
+  88%{background-color:#1f2831; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.14), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.56), 0 0 20px rgba(var(--sp-glow-core),.36), 0 0 34px rgba(var(--sp-glow-halo),.22)}
+  100%{background-color:#1c242c; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 }
 @keyframes sp-breathe{
-  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
-  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 13.6px rgba(126,164,188,.36), 0 0 24px rgba(var(--sp-glow-halo),.2)}
-  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
+  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.2), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 32px rgba(126,164,188,.5), 0 0 58px rgba(var(--sp-glow-halo),.3)}
+  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 }
 /* caps land only after BOTH words have resolved (Event finishes ~1972ms,
    Boss ~2112ms absolute) — sequencing, not a computed dependency, is what
@@ -1313,8 +1332,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 @media(prefers-reduced-motion:reduce){
   .splash .sp-carv{opacity:1}
   .splash .sp-l2{transform:none}
-  .splash .sp-dot{transform:none; background-color:#14191f;
-    box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
+  .splash .sp-dot{transform:none; background-color:#1c242c;
+    box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
   .splash .sp-dot::before{opacity:.7}
   .splash .sp-dot::after{opacity:.22; transform:translateX(-50%) scaleX(.85)}
   .splash .sp-caps, .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
@@ -1337,8 +1356,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .splash-quick .sp-carv{animation:none; opacity:1}
 .splash-quick .sp-l2{animation:none; transform:none}
 .splash-quick .sp-glow{animation:sp-glow-settle 20s var(--ease-in-out) 0ms infinite alternate}
-.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#14191f;
-  box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
+.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#1c242c;
+  box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.58), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
 .splash-quick .sp-dot::before{animation:none; opacity:.7}
 .splash-quick .sp-dot::after{animation:none; opacity:.22; transform:translateX(-50%) scaleX(.85)}
 .splash-quick .sp-caps, .splash-quick .sp-line-1, .splash-quick .sp-line-2{animation:none; opacity:1; transform:none}
