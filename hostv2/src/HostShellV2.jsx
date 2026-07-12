@@ -6765,7 +6765,20 @@ export default function HostShellV2() {
                                     treatment of "forgotten". */}
                                 {(it.basis || it.forgotten) && (
                                   <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                    {[it.basis ? it.basis + ' · typical' : null, it.forgotten ? 'often forgotten' : null].filter(Boolean).join(' · ')}
+                                    {/* Portion goal (host request 2026-07-12): the per-guest
+                                        rate ALONE ("½ lb/guest") never told the host what to
+                                        aim for overall. Scaling it by the real guest count —
+                                        "½ lb/guest × 15 guests" — surfaces the recommended
+                                        target the quantity was sized from, the same rate×guests
+                                        framing legacy showed (App.js ~11317) and V2 had dropped.
+                                        Only when there's a per-guest basis (it.basis is '' for
+                                        flat/converted goods) and a real count. */}
+                                    {[
+                                      it.basis
+                                        ? it.basis + (foodPlan.guests > 0 ? ' × ' + foodPlan.guests + ' ' + (foodPlan.guests === 1 ? 'guest' : 'guests') : '') + ' · typical'
+                                        : null,
+                                      it.forgotten ? 'often forgotten' : null,
+                                    ].filter(Boolean).join(' · ')}
                                   </span>
                                 )}
                               </span>
@@ -6910,6 +6923,22 @@ export default function HostShellV2() {
                                     const q = (Number(it.qty) || 0) + 1;
                                     patchEvent({ foodQty: { ...(event.foodQty || {}), [it.id]: q } }, 'Sized to ' + q + ' ' + (it.unit || '') + ' — the cost just moved.');
                                   }}>+</button>
+                                  {/* Drift cue + reset (host request 2026-07-12): once a host
+                                      steps the size off the recommended baseline (it.baseQty,
+                                      the engine's rate×guests result — qtyOverridden flags it),
+                                      show what the recommendation was and a one-tap way back,
+                                      so the stepper can't silently strand them above/below the
+                                      portion goal. Both fields already ride on the item from
+                                      playbooks/index.js:2273; V2 just never read them. */}
+                                  {it.qtyOverridden && it.baseQty != null && Number(it.baseQty) !== Number(it.qty) && (
+                                    <>
+                                      <span className="of" style={{ color: 'var(--muted)' }}>aim ~{it.baseQty} {it.unit}</span>
+                                      <button className="mini" onClick={() => {
+                                        const m = { ...(event.foodQty || {}) }; delete m[it.id];
+                                        patchEvent({ foodQty: m }, (it.short || it.item) + ' back to the recommended ' + it.baseQty + ' ' + (it.unit || '') + '.');
+                                      }}>reset</button>
+                                    </>
+                                  )}
                                   <button className="mini" onClick={() => {
                                     if (it.skipped) {
                                       const m = { ...(event.foodSkip || {}) }; delete m[it.id];

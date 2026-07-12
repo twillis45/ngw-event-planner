@@ -9,16 +9,22 @@ export const PRICE_TABLE_META = {
   source: 'BLS APU + 2025–26 retail price guides (per-line `sources`)',
 };
 
-// Protein SOURCING tiers (Figma 1597-2 "Sourcing"). How the host gets the proteins
-// reshapes the spread's cost: a warehouse/bulk run is cheapest, a butcher is the
-// flavor-first middle, and pre-marinated grocery trays cost a convenience premium.
+// Protein SOURCING tiers (Figma 1597-2 "Sourcing"). Each tier trades on a DIFFERENT
+// axis, and its label names that trade in ITEM-NEUTRAL terms (this is one global tier
+// applied across every line, so the label can't assume a product form): butcher on
+// FLAVOR, Costco on COST, grocery on CONVENIENCE/SPEED — your regular store, one run,
+// no special butcher pickup or Costco trip. Earlier drafts said "pre-marinated" then
+// "pre-made" grocery; both were dropped because a product form doesn't fit every item
+// the tier touches (host feedback) and collided with the per-item "Grocery" store chip.
 // factor scales the PROTEIN lines' unit cost (like beverageFactor scales the bar) so
-// the budget actually moves with the choice. Honest framing: a typical tier delta, not
-// a quote — the spread already shows a range. Default tier = 'butcher' (the baseline).
+// the budget moves with the choice; the grocery premium (+18%) is honestly backed by
+// the raw per-channel data below (grocery runs pricier per lb than butcher/Costco in
+// CANONICAL_PROTEIN_PRICES) and the card shows the live "~$X more" delta, so the note
+// names the convenience trade, not a static price claim. Default tier = 'butcher'.
 export const SOURCING_TIERS = [
-  { id: 'butcher', label: 'Fresh butcher',          note: 'Best flavor · pickup day-before', factor: 1.0 },
-  { id: 'costco',  label: 'Costco / bulk',          note: 'Lowest cost · buy in advance',     factor: 0.85 },
-  { id: 'grocery', label: 'Pre-marinated (grocery)', note: 'Fastest · least prep',            factor: 1.18 },
+  { id: 'butcher', label: 'Fresh butcher',   note: 'Best flavor · pickup day-before', factor: 1.0 },
+  { id: 'costco',  label: 'Costco / bulk',   note: 'Lowest cost · buy in advance',     factor: 0.85 },
+  { id: 'grocery', label: 'Grocery · one-stop', note: 'Fastest · grab it on your regular run', factor: 1.18 },
 ];
 
 export const DEFAULT_SOURCING = 'butcher';
