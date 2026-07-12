@@ -101,6 +101,16 @@ export function costSharingSummary(event) {
   const lowestDue = amounts.length ? Math.min(...amounts) : null;
   const highestDue = amounts.length ? Math.max(...amounts) : null;
 
+  // "One of each group" per-cadence figure — the sum of every tier's entered
+  // amount, i.e. exactly ONE contributor from each named tier. This assumes NO
+  // headcount (unlike a pool total, which we refuse to compute — see header), so
+  // it's honest: "if one person from each group chips in, that's $X per cadence."
+  // null until EVERY labeled tier is priced; a missing amount would make the sum
+  // silently understate, so it doesn't appear while the setup is incomplete.
+  const oneOfEachTotal = (tiers.length > 0 && amounts.length === tiers.length)
+    ? amounts.reduce((s, a) => s + a, 0)
+    : null;
+
   // Headline — assembled ONLY from what the host entered. No amounts entered →
   // no dollars in the copy; the missing setup is the load-bearing information.
   let headline;
@@ -128,6 +138,7 @@ export function costSharingSummary(event) {
     pricedTierCount: amounts.length,
     lowestDue,
     highestDue,
+    oneOfEachTotal,
     headline,
   };
 }

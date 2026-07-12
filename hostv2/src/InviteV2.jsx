@@ -595,6 +595,15 @@ export default function InviteV2({ code }) {
                 <div className="inv2-val lp">{dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}</div></>)}
               {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
                 <div className="inv2-val lp">{[event.venue, event.venueCity].filter(Boolean).join(', ')}</div></>)}
+              {/* Details the host set — the backend already sends these on the
+                  public event (whitelisted); the invite just wasn't rendering
+                  them. Present-only, and hidden on a past-event recap. */}
+              {!isPast && String(event.dressCode || '').trim() && (<><div className="inv2-label lp">Dress</div>
+                <div className="inv2-val lp">{event.dressCode}</div></>)}
+              {!isPast && String(event.bringNote || '').trim() && (<><div className="inv2-label lp">Bring</div>
+                <div className="inv2-val lp">{event.bringNote}</div></>)}
+              {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
+                <div className="inv2-val lp">{event.hostContact}</div></>)}
               {!isPast && ((rsvpBy && rsvpBy.iso && days != null && days >= 0) || social) ? (
                 <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center' }}>
                   {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
@@ -826,7 +835,7 @@ export default function InviteV2({ code }) {
               </button>
             </div>
           )}
-          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account.</p>}
+          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.</p>}
         </section>
       </div></div>
     </div>

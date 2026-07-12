@@ -91,6 +91,18 @@ describe('costSharingSummary — pooled dues (susu / reunion-dues pattern)', () 
     expect(s.cadence).toBe('monthly');
   });
 
+  test('oneOfEachTotal sums exactly one contributor per named tier (zero headcount assumption)', () => {
+    const s = costSharingSummary(pooled);
+    expect(s.oneOfEachTotal).toBe(80); // 50 + 20 + 10 — one of each tier, NOT a pool total
+  });
+
+  test('oneOfEachTotal stays null until every tier is priced (a missing amount would understate)', () => {
+    const partial = { costSharing: { mode: 'pooled-dues', tiers: [
+      { label: 'Working adults', amount: 50 }, { label: 'Students' },
+    ] } };
+    expect(costSharingSummary(partial).oneOfEachTotal).toBeNull();
+  });
+
   test('NO pool total is ever computed — per-tier headcounts are unknown', () => {
     const s = costSharingSummary(pooled);
     expect(s).not.toHaveProperty('poolTotal');

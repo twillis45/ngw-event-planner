@@ -59,14 +59,31 @@
 
   /* ── Radius scale — the app's rounded-corner set. The card family (.card,
      .vcard, .fgroup) shares --r-lg (they had drifted to 20/18/16 for one
-     concept — unified here). Only exact literal matches migrate; bespoke
-     radii (7/9/11/13/14/26/48px, the 50% circles, the 99px mini-track) stay
-     raw. Pills use --r-pill. ── */
+     concept — unified here). The compact row/pill family (.cta.big, .vrow.focus,
+     .wchip, .conflictbar, .sweep-row) shares --r-row. Only exact literal matches
+     migrate; bespoke radii (7/9/11/13/26/48px, the 50% circles, the 99px
+     mini-track) stay raw. Pills use --r-pill. ── */
   --r-sm:8px;
   --r-md:12px;
+  --r-row:14px; /* the compact row/pill radius — focus rows, workstream chips, sweep rows */
   --r-lg:16px;
   --r-xl:20px;
   --r-pill:999px;
+
+  /* ── Uppercase-label tracking scale — the distinct letter-spacing values on
+     the app's text-transform:uppercase label rules (eyebrows, tile/section
+     labels, status pills, kickers), tokenized so the caps-tracking set is one
+     source. Ordered by value. Ceremonial surfaces (splash .sp-caps .42em, the
+     invite .inv2-* stationery, the print sheet) keep their own bespoke
+     tracking and are intentionally NOT on this scale. ── */
+  --tracking-1:.05em;
+  --tracking-2:.06em;
+  --tracking-3:.07em;
+  --tracking-4:.08em;
+  --tracking-5:.09em;
+  --tracking-6:.1em;
+  --tracking-7:.14em;
+  --tracking-8:.16em;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -124,7 +141,7 @@ button{font-family:inherit}
   align-self:flex-end; margin-bottom:2px; background:var(--steel);
   box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint);
 }
-.appbar-note{font-size:var(--t-caption); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+.appbar-note{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-6); text-transform:uppercase; color:var(--faint)}
 
 .picker{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:30px}
 /* Used in ~20 places across the app (Create's recognition chips, Draft's
@@ -173,7 +190,7 @@ button{font-family:inherit}
   background:var(--danger-solid); color:var(--carbon-text); font-size:var(--t-body-s); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-md); margin-bottom:18px;
 }
 
-.eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
+.eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-6); text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
 .mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
 .mega-sub{font-size:var(--t-sub); font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.45; min-height:1.3em}
 
@@ -194,7 +211,7 @@ button{font-family:inherit}
 .bento{display:grid; gap:var(--sp-2); margin-top:var(--sp-3); flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
 .hero > .tile-d{margin-top:10px}
 .tile{border-radius:var(--r-xl); padding:var(--sp-4) 18px; display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
-.tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
 /* Found in the typography audit: this class had NO rule anywhere — the
    NEXT tile's directive text (the single most important line on the whole
@@ -281,7 +298,7 @@ button{font-family:inherit}
 /* The three primary moments (start / assemble / open plan) used class "cta big"
    with NO matching rule — they rendered at the standard 13.5px (typography
    audit, 2026-07-11). A real tier now exists. */
-.cta.big{font-size:var(--t-cta-big); padding:14px 26px; border-radius:14px}
+.cta.big{font-size:var(--t-cta-big); padding:14px 26px; border-radius:var(--r-row)}
 .cta.soft{background:var(--steel-tint); color:var(--steel-soft)}
 .cta.soft:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:7px; flex-wrap:wrap}
@@ -417,7 +434,7 @@ button{font-family:inherit}
   background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:var(--r-xl); padding:var(--sp-6) var(--sp-6) 22px;
   box-shadow:inset 0 1px 0 var(--sheen), 0 20px 60px -20px rgba(0,0,0,.6);
 }
-.now-label{font-size:var(--t-caption); font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--steel-muted)}
+.now-label{font-size:var(--t-caption); font-weight:800; letter-spacing:var(--tracking-8); text-transform:uppercase; color:var(--steel-muted)}
 .now-card h2{font-size:26px/*one-off day-of headline*/; font-weight:750; margin:var(--sp-3) 0 var(--sp-2); line-height:1.22; letter-spacing:-.02em}
 .now-card .meta{font-size:var(--t-body-s); color:var(--carbon-muted); margin:0 0 10px; line-height:var(--lh-body)}
 .then{margin-top:var(--sp-5); position:relative}
@@ -467,7 +484,7 @@ button{font-family:inherit}
 .sheet-head strong{font-size:var(--t-sheet-title); font-weight:800; letter-spacing:-.02em}
 .sheet-x{background:var(--bg-band); border:none; border-radius:var(--r-pill); padding:6px 14px; font-size:var(--t-pill); font-weight:700; color:var(--ink-soft); cursor:pointer}
 .vrow{display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); padding:13px var(--sp-2); border-radius:var(--r-md); border-top:1px solid var(--line-soft)}
-.vrow.focus{background:var(--steel-tint); border:1.5px solid var(--steel); border-radius:14px}
+.vrow.focus{background:var(--steel-tint); border:1.5px solid var(--steel); border-radius:var(--r-row)}
 .v-name{font-size:var(--t-row); font-weight:700; letter-spacing:-.01em}
 .v-meta{font-size:var(--t-row-sub); color:var(--muted); font-weight:550; line-height:var(--lh-body)}
 .vrow .tag.vendors{color:var(--steel-soft); background:var(--steel-tint)}
@@ -485,7 +502,7 @@ button{font-family:inherit}
 /* ── Occasion browser: type-ahead + snap-scroll shelves ── */
 .typebrowser{display:flex; flex-direction:column}
 .shelf-wrap{margin-top:var(--sp-4)}
-.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:var(--sp-2)}
+.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--faint); margin-bottom:var(--sp-2)}
 .shelf{
   display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x proximity;
   margin:0 -20px; padding:2px var(--sp-5) 6px; scrollbar-width:none;
@@ -929,7 +946,7 @@ button{font-family:inherit}
 .fstatus-row{display:flex; gap:var(--sp-2); margin:0 0 var(--sp-3)}
 .fstatus{flex:1; text-align:left; background:var(--card); border:1px solid var(--line-soft);
   border-radius:var(--r-md); padding:9px var(--sp-3); font:inherit; cursor:pointer; color:inherit; box-shadow:inset 0 1px 0 var(--sheen)}
-.fstatus .fs-l{font-size:var(--t-caption-min); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
+.fstatus .fs-l{font-size:var(--t-caption-min); font-weight:700; letter-spacing:var(--tracking-1); text-transform:uppercase; color:var(--muted)}
 .fstatus .fs-v{font-size:var(--t-row-sub); font-weight:650; margin-top:2px}
 
 
@@ -965,17 +982,17 @@ button{font-family:inherit}
 .wstrip{display:flex; gap:var(--sp-2); overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
-  border:1px solid var(--line-soft); background:var(--bg-band); border-radius:14px;
+  border:1px solid var(--line-soft); background:var(--bg-band); border-radius:var(--r-row);
   padding:9px 14px; font:inherit; cursor:pointer; color:var(--ink);
   transition:border-color var(--ms-press) var(--ease-out)}
 .wchip:hover{border-color:var(--steel)}
-.wchip .wl{font-size:var(--t-caption); font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+.wchip .wl{font-size:var(--t-caption); font-weight:700; letter-spacing:var(--tracking-2); text-transform:uppercase; color:var(--muted)}
 .wchip .wn{font-size:var(--t-body-s); font-weight:750; font-variant-numeric:tabular-nums}
 .wchip.done .wn{color:var(--ok)}
 .wchip.attn{border-color:var(--warn-tint); background:var(--warn-tint)}
 .wchip.attn .wn{color:var(--warn)}
 .conflictbar{width:100%; text-align:left; font:inherit; border:none; cursor:pointer;
-  background:var(--warn-tint); color:var(--warn); border-radius:14px; padding:11px 14px;
+  background:var(--warn-tint); color:var(--warn); border-radius:var(--r-row); padding:11px 14px;
   font-size:var(--t-btn); font-weight:650; margin:0 0 var(--sp-3);
   display:flex; justify-content:space-between; align-items:center; gap:10px}
 .vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);/* card-radius unification (was 18px) — see .card */
@@ -990,7 +1007,7 @@ button{font-family:inherit}
 .vc-id{min-width:0; flex:1}
 .vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .vc-cat{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
-.vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+.vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
   padding:var(--sp-1) 10px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band)}
 .vc-pill.good{color:var(--ok); background:var(--ok-tint)}
 .vc-pill.mid{color:var(--steel-soft); background:var(--steel-tint)}
@@ -1023,17 +1040,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   overflow:hidden; animation:cardin 380ms var(--ease-out) both;
 }
 .sweepcard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--warn); }
-.sweepcard .sc-eyebrow{ font-size:var(--t-caption-min); font-weight:800; letter-spacing:.14em; text-transform:uppercase; color:var(--warn); }
+.sweepcard .sc-eyebrow{ font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-7); text-transform:uppercase; color:var(--warn); }
 .sweepcard h3{ font-size:var(--t-card-title); font-weight:800; letter-spacing:-.02em; margin:5px 0 3px; }
 .sweepcard p{ font-size:var(--t-body-s); color:var(--muted); margin:0 0 11px; line-height:var(--lh-body); }
 .sweep-row{
-  border:1px solid var(--line-soft); border-radius:14px; padding:11px 13px; margin-bottom:9px;
+  border:1px solid var(--line-soft); border-radius:var(--r-row); padding:11px 13px; margin-bottom:9px;
   transition:border-color var(--ms-ambient) var(--ease-standard), transform var(--ms-press) var(--ease-out);
 }
 .sweep-row.ready{ border-color:var(--steel-tint); }
 .sweep-row.answered{ border-color:var(--ok-tint); background:var(--ok-tint); }
 .sweep-state{
-  float:right; font-size:var(--t-caption-min); font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+  float:right; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
   padding:3px 9px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band);
   transition:all var(--ms-ambient) var(--ease-standard);
 }
@@ -1056,7 +1073,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .ev-head{margin:var(--sp-1) 0 6px}
 .ev-kicker{
   display:inline-flex; align-items:center; gap:var(--sp-1);
-  font:inherit; font-size:var(--t-tag); font-weight:750; letter-spacing:.09em; text-transform:uppercase;
+  font:inherit; font-size:var(--t-tag); font-weight:750; letter-spacing:var(--tracking-5); text-transform:uppercase;
   color:var(--steel); background:var(--steel-tint); border:none; border-radius:var(--r-pill); padding:var(--sp-1) 11px;
   cursor:pointer; transition:background var(--ms-press) var(--ease-out);
 }
@@ -1104,7 +1121,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .lodge-form{display:grid; grid-template-columns:1fr 1fr; gap:10px 10px; margin:var(--sp-2) 0 2px}
 .lodge-form .full{grid-column:1 / -1}
 .lodge-f{display:flex; flex-direction:column; gap:5px}
-.lodge-f .of{font-size:var(--t-caption-min); font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--faint)}
+.lodge-f .of{font-size:var(--t-caption-min); font-weight:700; letter-spacing:var(--tracking-3); text-transform:uppercase; color:var(--faint)}
 .tag.lodge-not_started{color:var(--muted); background:var(--bg-band)}
 .tag.lodge-booked{color:var(--steel-soft); background:var(--steel-tint)}
 .tag.lodge-confirmed{color:var(--ok); background:var(--ok-tint)}
@@ -1143,18 +1160,18 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    393pt-frame px clipped on narrower phones (host report, LAN device). */
 .splash{
   /* THE LIGHT RECIPE TOKENS — every shadow/glow stop below derives from
-     these. --sp-glow-halo is var(--steel) #4E6877 as an rgb triplet. */
-  --sp-field:#0d1014;
-  --sp-light-catch:160,190,215;
-  --sp-shadow-deep:0,0,0;
-  --sp-glow-core:111,147,168;
-  --sp-glow-halo:78,104,119;
-  --sp-bead:#0a0d10;
-  --sp-bead-light:255,255,255;
+     these. --spl-glow-halo is var(--steel) #4E6877 as an rgb triplet. */
+  --spl-field:#0d1014;
+  --spl-light-catch:160,190,215;
+  --spl-shadow-deep:0,0,0;
+  --spl-glow-core:111,147,168;
+  --spl-glow-halo:78,104,119;
+  --spl-bead:#0a0d10;
+  --spl-bead-light:255,255,255;
   position:absolute; inset:0; z-index:80; overflow:hidden; cursor:pointer;
   isolation:isolate;
-  background-color:var(--sp-field);
-  background-image:radial-gradient(50% 45% at 78% 62%, rgba(var(--sp-glow-halo),.11) 0%, transparent 72%);
+  background-color:var(--spl-field);
+  background-image:radial-gradient(50% 45% at 78% 62%, rgba(var(--spl-glow-halo),.11) 0%, transparent 72%);
   background-repeat:no-repeat;
   opacity:1; transition:opacity 200ms var(--ease-out);
 }
@@ -1176,8 +1193,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    mirrored (160deg → 200deg) to stay opposite sp-glow's repositioned center
    — see the note below on why the glow moved. */
 .splash::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
-  background:linear-gradient(200deg, transparent 38%, rgba(var(--sp-shadow-deep),.5) 100%),
-             radial-gradient(120% 100% at 46% 42%, transparent 42%, rgba(var(--sp-shadow-deep),.42) 100%)}
+  background:linear-gradient(200deg, transparent 38%, rgba(var(--spl-shadow-deep),.5) 100%),
+             radial-gradient(120% 100% at 46% 42%, transparent 42%, rgba(var(--spl-shadow-deep),.42) 100%)}
 /* the primary glow on its own layer so it can travel. REPOSITIONED (10+
    reaudit, post-inversion): this used to sit upper-left/center — an
    independent wash with no relationship to anything else in the frame,
@@ -1198,7 +1215,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    REPOSITIONED (start) center, since that's where the frame reads as lit
    from for most of the sequence. */
 .sp-glow{position:absolute; left:52%; top:4%; width:60%; height:36%; border-radius:50%; pointer-events:none;
-  background:radial-gradient(closest-side, rgba(var(--sp-glow-core),.17) 0%, transparent 74%);
+  background:radial-gradient(closest-side, rgba(var(--spl-glow-core),.17) 0%, transparent 74%);
   filter:blur(26px);
   animation:sp-glow-follow 3600ms linear 100ms both, sp-glow-settle 20s var(--ease-in-out) 3700ms infinite alternate}
 @keyframes sp-glow-follow{
@@ -1240,7 +1257,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    interpolates) so this stays exactly as compositor-cheap as before. */
 .sp-carv{position:relative; font-weight:800; letter-spacing:-.045em; line-height:.94;
   color:var(--ink);
-  text-shadow:0 0 24px rgba(var(--sp-glow-core),.35), 0 0 48px rgba(var(--sp-glow-halo),.2);
+  text-shadow:0 0 24px rgba(var(--spl-glow-core),.35), 0 0 48px rgba(var(--spl-glow-halo),.2);
   opacity:0;
 }
 /* responsive display sizes: 25.4vw/31.6vw reproduce the 393pt frame's
@@ -1279,7 +1296,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   animation:sp-bead-fall 3600ms linear 100ms both, sp-bead-light 3600ms var(--ease-in-out) 100ms both, sp-breathe 3400ms var(--ease-in-out) 3700ms infinite}
 /* specular highlight — visible from frame one now (the bead is never dark) */
 .sp-dot::before{content:""; position:absolute; left:20%; top:11%; width:34%; height:23%; border-radius:50%;
-  background:radial-gradient(ellipse at center, rgba(var(--sp-bead-light),.8) 0%, transparent 72%);
+  background:radial-gradient(ellipse at center, rgba(var(--spl-bead-light),.8) 0%, transparent 72%);
   opacity:.42; animation:sp-spec 3600ms var(--ease-in-out) 100ms both}
 @keyframes sp-spec{0%{opacity:.42} 55%{opacity:.48} 76%{opacity:.48} 80%{opacity:.95} 100%{opacity:.78}}
 /* contact shadow — new: a soft dark ellipse that flashes under the bead at
@@ -1287,7 +1304,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    as grounded even once settled, not just lit. */
 .sp-dot::after{content:""; position:absolute; left:50%; bottom:-6%; width:140%; height:34%;
   transform:translateX(-50%) scaleX(.4); border-radius:50%; pointer-events:none;
-  background:radial-gradient(ellipse at center, rgba(var(--sp-shadow-deep),.55) 0%, transparent 74%);
+  background:radial-gradient(ellipse at center, rgba(var(--spl-shadow-deep),.55) 0%, transparent 74%);
   opacity:0; animation:sp-contact 3600ms var(--ease-out) 100ms both}
 @keyframes sp-contact{
   0%{opacity:0; transform:translateX(-50%) scaleX(.4)}
@@ -1334,18 +1351,18 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    now comes from light+shadow across the surface itself, not contrast
    against a dark base. */
 @keyframes sp-bead-light{
-  0%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.55), 3px 4px 6px rgba(var(--sp-shadow-deep),.32), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.22), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.58), 3px 4px 6px rgba(var(--sp-shadow-deep),.3), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.2), 0 0 18px rgba(var(--sp-glow-core),.36), 0 0 32px rgba(var(--sp-glow-halo),.22)}
-  55%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.55), 3px 4px 6px rgba(var(--sp-shadow-deep),.32), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.22), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  76%{background-color:#bcd0e0; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.58), 3px 4px 6px rgba(var(--sp-shadow-deep),.3), inset -3px -4px 5px rgba(var(--sp-shadow-deep),.2), 0 0 14px rgba(var(--sp-glow-core),.3), 0 0 26px rgba(var(--sp-glow-halo),.18)}
-  80%{background-color:#dae4ee; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.65), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.26), inset -3.4px -4.8px 6px rgba(var(--sp-shadow-deep),.2), 0 0 34px rgba(var(--sp-glow-core),.62), 0 0 58px rgba(var(--sp-glow-halo),.4)}
-  88%{background-color:#e6ecf1; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.6), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.27), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 20px rgba(var(--sp-glow-core),.36), 0 0 34px rgba(var(--sp-glow-halo),.22)}
-  100%{background-color:#eef0f4; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  0%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--spl-bead-light),.55), 3px 4px 6px rgba(var(--spl-shadow-deep),.32), inset -3px -4px 5px rgba(var(--spl-shadow-deep),.22), 0 0 14px rgba(var(--spl-glow-core),.3), 0 0 26px rgba(var(--spl-glow-halo),.18)}
+  27%{box-shadow:-2px -3px 4.3px rgba(var(--spl-bead-light),.58), 3px 4px 6px rgba(var(--spl-shadow-deep),.3), inset -3px -4px 5px rgba(var(--spl-shadow-deep),.2), 0 0 18px rgba(var(--spl-glow-core),.36), 0 0 32px rgba(var(--spl-glow-halo),.22)}
+  55%{background-color:#a8c2d6; box-shadow:-2px -3px 4.3px rgba(var(--spl-bead-light),.55), 3px 4px 6px rgba(var(--spl-shadow-deep),.32), inset -3px -4px 5px rgba(var(--spl-shadow-deep),.22), 0 0 14px rgba(var(--spl-glow-core),.3), 0 0 26px rgba(var(--spl-glow-halo),.18)}
+  76%{background-color:#bcd0e0; box-shadow:-2px -3px 4.3px rgba(var(--spl-bead-light),.58), 3px 4px 6px rgba(var(--spl-shadow-deep),.3), inset -3px -4px 5px rgba(var(--spl-shadow-deep),.2), 0 0 14px rgba(var(--spl-glow-core),.3), 0 0 26px rgba(var(--spl-glow-halo),.18)}
+  80%{background-color:#dae4ee; box-shadow:-2.4px -3.4px 5px rgba(var(--spl-bead-light),.65), 3.4px 4.8px 7px rgba(var(--spl-shadow-deep),.26), inset -3.4px -4.8px 6px rgba(var(--spl-shadow-deep),.2), 0 0 34px rgba(var(--spl-glow-core),.62), 0 0 58px rgba(var(--spl-glow-halo),.4)}
+  88%{background-color:#e6ecf1; box-shadow:-2.4px -3.4px 5.1px rgba(var(--spl-bead-light),.6), 3.4px 4.8px 6.8px rgba(var(--spl-shadow-deep),.27), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 20px rgba(var(--spl-glow-core),.36), 0 0 34px rgba(var(--spl-glow-halo),.22)}
+  100%{background-color:#eef0f4; box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 26px rgba(var(--spl-glow-core),.42), 0 0 50px rgba(var(--spl-glow-halo),.26)}
 }
 @keyframes sp-breathe{
-  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
-  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.62), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 32px rgba(126,164,188,.5), 0 0 58px rgba(var(--sp-glow-halo),.3)}
-  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  0%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 26px rgba(var(--spl-glow-core),.42), 0 0 50px rgba(var(--spl-glow-halo),.26)}
+  50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.62), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 32px rgba(126,164,188,.5), 0 0 58px rgba(var(--spl-glow-halo),.3)}
+  100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 26px rgba(var(--spl-glow-core),.42), 0 0 50px rgba(var(--spl-glow-halo),.26)}
 }
 /* caps land only after BOTH words have resolved (Event finishes ~1972ms,
    Boss ~2112ms absolute) — sequencing, not a computed dependency, is what
@@ -1449,7 +1466,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
   .splash .sp-l2{transform:none}
   .splash .sp-dot{transform:none; background-color:#eef0f4;
-    box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+    box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 26px rgba(var(--spl-glow-core),.42), 0 0 50px rgba(var(--spl-glow-halo),.26)}
   .splash .sp-dot::before{opacity:.7}
   .splash .sp-dot::after{opacity:.22; transform:translateX(-50%) scaleX(.85)}
   .splash .sp-caps, .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
@@ -1473,7 +1490,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .splash-quick .sp-l2{animation:none; transform:none}
 .splash-quick .sp-glow{animation:sp-glow-settle 20s var(--ease-in-out) 0ms infinite alternate}
 .splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#eef0f4;
-  box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--sp-shadow-deep),.2), 0 0 26px rgba(var(--sp-glow-core),.42), 0 0 50px rgba(var(--sp-glow-halo),.26)}
+  box-shadow:-2.5px -3.4px 5.1px rgba(var(--spl-bead-light),.58), 3.4px 5.1px 7.7px rgba(var(--spl-shadow-deep),.26), inset -3px -4px 5.5px rgba(var(--spl-shadow-deep),.2), 0 0 26px rgba(var(--spl-glow-core),.42), 0 0 50px rgba(var(--spl-glow-halo),.26)}
 .splash-quick .sp-dot::before{animation:none; opacity:.7}
 .splash-quick .sp-dot::after{animation:none; opacity:.22; transform:translateX(-50%) scaleX(.85)}
 .splash-quick .sp-caps, .splash-quick .sp-line-1, .splash-quick .sp-line-2{animation:none; opacity:1; transform:none}

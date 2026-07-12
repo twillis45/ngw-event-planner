@@ -4216,7 +4216,7 @@ export default function HostShellV2() {
                           sub: !cs.pooled ? 'everyone covers their own'
                             : cs.tierCount === 0 ? 'pool set up — no tiers yet'
                             : cs.pricedTierCount === 0 ? cs.tierCount + ' tier' + (cs.tierCount === 1 ? '' : 's') + ', amounts not set'
-                            : cs.tierCount + ' tier' + (cs.tierCount === 1 ? '' : 's') + ' · $' + cs.lowestDue + (cs.highestDue !== cs.lowestDue ? '–$' + cs.highestDue : '') + (cs.cadence ? ' ' + cs.cadence : ''),
+                            : cs.tierCount + ' tier' + (cs.tierCount === 1 ? '' : 's') + ' · ' + fmt(cs.lowestDue) + (cs.highestDue !== cs.lowestDue ? '–' + fmt(cs.highestDue) : '') + (cs.cadence ? ' ' + cs.cadence : ''),
                           go: () => setSheet({ kind: 'costshare' }),
                         };
                       })()
@@ -5052,6 +5052,15 @@ export default function HostShellV2() {
               return (
                 <>
                   <p className="v-meta" style={{ padding: '2px 2px 10px' }}>{cs.headline}</p>
+                  {/* "One of each group" per-cycle subtotal — doctrine-safe: it's
+                      exactly one contributor per named tier (zero headcount
+                      assumption), so it's honest to total, unlike the pool itself
+                      which we refuse to sum. Only shows once every tier is priced. */}
+                  {cs.oneOfEachTotal != null && (
+                    <p className="grounding" style={{ margin: '0 0 10px' }}>
+                      One of each group = <b>{fmt(cs.oneOfEachTotal)}</b>{cs.cadence ? ' ' + cs.cadence : ''} — the pool per round if a single person covers each tier. Headcounts are the family’s call, so it’s never multiplied out.
+                    </p>
+                  )}
                   <div className="shelf-label">How the money works</div>
                   <div className="picker" style={{ marginBottom: 'var(--sp-2)' }}>
                     <button className="chip" aria-pressed={!cs.pooled} onClick={() => setMode('self-pay')}>Everyone covers their own</button>
