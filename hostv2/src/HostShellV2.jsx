@@ -1956,7 +1956,7 @@ export default function HostShellV2() {
       // .mini buttons otherwise crush the nudge text into a ~100px column —
       // wrapping drops the button pair onto its own line instead (same fix
       // as .frow's custom-item-name squeeze).
-      <div className="later-row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+      <div className="later-row" style={{ marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
         <span className="t" style={{ color: 'var(--muted)', fontWeight: 550, fontSize: 'var(--t-row-sub)', minWidth: 200 }}>{n.text}</span>
         <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
           {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{n.actionLabel || 'Open'}</button>}
@@ -2597,7 +2597,7 @@ export default function HostShellV2() {
         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
           {/* exact-number entry: a +/- stepper plus a typed field, for hosts
               who already know their count instead of picking a nearby preset */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
             <button className="mini" onClick={() => bump(-1)} aria-label="Fewer guests">−</button>
             <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: '10px 6px' }}
               type="number" inputMode="numeric" min="1"
@@ -2814,7 +2814,7 @@ export default function HostShellV2() {
       // doubled up into "The the cookout move".
       const typeLower = String(event.type || '').toLowerCase().replace(/^the\s+/, '');
       return (
-        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-2)' }}>
           <div className="actions-row" style={{ marginTop: 0 }}>
             {suggested && (
               <button className="cta"
@@ -2885,7 +2885,7 @@ export default function HostShellV2() {
             These ranges run wider because guests are traveling in — travel-scale costs are part of the numbers.
           </p>
         )}
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
           <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: '10px 14px' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
             value={customBudget} onChange={e => setCustomBudget(e.target.value)}
@@ -3248,7 +3248,7 @@ export default function HostShellV2() {
                         </button>
                       </div>
                       {(createEdit === 'type' || !effType) && (
-                        <div className="typebrowser" style={{ marginTop: 12 }}>
+                        <div className="typebrowser" style={{ marginTop: 'var(--sp-3)' }}>
                           <input
                             className="field" style={{ maxWidth: 'none' }}
                             placeholder="Search occasions — bbq, boil, sweet 16…"
@@ -3257,7 +3257,7 @@ export default function HostShellV2() {
                             aria-label="Search occasions"
                           />
                           {typeMatches ? (
-                            <div className="chips" style={{ marginTop: 12 }}>
+                            <div className="chips" style={{ marginTop: 'var(--sp-3)' }}>
                               {typeMatches.length
                                 ? typeMatches.map(t => (
                                   <button key={t} className="chip" aria-pressed={effType === t} onClick={() => { pickType(t); setCreateEdit(null); }}>{t.replace(' Party', '')}</button>
@@ -3389,9 +3389,9 @@ export default function HostShellV2() {
                         and ignites once the name has landed — the same mark, twice. */}
                     <h1 className={'mega title-drop' + (revealStep > revealLineCount ? ' in' : '')} style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: '#eef0f4' }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                     {/* identityStatement() — the production identity engine, verbatim */}
-                    <p className={'mega-sub pre' + (revealStep > revealLineCount ? ' in' : '')} style={{ marginTop: 8, color: '#9aa7b2' }}>{identityStatement(activeCustom)}</p>
+                    <p className={'mega-sub pre' + (revealStep > revealLineCount ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2' }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
-                    <div className={'actions-row pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 24 }}>
+                    <div className={'actions-row pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 'var(--sp-6)' }}>
                       <button className={'cta big' + (revealStep > revealLineCount + 1 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
                       <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                     </div>
@@ -3469,7 +3469,7 @@ export default function HostShellV2() {
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (
-                <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--steel-soft)' }}>
+                <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--steel-soft)' }}>
                   Planning this as {String(ctx.reasoning).toLowerCase().replace(/\.$/, '')}.
                 </p>
               )}
@@ -3643,7 +3643,7 @@ export default function HostShellV2() {
               {sweepWindow && reconfirmedN === reconfirmables.length && (
                 <div className="later-row" style={{ marginTop: 14, color: 'var(--ok)' }}>
                   All {reconfirmables.length} vendors answered — everyone’s coming.
-                  <button className="mini" style={{ marginLeft: 8 }} onClick={() => setSheet({ kind: 'sweep' })}>See the sweep</button>
+                  <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setSheet({ kind: 'sweep' })}>See the sweep</button>
                 </div>
               )}
 
@@ -3674,7 +3674,7 @@ export default function HostShellV2() {
                     );
                   })()}
                   {(wins.items || []).length > 0 && (
-                    <div className="pills" style={{ marginBottom: 8 }}>
+                    <div className="pills" style={{ marginBottom: 'var(--sp-2)' }}>
                       {wins.items.map(w => (
                         <span key={w.key} className="pill p-ok" style={{ cursor: 'default' }}>{w.label}<span className="pill-note">{w.note}</span></span>
                       ))}
@@ -3682,7 +3682,7 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 4px' }}>The {phaseCues.totalCount} areas the count reads</div>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>The {phaseCues.totalCount} areas the count reads</div>
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
@@ -3693,7 +3693,7 @@ export default function HostShellV2() {
                           <span className="of">{c.id}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
                         </div>
                       ) : (
-                        <button key={c.id || i} className="frow" style={{ padding: '8px 2px' }}
+                        <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px' }}
                           onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel); }}>
                           <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel}</span></span>
                           <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
@@ -3884,7 +3884,7 @@ export default function HostShellV2() {
                     );
                   })}
                   </div>
-                  <div className="actions-row" style={{ marginTop: 8 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, profile, {})); } catch { toast('Couldn’t draft it.'); } }}>Draft the details</button>
                   </div>
                 </div>
@@ -3904,7 +3904,7 @@ export default function HostShellV2() {
                           field weather and maps read. */}
                       {isVenueBlock && !venueSet && (
                         <>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
                             <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
                               value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                             <button className="cta" onClick={saveVenue}>Save</button>
@@ -3927,7 +3927,7 @@ export default function HostShellV2() {
                           <p className="grounding" style={{ marginTop: 6 }}>
                             “{event.venue}” is named — the venue check also needs the town and state (or a ZIP), so weather and maps find the right one.
                           </p>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                          <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
                             <input className="field" style={{ maxWidth: 180 }} placeholder="Annapolis, MD or 21401"
                               value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City, state or ZIP" />
                             <button className="cta" onClick={saveCity}>Save</button>
@@ -3966,7 +3966,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
-                <div className="hc-row" style={{ marginTop: 8 }}>
+                <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <input className="field" style={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it"
                     value={addressDraft} onChange={e => setAddressDraft(e.target.value)} aria-label="Venue address" />
                   <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
@@ -3988,7 +3988,7 @@ export default function HostShellV2() {
               )}
 
               {compression && compression.headline && (
-                <button className="later-row" style={{ marginTop: 20, width: '100%', textAlign: 'left', background: 'var(--warn-tint)', border: 'none', borderRadius: 12, padding: '12px 14px', cursor: 'pointer' }}
+                <button className="later-row" style={{ marginTop: 'var(--sp-5)', width: '100%', textAlign: 'left', background: 'var(--warn-tint)', border: 'none', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', cursor: 'pointer' }}
                   onClick={() => {
                     // land on the engine's FIRST do-now task, not the sheet top
                     const first = (compression.doNow && compression.doNow[0]) || null;
@@ -4000,7 +4000,7 @@ export default function HostShellV2() {
               )}
 
               {!String(event.venue || '').trim() && !venueBlockerShown && (
-                <article className="card" style={{ marginTop: 20 }}>
+                <article className="card" style={{ marginTop: 'var(--sp-5)' }}>
                   <div className="card-head">
                     <div className="card-top">
                       <span className="tag plan" style={(days != null && days <= 1) ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : undefined}>
@@ -4011,7 +4011,7 @@ export default function HostShellV2() {
                     <p className="because">{(days != null && days <= 1)
                       ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
                       : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
                       <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
                         value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                       <button className="cta" onClick={saveVenue}>Save</button>
@@ -4024,7 +4024,7 @@ export default function HostShellV2() {
                             <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
                           </button>
                         ))}
-                        <p className="grounding" style={{ margin: '4px 0 0', opacity: .65 }}>
+                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .65 }}>
                           {typeof window !== 'undefined' && window.google ? 'Suggestions by Google Places.' : 'Suggestions by OpenStreetMap — Google Places takes over when the API key lands.'}
                         </p>
                       </div>
@@ -4266,7 +4266,7 @@ export default function HostShellV2() {
               {/* Day alerts — the SAME engine the production app reads
                   (lib/dayAlerts): what needs you RIGHT NOW, three calm tiers. */}
               {rosOverlaps > 0 && (
-                <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 12, padding: '10px 14px', marginBottom: 8 }}>
+                <div className="later-row" style={{ background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: '10px 14px', marginBottom: 'var(--sp-2)' }}>
                   <span className="t" style={{ color: 'var(--warn)', fontWeight: 650 }}>
                     {rosOverlaps} run-of-show {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — worth a look before things collide.
                   </span>
@@ -4279,7 +4279,7 @@ export default function HostShellV2() {
                 if (!sugg.length) return null;
                 const m = sugg[0];
                 return (
-                  <div className="later-row" style={{ marginTop: 14, marginBottom: 8 }}>
+                  <div className="later-row" style={{ marginTop: 14, marginBottom: 'var(--sp-2)' }}>
                     <span className="t" style={{ color: 'var(--carbon-muted)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>
                       Worth a spot on the schedule: {m.label || m.title || m.name}
                     </span>
@@ -4303,7 +4303,7 @@ export default function HostShellV2() {
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
                     display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
-                    borderRadius: 14, padding: '12px 14px', marginBottom: 8, font: 'inherit',
+                    borderRadius: 14, padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-2)', font: 'inherit',
                     background: a.tier === 'critical' ? 'var(--danger-tint)' : a.tier === 'warning' ? 'var(--warn-tint)' : 'var(--steel-tint)',
                     color: 'var(--carbon-text)',
                   }}>
@@ -4343,7 +4343,7 @@ export default function HostShellV2() {
                     const who = v.dayOfContactName || v.contactName || v.name;
                     if (!phone && !v.arrivalTime) return null;
                     return (
-                      <p className="meta" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <p className="meta" style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         {[v.arrivalTime ? 'arrives ' + v.arrivalTime : null, who && who !== v.name ? 'on-site: ' + who : null].filter(Boolean).join(' · ')}
                         {phone ? <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + String(phone).replace(/[^+\d]/g, '')}>Call {String(who).split(/\s+/)[0]}</a> : null}
                       </p>
@@ -4368,7 +4368,7 @@ export default function HostShellV2() {
                       live thread — legacy runs the rail green for the whole
                       day-of, not just behind the NOW box (App.js ~34635). */}
                   <div className="then-spine-link" aria-hidden="true" />
-                  <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</div>
+                  <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</div>
                   <div className="then-spine">
                   {cuesAfterNow.slice(0, 7).map((r, i) => {
                     const m = cueMins(r.time);
@@ -4396,7 +4396,7 @@ export default function HostShellV2() {
                 </div>
               )}
               {ros.some(r => r && r.done) && !dayAllDone && (
-                <p className="grounding" style={{ marginTop: 12, color: 'var(--carbon-muted)' }}>
+                <p className="grounding" style={{ marginTop: 'var(--sp-3)', color: 'var(--carbon-muted)' }}>
                   {ros.filter(r => r && r.done).length} already run — the day has them.
                 </p>
               )}
@@ -4412,7 +4412,7 @@ export default function HostShellV2() {
                       }}>{String(h.name).trim().charAt(0).toUpperCase()}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontWeight: 700 }}>{h.name}
-                          {h.coi && h.coi.label ? <span className="tag plan" style={{ marginLeft: 8, color: h.coi.level === 'safe' ? 'var(--carbon-muted)' : 'var(--warn)', background: 'var(--steel-tint)' }}>{h.coi.label}</span> : null}
+                          {h.coi && h.coi.label ? <span className="tag plan" style={{ marginLeft: 'var(--sp-2)', color: h.coi.level === 'safe' ? 'var(--carbon-muted)' : 'var(--warn)', background: 'var(--steel-tint)' }}>{h.coi.label}</span> : null}
                         </span>
                         <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', color: 'var(--carbon-muted)' }}>{h.role}</span>
                       </span>
@@ -4434,7 +4434,7 @@ export default function HostShellV2() {
             <section className="day-sec">
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
               {days === 0 && rosState === 'untimed' && (
-                <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--carbon-muted)' }}>
+                <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>
                   These moments don’t have times yet — the live clock takes over once times are set. Walking through by hand still records what’s done.
                 </p>
               )}
@@ -4468,7 +4468,7 @@ export default function HostShellV2() {
                         through writeRosCue (legacy's ros/rosEdited shape). Preview
                         only, never on the live day, and only for upcoming events. */}
                     {!isPast && ros[dayIdx].id && (
-                      <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                         <label className="of" htmlFor="ros-cue-time">time</label>
                         <input id="ros-cue-time" className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: '5px 10px' }}
                           value={ros[dayIdx].time || ''}
@@ -4498,13 +4498,13 @@ export default function HostShellV2() {
                       {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
                     </button>
                   </div>
-                  <div className="actions-row" style={{ marginTop: 12 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
                     {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                   </div>
                   {dayIdx < ros.length - 1 && (
                     <div className="then">
-                      <div className="eyebrow" style={{ marginBottom: 8 }}>Then · {ros.length - 1 - dayIdx} more moments</div>
+                      <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>Then · {ros.length - 1 - dayIdx} more moments</div>
                       {ros.slice(dayIdx + 1, dayIdx + 8).map((r, i) => (
                         // WAVE-B: each upcoming row carries its own minimal
                         // time + owner editor (same writeRosCue path as the
@@ -4512,13 +4512,13 @@ export default function HostShellV2() {
                         // legacy imports — stay read-only rather than risking
                         // a write that can't target one cue.
                         !isPast && r.id ? (
-                          <div className="then-row" key={r.id} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                            <input className="field" type="time" style={{ width: 112, flexShrink: 0, fontSize: 'var(--t-input)', padding: '4px 8px' }}
+                          <div className="then-row" key={r.id} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                            <input className="field" type="time" style={{ width: 112, flexShrink: 0, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }}
                               value={r.time || ''}
                               onChange={e => writeRosCue(r.id, { time: e.target.value }, e.target.value ? (r.segment || 'This moment') + ' — ' + e.target.value + ' on the schedule.' : (r.segment || 'This moment') + ' — time cleared.')}
                               aria-label={'Time for ' + (r.segment || 'this moment')} />
                             <span style={{ flex: '1 1 auto', minWidth: 120 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
-                            <input className="field" style={{ width: 130, flexShrink: 0, fontSize: 'var(--t-input)', padding: '4px 8px' }} placeholder="who runs it"
+                            <input className="field" style={{ width: 130, flexShrink: 0, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }} placeholder="who runs it"
                               value={r.owner || ''} onChange={e => writeRosCue(r.id, { owner: e.target.value }, null)}
                               aria-label={'Who runs ' + (r.segment || 'this moment')} />
                           </div>
@@ -4613,7 +4613,7 @@ export default function HostShellV2() {
                           </span>
                         </div>
                       ))}
-                      <p className="grounding" style={{ margin: '8px 0 0' }}>“Thanked” feeds the wrap-up meter up top; gifts are just for your memory — and the note below writes itself from what actually happened.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>“Thanked” feeds the wrap-up meter up top; gifts are just for your memory — and the note below writes itself from what actually happened.</p>
                     </div></div>
                   </>
                 );
@@ -4627,10 +4627,10 @@ export default function HostShellV2() {
                 const planned = guests || 0;
                 if (!planned) return null;
                 if (done) return (
-                  <p className="grounding" style={{ marginTop: 12 }}>Turnout recorded — the next plan sizes smarter for it.</p>
+                  <p className="grounding" style={{ marginTop: 'var(--sp-3)' }}>Turnout recorded — the next plan sizes smarter for it.</p>
                 );
                 return (
-                  <div style={{ marginTop: 12 }}>
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
                     <div className="shelf-label" style={{ marginBottom: 6 }}>The final number — how many actually came?</div>
                     <div className="actions-row" style={{ alignItems: 'center' }}>
                       <input className="field" type="number" min="0" style={{ maxWidth: 110, fontSize: 'var(--t-input)' }}
@@ -4655,12 +4655,12 @@ export default function HostShellV2() {
                   setLesson (lib/eventMemory); recalled on Plan for the next
                   same-type event. Past events only — a preview has no lessons. */}
               {isPast && (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 'var(--sp-3)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>For next time — the one thing you’d tell yourself</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }}
                     placeholder="Two bags of ice per cooler wasn’t enough — get three"
                     value={lessonDraft} onChange={e => setLessonDraft(e.target.value)} aria-label="Lesson for next time" />
-                  <div className="actions-row" style={{ marginTop: 8 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="cta" disabled={lessonDraft.trim() === getLesson(event)}
                       style={lessonDraft.trim() === getLesson(event) ? { opacity: .45 } : undefined}
                       onClick={() => patchEvent({ lessons: setLesson(event, lessonDraft).lessons },
@@ -4758,7 +4758,7 @@ export default function HostShellV2() {
                 }) : <div className="v-meta" style={{ padding: '14px 2px' }}>Nothing waiting on you.</div>}
                 {(decisionBoard.locked || []).length > 0 && (
                   <>
-                    <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Settled</div>
+                    <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>
                     {(decisionBoard.locked || []).map((r, i) => {
                       const why = latestRationaleForSubject(event, r.id);
                       // An optioned call stays changeable after it's settled —
@@ -4776,7 +4776,7 @@ export default function HostShellV2() {
                           ref={el => { if (el && sheet.focus && sheet.focus === r.id) el.scrollIntoView({ block: 'center' }); }}>
                           <div className="line" style={{ alignItems: 'center' }}>
                             <span>{r.label}</span>
-                            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of">{r.because}</span>
                               {canChange && !changeOpen && (
                                 <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>change</button>
@@ -4787,7 +4787,7 @@ export default function HostShellV2() {
                             </span>
                           </div>
                           {changeOpen && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 8px' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
                               {opts.options.map(opt => (
                                 <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
                                   onClick={() => settleDecision(r, opt)}>{opt}</button>
@@ -4796,8 +4796,8 @@ export default function HostShellV2() {
                           )}
                           {why && <p className="grounding" style={{ margin: '0 0 6px' }}>Your call: “{why}”</p>}
                           {whyOpen === r.id && (
-                            <div className="actions-row" style={{ margin: '0 0 8px', alignItems: 'center' }}>
-                              <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)', padding: '8px 12px' }}
+                            <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
+                              <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)', padding: 'var(--sp-2) var(--sp-3)' }}
                                 placeholder="Why this call? — in your own words" value={whyText}
                                 onChange={e => setWhyText(e.target.value)} aria-label={'Why ' + r.label} />
                               <button className="mini" onClick={() => saveWhy(r)}>save</button>
@@ -4885,7 +4885,7 @@ export default function HostShellV2() {
                           </span>
                         </button>
                         {isNoteOpen && (
-                          <div className="actions-row" style={{ marginTop: 8 }}>
+                          <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                             <input className="field" style={{ flex: 1 }} placeholder={'Add ' + s.label.toLowerCase() + '…'}
                               defaultValue={event[noteField] || ''} aria-label={s.label}
                               onKeyDown={e => {
@@ -4937,13 +4937,13 @@ export default function HostShellV2() {
                   };
                   return (
                     <div key={it.key || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
-                      <div className="line" style={{ padding: '0 0 4px' }}>
+                      <div className="line" style={{ padding: '0 0 var(--sp-1)' }}>
                         <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
                         <span className="amt">
                           {remaining === 0 ? 'covered' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'no price read'}
                         </span>
                       </div>
-                      <div className="actions-row" style={{ marginTop: 4, alignItems: 'center' }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-1)', alignItems: 'center' }}>
                         <span className="of">you have</span>
                         <input className="field" style={{ maxWidth: 66, fontSize: 'var(--t-input)', padding: '6px 10px' }} type="number" min="0" max={baseNeed}
                           value={have || ''} placeholder="0" aria-label={'How many ' + (it.short || it.item) + ' you have'}
@@ -4955,7 +4955,7 @@ export default function HostShellV2() {
                         {remaining === 0 && helperName && <span className="of" style={{ color: 'var(--ok)' }}>{helperName} has it covered</span>}
                       </div>
                       {links && remaining > 0 && (
-                        <div className="actions-row" style={{ marginTop: 4 }}>
+                        <div className="actions-row" style={{ marginTop: 'var(--sp-1)' }}>
                           {links.kind === 'rent' && links.rentUrl && (
                             <a className="mini" style={{ textDecoration: 'none' }} href={links.rentUrl} target="_blank" rel="noreferrer">Find rentals nearby</a>
                           )}
@@ -4969,7 +4969,7 @@ export default function HostShellV2() {
                 })}
                 {helpers.length > 0 && (
                   <>
-                    <div className="shelf-label" style={{ margin: '14px 0 4px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>Who’s helping</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Message all helpers</button>
@@ -5003,7 +5003,7 @@ export default function HostShellV2() {
               const f = csForm || { reason: '', cadence: '', tiers: [] };
               const setF = (k) => (e) => setCsForm({ ...f, [k]: e.target.value });
               const setTier = (i, k) => (e) => setCsForm({ ...f, tiers: f.tiers.map((t, j) => j === i ? { ...t, [k]: e.target.value } : t) });
-              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
+              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const setMode = (mode) => patchEvent({
                 costSharing: { ...((event.costSharing && typeof event.costSharing === 'object') ? event.costSharing : {}), mode },
               }, mode === 'pooled-dues' ? 'Ongoing pool it is — set up the tiers below.' : 'Everyone covers their own costs.');
@@ -5011,7 +5011,7 @@ export default function HostShellV2() {
                 <>
                   <p className="v-meta" style={{ padding: '2px 2px 10px' }}>{cs.headline}</p>
                   <div className="shelf-label">How the money works</div>
-                  <div className="picker" style={{ marginBottom: 8 }}>
+                  <div className="picker" style={{ marginBottom: 'var(--sp-2)' }}>
                     <button className="chip" aria-pressed={!cs.pooled} onClick={() => setMode('self-pay')}>Everyone covers their own</button>
                     <button className="chip" aria-pressed={cs.pooled} onClick={() => setMode('pooled-dues')}>Ongoing pool</button>
                   </div>
@@ -5025,10 +5025,10 @@ export default function HostShellV2() {
                       </div>
                       <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Who chips in what</div>
                       {f.tiers.length === 0 && (
-                        <p className="v-meta" style={{ margin: '0 0 8px' }}>Different people can carry different amounts — working adults one number, students another, elders covered. Add a line per group.</p>
+                        <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>Different people can carry different amounts — working adults one number, students another, elders covered. Add a line per group.</p>
                       )}
                       {f.tiers.map((t, i) => (
-                        <div key={i} className="lodge-form" style={{ marginBottom: 4 }}>
+                        <div key={i} className="lodge-form" style={{ marginBottom: 'var(--sp-1)' }}>
                           <label className="lodge-f"><span className="of">Who</span>
                             <input className="field" style={fld} placeholder="e.g. Working adults" value={t.label} onChange={setTier(i, 'label')} aria-label={'Group ' + (i + 1) + ' — who this covers'} /></label>
                           <label className="lodge-f"><span className="of">Amount</span>
@@ -5059,7 +5059,7 @@ export default function HostShellV2() {
               const lg = travel.lodging;
               const f = lodgeForm || { hotelName: '', rate: '', code: '', deadline: '', backups: [] };
               const setF = (k) => (e) => setLodgeForm({ ...f, [k]: e.target.value });
-              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
+              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const focusDeadline = sheet.focus === 'deadline';
               return (
                 <>
@@ -5092,7 +5092,7 @@ export default function HostShellV2() {
                     const when = new Date(lg.deadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
                     const late = dd != null && dd < 0;
                     return (
-                      <p className={'v-meta' + (focusDeadline ? ' rowfocus' : '')} style={{ padding: '2px 2px 8px', ...(late || (dd != null && dd <= 7) ? { color: 'var(--warn)', fontWeight: 650 } : {}) }}>
+                      <p className={'v-meta' + (focusDeadline ? ' rowfocus' : '')} style={{ padding: '2px 2px var(--sp-2)', ...(late || (dd != null && dd <= 7) ? { color: 'var(--warn)', fontWeight: 650 } : {}) }}>
                         {late
                           ? 'The group rate ended ' + when + ' — check with the hotel before pointing anyone else there.'
                           : 'Group rate ends ' + when + (dd != null ? (dd === 0 ? ' — today' : ' — in ' + dd + ' day' + (dd === 1 ? '' : 's')) : '') + '.'}
@@ -5159,7 +5159,7 @@ export default function HostShellV2() {
                         ))}
                       </>
                     ) : (
-                      <p className="v-meta" style={{ padding: '12px 2px 0' }}>Everyone on the list has declined — nobody needs a room right now.</p>
+                      <p className="v-meta" style={{ padding: 'var(--sp-3) 2px 0' }}>Everyone on the list has declined — nobody needs a room right now.</p>
                     )
                   ) : (
                     // Headcount mode: the engine returns no roster and a null
@@ -5182,7 +5182,7 @@ export default function HostShellV2() {
               const gr = travel.ground;
               const f = groundForm || { lastReturnNote: '', pickups: [{ name: '', note: '' }] };
               const setF = (k) => (e) => setGroundForm({ ...f, [k]: e.target.value });
-              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
+              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const hasNoteMaterial = !!(gr.lastReturnNote || gr.pickupPoints.length || gr.transportProvided != null);
               const firstNeeds = gr.roster.findIndex(x => x.status === 'needs_ride');
               const spoken = travel.rosterMode && gr.roster.some(x => x.status !== 'not_set');
@@ -5283,7 +5283,7 @@ export default function HostShellV2() {
                                 <span className={'tag ride-' + r.status}>{RIDE_STATUS_LABEL[r.status]}</span>
                               </button>
                               {r.status === 'offers_ride' && (
-                                <div className="actions-row" style={{ padding: '0 8px 8px', alignItems: 'center' }}>
+                                <div className="actions-row" style={{ padding: '0 var(--sp-2) var(--sp-2)', alignItems: 'center' }}>
                                   <button className="mini" onClick={() => setRideSeats(r, -1)} aria-label={'Fewer seats from ' + r.name}>−</button>
                                   <span className="of" style={{ minWidth: 52, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{r.seats} seat{r.seats === 1 ? '' : 's'}</span>
                                   <button className="mini" onClick={() => setRideSeats(r, +1)} aria-label={'More seats from ' + r.name}>+</button>
@@ -5295,7 +5295,7 @@ export default function HostShellV2() {
                         })}
                       </>
                     ) : (
-                      <p className="v-meta" style={{ padding: '12px 2px 0' }}>Everyone on the list has declined — nobody needs a ride right now.</p>
+                      <p className="v-meta" style={{ padding: 'var(--sp-3) 2px 0' }}>Everyone on the list has declined — nobody needs a ride right now.</p>
                     )
                   ) : (
                     // Headcount mode: the engine returns no roster — the host
@@ -5320,7 +5320,7 @@ export default function HostShellV2() {
               const ar = travel.air;
               const f = airForm || { airports: [{ name: '', code: '', note: '' }] };
               const setF = (k) => (e) => setAirForm({ ...f, [k]: e.target.value });
-              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
+              const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const startDay = /^\d{4}-\d{2}-\d{2}/.test(String(event.date || '')) ? String(event.date).slice(0, 10) : null;
               const endDay = (/^\d{4}-\d{2}-\d{2}/.test(String(event.endDate || '')) ? String(event.endDate).slice(0, 10) : null) || startDay;
               const fmtDay = (d) => new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
@@ -5366,7 +5366,7 @@ export default function HostShellV2() {
                   {startDay && (() => {
                     const tp = (() => { try { return timePhrase(event); } catch { return ''; } })();
                     return (
-                      <p className="v-meta" style={{ padding: '2px 2px 8px' }}>
+                      <p className="v-meta" style={{ padding: '2px 2px var(--sp-2)' }}>
                         {endDay !== startDay
                           ? 'It runs ' + fmtDay(startDay) + ' through ' + fmtDay(endDay) + ' — flights in by ' + fmtDay(startDay) + ', home after ' + fmtDay(endDay) + '.'
                           : 'The day itself is ' + fmtDay(startDay) + (tp ? ' — it starts ' + (/^in the /.test(tp) ? tp : 'at ' + tp) : '') + '. Flights should land before then.'}
@@ -5412,7 +5412,7 @@ export default function HostShellV2() {
                         <div className="shelf-label" style={{ margin: '18px 0 2px' }}>Who lands when</div>
                         {arrivalClusters(ar.roster).map((cl) => (
                           <div key={cl.day || 'unknown'}>
-                            <div className="shelf-label" style={{ margin: '12px 0 2px' }}>
+                            <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 2px' }}>
                               {cl.day
                                 ? fmtDay(cl.day) + (startDay ? (cl.day === startDay ? ' — the day itself' : cl.day > startDay ? ' — after it starts' : '') : '')
                                 : 'No flight info yet'}
@@ -5452,7 +5452,7 @@ export default function HostShellV2() {
                                     <span className={'tag air-' + (r.hasFlightInfo ? 'set' : 'none')}>{r.hasFlightInfo ? 'On the board' : 'No flights yet'}</span>
                                   </button>
                                   {editing && (
-                                    <div style={{ padding: '0 8px 10px' }}>
+                                    <div style={{ padding: '0 var(--sp-2) 10px' }}>
                                       <div className="lodge-form">
                                         <label className="lodge-f full"><span className="of">Flying into</span>
                                           <input className="field" style={fld} placeholder="BWI" value={flightEdit.airportCode} onChange={e => setFlightEdit({ ...flightEdit, airportCode: e.target.value })} aria-label={'Airport ' + r.name + ' flies into'} /></label>
@@ -5465,7 +5465,7 @@ export default function HostShellV2() {
                                         <label className="lodge-f"><span className="of">Flies home at</span>
                                           <input className="field" style={fld} type="time" value={flightEdit.departTime} onChange={e => setFlightEdit({ ...flightEdit, departTime: e.target.value })} aria-label={'Time ' + r.name + ' flies home'} /></label>
                                       </div>
-                                      <div className="actions-row" style={{ marginTop: 8 }}>
+                                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                                         <button className="mini" onClick={saveFlightEdit}>Save {r.name}’s flights</button>
                                         <button className="mini" onClick={() => setFlightEdit(null)}>Cancel</button>
                                       </div>
@@ -5478,7 +5478,7 @@ export default function HostShellV2() {
                         ))}
                       </>
                     ) : (
-                      <p className="v-meta" style={{ padding: '12px 2px 0' }}>Everyone on the list has declined — nobody’s flying in right now.</p>
+                      <p className="v-meta" style={{ padding: 'var(--sp-3) 2px 0' }}>Everyone on the list has declined — nobody’s flying in right now.</p>
                     )
                   ) : (
                     // Headcount mode: the engine returns no roster — the
@@ -5554,7 +5554,7 @@ export default function HostShellV2() {
                     sub={(sp.totals.allSeated ? 'Everyone’s in a seat — ' : '') + tableBits + '.'}
                   />
                   {sp.dietChips.length > 0 && (
-                    <div className="chips" style={{ margin: '0 0 8px' }}>
+                    <div className="chips" style={{ margin: '0 0 var(--sp-2)' }}>
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
                     </div>
                   )}
@@ -5567,9 +5567,9 @@ export default function HostShellV2() {
                       <strong style={{ color: 'var(--ink-soft)' }}>Seat with easy access:</strong> {sp.accessibleSeats.join(', ')} — asked for a step-free spot.
                     </p>
                   )}
-                  <div className="line" style={{ alignItems: 'center', padding: '4px 0 10px' }}>
+                  <div className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0 10px' }}>
                     <span>Tables</span>
-                    <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                       <button className="mini" onClick={() => stepTableCount(-1)} disabled={sp.tableCount <= 1}
                         style={sp.tableCount <= 1 ? { opacity: .45 } : undefined} aria-label="One table fewer">−</button>
                       <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{sp.tableCount}</span>
@@ -5577,17 +5577,17 @@ export default function HostShellV2() {
                     </span>
                   </div>
                   {picked && (
-                    <p className="grounding" style={{ margin: '0 0 8px' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
                       Seating {picked.name} — tap a table below.{' '}
                       <button className="mini" onClick={() => setSeatPick(null)}>never mind</button>
                     </p>
                   )}
                   {sp.unassigned.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '8px 0 2px' }}>Still need a seat — tap a name, then a table</div>
+                      <div className="shelf-label" style={{ margin: 'var(--sp-2) 0 2px' }}>Still need a seat — tap a name, then a table</div>
                       {sp.unassigned.map(g => guestRow(g, false))}
                       {sp.unassigned.some(g => g.group) && (
-                        <div className="actions-row" style={{ margin: '8px 0 2px', alignItems: 'center' }}>
+                        <div className="actions-row" style={{ margin: 'var(--sp-2) 0 2px', alignItems: 'center' }}>
                           <button className="mini" onClick={autoSeatByGroup}>Spread everyone across tables</button>
                           <span className="of">balances the room evenly — it won’t keep groups together; adjust any seat after</span>
                         </div>
@@ -5597,8 +5597,8 @@ export default function HostShellV2() {
                   <div className="actions-row" style={{ margin: '14px 0 2px', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span className="shelf-label">The tables{picked ? ' — tap one to seat ' + picked.name : ''}</span>
                     <span className="chips">
-                      <button className="chip" style={{ padding: '4px 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'list'} onClick={() => setSeatView('list')}>List</button>
-                      <button className="chip" style={{ padding: '4px 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'plan'} onClick={() => setSeatView('plan')}>Floor plan</button>
+                      <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'list'} onClick={() => setSeatView('list')}>List</button>
+                      <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'plan'} onClick={() => setSeatView('plan')}>Floor plan</button>
                     </span>
                   </div>
                   {/* Floor-plan view (per-screen audit: seating was list-only; AllSeated's
@@ -5644,9 +5644,9 @@ export default function HostShellV2() {
                           <span className="chev" style={{ position: 'static', color: 'var(--faint)', transform: isOpen ? 'rotate(90deg)' : 'none' }}>›</span>
                         </button>
                         {isOpen && (
-                          <div style={{ padding: '2px 0 8px 14px' }}>
+                          <div style={{ padding: '2px 0 var(--sp-2) 14px' }}>
                             {t.guests.map(g => guestRow(g, true))}
-                            {t.guests.length === 0 && <p className="v-meta" style={{ margin: '4px 0' }}>No one here yet.</p>}
+                            {t.guests.length === 0 && <p className="v-meta" style={{ margin: 'var(--sp-1) 0' }}>No one here yet.</p>}
                             {renaming ? (
                               <div className="actions-row" style={{ marginTop: 6, alignItems: 'center' }}>
                                 <input className="field" style={{ maxWidth: 200, fontSize: 'var(--t-input)', padding: '6px 10px' }}
@@ -5697,7 +5697,7 @@ export default function HostShellV2() {
                       <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
-                    {why && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--faint)' }}>{why}</p>}
+                    {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
                     <div className="actions-row" style={{ marginTop: 6 }}>
                       {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
                       <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
@@ -5715,7 +5715,7 @@ export default function HostShellV2() {
                       <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
-                    {why && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--faint)' }}>{why}</p>}
+                    {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
                     {(route || r.id) && (
                       <div className="actions-row" style={{ marginTop: 6 }}>
                         {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
@@ -5729,7 +5729,7 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'meaning' && meaningDraft && (
               <>
-                <p className="grounding" style={{ margin: '0 0 12px' }}>
+                <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
                   This is what the plan protects — the day-before brief, the run of show, and the toast all draw from your own words. Nothing here is required.
                 </p>
                 {[
@@ -5739,7 +5739,7 @@ export default function HostShellV2() {
                   ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
                   ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
                 ].map(([key, label, ph, multi]) => (
-                  <div key={key} style={{ marginBottom: 12 }}>
+                  <div key={key} style={{ marginBottom: 'var(--sp-3)' }}>
                     <div className="shelf-label" style={{ marginBottom: 5 }}>{label}</div>
                     {multi ? (
                       <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }} placeholder={ph}
@@ -5819,7 +5819,7 @@ export default function HostShellV2() {
                   );
                 })}
                 {!activeCustom && Object.keys(patch).length > 0 && (
-                  <div className="actions-row" style={{ marginTop: 12 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
                     <button className="mini" onClick={() => { setPatch({}); toast('Your changes to this event were cleared.'); }}>Reset changes to this event</button>
                   </div>
                 )}
@@ -5864,7 +5864,7 @@ export default function HostShellV2() {
                     />
                   )}
                   {proc && proc.cost && (
-                    <div className="card" style={{ marginBottom: 12, padding: '13px 15px' }}>
+                    <div className="card" style={{ marginBottom: 'var(--sp-3)', padding: '13px 15px' }}>
                       <div className="line" style={{ padding: 0 }}>
                         <span className="shelf-label" style={{ margin: 0 }}>{proc.explanation.pricingModel === 'host-entered-actual' ? 'Your crab cost' : 'Estimated crab cost'}</span>
                         <span className="amt" style={{ fontSize: 'var(--t-stat-sm)', fontWeight: 800 }}>
@@ -5880,11 +5880,11 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>{proc.explanation.assumptions[0]} {proc.explanation.regionalFactors.note}</p>
                       )}
                       {proc.explanation.costReducers.length > 0 && (
-                        <details style={{ marginTop: 8 }}>
+                        <details style={{ marginTop: 'var(--sp-2)' }}>
                           <summary style={{ cursor: 'pointer', fontSize: 'var(--t-row-sub)', fontWeight: 650, color: 'var(--steel-soft)' }}>Ways to spend less</summary>
                           <div style={{ marginTop: 6 }}>
                             {proc.explanation.costReducers.map((c, i) => (
-                              <p key={i} className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>{c.label}.</strong> {c.hint}</p>
+                              <p key={i} className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>{c.label}.</strong> {c.hint}</p>
                             ))}
                           </div>
                         </details>
@@ -5893,12 +5893,12 @@ export default function HostShellV2() {
                         <details style={{ marginTop: 6 }}>
                           <summary style={{ cursor: 'pointer', fontSize: 'var(--t-row-sub)', fontWeight: 650, color: 'var(--steel-soft)' }}>Pickup, storage & cooking</summary>
                           <div style={{ marginTop: 6 }}>
-                            {proc.logistics.pickupWindow && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Pickup:</strong> {proc.logistics.pickupWindow.note}</p>}
-                            {proc.logistics.storage && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Storage:</strong> {proc.logistics.storage.note}</p>}
-                            {proc.logistics.transport && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Transport:</strong> {proc.logistics.transport.note}</p>}
-                            {proc.logistics.cooking && <p className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Cooking:</strong> {proc.logistics.cooking.note}</p>}
+                            {proc.logistics.pickupWindow && <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>Pickup:</strong> {proc.logistics.pickupWindow.note}</p>}
+                            {proc.logistics.storage && <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>Storage:</strong> {proc.logistics.storage.note}</p>}
+                            {proc.logistics.transport && <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>Transport:</strong> {proc.logistics.transport.note}</p>}
+                            {proc.logistics.cooking && <p className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>Cooking:</strong> {proc.logistics.cooking.note}</p>}
                             {(proc.logistics.servingWaves || []).map((w, i) => (
-                              <p key={i} className="grounding" style={{ margin: '0 0 4px' }}><strong style={{ color: 'var(--ink-soft)' }}>Wave {w.wave} ({w.timing}):</strong> {w.note}</p>
+                              <p key={i} className="grounding" style={{ margin: '0 0 var(--sp-1)' }}><strong style={{ color: 'var(--ink-soft)' }}>Wave {w.wave} ({w.timing}):</strong> {w.note}</p>
                             ))}
                           </div>
                         </details>
@@ -5914,10 +5914,10 @@ export default function HostShellV2() {
                     const rec = (() => { try { return recommendCrabOrder(event); } catch { return null; } })();
                     if (!rec) return null;
                     return (
-                      <div className="card" style={{ marginBottom: 12, padding: '13px 15px' }}>
+                      <div className="card" style={{ marginBottom: 'var(--sp-3)', padding: '13px 15px' }}>
                         <div className="shelf-label" style={{ margin: 0 }}>A starting order</div>
-                        <p className="grounding" style={{ margin: '4px 0 0' }}>{rec.summary} — about {rec.totalCrabs} crabs.</p>
-                        <p className="grounding" style={{ margin: '4px 0 0', opacity: .85 }}>{rec.note}</p>
+                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{rec.summary} — about {rec.totalCrabs} crabs.</p>
+                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{rec.note}</p>
                         <button className="cta" style={{ marginTop: 10 }} onClick={() => {
                           const newLines = rec.lines.map((l, i) => ({ id: 'cl-rec-' + i + '-' + l.size + '-' + l.unit, ...l }));
                           writeCp({ lines: [...lines, ...newLines] }, 'Added — a real starting point, edit any line to match your vendor’s quote.');
@@ -5949,17 +5949,17 @@ export default function HostShellV2() {
                           <button className="mini" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}>×</button>
                         </span>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <label className="of" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label className="of" style={{ display: 'flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
                           crabs per {UNIT_LABEL[l.unit] || l.unit}
-                          <input id={`crabline-${l.id}-count`} className="field" style={{ maxWidth: 72, fontSize: 'var(--t-input)', padding: '5px 8px' }}
+                          <input id={`crabline-${l.id}-count`} className="field" style={{ maxWidth: 72, fontSize: 'var(--t-input)', padding: '5px var(--sp-2)' }}
                             type="number" min="0" placeholder={defaultCountPerUnit(l.size, l.unit) != null ? `~${defaultCountPerUnit(l.size, l.unit)}` : 'ask vendor'}
                             value={l.estimatedCountPerUnit ?? ''}
                             onChange={e => { const n = parseInt(e.target.value, 10); writeLine({ estimatedCountPerUnit: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
                         </label>
-                        <label className="of" style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <label className="of" style={{ display: 'flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
                           price per {UNIT_LABEL[l.unit] || l.unit}
-                          <input id={`crabline-${l.id}-price`} className="field" style={{ maxWidth: 86, fontSize: 'var(--t-input)', padding: '5px 8px' }}
+                          <input id={`crabline-${l.id}-price`} className="field" style={{ maxWidth: 86, fontSize: 'var(--t-input)', padding: '5px var(--sp-2)' }}
                             type="number" min="0" placeholder="quote"
                             value={l.pricePerUnit ?? ''}
                             onChange={e => { const n = parseFloat(e.target.value); writeLine({ pricePerUnit: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
@@ -5969,42 +5969,42 @@ export default function HostShellV2() {
                     </div>
                     );
                   })}
-                  {crab.bushelExplanation && <p className="grounding" style={{ margin: '8px 0 0' }}>{crab.bushelExplanation}</p>}
+                  {crab.bushelExplanation && <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>{crab.bushelExplanation}</p>}
                   {(crab.issues || []).map((iss, i) => (
                     <div key={i} style={{ margin: '6px 0 0' }}>
                       <p className="grounding" style={{ margin: 0, color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
                       {/* the ENGINE's own route — lands on the exact field */}
                       {iss.actionLabel && iss.route && iss.route.focusField && (
-                        <button className="mini" style={{ marginTop: 4 }}
+                        <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
                           onClick={() => setSheet(s => ({ ...s, focus: iss.route.focusField }))}>{iss.actionLabel}</button>
                       )}
                     </div>
                   ))}
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Who’s actually picking?</div>
-                  <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 12, padding: '6px 4px' }}>
-                    <input className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: '10px 12px' }} type="number" min="0"
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Who’s actually picking?</div>
+                  <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 'var(--r-md)', padding: '6px var(--sp-1)' }}>
+                    <input className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="0"
                       placeholder={String(guests || '')} aria-label="Serious crab pickers"
                       value={cp.crabEatingHeadcount || ''}
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
                     <span className="of" style={{ flex: 1 }}>serious pickers — kids and light eaters don’t drive the crab count</span>
                   </div>
-                  {crab.pickerNote && <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--warn)' }}>{crab.pickerNote}</p>}
-                  {crab.pickerReconcileNote && <p className="grounding" style={{ margin: '4px 0 0' }}>{crab.pickerReconcileNote}</p>}
-                  <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: '16px 0 6px', borderRadius: 8 }}>Add to the order</div>
+                  {crab.pickerNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--warn)' }}>{crab.pickerNote}</p>}
+                  {crab.pickerReconcileNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{crab.pickerReconcileNote}</p>}
+                  <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: 'var(--sp-4) 0 6px', borderRadius: 'var(--r-sm)' }}>Add to the order</div>
                   <div className="chips">
                     {['medium', 'large', 'extra_large', 'jumbo'].map(sz => (
                       <button key={sz} className="chip" aria-pressed={crabAdd.size === sz} onClick={() => setCrabAdd(a => ({ ...a, size: sz }))}>{SIZE_LABEL[sz]}</button>
                     ))}
                   </div>
-                  <div className="chips" style={{ marginTop: 8 }}>
+                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
                     {['dozen', 'half_bushel', 'bushel'].map(u => (
                       <button key={u} className="chip" aria-pressed={crabAdd.unit === u} onClick={() => setCrabAdd(a => ({ ...a, unit: u }))}>{UNIT_LABEL[u]}</button>
                     ))}
                   </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
-                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: '10px 12px' }} type="number" min="1" aria-label="How many"
+                  <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'center' }}>
+                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="1" aria-label="How many"
                       value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
-                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: '10px 12px' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
+                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
                       value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
                     <button className="cta" onClick={() => {
                       const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, estimatedCountPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
@@ -6013,7 +6013,7 @@ export default function HostShellV2() {
                     }}>Add it</button>
                   </div>
                   {refs.length > 0 && (
-                    <div className="actions-row" style={{ marginTop: 8 }}>
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                       {refs.map(r => (
                         <button key={r.label} className="mini" onClick={() => setCrabAdd(a => ({ ...a, price: String(r.price) }))}>{r.label}</button>
                       ))}
@@ -6035,13 +6035,13 @@ export default function HostShellV2() {
                         : 'no reference price for this pick — enter what your crab house quotes';
                     const heads = crab.crabEatingHeadcount || guests || 0;
                     return (
-                      <p className="grounding" style={{ marginTop: 8, color: 'var(--ink-soft)' }}>
+                      <p className="grounding" style={{ marginTop: 'var(--sp-2)', color: 'var(--ink-soft)' }}>
                         This pick: {crabAdd.qty}× {crabAdd.unit.replace('_', ' ')} {crabAdd.size.replace('_', ' ')}
                         {crabsAdded ? ' ≈ ' + crabsAdded + ' crabs' + (heads ? ' (~' + (Math.round(((crab.totalEstimatedCrabs || 0) + crabsAdded) / heads * 10) / 10) + ' each with the order so far)' : '') : ' — crab count varies, ask the vendor'} · {costLine}
                       </p>
                     );
                   })()}
-                  <p className="grounding" style={{ marginTop: 8 }}>
+                  <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>
                     Reference prices: Captain White's, Maine Ave Fish Market, July 2026 — one verified DMV point, not the market. Cost only counts prices you put in. Crabs count toward “spoken for” the moment they’re priced.
                   </p>
                 </>
@@ -6063,7 +6063,7 @@ export default function HostShellV2() {
                       ? 'That’s everyone — the day is set.'
                       : 'Each note already knows their arrival time and your address. Send from your own thread — nothing goes out by itself.'}
                   />
-                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
                     const d = draftVendorReconfirm(event, v, profile);
@@ -6075,7 +6075,7 @@ export default function HostShellV2() {
                         <div className="f-name">{v.name}</div>
                         <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
                         {st === 'ready' && !v.reconfirmed72 && (
-                          <div className="actions-row" style={{ marginTop: 8 }}>
+                          <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                             {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(d.body)}>Text them</a>}
                             <button className="mini" onClick={() => { try { navigator.clipboard.writeText(d.body); toast('Copied — paste it wherever you talk to ' + v.name + '.'); } catch { openDraft('Reconfirm — ' + v.name, d); } }}>Copy the note</button>
                             <button className="mini" onClick={() => openDraft('Reconfirm — ' + v.name, d)}>Read it first</button>
@@ -6095,7 +6095,7 @@ export default function HostShellV2() {
                     );
                   })}
                   {reconfirmedN < total && (
-                    <div className="actions-row" style={{ marginTop: 4 }}>
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-1)' }}>
                       <button className="mini" onClick={runSweepDrafts}>Draft the reconfirms</button>
                     </div>
                   )}
@@ -6109,7 +6109,7 @@ export default function HostShellV2() {
                 <>
                   {/* Sound lives here now (host request 2026-07-11) — the header
                       carries only the account icon. Same toggle, same prime. */}
-                  <div className="later-row" style={{ borderTop: 'none', padding: '4px 2px 14px' }}>
+                  <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 14px' }}>
                     <span className="t">Sound</span>
                     <button className="mini" onClick={() => { primeMessageSound(); setMuted(m => !m); }}>
                       {muted ? 'Muted — tap for sound' : 'On — tap to mute'}
@@ -6131,7 +6131,7 @@ export default function HostShellV2() {
                     }} />
                   <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
 
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>What Event Boss remembers</div>
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What Event Boss remembers</div>
                   {mem.present && mem.groups.length ? (
                     <>
                       {mem.groups.map(g => (
@@ -6148,14 +6148,14 @@ export default function HostShellV2() {
                     <p className="grounding" style={{ margin: 0 }}>Nothing yet — after an event wraps, noting how it really went teaches the plans that follow.</p>
                   )}
 
-                  <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Your account</div>
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your account</div>
                   {!isSupabaseConfigured() ? (
                     <p className="grounding" style={{ margin: 0 }}>Everything lives on this device. Accounts turn on when the cloud is configured.</p>
                   ) : session ? (
                     <>
-                      <p className="grounding" style={{ margin: '0 0 8px' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what Event Boss remembers sync to your account across devices.</p>
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Signed in as <strong style={{ color: 'var(--ink-soft)' }}>{(session.user && session.user.email) || 'your account'}</strong> — your name, area, and what Event Boss remembers sync to your account across devices.</p>
                       {profile && profile.accountType === 'planner' && (
-                        <p className="grounding" style={{ margin: '0 0 8px', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
+                        <p className="grounding" style={{ margin: '0 0 var(--sp-2)', opacity: .8 }}>You’re set up as a planner — this is the host view of your event. Your client roster and planner tools live in the full app.</p>
                       )}
                       <div className="actions-row">
                         <button className="mini" onClick={async () => { try { await supabase.auth.signOut(); toast('Signed out — everything here stays on this device.'); } catch { toast('Couldn’t sign out.'); } }}>Sign out</button>
@@ -6164,7 +6164,7 @@ export default function HostShellV2() {
                   ) : authSent ? (
                     <>
                       <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in Event Boss, and this shell picks the session up automatically.</p>
-                      <div className="actions-row" style={{ marginTop: 8 }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="mini" onClick={resetAuthSent}>Use a different email</button>
                         <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Resend the link'}</button>
                       </div>
@@ -6173,10 +6173,10 @@ export default function HostShellV2() {
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
                         onChange={e => setAuthEmail(e.target.value)} aria-label="Email for sign-in link" />
-                      <div className="actions-row" style={{ marginTop: 8 }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Email me a sign-in link'}</button>
                       </div>
-                      <p className="grounding" style={{ margin: '8px 0 0', opacity: .75 }}>No password — the link signs you in. One account, both apps, this device and your others.</p>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>No password — the link signs you in. One account, both apps, this device and your others.</p>
                     </>
                   )}
 
@@ -6205,8 +6205,8 @@ export default function HostShellV2() {
                     };
                     return (
                       <>
-                        <div className="shelf-label" style={{ margin: '16px 0 6px' }}>This event</div>
-                        <div className="later-row" style={{ borderTop: 'none', padding: '4px 2px 6px' }}>
+                        <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>This event</div>
+                        <div className="later-row" style={{ borderTop: 'none', padding: 'var(--sp-1) 2px 6px' }}>
                           <span className="t">{SYNC_STATUS_LABEL[status]}{lastSync ? ' · ' + fmtSyncTime(lastSync) : ''}</span>
                           {showRetry && (
                             <button className="mini" onClick={() => {
@@ -6251,17 +6251,17 @@ export default function HostShellV2() {
                         : 'One at a time — each note already knows who came and what they brought.'}
                     />
                   )}
-                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 'var(--sp-3)' }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
                   {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
                   {cur && (() => {
                     const { g, i } = cur;
                     const body = noteFor(g);
                     const phone = String(g.phone || '').trim();
                     return (
-                      <div className="brow" style={{ padding: '14px 16px' }}>
+                      <div className="brow" style={{ padding: '14px var(--sp-4)' }}>
                         <div className="f-name">{g.name}</div>
                         {g.giftReceived && <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--warn)' }}>gift noted</p>}
-                        <p className="grounding" style={{ margin: '8px 0 0', whiteSpace: 'pre-wrap' }}>{body}</p>
+                        <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', whiteSpace: 'pre-wrap' }}>{body}</p>
                         <div className="actions-row" style={{ marginTop: 10 }}>
                           {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
                           <button className="mini" onClick={() => { try { navigator.clipboard.writeText(body); toast('Copied.'); } catch { /* nothing */ } }}>Copy</button>
@@ -6279,30 +6279,30 @@ export default function HostShellV2() {
               <>
                 {sheet.vendorQr ? (
                   <>
-                    <p className="grounding" style={{ margin: '2px 0 12px' }}>
+                    <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
                       {(sheet.vendorQr.name || 'They')} scan{sheet.vendorQr.name ? 's' : ''} it to see their brief — arrival time, your address, their part of the day. Nothing about budget, payments, or other vendors.
                     </p>
                     {sheet.vendorQr.dataUrl && (
-                      <div style={{ background: '#ffffff', borderRadius: 16, padding: 18, display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
                         <img src={sheet.vendorQr.dataUrl} alt={'QR code for ' + (sheet.vendorQr.name || 'the vendor') + '’s brief'} style={{ width: '100%', maxWidth: 300, display: 'block' }} />
                       </div>
                     )}
-                    <div className="actions-row" style={{ marginTop: 12 }}>
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
                       {sheet.vendorQr.dataUrl && <a className="mini" href={sheet.vendorQr.dataUrl} download={String(sheet.vendorQr.name || 'vendor').replace(/[^\w]+/g, '-').toLowerCase() + '-brief-qr.png'} style={{ textDecoration: 'none' }}>Save image</a>}
                       <button className="mini" onClick={() => setSheet(sheet.vendorQr.back || { kind: 'vendors' })}>Back to vendors</button>
                     </div>
                   </>
                 ) : (
                   <>
-                    <p className="grounding" style={{ margin: '2px 0 12px' }}>
+                    <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
                       Guests scan it and RSVP themselves — no app, no account. Screenshot it for the group chat, print it for the paper invite, tape it by the door.
                     </p>
                     {qrDataUrl && (
-                      <div style={{ background: '#ffffff', borderRadius: 16, padding: 18, display: 'flex', justifyContent: 'center' }}>
+                      <div style={{ background: '#ffffff', borderRadius: 'var(--r-lg)', padding: 18, display: 'flex', justifyContent: 'center' }}>
                         <img src={qrDataUrl} alt={'QR code for the ' + (event.name || 'event') + ' RSVP link'} style={{ width: '100%', maxWidth: 300, display: 'block' }} />
                       </div>
                     )}
-                    <div className="actions-row" style={{ marginTop: 12 }}>
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
                       {qrDataUrl && <a className="mini" href={qrDataUrl} download={String(event.name || 'event').replace(/[^\w]+/g, '-').toLowerCase() + '-rsvp-qr.png'} style={{ textDecoration: 'none' }}>Save image</a>}
                       <button className="mini" onClick={shareInviteLink}>Share the link instead</button>
                     </div>
@@ -6334,7 +6334,7 @@ export default function HostShellV2() {
                     first read is a baseline, not news). */}
                 {!wx?._sample && (
                   <>
-                    <div className="shelf-label" style={{ margin: '16px 0 6px' }}>Watch the sky for me</div>
+                    <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Watch the sky for me</div>
                     {wxNotify && notifGranted ? (
                       <div className="actions-row">
                         <span className="pill p-ok" style={{ cursor: 'default' }}>Watching<span className="pill-note">you’ll get a ping when it moves</span></span>
@@ -6356,9 +6356,9 @@ export default function HostShellV2() {
                   if (!tips.length) return null;
                   return (
                     <>
-                      <div className="shelf-label" style={{ margin: '14px 0 4px' }}>Sized to your {guests || 'crowd'}</div>
+                      <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Sized to your {guests || 'crowd'}</div>
                       {tips.map(t => (
-                        <p className="grounding" key={t.key} style={{ margin: '4px 0 0' }}>{t.text}</p>
+                        <p className="grounding" key={t.key} style={{ margin: 'var(--sp-1) 0 0' }}>{t.text}</p>
                       ))}
                       {wx._sample && <p className="grounding" style={{ margin: '6px 0 0', opacity: .65 }}>Numbers from the sample forecast — live weather sharpens them once the key lands.</p>}
                     </>
@@ -6368,7 +6368,7 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'draft' && (
               <>
-                <div className="chips" style={{ marginBottom: 12 }}>
+                <div className="chips" style={{ marginBottom: 'var(--sp-3)' }}>
                   {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => (
                     <button key={k} className="chip" aria-pressed={draftBody == null && draftTone === k} onClick={() => { setDraftTone(k); setDraftBody(null); }}>{label}</button>
                   ))}
@@ -6398,7 +6398,7 @@ export default function HostShellV2() {
                     just queues the rest so working through everyone is one
                     button, not re-opening the list each time. */}
                 {sheet.queue && sheet.queue.length > 0 && (
-                  <div className="actions-row" style={{ marginTop: 8 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="cta" onClick={openNextInQueue}>
                       Next: {sheet.queue[0].name} ({sheet.queue.length} left) →
                     </button>
@@ -6521,7 +6521,7 @@ export default function HostShellV2() {
                     <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color: done ? 'var(--ok)' : 'var(--ink)' }}>
                       {foodPlan.boughtCount} of {foodPlan.itemCount}
                     </div>
-                    <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: '0 0 8px', minHeight: 0 }}>
+                    <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: '0 0 var(--sp-2)', minHeight: 0 }}>
                       {done
                         ? 'Everything’s bought — the spread is covered.'
                         : foodPlan.boughtCount === 0
@@ -6537,7 +6537,7 @@ export default function HostShellV2() {
                   </div>
                   );
                 })() : (
-                  <p className="grounding" style={{ margin: '2px 0 12px' }}>
+                  <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
                     Sized to a typical guess for now — set a real guest count and the dollars appear.
                   </p>
                 )}
@@ -6560,7 +6560,7 @@ export default function HostShellV2() {
                   const order = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
                   const keys = [...order.filter(k => counts[k]), ...Object.keys(counts).filter(k => !order.includes(k))];
                   return (
-                    <p className="grounding" style={{ margin: '0 0 12px' }}>
+                    <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
                       Meal picks so far: {keys.map(k => `${k} ${counts[k]}`).join(' · ')}{un > 0 ? ` · ${un} unanswered` : ''}.
                     </p>
                   );
@@ -6639,14 +6639,14 @@ export default function HostShellV2() {
                     if (sheet.focus === 'diet') setSheet(s => ({ ...s, focus: null }));
                   };
                   return (
-                    <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 12, borderRadius: 12, padding: '8px 6px' }}>
+                    <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 'var(--sp-3)', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) 6px' }}>
                       <div className="shelf-label" style={{ marginBottom: 6 }}>
                         Dietary needs {anyDiet ? '' : '— none counted yet'}
-                        <button className="mini" style={{ marginLeft: 8 }} onClick={closeDiet}>done</button>
+                        <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={closeDiet}>done</button>
                       </div>
                       {active.length > 0 && (
                         <>
-                          <div className="v-meta" style={{ marginTop: 4 }}>Active{totalActive > 0 ? ' — ' + totalActive + (totalActive === 1 ? ' guest' : ' guests') : ''}</div>
+                          <div className="v-meta" style={{ marginTop: 'var(--sp-1)' }}>Active{totalActive > 0 ? ' — ' + totalActive + (totalActive === 1 ? ' guest' : ' guests') : ''}</div>
                           {active.map(stepper)}
                         </>
                       )}
@@ -6662,17 +6662,17 @@ export default function HostShellV2() {
                         </button>
                       )}
                       {dietOtherOpen ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 'var(--sp-2)' }}>
                           <input className="field" autoFocus value={dietOtherName} placeholder="Name it…"
                             onChange={e => setDietOtherName(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') addCustomDiet(); if (e.key === 'Escape') { setDietOtherName(''); setDietOtherOpen(false); } }} />
                           <button className="mini" onClick={addCustomDiet}>Add</button>
                         </div>
                       ) : (
-                        <button className="mini" style={{ marginTop: 8 }} onClick={() => setDietOtherOpen(true)}>+ Other</button>
+                        <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setDietOtherOpen(true)}>+ Other</button>
                       )}
                       {pending.length > 0 && (
-                        <button className="later-row" style={{ marginTop: 10, width: '100%', textAlign: 'left', background: 'var(--steel-tint)', border: 'none', borderRadius: 9, padding: '9px 12px', cursor: 'pointer' }}
+                        <button className="later-row" style={{ marginTop: 10, width: '100%', textAlign: 'left', background: 'var(--steel-tint)', border: 'none', borderRadius: 9, padding: '9px var(--sp-3)', cursor: 'pointer' }}
                           onClick={pullFromGuests}>
                           <span className="t" style={{ color: 'var(--ink)' }}>From your RSVPs</span>
                           <span className="v-meta" style={{ flex: 1 }}>{pending.map(([d, n]) => d + ' ×' + n).join(' · ')}</span>
@@ -6680,7 +6680,7 @@ export default function HostShellV2() {
                         </button>
                       )}
                       {event.dietMergeUndo && (
-                        <button className="mini" style={{ marginTop: 8 }} onClick={() => patchEvent({ dietCounts: event.dietMergeUndo, dietMergeUndo: null }, 'Merge undone.')}>
+                        <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => patchEvent({ dietCounts: event.dietMergeUndo, dietMergeUndo: null }, 'Merge undone.')}>
                           ✓ Merged from your RSVPs — Undo
                         </button>
                       )}
@@ -6729,9 +6729,9 @@ export default function HostShellV2() {
                 })()}
                 {(foodPlan.choices || []).length > 0 && !!foodSect.choices && (
                   <>
-                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>
+                    <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
                       Your choices
-                      <button className="mini" style={{ marginLeft: 8 }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>done</button>
+                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>done</button>
                     </div>
                     {foodPlan.choices.map(d => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
@@ -6742,7 +6742,7 @@ export default function HostShellV2() {
                         return (
                           <div key={d.id} className="line" style={{ alignItems: 'center' }}>
                             <span>{d.label}</span>
-                            <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                            <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{picked}</span>
                               <button className="mini" onClick={() => setChoiceOpen(d.id)}>change</button>
                             </span>
@@ -6750,7 +6750,7 @@ export default function HostShellV2() {
                         );
                       }
                       return (
-                        <div key={d.id} style={{ marginBottom: 12 }}>
+                        <div key={d.id} style={{ marginBottom: 'var(--sp-3)' }}>
                           <div className="f-name" style={{ marginBottom: 6 }}>{d.label}</div>
                           <div className="chips">
                             {(d.options || []).map(opt => (
@@ -6791,7 +6791,7 @@ export default function HostShellV2() {
                     re-prices proteins and changes where each line says to buy. */}
                 {(foodPlan.sourcingTiers || []).length > 0 && (
                   <>
-                    <div className="shelf-label" style={{ margin: '10px 0 8px' }}>How it’s sourced</div>
+                    <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>How it’s sourced</div>
                     {(() => {
                       const key = foodPlan.sourcingKey;
                       const byTier = (key && key.byTier) || {};
@@ -6826,7 +6826,7 @@ export default function HostShellV2() {
                                 --ok is already the app's "this is the active/confirmed one"
                                 signal everywhere else (RSVP Yes, vendor Confirmed); reusing it
                                 here instead of a second steel tone (found 2026-07-11). */}
-                            <span className="of" style={{ flexShrink: 0, marginLeft: 8, fontWeight: on ? 700 : 550, color: on ? 'var(--ok)' : 'var(--muted)' }}>{on ? 'current' : 'switch'}</span>
+                            <span className="of" style={{ flexShrink: 0, marginLeft: 'var(--sp-2)', fontWeight: on ? 700 : 550, color: on ? 'var(--ok)' : 'var(--muted)' }}>{on ? 'current' : 'switch'}</span>
                           </button>
                         );
                       });
@@ -6928,7 +6928,7 @@ export default function HostShellV2() {
                         <div className={'fg-badge' + (gDone ? ' done' : '')} aria-hidden>{g.trim().charAt(0).toUpperCase()}</div>
                         <div className="fg-id">
                           <div className="fg-label">{g}
-                            {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 8 }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
+                            {gDecisions > 0 ? <span className="tag essential" style={{ marginLeft: 'var(--sp-2)' }}>{gDecisions} decision{gDecisions === 1 ? '' : 's'} open</span> : null}
                           </div>
                           <div className="fg-sub" style={{ color: gDone ? 'var(--ok)' : 'var(--muted)' }}>
                             {!gActive.length ? 'all skipped' : gDone ? 'all ' + gActive.length + ' bought' : gBought + ' of ' + gActive.length + ' bought' + (foodPlan.hasRealCount ? ' · ' + fmt(gLow) + '–' + fmt(gHigh) : '')}
@@ -7027,7 +7027,7 @@ export default function HostShellV2() {
                                   to reach "back to estimate" — editing a committed
                                   number is the rarer path and can afford one more tap. */}
                               {tuning && it.locked == null ? (
-                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', flexWrap: 'wrap' }}>
                                   {/* Head-start pricing (host request, 2026-07-12 — "like we
                                       did in legacy"): legacy's CostLockSegments gave a one-tap
                                       Value/Premium lock off the current estimate, but that
@@ -7064,7 +7064,7 @@ export default function HostShellV2() {
                                       }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
                                     </>
                                   ) : null}
-                                  <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: '4px 8px' }} type="number" min="0"
+                                  <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }} type="number" min="0"
                                     inputMode="decimal" placeholder="$ paid" autoFocus
                                     aria-label={'Real cost for ' + (it.short || it.item)}
                                     value={tuneCost} onChange={e => { setTuneCost(e.target.value); setTuneEdited(true); }}
@@ -7146,7 +7146,7 @@ export default function HostShellV2() {
                               // fires, and click still runs on mouseup — so the store re-price
                               // (which reshapes it.low/high, hence Value/Premium too) actually
                               // happens instead of a stray commit.
-                              <div className="brow" style={{ margin: '2px 0 8px', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
+                              <div className="brow" style={{ margin: '2px 0 var(--sp-2)', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
                                 {/* COST STRUCTURE, per item — the engine's own knobs:
                                     size it (foodQty re-prices), swap it (alternatives
                                     carry their own real ranges), or skip it. */}
@@ -7191,7 +7191,7 @@ export default function HostShellV2() {
                                     only for the already-locked reset case; "back to
                                     estimate" has no other home. */}
                                 {it.locked != null && (
-                                  <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                                     <span className="of">cost:</span>
                                     <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>set at {fmt(it.locked)}</span>
                                     <button className="mini" onClick={() => {
@@ -7202,7 +7202,7 @@ export default function HostShellV2() {
                                   </div>
                                 )}
                                 {Array.isArray(it.where) && it.where.length > 1 && (
-                                  <div className="chips" style={{ marginTop: 8 }}>
+                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
                                     {it.where.slice(0, 4).map(w => (
                                       <button key={w} className="chip" aria-pressed={(event.foodWhere || {})[it.id] === w}
                                         onClick={() => {
@@ -7224,7 +7224,7 @@ export default function HostShellV2() {
                                   </div>
                                 )}
                                 {(alts.length > 0 || it.swappedFrom) && (
-                                  <div className="chips" style={{ marginTop: 8 }}>
+                                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
                                     {it.swappedFrom && (
                                       <button className="chip" onClick={() => {
                                         const m = { ...(event.foodSwap || {}) }; delete m[it.id];
@@ -7299,29 +7299,29 @@ export default function HostShellV2() {
                     fixed (App.js ~11415-11457): a dish someone's bringing, or anything
                     off-playbook the host is buying. Name required; who's bringing it +
                     cost both optional and honest — no invented number. */}
-                <div style={{ marginTop: 4 }}>
+                <div style={{ marginTop: 'var(--sp-1)' }}>
                   {foodAddOpen ? (
-                    <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 12 }}>
-                      <div className="shelf-label" style={{ marginBottom: 8 }}>Add your own item</div>
+                    <div className="brow" style={{ borderTop: '1px solid var(--line-soft)', paddingTop: 'var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ marginBottom: 'var(--sp-2)' }}>Add your own item</div>
                       <input className="field" style={{ maxWidth: 'none' }} autoFocus
                         placeholder="e.g. Aunt Carol's potato salad, extra ice"
                         value={foodAddName} onChange={e => setFoodAddName(e.target.value)}
                         onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
-                      <div className="actions-row" style={{ marginTop: 8, flexWrap: 'wrap' }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
                         <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
                           value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px' }}>
                           <span className="of">$</span>
                           <input type="number" inputMode="decimal" min="0" placeholder="cost (optional)"
-                            style={{ width: 115, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 'var(--t-input)', fontWeight: 650, fontFamily: 'inherit', padding: '9px 4px' }}
+                            style={{ width: 115, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 'var(--t-input)', fontWeight: 650, fontFamily: 'inherit', padding: '9px var(--sp-1)' }}
                             value={foodAddCost} onChange={e => setFoodAddCost(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
                         </span>
                       </div>
                       {/* Where it belongs — auto-guessed from the name; tap to override
                           (same word list as legacy's guessFoodCategory, ported above). */}
-                      <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         <span className="of">Goes in:</span>
                         {['Food', 'Drinks', 'Supplies'].map(g => {
                           const active = (foodAddGroup || guessFoodCategory(foodAddName).group) === g;
@@ -7336,7 +7336,7 @@ export default function HostShellV2() {
                           onClick={commitFoodAdd}>Add to the plan</button>
                         <button className="mini" onClick={() => { setFoodAddOpen(false); setFoodAddName(''); setFoodAddOwner(''); setFoodAddCost(''); setFoodAddGroup(null); }}>Cancel</button>
                       </div>
-                      <p className="grounding" style={{ marginTop: 8 }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
+                      <p className="grounding" style={{ marginTop: 'var(--sp-2)' }}>Cost is optional — leave it blank if you don’t know it yet, or if someone else is bringing it.</p>
                     </div>
                   ) : (
                     <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setFoodAddOpen(true)}>
@@ -7386,8 +7386,8 @@ export default function HostShellV2() {
                 </div>
               )}
               {vendorPlan.relevant && (
-                <div style={{ marginBottom: 12 }}>
-                  <label className="shelf-label" style={{ display: 'block', margin: '0 0 4px' }} htmlFor="metro-market-pick">Which market are you in?</label>
+                <div style={{ marginBottom: 'var(--sp-3)' }}>
+                  <label className="shelf-label" style={{ display: 'block', margin: '0 0 var(--sp-1)' }} htmlFor="metro-market-pick">Which market are you in?</label>
                   <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
                     onChange={e => {
                       const id = e.target.value;
@@ -7405,7 +7405,7 @@ export default function HostShellV2() {
                     ))}
                   </select>
                   {metroMkt && (
-                    <p className="grounding" style={{ margin: '4px 0 0' }}>
+                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
                       {metroMkt.label} typically runs {metroMkt.factor > 1 ? 'above' : metroMkt.factor < 1 ? 'below' : 'at'} the national baseline{metroMkt.factor !== 1 ? ` (${metroMkt.factor > 1 ? '+' : ''}${Math.round((metroMkt.factor - 1) * 100)}%)` : ''} used for the ranges below.
                     </p>
                   )}
@@ -7492,7 +7492,7 @@ export default function HostShellV2() {
                               email, so a vendor could stay "Unnamed" forever and the Call
                               button (below) could never appear. Legacy already has this
                               as a plain form field; V2 never got it. */}
-                          <div className="actions-row" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
                             <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="vendor name"
                               value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
                             <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
@@ -7509,11 +7509,11 @@ export default function HostShellV2() {
                               is a plain note that goes to the VENDOR (never v.notes,
                               which is host-private bookkeeping and never leaves this
                               cockpit). */}
-                          <div className="actions-row" style={{ marginBottom: 8, flexWrap: 'wrap' }}>
+                          <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
                             <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="on-site contact (if not you)"
                               value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="On-site contact for this vendor's brief" />
                           </div>
-                          <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: '8px 10px', marginBottom: 8, resize: 'vertical' }}
+                          <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
                             placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
                             value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
@@ -7573,7 +7573,7 @@ export default function HostShellV2() {
                             const shown = openPromises.slice(0, 3);
                             const more = openPromises.length - shown.length;
                             return [...shown.map(p => (
-                              <div key={p.promiseKey} className="line" style={{ alignItems: 'center', padding: '4px 0' }}>
+                              <div key={p.promiseKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
                                 <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + p.dueDate : ''}</span>
                                 <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
                                   p.promiseText + ' — marked confirmed.')}>
@@ -7587,7 +7587,7 @@ export default function HostShellV2() {
                           {coiAct && (() => {
                             let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
                             return (
-                            <div className="line" style={{ alignItems: 'center', padding: '4px 0', flexWrap: 'wrap', gap: 6 }}>
+                            <div className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
                               <span className="vc-detail" style={{ margin: 0, flex: '1 1 100%' }}>{coiAct.title} {coiAct.consequence}</span>
                               {/* WAVE-B (d): optional expiry while marking verified —
                                   getVendorCOIState reads coiExpiryDate to catch coverage
@@ -7596,7 +7596,7 @@ export default function HostShellV2() {
                               {coi && coi.status === 'received' && (
                                 <label className="of" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                                   covered through
-                                  <input className="field" type="date" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: '4px 8px' }}
+                                  <input className="field" type="date" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }}
                                     value={v.coiExpiryDate || ''}
                                     onChange={e => writeVendor(v.id, { coiExpiryDate: e.target.value || null }, null)}
                                     aria-label="Insurance covered through — optional" />
@@ -7631,12 +7631,12 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div style={{ marginTop: 8, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 10 }}>
+                            <div style={{ marginTop: 'var(--sp-2)', padding: '10px var(--sp-3)', border: '1px solid var(--line)', borderRadius: 10 }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : (
                                 <>
-                                  <p className="vc-detail" style={{ margin: '0 0 8px', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
+                                  <p className="vc-detail" style={{ margin: '0 0 var(--sp-2)', wordBreak: 'break-all' }}>{vendorBrief.url}</p>
                                   <div className="actions-row">
                                     <button className="mini" onClick={copyVendorBriefLink}>{vendorBrief.copied ? 'Copied' : 'Copy link'}</button>
                                     {vendorBrief.qrDataUrl && (
@@ -7645,7 +7645,7 @@ export default function HostShellV2() {
                                       </button>
                                     )}
                                   </div>
-                                  <p className="vc-detail" style={{ margin: '8px 0 0', opacity: .75 }}>{(v.name || 'They')} will see only their arrival time, your address, and their part of the day — nothing about budget, payments, or other vendors.</p>
+                                  <p className="vc-detail" style={{ margin: 'var(--sp-2) 0 0', opacity: .75 }}>{(v.name || 'They')} will see only their arrival time, your address, and their part of the day — nothing about budget, payments, or other vendors.</p>
                                 </>
                               )}
                             </div>
@@ -7755,7 +7755,7 @@ export default function HostShellV2() {
                     />
                     );
                   })() : (
-                    heroCopy && heroCopy.title ? <p className="grounding" style={{ margin: '2px 0 8px' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p> : null
+                    heroCopy && heroCopy.title ? <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p> : null
                   )}
                   {hostRows.length > 0 && (
                     <>
@@ -7810,8 +7810,8 @@ export default function HostShellV2() {
                     </>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (
-                    <div style={{ marginTop: 12 }}>
-                      <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--warn)' }}>A way back under</div>
+                    <div style={{ marginTop: 'var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ margin: '0 0 var(--sp-1)', color: 'var(--warn)' }}>A way back under</div>
                       {recovery.headline && <p className="grounding" style={{ margin: '0 0 6px' }}>{recovery.headline}</p>}
                       {(recovery.suggestions || []).slice(0, 4).map((s, i) => (
                         <div key={s.id || i} className="line" style={{ alignItems: 'flex-start', flexWrap: 'wrap', gap: 6 }}>
@@ -7840,7 +7840,7 @@ export default function HostShellV2() {
                   {money.planned ? (
                     budgetFoldOpen ? (
                       <div style={{ marginTop: 14 }}>
-                        <div className="shelf-label" style={{ margin: '0 0 8px' }}>Change the number <button className="mini" style={{ marginLeft: 6 }} onClick={() => setBudgetFoldOpen(false)}>done</button></div>
+                        <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>Change the number <button className="mini" style={{ marginLeft: 6 }} onClick={() => setBudgetFoldOpen(false)}>done</button></div>
                         {budgetEditorBlock()}
                       </div>
                     ) : (
@@ -7850,7 +7850,7 @@ export default function HostShellV2() {
                     )
                   ) : (
                     <div style={{ marginTop: 14 }}>
-                      <div className="shelf-label" style={{ margin: '0 0 8px' }}>Set the number</div>
+                      <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>Set the number</div>
                       {budgetEditorBlock()}
                     </div>
                   )}
@@ -7862,12 +7862,12 @@ export default function HostShellV2() {
               const band = (() => { try { return attendanceBand(event); } catch { return null; } })();
               const bandLbl = (() => { try { return attendanceBandLabel(band); } catch { return null; } })();
               const quickAdd = (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 'var(--sp-3)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>Add names — one per line</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
                     placeholder={'Denise & Ray\nThe Okafors\nUncle Joe'}
                     value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
-                  <div className="actions-row" style={{ marginTop: 8 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="cta" disabled={!rosterText.trim()} style={!rosterText.trim() ? { opacity: .45 } : undefined} onClick={addRoster}>Add them</button>
                   </div>
                 </div>
@@ -7896,10 +7896,10 @@ export default function HostShellV2() {
                   <span className="chev">›</span>
                 </button>
               ) : (
-                <div className="brow" style={{ marginTop: 14, borderRadius: 12, padding: '10px 8px' }}>
+                <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>
                     Where is the list from?
-                    <button className="mini" style={{ marginLeft: 8 }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>close</button>
+                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>close</button>
                   </div>
                   <div className="chips">
                     {Object.entries(PLATFORMS).map(([key, p]) => (
@@ -7913,12 +7913,12 @@ export default function HostShellV2() {
                   </div>
                   {csvPreview && (
                     <>
-                      <p className="grounding" style={{ margin: '8px 0 0' }}>
+                      <p className="grounding" style={{ margin: 'var(--sp-2) 0 0' }}>
                         {csvPreview.mapped.filter(r => r._valid).length} of {csvPreview.mapped.length} rows read cleanly from {csvPreview.fileName} —
                         {' '}{csvPreview.summary.willAdd || 0} new, {csvPreview.summary.willUpdate || 0} already on your list (their replies update).
                         {csvPreview.mapped.some(r => !r._valid) ? ' Rows without a name are skipped.' : ''}
                       </p>
-                      <div className="actions-row" style={{ marginTop: 8 }}>
+                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                         <button className="cta" onClick={applyCsv}>Bring them in</button>
                         <button className="mini" onClick={() => setCsvPreview(null)}>Not this file</button>
                       </div>
@@ -7935,10 +7935,10 @@ export default function HostShellV2() {
                   <span className="chev">›</span>
                 </button>
               ) : (
-                <div className="brow" style={{ marginTop: 14, borderRadius: 12, padding: '10px 8px' }}>
+                <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>
                     Past imports
-                    <button className="mini" style={{ marginLeft: 8 }} onClick={() => setImportsOpen(false)}>close</button>
+                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setImportsOpen(false)}>close</button>
                   </div>
                   {[...importBatches].reverse().map((b, i) => (
                     <div key={b.id || i} className="v-meta" style={{ padding: '3px 2px' }}>
@@ -7947,7 +7947,7 @@ export default function HostShellV2() {
                       {i === 0 ? <span className="of"> · latest</span> : null}
                     </div>
                   ))}
-                  <div className="actions-row" style={{ marginTop: 8 }}>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="mini" onClick={undoLastCsvImport}>Undo last import</button>
                     <button className="mini" onClick={clearImportHistory}>Clear import history</button>
                   </div>
@@ -7988,7 +7988,7 @@ export default function HostShellV2() {
                     : 'no names yet — start with the ones you’d text first';
                 }
                 return (
-                  <div style={{ padding: '2px 2px 12px' }}>
+                  <div style={{ padding: '2px 2px var(--sp-3)' }}>
                     <div className="eyebrow">Your people</div>
                     <div className="mega" style={{ fontSize: 'var(--t-hero-star)', margin: '6px 0 2px' }}>{n > 0 ? n : '—'}</div>
                     <div className="mega-sub" style={{ fontSize: 'var(--t-body)', minHeight: 0 }}>{sub}</div>
@@ -8024,12 +8024,12 @@ export default function HostShellV2() {
                 };
                 const GIFT_DETAIL = { registry: 'Paste the registry link', charity: 'Cause name or link', potluck: 'Dish assignments — optional', contribution: '$ per person' };
                 return (
-                  <div className="brow" style={{ marginTop: 14, borderRadius: 12, padding: '10px 8px' }}>
+                  <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                     <div className="shelf-label" style={{ marginBottom: 6 }}>
                       Invite rules — the RSVP page follows these
-                      <button className="mini" style={{ marginLeft: 8 }} onClick={() => setInviteRulesOpen(false)}>close</button>
+                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>close</button>
                     </div>
-                    <div className="actions-row" style={{ margin: '0 0 8px', alignItems: 'center' }}>
+                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
                       <span className="of">plus-ones:</span>
                       <button className="chip" style={chipSm} aria-pressed={event.plusOnePolicy === 'plus_one_ok'}
                         onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'plus_one_ok' ? null : 'plus_one_ok' },
@@ -8038,7 +8038,7 @@ export default function HostShellV2() {
                         onClick={() => patchEvent({ plusOnePolicy: event.plusOnePolicy === 'no_plus_ones' ? null : 'no_plus_ones' },
                           event.plusOnePolicy === 'no_plus_ones' ? 'Unset — the RSVP page offers a plus-one again.' : 'Named guests only — the RSVP page won’t offer a plus-one.')}>Named guests only</button>
                     </div>
-                    <div className="actions-row" style={{ margin: '0 0 8px', alignItems: 'center' }}>
+                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
                       <span className="of">kids:</span>
                       <button className="chip" style={chipSm} aria-pressed={event.kidsPolicy === 'kids_welcome'}
                         onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'kids_welcome' ? null : 'kids_welcome' },
@@ -8047,7 +8047,7 @@ export default function HostShellV2() {
                         onClick={() => patchEvent({ kidsPolicy: event.kidsPolicy === 'adults_only' ? null : 'adults_only' },
                           event.kidsPolicy === 'adults_only' ? 'Unset — the RSVP page asks about kids again.' : 'Adults-only — the RSVP page won’t ask about kids.')}>Adults only</button>
                     </div>
-                    <div className="actions-row" style={{ margin: '0 0 8px', alignItems: 'center' }}>
+                    <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
                       <span className="of">addresses:</span>
                       <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
                         onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
@@ -8055,7 +8055,7 @@ export default function HostShellV2() {
                         {event.collectAddresses ? '✓ collecting for thank-you mail' : 'collect for thank-you mail?'}
                       </button>
                     </div>
-                    <div className="actions-row" style={{ margin: '0 0 4px', alignItems: 'center' }}>
+                    <div className="actions-row" style={{ margin: '0 0 var(--sp-1)', alignItems: 'center' }}>
                       <span className="of">gifts:</span>
                       {GIFTS.map(([mode, label]) => (
                         <button key={mode} className="chip" style={chipSm} aria-pressed={gw.mode === mode}
@@ -8064,12 +8064,12 @@ export default function HostShellV2() {
                       ))}
                     </div>
                     {gw.mode && gw.mode !== 'no_gifts' && (
-                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: '4px 0 6px' }}
+                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: 'var(--sp-1) 0 6px' }}
                         placeholder={GIFT_DETAIL[gw.mode] || ''} value={gw.detail || ''}
                         onChange={e => patchEvent({ giftWish: { mode: gw.mode, detail: e.target.value } }, null)}
                         aria-label="Gift note detail" />
                     )}
-                    <p className="grounding" style={{ margin: '4px 0 0' }}>Leave anything unset and the invite simply won’t mention it.</p>
+                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Leave anything unset and the invite simply won’t mention it.</p>
                   </div>
                 );
               })();
@@ -8091,7 +8091,7 @@ export default function HostShellV2() {
                       You went by headcount — replies here are just for tracking, no chasing.
                     </div>
                   )}
-                  <div className="v-meta" style={{ padding: '2px 2px 12px' }}>
+                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)' }}>
                     {(() => {
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
                       const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
@@ -8112,7 +8112,7 @@ export default function HostShellV2() {
                         aria-label="RSVP deadline" />
                     </div>
                   )}
-                  <div className="actions-row" style={{ margin: '0 0 8px' }}>
+                  <div className="actions-row" style={{ margin: '0 0 var(--sp-2)' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
@@ -8153,7 +8153,7 @@ export default function HostShellV2() {
                     try {
                       const adj = attendanceAdjustment(profile, event);
                       return adj && adj.applied && adj.because
-                        ? <p className="grounding" style={{ margin: '0 0 8px' }}>{adj.because}</p>
+                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{adj.because}</p>
                         : null;
                     } catch { return null; }
                   })()}
@@ -8177,7 +8177,7 @@ export default function HostShellV2() {
                     const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
                       <div key={i}>
-                        <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
                           <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
@@ -8191,7 +8191,7 @@ export default function HostShellV2() {
                           </button>
                         </div>
                         {guestOpen === i && (
-                          <div className="brow" style={{ margin: '2px 0 8px', padding: '8px 6px' }}>
+                          <div className="brow" style={{ margin: '2px 0 var(--sp-2)', padding: 'var(--sp-2) 6px' }}>
                             {(() => {
                               // Single source of truth: reads the SAME aggregation the
                               // Helpers panel (space sheet) uses — a food/task/setup/supply
@@ -8199,7 +8199,7 @@ export default function HostShellV2() {
                               const roles = (() => { try { return guestHelperRoles(event, g.id); } catch { return []; } })();
                               if (!roles.length) return null;
                               return (
-                                <div className="v-meta" style={{ margin: '0 0 8px', color: 'var(--ink-soft)' }}>
+                                <div className="v-meta" style={{ margin: '0 0 var(--sp-2)', color: 'var(--ink-soft)' }}>
                                   Helping with: {roles.map(r => r.label).join(', ')}
                                 </div>
                               );
@@ -8215,7 +8215,7 @@ export default function HostShellV2() {
                                 value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
                               <button className="mini" onClick={() => removeGuest(i)}>remove</button>
                             </div>
-                            <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                               {/* Meal edit (guests parity gap #5): writes the SAME
                                   guest.meal field the RSVP page and CSV import write —
                                   tap cycles the invite's real meal choices. A free-text
@@ -8249,7 +8249,7 @@ export default function HostShellV2() {
                               const body = [d.subject, d.body].filter(Boolean).join('\n\n');
                               const first = String(g.name || 'them').split(/\s+/)[0];
                               return (
-                                <div className="actions-row" style={{ marginTop: 8 }}>
+                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                                   {String(g.phone || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + encodeURIComponent(g.phone.trim()) + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
                                   {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
                                 </div>
@@ -8264,7 +8264,7 @@ export default function HostShellV2() {
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
                     return buckets.map(b => (
                       <div key={b.gr || 'ungrouped'}>
-                        <div className="shelf-label" style={{ margin: '12px 0 2px' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
+                        <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 2px' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
                         {b.items.map(row)}
                       </div>
                     ));
@@ -8280,12 +8280,12 @@ export default function HostShellV2() {
               ) : (
                 <>
                   {guestHero}
-                  <div className="v-meta" style={{ padding: '2px 2px 4px' }}>
+                  <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '0 0 10px' }}>
+                  <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px' }}>
                     <button className="mini" onClick={() => { setGuestDraft(''); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
-                    <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: '8px 6px' }}
+                    <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 6px' }}
                       type="number" inputMode="numeric" min="1"
                       value={guestDraft !== '' ? guestDraft : (Number(guests) || '')}
                       onFocus={() => setGuestDraft(String(Number(guests) || ''))}
@@ -8314,7 +8314,7 @@ export default function HostShellV2() {
                     const setK = (v) => patchEvent({ kidsCount: Math.max(0, Math.min(Number(guests) || 0, Math.round(Number(v) || 0))) },
                       'Of your ' + guests + ', ' + Math.max(0, Math.min(Number(guests) || 0, Math.round(Number(v) || 0))) + ' are kids — food sizes them lighter.');
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', margin: '0 0 10px' }}>
                         <button className="mini" onClick={() => setK(kids - 1)} aria-label="Fewer kids or light eaters">−</button>
                         <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{kids}</span>
                         <button className="mini" onClick={() => setK(kids + 1)} aria-label="More kids or light eaters">+</button>
@@ -8322,7 +8322,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  <div className="actions-row" style={{ margin: '0 0 4px' }}>
+                  <div className="actions-row" style={{ margin: '0 0 var(--sp-1)' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
                   </div>
@@ -8334,7 +8334,7 @@ export default function HostShellV2() {
                     try {
                       const adj = attendanceAdjustment(profile, event);
                       return adj && adj.applied && adj.because
-                        ? <p className="grounding" style={{ margin: '0 0 8px' }}>{adj.because}</p>
+                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{adj.because}</p>
                         : null;
                     } catch { return null; }
                   })()}
@@ -8365,7 +8365,7 @@ export default function HostShellV2() {
           {wxOpen && (
             <div className="wx-body">
               <p className="wx-headline">{(wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}</p>
-              {wx.rainWindow && <p className="grounding" style={{ margin: '4px 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wx._sample ? 'sample timing for this preview, not a live read' : wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
+              {wx.rainWindow && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>Rain looks most likely {wx.rainWindow.label} — {wx._sample ? 'sample timing for this preview, not a live read' : wxImpact.confidence === 'hourly' ? 'from the hour-by-hour read' : 'timing is a day-level read'}.</p>}
               {/* WEATHER-IMPACT-1 (queue item 4): the engine's per-phase rows,
                   not a hand-built summary — each names its own moment. */}
               {(wxImpact.affectedPhases || []).slice(0, 3).map(ph => (
