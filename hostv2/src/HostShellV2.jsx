@@ -1583,7 +1583,46 @@ export default function HostShellV2() {
   const [seatPick, setSeatPick] = useState(null);           // guestId waiting for a table
   const [seatOpenTable, setSeatOpenTable] = useState(null); // expanded table number
   const [tableNameDraft, setTableNameDraft] = useState(null); // { num, value }
+  const [seatView, setSeatView] = useState('list');   // 'list' | 'plan' (floor plan)
+  const [seatDrag, setSeatDrag] = useState(null);      // { number, x, y } during an active puck drag
+  const floorRef = useRef(null);                       // the floor-plan canvas element
+  const justDraggedRef = useRef(false);                // suppress the tap-to-seat click that follows a drag
   const seatingSheetOpen = !!(sheet && sheet.kind === 'seating');
+  // Default puck layout when a table has no saved position — a tidy grid in
+  // canvas fractions (0..1), so it's responsive to whatever width the sheet is.
+  const defaultTablePos = (i, n) => {
+    const cols = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n)))));
+    const rows = Math.max(1, Math.ceil(n / cols));
+    const col = i % cols, r = Math.floor(i / cols);
+    return { x: (col + 0.5) / cols, y: (r + 0.5) / rows };
+  };
+  // Start dragging a table puck: pointer move updates a transient position,
+  // pointer up commits it to event.tablePos (fractions). A real drag sets
+  // justDraggedRef so the click that follows doesn't also fire tap-to-seat.
+  const startPuckDrag = (num) => (e) => {
+    e.preventDefault(); e.stopPropagation();
+    justDraggedRef.current = false;
+    let last = null;
+    const move = (ev) => {
+      const el = floorRef.current; if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const x = Math.min(1, Math.max(0, (ev.clientX - rect.left) / rect.width));
+      const y = Math.min(1, Math.max(0, (ev.clientY - rect.top) / rect.height));
+      last = { x, y };
+      justDraggedRef.current = true;
+      setSeatDrag({ number: num, x, y });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (last) patchEvent({ tablePos: { ...(event.tablePos || {}), [num]: last } }, null);
+      setSeatDrag(null);
+      // clear the drag flag AFTER the click has had a chance to read it
+      setTimeout(() => { justDraggedRef.current = false; }, 0);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   useEffect(() => {
     if (!seatingSheetOpen) { setSeatPick(null); setSeatOpenTable(null); setTableNameDraft(null); return; }
     const focusG = sheet && sheet.focus != null
@@ -5486,8 +5525,39 @@ export default function HostShellV2() {
                       )}
                     </>
                   )}
-                  <div className="shelf-label" style={{ margin: '14px 0 2px' }}>The tables{picked ? ' — tap one to seat ' + picked.name : ''}</div>
-                  {sp.tables.map(t => {
+                  <div className="actions-row" style={{ margin: '14px 0 2px', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span className="shelf-label">The tables{picked ? ' — tap one to seat ' + picked.name : ''}</span>
+                    <span className="chips">
+                      <button className="chip" style={{ padding: '4px 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'list'} onClick={() => setSeatView('list')}>List</button>
+                      <button className="chip" style={{ padding: '4px 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'plan'} onClick={() => setSeatView('plan')}>Floor plan</button>
+                    </span>
+                  </div>
+                  {/* Floor-plan view (per-screen audit: seating was list-only; AllSeated's
+                      edge is a visual layout). MVP — draggable table pucks on a responsive
+                      canvas (positions saved as fractions in event.tablePos); tap-to-seat
+                      the picked guest still works, and tapping with no pick opens the table
+                      back in the list. No room shape/obstacles yet. */}
+                  {seatView === 'plan' && (
+                    <div className="floorplan" ref={floorRef}>
+                      {sp.tables.map((t, ti) => {
+                        const saved = (event.tablePos || {})[t.number];
+                        const dp = (seatDrag && seatDrag.number === t.number) ? seatDrag : (saved || defaultTablePos(ti, sp.tables.length));
+                        return (
+                          <button key={t.number} type="button"
+                            className={'tpuck' + (t.count ? ' seated' : '') + (picked ? ' seatable' : '')}
+                            style={{ left: (dp.x * 100) + '%', top: (dp.y * 100) + '%' }}
+                            onPointerDown={startPuckDrag(t.number)}
+                            onClick={() => { if (justDraggedRef.current) return; if (picked) { seatGuestAt(picked, t); } else { setSeatView('list'); setSeatOpenTable(t.number); } }}
+                            aria-label={t.label + ' — ' + (t.count || 0) + ' seated. Drag to move' + (picked ? ', or tap to seat ' + picked.name : '') + '.'}>
+                            <span className="tp-label">{t.label}</span>
+                            <span className="tp-count">{t.count || 0}</span>
+                          </button>
+                        );
+                      })}
+                      <span className="floorplan-hint">Drag to arrange · tap to {picked ? 'seat ' + picked.name : 'open'}</span>
+                    </div>
+                  )}
+                  {seatView === 'list' && sp.tables.map(t => {
                     const isOpen = seatOpenTable === t.number;
                     const renaming = tableNameDraft && tableNameDraft.num === t.number;
                     return (
