@@ -1967,7 +1967,12 @@ export default function HostShellV2() {
   };
 
   const routeSheet = (route) => {
-    if (!route || !route.tab) return false;
+    // Accept focusField-only routes (rain-plan, crab-plan, ground/air/lodging,
+    // caprow, fp-diet all resolve on focusField alone). The old `!route.tab`
+    // guard silently killed them — the Risks "Plan for this" weather/crab routes
+    // were tab-less and dead-CTA'd back to the risks sheet. Unmatched routes
+    // still fall through to the `return false` at the end.
+    if (!route || (!route.tab && !route.focusField)) return false;
     if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null }); return true; }
     // Sprint 1 seating: legacy readiness items route tab:'Seating' — land on
     // the seating sheet, on the exact guest row when the route names one.
@@ -2183,11 +2188,10 @@ export default function HostShellV2() {
   const outdoor = (() => { try { return isLikelyOutdoor(event.venue || '', event.notes || ''); } catch { return false; } })();
 
   // Shopping check-off writes the same foodGot flags the money engine reads —
-  // buying an item literally moves real dollars from committed to spent.
-  // COST-TRUTH GATE (Todd, 2026-07-08): because "bought" moves money to spent,
-  // a line can only be checked once a REAL cost is locked on it (lock-it, a
-  // store pick, or $0 for freebies). Checking an unpriced line opens its cost
-  // panel instead — an estimate never gets to pose as spend.
+  // buying an item literally moves real dollars from committed to spent. (This
+  // used to be gated behind a locked cost — that COST-TRUTH GATE was removed in
+  // the 2026-07-12 ungate; the honest firm-vs-estimated handling now lives in
+  // the check-off itself, described below.)
   const toggleGot = (it, cost) => {
     const cur = !!(event.foodGot || {})[it.id];
     // Ungated check-off (2026-07-12): a tap marks bought — no price required, so a
@@ -3567,7 +3571,7 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? ' (est.)' : ''}{money.committed > money.planned ? ' · over' : ''}</> : 'no number yet — tap to set one'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? ' · over' : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>

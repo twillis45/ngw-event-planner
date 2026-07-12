@@ -92,7 +92,7 @@ button{font-family:inherit}
      Requiring both dimensions restricts this chrome to genuinely spacious
      windows (desktop/laptop browsers), where a phone silhouette makes sense. */
   .stagewrap{
-    width:393px; height:852px; margin:20px auto 40px;
+    width:393px; height:852px; margin:var(--sp-5) auto 40px;
     transform-origin:top center; transform:scale(var(--fit,1));
     margin-bottom:calc(40px + 852px*(var(--fit,1) - 1));
   }
@@ -120,7 +120,7 @@ button{font-family:inherit}
 /* The brand period — circular machined steel, seated on the baseline, low
    glow (locked in the splash/header prototype work, 2026-07-11). */
 .wm-dot{
-  width:6px; height:6px; border-radius:50%; margin-left:4px;
+  width:6px; height:6px; border-radius:50%; margin-left:var(--sp-1);
   align-self:flex-end; margin-bottom:2px; background:var(--steel);
   box-shadow:inset 0 1px 1px rgba(255,255,255,.38), inset 0 -1px 2px rgba(0,0,0,.4), 0 0 3px var(--steel-tint);
 }
@@ -141,7 +141,7 @@ button{font-family:inherit}
   color:#e8edf2; box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
-.floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:8px 0 6px; border-radius:var(--r-lg);
+.floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:var(--sp-2) 0 6px; border-radius:var(--r-lg);
   background:var(--bg-band); border:1px solid var(--line); overflow:hidden; touch-action:none;
   box-shadow:inset 0 1px 0 var(--sheen)}
 .tpuck{position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column;
@@ -174,7 +174,7 @@ button{font-family:inherit}
 }
 
 .eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
-.mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:12px 0 6px; font-variant-numeric:tabular-nums}
+.mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
 .mega-sub{font-size:var(--t-sub); font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.45; min-height:1.3em}
 
 /* ── Hero viewport: first screen fills the visible frame; the NEXT tile is
@@ -191,11 +191,11 @@ button{font-family:inherit}
 /* Type-scale migration (host-directed, 2026-07-11): the larger scale grew the
    hero past the fold, so the tile cluster gives slack back through padding
    and gaps — the countdown itself is untouched. */
-.bento{display:grid; gap:8px; margin-top:12px; flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
+.bento{display:grid; gap:var(--sp-2); margin-top:var(--sp-3); flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
 .hero > .tile-d{margin-top:10px}
 .tile{border-radius:var(--r-xl); padding:var(--sp-4) 18px; display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
-.tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}
+.tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
 /* Found in the typography audit: this class had NO rule anywhere — the
    NEXT tile's directive text (the single most important line on the whole
    Command Center, per this app's own hierarchy doctrine) was rendering as
@@ -216,7 +216,7 @@ button{font-family:inherit}
 .tile-d{box-shadow:inset 0 1px 0 rgba(255,255,255,.14)}
 .tile-a{grid-area:a; background:var(--card); border:1px solid var(--line-soft)}
 .tile-a .t-num{font-size:48px/*one-off jumbo countdown numeral*/}
-.bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:12px 0 8px}
+.bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:var(--sp-3) 0 var(--sp-2)}
 .bar i{display:block; height:100%; border-radius:6px; background:var(--steel); transition:width .9s var(--ease-standard)}
 .tile-b{grid-area:b; background:var(--bg-band)}
 .tile-c{grid-area:c; background:var(--card); border:1px solid var(--line-soft)}
@@ -229,7 +229,7 @@ button{font-family:inherit}
 .tile-d.allset{background:var(--ok)}
 .tile-d.allset:hover{background:var(--ok); filter:none; transform:none; cursor:default}
 
-.lenses{display:flex; gap:8px; flex-wrap:wrap; margin:30px 0 -18px}
+.lenses{display:flex; gap:var(--sp-2); flex-wrap:wrap; margin:30px 0 -18px}
 .lens{
   transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
   font-size:var(--t-chip); font-weight:700; color:var(--ink-soft); background:transparent;
@@ -239,7 +239,7 @@ button{font-family:inherit}
 .lens:hover{border-color:var(--steel)}
 .lens[aria-pressed="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
 
-.sect{display:flex; align-items:baseline; gap:14px; margin:48px 0 16px}
+.sect{display:flex; align-items:baseline; gap:14px; margin:48px 0 var(--sp-4)}
 .sect h2{font-size:var(--t-section); font-weight:800; letter-spacing:-.03em; margin:0; white-space:nowrap}
 .sect .rule{flex:1; height:1px; background:var(--line)}
 .sect .when{font-size:var(--t-note); font-weight:650; color:var(--faint); white-space:nowrap}
@@ -249,7 +249,7 @@ button{font-family:inherit}
 }
 
 .card{
-  position:relative; margin:0 0 12px; border-radius:var(--r-lg); overflow:hidden;
+  position:relative; margin:0 0 var(--sp-3); border-radius:var(--r-lg); overflow:hidden;
   /* card-radius unification (was 20px): the .card/.vcard/.fgroup family had
      drifted to 20/18/16 for one card concept — all three now share --r-lg. */
   background:var(--card); border:1px solid var(--line-soft);
@@ -284,10 +284,10 @@ button{font-family:inherit}
 .cta.big{font-size:var(--t-cta-big); padding:14px 26px; border-radius:14px}
 .cta.soft{background:var(--steel-tint); color:var(--steel-soft)}
 .cta.soft:hover{filter:none}
-.hc-row{margin-top:12px; display:flex; gap:7px; flex-wrap:wrap}
+.hc-row{margin-top:var(--sp-3); display:flex; gap:7px; flex-wrap:wrap}
 
 .later-row{
-  display:flex; align-items:center; gap:12px; padding:13px 2px;
+  display:flex; align-items:center; gap:var(--sp-3); padding:13px 2px;
   border-top:1px solid var(--line-soft); font-size:var(--t-row); color:var(--ink-soft);
 }
 .later-row .t{font-weight:650; color:var(--ink); letter-spacing:-.01em; flex:1}
@@ -317,9 +317,9 @@ button{font-family:inherit}
    restated in the day-node's carbon palette. Same engine fields, better
    clothes; no new data. */
 .day-node h3{font-size:clamp(22px,7cqw,26px); margin:10px 0 10px; font-weight:800; letter-spacing:-.025em; line-height:1.18}
-.day-node p{font-size:var(--t-body); color:var(--carbon-muted); margin:0 0 16px; line-height:1.6}
+.day-node p{font-size:var(--t-body); color:var(--carbon-muted); margin:0 0 var(--sp-4); line-height:1.6}
 .db-rows{margin:2px 0 0}
-.db-row{display:flex; align-items:center; gap:12px; width:100%; padding:13px 2px;
+.db-row{display:flex; align-items:center; gap:var(--sp-3); width:100%; padding:13px 2px;
   background:none; border:none; border-top:1px solid var(--carbon-line);
   font:inherit; color:inherit; cursor:pointer; text-align:left}
 .db-row:last-child{border-bottom:1px solid var(--carbon-line)}
@@ -382,7 +382,7 @@ button{font-family:inherit}
   .create-stage.centered{min-height:calc(100dvh - 64px - 150px - env(safe-area-inset-bottom,0px))}
 }
 .create-prompt{font-size:clamp(38px,12.5cqw,50px); line-height:1.02; letter-spacing:-.035em; margin:14px 0 10px}
-.create-inputrow{display:flex; gap:8px; margin-top:18px; align-items:stretch}
+.create-inputrow{display:flex; gap:var(--sp-2); margin-top:18px; align-items:stretch}
 .create-inputrow .field{flex:1; max-width:none; font-size:var(--t-input-lg); padding:15px 18px; border-radius:var(--r-lg)}
 .create-inputrow .cta.soft{padding:0 var(--sp-5); border-radius:var(--r-lg); font-size:14.5px/*half-step, deliberate*/}
 
@@ -412,15 +412,15 @@ button{font-family:inherit}
 .app.dark-stage .wordmark{color:var(--carbon-text)}
 .app.dark-stage .appbar-note{color:var(--carbon-muted)}
 .day-sec .eyebrow{color:var(--carbon-muted)}
-.clock{font-size:clamp(56px,18cqw,76px); font-weight:200; letter-spacing:-.04em; margin:12px 0 30px; font-variant-numeric:tabular-nums; line-height:1}
+.clock{font-size:clamp(56px,18cqw,76px); font-weight:200; letter-spacing:-.04em; margin:var(--sp-3) 0 30px; font-variant-numeric:tabular-nums; line-height:1}
 .now-card{
   background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:var(--r-xl); padding:var(--sp-6) var(--sp-6) 22px;
   box-shadow:inset 0 1px 0 var(--sheen), 0 20px 60px -20px rgba(0,0,0,.6);
 }
 .now-label{font-size:var(--t-caption); font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--steel-muted)}
-.now-card h2{font-size:26px/*one-off day-of headline*/; font-weight:750; margin:12px 0 8px; line-height:1.22; letter-spacing:-.02em}
+.now-card h2{font-size:26px/*one-off day-of headline*/; font-weight:750; margin:var(--sp-3) 0 var(--sp-2); line-height:1.22; letter-spacing:-.02em}
 .now-card .meta{font-size:var(--t-body-s); color:var(--carbon-muted); margin:0 0 10px; line-height:var(--lh-body)}
-.then{margin-top:20px; position:relative}
+.then{margin-top:var(--sp-5); position:relative}
 /* The spine: a thin rail connecting upcoming moments, ported from legacy's
    day-of run-of-show (App.js ~34628-34686). Legacy runs the rail green the
    whole time it's day-of (`isDayOf ? live : border`), not just behind the
@@ -430,7 +430,7 @@ button{font-family:inherit}
 .then-spine-link{position:absolute; left:29px; top:-14px; width:2px; height:14px; border-radius:2px; background:var(--ok); opacity:.55}
 .then-spine{position:relative; padding-left:26px}
 .then-spine::before{content:''; position:absolute; left:3px; top:0; bottom:8px; width:2px; border-radius:2px; background:var(--ok); opacity:.55; box-shadow:0 0 10px -2px var(--ok)}
-.then-row{position:relative; display:flex; gap:16px; padding:13px var(--sp-1); border-bottom:1px solid var(--carbon-line); font-size:var(--t-body-s); align-items:baseline}
+.then-row{position:relative; display:flex; gap:var(--sp-4); padding:13px var(--sp-1); border-bottom:1px solid var(--carbon-line); font-size:var(--t-body-s); align-items:baseline}
 .then-row .dot{position:absolute; left:-23px; top:17px; width:8px; height:8px; border-radius:var(--r-pill); background:transparent; border:1.5px solid var(--steel-muted)}
 .then-row.is-next .dot{border-color:var(--steel-soft); background:var(--steel-soft)}
 .then-row.is-behind .dot{border-color:var(--warn); background:var(--warn); box-shadow:0 0 0 3px var(--warn-tint)}
@@ -439,13 +439,13 @@ button{font-family:inherit}
 .day-empty{font-size:var(--t-row); line-height:1.65; color:var(--carbon-muted); white-space:pre-line; max-width:34em}
 
 /* ── After stage ── */
-.line{display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:var(--t-body); padding:7px 0; color:var(--ink-soft)}
+.line{display:flex; justify-content:space-between; align-items:baseline; gap:var(--sp-3); font-size:var(--t-body); padding:7px 0; color:var(--ink-soft)}
 .line .amt{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:700; white-space:nowrap}
 .line .amt.under{color:var(--ok)}
 .line.total{border-top:1px solid var(--line-soft); margin-top:6px; padding-top:var(--sp-3)}
 .of{font-weight:550; color:var(--muted); font-size:var(--t-row-sub)}
 .card.no-hover:hover{transform:none; box-shadow:inset 0 1px 0 var(--sheen)}
-.memory-note{display:flex; gap:9px; align-items:baseline; font-size:var(--t-note); font-weight:550; color:var(--muted); margin:16px 0 0}
+.memory-note{display:flex; gap:9px; align-items:baseline; font-size:var(--t-note); font-weight:550; color:var(--muted); margin:var(--sp-4) 0 0}
 .memory-note::before{content:""; width:7px; height:7px; border-radius:50%; background:var(--ok); flex-shrink:0; transform:translateY(-1px)}
 
 /* ── Deep-link landing sheet ── */
@@ -466,13 +466,13 @@ button{font-family:inherit}
 .sheet-head{display:flex; align-items:baseline; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid var(--line-soft); margin-bottom:6px}
 .sheet-head strong{font-size:var(--t-sheet-title); font-weight:800; letter-spacing:-.02em}
 .sheet-x{background:var(--bg-band); border:none; border-radius:var(--r-pill); padding:6px 14px; font-size:var(--t-pill); font-weight:700; color:var(--ink-soft); cursor:pointer}
-.vrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px var(--sp-2); border-radius:var(--r-md); border-top:1px solid var(--line-soft)}
+.vrow{display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); padding:13px var(--sp-2); border-radius:var(--r-md); border-top:1px solid var(--line-soft)}
 .vrow.focus{background:var(--steel-tint); border:1.5px solid var(--steel); border-radius:14px}
 .v-name{font-size:var(--t-row); font-weight:700; letter-spacing:-.01em}
 .v-meta{font-size:var(--t-row-sub); color:var(--muted); font-weight:550; line-height:var(--lh-body)}
 .vrow .tag.vendors{color:var(--steel-soft); background:var(--steel-tint)}
 .grow{
-  display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
+  display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); width:100%;
   padding:11px var(--sp-2); background:none; border:none; border-top:1px solid var(--line-soft);
   font-size:var(--t-row); font-weight:650; color:var(--ink); cursor:pointer; text-align:left;
 }
@@ -484,8 +484,8 @@ button{font-family:inherit}
 
 /* ── Occasion browser: type-ahead + snap-scroll shelves ── */
 .typebrowser{display:flex; flex-direction:column}
-.shelf-wrap{margin-top:16px}
-.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:8px}
+.shelf-wrap{margin-top:var(--sp-4)}
+.shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:var(--sp-2)}
 .shelf{
   display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x proximity;
   margin:0 -20px; padding:2px var(--sp-5) 6px; scrollbar-width:none;
@@ -521,7 +521,7 @@ button{font-family:inherit}
      with almost no gap, reading as one run-on word ("Auntbringing it") —
      found live testing the custom-item-add feature. Wrap lets that trailing
      group drop to its own line once the name needs the width instead. */
-  display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; width:100%; padding:10px var(--sp-2);
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp-3); width:100%; padding:10px var(--sp-2);
   background:none; border:none; border-top:1px solid var(--line-soft);
   cursor:pointer; text-align:left; color:var(--ink);
 }
@@ -533,7 +533,7 @@ button{font-family:inherit}
    into 4+ single-word lines. A real floor forces the trailing group to wrap
    onto its own line below (paired with .frow's flex-wrap:wrap) instead. */
 .f-main{flex:1; min-width:120px; display:flex; flex-direction:column; gap:2px}
-.f-name{font-size:var(--t-row); font-weight:650; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.f-name{font-size:var(--t-row); font-weight:650; display:flex; align-items:center; gap:var(--sp-2); flex-wrap:wrap}
 .frow .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .fcheck{
   width:22px; height:22px; border-radius:var(--r-sm); border:1.5px solid var(--line);
@@ -788,14 +788,12 @@ button{font-family:inherit}
 }
 .inv2-sheet > *{ position:relative; z-index:1; }
 @media(max-width:699px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
-/* the ask rides the sheet's foot; the countdown floats CENTERED in the
-   slack — breathing room reads as composition, not leftover space */
-/* Whitespace re-audit: the sheet now centres its whole content block
-   (justify-content:center above), so the countdown no longer needs to be a
-   greedy flex spacer (flex:1) and the ask no longer needs margin-top:auto to
-   pin to the bottom — those two absorbers used to open two separate cavernous
-   gaps around the countdown on a sparse invite. Content flows naturally and the
-   fixed-canvas whitespace lands as balanced top/bottom margin instead. */
+/* Layout: .inv2-sheet is a top-aligned flex column (no justify-content) with a
+   min-height, so content stacks from the top and the sheet holds its fixed
+   canvas. .inv2-countflex is flex:0 0 auto with a fixed margin — a self-sized
+   block, no longer a greedy flex:1 spacer. .inv2-ask keeps margin-top:auto to
+   bottom-anchor the reply, consolidating all the fixed-canvas slack into one
+   break above the ask instead of scattering it around the countdown. */
 .inv2-ask{ margin-top:auto; padding-top:14px; }
 .inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:22px 0; }
 .inv2-dark .inv2-sheet{
@@ -913,7 +911,7 @@ button{font-family:inherit}
   transition:max-height .4s var(--ease-standard), opacity .3s var(--ease-standard)}
 .fgroup.open .fg-items{max-height:2000px; opacity:1; margin-top:6px}
 .fgroup.open .fg-chev{transform:rotate(90deg)}
-.fstatus-row{display:flex; gap:8px; margin:0 0 12px}
+.fstatus-row{display:flex; gap:var(--sp-2); margin:0 0 var(--sp-3)}
 .fstatus{flex:1; text-align:left; background:var(--card); border:1px solid var(--line-soft);
   border-radius:var(--r-md); padding:9px var(--sp-3); font:inherit; cursor:pointer; color:inherit; box-shadow:inset 0 1px 0 var(--sheen)}
 .fstatus .fs-l{font-size:var(--t-caption-min); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
@@ -933,7 +931,7 @@ button{font-family:inherit}
    chrome. The eye scans a column of labels + right-aligned status; nothing
    competes with the action cards above it. ── */
 .qidx{margin-top:28px}
-.qidx-row{display:flex; align-items:center; gap:12px; width:100%; padding:13px 2px;
+.qidx-row{display:flex; align-items:center; gap:var(--sp-3); width:100%; padding:13px 2px;
   background:none; border:none; border-top:1px solid var(--line-soft);
   font:inherit; color:inherit; cursor:pointer; text-align:left}
 .qidx-row:last-child{border-bottom:1px solid var(--line-soft)}
@@ -949,7 +947,7 @@ button{font-family:inherit}
 /* ── Vendors: modern card system (host directive 2026-07-08 late) ──
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
-.wstrip{display:flex; gap:8px; overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
+.wstrip{display:flex; gap:var(--sp-2); overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
   border:1px solid var(--line-soft); background:var(--bg-band); border-radius:14px;
@@ -963,13 +961,13 @@ button{font-family:inherit}
 .wchip.attn .wn{color:var(--warn)}
 .conflictbar{width:100%; text-align:left; font:inherit; border:none; cursor:pointer;
   background:var(--warn-tint); color:var(--warn); border-radius:14px; padding:11px 14px;
-  font-size:var(--t-btn); font-weight:650; margin:0 0 12px;
+  font-size:var(--t-btn); font-weight:650; margin:0 0 var(--sp-3);
   display:flex; justify-content:space-between; align-items:center; gap:10px}
 .vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);/* card-radius unification (was 18px) — see .card */
   padding:14px var(--sp-4); margin-bottom:10px; cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen);
   transition:border-color var(--ms-ambient) var(--ease-standard), box-shadow var(--ms-ambient) var(--ease-standard)}
 .vcard.open{border-color:var(--steel-tint); box-shadow:inset 0 1px 0 var(--sheen), 0 10px 30px -18px rgba(0,0,0,.3)}
-.vc-head{display:flex; align-items:center; gap:12px}
+.vc-head{display:flex; align-items:center; gap:var(--sp-3)}
 .vc-avatar{width:40px; height:40px; border-radius:var(--r-md); flex-shrink:0;
   background:var(--steel-tint); color:var(--steel-soft);
   display:flex; align-items:center; justify-content:center;
@@ -999,7 +997,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    with headroom rather than re-measuring every future addition. */
 .vcard.open .vc-more{max-height:1500px; opacity:1}
 .vc-detail{font-size:var(--t-meta); color:var(--muted); line-height:var(--lh-body); margin:10px 0 0}
-.vc-actions{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+.vc-actions{display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3)}
 
 /* ── T-72h reconfirm sweep: a live-moment banner + staged sweep sheet ── */
 .sweepcard{
@@ -1040,9 +1038,9 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    elsewhere in the app, not a new pattern) so it reads as a label, not
    background noise. Title and venue both stepped up a size with more
    breathing room between the three lines. */
-.ev-head{margin:4px 0 6px}
+.ev-head{margin:var(--sp-1) 0 6px}
 .ev-kicker{
-  display:inline-flex; align-items:center; gap:4px;
+  display:inline-flex; align-items:center; gap:var(--sp-1);
   font:inherit; font-size:var(--t-tag); font-weight:750; letter-spacing:.09em; text-transform:uppercase;
   color:var(--steel); background:var(--steel-tint); border:none; border-radius:var(--r-pill); padding:var(--sp-1) 11px;
   cursor:pointer; transition:background var(--ms-press) var(--ease-out);
@@ -1051,7 +1049,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .ev-kicker span{font-size:var(--t-caption-min); opacity:.85}
 .ev-title{
   font-size:21px/*masthead tier, deliberate between card-title and section*/; font-weight:700; letter-spacing:-.015em; line-height:1.28;
-  color:var(--ink); margin-top:8px;
+  color:var(--ink); margin-top:var(--sp-2);
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }
 .ev-venue{font-size:var(--t-meta); font-weight:550; color:var(--muted); margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -1088,7 +1086,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    only. The stay form is a two-column labeled grid inside the sheet; booking
    statuses reuse the .tag chip at the app's semantic color budget: quiet for
    not-started, steel for booked, ok only for confirmed. ── */
-.lodge-form{display:grid; grid-template-columns:1fr 1fr; gap:10px 10px; margin:8px 0 2px}
+.lodge-form{display:grid; grid-template-columns:1fr 1fr; gap:10px 10px; margin:var(--sp-2) 0 2px}
 .lodge-form .full{grid-column:1 / -1}
 .lodge-f{display:flex; flex-direction:column; gap:5px}
 .lodge-f .of{font-size:var(--t-caption-min); font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--faint)}

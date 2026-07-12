@@ -10,7 +10,7 @@
 // Honest states: delivered ("Thanks!") vs queued-offline ("Saved — we'll send
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite } from '@app/lib/api/rsvp';
+import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 import { buildExperienceContext } from '@app/lib/experienceContext';
@@ -73,14 +73,15 @@ const DECK_DEFAULT = 'It wouldn’t be the same without you';
 // only in the event NAME).
 function deckLineFor(event, somber, isPast) {
   if (!event) return '';
+  // Past events become a recap. A host-authored deckLine was written for the
+  // UPCOMING invite and may be future-tense ("Something wonderful is coming"),
+  // which would contradict "Thank you for coming" — so on a (non-memorial) past
+  // event the retrospective line wins even over the authored copy. Memorials
+  // keep their own handling below.
+  if (isPast && !somber) return 'A day worth remembering';
   const explicit = String(event.deckLine || '').trim();
   if (explicit) return explicit;
   if (somber) return 'In loving memory';
-  // Past events become a recap — the forward-looking deck lines ("Something
-  // wonderful is coming", "come cheer") would contradict "Thank you for coming".
-  // The host's own deckLine still wins above; otherwise a universal retrospective
-  // line replaces the tense-mismatched celebration copy.
-  if (isPast) return 'A day worth remembering';
   try {
     const ctx = buildExperienceContext(event);
     const id = ctx && ctx.eventIdentity;
@@ -182,22 +183,29 @@ export default function InviteV2({ code }) {
   // PublicRsvpRoute fallback, App.js). With no backend configured, behavior is
   // unchanged from before: local or the not-found state, no loading flash.
   const localEvent = useMemo(() => findInviteEvent(code), [code]);
-  // undefined = backend lookup in flight; { event: null } = genuinely not found.
+  // undefined = backend lookup in flight; { event: null } = genuinely not found;
+  // { event: null, failed: true } = the lookup itself failed (offline/5xx) — a
+  // retryable state, NOT "this link is dead." retryTick re-runs the effect.
   const [resolved, setResolved] = useState(() =>
     (localEvent || !isRsvpApiConfigured()) ? { event: localEvent } : undefined);
+  const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
     if (localEvent) { setResolved({ event: localEvent }); return undefined; }
     if (!isRsvpApiConfigured()) { setResolved({ event: null }); return undefined; }
     setResolved(undefined);
     (async () => {
-      // fetchPublicInvite never throws — null covers not-found AND network
-      // failure, both of which land on the honest "ask your host" state below.
+      // fetchPublicInvite returns INVITE_FETCH_FAILED for a network/offline/5xx
+      // failure (retryable) vs null for a genuine not-found — kept distinct so a
+      // transient blip isn't shown as a dead link.
       const remote = await fetchPublicInvite(code);
-      if (!cancelled) setResolved({ event: adaptRemoteInvite(remote, code) });
+      if (cancelled) return;
+      if (remote === INVITE_FETCH_FAILED) setResolved({ event: null, failed: true });
+      else setResolved({ event: adaptRemoteInvite(remote, code) });
     })();
     return () => { cancelled = true; };
-  }, [code, localEvent]);
+  }, [code, localEvent, retryTick]);
+  const resolveFailed = !!(resolved && resolved.failed);
   const event = (resolved && resolved.event) || null;
   const [guestName, setGuestName] = useState('');
   const [rsvp, setRsvp] = useState('');
@@ -310,6 +318,23 @@ export default function InviteV2({ code }) {
         <section style={{ paddingTop: 120, textAlign: 'center' }} aria-busy="true">
           <div className="eyebrow">Invitation</div>
           <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)' }} aria-live="polite">Loading your invite…</p>
+        </section>
+      </div></div></div>
+    );
+  }
+
+  // Lookup FAILED (offline / server hiccup) — NOT a dead link. Honest, retryable:
+  // never tell a guest with a flaky connection that a live invite is gone.
+  if (resolveFailed) {
+    return (
+      <div className="stagewrap"><div className="app" style={toneVars}><div className="content">
+        <section style={{ paddingTop: 120, textAlign: 'center' }}>
+          <div className="eyebrow">Invitation</div>
+          <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.1 }}>We couldn’t load your invite</h1>
+          <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)' }}>Looks like the connection dropped — the invite is fine. Check your signal and try again.</p>
+          <div className="actions-row" style={{ marginTop: 'var(--sp-4)', justifyContent: 'center' }}>
+            <button className="cta" onClick={() => { setResolved(undefined); setRetryTick(t => t + 1); }}>Try again</button>
+          </div>
         </section>
       </div></div></div>
     );

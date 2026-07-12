@@ -36,15 +36,22 @@ async function authHeaders() {
 // ── Public: resolve an invite by code ─────────────────────────────────────────
 // Returns the PUBLIC event object on success, or null if not configured / not
 // found / errored. NEVER throws — the caller falls back to local events.find.
+// Sentinel: the lookup FAILED (network/offline or a 5xx), as opposed to the
+// server answering "no such invite" (404 / ok-but-empty → null). The guest UI
+// must tell these apart — a transient blip is retryable and must not be shown
+// as "this link is dead." Compared by reference against the same import.
+export const INVITE_FETCH_FAILED = { fetchFailed: true };
+
 export async function fetchPublicInvite(code) {
   if (!BASE || !code) return null;
   try {
     const res = await fetch(`${BASE}/api/public/invite/${encodeURIComponent(code)}`);
-    if (!res.ok) return null;
+    if (res.status === 404) return null;          // genuinely not found
+    if (!res.ok) return INVITE_FETCH_FAILED;      // 5xx / transient — retryable
     const data = await res.json();
     return data && data.ok && data.event ? data.event : null;
   } catch {
-    return null;
+    return INVITE_FETCH_FAILED;                   // network / offline — retryable
   }
 }
 
