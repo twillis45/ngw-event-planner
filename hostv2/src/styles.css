@@ -1081,22 +1081,42 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .splash::after{content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:linear-gradient(200deg, transparent 38%, rgba(var(--sp-shadow-deep),.5) 100%),
              radial-gradient(120% 100% at 46% 42%, transparent 42%, rgba(var(--sp-shadow-deep),.42) 100%)}
-/* the primary glow on its own layer so it can DRIFT — a ~20s alternate
-   loop, tiny translate/scale: the difference between "lit" and "alive".
-   Reduced motion collapses it to frame one via the global kill.
-   REPOSITIONED (10+ reaudit, post-inversion): this used to sit upper-left/
-   center — an independent wash with no relationship to anything else in the
-   frame, least of all the bead, which is now the entire premise. Centered
-   here instead on the bead's held-aloft position (measured live: ~86%,24%
-   of the stage at t=0) so the ambient bloom reads as the protagonist's OWN
-   light spilling into the room, not a second, unrelated light source
-   undermining the "one bead, one light" causality the inversion depends
-   on. The vignette angle above was mirrored to match. */
+/* the primary glow on its own layer so it can travel. REPOSITIONED (10+
+   reaudit, post-inversion): this used to sit upper-left/center — an
+   independent wash with no relationship to anything else in the frame,
+   least of all the bead, which is now the entire premise. Centered here
+   instead on the bead's held-aloft position (measured live: ~86%,24% of
+   the stage at t=0).
+   FOLLOWS THE FALL (same reaudit, second pass — host caught it: "the glow
+   initially on the bead is stationary after it moves"): if the glow only
+   matched the bead's STARTING position, it would recreate the exact same
+   disconnect the reposition fixed, just for the second half of the clock
+   — a bright wash sitting in empty air once the bead has fallen away from
+   it. sp-glow-follow moves it down with the bead (measured live: the bead
+   travels ~239px top to seat) on the same clock/easing family as
+   sp-bead-fall, landing near the seat by the same window; sp-glow-settle
+   then takes over at 3700ms — same handoff pattern as the bead's own
+   sp-breathe — so the ambient wobble continues from the LANDED position,
+   not the original one. The vignette angle above was mirrored to the
+   REPOSITIONED (start) center, since that's where the frame reads as lit
+   from for most of the sequence. */
 .sp-glow{position:absolute; left:52%; top:4%; width:60%; height:36%; border-radius:50%; pointer-events:none;
   background:radial-gradient(closest-side, rgba(var(--sp-glow-core),.17) 0%, transparent 74%);
   filter:blur(26px);
-  animation:sp-drift 20s var(--ease-in-out) infinite alternate}
-@keyframes sp-drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-18px,22px) scale(1.09)}}
+  animation:sp-glow-follow 3600ms linear 100ms both, sp-glow-settle 20s var(--ease-in-out) 3700ms infinite alternate}
+@keyframes sp-glow-follow{
+  0%{transform:translate(0,0) scale(1); animation-timing-function:var(--ease-in-out)}
+  22%{transform:translate(3px,-3px) scale(1.02); animation-timing-function:var(--ease-in-out)}
+  44%{transform:translate(0,0) scale(1); animation-timing-function:linear}
+  55%{transform:translate(0,0) scale(1); animation-timing-function:cubic-bezier(.5,0,1,.6)}
+  78%{transform:translate(-10px,205px) scale(1.06); animation-timing-function:var(--ease-out)}
+  100%{transform:translate(-10px,220px) scale(1.1); animation-timing-function:var(--ease-in-out)}
+}
+@keyframes sp-glow-settle{
+  0%{transform:translate(-10px,220px) scale(1.1)}
+  50%{transform:translate(8px,232px) scale(1.16)}
+  100%{transform:translate(-10px,220px) scale(1.1)}
+}
 .sp-stack{position:absolute; left:0; right:0; top:30%; display:flex; flex-direction:column; align-items:center; gap:8px}
 .sp-l2row{display:flex; align-items:flex-end; gap:0}
 /* THE INVERSION (10+ audit, item 10): the bead is the protagonist, not a
@@ -1289,17 +1309,25 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .splash .sp-dot::before{opacity:.7}
   .splash .sp-dot::after{opacity:.22; transform:translateX(-50%) scaleX(.85)}
   .splash .sp-caps, .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
+  /* pin to the LANDED offset (sp-glow-follow's 100% frame), not the
+     unanimated base position — otherwise the settled still would show the
+     glow back at the bead's original held-aloft spot, disconnected from
+     the also-pinned, already-seated bead right beside it. */
+  .splash .sp-glow{transform:translate(-10px,220px) scale(1.1)}
 }
 /* Return-boot quick cut (audit finding: no leader shows a multi-second brand
    film on EVERY cold boot). Same pinned end-state as reduced-motion above —
    but this is a stylistic choice, not an accessibility override, so the
-   ambient loops (glow drift, dot breathe) keep running instead of freezing:
+   ambient loops (glow settle, dot breathe) keep running instead of freezing:
    it reads as "the mark, briefly" for ~1.2s, not a hard freeze-frame. Entrance
    animations (sp-resolve/sp-boss-dip/sp-bead-fall/sp-bead-light/sp-spec/
-   sp-contact/sp-caps/sp-tag1/sp-tag2) are cancelled individually — sp-drift
-   and sp-breathe are deliberately left alone. */
+   sp-contact/sp-caps/sp-tag1/sp-tag2/sp-glow-follow) are cancelled
+   individually — sp-glow-settle and sp-breathe are deliberately left alone,
+   restarted at 0ms so they're already mid-loop instead of waiting out their
+   full 3700ms delay. */
 .splash-quick .sp-carv{animation:none; opacity:1}
 .splash-quick .sp-l2{animation:none; transform:none}
+.splash-quick .sp-glow{animation:sp-glow-settle 20s var(--ease-in-out) 0ms infinite alternate}
 .splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#14191f;
   box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
 .splash-quick .sp-dot::before{animation:none; opacity:.7}
