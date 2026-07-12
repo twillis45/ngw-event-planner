@@ -71,11 +71,16 @@ const DECK_DEFAULT = 'It wouldn’t be the same without you';
 // type+name regex still answers. That fallback also keeps covering free-text
 // signals the identity engine has no vocabulary for (a "Crab Feast" living
 // only in the event NAME).
-function deckLineFor(event, somber) {
+function deckLineFor(event, somber, isPast) {
   if (!event) return '';
   const explicit = String(event.deckLine || '').trim();
   if (explicit) return explicit;
   if (somber) return 'In loving memory';
+  // Past events become a recap — the forward-looking deck lines ("Something
+  // wonderful is coming", "come cheer") would contradict "Thank you for coming".
+  // The host's own deckLine still wins above; otherwise a universal retrospective
+  // line replaces the tense-mismatched celebration copy.
+  if (isPast) return 'A day worth remembering';
   try {
     const ctx = buildExperienceContext(event);
     const id = ctx && ctx.eventIdentity;
@@ -266,7 +271,13 @@ export default function InviteV2({ code }) {
   // Classified ONCE per event — the canonical reader is pure but not free;
   // it must not re-run on every keystroke of the reply form. Declared before
   // the loading/not-found returns (hooks can't sit after a conditional).
-  const deck = useMemo(() => deckLineFor(event, tone === 'muted'), [event, tone]);
+  const deck = useMemo(() => {
+    // isPast is computed later in render (needs `days`); recompute the same test
+    // locally so the deck line can drop future-tense copy on a past-event recap.
+    let past = false;
+    try { const d = daysUntil(event.date); past = d != null && d < 0; } catch { /* undated → not past */ }
+    return deckLineFor(event, tone === 'muted', past);
+  }, [event, tone]);
 
   // Flush anything queued offline for this event once we're back (parity with
   // the original's PublicRsvpRoute; a no-op while no backend is configured).
@@ -441,12 +452,18 @@ export default function InviteV2({ code }) {
   const shareForward = async (own) => {
     const url = window.location.href;
     const evName = event.name || 'the celebration';
-    const text = own
-      ? `I’m going to ${evName} — come too! RSVP here: ${url}`
-      : `You’re invited to ${evName}. RSVP here: ${url}`;
+    // Past events can't be RSVP'd to — "Share the memory" recruits nobody, it
+    // passes along the recap. Branch the copy so we never tell someone to "RSVP
+    // here" for a celebration that already happened (CTA-truthfulness).
+    const text = isPast
+      ? `Looking back on ${evName}: ${url}`
+      : own
+        ? `I’m going to ${evName} — come too! RSVP here: ${url}`
+        : `You’re invited to ${evName}. RSVP here: ${url}`;
+    const title = isPast ? `Looking back on ${evName}` : own ? `I’m going to ${evName}` : `You’re invited — ${evName}`;
     let r = '';
     if (typeof navigator.share === 'function') {
-      try { await navigator.share({ title: own ? `I’m going to ${evName}` : `You’re invited — ${evName}`, text, url }); r = 'shared'; }
+      try { await navigator.share({ title, text, url }); r = 'shared'; }
       // A user who taps Cancel in the native share sheet fires AbortError — that's
       // a deliberate "never mind," NOT a failure, so stop here rather than silently
       // copying to their clipboard behind their back (per-screen audit).
@@ -755,15 +772,16 @@ export default function InviteV2({ code }) {
           {/* Keep forward visible after Maybe/No too (per-screen audit: it used to
               vanish on any submit — a guest who answered Maybe/No then had NO way
               to pass the invite on). Hidden only when the Yes-only recruit CTA
-              above already covers forwarding. */}
-          {!somber && !(submitted && rsvp === 'Yes' && !queued) && (
+              above already covers forwarding — and on a past-event recap, which
+              carries its own "Share the memory" action (no duplicate forward). */}
+          {!somber && !isPast && !(submitted && rsvp === 'Yes' && !queued) && (
             <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
               <button className="mini" onClick={() => shareForward(false)}>
                 {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Forward this invite'}
               </button>
             </div>
           )}
-          <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account.</p>
+          {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account.</p>}
         </section>
       </div></div>
     </div>

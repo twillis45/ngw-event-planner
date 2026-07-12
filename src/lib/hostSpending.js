@@ -130,10 +130,14 @@ export function hostSpending(event, priceFactor) {
   const crabRemaining = Math.max(0, crabEstimate - crabBought);
   const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining));
 
-  // spentEstimated: how much of `spent` is still an estimate (bought-but-unpriced
-  // food). Supplies/capacity are midpoint-costed too, so they're estimated until a
-  // real number replaces them; food is the part the check-off flow makes granular.
-  const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated));
+  // spentEstimated: how much of `spent` is still an estimate, NOT a firm number.
+  // Food's estimated portion is granular (foodBoughtEstimated). But supplies and
+  // capacity bought-money are BOTH midpoint estimates (mid(...Low, ...High) above,
+  // and crab is the host's own entered price = firm). Counting supplies/capacity
+  // as firm made the hero understate the estimated portion — the Budget honesty
+  // doctrine line. They stay estimated until a real number replaces them, so they
+  // belong in spentEstimated too. (crabBought stays firm — real entered prices.)
+  const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated + suppliesBought + capacityBought));
   const spentFirm = Math.max(0, spent - spentEstimated);
   return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }

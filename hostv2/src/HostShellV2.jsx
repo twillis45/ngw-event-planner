@@ -2083,19 +2083,25 @@ export default function HostShellV2() {
     let extra = {};
     let boughtNote = '';
     if (tl[i].done && /\b(buy|shop)\b|shopping/i.test(String(tl[i].task || ''))) {
-      // COST-TRUTH GATE: the bulk shortcut only marks lines that carry a REAL
-      // locked cost — unpriced lines stay open and are named, so "spent" never
-      // moves on estimates.
+      // UNGATED (matches toggleGot, 555e770): checking the shop step asserts
+      // every open food line was bought. Price stays optional — an unpriced line
+      // is marked bought at its honest estimate, never withheld. We surface how
+      // many landed firm (host-added or a real locked price) vs still an estimate
+      // — the same firm test hostSpending uses — so the host stays informed and
+      // "spent" carries its estimated portion openly rather than pretending.
       const got = { ...(event.foodGot || {}) };
-      let n = 0, unpriced = 0;
+      const real = (event.foodReal && typeof event.foodReal === 'object') ? event.foodReal : {};
+      let n = 0, firm = 0;
       ((foodPlan && foodPlan.list) || []).forEach(it => {
         if (!it || it.skipped || got[it.id]) return;
-        if (it.locked != null) { got[it.id] = true; n += 1; } else unpriced += 1;
+        got[it.id] = true; n += 1;
+        if (it.added || (it.locked != null && real[it.id])) firm += 1;
       });
       if (n > 0) extra = { foodGot: got };
-      if (n > 0 || unpriced > 0) {
-        boughtNote = (n > 0 ? ' ' + n + ' priced item' + (n === 1 ? '' : 's') + ' marked bought.' : '')
-          + (unpriced > 0 ? ' ' + unpriced + ' still need a real price before they can count as bought.' : '');
+      if (n > 0) {
+        const est = n - firm;
+        boughtNote = ' ' + n + ' item' + (n === 1 ? '' : 's') + ' marked bought'
+          + (est > 0 ? ' (' + est + ' at an estimate — tap any to add the real price).' : '.');
       }
     }
     patchEvent({ timeline: tl, ...extra },
@@ -3524,7 +3530,7 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.committed > money.planned ? ' · over' : ''}</> : 'no number yet — tap to set one'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? ' (est.)' : ''}{money.committed > money.planned ? ' · over' : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>
@@ -7223,7 +7229,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: '0 0 10px' }}>
                           {runLeft.length === 0
                             ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
-                            : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Checking off asks the real price.'}
+                            : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
                         </p>
                       )}
                       {groupRows}
