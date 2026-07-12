@@ -1771,18 +1771,17 @@ export default function HostShellV2() {
     const p = Array.isArray(gt.pickupPoints) ? gt.pickupPoints.filter(Boolean) : [];
     setGroundForm({
       lastReturnNote: gt.lastReturnNote || '',
-      p1name: (p[0] && p[0].name) || '', p1note: (p[0] && p[0].note) || '',
-      p2name: (p[1] && p[1].name) || '', p2note: (p[1] && p[1].note) || '',
+      // Unlimited pickup points (per-screen audit: was hard-capped at 2).
+      pickups: p.length ? p.map(x => ({ name: (x && x.name) || '', note: (x && x.note) || '' })) : [{ name: '', note: '' }],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groundSheetOpen, event.id]);
   const saveGround = () => {
     const f = groundForm || {};
     const t = (v) => String(v || '').trim();
-    const points = [
-      t(f.p1name) ? { name: t(f.p1name), note: t(f.p1note) || null } : null,
-      t(f.p2name) ? { name: t(f.p2name), note: t(f.p2note) || null } : null,
-    ].filter(Boolean);
+    const points = (Array.isArray(f.pickups) ? f.pickups : [])
+      .map(x => (t(x.name) ? { name: t(x.name), note: t(x.note) || null } : null))
+      .filter(Boolean);
     patchEvent({
       groundTransport: {
         ...((event.groundTransport && typeof event.groundTransport === 'object') ? event.groundTransport : {}),
@@ -1831,22 +1830,19 @@ export default function HostShellV2() {
     const ao = (Array.isArray(event.airportOptions) ? event.airportOptions : []).filter(Boolean);
     const g = (i, k) => (ao[i] && ao[i][k]) || '';
     setAirForm({
-      a1name: g(0, 'name'), a1code: g(0, 'code'), a1note: g(0, 'note'),
-      a2name: g(1, 'name'), a2code: g(1, 'code'), a2note: g(1, 'note'),
-      a3name: g(2, 'name'), a3code: g(2, 'code'), a3note: g(2, 'note'),
+      // Unlimited airport options (per-screen audit: was hard-capped at 3).
+      airports: ao.length ? ao.map(x => ({ name: (x && x.name) || '', code: (x && x.code) || '', note: (x && x.note) || '' })) : [{ name: '', code: '', note: '' }],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [airSheetOpen, event.id]);
   const saveAirports = () => {
     const f = airForm || {};
     const t = (v) => String(v || '').trim();
-    const options = [
-      ['a1name', 'a1code', 'a1note'],
-      ['a2name', 'a2code', 'a2note'],
-      ['a3name', 'a3code', 'a3note'],
-    ].map(([n, c, o]) => (t(f[n]) || t(f[c]))
-      ? { name: t(f[n]) || null, code: t(f[c]) ? t(f[c]).toUpperCase() : null, note: t(f[o]) || null }
-      : null).filter(Boolean);
+    const options = (Array.isArray(f.airports) ? f.airports : [])
+      .map(x => (t(x.name) || t(x.code))
+        ? { name: t(x.name) || null, code: t(x.code) ? t(x.code).toUpperCase() : null, note: t(x.note) || null }
+        : null)
+      .filter(Boolean);
     patchEvent({ airportOptions: options }, options.length
       ? 'Airport options saved — guests can get the getting-here note now.'
       : 'Airport options saved.');
@@ -5121,7 +5117,7 @@ export default function HostShellV2() {
                 return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody’s coordinating travel. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const gr = travel.ground;
-              const f = groundForm || { lastReturnNote: '', p1name: '', p1note: '', p2name: '', p2note: '' };
+              const f = groundForm || { lastReturnNote: '', pickups: [{ name: '', note: '' }] };
               const setF = (k) => (e) => setGroundForm({ ...f, [k]: e.target.value });
               const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
               const hasNoteMaterial = !!(gr.lastReturnNote || gr.pickupPoints.length || gr.transportProvided != null);
@@ -5172,14 +5168,19 @@ export default function HostShellV2() {
                   <div className="lodge-form">
                     <label className="lodge-f full"><span className="of">Getting back at night</span>
                       <input className="field" style={fld} placeholder="e.g. no rideshare after 9pm — last shuttle 11:30" value={f.lastReturnNote} onChange={setF('lastReturnNote')} aria-label="The honest note about getting back at night" /></label>
-                    <label className="lodge-f"><span className="of">Pickup spot</span>
-                      <input className="field" style={fld} placeholder="Hotel lobby, venue gate…" value={f.p1name} onChange={setF('p1name')} aria-label="First pickup spot" /></label>
-                    <label className="lodge-f"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="On the hour? Which door?" value={f.p1note} onChange={setF('p1note')} aria-label="Note about the first pickup spot" /></label>
-                    <label className="lodge-f"><span className="of">Second spot</span>
-                      <input className="field" style={fld} placeholder="One more if needed" value={f.p2name} onChange={setF('p2name')} aria-label="Second pickup spot" /></label>
-                    <label className="lodge-f"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="Times? Landmarks?" value={f.p2note} onChange={setF('p2note')} aria-label="Note about the second pickup spot" /></label>
+                    {(f.pickups || []).flatMap((pk, pi) => [
+                      <label key={'pn' + pi} className="lodge-f"><span className="of">{pi === 0 ? 'Pickup spot' : 'Another spot'}</span>
+                        <input className="field" style={fld} placeholder={pi === 0 ? 'Hotel lobby, venue gate…' : 'One more if needed'} value={pk.name}
+                          onChange={e => setGroundForm(d => ({ ...d, pickups: (d.pickups || []).map((x, j) => j === pi ? { ...x, name: e.target.value } : x) }))}
+                          aria-label={'Pickup spot ' + (pi + 1)} /></label>,
+                      <label key={'pt' + pi} className="lodge-f"><span className="of">Worth knowing</span>
+                        <input className="field" style={fld} placeholder="On the hour? Which door?" value={pk.note}
+                          onChange={e => setGroundForm(d => ({ ...d, pickups: (d.pickups || []).map((x, j) => j === pi ? { ...x, note: e.target.value } : x) }))}
+                          aria-label={'Note about pickup spot ' + (pi + 1)} /></label>,
+                    ])}
+                    <label className="lodge-f full">
+                      <button className="mini" type="button" onClick={() => setGroundForm(d => ({ ...d, pickups: [...((d && d.pickups) || []), { name: '', note: '' }] }))}>+ Add {(f.pickups || []).length ? 'another' : 'a'} pickup spot</button>
+                    </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
                     <button className="mini" onClick={saveGround}>Save the getting-around details</button>
@@ -5254,7 +5255,7 @@ export default function HostShellV2() {
                 return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody’s flying in. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const ar = travel.air;
-              const f = airForm || { a1name: '', a1code: '', a1note: '', a2name: '', a2code: '', a2note: '', a3name: '', a3code: '', a3note: '' };
+              const f = airForm || { airports: [{ name: '', code: '', note: '' }] };
               const setF = (k) => (e) => setAirForm({ ...f, [k]: e.target.value });
               const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
               const startDay = /^\d{4}-\d{2}-\d{2}/.test(String(event.date || '')) ? String(event.date).slice(0, 10) : null;
@@ -5311,24 +5312,23 @@ export default function HostShellV2() {
                   })()}
                   <div className="shelf-label">Airports worth flying into</div>
                   <div className="lodge-form">
-                    <label className="lodge-f"><span className="of">Airport</span>
-                      <input className="field" style={fld} placeholder="Baltimore/Washington Intl" value={f.a1name} onChange={setF('a1name')} aria-label="First airport name" /></label>
-                    <label className="lodge-f"><span className="of">Code</span>
-                      <input className="field" style={fld} placeholder="BWI" value={f.a1code} onChange={setF('a1code')} aria-label="First airport code" /></label>
-                    <label className="lodge-f full"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="Closer? Fewer flights? Cheaper?" value={f.a1note} onChange={setF('a1note')} aria-label="The honest tradeoff of the first airport" /></label>
-                    <label className="lodge-f"><span className="of">Second airport</span>
-                      <input className="field" style={fld} placeholder="One more option" value={f.a2name} onChange={setF('a2name')} aria-label="Second airport name" /></label>
-                    <label className="lodge-f"><span className="of">Code</span>
-                      <input className="field" style={fld} placeholder="DCA" value={f.a2code} onChange={setF('a2code')} aria-label="Second airport code" /></label>
-                    <label className="lodge-f full"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="Farther but more flights?" value={f.a2note} onChange={setF('a2note')} aria-label="The honest tradeoff of the second airport" /></label>
-                    <label className="lodge-f"><span className="of">Third airport</span>
-                      <input className="field" style={fld} placeholder="If there’s a third" value={f.a3name} onChange={setF('a3name')} aria-label="Third airport name" /></label>
-                    <label className="lodge-f"><span className="of">Code</span>
-                      <input className="field" style={fld} placeholder="IAD" value={f.a3code} onChange={setF('a3code')} aria-label="Third airport code" /></label>
-                    <label className="lodge-f full"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="The honest tradeoff" value={f.a3note} onChange={setF('a3note')} aria-label="The honest tradeoff of the third airport" /></label>
+                    {(f.airports || []).flatMap((ap, ai) => [
+                      <label key={'an' + ai} className="lodge-f"><span className="of">{ai === 0 ? 'Airport' : 'Another airport'}</span>
+                        <input className="field" style={fld} placeholder={ai === 0 ? 'Baltimore/Washington Intl' : 'One more option'} value={ap.name}
+                          onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, name: e.target.value } : x) }))}
+                          aria-label={'Airport name ' + (ai + 1)} /></label>,
+                      <label key={'ac' + ai} className="lodge-f"><span className="of">Code</span>
+                        <input className="field" style={fld} placeholder="BWI" value={ap.code}
+                          onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, code: e.target.value } : x) }))}
+                          aria-label={'Airport code ' + (ai + 1)} /></label>,
+                      <label key={'ao' + ai} className="lodge-f full"><span className="of">Worth knowing</span>
+                        <input className="field" style={fld} placeholder="Closer? Fewer flights? Cheaper?" value={ap.note}
+                          onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, note: e.target.value } : x) }))}
+                          aria-label={'The honest tradeoff of airport ' + (ai + 1)} /></label>,
+                    ])}
+                    <label className="lodge-f full">
+                      <button className="mini" type="button" onClick={() => setAirForm(d => ({ ...d, airports: [...((d && d.airports) || []), { name: '', code: '', note: '' }] }))}>+ Add {(f.airports || []).length ? 'another' : 'an'} airport</button>
+                    </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
                     <button className="mini" onClick={saveAirports}>Save the airport options</button>
