@@ -106,15 +106,26 @@ export function filterGuestsByName(list, query) {
  * @param {Array} confirmed confirmed guest objects
  * @returns {string[]} e.g. ['Veg 3', 'GF 1', 'Kids 4', 'Wheelchair 1']
  */
+// A guest needs an accessible seat if the redesigned invite's structured
+// `access` array says so, OR (legacy / typed) the free-text `needs` matches.
+const NEEDS_ACCESSIBLE_RE = /wheel|accessib|\bada\b|step-?free|mobility/i;
+export function guestNeedsAccessibleSeat(g) {
+  if (!g) return false;
+  const access = Array.isArray(g.access) ? g.access.join(' ') : '';
+  return NEEDS_ACCESSIBLE_RE.test(access) || NEEDS_ACCESSIBLE_RE.test(String(g.needs || ''));
+}
+
 export function dietChipsFor(confirmed) {
   if (!Array.isArray(confirmed) || !confirmed.length) return [];
   let veg = 0, gf = 0, kids = 0, wheel = 0;
   for (const g of confirmed) {
-    const meal = String((g && g.meal) || '');
-    if (/veg(etarian|an)?/i.test(meal)) veg++;
-    if (/gluten|^gf$/i.test(meal)) gf++;
+    // Read the guest's plate AND their structured diet array (redesigned invite),
+    // so a veg/GF pick counts no matter where it was recorded.
+    const dietHay = [String((g && g.meal) || ''), ...(Array.isArray(g && g.diets) ? g.diets : [])].join(' ');
+    if (/veg(etarian|an)?/i.test(dietHay)) veg++;
+    if (/gluten|^gf$/i.test(dietHay)) gf++;
     if (g && g.kids) kids += Number(g.kids) || 0;
-    if (/wheel|accessib|\bada\b/i.test(String((g && g.needs) || ''))) wheel++;
+    if (guestNeedsAccessibleSeat(g)) wheel++;
   }
   const out = [];
   if (veg) out.push(`Veg ${veg}`);
@@ -122,6 +133,17 @@ export function dietChipsFor(confirmed) {
   if (kids) out.push(`Kids ${kids}`);
   if (wheel) out.push(`Wheelchair ${wheel}`);
   return out;
+}
+
+/**
+ * The NAMES of guests who need an accessible seat — so the host can place them
+ * deliberately (actionable surfacing, not just a count). Confirmed guests only.
+ * @param {Array} confirmed confirmed guest objects
+ * @returns {string[]} e.g. ['Jane Doe', 'Bob Smith']
+ */
+export function accessibleSeatNames(confirmed) {
+  if (!Array.isArray(confirmed)) return [];
+  return confirmed.filter(guestNeedsAccessibleSeat).map((g) => String((g && g.name) || 'A guest').trim()).filter(Boolean);
 }
 
 /**
@@ -188,6 +210,10 @@ export function buildSeatingPlan(event) {
     confirmed,
     unassigned,
     dietChips: dietChipsFor(confirmed),
+    // Names (not just a count) of guests needing an accessible seat, so the host
+    // can place them deliberately — the redesigned invite's access data made
+    // actionable instead of a dead tally.
+    accessibleSeats: accessibleSeatNames(confirmed),
     totals: {
       confirmed: confirmed.length,
       seated,

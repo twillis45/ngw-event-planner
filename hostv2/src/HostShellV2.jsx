@@ -5437,6 +5437,15 @@ export default function HostShellV2() {
                       {sp.dietChips.map(c => <span key={c} className="chip" style={{ cursor: 'default' }}>{c}</span>)}
                     </div>
                   )}
+                  {/* Actionable access surfacing (invite redesign): the NAMES of
+                      guests who told us they need an accessible seat, so the host
+                      places them deliberately near step-free access — not just the
+                      dead "Wheelchair N" count the chip above shows. */}
+                  {Array.isArray(sp.accessibleSeats) && sp.accessibleSeats.length > 0 && (
+                    <p className="grounding" style={{ margin: '0 0 10px' }}>
+                      <strong style={{ color: 'var(--ink-soft)' }}>Seat with easy access:</strong> {sp.accessibleSeats.join(', ')} — asked for a step-free spot.
+                    </p>
+                  )}
                   <div className="line" style={{ alignItems: 'center', padding: '4px 0 10px' }}>
                     <span>Tables</span>
                     <span style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
