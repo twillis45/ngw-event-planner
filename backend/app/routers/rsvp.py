@@ -198,6 +198,16 @@ async def _resolve_event(conn, rsvp_code: str):
             data = {}
     public = {k: data.get(k) for k in PUBLIC_EVENT_FIELDS if data.get(k) is not None}
     public["id"] = row["id"]
+    # Anonymized social proof: the COUNT of confirmed guests only — never names,
+    # emails, or the roster itself. Closes the invite's "zero social proof on
+    # backend-resolved events" gap (Partiful's growth mechanic) while the guest
+    # list stays fully withheld. A number is not PII; a name would be.
+    guests = data.get("guests")
+    if isinstance(guests, list):
+        public["goingCount"] = sum(
+            1 for g in guests
+            if isinstance(g, dict) and str(g.get("rsvp", "")).strip().lower().startswith("y")
+        )
     return row["id"], public
 
 

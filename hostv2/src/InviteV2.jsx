@@ -153,7 +153,8 @@ function findInviteEvent(code) {
 //     keying the original's PublicRsvpRoute uses when only the code is known)
 //   · host parking copy arrives as `parking`; this page reads `parkingNotes`
 //   · rosterUnknown marks that the guest list was never sent — the social
-//     line stays silent instead of claiming "Be the first to say yes".
+//     line falls back to the anonymized goingCount the server DOES send (a
+//     tally, never names), instead of staying silent.
 function adaptRemoteInvite(remote, code) {
   if (!remote || typeof remote !== 'object') return null;
   return {
@@ -161,6 +162,9 @@ function adaptRemoteInvite(remote, code) {
     id: remote.id || String(code),
     parkingNotes: remote.parkingNotes || remote.parking || '',
     rosterUnknown: true,
+    // Anonymized social proof (rsvp.py adds goingCount to the public event) —
+    // a count only, so the invite can show "N going" with the roster withheld.
+    goingCount: Number.isFinite(Number(remote.goingCount)) ? Number(remote.goingCount) : null,
   };
 }
 
@@ -321,10 +325,16 @@ export default function InviteV2({ code }) {
   // Social proof from the REAL roster only — never a fabricated number.
   const social = (() => {
     if (somber) return null;
-    // Backend-resolved invite: the roster is never sent to a stranger's device
-    // (server whitelist) — unknown is unknown, so say nothing rather than
-    // fabricate "Be the first to say yes".
-    if (event.rosterUnknown) return null;
+    // Backend-resolved invite: the roster (names) is never sent to a stranger's
+    // device (server whitelist), but the server DOES send an anonymized
+    // goingCount — so show the tally, not names. A null count (older server /
+    // not sent) still stays silent rather than fabricate a number.
+    if (event.rosterUnknown) {
+      const n = event.goingCount;
+      if (n == null) return null;
+      if (n <= 0) return 'Be the first to say yes';
+      return n === 1 ? '1 person is going' : `${n} going`;
+    }
     const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
     if (!yes.length) return 'Be the first to say yes';
     const names = [];
