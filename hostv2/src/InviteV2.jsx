@@ -352,6 +352,24 @@ export default function InviteV2({ code }) {
     return yes.length === 1 ? '1 guest is in' : `${yes.length} guests are in`;
   })();
 
+  // Post-event RECAP (10+, the only guest-facing growth surface): when a shared
+  // link is opened AFTER the event, the invite becomes a recap instead of an
+  // RSVP form — honest, real-data only. Attendance reuses the anonymized count
+  // (goingCount for backend invites, the local Yes tally otherwise); a null
+  // count stays silent rather than fabricate. The guest's own prior reply is
+  // echoed from the outbox if present.
+  const isPast = days != null && days < 0;
+  const recapAttendance = (() => {
+    const n = event.rosterUnknown
+      ? (Number.isFinite(Number(event.goingCount)) ? Number(event.goingCount) : null)
+      : (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+    if (n == null || n <= 0) return null;
+    return n === 1 ? '1 of us was there' : `${n} of us were there`;
+  })();
+  const myPriorRsvp = (() => {
+    try { const q = JSON.parse(localStorage.getItem('ngw-rsvp-queue-' + event.id) || '[]'); const m = Array.isArray(q) && q.length ? q[q.length - 1] : null; return (m && m.rsvp) || null; } catch { return null; }
+  })();
+
   // Structured selections carry to the app as arrays; needsJoined stays a
   // human string for display + the legacy free-text regex consumers.
   const needsStructured = [...allergensSel, ...rulesSel, ...accessSel];
@@ -515,7 +533,7 @@ export default function InviteV2({ code }) {
               </div>
             )}
             <div {...rv()} >
-              <div className="inv2-eyebrow lp" style={{ marginTop: mark ? 10 : 22 }}>{somber ? 'Please join us' : 'You’re invited'}</div>
+              <div className="inv2-eyebrow lp" style={{ marginTop: mark ? 10 : 22 }}>{isPast ? 'Thank you for coming' : somber ? 'Please join us' : 'You’re invited'}</div>
             </div>
             <h1 {...rv('inv2-name lp-display')}>{event.name}</h1>
             <p {...rv('inv2-deck lp')}>{deck}</p>
@@ -525,7 +543,7 @@ export default function InviteV2({ code }) {
                 <div className="inv2-val lp">{dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}</div></>)}
               {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
                 <div className="inv2-val lp">{[event.venue, event.venueCity].filter(Boolean).join(', ')}</div></>)}
-              {(rsvpBy && rsvpBy.iso && days != null && days >= 0) || social ? (
+              {!isPast && ((rsvpBy && rsvpBy.iso && days != null && days >= 0) || social) ? (
                 <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center' }}>
                   {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
                   {rsvpBy && rsvpBy.iso && days != null && days >= 0 && social ? ' · ' : ''}{social || ''}
@@ -544,7 +562,19 @@ export default function InviteV2({ code }) {
               </div>
             )}
 
-            {!submitted ? (
+            {isPast ? (
+              <div {...rv('inv2-ask')}>
+                {/* Post-event recap — replaces the RSVP ask when the date has passed. */}
+                <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>Afterward</div>
+                <p className="grounding" style={{ margin: '0 0 6px', textAlign: 'center' }}>
+                  {recapAttendance ? recapAttendance + ' — thank you for celebrating.' : 'Thank you for celebrating.'}
+                  {myPriorRsvp === 'Yes' ? ' You were in.' : ''}
+                </p>
+                <div className="actions-row" style={{ marginTop: 8, justifyContent: 'center' }}>
+                  <button className="mini" onClick={() => shareForward(false)}>{shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Share the memory'}</button>
+                </div>
+              </div>
+            ) : !submitted ? (
               <div {...rv('inv2-ask')}>
                 {/* THE ONE ASK — attendance alone; everything else is earned */}
                 <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
