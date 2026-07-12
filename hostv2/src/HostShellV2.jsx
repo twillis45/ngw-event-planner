@@ -3318,6 +3318,14 @@ export default function HostShellV2() {
                    around them changed. */
                 <div className="reveal-stage">
                   <div className="reveal-inner">
+                    {/* Skip for repeat creators (per-screen audit): jump straight to
+                        the resolved understanding instead of replaying the full ~5s
+                        choreography every time. Only while it's still animating. */}
+                    {revealStep <= revealLineCount && (
+                      <div style={{ textAlign: 'right', marginBottom: 2 }}>
+                        <button className="mini" onClick={() => { clearRevealTimers(); setRevealStep(revealLineCount + 2); try { feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
+                      </div>
+                    )}
                     <div className="eyebrow" aria-live="polite">{revealEyebrow}</div>
                     <ul className="tick-list" style={{ marginTop: 22 }}>
                       {revealStages.map((st, i) => (
