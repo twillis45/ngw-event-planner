@@ -1523,6 +1523,43 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
+  // Sheet modal a11y (per-screen audit, cross-cutting fix — all 22 sheets share
+  // this one container). Adds what every sheet was missing: Escape-to-close,
+  // initial focus into the dialog, and focus restore to whatever opened it.
+  // Runs once per open (dep is `sheet`; within-sheet interactions use other
+  // state, so identity is stable while open). Mirrors the splash keydown idiom
+  // (window listener + cleanup) but in BUBBLE phase, not capture, so a focused
+  // field's own Escape-to-cancel (food tune, vendor cost, diet, guest count)
+  // runs first and Escape only closes the sheet when focus isn't in a text box.
+  useEffect(() => {
+    if (!sheet) return undefined;
+    const opener = document.activeElement; // who opened us (a button, usually)
+    const el = sheetRef.current;
+    // Move focus into the dialog on open — but never yank it from a child that
+    // already claimed focus (an autoFocus input in the sheet body).
+    if (el && !el.contains(document.activeElement)) el.focus();
+    const onKey = (e) => {
+      if (e.key !== 'Escape') return;
+      // Where did Escape originate? Check e.target, NOT document.activeElement:
+      // React flushes a field's own Escape-to-cancel synchronously (unmounting the
+      // input, so focus has already moved to <body>) before this window-level
+      // handler runs — activeElement is stale by now, but e.target still points at
+      // the field the keystroke fired on. If Escape came from a text field, that
+      // field's cancel owns it; don't also close the sheet. (activeElement kept as
+      // a secondary check for fields that don't unmount on Escape.)
+      const isField = (n) => n && (n.tagName === 'INPUT' || n.tagName === 'TEXTAREA' || n.isContentEditable);
+      if (isField(e.target) || isField(document.activeElement)) return;
+      setSheet(null);
+    };
+    window.addEventListener('keydown', onKey, false);
+    return () => {
+      window.removeEventListener('keydown', onKey, false);
+      // Restore focus to the opener (no-op if it's gone or was a programmatic
+      // open from voice/routes with no real DOM trigger).
+      if (opener && typeof opener.focus === 'function' && document.contains(opener)) opener.focus();
+    };
+  }, [sheet]);
   // ── DESTINATION-2 · Where everyone stays ── the stay-details form is local
   // state seeded from event.lodging each time the sheet opens; ONE explicit
   // save writes the whole card back through patchEvent (one toast, one write).
@@ -4296,8 +4333,11 @@ export default function HostShellV2() {
               {ros.length === 0 ? (
                 <>
                   <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
-                  <p className="day-empty">This event hasn’t built its day schedule. In the app, the run of show fills in as vendors, times, and the ceremony order settle — then this screen becomes one thing at a time, in the order the day runs.
-                    {'\n'}Try the Wedding — it has a real one.</p>
+                  <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
+                  {/* Per-screen audit: the old empty state told a real host to “Try the
+                      Wedding” (a demo) with no real action. The run of show is built from
+                      vendor arrival times, so route to the surface that populates it. */}
+                  <button className="cta" style={{ marginTop: 18 }} onClick={() => setSheet({ kind: 'vendors' })}>Add vendors &amp; arrival times</button>
                 </>
               ) : dayIdx >= ros.length ? (
                 <>
@@ -4535,9 +4575,9 @@ export default function HostShellV2() {
       {sheet && (
         <>
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
-          <div className="sheet" role="dialog" aria-label="Details">
+          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
-              <strong>{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title">{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -5418,8 +5458,8 @@ export default function HostShellV2() {
                       {sp.unassigned.map(g => guestRow(g, false))}
                       {sp.unassigned.some(g => g.group) && (
                         <div className="actions-row" style={{ margin: '8px 0 2px', alignItems: 'center' }}>
-                          <button className="mini" onClick={autoSeatByGroup}>Group people automatically</button>
-                          <span className="of">spreads people evenly — it won’t seat groups together</span>
+                          <button className="mini" onClick={autoSeatByGroup}>Spread everyone across tables</button>
+                          <span className="of">balances the room evenly — it won’t keep groups together; adjust any seat after</span>
                         </div>
                       )}
                     </>
@@ -5836,7 +5876,7 @@ export default function HostShellV2() {
                       ? 'That’s everyone — the day is set.'
                       : 'Each note already knows their arrival time and your address. Send from your own thread — nothing goes out by itself.'}
                   />
-                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><span style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
                   {reconfirmables.map(v => {
                     const st = v.reconfirmed72 ? 'answered' : (sweepState[v.id] || 'waiting');
                     const d = draftVendorReconfirm(event, v, profile);
@@ -6024,7 +6064,7 @@ export default function HostShellV2() {
                         : 'One at a time — each note already knows who came and what they brought.'}
                     />
                   )}
-                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><span style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
+                  <div className="bar" aria-hidden style={{ marginBottom: 12 }}><i style={{ width: pct + '%', background: 'var(--ok)' }} /></div>
                   {!yes.length && <p className="grounding">No confirmed guests on this one yet.</p>}
                   {cur && (() => {
                     const { g, i } = cur;
@@ -7923,7 +7963,12 @@ export default function HostShellV2() {
                     // Grouped roster: when the host has sorted people into groups,
                     // the list reads by group; indexes stay the ORIGINAL array
                     // positions (every writer here is index-based).
-                    const withIdx = (event.guests || []).map((g, i) => ({ g, i })).slice(0, 60);
+                    // Render the FULL roster (per-screen audit: a prior .slice(0,60)
+                    // silently hid guests 61+ while the hero counts still included
+                    // them — they were uneditable). Rows are lightweight (text + two
+                    // buttons, index-keyed); a plain full render handles realistic
+                    // host lists without virtualization.
+                    const withIdx = (event.guests || []).map((g, i) => ({ g, i }));
                     const row = ({ g, i }) => (
                       <div key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

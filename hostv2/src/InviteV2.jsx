@@ -91,6 +91,15 @@ function toneVarsFor(pal) {
     '--bg': pal.bg, '--card': pal.panel, '--bg-band': pal.surface,
     '--line': pal.border, '--line-soft': pal.border,
     '--ink': pal.text, '--ink-soft': pal.sub, '--muted': pal.muted, '--faint': pal.muted,
+    // Status colors MUST be scoped per skin (per-screen audit): they weren't,
+    // so on a LIGHT skin the "You're in" eyebrow and error text fell through to
+    // the dark-calibrated --ok/--danger and computed ≈2.5:1 / ≈3.7:1 — failing.
+    // Light skins get deep green/red (≈5:1 on cream/white); dark skins keep the
+    // light calibrations (the host theme's own lightened danger, ≈4.5+:1 on dark).
+    '--ok': pal.dark ? '#4FAE7A' : '#1e7a46',
+    '--ok-tint': pal.dark ? 'rgba(79,174,122,.14)' : 'color-mix(in srgb, #1e7a46 12%, transparent)',
+    '--danger': pal.dark ? '#F27A70' : '#c03838',
+    '--danger-tint': pal.dark ? 'rgba(242,122,112,.14)' : 'color-mix(in srgb, #c03838 12%, transparent)',
     ...(steelAccent ? {
       '--steel': steelAccent, '--steel-soft': steelAccent,
       '--steel-tint': `color-mix(in srgb, ${steelAccent} 10%, transparent)`,
@@ -389,10 +398,19 @@ export default function InviteV2({ code }) {
       : `You’re invited to ${evName}. RSVP here: ${url}`;
     let r = '';
     if (typeof navigator.share === 'function') {
-      try { await navigator.share({ title: own ? `I’m going to ${evName}` : `You’re invited — ${evName}`, text, url }); r = 'shared'; } catch { r = ''; }
+      try { await navigator.share({ title: own ? `I’m going to ${evName}` : `You’re invited — ${evName}`, text, url }); r = 'shared'; }
+      // A user who taps Cancel in the native share sheet fires AbortError — that's
+      // a deliberate "never mind," NOT a failure, so stop here rather than silently
+      // copying to their clipboard behind their back (per-screen audit).
+      catch (e) { if (e && e.name === 'AbortError') return; }
     }
     if (!r) {
-      try { await navigator.clipboard.writeText(text); r = 'copied'; } catch { r = ''; }
+      try { await navigator.clipboard.writeText(text); r = 'copied'; } catch { /* clipboard blocked (insecure context) — fall through */ }
+    }
+    if (!r) {
+      // Last-ditch when there's no share API AND no clipboard access: surface the
+      // link so the guest can copy it by hand, instead of the button doing nothing.
+      try { window.prompt('Copy this invite link:', url); r = 'copied'; } catch { r = ''; }
     }
     if (r) {
       setShareState(r);
@@ -423,8 +441,16 @@ export default function InviteV2({ code }) {
       'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
     : null;
 
-  const chip = (on, label, onClick, key) => (
-    <button key={key || label} className="chip" aria-pressed={on} onClick={onClick}>{label}</button>
+  // `radio` opts into radiogroup semantics (role=radio + aria-checked) for the
+  // single-select attendance chips inside role="radiogroup"; without it a chip
+  // renders aria-pressed (toggle-button), which is invalid as a radiogroup child.
+  // Multi-select chips (NEEDS) legitimately keep aria-pressed, so this is opt-in.
+  const chip = (on, label, onClick, key, radio) => (
+    <button key={key || label} className="chip"
+      role={radio ? 'radio' : undefined}
+      aria-checked={radio ? on : undefined}
+      aria-pressed={radio ? undefined : on}
+      onClick={onClick}>{label}</button>
   );
   const first = guestName.trim().split(/\s+/)[0] || '';
 
@@ -494,7 +520,7 @@ export default function InviteV2({ code }) {
                 <div className="inv2-label lp" style={{ textAlign: 'left', margin: '0 0 8px' }}>The favor of a reply</div>
                 <div className="chips" role="radiogroup" aria-label="Attendance">
                   {[['Yes', 'Yes, I’m in'], ['No', 'Can’t make it'], ['Maybe', 'Maybe']].map(([val, label]) =>
-                    chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val))}
+                    chip(rsvp === val, label, () => { setRsvp(val); if (attendInvalid) { setAttendInvalid(false); setErr(nameInvalid ? 'Add your name to send.' : ''); } }, val, true))}
                 </div>
                 {attendInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Let us know if you can make it.</p>}
 
@@ -644,7 +670,11 @@ export default function InviteV2({ code }) {
             </div></div>
           )}
 
-          {!submitted && !somber && (
+          {/* Keep forward visible after Maybe/No too (per-screen audit: it used to
+              vanish on any submit — a guest who answered Maybe/No then had NO way
+              to pass the invite on). Hidden only when the Yes-only recruit CTA
+              above already covers forwarding. */}
+          {!somber && !(submitted && rsvp === 'Yes' && !queued) && (
             <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
               <button className="mini" onClick={() => shareForward(false)}>
                 {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'Forward this invite'}

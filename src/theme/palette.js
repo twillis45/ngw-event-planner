@@ -60,7 +60,12 @@ const TOKENS = {
   steelBlueGradientBottom: { dark: '#3F5B6A', mid: '#3F5B6A', light: '#3F5B6A' },
 
   // Status anchors -----------------------------------------------------
-  dangerRed:    { dark: '#E84036', mid: '#E84036', light: '#c03838' },
+  // dangerRed is the danger TEXT/accent color. The dark/mid value was #E84036,
+  // which ran ≈3.6–4.1:1 as text on the danger tint/card (fails WCAG). Lightened
+  // to #F27A70 → ≈4.9:1 on tint, ≈6:1 on card. dangerSolid preserves the deep
+  // red for the one solid-fill use (the alert banner, white text on it).
+  dangerRed:    { dark: '#F27A70', mid: '#F27A70', light: '#c03838' },
+  dangerSolid:  { dark: '#E84036', mid: '#E84036', light: '#c03838' },
   amber:        { dark: '#ECA13F', mid: '#ECA13F', light: '#ef962e' },
   successGreen: { dark: '#4FAE7A', mid: '#4FAE7A', light: '#298c52' },
 

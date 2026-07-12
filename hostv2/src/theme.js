@@ -39,14 +39,23 @@ export function applyStudioMatte() {
   // a genuinely de-blued neutral gray in the palette — use it here so
   // "de-emphasized" reads as a different tone, not a dimmer blue.
   set('--muted', dark.textMuted);
-  set('--faint', tint(dark.textMuted, 0.55));
+  // --faint was tint(…,0.55) → ≈2.77:1 on the card, failing WCAG on the small
+  // bold text it carries (section headers, form-field labels, chevrons). Raised
+  // to 0.90 → ≈5.1:1 on card and ≈4.7:1 on the lighter band surface, clearing
+  // 4.5:1 on both without going full-ink (per-screen audit cross-cutting fix).
+  set('--faint', tint(dark.textMuted, 0.90));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
   // ── Identity: locked steel-blue (mode-independent) + the CTA gradient ──
   set('--steel', dark.steelBlue);
   set('--steel-dark', dark.steelBlueDark);
-  set('--steel-soft', dark.steelBlueMuted);       // text-legible steel on carbon
+  // --steel-soft carries vendor/logistics status pill TEXT on --steel-tint;
+  // at the palette's #6F8794 that ran ≈3.8:1 (fails 4.5). Overridden here to a
+  // lighter steel that clears 4.5 on the tint — set as a literal (not the
+  // palette base) on purpose, so the shared --sheen material detail, which also
+  // derives from steelBlueMuted, is left untouched (per-screen audit + brand-lock).
+  set('--steel-soft', '#8AA3B0');                 // text-legible steel on carbon
   set('--steel-tint', tint(dark.steelBlue, 0.16));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
@@ -59,8 +68,15 @@ export function applyStudioMatte() {
   set('--ok-tint', tint(dark.successGreen, 0.14));
   set('--warn', dark.amber);
   set('--warn-tint', tint(dark.amber, 0.15));
+  // --danger is the danger TEXT/accent color (severity tags, alert headlines,
+  // risk labels, the danger pill). dangerRed was lightened in the palette so
+  // this clears 4.5:1 on --danger-tint and on the card. --danger-solid keeps the
+  // original deep red for the ONE place danger is a solid fill behind light text
+  // (the alert banner) — lightening that fill would have dropped its white-text
+  // contrast (per-screen audit cross-cutting fix).
   set('--danger', dark.dangerRed);
   set('--danger-tint', tint(dark.dangerRed, 0.14));
+  set('--danger-solid', dark.dangerSolid);
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', dark.carbonBody);

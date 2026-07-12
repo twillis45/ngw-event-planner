@@ -118,7 +118,9 @@ button{font-family:inherit}
 .chip.reset{color:var(--warn); border-color:var(--warn-tint); background:var(--warn-tint)}
 
 .engine-error{
-  background:var(--danger); color:var(--carbon-text); font-size:var(--t-body-s); padding:12px 16px; border-radius:12px; margin-bottom:18px;
+  /* solid danger fill behind light text — uses --danger-solid (deep red), not
+     the lightened --danger text token, so white text keeps its contrast. */
+  background:var(--danger-solid); color:var(--carbon-text); font-size:var(--t-body-s); padding:12px 16px; border-radius:12px; margin-bottom:18px;
 }
 
 .eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
@@ -404,6 +406,10 @@ button{font-family:inherit}
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
 }
 @keyframes sheetrise{from{transform:translateY(24px); opacity:.4} to{transform:none; opacity:1}}
+/* The sheet takes programmatic focus on open (a11y: move focus into the dialog);
+   it's tabIndex=-1 so keyboard users never land here directly — suppress the
+   outline that programmatic focus would otherwise paint on the whole panel. */
+.sheet:focus{outline:none}
 @media(min-width:700px){ .sheet{border-radius:26px 26px 46px 46px} }
 .sheet-head{display:flex; align-items:baseline; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid var(--line-soft); margin-bottom:6px}
 .sheet-head strong{font-size:var(--t-sheet-title); font-weight:800; letter-spacing:-.02em}
@@ -636,7 +642,9 @@ button{font-family:inherit}
 .pill-note{font-weight:550; opacity:.75; font-variant-numeric:tabular-nums}
 .p-ok{color:var(--ok); background:var(--ok-tint)}
 .p-warn{color:var(--warn); background:var(--warn-tint)}
-.p-risk{color:var(--danger); background:var(--danger-tint)}
+/* opacity:1 overrides .pill-note's opacity:.75, which dropped the danger note to
+   ≈2.6:1 — the note carries the most urgent status, so it can't be the dimmest. */
+.p-risk{color:var(--danger); background:var(--danger-tint); opacity:1}
 
 /* ── Slide-down readouts (never-dense: hidden until asked) ── */
 .slidepanel{max-height:0; overflow:hidden; transition:max-height var(--ms-sheet) var(--ease-standard)}
