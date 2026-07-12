@@ -3403,8 +3403,14 @@ export default function HostShellV2() {
                     <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
                     <div className={'actions-row pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 'var(--sp-6)' }}>
                       <button className={'cta big' + (revealStep > revealLineCount + 1 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
+                      {/* Build-map #5 — hand the host the thing their guests tap,
+                          right at the moment of creation. The share rails already
+                          exist; this is sequencing, and it seeds the viral loop
+                          before the host ever leaves the reveal. */}
+                      <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={shareInviteLink}>Share the invite</button>
                       <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                     </div>
+                    <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', textAlign: 'center' }}>Your guests reply at that link — nothing to install, no account.</p>
                   </div>
                 </div>
               )}
