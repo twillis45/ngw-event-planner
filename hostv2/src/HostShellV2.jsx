@@ -11,6 +11,14 @@ import { buildExperienceContext } from '@app/lib/experienceContext';
 import { deriveHelperResponsibilities, helperStatusLine, guestHelperRoles } from '@app/lib/helperResponsibility';
 import { buildCrabPlan, defaultCountPerUnit, lineCrabCount, recommendCrabOrder } from '@app/lib/crabPlan';
 import { buildVendorPlan } from '@app/lib/vendorPlan';
+import { PRICE_TABLE_META } from '@app/lib/sourcing';
+// Formatted vintage of the researched price ranges, for a VISIBLE freshness tag
+// on the food estimates (per-screen audit: "add a freshness tag, not just a
+// footer disclaimer" — so the commodity-price engine reads as trustworthy).
+// Built with local Date(y, m-1, …) to avoid a UTC-parse month rollover.
+const PRICE_VINTAGE = (() => {
+  try { const [y, m] = String(PRICE_TABLE_META.asOf || '').split('-'); if (!y || !m) return ''; return new Date(Number(y), Number(m) - 1, 15).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); } catch { return ''; }
+})();
 import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '@app/lib/vendorEstimator';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
@@ -6354,6 +6362,7 @@ export default function HostShellV2() {
                     </p>
                     <p className="grounding" style={{ margin: 0 }}>
                       Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)} · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head, sized for {fGuestPhrase} guests.
+                      {PRICE_VINTAGE ? <span className="tag plan" style={{ marginLeft: 6 }}>est. prices · {PRICE_VINTAGE}</span> : null}
                     </p>
                   </div>
                   );
@@ -7989,9 +7998,17 @@ export default function HostShellV2() {
                     // buttons, index-keyed); a plain full render handles realistic
                     // host lists without virtualization.
                     const withIdx = (event.guests || []).map((g, i) => ({ g, i }));
+                    // Lightweight visual layer (per-screen audit: Guests scored lowest,
+                    // no glanceability vs Partiful's avatars). Deterministic initials +
+                    // a MUTED on-brand tint (not a rainbow — respects the colour budget);
+                    // no photo pipeline, keeping the structural-data advantage.
+                    const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];
+                    const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
+                    const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
                       <div key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
                           <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {g.name || 'Guest ' + (i + 1)}
@@ -8000,7 +8017,7 @@ export default function HostShellV2() {
                             {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
                           </button>
                           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : undefined}>{g.rsvp || '—'}</span>
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
                           </button>
                         </div>
                         {guestOpen === i && (
