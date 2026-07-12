@@ -6664,6 +6664,15 @@ export default function HostShellV2() {
                   // Decision flags: a menu decision the host hasn't explicitly
                   // made yet marks every line it re-prices (playbook `affects`).
                   const undecidedAffects = (() => { try { return playbookOpenDecisionAffects(event); } catch { return {}; } })();
+                  // Head-start pricing (host request, 2026-07-12): the midpoint of
+                  // THIS item's current low/high — already reshaped by its own
+                  // per-item sourcing pick (event.foodWhere), not just the plan-wide
+                  // tier — pre-fills the tune field instead of a blank input.
+                  const midpointStr = (it) => {
+                    const lo = Number(it.low) || 0, hi = Number(it.high) || 0;
+                    if (!lo && !hi) return '';
+                    return String(Math.round((lo + hi) / 2));
+                  };
                   const groupRows = groups.map(g => {
                     const gItems = items.filter(it => (it.group || 'Other') === g);
                     if (!gItems.length) return null;
@@ -6769,7 +6778,43 @@ export default function HostShellV2() {
                                   to reach "back to estimate" — editing a committed
                                   number is the rarer path and can afford one more tap. */}
                               {tuning && it.locked == null ? (
-                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                                <span onClick={e => e.stopPropagation()} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                                  {/* Head-start pricing (host request, 2026-07-12 — "like we
+                                      did in legacy"): legacy's CostLockSegments gave a one-tap
+                                      Value/Premium lock off the current estimate, but that
+                                      estimate was only ever plan-wide-sourcing-aware. Here the
+                                      low/high THIS item shows already reflects its own
+                                      per-item store pick (event.foodWhere — perItemStoreRange,
+                                      lib/playbooks/index.js), which legacy's plan-wide tier
+                                      picker can't do — so these two buttons are a genuine
+                                      one-tap "lock to what this specific sourcing choice
+                                      actually costs," not just a generic range. The input still
+                                      pre-fills with the midpoint as the head-start number for a
+                                      host who wants to type their own real receipt total. */}
+                                  {foodPlan.hasRealCount && (Number(it.low) || Number(it.high)) ? (
+                                    <>
+                                      {/* onMouseDown preventDefault: without it, clicking this button
+                                          blurs the focused input FIRST, whose own onBlur commits the
+                                          pre-filled midpoint via patchEvent — which sets it.locked,
+                                          flipping this whole branch to the locked display and
+                                          unmounting this button before its click ever fires. Found
+                                          live-testing: tapping "Value" was silently locking the
+                                          midpoint instead. preventDefault on mousedown keeps focus
+                                          put, so blur never fires and this onClick is the one write. */}
+                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
+                                        const n = Math.max(0, Math.round(Number(it.low) || 0));
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the value estimate for your sourcing pick.');
+                                        setTuneCost(''); setFoodTune(null);
+                                      }}>Value {fmt(Math.round(Number(it.low) || 0))}</button>
+                                      <button type="button" className="mini" onMouseDown={e => e.preventDefault()} onClick={() => {
+                                        const n = Math.max(0, Math.round(Number(it.high) || 0));
+                                        patchEvent({ foodLocked: { ...(event.foodLocked || {}), [it.id]: n } },
+                                          (it.short || it.item) + ' set at ' + fmt(n) + ' — the premium estimate for your sourcing pick.');
+                                        setTuneCost(''); setFoodTune(null);
+                                      }}>Premium {fmt(Math.round(Number(it.high) || 0))}</button>
+                                    </>
+                                  ) : null}
                                   <input className="field" style={{ width: 72, fontSize: 'var(--t-input)', padding: '4px 8px' }} type="number" min="0"
                                     inputMode="decimal" placeholder="$ paid" autoFocus
                                     aria-label={'Real cost for ' + (it.short || it.item)}
@@ -6793,8 +6838,8 @@ export default function HostShellV2() {
                                 </span>
                               ) : (
                                 <span className="amt" role="button" tabIndex={0}
-                                  onClick={e => { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); }}
-                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(''); setFoodTune(it.id); } }}
+                                  onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setFoodTune(it.id); }}
+                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(midpointStr(it)); setFoodTune(it.id); } }}
                                   title="Tap to enter the real price">
                                   {/* Host-added lines carry a single committed cost (event.foodAdd's
                                       cost — never a range), so no invented spread. Blank/$0 at add
@@ -6813,8 +6858,8 @@ export default function HostShellV2() {
                                 </span>
                               )}
                               <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
-                                onClick={e => { e.stopPropagation(); setFoodTune(tuning ? null : it.id); }}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setFoodTune(tuning ? null : it.id); } }}>
+                                onClick={e => { e.stopPropagation(); if (!tuning) setTuneCost(midpointStr(it)); setFoodTune(tuning ? null : it.id); }}
+                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); if (!tuning) setTuneCost(midpointStr(it)); setFoodTune(tuning ? null : it.id); } }}>
                                 {tuning ? 'more' : 'tune'}
                               </span>
                               {/* Host-added lines are fully deletable (not just skippable) —
