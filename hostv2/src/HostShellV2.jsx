@@ -6382,7 +6382,7 @@ export default function HostShellV2() {
                       <button className="fstatus" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
                         <div className="fs-l">Dietary needs</div>
                         <div className="fs-v" style={{ color: anyDiet || event.dietaryNoted ? 'var(--ok)' : 'var(--muted)' }}>
-                          {anyDiet ? 'noted · ' + DIETS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet ›'}
+                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet ›'}
                         </div>
                       </button>
                       {hasChoices && (
