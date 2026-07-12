@@ -1314,11 +1314,16 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .sp-caps{top:52%}
   .sp-line{top:58%; font-size:clamp(12.5px, 3.4vh, 17px); line-height:1.4}
 }
+/* Presence arc added here too (brutal-honesty rescore finding): this was
+   still on flat scale(1) throughout after sp-bead-fall got the "larger
+   while alone" arc — meaning short-viewport hosts never saw the
+   improvement at all. Re-verified clipping margins with the larger held
+   size factored in (see the audit for the re-measured numbers). */
 @keyframes sp-bead-fall-short{
-  0%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1); animation-timing-function:var(--ease-in-out)}
-  22%{transform:translateY(calc(clamp(-100px, -20vh, -70px) + 6px)) scale(1); animation-timing-function:var(--ease-in-out)}
-  44%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1); animation-timing-function:linear}
-  55%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1); animation-timing-function:cubic-bezier(.5,0,1,.6)}
+  0%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1.3); animation-timing-function:var(--ease-in-out)}
+  22%{transform:translateY(calc(clamp(-100px, -20vh, -70px) + 6px)) scale(1.32); animation-timing-function:var(--ease-in-out)}
+  44%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1.3); animation-timing-function:linear}
+  55%{transform:translateY(clamp(-100px, -20vh, -70px)) scale(1.3); animation-timing-function:cubic-bezier(.5,0,1,.6)}
   76%{transform:translateY(0) scale(1); animation-timing-function:var(--ease-out)}
   80%{transform:translateY(0) scaleX(1.22) scaleY(.74); animation-timing-function:var(--ease-out)}
   86%{transform:translateY(0) scaleX(.94) scaleY(1.05); animation-timing-function:var(--ease-in-out)}
