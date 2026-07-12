@@ -1679,18 +1679,19 @@ export default function HostShellV2() {
     setLodgeForm({
       hotelName: lo.hotelName || '', rate: lo.rate != null ? String(lo.rate) : '',
       code: lo.code || '', deadline: lo.deadline || '',
-      b1name: (b[0] && b[0].name) || '', b1note: (b[0] && b[0].note) || '',
-      b2name: (b[1] && b[1].name) || '', b2note: (b[1] && b[1].note) || '',
+      // Unlimited backups (per-screen audit: the form was hard-capped at 2, so a
+      // 3rd option was silently unenterable). One row per saved backup, plus the
+      // host can add more.
+      backups: b.length ? b.map(x => ({ name: (x && x.name) || '', note: (x && x.note) || '' })) : [{ name: '', note: '' }],
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lodgeSheetOpen, event.id]);
   const saveLodging = () => {
     const f = lodgeForm || {};
     const t = (v) => String(v || '').trim();
-    const backups = [
-      t(f.b1name) ? { name: t(f.b1name), note: t(f.b1note) || null } : null,
-      t(f.b2name) ? { name: t(f.b2name), note: t(f.b2note) || null } : null,
-    ].filter(Boolean);
+    const backups = (Array.isArray(f.backups) ? f.backups : [])
+      .map(x => (t(x.name) ? { name: t(x.name), note: t(x.note) || null } : null))
+      .filter(Boolean);
     const rate = parseFloat(f.rate);
     patchEvent({
       lodging: {
@@ -4997,7 +4998,7 @@ export default function HostShellV2() {
                 return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody needs a room. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const lg = travel.lodging;
-              const f = lodgeForm || { hotelName: '', rate: '', code: '', deadline: '', b1name: '', b1note: '', b2name: '', b2note: '' };
+              const f = lodgeForm || { hotelName: '', rate: '', code: '', deadline: '', backups: [] };
               const setF = (k) => (e) => setLodgeForm({ ...f, [k]: e.target.value });
               const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px 12px' };
               const focusDeadline = sheet.focus === 'deadline';
@@ -5049,14 +5050,19 @@ export default function HostShellV2() {
                       <input className="field" style={fld} placeholder="Say this when booking" value={f.code} onChange={setF('code')} aria-label="Booking code" /></label>
                     <label className="lodge-f full"><span className="of">Group rate ends</span>
                       <input className="field" style={fld} type="date" value={f.deadline} onChange={setF('deadline')} aria-label="Last day to book at the group rate" /></label>
-                    <label className="lodge-f"><span className="of">Backup place</span>
-                      <input className="field" style={fld} placeholder="If the first fills up" value={f.b1name} onChange={setF('b1name')} aria-label="First backup place" /></label>
-                    <label className="lodge-f"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="Farther? Cheaper?" value={f.b1note} onChange={setF('b1note')} aria-label="Note about the first backup" /></label>
-                    <label className="lodge-f"><span className="of">Second backup</span>
-                      <input className="field" style={fld} placeholder="One more option" value={f.b2name} onChange={setF('b2name')} aria-label="Second backup place" /></label>
-                    <label className="lodge-f"><span className="of">Worth knowing</span>
-                      <input className="field" style={fld} placeholder="The honest tradeoff" value={f.b2note} onChange={setF('b2note')} aria-label="Note about the second backup" /></label>
+                    {(f.backups || []).flatMap((bk, bi) => [
+                      <label key={'bn' + bi} className="lodge-f"><span className="of">{bi === 0 ? 'Backup place' : 'Another backup'}</span>
+                        <input className="field" style={fld} placeholder={bi === 0 ? 'If the first fills up' : 'One more option'} value={bk.name}
+                          onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, name: e.target.value } : x) }))}
+                          aria-label={'Backup place ' + (bi + 1)} /></label>,
+                      <label key={'bt' + bi} className="lodge-f"><span className="of">Worth knowing</span>
+                        <input className="field" style={fld} placeholder="Farther? Cheaper?" value={bk.note}
+                          onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: e.target.value } : x) }))}
+                          aria-label={'Note about backup ' + (bi + 1)} /></label>,
+                    ])}
+                    <label className="lodge-f full">
+                      <button className="mini" type="button" onClick={() => setLodgeForm(d => ({ ...d, backups: [...((d && d.backups) || []), { name: '', note: '' }] }))}>+ Add {(f.backups || []).length ? 'another' : 'a'} backup place</button>
+                    </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
                     <button className="mini" onClick={saveLodging}>Save the stay details</button>
