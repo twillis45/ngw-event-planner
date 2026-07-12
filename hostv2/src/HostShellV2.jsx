@@ -6883,7 +6883,19 @@ export default function HostShellV2() {
                               )}
                             </button>
                             {tuning && (
-                              <div className="brow" style={{ margin: '2px 0 8px', paddingLeft: 30 }}>
+                              // onMouseDown preventDefault (bubbles from every button/chip
+                              // inside): while the cost input is focused (autoFocus in tune
+                              // mode), tapping ANY control in here — size stepper, skip-it,
+                              // a store chip, a swap chip — would otherwise blur the input
+                              // first, and its onBlur commits the pre-filled midpoint, locking
+                              // a fabricated price and unmounting the very control you tapped
+                              // before its click lands. Found live-testing: tapping "Costco"
+                              // to re-source silently locked the midpoint instead. Killing the
+                              // default focus shift on mousedown keeps focus put so no blur
+                              // fires, and click still runs on mouseup — so the store re-price
+                              // (which reshapes it.low/high, hence Value/Premium too) actually
+                              // happens instead of a stray commit.
+                              <div className="brow" style={{ margin: '2px 0 8px', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
                                 {/* COST STRUCTURE, per item — the engine's own knobs:
                                     size it (foodQty re-prices), swap it (alternatives
                                     carry their own real ranges), or skip it. */}
