@@ -114,7 +114,10 @@ button{font-family:inherit}
   transition:all var(--ms-press) var(--ease-out);
 }
 .chip:hover{border-color:var(--steel)}
-.chip[aria-pressed="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
+/* Selected state matches BOTH aria-pressed (toggle chips) AND aria-checked
+   (radiogroup chips, e.g. the invite's Yes/Maybe/No) — without the aria-checked
+   half, radio chips render identically selected vs unselected. */
+.chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
 .chip.reset{color:var(--warn); border-color:var(--warn-tint); background:var(--warn-tint)}
 
 .engine-error{
@@ -813,11 +816,11 @@ button{font-family:inherit}
 /* engraved reply chips + fields on the stock */
 .inv2-sheet .chip{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:#1a1a1a;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
-.inv2-sheet .chip[aria-pressed="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff;
+.inv2-sheet .chip[aria-pressed="true"], .inv2-sheet .chip[aria-checked="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff;
   box-shadow:0 3px 10px rgba(62,122,90,.35); }
 .inv2-dark .inv2-sheet .chip{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
   box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
-.inv2-dark .inv2-sheet .chip[aria-pressed="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff; }
+.inv2-dark .inv2-sheet .chip[aria-pressed="true"], .inv2-dark .inv2-sheet .chip[aria-checked="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff; }
 .inv2-sheet .field{ background:rgba(255,255,255,.7); border-color:rgba(196,178,148,.6); color:#1a1a1a; }
 .inv2-dark .inv2-sheet .field{ background:#1c2024; border-color:rgba(255,244,224,.16); color:#ece5d8; }
 .inv2-sheet .shelf-label{ color:var(--hue-deep); }
