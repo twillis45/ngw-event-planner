@@ -41,12 +41,38 @@
   --t-caption:11.5px;    /* captions, shelf labels, chip sub-badges */
   --t-caption-min:11px;  /* smallest legal type — the 11px floor */
   --lh-body:1.5;         /* the repeated body line-height */
+
+  /* ── Spacing scale — 4px rhythm, the SINGLE source of truth for padding.
+     Named by STEP, not role: --sp-N == N×4px. Padding consumes a --sp-*
+     token ONLY when it already lands exactly on the grid; genuinely off-grid
+     values (7/9/10/11/13/15/18/22/26px, etc.) stay raw px on purpose — the
+     grid is never retrofitted onto them, that would shift layout. Ceremonial
+     surfaces (splash .sp-*, invite .inv2-*, the Reveal, the print sheet) run
+     their own intentional scales and are exempt. ── */
+  --sp-1:4px;
+  --sp-2:8px;
+  --sp-3:12px;
+  --sp-4:16px;
+  --sp-5:20px;
+  --sp-6:24px;
+  --sp-7:32px;
+
+  /* ── Radius scale — the app's rounded-corner set. The card family (.card,
+     .vcard, .fgroup) shares --r-lg (they had drifted to 20/18/16 for one
+     concept — unified here). Only exact literal matches migrate; bespoke
+     radii (7/9/11/13/14/26/48px, the 50% circles, the 99px mini-track) stay
+     raw. Pills use --r-pill. ── */
+  --r-sm:8px;
+  --r-md:12px;
+  --r-lg:16px;
+  --r-xl:20px;
+  --r-pill:999px;
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{font-family:var(--sans); color:var(--ink); background:var(--bg-band); -webkit-font-smoothing:antialiased}
 button{font-family:inherit}
-:focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:8px}
+:focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:var(--r-sm)}
 
 .stagewrap{position:relative; margin:0 auto}
 .app{
@@ -73,7 +99,7 @@ button{font-family:inherit}
   .app{border-radius:48px; box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line), 0 42px 90px -28px rgba(0,0,0,.5)}
 }
 @media(max-width:699px), (max-height:699px){ .stagewrap{height:100dvh} }
-.content{padding:16px 20px calc(170px + env(safe-area-inset-bottom, 0px))}
+.content{padding:var(--sp-4) var(--sp-5) calc(170px + env(safe-area-inset-bottom, 0px))}
 
 .appbar{
   display:flex; align-items:baseline; justify-content:space-between;
@@ -84,7 +110,7 @@ button{font-family:inherit}
      match the dock's already-tuned opacity, with the same saturate boost
      so it doesn't just look washed out at low opacity. */
   position:sticky; top:0; z-index:23;
-  margin:0 -20px; padding:12px 22px 12px;
+  margin:0 -20px; padding:var(--sp-3) 22px var(--sp-3);
   background:color-mix(in srgb, var(--bg) 45%, transparent);
   -webkit-backdrop-filter:blur(20px) saturate(1.2); backdrop-filter:blur(20px) saturate(1.2);
   border-bottom:1px solid var(--line-soft);
@@ -115,11 +141,11 @@ button{font-family:inherit}
   color:#e8edf2; box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
-.floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:8px 0 6px; border-radius:16px;
+.floorplan{position:relative; width:100%; aspect-ratio:4/3; margin:8px 0 6px; border-radius:var(--r-lg);
   background:var(--bg-band); border:1px solid var(--line); overflow:hidden; touch-action:none;
   box-shadow:inset 0 1px 0 var(--sheen)}
 .tpuck{position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:1px; min-width:52px; min-height:52px; padding:6px 8px;
+  align-items:center; justify-content:center; gap:1px; min-width:52px; min-height:52px; padding:6px var(--sp-2);
   border-radius:50%; background:var(--steel-tint); border:1px solid var(--line-strong); color:var(--ink);
   cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; z-index:1;
   box-shadow:0 2px 8px -3px rgba(0,0,0,.5)}
@@ -131,7 +157,7 @@ button{font-family:inherit}
 .floorplan-hint{position:absolute; left:0; right:0; bottom:6px; text-align:center; font-size:var(--t-caption-min); color:var(--faint); pointer-events:none}
 .chip{
   font-size:var(--t-chip); font-weight:650; color:var(--ink-soft); background:var(--card);
-  border:1px solid var(--line); border-radius:999px; padding:7px 14px; cursor:pointer;
+  border:1px solid var(--line); border-radius:var(--r-pill); padding:7px 14px; cursor:pointer;
   transition:all var(--ms-press) var(--ease-out);
 }
 .chip:hover{border-color:var(--steel)}
@@ -144,7 +170,7 @@ button{font-family:inherit}
 .engine-error{
   /* solid danger fill behind light text — uses --danger-solid (deep red), not
      the lightened --danger text token, so white text keeps its contrast. */
-  background:var(--danger-solid); color:var(--carbon-text); font-size:var(--t-body-s); padding:12px 16px; border-radius:12px; margin-bottom:18px;
+  background:var(--danger-solid); color:var(--carbon-text); font-size:var(--t-body-s); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-md); margin-bottom:18px;
 }
 
 .eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
@@ -167,7 +193,7 @@ button{font-family:inherit}
    and gaps — the countdown itself is untouched. */
 .bento{display:grid; gap:8px; margin-top:12px; flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
 .hero > .tile-d{margin-top:10px}
-.tile{border-radius:20px; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
+.tile{border-radius:var(--r-xl); padding:var(--sp-4) 18px; display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}
 /* Found in the typography audit: this class had NO rule anywhere — the
@@ -207,7 +233,7 @@ button{font-family:inherit}
 .lens{
   transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
   font-size:var(--t-chip); font-weight:700; color:var(--ink-soft); background:transparent;
-  border:1px solid var(--line); border-radius:999px; padding:8px 15px; cursor:pointer;
+  border:1px solid var(--line); border-radius:var(--r-pill); padding:var(--sp-2) 15px; cursor:pointer;
   transition:all var(--ms-press) var(--ease-out);
 }
 .lens:hover{border-color:var(--steel)}
@@ -219,23 +245,25 @@ button{font-family:inherit}
 .sect .when{font-size:var(--t-note); font-weight:650; color:var(--faint); white-space:nowrap}
 
 .empty{
-  font-size:var(--t-body); color:var(--ink-soft); background:var(--ok-tint); border-radius:16px; padding:18px 20px; line-height:1.55;
+  font-size:var(--t-body); color:var(--ink-soft); background:var(--ok-tint); border-radius:var(--r-lg); padding:18px var(--sp-5); line-height:1.55;
 }
 
 .card{
-  position:relative; margin:0 0 12px; border-radius:20px; overflow:hidden;
+  position:relative; margin:0 0 12px; border-radius:var(--r-lg); overflow:hidden;
+  /* card-radius unification (was 20px): the .card/.vcard/.fgroup family had
+     drifted to 20/18/16 for one card concept — all three now share --r-lg. */
   background:var(--card); border:1px solid var(--line-soft);
   box-shadow:inset 0 1px 0 var(--sheen);
   transition:transform var(--ms-ambient) var(--ease-out), box-shadow var(--ms-ambient) var(--ease-out);
 }
 .card:hover{transform:translateY(-2px); box-shadow:inset 0 1px 0 var(--sheen), 0 14px 40px -16px rgba(0,0,0,.18)}
-.card-head{padding:20px 20px 18px}
+.card-head{padding:var(--sp-5) var(--sp-5) 18px}
 .idx{
   position:absolute; top:12px; right:16px; font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em;
   color:var(--bg-band); line-height:1; pointer-events:none;
 }
 .card-top{display:flex; align-items:center; gap:6px; margin-bottom:11px}
-.tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:4px 10px; border-radius:7px; white-space:nowrap}
+.tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:7px; white-space:nowrap}
 /* Color budget: category tags stay in the steel/neutral register; only
    money (success) and status use the calibrated anchors. */
 .tag.food, .tag.vendors, .tag.plan{color:var(--ink-soft); background:var(--bg-band)}
@@ -266,19 +294,19 @@ button{font-family:inherit}
 .later-row.done .t{color:var(--muted); font-weight:550}
 .mini{
   font-size:var(--t-btn); font-weight:700; color:var(--steel-soft); background:var(--steel-tint);
-  border:none; border-radius:9px; padding:7px 12px; cursor:pointer; white-space:nowrap;
+  border:none; border-radius:9px; padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
 }
 
 .fold-btn{
   display:flex; align-items:center; gap:10px; width:100%; margin:26px 0 0;
-  background:none; border:none; border-top:1px solid var(--line); padding:16px 2px;
+  background:none; border:none; border-top:1px solid var(--line); padding:var(--sp-4) 2px;
   font-size:var(--t-cta); font-weight:700; color:var(--muted); cursor:pointer;
 }
 .fold-btn:hover{color:var(--ink)}
 .fold-btn .chev{margin-left:auto; color:var(--faint)}
 
 .day-node{
-  margin:44px -20px 0; padding:30px 20px 32px;
+  margin:44px -20px 0; padding:30px var(--sp-5) var(--sp-7);
   background:linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%); color:var(--carbon-text);
 }
 .day-node .eyebrow{color:var(--carbon-muted)}
@@ -304,7 +332,7 @@ button{font-family:inherit}
 
 .dock{
   position:absolute; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:30;
-  display:flex; gap:2px; padding:4px; border-radius:999px;
+  display:flex; gap:2px; padding:var(--sp-1); border-radius:var(--r-pill);
   background:color-mix(in srgb, var(--card) 15%, transparent);
   -webkit-backdrop-filter:blur(34px) saturate(1.2); backdrop-filter:blur(34px) saturate(1.2);
   border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 rgba(255,255,255,.08);
@@ -320,7 +348,7 @@ button{font-family:inherit}
 }
 .dock button{
   font-size:var(--t-btn); font-weight:700; color:var(--muted); background:none; border:none;
-  border-radius:999px; padding:10px 16px; cursor:pointer; white-space:nowrap;
+  border-radius:var(--r-pill); padding:10px var(--sp-4); cursor:pointer; white-space:nowrap;
   transition:background var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .dock button[aria-current="true"]{background:var(--steel); color:var(--ink)}
@@ -328,7 +356,7 @@ button{font-family:inherit}
 .toast{
   position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
   background:var(--ink); color:var(--card); font-size:var(--t-toast); font-weight:550;
-  padding:12px 20px; border-radius:16px; width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
+  padding:var(--sp-3) var(--sp-5); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
   box-shadow:0 12px 40px rgba(0,0,0,.3);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
@@ -339,7 +367,7 @@ button{font-family:inherit}
   margin-left:10px; font-size:var(--t-pill); font-weight:800; color:inherit;
   background:color-mix(in srgb, currentColor 16%, transparent);
   border:none; border-radius:9px;
-  padding:5px 12px; cursor:pointer; white-space:nowrap; vertical-align:baseline;
+  padding:5px var(--sp-3); cursor:pointer; white-space:nowrap; vertical-align:baseline;
 }
 .toast-undo:hover{background:color-mix(in srgb, currentColor 26%, transparent)}
 
@@ -349,24 +377,24 @@ button{font-family:inherit}
    form. The instant text exists, .centered drops and normal flow returns.
    Frame math mirrors .hero: appbar ~48 + content pad above, dock room below. */
 .create-stage{display:flex; flex-direction:column; justify-content:flex-start}
-.create-stage.centered{min-height:calc(852px - 64px - 150px); justify-content:center; padding-bottom:24px}
+.create-stage.centered{min-height:calc(852px - 64px - 150px); justify-content:center; padding-bottom:var(--sp-6)}
 @media(max-width:699px){
   .create-stage.centered{min-height:calc(100dvh - 64px - 150px - env(safe-area-inset-bottom,0px))}
 }
 .create-prompt{font-size:clamp(38px,12.5cqw,50px); line-height:1.02; letter-spacing:-.035em; margin:14px 0 10px}
 .create-inputrow{display:flex; gap:8px; margin-top:18px; align-items:stretch}
-.create-inputrow .field{flex:1; max-width:none; font-size:var(--t-input-lg); padding:15px 18px; border-radius:16px}
-.create-inputrow .cta.soft{padding:0 20px; border-radius:16px; font-size:14.5px/*half-step, deliberate*/}
+.create-inputrow .field{flex:1; max-width:none; font-size:var(--t-input-lg); padding:15px 18px; border-radius:var(--r-lg)}
+.create-inputrow .cta.soft{padding:0 var(--sp-5); border-radius:var(--r-lg); font-size:14.5px/*half-step, deliberate*/}
 
 .q{margin:30px 0 0}
 .q-label{font-size:var(--t-sub); font-weight:750; margin-bottom:11px; letter-spacing:-.01em}
 .field{
   width:100%; max-width:320px; font-family:inherit; font-size:var(--t-input-lg); font-weight:650; color:var(--ink);
-  background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px 16px; letter-spacing:-.01em;
+  background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px var(--sp-4); letter-spacing:-.01em;
 }
 .field:focus{outline:2px solid var(--steel); outline-offset:1px}
 .tick-list{margin:26px 0 0; padding:0; list-style:none}
-.tick-list li{position:relative; padding:0 0 20px 34px; font-size:var(--t-row); line-height:1.6; color:var(--ink-soft)}
+.tick-list li{position:relative; padding:0 0 var(--sp-5) 34px; font-size:var(--t-row); line-height:1.6; color:var(--ink-soft)}
 .tick-list li strong{color:var(--ink); font-weight:750}
 .tick-list li::before{content:""; position:absolute; left:0; top:3px; width:20px; height:20px; border-radius:50%; background:var(--steel-tint)}
 .tick-list li::after{
@@ -386,7 +414,7 @@ button{font-family:inherit}
 .day-sec .eyebrow{color:var(--carbon-muted)}
 .clock{font-size:clamp(56px,18cqw,76px); font-weight:200; letter-spacing:-.04em; margin:12px 0 30px; font-variant-numeric:tabular-nums; line-height:1}
 .now-card{
-  background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:20px; padding:24px 24px 22px;
+  background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:var(--r-xl); padding:var(--sp-6) var(--sp-6) 22px;
   box-shadow:inset 0 1px 0 var(--sheen), 0 20px 60px -20px rgba(0,0,0,.6);
 }
 .now-label{font-size:var(--t-caption); font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--steel-muted)}
@@ -402,8 +430,8 @@ button{font-family:inherit}
 .then-spine-link{position:absolute; left:29px; top:-14px; width:2px; height:14px; border-radius:2px; background:var(--ok); opacity:.55}
 .then-spine{position:relative; padding-left:26px}
 .then-spine::before{content:''; position:absolute; left:3px; top:0; bottom:8px; width:2px; border-radius:2px; background:var(--ok); opacity:.55; box-shadow:0 0 10px -2px var(--ok)}
-.then-row{position:relative; display:flex; gap:16px; padding:13px 4px; border-bottom:1px solid var(--carbon-line); font-size:var(--t-body-s); align-items:baseline}
-.then-row .dot{position:absolute; left:-23px; top:17px; width:8px; height:8px; border-radius:999px; background:transparent; border:1.5px solid var(--steel-muted)}
+.then-row{position:relative; display:flex; gap:16px; padding:13px var(--sp-1); border-bottom:1px solid var(--carbon-line); font-size:var(--t-body-s); align-items:baseline}
+.then-row .dot{position:absolute; left:-23px; top:17px; width:8px; height:8px; border-radius:var(--r-pill); background:transparent; border:1.5px solid var(--steel-muted)}
 .then-row.is-next .dot{border-color:var(--steel-soft); background:var(--steel-soft)}
 .then-row.is-behind .dot{border-color:var(--warn); background:var(--warn); box-shadow:0 0 0 3px var(--warn-tint)}
 .then-row .d{font-variant-numeric:tabular-nums; color:var(--steel-muted); min-width:74px; font-size:var(--t-row-sub); font-weight:700}
@@ -414,7 +442,7 @@ button{font-family:inherit}
 .line{display:flex; justify-content:space-between; align-items:baseline; gap:12px; font-size:var(--t-body); padding:7px 0; color:var(--ink-soft)}
 .line .amt{font-variant-numeric:tabular-nums; color:var(--ink); font-weight:700; white-space:nowrap}
 .line .amt.under{color:var(--ok)}
-.line.total{border-top:1px solid var(--line-soft); margin-top:6px; padding-top:12px}
+.line.total{border-top:1px solid var(--line-soft); margin-top:6px; padding-top:var(--sp-3)}
 .of{font-weight:550; color:var(--muted); font-size:var(--t-row-sub)}
 .card.no-hover:hover{transform:none; box-shadow:inset 0 1px 0 var(--sheen)}
 .memory-note{display:flex; gap:9px; align-items:baseline; font-size:var(--t-note); font-weight:550; color:var(--muted); margin:16px 0 0}
@@ -425,7 +453,7 @@ button{font-family:inherit}
 .sheet{
   position:absolute; left:0; right:0; bottom:0; z-index:50; max-height:72%;
   overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none;
-  background:var(--card); border-radius:26px 26px 0 0; padding:18px 20px 28px;
+  background:var(--card); border-radius:26px 26px 0 0; padding:18px var(--sp-5) 28px;
   box-shadow:inset 0 1px 0 var(--sheen), 0 -18px 60px -20px rgba(0,0,0,.4);
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
 }
@@ -437,15 +465,15 @@ button{font-family:inherit}
 @media(min-width:700px){ .sheet{border-radius:26px 26px 46px 46px} }
 .sheet-head{display:flex; align-items:baseline; justify-content:space-between; padding-bottom:10px; border-bottom:1px solid var(--line-soft); margin-bottom:6px}
 .sheet-head strong{font-size:var(--t-sheet-title); font-weight:800; letter-spacing:-.02em}
-.sheet-x{background:var(--bg-band); border:none; border-radius:999px; padding:6px 14px; font-size:var(--t-pill); font-weight:700; color:var(--ink-soft); cursor:pointer}
-.vrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 8px; border-radius:12px; border-top:1px solid var(--line-soft)}
+.sheet-x{background:var(--bg-band); border:none; border-radius:var(--r-pill); padding:6px 14px; font-size:var(--t-pill); font-weight:700; color:var(--ink-soft); cursor:pointer}
+.vrow{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px var(--sp-2); border-radius:var(--r-md); border-top:1px solid var(--line-soft)}
 .vrow.focus{background:var(--steel-tint); border:1.5px solid var(--steel); border-radius:14px}
 .v-name{font-size:var(--t-row); font-weight:700; letter-spacing:-.01em}
 .v-meta{font-size:var(--t-row-sub); color:var(--muted); font-weight:550; line-height:var(--lh-body)}
 .vrow .tag.vendors{color:var(--steel-soft); background:var(--steel-tint)}
 .grow{
   display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
-  padding:11px 8px; background:none; border:none; border-top:1px solid var(--line-soft);
+  padding:11px var(--sp-2); background:none; border:none; border-top:1px solid var(--line-soft);
   font-size:var(--t-row); font-weight:650; color:var(--ink); cursor:pointer; text-align:left;
 }
 .grow:hover{background:var(--bg)}
@@ -460,7 +488,7 @@ button{font-family:inherit}
 .shelf-label{font-size:var(--t-caption); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:8px}
 .shelf{
   display:flex; gap:7px; overflow-x:auto; scroll-snap-type:x proximity;
-  margin:0 -20px; padding:2px 20px 6px; scrollbar-width:none;
+  margin:0 -20px; padding:2px var(--sp-5) 6px; scrollbar-width:none;
 }
 .shelf::-webkit-scrollbar{display:none}
 .shelf .chip{flex-shrink:0; scroll-snap-align:start; white-space:nowrap}
@@ -475,7 +503,7 @@ button{font-family:inherit}
 .chip, .cta, .lens, .dock button{will-change:transform}
 
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
-.brow{padding:11px 0 12px; border-top:1px solid var(--line-soft)}
+.brow{padding:11px 0 var(--sp-3); border-top:1px solid var(--line-soft)}
 .bline{height:8px; border-radius:5px; background:var(--bg-band); overflow:hidden}
 .bline i{
   display:block; height:100%; border-radius:5px; background:var(--steel-tint);
@@ -493,7 +521,7 @@ button{font-family:inherit}
      with almost no gap, reading as one run-on word ("Auntbringing it") —
      found live testing the custom-item-add feature. Wrap lets that trailing
      group drop to its own line once the name needs the width instead. */
-  display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; width:100%; padding:10px 8px;
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:12px; width:100%; padding:10px var(--sp-2);
   background:none; border:none; border-top:1px solid var(--line-soft);
   cursor:pointer; text-align:left; color:var(--ink);
 }
@@ -508,7 +536,7 @@ button{font-family:inherit}
 .f-name{font-size:var(--t-row); font-weight:650; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
 .frow .amt{font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; color:var(--ink)}
 .fcheck{
-  width:22px; height:22px; border-radius:8px; border:1.5px solid var(--line);
+  width:22px; height:22px; border-radius:var(--r-sm); border:1.5px solid var(--line);
   flex-shrink:0; position:relative;
   transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out);
 }
@@ -539,7 +567,7 @@ button{font-family:inherit}
 .picker-shelf .chip{display:inline-flex; align-items:center; gap:7px}
 .chip-sub{
   font-size:var(--t-caption); font-weight:700; letter-spacing:.03em; font-variant-numeric:tabular-nums;
-  color:var(--faint); background:var(--bg-band); border-radius:999px; padding:2px 7px;
+  color:var(--faint); background:var(--bg-band); border-radius:var(--r-pill); padding:2px 7px;
 }
 .chip[aria-pressed="true"] .chip-sub{color:var(--ink); background:rgba(255,255,255,.16)}
 .tile-a{cursor:pointer}
@@ -641,7 +669,7 @@ button{font-family:inherit}
 /* Welcome layout — vertically centered on any viewport (the old fixed
    118px top padding sat wrong on short/tall phones), one clear decision. */
 .content.welcome{display:flex; flex-direction:column; justify-content:center;
-  min-height:100%; padding-top:32px; padding-bottom:56px}
+  min-height:100%; padding-top:var(--sp-7); padding-bottom:56px}
 .welcome-h1{font-family:var(--serif); font-weight:800; font-size:var(--t-display-xl);
   line-height:1.08; letter-spacing:-.015em; margin:14px 0 10px; text-wrap:balance}
 /* the headline's own period is the brand bead — the mark that just dropped
@@ -655,7 +683,7 @@ button{font-family:inherit}
 .welcome-ctas .cta.big{width:100%}
 /* secondary path: quiet ghost — present, never competing with Start */
 .cta.ghost{background:transparent; color:var(--steel-soft); font-weight:650;
-  font-size:var(--t-sub); padding:12px 22px; border-radius:13px;
+  font-size:var(--t-sub); padding:var(--sp-3) 22px; border-radius:13px;
   border:1px solid var(--carbon-line)}
 .cta.ghost:hover{filter:none; transform:none; background:var(--steel-tint)}
 
@@ -663,7 +691,7 @@ button{font-family:inherit}
 .pills{display:flex; gap:7px; flex-wrap:wrap; margin-top:10px}
 .pill{
   display:inline-flex; align-items:center; gap:7px; border:none; cursor:pointer;
-  font-size:var(--t-pill); font-weight:750; letter-spacing:.02em; padding:6px 12px; border-radius:999px;
+  font-size:var(--t-pill); font-weight:750; letter-spacing:.02em; padding:6px var(--sp-3); border-radius:var(--r-pill);
   transition:transform var(--ms-press) var(--ease-out);
 }
 .pill:active{transform:scale(.96)}
@@ -677,7 +705,7 @@ button{font-family:inherit}
 /* ── Slide-down readouts (never-dense: hidden until asked) ── */
 .slidepanel{max-height:0; overflow:hidden; transition:max-height var(--ms-sheet) var(--ease-standard)}
 .slidepanel.open{max-height:420px}
-.slidepanel-inner{padding:14px 2px 4px}
+.slidepanel-inner{padding:14px 2px var(--sp-1)}
 
 /* ── Attention system: focus-mode veil + decaying spotlight ring ── */
 .dimveil{
@@ -703,7 +731,7 @@ button{font-family:inherit}
 /* ── Weather live-activity pill: glanceable, expands on tap ── */
 .wxpill{
   position:absolute; left:14px; right:14px; bottom:76px; z-index:26;
-  border-radius:20px; border:1px solid var(--warn-tint);
+  border-radius:var(--r-xl); border:1px solid var(--warn-tint);
   background:color-mix(in srgb, var(--card) 82%, transparent);
   -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px);
   box-shadow:0 14px 40px -14px rgba(0,0,0,.6);
@@ -762,8 +790,14 @@ button{font-family:inherit}
 @media(max-width:699px){ .inv2-sheet{ min-height:calc(100dvh - 132px); } }
 /* the ask rides the sheet's foot; the countdown floats CENTERED in the
    slack — breathing room reads as composition, not leftover space */
-.inv2-ask{ margin-top:auto; padding-top:12px; }
-.inv2-countflex{ flex:1; display:flex; flex-direction:column; justify-content:center; min-height:0; }
+/* Whitespace re-audit: the sheet now centres its whole content block
+   (justify-content:center above), so the countdown no longer needs to be a
+   greedy flex spacer (flex:1) and the ask no longer needs margin-top:auto to
+   pin to the bottom — those two absorbers used to open two separate cavernous
+   gaps around the countdown on a sparse invite. Content flows naturally and the
+   fixed-canvas whitespace lands as balanced top/bottom margin instead. */
+.inv2-ask{ margin-top:auto; padding-top:14px; }
+.inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:22px 0; }
 .inv2-dark .inv2-sheet{
   --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
   color:#ece5d8;
@@ -859,8 +893,8 @@ button{font-family:inherit}
 
 
 /* ── Food/shopping: group cards matching the vendor card system ── */
-.fgroup{background:var(--card); border:1px solid var(--line-soft); border-radius:16px;
-  padding:12px 14px; margin:0 0 10px; overflow:hidden; box-shadow:inset 0 1px 0 var(--sheen)}
+.fgroup{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);
+  padding:var(--sp-3) 14px; margin:0 0 10px; overflow:hidden; box-shadow:inset 0 1px 0 var(--sheen)}
 .fg-head{width:100%; background:none; border:none; padding:0; margin:0;
   display:flex; align-items:center; gap:10px; cursor:pointer; font:inherit; color:inherit; text-align:left}
 .fg-badge{width:32px; height:32px; border-radius:10px; flex-shrink:0;
@@ -881,7 +915,7 @@ button{font-family:inherit}
 .fgroup.open .fg-chev{transform:rotate(90deg)}
 .fstatus-row{display:flex; gap:8px; margin:0 0 12px}
 .fstatus{flex:1; text-align:left; background:var(--card); border:1px solid var(--line-soft);
-  border-radius:12px; padding:9px 12px; font:inherit; cursor:pointer; color:inherit; box-shadow:inset 0 1px 0 var(--sheen)}
+  border-radius:var(--r-md); padding:9px var(--sp-3); font:inherit; cursor:pointer; color:inherit; box-shadow:inset 0 1px 0 var(--sheen)}
 .fstatus .fs-l{font-size:var(--t-caption-min); font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--muted)}
 .fstatus .fs-v{font-size:var(--t-row-sub); font-weight:650; margin-top:2px}
 
@@ -915,7 +949,7 @@ button{font-family:inherit}
 /* ── Vendors: modern card system (host directive 2026-07-08 late) ──
    Monogram cards, semantic status pills, alert CHIPS not paragraphs,
    workstream strip, tap-to-expand with a real motion curve. */
-.wstrip{display:flex; gap:8px; overflow-x:auto; padding:2px 0 12px; scrollbar-width:none}
+.wstrip{display:flex; gap:8px; overflow-x:auto; padding:2px 0 var(--sp-3); scrollbar-width:none}
 .wstrip::-webkit-scrollbar{display:none}
 .wchip{flex-shrink:0; display:flex; flex-direction:column; gap:2px; align-items:flex-start;
   border:1px solid var(--line-soft); background:var(--bg-band); border-radius:14px;
@@ -931,12 +965,12 @@ button{font-family:inherit}
   background:var(--warn-tint); color:var(--warn); border-radius:14px; padding:11px 14px;
   font-size:var(--t-btn); font-weight:650; margin:0 0 12px;
   display:flex; justify-content:space-between; align-items:center; gap:10px}
-.vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:18px;
-  padding:14px 16px; margin-bottom:10px; cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen);
+.vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);/* card-radius unification (was 18px) — see .card */
+  padding:14px var(--sp-4); margin-bottom:10px; cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen);
   transition:border-color var(--ms-ambient) var(--ease-standard), box-shadow var(--ms-ambient) var(--ease-standard)}
 .vcard.open{border-color:var(--steel-tint); box-shadow:inset 0 1px 0 var(--sheen), 0 10px 30px -18px rgba(0,0,0,.3)}
 .vc-head{display:flex; align-items:center; gap:12px}
-.vc-avatar{width:40px; height:40px; border-radius:12px; flex-shrink:0;
+.vc-avatar{width:40px; height:40px; border-radius:var(--r-md); flex-shrink:0;
   background:var(--steel-tint); color:var(--steel-soft);
   display:flex; align-items:center; justify-content:center;
   font-size:16px/*monogram glyph*/; font-weight:800; letter-spacing:-.02em}
@@ -944,7 +978,7 @@ button{font-family:inherit}
 .vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 .vc-cat{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
 .vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:.06em; text-transform:uppercase;
-  padding:4px 10px; border-radius:999px; color:var(--muted); background:var(--bg-band)}
+  padding:var(--sp-1) 10px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band)}
 .vc-pill.good{color:var(--ok); background:var(--ok-tint)}
 .vc-pill.mid{color:var(--steel-soft); background:var(--steel-tint)}
 /* WAVE-B: the status pill is a WRITE control now (tap cycles the booking
@@ -952,7 +986,7 @@ button{font-family:inherit}
 button.vc-pill{border:none; cursor:pointer; font-family:inherit}
 button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .vc-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
-.vc-chip{font-size:var(--t-tag); font-weight:700; padding:3.5px 10px; border-radius:999px;
+.vc-chip{font-size:var(--t-tag); font-weight:700; padding:3.5px 10px; border-radius:var(--r-pill);
   color:var(--warn); background:var(--warn-tint)}
 .vc-chip.quiet{color:var(--steel-soft); background:var(--steel-tint)}
 .vc-more{max-height:0; opacity:0; overflow:hidden;
@@ -969,7 +1003,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
 /* ── T-72h reconfirm sweep: a live-moment banner + staged sweep sheet ── */
 .sweepcard{
-  position:relative; margin:22px 0 0; border-radius:20px; padding:15px 18px 15px 21px;
+  position:relative; margin:22px 0 0; border-radius:var(--r-xl); padding:15px 18px 15px 21px;
   background:color-mix(in srgb, var(--card) 88%, transparent);
   border:1px solid var(--warn-tint);
   -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px);
@@ -987,7 +1021,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sweep-row.answered{ border-color:var(--ok-tint); background:var(--ok-tint); }
 .sweep-state{
   float:right; font-size:var(--t-caption-min); font-weight:800; letter-spacing:.06em; text-transform:uppercase;
-  padding:3px 9px; border-radius:999px; color:var(--muted); background:var(--bg-band);
+  padding:3px 9px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band);
   transition:all var(--ms-ambient) var(--ease-standard);
 }
 .sweep-row.drafting .sweep-state{ color:var(--warn); background:var(--warn-tint); }
@@ -1010,7 +1044,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .ev-kicker{
   display:inline-flex; align-items:center; gap:4px;
   font:inherit; font-size:var(--t-tag); font-weight:750; letter-spacing:.09em; text-transform:uppercase;
-  color:var(--steel); background:var(--steel-tint); border:none; border-radius:999px; padding:4px 11px;
+  color:var(--steel); background:var(--steel-tint); border:none; border-radius:var(--r-pill); padding:var(--sp-1) 11px;
   cursor:pointer; transition:background var(--ms-press) var(--ease-out);
 }
 .ev-kicker:hover, .ev-kicker:active{background:var(--steel); color:var(--ink)}
