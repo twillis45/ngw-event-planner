@@ -473,7 +473,10 @@ export default function HostShellV2() {
     if (splash === 'up') {
       let reduced = false;
       try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { reduced = false; }
-      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1200 : 4750);
+      // 1000ms, not 1200 — matches Android's own SplashScreen API bound
+      // exactly (the one concrete numeric target the vs-leaders research
+      // found) rather than sitting 200ms over it for no reason.
+      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1000 : 4750);
     } else if (splash === 'leaving') {
       splashTimer.current = setTimeout(() => setSplash('gone'), 220);
     }
