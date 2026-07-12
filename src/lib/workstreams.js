@@ -64,7 +64,13 @@ const WORKSTREAM_LABELS = {
 // VendorPlanningWorkspace.jsx's hostStatusWord — kept in sync deliberately;
 // see docs/POP1_PHASE1_FOUNDATION_AUDIT.md §6 for the contradiction this
 // vocabulary mismatch caused before it was unified.
-const BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Deposit Paid', 'Contracted']);
+// 'Paid' added (per-screen audit, 2026-07-12): HostShellV2.jsx's own
+// cycleVendorStatus already treats 'Booked' and 'Paid' as equivalent legacy
+// synonyms that both normalize to 'Confirmed' when a status is advanced —
+// this set had 'Booked' but was missing its documented equivalent, which is
+// exactly how a vendor could read "ready" in one surface and unresolved on
+// its own card in another.
+const BOOKED_STATUSES = new Set(['Confirmed', 'Booked', 'Paid', 'Deposit Paid', 'Contracted']);
 
 // POP-1C: the ONE canonical "is this vendor booked?" status predicate. Four
 // surfaces used to re-derive this with drifting vocabularies (a regex that

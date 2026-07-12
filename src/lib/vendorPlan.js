@@ -107,6 +107,15 @@ export function buildVendorPlan(event, opts = {}) {
       estimateCopy,
       hasRealCost,
       realCost: hasRealCost ? num(match.cost) : null,
+      // NOT the same concept as isVendorBooked()/BOOKED_STATUSES, despite the
+      // shared name — this deliberately means "a vendor is assigned to this
+      // category at all" (gating whether to still suggest hiring one), not
+      // "the vendor's status is confirmed." Verified against
+      // vendorPlan.test.js #9: an assigned-but-unpriced vendor is meant to
+      // retire the suggestion — a per-screen audit flagged this as a
+      // vocabulary collision with the other two "booked" definitions, but
+      // unifying it broke that test's explicit, commented intent. Keeping
+      // `!!match` and documenting the distinction instead of changing it.
       booked: !!match,
       vendorId: match ? match.id : null,
       vendorName: match ? match.name : null,

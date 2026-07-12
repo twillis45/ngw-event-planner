@@ -101,6 +101,13 @@ button{font-family:inherit}
 .appbar-note{font-size:var(--t-caption); font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
 
 .picker{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:30px}
+/* Used in ~20 places across the app (Create's recognition chips, Draft's
+   tone selector, seating's diet chips, rain's backup quick-picks, and more)
+   with zero matching rule anywhere — confirmed independently by four
+   separate audits. Chips were falling back to default inline-block flow
+   with no gap, colliding/touching instead of the spaced row every other
+   chip group in the app uses. Same flex+gap pattern as .picker/.shelf. */
+.chips{display:flex; gap:7px; flex-wrap:wrap}
 .chip{
   font-size:var(--t-chip); font-weight:650; color:var(--ink-soft); background:var(--card);
   border:1px solid var(--line); border-radius:999px; padding:7px 14px; cursor:pointer;
@@ -137,6 +144,13 @@ button{font-family:inherit}
 .tile{border-radius:20px; padding:16px 18px; display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:12px 0 6px; font-variant-numeric:tabular-nums}
+/* Found in the typography audit: this class had NO rule anywhere — the
+   NEXT tile's directive text (the single most important line on the whole
+   Command Center, per this app's own hierarchy doctrine) was rendering as
+   unstyled browser-default text, smaller and lighter than the Guests/Budget
+   stat numbers next to it. --t-stat-sm is already annotated "compact stat
+   (CTA tile number)" — this was clearly the intended token, just never wired. */
+.tile .t-big{font-size:var(--t-stat-sm); font-weight:800; letter-spacing:-.03em; line-height:1.15; margin:10px 0 6px}
 .tile .t-sub{font-size:var(--t-row-sub); font-weight:550; color:var(--muted); line-height:1.45}
 /* Numerals inside the muted sub-lines step ONE contrast level up (host
    request, 2026-07-11 — "slightly more viewable"): same size, a touch more

@@ -43,6 +43,7 @@ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveRet
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
+import { isVendorBooked } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { ARTWORK_MARKS } from '@app/lib/artworkMarks';
 import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
@@ -864,9 +865,19 @@ export default function HostShellV2() {
       const { error } = await supabase.auth.signInWithOtp({ email: em, options: { emailRedirectTo: authRedirectUrl() } });
       if (error) throw error;
       setAuthSent(true);
-    } catch { toast('Couldn’t send the link — try again in a minute.'); }
+    } catch (e) {
+      // Real error text when Supabase gives us one (rate limit, invalid
+      // domain, etc.) instead of one blanket message for every failure mode —
+      // a host stuck here has no other signal of what actually went wrong.
+      toast((e && e.message) || 'Couldn’t send the link — try again in a minute.');
+    }
     setAuthBusy(false);
   };
+  // authSent had no way back to the form (found in the per-screen audit):
+  // once set, the sheet was stuck on "Check your email" for the rest of the
+  // session — no resend, no "wrong address, try again," no way out short of
+  // reloading the app. This is the only place authSent is ever reset.
+  const resetAuthSent = () => { setAuthSent(false); };
 
   const patchProfile = (fields, msg) => {
     let next = null;
@@ -1461,7 +1472,11 @@ export default function HostShellV2() {
   };
   const spend = useMemo(() => {                          // lib/hostSpending — budget single-source
     try { return hostSpending(event, foodPP.priceFactor); } catch { return { total: 0, spent: 0, committed: 0 }; }
-  }, [event]);
+  }, [event, foodPP.priceFactor]); // was missing priceFactor — the budget recovery panel below re-derives
+    // the same total unmemoized (always fresh), so once regional pricing
+    // resolved async after mount, this stale figure and the recovery panel's
+    // fresh one could show two different "how far over" dollar amounts on
+    // the same sheet (found in the per-screen audit).
   const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
@@ -2015,7 +2030,7 @@ export default function HostShellV2() {
   // engine's own attendance band for this event.
   const foodPlan = useMemo(() => {
     try { return playbookFoodPlan(event, { priceFactor: foodPP.priceFactor }); } catch { return null; }
-  }, [event]);
+  }, [event, foodPP.priceFactor]); // same missing-dependency bug as `spend` above
 
   // ROW-LEVEL CTA RULE, single source (was duplicated only inside the Budget
   // sheet's render — the After tab's own money summary showed the identical
@@ -3303,7 +3318,13 @@ export default function HostShellV2() {
                   );
                 }
                 if (!actions.length) return <p className="verdict">All quiet — you’re genuinely set for now.</p>;
-                return <p className="verdict">You’re in good shape — nothing’s slipping.</p>;
+                // Found in the per-screen audit: this used to say "nothing's
+                // slipping" whenever the escalation-state checks above came
+                // back clean — even with real actions still pending, so it
+                // could render directly above the NEXT tile's "2 things need
+                // you" on the same screen. Same actions.length check as NEXT
+                // now, so the two lines can't disagree.
+                return <p className="verdict">On track — {actions.length === 1 ? 'one small thing' : actions.length + ' small things'} to handle when you’re ready.</p>;
               })()}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
@@ -5914,7 +5935,13 @@ export default function HostShellV2() {
                       </div>
                     </>
                   ) : authSent ? (
-                    <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in Event Boss, and this shell picks the session up automatically.</p>
+                    <>
+                      <p className="grounding" style={{ margin: 0 }}>Check your email — the sign-in link lands you in Event Boss, and this shell picks the session up automatically.</p>
+                      <div className="actions-row" style={{ marginTop: 8 }}>
+                        <button className="mini" onClick={resetAuthSent}>Use a different email</button>
+                        <button className="mini" disabled={authBusy} onClick={sendMagicLink}>{authBusy ? 'Sending…' : 'Resend the link'}</button>
+                      </div>
+                    </>
                   ) : (
                     <>
                       <input className="field" style={{ maxWidth: 'none' }} type="email" placeholder="you@example.com" value={authEmail}
@@ -6185,8 +6212,14 @@ export default function HostShellV2() {
                   {(event.timeline || []).map((t, i) => {
                     if (!t || t.done) return null;
                     const inferred = isTimelineStepResolved(t);
+                    // Was 'focus-task' — a class with no matching CSS rule anywhere
+                    // (confirmed by two independent audits), so deep-linked task
+                    // rows scrolled into view but never visually highlighted. Every
+                    // other sheet (decisions, lodging, ground, air, seating) already
+                    // uses 'rowfocus' for exactly this; this was the one sheet that
+                    // never got migrated to it.
                     return (
-                    <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' focus-task' : '')}
+                    <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
                       style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
                       onClick={() => toggleTask(i)}>
@@ -6996,7 +7029,11 @@ export default function HostShellV2() {
               try { conflicts = deriveVendorPromiseConflicts(event) || []; } catch { conflicts = []; }
               const streams = (plan && plan.workstreams) || [];
               const showStreams = streams.length > 1 || streams.some(w => w.status !== 'ready' && w.status !== 'not_started');
-              const GOOD = ['Confirmed', 'Paid', 'Deposit Paid', 'Contracted'];
+              // Was a locally-defined list that drifted from the canonical
+              // isVendorBooked() predicate (workstreams.js) and from
+              // vendorPlan.js's own "any match" definition — a vendor could
+              // read booked in the rollup and unresolved on its own card
+              // (found in the per-screen audit). Now the single shared source.
               const chipify = (s) => String(s || '').split(' — ')[0].split('.')[0].slice(0, 42);
               const unbookedSuggestions = vendorPlan.relevant ? vendorPlan.categories.filter(c => !c.booked) : [];
               const hasVendors = (event.vendors || []).length > 0;
@@ -7087,7 +7124,7 @@ export default function HostShellV2() {
                     let memLine = '';
                     try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
                     const isOpen = sheet.focus === v.id;
-                    const good = GOOD.includes(v.status);
+                    const good = isVendorBooked(v);
                     return (
                       <div key={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
