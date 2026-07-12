@@ -1089,45 +1089,98 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 @keyframes sp-drift{0%{transform:translate(0,0) scale(1)}100%{transform:translate(26px,16px) scale(1.09)}}
 .sp-stack{position:absolute; left:0; right:0; top:30%; display:flex; flex-direction:column; align-items:center; gap:8px}
 .sp-l2row{display:flex; align-items:flex-end; gap:0}
-/* neumorphic wordmark: letters AT the field tone; relief comes only from
-   the tokenized dual shadow resolving over the first half of the clock */
+/* THE INVERSION (10+ audit, item 10): the bead is the protagonist, not a
+   flourish tacked onto the end. It's lit and alone in the dark from frame
+   one; the wordmark only resolves once the bead has held the frame for a
+   beat, so the sequencing itself reads as "its light reveals the mark" —
+   then it falls and travels to seat as the period. Neumorphic wordmark:
+   letters AT the field tone; relief is a single baked, static text-shadow
+   (see the "compositable relief" note on sp-resolve below) that just
+   cross-fades in on opacity — no shadow-value interpolation, so this stays
+   on the compositor thread instead of forcing a main-thread repaint every
+   frame. */
 .sp-carv{position:relative; font-weight:800; letter-spacing:-.045em; line-height:.94;
   color:var(--sp-field);
-  animation:sp-in 3600ms var(--ease-in-out) 100ms both, sp-neo 3600ms var(--ease-in-out) 100ms both;
+  text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68);
+  opacity:0;
 }
 /* responsive display sizes: 25.4vw/31.6vw reproduce the 393pt frame's
    100/124px, clamped so narrow phones never clip the wordmark and wide
    frames never balloon it */
-.sp-l1{font-size:clamp(64px, 25.4vw, 100px)}
-.sp-l2{font-size:clamp(80px, 31.6vw, 124px)}
-@keyframes sp-in{0%{opacity:0} 6%{opacity:1} 100%{opacity:1}}
-@keyframes sp-neo{
-  0%{text-shadow:0 0 0 rgba(var(--sp-light-catch),0), 0 0 0 rgba(var(--sp-light-catch),0), 0 0 0 rgba(var(--sp-shadow-deep),0), 0 0 0 rgba(var(--sp-shadow-deep),0)}
-  18%{text-shadow:-.5px -.5px .5px rgba(var(--sp-light-catch),.2), -1px -1.5px 3px rgba(var(--sp-light-catch),.08), 1.5px 1.5px 2px rgba(var(--sp-shadow-deep),.45), 4px 5px 10px rgba(var(--sp-shadow-deep),.3)}
-  55%{text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68)}
-  100%{text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68)}
+.sp-l1{font-size:clamp(64px, 25.4vw, 100px);
+  animation:sp-resolve 3600ms cubic-bezier(.16,1,.3,1) 100ms both}
+/* +140ms stagger vs "Event" (audit item): same keyframes, delay offset only
+   — "Boss" resolves a beat after "Event" instead of both popping as one
+   flat block. sp-boss-dip is the impact's sympathetic reaction (see the
+   bead's fall below) — idle until the landing frame, then a quick dip. */
+.sp-l2{font-size:clamp(80px, 31.6vw, 124px);
+  animation:sp-resolve 3600ms cubic-bezier(.16,1,.3,1) 240ms both, sp-boss-dip 3600ms linear 100ms both}
+@keyframes sp-resolve{0%{opacity:0} 30%{opacity:0} 52%{opacity:1} 100%{opacity:1}}
+@keyframes sp-boss-dip{
+  0%{transform:translateY(0); animation-timing-function:linear}
+  75%{transform:translateY(0); animation-timing-function:cubic-bezier(.55,0,1,.45)}
+  79%{transform:translateY(4px); animation-timing-function:cubic-bezier(.34,1.56,.64,1)}
+  86%{transform:translateY(0)}
+  100%{transform:translateY(0)}
 }
-/* THE PERIOD — locked spec, frame-scaled (prototype 22px on a 300px stage
-   → 7.3vw, clamped): a raised same-field bead, held invisible until 74%,
-   a long drop visible mid-fall from 77%, seated on the text baseline at
-   86%, igniting through the final 14%, then a gentle infinite breathe */
-.sp-dot{position:relative; flex-shrink:0;
+/* THE PERIOD — protagonist, not payoff. Lit and floating alone in the dark
+   from frame one (a soft ambient pulse while it holds — see sp-bead-light),
+   a dead-calm beat right before the fall, then real accelerating physics
+   (cubic-bezier .5,0,1,.6 — gravity, not the house ease-in-out) into a
+   landing with squash, a contact-shadow flash, and a rebound before it
+   settles into the same seated bead the old mark ended on. Position and
+   color/glow are split into two animations (sp-bead-fall / sp-bead-light)
+   so the fall itself — pure transform — stays compositor-cheap even while
+   the ignite flash repaints; each also carries its own per-segment easing
+   instead of one blanket curve for the whole thing. */
+.sp-dot{position:relative; flex-shrink:0; will-change:transform;
   width:clamp(18px, 7.3vw, 29px); height:clamp(18px, 7.3vw, 29px); border-radius:50%; align-self:flex-end;
   margin:0 0 clamp(8px, 3.1vw, 12px) clamp(10px, 4vw, 16px);
-  background:var(--sp-bead);
-  box-shadow:-1.7px -2.5px 3.4px rgba(var(--sp-bead-light),.05), 2.5px 3.4px 5px rgba(var(--sp-shadow-deep),.5);
-  animation:sp-dotdrop 3600ms var(--ease-in-out) 100ms both, sp-breathe 3400ms var(--ease-in-out) 3700ms infinite}
+  background-color:#12171c;
+  animation:sp-bead-fall 3600ms linear 100ms both, sp-bead-light 3600ms var(--ease-in-out) 100ms both, sp-breathe 3400ms var(--ease-in-out) 3700ms infinite}
+/* specular highlight — visible from frame one now (the bead is never dark) */
 .sp-dot::before{content:""; position:absolute; left:20%; top:11%; width:34%; height:23%; border-radius:50%;
   background:radial-gradient(ellipse at center, rgba(var(--sp-bead-light),.8) 0%, transparent 72%);
-  opacity:0; animation:sp-spec 3600ms var(--ease-in-out) 100ms both}
-@keyframes sp-spec{0%{opacity:0} 74%{opacity:0} 92%{opacity:.75} 100%{opacity:.7}}
-@keyframes sp-dotdrop{
-  0%{opacity:0; transform:translateY(-180px); background-color:var(--sp-bead); box-shadow:-1.7px -2.5px 3.4px rgba(var(--sp-bead-light),.05), 2.5px 3.4px 5px rgba(var(--sp-shadow-deep),.5)}
-  74%{opacity:0; transform:translateY(-180px); background-color:var(--sp-bead); box-shadow:-1.7px -2.5px 3.4px rgba(var(--sp-bead-light),.05), 2.5px 3.4px 5px rgba(var(--sp-shadow-deep),.5)}
-  77%{opacity:1; transform:translateY(-180px); background-color:var(--sp-bead); box-shadow:-1.7px -2.5px 3.4px rgba(var(--sp-bead-light),.05), 2.5px 3.4px 5px rgba(var(--sp-shadow-deep),.5)}
-  86%{opacity:1; transform:translateY(0); background-color:var(--sp-bead); box-shadow:-1.7px -2.5px 3.4px rgba(var(--sp-bead-light),.05), 2.5px 3.4px 5px rgba(var(--sp-shadow-deep),.5)}
-  92%{background-color:#0e1216; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 5px rgba(var(--sp-glow-core),.15)}
-  96%{background-color:#12171c; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.1), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.6), 0 0 8.5px rgba(var(--sp-glow-core),.22), 0 0 15px rgba(var(--sp-glow-halo),.12)}
+  opacity:.35; animation:sp-spec 3600ms var(--ease-in-out) 100ms both}
+@keyframes sp-spec{0%{opacity:.35} 55%{opacity:.4} 76%{opacity:.4} 80%{opacity:.9} 100%{opacity:.7}}
+/* contact shadow — new: a soft dark ellipse that flashes under the bead at
+   the instant of impact, then relaxes to a faint resting shadow so it reads
+   as grounded even once settled, not just lit. */
+.sp-dot::after{content:""; position:absolute; left:50%; bottom:-6%; width:140%; height:34%;
+  transform:translateX(-50%) scaleX(.4); border-radius:50%; pointer-events:none;
+  background:radial-gradient(ellipse at center, rgba(var(--sp-shadow-deep),.55) 0%, transparent 74%);
+  opacity:0; animation:sp-contact 3600ms var(--ease-out) 100ms both}
+@keyframes sp-contact{
+  0%{opacity:0; transform:translateX(-50%) scaleX(.4)}
+  75%{opacity:0; transform:translateX(-50%) scaleX(.4)}
+  80%{opacity:.85; transform:translateX(-50%) scaleX(1.3)}
+  88%{opacity:.3; transform:translateX(-50%) scaleX(.85)}
+  100%{opacity:.22; transform:translateX(-50%) scaleX(.85)}
+}
+/* Transform only — held aloft with a small ambient drift (0–44%), a dead-calm
+   beat (44–55%) as anticipation, then the real accelerating fall (55–76%),
+   landing squash (76–80%), rebound (80–86%), settle (86–100%). */
+@keyframes sp-bead-fall{
+  0%{transform:translateY(-240px) scale(1); animation-timing-function:var(--ease-in-out)}
+  22%{transform:translateY(-234px) scale(1); animation-timing-function:var(--ease-in-out)}
+  44%{transform:translateY(-240px) scale(1); animation-timing-function:linear}
+  55%{transform:translateY(-240px) scale(1); animation-timing-function:cubic-bezier(.5,0,1,.6)}
+  76%{transform:translateY(0) scale(1); animation-timing-function:var(--ease-out)}
+  80%{transform:translateY(0) scaleX(1.22) scaleY(.74); animation-timing-function:var(--ease-out)}
+  86%{transform:translateY(0) scaleX(.94) scaleY(1.05); animation-timing-function:var(--ease-in-out)}
+  100%{transform:translateY(0) scale(1)}
+}
+/* Color/glow only — lit (not dark) from frame one, a gentle breathe while
+   aloft, calm through the fall itself, then the ignite flash lands exactly
+   with the squash above before settling to the resting glow sp-breathe
+   takes over from at 3700ms. */
+@keyframes sp-bead-light{
+  0%{background-color:#12171c; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
+  27%{box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.1), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 11px rgba(var(--sp-glow-core),.26), 0 0 19px rgba(var(--sp-glow-halo),.15)}
+  55%{background-color:#12171c; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
+  76%{background-color:#14191a; box-shadow:-2px -3px 4.3px rgba(var(--sp-bead-light),.08), 3px 4px 6px rgba(var(--sp-shadow-deep),.55), 0 0 8px rgba(var(--sp-glow-core),.2), 0 0 15px rgba(var(--sp-glow-halo),.12)}
+  80%{background-color:#1c232a; box-shadow:-2.4px -3.4px 5px rgba(var(--sp-bead-light),.16), 3.4px 4.8px 7px rgba(var(--sp-shadow-deep),.58), 0 0 22px rgba(var(--sp-glow-core),.5), 0 0 38px rgba(var(--sp-glow-halo),.3)}
+  88%{background-color:#171d23; box-shadow:-2.4px -3.4px 5.1px rgba(var(--sp-bead-light),.1), 3.4px 4.8px 6.8px rgba(var(--sp-shadow-deep),.6), 0 0 8.5px rgba(var(--sp-glow-core),.22), 0 0 15px rgba(var(--sp-glow-halo),.12)}
   100%{background-color:#14191f; box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
 }
 @keyframes sp-breathe{
@@ -1135,22 +1188,36 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   50%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.16), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 13.6px rgba(126,164,188,.36), 0 0 24px rgba(var(--sp-glow-halo),.2)}
   100%{box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
 }
+/* caps land only after BOTH words have resolved (Event finishes ~1972ms,
+   Boss ~2112ms absolute) — sequencing, not a computed dependency, is what
+   sells "the bead's light revealed this" */
 .sp-caps{position:absolute; left:0; right:0; top:66%; text-align:center; font-weight:700;
   font-size:var(--t-caption-min); letter-spacing:.42em; text-indent:.42em;
   color:#8fa4b2; /* splash material literal (prototype caps ink) */
   animation:sp-caps 3600ms var(--ease-in-out) 100ms both}
-@keyframes sp-caps{0%{opacity:0} 64%{opacity:0} 71%{opacity:1} 100%{opacity:1}}
-/* tagline — serif italic, controlled two-line break at the sentence
-   boundary (locked in the prototype after a live mid-phrase wrap) */
+@keyframes sp-caps{0%{opacity:0} 58%{opacity:0} 66%{opacity:1} 100%{opacity:1}}
+/* tagline — split into two independently-timed lines (audit item:
+   resequence so the payoff line lands exactly on the bead's impact frame).
+   Line one lands in the calm beat before the fall; line two's arrival IS
+   the impact beat at 76%, synced with the bead's squash and Boss's dip. */
 .sp-line{position:absolute; left:0; right:0; top:70%; text-align:center;
   font-family:var(--serif); font-style:italic; font-weight:500;
   font-size:clamp(17px, 5.3vw, 21px); line-height:1.45;
   color:#b4c5d3; /* splash material literal (prototype tagline ink) */
-  animation:sp-tag 3600ms var(--ease-in-out) 100ms both}
-@keyframes sp-tag{
+}
+.sp-line span{display:block}
+.sp-line-1{opacity:0; transform:translateY(8px); animation:sp-tag1 3600ms var(--ease-out) 100ms both}
+.sp-line-2{opacity:0; transform:translateY(8px); animation:sp-tag2 3600ms var(--ease-out) 100ms both}
+@keyframes sp-tag1{
   0%{opacity:0; transform:translateY(8px)}
-  71%{opacity:0; transform:translateY(8px)}
-  78%{opacity:1; transform:none}
+  64%{opacity:0; transform:translateY(8px)}
+  70%{opacity:1; transform:none}
+  100%{opacity:1; transform:none}
+}
+@keyframes sp-tag2{
+  0%{opacity:0; transform:translateY(8px)}
+  76%{opacity:0; transform:translateY(8px)}
+  82%{opacity:1; transform:none}
   100%{opacity:1; transform:none}
 }
 /* Short-viewport compaction (audit finding, 2026-07-11, measured live: at
@@ -1186,21 +1253,26 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    statically so the still reads as the finished mark (relief resolved,
    period seated and lit, tagline landed) — shown 400ms, then dismissed. */
 @media(prefers-reduced-motion:reduce){
-  .splash .sp-carv{text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68)}
-  .splash .sp-dot{opacity:1; transform:none; background-color:#14191f;
+  .splash .sp-carv{opacity:1}
+  .splash .sp-l2{transform:none}
+  .splash .sp-dot{transform:none; background-color:#14191f;
     box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
   .splash .sp-dot::before{opacity:.7}
-  .splash .sp-caps, .splash .sp-line{opacity:1}
+  .splash .sp-dot::after{opacity:.22; transform:translateX(-50%) scaleX(.85)}
+  .splash .sp-caps, .splash .sp-line-1, .splash .sp-line-2{opacity:1; transform:none}
 }
 /* Return-boot quick cut (audit finding: no leader shows a multi-second brand
    film on EVERY cold boot). Same pinned end-state as reduced-motion above —
    but this is a stylistic choice, not an accessibility override, so the
    ambient loops (glow drift, dot breathe) keep running instead of freezing:
    it reads as "the mark, briefly" for ~1.2s, not a hard freeze-frame. Entrance
-   animations (sp-in/sp-neo/sp-dotdrop/sp-spec/sp-caps/sp-tag) are cancelled
-   individually — sp-drift and sp-breathe are deliberately left alone. */
-.splash-quick .sp-carv{animation:none; text-shadow:-1px -1px 1px rgba(var(--sp-light-catch),.38), -2px -3px 8px rgba(var(--sp-light-catch),.16), 3px 3px 4px rgba(var(--sp-shadow-deep),.88), 10px 14px 28px rgba(var(--sp-shadow-deep),.68)}
-.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; opacity:1; transform:none; background-color:#14191f;
+   animations (sp-resolve/sp-boss-dip/sp-bead-fall/sp-bead-light/sp-spec/
+   sp-contact/sp-caps/sp-tag1/sp-tag2) are cancelled individually — sp-drift
+   and sp-breathe are deliberately left alone. */
+.splash-quick .sp-carv{animation:none; opacity:1}
+.splash-quick .sp-l2{animation:none; transform:none}
+.splash-quick .sp-dot{animation:sp-breathe 3400ms var(--ease-in-out) 0ms infinite; transform:none; background-color:#14191f;
   box-shadow:-2.5px -3.4px 5.1px rgba(var(--sp-bead-light),.12), 3.4px 5.1px 7.7px rgba(var(--sp-shadow-deep),.62), 0 0 10px rgba(var(--sp-glow-core),.28), 0 0 19px rgba(var(--sp-glow-halo),.16)}
 .splash-quick .sp-dot::before{animation:none; opacity:.7}
-.splash-quick .sp-caps, .splash-quick .sp-line{animation:none; opacity:1}
+.splash-quick .sp-dot::after{animation:none; opacity:.22; transform:translateX(-50%) scaleX(.85)}
+.splash-quick .sp-caps, .splash-quick .sp-line-1, .splash-quick .sp-line-2{animation:none; opacity:1; transform:none}

@@ -498,7 +498,10 @@ export default function HostShellV2() {
         </div>
       </div>
       <div className="sp-caps">EVENT BOSS</div>
-      <div className="sp-line">the details are ours.<br />the day is yours.</div>
+      <div className="sp-line">
+        <span className="sp-line-1">the details are ours.</span>
+        <span className="sp-line-2">the day is yours.</span>
+      </div>
     </div>
   ) : null;
   const [patch, setPatch] = useState(() => {
