@@ -27,9 +27,20 @@ function markUrlFor(event) {
   return file ? (import.meta.env.BASE_URL + file) : null;
 }
 
-const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
-// The ORIGINAL's RSVP_ALLERGY_OPTIONS, verbatim (App.js:2506).
-const NEEDS = ['Nut allergy', 'Shellfish', 'Dairy-free', 'Egg', 'Kosher', 'Halal', 'Wheelchair access'];
+// The plate (single-select) — drives food SIZING (veg/vegan/pescatarian net
+// out of the protein count). Gluten-Free moved out of "meal" into Diet below
+// (it's a restriction, not a plate); Pescatarian added.
+const MEALS = ['Standard', 'Vegetarian', 'Vegan', 'Pescatarian'];
+// Dietary & access, redesigned (host request 2026-07-12) into structured groups
+// that each flow to a real consumer — allergens → food item flags, diet → food
+// sizing/flags, access → seating. The old flat NEEDS list (Nut allergy /
+// Shellfish / Dairy-free / Egg / Kosher / Halal / Wheelchair access) under-
+// collected: no Peanut/Milk/Fish/Soy/Sesame, and "Egg" matched nothing
+// downstream. ALLERGENS is the FDA "big-9". DIET_RULES are preferences/rules
+// (a preference is softer than the same-named allergen — the host sees both).
+const ALLERGENS = ['Peanut', 'Tree nuts', 'Milk', 'Egg', 'Fish', 'Shellfish', 'Soy', 'Wheat / gluten', 'Sesame'];
+const DIET_RULES = ['Gluten-free', 'Dairy-free', 'Halal', 'Kosher', 'No alcohol'];
+const ACCESS_NEEDS = ['Step-free / wheelchair', 'Needs an accessible seat'];
 
 // Deck line — the celebration copy under the event name (the original's
 // DECK_BY_VOICE concept, scoped to what V2 can honestly claim). Ordered
@@ -182,8 +193,11 @@ export default function InviteV2({ code }) {
   const [guestName, setGuestName] = useState('');
   const [rsvp, setRsvp] = useState('');
   const [meal, setMeal] = useState('Standard');
-  const [needsSel, setNeedsSel] = useState([]);
+  const [allergensSel, setAllergensSel] = useState([]);
+  const [rulesSel, setRulesSel] = useState([]);
+  const [accessSel, setAccessSel] = useState([]);
   const [needsOther, setNeedsOther] = useState('');
+  const [needsOpen, setNeedsOpen] = useState(false); // progressive disclosure
   const [hasPlusOne, setHasPlusOne] = useState(false);
   const [plusOne, setPlusOne] = useState('');
   const [plusOneMeal, setPlusOneMeal] = useState('Standard');
@@ -328,7 +342,10 @@ export default function InviteV2({ code }) {
     return yes.length === 1 ? '1 guest is in' : `${yes.length} guests are in`;
   })();
 
-  const needsJoined = [...needsSel, needsOther.trim()].filter(Boolean).join(', ');
+  // Structured selections carry to the app as arrays; needsJoined stays a
+  // human string for display + the legacy free-text regex consumers.
+  const needsStructured = [...allergensSel, ...rulesSel, ...accessSel];
+  const needsJoined = [...needsStructured, needsOther.trim()].filter(Boolean).join(', ');
 
   // The ORIGINAL's honest submit: outbox FIRST (never lose a reply), then the
   // server when configured; same-idempotency-key entries replace each other.
@@ -351,6 +368,9 @@ export default function InviteV2({ code }) {
     const payload = {
       name: fullName, firstName: parts[0], lastName: parts.slice(1).join(' '),
       rsvp, meal: rsvp === 'Yes' ? meal : '—', needs: needsJoined,
+      // Structured, so the app consumes clean data instead of regex-on-a-string:
+      // allergens → food item flags, diets → food sizing + flags, access → seating.
+      allergens: allergensSel, diets: rulesSel, access: accessSel,
       plusOne: hasPlusOne ? plusOne.trim() : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—',
       plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
       kids: rsvp === 'Yes' ? kids : 0,
@@ -575,13 +595,35 @@ export default function InviteV2({ code }) {
 
                   {rsvp && rsvp !== 'No' && (
                     <>
-                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Allergies or access needs</div>
-                      <div className="chips">
-                        {NEEDS.map(n => chip(needsSel.includes(n), n,
-                          () => setNeedsSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n])))}
-                      </div>
-                      <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
-                        value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
+                      {/* Progressive disclosure (host request 2026-07-12): most guests
+                          have no needs, so keep it a single tap by default; the full
+                          grouped set (allergies / diet / access) expands only when asked.
+                          Each group is a multi-select that flows to a real consumer. */}
+                      {!needsOpen ? (
+                        <button className="mini" style={{ marginTop: 14 }} onClick={() => setNeedsOpen(true)}>
+                          Add dietary or access needs
+                        </button>
+                      ) : (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Allergies</div>
+                          <div className="chips" role="group" aria-label="Allergies">
+                            {ALLERGENS.map(n => chip(allergensSel.includes(n), n,
+                              () => setAllergensSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n]), 'al-' + n))}
+                          </div>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Diet</div>
+                          <div className="chips" role="group" aria-label="Diet">
+                            {DIET_RULES.map(n => chip(rulesSel.includes(n), n,
+                              () => setRulesSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n]), 'di-' + n))}
+                          </div>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Getting around</div>
+                          <div className="chips" role="group" aria-label="Access needs">
+                            {ACCESS_NEEDS.map(n => chip(accessSel.includes(n), n,
+                              () => setAccessSel(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n]), 'ac-' + n))}
+                          </div>
+                          <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
+                            value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
+                        </>
+                      )}
                     </>
                   )}
 

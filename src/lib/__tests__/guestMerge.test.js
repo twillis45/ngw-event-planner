@@ -58,7 +58,11 @@ test('no match adds a new guest with the roster default shape and sub values', (
   const zora = guests[3];
   expect(zora).toEqual({
     id: 'g-rsvp-idem-42', name: 'Zora Neale', group: 'Friends', rsvp: 'Yes',
-    meal: 'Veggie', needs: '', plusOne: '', plusOneMeal: '—', plusOneNeeds: '',
+    meal: 'Veggie', needs: '',
+    // Structured dietary/access arrays default to empty when the reply carried
+    // none (redesigned invite; free-text-only replies like this one stay []).
+    allergens: [], diets: [], access: [],
+    plusOne: '', plusOneMeal: '—', plusOneNeeds: '',
     kids: 2, address: '9 Elm Ave', partyNotes: 'bringing a cake',
   });
 });

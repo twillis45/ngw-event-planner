@@ -79,6 +79,12 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         rsvp: sub.rsvp,
         meal: sub.rsvp === 'Yes' ? (sub.meal || g.meal) : g.meal,
         needs: sub.needs || g.needs,
+        // Structured dietary/access (redesigned invite) — arrays flow to food
+        // sizing/flags and seating. Overwrite only when the reply carried them,
+        // so an older free-text-only reply doesn't wipe a structured one.
+        allergens: (Array.isArray(sub.allergens) && sub.allergens.length) ? sub.allergens : g.allergens,
+        diets: (Array.isArray(sub.diets) && sub.diets.length) ? sub.diets : g.diets,
+        access: (Array.isArray(sub.access) && sub.access.length) ? sub.access : g.access,
         plusOne: sub.plusOne || g.plusOne,
         plusOneMeal: sub.plusOneMeal || g.plusOneMeal,
         plusOneNeeds: sub.plusOneNeeds || g.plusOneNeeds,
@@ -96,6 +102,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         rsvp: sub.rsvp || '',
         meal: sub.meal || '—',
         needs: sub.needs || '',
+        allergens: Array.isArray(sub.allergens) ? sub.allergens : [],
+        diets: Array.isArray(sub.diets) ? sub.diets : [],
+        access: Array.isArray(sub.access) ? sub.access : [],
         plusOne: sub.plusOne || '',
         plusOneMeal: sub.plusOneMeal || '—',
         plusOneNeeds: sub.plusOneNeeds || '',

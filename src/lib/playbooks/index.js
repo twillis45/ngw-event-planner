@@ -1910,6 +1910,12 @@ const DIET_KEYWORDS = {
   'Gluten-free':  { re: /\b(bread|rolls?|buns?|cornbread|crackers?|pasta|noodle|flour|cake|pie|cookie|biscuit|wheat|pretzel|crust|breaded|stuffing|cobbler|pudding|tortilla|bun)\b/i, label: 'gluten' },
   'Dairy-free':   { re: /\b(cheese|butter|cream|milk|yogurt|ranch|custard|ice cream|mac (&|and) cheese)\b/i, label: 'dairy' },
   'Shellfish':    { re: /\b(shrimp|crabs?|lobster|clams?|oysters?|mussels?|scallops?|crawfish|shellfish|prawn)\b/i, label: 'shellfish' },
+  // Big-9 allergens newly collected by the redesigned invite — so an item that
+  // contains one actually flags it (before, Egg/Soy/Sesame/Fish matched nothing).
+  'Fish':         { re: /\b(fish|salmon|tuna|tilapia|catfish|cod|trout|whiting|anchovy|sardine|mahi)\b/i, not: /shellfish/i, label: 'fish' },
+  'Soy':          { re: /\b(soy|soya|tofu|edamame|miso|tempeh|tamari|soybean)\b/i, label: 'soy' },
+  'Sesame':       { re: /\b(sesame|tahini|hummus)\b/i, label: 'sesame' },
+  'Egg':          { re: /\b(eggs?|mayo|mayonnaise|aioli|custard|meringue|quiche|frittata|omelet)\b/i, label: 'egg' },
   'Vegetarian':   { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|fish|shrimp|crab|wings?|hot links?|oxtail|seafood|salmon|half-?smoke|meatball|lamb|charcuterie|salami|prosciutto|pepperoni|cured meat)\b/i, label: 'not veg' },
   'Vegan':        { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|fish|shrimp|crab|wings?|oxtail|seafood|salmon|cheese|butter|cream|milk|eggs?|honey|yogurt|lamb|charcuterie|salami|prosciutto|pepperoni)\b/i, label: 'not vegan' },
   'Pescatarian':  { re: /\b(beef|pork|chicken|ribs?|brisket|sausage|bacon|ham|turkey|wings?|oxtail|half-?smoke|hot links?|lamb|meatball|charcuterie|salami|prosciutto|pepperoni)\b/i, label: 'not pesc.' },
@@ -2135,7 +2141,21 @@ export function playbookFoodPlan(event, opts = {}) {
   // separate veg main — a real double-buy, safe-direction but real waste.
   const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
   const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
-  const vegN = dietCnt('Vegetarian') + dietCnt('Vegan');
+  const _manualVegN = dietCnt('Vegetarian') + dietCnt('Vegan');
+  // Roster-derived veg/vegan: a guest whose plate/declared diet is veg or vegan
+  // nets out of the protein and gets the veg main — WITHOUT the host manually
+  // tallying dietCounts, so the redesigned invite's diet picks size the food on
+  // their own. The host's explicit dietCounts still WINS when set (preserves the
+  // manual "pull from RSVPs" path + existing tests); the roster fills in only
+  // when no manual tally exists. Excludes declines; a real roster only.
+  const _rosterVegN = (Array.isArray(event.guests) && event.guests.length > 0 && event.guestMode !== 'count')
+    ? event.guests.filter((g) => {
+        if (!g || /^n/i.test(String(g.rsvp || ''))) return false;
+        const hay = [g.meal, g.needs, ...(Array.isArray(g.diets) ? g.diets : [])].filter(Boolean).join(' ').toLowerCase();
+        return /\bvegan\b|vegetarian|veggie/.test(hay);
+      }).length
+    : 0;
+  const vegN = _manualVegN > 0 ? _manualVegN : _rosterVegN;
 
   // PORTION SKEW — appetite-driven food (the PROTEINS) is over-bought when the crowd skews to
   // kids / light eaters / vegetarians. event.kidsCount (default 0 → today's flat math, byte-
@@ -2357,17 +2377,28 @@ export function playbookFoodPlan(event, opts = {}) {
   // its dietary/allergy association no matter where the diet info lives.
   const rosterDiets = new Set();
   for (const g of (Array.isArray(event.guests) ? event.guests : [])) {
-    const need = String((g && g.needs) || '').toLowerCase();
-    if (!need) continue;
+    // Read the redesigned invite's STRUCTURED arrays (allergens/diets) AND the
+    // guest's meal AND the legacy free-text `needs` — so a diet flags items no
+    // matter where it was recorded (structured chip, meal pick, or typed note).
+    const structured = [
+      ...(Array.isArray(g && g.allergens) ? g.allergens : []),
+      ...(Array.isArray(g && g.diets) ? g.diets : []),
+    ];
+    const need = [String((g && g.needs) || ''), String((g && g.meal) || ''), ...structured].join(' ').toLowerCase();
+    if (!need.trim()) continue;
     if (/\bvegan\b/.test(need)) rosterDiets.add('Vegan');
-    if (/\bveg(etarian|gie)?\b/.test(need) && !/\bvegan\b/.test(need)) rosterDiets.add('Vegetarian');
-    if (/gluten/.test(need)) rosterDiets.add('Gluten-free');
-    if (/\bnut\b|peanut|tree ?nut|almond|cashew|walnut|pecan/.test(need)) rosterDiets.add('Nut allergy');
-    if (/dairy|lactose/.test(need)) rosterDiets.add('Dairy-free');
+    if (/vegetarian|veggie/.test(need) && !/\bvegan\b/.test(need)) rosterDiets.add('Vegetarian');
+    if (/pescatarian/.test(need)) rosterDiets.add('Pescatarian');
+    if (/gluten|\bwheat\b/.test(need)) rosterDiets.add('Gluten-free');
+    if (/\bnuts?\b|peanut|tree ?nut|almond|cashew|walnut|pecan/.test(need)) rosterDiets.add('Nut allergy');
+    if (/dairy|lactose|\bmilk\b/.test(need)) rosterDiets.add('Dairy-free');
     if (/shellfish|shrimp|crab|lobster|clam|oyster|mussel|scallop|prawn/.test(need)) rosterDiets.add('Shellfish');
+    if (/\bfish\b/.test(need) && !/shellfish/.test(need)) rosterDiets.add('Fish');
+    if (/\bsoya?\b|tofu|edamame/.test(need)) rosterDiets.add('Soy');
+    if (/sesame|tahini/.test(need)) rosterDiets.add('Sesame');
+    if (/\beggs?\b/.test(need)) rosterDiets.add('Egg');
     if (/halal/.test(need)) rosterDiets.add('Halal');
     if (/kosher/.test(need)) rosterDiets.add('Kosher');
-    if (/pescatarian/.test(need)) rosterDiets.add('Pescatarian');
     if (/no alcohol|alcohol-free|sober|non-?alcoholic/.test(need)) rosterDiets.add('Alcohol-free');
   }
   const activeDiets = [...new Set([...specialDiets.map((d) => d.diet), ...rosterDiets])];
