@@ -6292,7 +6292,10 @@ export default function HostShellV2() {
                   {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => (
                     <button key={k} className="chip" aria-pressed={draftBody == null && draftTone === k} onClick={() => { setDraftTone(k); setDraftBody(null); }}>{label}</button>
                   ))}
-                  {draftBody != null && <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>Your words</span>}
+                  {/* Non-interactive "current" indicator — aria-pressed is invalid on a
+                      span (it belongs on a button/toggle); show the selected look via
+                      style instead, per-screen audit. */}
+                  {draftBody != null && <span className="chip" style={{ pointerEvents: 'none', background: 'var(--steel)', borderColor: 'var(--steel)', color: 'var(--ink)' }}>Your words</span>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
                   onChange={e => setDraftBody(e.target.value)}
