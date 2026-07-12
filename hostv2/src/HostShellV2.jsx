@@ -5665,12 +5665,21 @@ export default function HostShellV2() {
                   </div>
                 ))}
                 <div className="actions-row">
-                  <button className="cta" onClick={() => {
-                    const clean = {};
-                    Object.entries(meaningDraft).forEach(([k, v]) => { clean[k] = String(v || '').trim(); });
-                    patchEvent(clean, 'That’s the heart of it — the plan will protect it.');
-                    setSheet(null);
-                  }}>Save it</button>
+                  {(() => {
+                    // Dirty-gate (per-screen audit: "Save it" fired a success toast even
+                    // with zero changes) — only enabled when a field actually changed.
+                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment'];
+                    const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(event[k] || '').trim());
+                    return (
+                      <button className="cta" disabled={!dirty} style={!dirty ? { opacity: .5 } : undefined} onClick={() => {
+                        if (!dirty) return;
+                        const clean = {};
+                        Object.entries(meaningDraft).forEach(([k, v]) => { clean[k] = String(v || '').trim(); });
+                        patchEvent(clean, 'That’s the heart of it — the plan will protect it.');
+                        setSheet(null);
+                      }}>Save it</button>
+                    );
+                  })()}
                   {hasToastMaterial({ ...event, ...meaningDraft }) && (
                     <button className="mini" onClick={() => { try { openDraft('Your toast', draftToast({ ...event, ...meaningDraft }, profile)); } catch { toast('Couldn’t draft it.'); } }}>
                       Draft the toast
@@ -6193,6 +6202,7 @@ export default function HostShellV2() {
                       </div>
                     )}
                     <div className="actions-row" style={{ marginTop: 12 }}>
+                      {sheet.vendorQr.dataUrl && <a className="mini" href={sheet.vendorQr.dataUrl} download={String(sheet.vendorQr.name || 'vendor').replace(/[^\w]+/g, '-').toLowerCase() + '-brief-qr.png'} style={{ textDecoration: 'none' }}>Save image</a>}
                       <button className="mini" onClick={() => setSheet(sheet.vendorQr.back || { kind: 'vendors' })}>Back to vendors</button>
                     </div>
                   </>
@@ -6207,6 +6217,7 @@ export default function HostShellV2() {
                       </div>
                     )}
                     <div className="actions-row" style={{ marginTop: 12 }}>
+                      {qrDataUrl && <a className="mini" href={qrDataUrl} download={String(event.name || 'event').replace(/[^\w]+/g, '-').toLowerCase() + '-rsvp-qr.png'} style={{ textDecoration: 'none' }}>Save image</a>}
                       <button className="mini" onClick={shareInviteLink}>Share the link instead</button>
                     </div>
                   </>
