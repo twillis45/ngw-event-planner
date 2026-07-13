@@ -376,12 +376,12 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .dock{
   position:absolute; left:50%; transform:translateX(-50%); bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:30;
   display:flex; gap:2px; padding:var(--sp-1); border-radius:var(--r-pill);
-  /* Was 15% card — so translucent that a bright tile behind it (the green
-     "All quiet" NEXT tile) bled through and dropped the --muted nav labels below
-     legibility (host report). Raised to 88% so the dock reads as a solid dark
-     surface over ANY content; the heavy blur + hairline border keep the frosted
-     feel. --muted labels now clear contrast regardless of what's scrolled under. */
-  background:color-mix(in srgb, var(--card) 88%, transparent);
+  /* Kept frosted-translucent (host preference): 25% card so the glass reads over
+     dark content, paired with brighter --ink-soft nav labels (below) for
+     legibility. NB: when the bright-green "All quiet" tile sits directly behind
+     the dock, a translucent surface still can't hit 4.5:1 (its bg flips toward
+     green) — this is the frost-vs-contrast tradeoff, favoring the frosted look. */
+  background:color-mix(in srgb, var(--card) 25%, transparent);
   -webkit-backdrop-filter:blur(34px) saturate(1.2); backdrop-filter:blur(34px) saturate(1.2);
   border:1px solid rgba(255,255,255,.1); box-shadow:0 12px 34px -10px rgba(0,0,0,.36), inset 0 1px 0 0 rgba(255,255,255,.08);
 }
@@ -395,7 +395,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   background:linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 40%);
 }
 .dock button{
-  font-size:var(--t-btn); font-weight:700; color:var(--muted); background:none; border:none;
+  font-size:var(--t-btn); font-weight:700; color:var(--ink-soft); background:none; border:none;/* brighter than --muted for the translucent dock (host request) */
   border-radius:var(--r-pill); padding:10px var(--sp-4); cursor:pointer; white-space:nowrap;
   transition:background var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
