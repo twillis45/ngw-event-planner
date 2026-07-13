@@ -7925,7 +7925,11 @@ export default function HostShellV2() {
                           <div className="vc-avatar" aria-hidden>{String(v.name || '?').trim().charAt(0).toUpperCase()}</div>
                           <div className="vc-id">
                             <div className="vc-name">{v.name || 'Unnamed'}</div>
-                            <div className="vc-cat">{v.category || 'Vendor'}{v.arrivalTime ? ' · arrives ' + v.arrivalTime : ''}</div>
+                            {/* Audit #8: the agreed cost + paid state were hidden in
+                                the expanded editor, so a host couldn't compare vendor
+                                costs at a glance. Surface them on the collapsed card
+                                face (with status + arrival) so the list scans side-by-side. */}
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null, Number(v.cost) > 0 ? '$' + Number(v.cost).toLocaleString() + (v.balancePaid ? ' · paid' : '') : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
@@ -8714,6 +8718,11 @@ export default function HostShellV2() {
                             {g.name || 'Guest ' + (i + 1)}
                             {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
                             {Number(g.kids) > 0 ? <span className="of"> · {g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                            {/* Audit #8: the meal was hidden until you expanded each
+                                guest — so a host couldn't scan the table's meals at a
+                                glance. Show it (short form) on the collapsed row, next
+                                to the needs tag, so the whole roster reads side-by-side. */}
+                            {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of" style={{ marginLeft: 6 }}>· {MEAL_SHORT[g.meal] || g.meal}</span> : null}
                             {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
                           </button>
                           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
