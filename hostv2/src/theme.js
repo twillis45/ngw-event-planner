@@ -39,11 +39,12 @@ export function applyStudioMatte() {
   // a genuinely de-blued neutral gray in the palette — use it here so
   // "de-emphasized" reads as a different tone, not a dimmer blue.
   set('--muted', dark.textMuted);
-  // --faint was tint(…,0.55) → ≈2.77:1 on the card, failing WCAG on the small
-  // bold text it carries (section headers, form-field labels, chevrons). Raised
-  // to 0.90 → ≈5.1:1 on card and ≈4.7:1 on the lighter band surface, clearing
-  // 4.5:1 on both without going full-ink (per-screen audit cross-cutting fix).
-  set('--faint', tint(dark.textMuted, 0.90));
+  // --faint carries small text (section headers, form-field labels, chevrons).
+  // A real WCAG recompute (2026-07-13 contrast audit) found α=0.90 gave only
+  // 4.25:1 on the lighter --bg-band surface — passing large-text AA but under
+  // 4.5:1 for the small labels it actually carries. Raised to 0.96 → 4.64:1 on
+  // band and 5.10:1 on card, clearing small-text AA on both.
+  set('--faint', tint(dark.textMuted, 0.96));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
@@ -65,7 +66,10 @@ export function applyStudioMatte() {
 
   // ── Status anchors (Dark calibrations) ──
   set('--ok', dark.successGreen);
-  set('--ok-tint', tint(dark.successGreen, 0.14));
+  // Status-pill TEXT (--ok on --ok-tint) ran 4.35:1 at α=0.14 — large-text-only.
+  // Lightened the tint to α=0.10 (a subtler wash) → 4.64:1, clearing small-text
+  // AA for the pill label without touching the green itself (2026-07-13 audit).
+  set('--ok-tint', tint(dark.successGreen, 0.10));
   set('--warn', dark.amber);
   set('--warn-tint', tint(dark.amber, 0.15));
   // --danger is the danger TEXT/accent color (severity tags, alert headlines,
@@ -75,7 +79,9 @@ export function applyStudioMatte() {
   // (the alert banner) — lightening that fill would have dropped its white-text
   // contrast (per-screen audit cross-cutting fix).
   set('--danger', dark.dangerRed);
-  set('--danger-tint', tint(dark.dangerRed, 0.14));
+  // Same small-text fix as --ok-tint: --danger on --danger-tint ran 4.42:1 at
+  // α=0.14; α=0.10 → 4.78:1, clearing 4.5:1 for the danger pill/label text.
+  set('--danger-tint', tint(dark.dangerRed, 0.10));
   set('--danger-solid', dark.dangerSolid);
 
   // ── The Day: Dark Standard Carbon ramp ──
