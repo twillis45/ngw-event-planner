@@ -109,7 +109,10 @@ function toneVarsFor(pal) {
   const steelAccent = pal.dark ? null : deepenForLight(steelPalette.steelBlue);
   return {
     '--bg': pal.bg, '--card': pal.panel, '--bg-band': pal.surface,
-    '--line': pal.border, '--line-soft': pal.border,
+    // Color re-audit (→10): --line-soft was === --line, flattening the border
+    // hierarchy the host has. Give it a real softer step (borders carry no text,
+    // so contrast is not a constraint).
+    '--line': pal.border, '--line-soft': `color-mix(in srgb, ${pal.border} 55%, transparent)`,
     '--ink': pal.text, '--ink-soft': pal.sub, '--muted': pal.muted, '--faint': pal.muted,
     // Status colors MUST be scoped per skin (per-screen audit): they weren't,
     // so on a LIGHT skin the "You're in" eyebrow and error text fell through to

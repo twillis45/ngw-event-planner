@@ -38,16 +38,20 @@ export function applyStudioMatte() {
   // home quiet-index rows' label/value, found 2026-07-11). textMuted is now
   // a genuinely de-blued neutral gray in the palette — use it here so
   // "de-emphasized" reads as a different tone, not a dimmer blue.
-  set('--muted', dark.textMuted);
-  // --faint carries small text (section headers, form-field labels, chevrons).
-  // A real WCAG recompute (2026-07-13 contrast audit) found α=0.90 gave only
-  // 4.25:1 on the lighter --bg-band surface — passing large-text AA but under
-  // 4.5:1 for the small labels it actually carries. Raised to 0.96 → 4.64:1 on
-  // band and 5.10:1 on card, clearing small-text AA on both.
-  // Audit I3: --faint and --muted were the same hue ~6% apart — two text tiers
-  // that didn't visibly rank. Dropped to α 0.88 (≈4.6:1 on the tightest band,
-  // still AA) so "de-emphasized" reads a clear step below --muted's ~5.5:1.
-  set('--faint', tint(dark.textMuted, 0.88));
+  // Color re-audit (path to 10): --muted (dark.textMuted #9a9ca0, L 0.332) and
+  // --ink-soft (#849eb8, L 0.328) had IDENTICAL luminance — the two text tiers
+  // ranked by hue only, so in grayscale / for a colorblind host they read as one
+  // tier. Darkened --muted to #909296 (L 0.287) so "de-emphasized meta" recedes a
+  // real luminance step below "secondary body" (card 5.29 vs 5.94), still AA on
+  // the tight band (4.85). Scoped to the host shell here — the shared palette is
+  // left alone so nothing else shifts.
+  set('--muted', '#909296');
+  // --faint carries small text (section labels, form-field labels, chevrons). A
+  // tint of the now-darker --muted base; α 0.98 keeps it AA on the tight band
+  // (≈4.7:1) while sitting a hair below --muted. (The 4.5:1 floor on the band
+  // surface physically prevents three widely-spaced grey tiers — the important
+  // fix is muted now ranking below ink-soft, above.)
+  set('--faint', tint('#909296', 0.98));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
@@ -63,11 +67,13 @@ export function applyStudioMatte() {
   set('--steel-tint', tint(dark.steelBlue, 0.16));
   // Audit S1: steel was doing triple duty — identity, selection, AND the
   // "in progress" status tier (booked / renting / vendor-mid …), so a host
-  // couldn't tell a status pill from a selected chip. --progress is a distinct
-  // WARM slate (steel is a cool blue) that carries ONLY the in-progress tier,
-  // freeing steel to mean identity + selection. Clears 4.5:1 on card/tint/band.
-  set('--progress', '#B8A891');
-  set('--progress-tint', tint('#B8A891', 0.12));
+  // couldn't tell a status pill from a selected chip. --progress carries ONLY
+  // the in-progress tier, freeing steel to mean identity + selection. A muted
+  // LAVENDER (not a warm slate — that read too close to the steel blue): clearly
+  // violet, distinct from steel/green/amber/red/grey, and matte enough for the
+  // palette. Clears 4.5:1 on card (6.9), tint-over-card (5.4), and band (4.9).
+  set('--progress', '#B3A0CC');
+  set('--progress-tint', tint('#B3A0CC', 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
