@@ -1019,14 +1019,18 @@ export default function HostShellV2() {
     const onScroll = () => {
       const y = app.scrollTop;
       const delta = y - lastScrollY.current;
-      if (y < 40) setDockHidden(false);
+      // Audit #4: never hide the dock on the PLAN surface — that's where a host
+      // hunts across sections, and hiding it (while the app-bar also scrolls off)
+      // left zero on-screen navigation mid-scroll. Immersive stages (The Day
+      // walkthrough) still auto-hide for reading room.
+      if (y < 40 || stage === 'plan') setDockHidden(false);
       else if (delta > 6) setDockHidden(true);
       else if (delta < -6) setDockHidden(false);
       lastScrollY.current = y;
     };
     app.addEventListener('scroll', onScroll, { passive: true });
     return () => app.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [stage]);
   const [tuneCost, setTuneCost] = useState(''); // lock-the-cost input in the tune panel
   // Did the host actually TYPE in the cost field, vs accept the store-based
   // prefill? Only a typed value is a real receipt (event.foodReal); accepting
