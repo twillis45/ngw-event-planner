@@ -226,7 +226,7 @@ button{font-family:inherit}
    request, 2026-07-11 — "slightly more viewable"): same size, a touch more
    weight and ink, so figures read at a glance without competing with .t-num. */
 .tile .t-sub b{font-weight:650; color:var(--ink-soft); font-variant-numeric:tabular-nums}
-.tile .t-sub.over{color:var(--warn)}
+.tile .t-sub.over{color:var(--danger)}/* audit S2: over-budget is danger (red), not attention (amber) */
 .tile .t-sub.over b{color:inherit}
 /* Gradient-light material (brand direction 2026-07-11): raised surfaces catch
    the canvas's overhead glow as a 1px top sheen — same physics as the splash. */
@@ -966,11 +966,14 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* engraved reply chips + fields on the stock */
 .inv2-sheet .chip{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:#1a1a1a;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
+/* Audit B1: #3E7A5A is the one white-text-safe "selected" green — a FILL green,
+   necessarily darker than --ok's TEXT greens (which fail behind white in dark
+   mode), so it can't collapse into --ok. Defined once here; the dark-invite rule
+   below no longer re-declares it (base rule already applies in both modes). */
 .inv2-sheet .chip[aria-pressed="true"], .inv2-sheet .chip[aria-checked="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff;
   box-shadow:0 3px 10px rgba(62,122,90,.35); }
 .inv2-dark .inv2-sheet .chip{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8;
   box-shadow:inset 0 1px 0 rgba(255,246,230,.08), inset 0 -1px 1px rgba(0,0,0,.5); }
-.inv2-dark .inv2-sheet .chip[aria-pressed="true"], .inv2-dark .inv2-sheet .chip[aria-checked="true"]{ background:#3E7A5A; border-color:#3E7A5A; color:#fff; }
 .inv2-sheet .field{ background:rgba(255,255,255,.7); border-color:rgba(196,178,148,.6); color:#1a1a1a; }
 .inv2-dark .inv2-sheet .field{ background:#1c2024; border-color:rgba(255,244,224,.16); color:#ece5d8; }
 .inv2-sheet .shelf-label{ color:var(--hue-deep); }
@@ -1071,7 +1074,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
   padding:var(--sp-1) 10px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band)}
 .vc-pill.good{color:var(--ok); background:var(--ok-tint)}
-.vc-pill.mid{color:var(--steel-soft); background:var(--steel-tint)}
+.vc-pill.mid{color:var(--progress); background:var(--progress-tint)}/* audit S1: in-progress, not identity */
 /* WAVE-B: the status pill is a WRITE control now (tap cycles the booking
    ladder) — same visual language, button semantics. */
 button.vc-pill{border:none; cursor:pointer; font-family:inherit}
@@ -1079,7 +1082,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .vc-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
 .vc-chip{font-size:var(--t-tag); font-weight:700; padding:3.5px 10px; border-radius:var(--r-pill);
   color:var(--warn); background:var(--warn-tint)}
-.vc-chip.quiet{color:var(--steel-soft); background:var(--steel-tint)}
+.vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .vc-more{max-height:0; opacity:0; overflow:hidden;
   transition:max-height .38s var(--ease-standard), opacity .3s var(--ease-standard)}
 /* WAVE-B: headroom for the new arrival/money row + COI expiry field —
@@ -1108,7 +1111,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   border:1px solid var(--line-soft); border-radius:var(--r-row); padding:11px 13px; margin-bottom:9px;
   transition:border-color var(--ms-ambient) var(--ease-standard), transform var(--ms-press) var(--ease-out);
 }
-.sweep-row.ready{ border-color:var(--steel-tint); }
+.sweep-row.ready{ border-color:var(--progress-tint); }/* audit S1 */
 .sweep-row.answered{ border-color:var(--ok-tint); background:var(--ok-tint); }
 .sweep-state{
   float:right; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
@@ -1116,7 +1119,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   transition:all var(--ms-ambient) var(--ease-standard);
 }
 .sweep-row.drafting .sweep-state{ color:var(--warn); background:var(--warn-tint); }
-.sweep-row.ready .sweep-state{ color:var(--steel-soft); background:var(--steel-tint); }
+.sweep-row.ready .sweep-state{ color:var(--progress); background:var(--progress-tint); }/* audit S1 */
 .sweep-row.answered .sweep-state{ color:var(--ok); background:var(--ok-tint); }/* audit I1a: every other "good" pill pairs ok with ok-tint */
 .sweep-row .sv-meta{ font-size:var(--t-row-sub); color:var(--muted); margin-top:2px; }
 
@@ -1186,21 +1189,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .lodge-f{display:flex; flex-direction:column; gap:5px}
 .lodge-f .of{font-size:var(--t-caption-min); font-weight:700; letter-spacing:var(--tracking-3); text-transform:uppercase; color:var(--faint)}
 .tag.lodge-not_started{color:var(--muted); background:var(--bg-band)}
-.tag.lodge-booked{color:var(--steel-soft); background:var(--steel-tint)}
+.tag.lodge-booked{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .tag.lodge-confirmed{color:var(--ok); background:var(--ok-tint)}
 @media(max-width:380px){.lodge-form{grid-template-columns:1fr}}
 /* DESTINATION-2 slice 2 — ride-board status tags, same shape/tokens as lodge-*.
    Semantics: needs a ride = the open gap (warn); offering seats = the thing
    that closes it (ok); renting = self-covered, calm steel; not set = quiet. */
 .tag.ride-not_set{color:var(--muted); background:var(--bg-band)}
-.tag.ride-renting{color:var(--steel-soft); background:var(--steel-tint)}
+.tag.ride-renting{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .tag.ride-needs_ride{color:var(--warn); background:var(--warn-tint)}
 .tag.ride-offers_ride{color:var(--ok); background:var(--ok-tint)}
 /* DESTINATION-2 slice 3 — arrivals-board tags, same shape/tokens as lodge-*.
    Semantics: no flights yet = quiet (absence of data is not an alarm); on the
    board = calm steel. Conflicts color the row's own warn line, not the tag. */
 .tag.air-none{color:var(--muted); background:var(--bg-band)}
-.tag.air-set{color:var(--steel-soft); background:var(--steel-tint)}
+.tag.air-set{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 
 /* ══ Boot splash — Event Boss DARK CARBON (R13), ported ══
    Source of truth: splash_prototypes.html Dark Carbon block (host-directed

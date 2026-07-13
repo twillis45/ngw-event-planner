@@ -3693,14 +3693,20 @@ export default function HostShellV2() {
                             const areaLabel = (id) => ({ date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px', marginTop: 7 }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 7 }}>
+                                {/* Each area is a real door (host report + audit #7):
+                                    tap it to open that surface. stopPropagation so it
+                                    routes instead of firing the tile's own handler. */}
                                 {phaseCues.items.map((c, ix) => {
                                   const isNext = !c.handled && nextId && c.id === nextId;
                                   return (
-                                    <span key={c.id || ix} style={{ fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 4, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
+                                    <button key={c.id || ix} type="button"
+                                      onClick={e => { e.stopPropagation(); if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
+                                      aria-label={areaLabel(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
+                                      style={{ background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 4, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
                                       <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
                                       {areaLabel(c.id)}
-                                    </span>
+                                    </button>
                                   );
                                 })}
                               </div>

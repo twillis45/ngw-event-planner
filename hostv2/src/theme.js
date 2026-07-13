@@ -44,7 +44,10 @@ export function applyStudioMatte() {
   // 4.25:1 on the lighter --bg-band surface — passing large-text AA but under
   // 4.5:1 for the small labels it actually carries. Raised to 0.96 → 4.64:1 on
   // band and 5.10:1 on card, clearing small-text AA on both.
-  set('--faint', tint(dark.textMuted, 0.96));
+  // Audit I3: --faint and --muted were the same hue ~6% apart — two text tiers
+  // that didn't visibly rank. Dropped to α 0.88 (≈4.6:1 on the tightest band,
+  // still AA) so "de-emphasized" reads a clear step below --muted's ~5.5:1.
+  set('--faint', tint(dark.textMuted, 0.88));
   set('--line', c.border);
   set('--line-soft', tint(c.border, 0.55));
 
@@ -58,6 +61,13 @@ export function applyStudioMatte() {
   // derives from steelBlueMuted, is left untouched (per-screen audit + brand-lock).
   set('--steel-soft', '#8AA3B0');                 // text-legible steel on carbon
   set('--steel-tint', tint(dark.steelBlue, 0.16));
+  // Audit S1: steel was doing triple duty — identity, selection, AND the
+  // "in progress" status tier (booked / renting / vendor-mid …), so a host
+  // couldn't tell a status pill from a selected chip. --progress is a distinct
+  // WARM slate (steel is a cool blue) that carries ONLY the in-progress tier,
+  // freeing steel to mean identity + selection. Clears 4.5:1 on card/tint/band.
+  set('--progress', '#B8A891');
+  set('--progress-tint', tint('#B8A891', 0.12));
   // Overhead-light material response (brand direction, splash work 2026-07-11):
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
