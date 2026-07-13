@@ -2484,7 +2484,17 @@ export default function HostShellV2() {
   // one of those) is never cloud-backed, so a sync-status claim about it would
   // be fiction. Reused verbatim for the settings sheet's per-event status row.
   const eventIsSyncable = !!activeCustom || REAL_EVENTS.some(e => e.id === eventId) || hydratedEvents.some(e => e.id === eventId);
-  const patchEvent = (obj, msg) => {
+  const patchEvent = (obj, msg, opts) => {
+    // GENERIC UNDO (build-map #8): patchEvent is the ONE write path every edit
+    // funnels through, so undo is built here ONCE rather than wired action by
+    // action. Capture the pre-patch value of each key this write touches from
+    // the current event; if the write surfaces a toast, offer "Undo" that
+    // restores exactly those values via the same path (marked noUndo so the
+    // "Undone." toast doesn't itself offer an undo). Opt out with {noUndo:true}
+    // for writes that shouldn't be reversible — e.g. real guest replies landing.
+    const undoable = !!msg && !(opts && opts.noUndo);
+    let undoPrev = null;
+    if (undoable) { undoPrev = {}; for (const k of Object.keys(obj || {})) undoPrev[k] = event[k]; }
     if (activeCustom) setCustoms(list => list.map(c => {
       if (!c || c.id !== eventId) return c;
       const next = { ...c, ...obj };
@@ -2508,7 +2518,10 @@ export default function HostShellV2() {
       return nextPatch;
     });
     feedback('act');
-    if (msg) toast(msg);
+    if (msg) {
+      if (undoable) toast(msg, { label: 'Undo', fn: () => patchEvent(undoPrev, 'Undone.', { noUndo: true }) });
+      else toast(msg);
+    }
   };
 
   // ── Guest replies land here. TWO sources, ONE merge (the ORIGINAL's
@@ -2523,7 +2536,8 @@ export default function HostShellV2() {
     if (!n) return;
     const kidsCount = kidsTotal(gs);
     patchEvent({ guests: gs, kidsCount },
-      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.');
+      n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.',
+      { noUndo: true }); // real replies arriving isn't a host edit to undo
   };
   useEffect(() => {
     try {
