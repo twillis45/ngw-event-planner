@@ -3654,6 +3654,29 @@ export default function HostShellV2() {
                           </div>
                           <div className="bar"><i style={{ width: (essTotal ? Math.round((essDone / essTotal) * 100) : 0) + '%' }} /></div>
                           <div className="t-sub">{sub}</div>
+                          {/* Audit #9: the area NAMES were hidden behind the "what's
+                              counted" caret, so "N of M" was an abstract number — a
+                              first-timer couldn't see WHICH areas or what's left.
+                              This is the glance: each area named inline, handled ones
+                              dimmed with a done-dot, the open ones bright. The caret
+                              still opens the full interactive breakdown below. */}
+                          {hasCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (() => {
+                            const areaLabel = (id) => ({ date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
+                            const nextId = nextCue && (nextCue.id || nextCue.source);
+                            return (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px 10px', marginTop: 7 }}>
+                                {phaseCues.items.map((c, ix) => {
+                                  const isNext = !c.handled && nextId && c.id === nextId;
+                                  return (
+                                    <span key={c.id || ix} style={{ fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 4, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
+                                      <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
+                                      {areaLabel(c.id)}
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </>
                       );
                     })()}
