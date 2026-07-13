@@ -71,7 +71,9 @@ export function applyStudioMatte() {
   // AA for the pill label without touching the green itself (2026-07-13 audit).
   set('--ok-tint', tint(dark.successGreen, 0.10));
   set('--warn', dark.amber);
-  set('--warn-tint', tint(dark.amber, 0.15));
+  // Audit I2: was α 0.15 while --ok-tint/--danger-tint are 0.10 — amber chips
+  // rendered visibly denser than green/red beside them. Normalized to 0.10.
+  set('--warn-tint', tint(dark.amber, 0.10));
   // --danger is the danger TEXT/accent color (severity tags, alert headlines,
   // risk labels, the danger pill). dangerRed was lightened in the palette so
   // this clears 4.5:1 on --danger-tint and on the card. --danger-solid keeps the
