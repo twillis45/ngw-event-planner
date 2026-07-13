@@ -1,6 +1,4 @@
 import { createRoot } from 'react-dom/client';
-import HostShellV2 from './HostShellV2.jsx';
-import InviteV2 from './InviteV2.jsx';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { applyStudioMatte } from './theme.js';
 import { legacyVendorBriefUrl } from '@app/lib/vendorBriefPublicUrl';
@@ -32,10 +30,17 @@ const rsvpCode = (() => {
   try { return new URLSearchParams(window.location.search).get('rsvp'); } catch { return null; }
 })();
 
+// Code-split: load ONLY the surface this URL needs. A guest on ?rsvp=CODE gets
+// the invite chunk; the ~8,500-line host shell is never downloaded for them.
+// Each branch dynamic-imports its own component, so they land in separate chunks.
 if (!briefUrl) {
-  createRoot(document.getElementById('root')).render(
-    <ErrorBoundary>
-      {rsvpCode ? <InviteV2 code={rsvpCode} /> : <HostShellV2 />}
-    </ErrorBoundary>
-  );
+  const root = createRoot(document.getElementById('root'));
+  const mount = (el) => root.render(<ErrorBoundary>{el}</ErrorBoundary>);
+  const load = rsvpCode
+    ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
+    : import('./HostShellV2.jsx').then(m => <m.default />);
+  load.then(mount).catch(() => {
+    // A chunk that fails to load must say so, not hang on a blank frame.
+    mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);
+  });
 }

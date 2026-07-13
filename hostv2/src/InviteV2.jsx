@@ -16,7 +16,10 @@ import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 import { buildExperienceContext } from '@app/lib/experienceContext';
 import { geocodeVenue } from '@app/lib/weather';
 import { dark as steelPalette } from '@app/theme/palette';
-import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile } from './HostShellV2.jsx';
+// Pulls ONLY the event pool + artwork resolver — not the 8,500-line host shell.
+// This is the code-split: a guest opening ?rsvp=CODE no longer downloads
+// HostShellV2 just to say yes.
+import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile } from './eventPool.js';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
