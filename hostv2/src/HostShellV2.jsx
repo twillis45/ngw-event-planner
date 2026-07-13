@@ -3219,9 +3219,27 @@ export default function HostShellV2() {
                 target that opens the events sheet, so the appbar only carries
                 the two things that actually live here — sound + profile. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* WAYFINDING (host friction audit, 2026-07-13): the #1 blocker was
+                  that most surfaces (food, vendors, seating, checklist, decisions,
+                  risks…) had NO stable, labeled door — only conditional Plan rows
+                  or the unlabeled search icon. This is that door: one always-present,
+                  worded control opening a labeled index of every section. A TEXT
+                  label (not another bare icon) on purpose — the personas who hunt
+                  most won't decode an icon. */}
+              <button className="sheet-x wm-you" onClick={() => setSheet({ kind: 'sections' })}
+                aria-label="All sections of your plan" title="All sections"
+                style={{ width: 'auto', padding: '0 11px', gap: 6, display: 'flex', alignItems: 'center', fontSize: 'var(--t-pill)', fontWeight: 650, letterSpacing: '.02em' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" />
+                  <rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" />
+                </svg>
+                Sections
+              </button>
               {/* Quick-switcher entry point (build-map #9) — the keyboard path is
-                  Cmd/Ctrl-K; this button is the touch path (no keyboard on a phone). */}
-              <button className="sheet-x wm-you" onClick={() => setPaletteOpen(true)} aria-label="Jump to an event or place" title="Jump to… (⌘K)">
+                  Cmd/Ctrl-K; this button is the touch path (no keyboard on a phone).
+                  Relabeled from "jump to an event" to name that it finds any PART of
+                  the plan, not just events (friction audit #3). */}
+              <button className="sheet-x wm-you" onClick={() => setPaletteOpen(true)} aria-label="Find anything in your plan" title="Find anything (⌘K)">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" />
@@ -4832,7 +4850,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -5926,6 +5944,61 @@ export default function HostShellV2() {
                 </div>
               </>
             )}
+            {sheet.kind === 'sections' && (() => {
+              // WAYFINDING FIX (host friction audit #1): the guaranteed, labeled
+              // door to EVERY surface. A directory only — it holds no event data,
+              // just named rows that route into the existing specialist sheets, so
+              // it's a nav layer at L3, not a duplicate surface. Conditional groups
+              // (travel/crab/cost-share/rain) show only when the event actually has
+              // them, but the CORE eight always have a door, on-track or not — the
+              // whole point (before this, checklist/decisions/vendors/etc. had no
+              // visible entry when the event was calm).
+              const go = (kind) => { if (kind === 'ask') { setAskQ(''); setAskResult(null); } setSheet({ kind }); };
+              const groups = [
+                { title: 'Your plan', rows: [
+                  { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
+                  { k: 'food', label: 'The spread & shopping', sub: 'The menu and the store run' },
+                  { k: 'budget', label: 'Your money', sub: 'Planned, spoken for, and spent' },
+                  { k: 'vendors', label: 'People you’re hiring', sub: 'Bookings, deposits, day-of arrival' },
+                  { k: 'space', label: 'Space, seats & helpers', sub: 'Tables, chairs, rentals, who’s helping' },
+                  { k: 'seating', label: 'Who sits where', sub: 'The floor plan' },
+                  { k: 'tasks', label: 'Your checklist', sub: 'Every step, in the order it matters' },
+                  { k: 'decisions', label: 'Calls to make', sub: 'Open choices the plan is waiting on' },
+                ] },
+                { title: 'Keep it on track', rows: [
+                  { k: 'risks', label: 'What could go wrong', sub: 'The risks the plan is watching' },
+                  ...(outdoor ? [{ k: 'rain', label: 'If it rains', sub: 'Your weather backup' }] : []),
+                  ...(travel && travel.relevant ? [{ k: 'lodging', label: 'Travel & where everyone stays', sub: 'Lodging, rides, arrivals' }] : []),
+                  ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
+                  ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
+                ] },
+                { title: 'More', rows: [
+                  { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
+                  { k: 'ask', label: 'Ask the plan', sub: 'A question, answered from your numbers' },
+                  { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
+                  { k: 'settings', label: 'You & your account', sub: 'Your name, area, what it remembers' },
+                ] },
+              ];
+              return (
+                <>
+                  <p className="grounding" style={{ margin: '0 0 14px' }}>Every part of your plan, in one place — tap any to open it.</p>
+                  {groups.map(g => g.rows.length ? (
+                    <div key={g.title} style={{ marginBottom: 'var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ margin: '0 0 4px' }}>{g.title}</div>
+                      {g.rows.map(r => (
+                        <button key={r.k} className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => go(r.k)}>
+                          <span className="f-main">
+                            <span className="f-name">{r.label}</span>
+                            <span className="v-meta">{r.sub}</span>
+                          </span>
+                          <span className="chev" aria-hidden="true">›</span>
+                        </button>
+                      ))}
+                    </div>
+                  ) : null)}
+                </>
+              );
+            })()}
             {sheet.kind === 'pass' && (() => {
               // #2 COMMERCE — the One-Event Pass surface (wedge: DIY host, one
               // event, one price — NO subscription). CTA TRUTHFULNESS: only offer
@@ -8838,7 +8911,7 @@ export default function HostShellV2() {
         return (
           <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}>
             <div className="palette" role="dialog" aria-modal="true" aria-label="Jump to" onMouseDown={e => e.stopPropagation()}>
-              <input ref={paletteInputRef} className="palette-input" placeholder="Jump to an event or place…" value={paletteQ}
+              <input ref={paletteInputRef} className="palette-input" placeholder="Find food, vendors, seating, checklist, an event…" value={paletteQ}
                 onChange={e => setPaletteQ(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && results[0]) { e.preventDefault(); results[0].run(); } }}
                 aria-label="Search events and destinations" />
