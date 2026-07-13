@@ -66,6 +66,7 @@
   --pad-card:var(--sp-4) var(--sp-5);         /* main card padding (16 v / 20 h) — was 7 bespoke pads */
   --pad-card-compact:var(--sp-3) var(--sp-4); /* dense list-group cards (12 v / 16 h) */
   --field-y:10px;                             /* field vertical padding role */
+  --field-compact:6px 10px;                   /* the small inline input size (was 6/10, 5/10, 5/8 — now one) */
 
   /* ── Radius scale — the app's rounded-corner set. The card family (.card,
      .vcard, .fgroup) shares --r-lg (they had drifted to 20/18/16 for one
@@ -1002,7 +1003,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 
 /* ── Food/shopping: group cards matching the vendor card system ── */
 .fgroup{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);
-  padding:var(--pad-card-compact); margin:0 0 10px; overflow:hidden; box-shadow:inset 0 1px 0 var(--sheen)}
+  padding:var(--pad-card-compact); margin:0 0 var(--sp-3); overflow:hidden; box-shadow:inset 0 1px 0 var(--sheen)}/* audit R2: card-family bottom margin unified to --sp-3 */
 .fg-head{width:100%; background:none; border:none; padding:0; margin:0;
   display:flex; align-items:center; gap:10px; cursor:pointer; font:inherit; color:inherit; text-align:left}
 .fg-badge{width:32px; height:32px; border-radius:10px; flex-shrink:0;
@@ -1074,7 +1075,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   font-size:var(--t-btn); font-weight:650; margin:0 0 var(--sp-3);
   display:flex; justify-content:space-between; align-items:center; gap:10px}
 .vcard{background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-lg);/* card-radius unification (was 18px) — see .card */
-  padding:var(--pad-card-compact); margin-bottom:10px; cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen);
+  padding:var(--pad-card-compact); margin-bottom:var(--sp-3); cursor:pointer; box-shadow:inset 0 1px 0 var(--sheen);/* audit R2 */
   transition:border-color var(--ms-ambient) var(--ease-standard), box-shadow var(--ms-ambient) var(--ease-standard)}
 .vcard.open{border-color:var(--steel-tint); box-shadow:inset 0 1px 0 var(--sheen), 0 10px 30px -18px rgba(0,0,0,.3)}
 .vc-head{display:flex; align-items:center; gap:var(--sp-3)}

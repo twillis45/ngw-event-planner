@@ -4448,7 +4448,7 @@ export default function HostShellV2() {
               {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city, state (or ZIP)? Weather and maps need it.</span>
-                  <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="Annapolis, MD"
+                  <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="Annapolis, MD"
                     value={cityDraft} onChange={e => setCityDraft(e.target.value)} aria-label="City, state or ZIP" />
                   <button className="mini" onClick={saveCity}>Save</button>
                 </div>
@@ -4713,12 +4713,12 @@ export default function HostShellV2() {
                     {!isPast && ros[dayIdx].id && (
                       <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                         <label className="of" htmlFor="ros-cue-time">time</label>
-                        <input id="ros-cue-time" className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: '5px 10px' }}
+                        <input id="ros-cue-time" className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                           value={ros[dayIdx].time || ''}
                           onChange={e => { const cue = ros[dayIdx]; writeRosCue(cue.id, { time: e.target.value }, e.target.value ? (cue.segment || 'This moment') + ' — ' + e.target.value + ' on the schedule.' : (cue.segment || 'This moment') + ' — time cleared.'); }}
                           aria-label={'Time for ' + (ros[dayIdx].segment || 'this moment')} />
                         <label className="of" htmlFor="ros-cue-owner">who runs it</label>
-                        <input id="ros-cue-owner" className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: '5px 10px' }} placeholder="you? a helper?"
+                        <input id="ros-cue-owner" className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="you? a helper?"
                           value={ros[dayIdx].owner || ''}
                           onChange={e => writeRosCue(ros[dayIdx].id, { owner: e.target.value }, null)}
                           aria-label={'Who runs ' + (ros[dayIdx].segment || 'this moment')} />
@@ -5231,10 +5231,10 @@ export default function HostShellV2() {
                       </div>
                       <div className="actions-row" style={{ marginTop: 'var(--sp-1)', alignItems: 'center' }}>
                         <span className="of">you have</span>
-                        <input className="field" style={{ maxWidth: 66, fontSize: 'var(--t-input)', padding: '6px 10px' }} type="number" min="0" max={baseNeed}
+                        <input className="field" style={{ maxWidth: 66, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="number" min="0" max={baseNeed}
                           value={have || ''} placeholder="0" aria-label={'How many ' + (it.short || it.item) + ' you have'}
                           onChange={e => setHave(parseInt(e.target.value, 10) || 0)} />
-                        <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: '6px 10px' }} type="text"
+                        <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="text"
                           value={helperName} placeholder="helper brings?" aria-label="Helper supplying this"
                           onChange={e => patchEvent({ capacityHelpers: { ...(event.capacityHelpers || {}), [it.key]: e.target.value } }, null)} />
                         {remaining > 0 && <span className="of">still need {remaining}{helperName ? ' — ask ' + helperName : ''}</span>}
@@ -5972,7 +5972,7 @@ export default function HostShellV2() {
                             {t.guests.length === 0 && <p className="v-meta" style={{ margin: 'var(--sp-1) 0' }}>No one here yet.</p>}
                             {renaming ? (
                               <div className="actions-row" style={{ marginTop: 6, alignItems: 'center' }}>
-                                <input className="field" style={{ maxWidth: 200, fontSize: 'var(--t-input)', padding: '6px 10px' }}
+                                <input className="field" style={{ maxWidth: 200, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                   placeholder={'Table ' + t.number} value={tableNameDraft.value} autoFocus
                                   onChange={e => setTableNameDraft({ num: t.number, value: e.target.value })}
                                   onKeyDown={e => { if (e.key === 'Enter') saveTableName(t.number); }}
@@ -6487,14 +6487,14 @@ export default function HostShellV2() {
                       <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         <label className="of" style={{ display: 'flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
                           crabs per {UNIT_LABEL[l.unit] || l.unit}
-                          <input id={`crabline-${l.id}-count`} className="field" style={{ maxWidth: 72, fontSize: 'var(--t-input)', padding: '5px var(--sp-2)' }}
+                          <input id={`crabline-${l.id}-count`} className="field" style={{ maxWidth: 72, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             type="number" min="0" placeholder={defaultCountPerUnit(l.size, l.unit) != null ? `~${defaultCountPerUnit(l.size, l.unit)}` : 'ask vendor'}
                             value={l.estimatedCountPerUnit ?? ''}
                             onChange={e => { const n = parseInt(e.target.value, 10); writeLine({ estimatedCountPerUnit: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
                         </label>
                         <label className="of" style={{ display: 'flex', gap: 'var(--sp-1)', alignItems: 'center' }}>
                           price per {UNIT_LABEL[l.unit] || l.unit}
-                          <input id={`crabline-${l.id}-price`} className="field" style={{ maxWidth: 86, fontSize: 'var(--t-input)', padding: '5px var(--sp-2)' }}
+                          <input id={`crabline-${l.id}-price`} className="field" style={{ maxWidth: 86, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             type="number" min="0" placeholder="quote"
                             value={l.pricePerUnit ?? ''}
                             onChange={e => { const n = parseFloat(e.target.value); writeLine({ pricePerUnit: Number.isFinite(n) && n > 0 ? n : undefined }); }} />
@@ -8113,11 +8113,11 @@ export default function HostShellV2() {
                               button (below) could never appear. Legacy already has this
                               as a plain form field; V2 never got it. */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="vendor name"
+                            <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="vendor name"
                               value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
-                            <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
+                            <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
                               value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Vendor phone" />
-                            <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="email" type="email"
+                            <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
                               value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
                           {isMalformedEmail(v.email) && <p className="grounding" role="alert" style={{ margin: '-4px 0 var(--sp-2)', color: 'var(--warn)' }}>That doesn’t look like an email address.</p>}
@@ -8131,7 +8131,7 @@ export default function HostShellV2() {
                               which is host-private bookkeeping and never leaves this
                               cockpit). */}
                           <div className="actions-row" style={{ marginBottom: 'var(--sp-2)', flexWrap: 'wrap' }}>
-                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="on-site contact (if not you)"
+                            <input className="field" style={{ maxWidth: 220, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="on-site contact (if not you)"
                               value={v.contactName || ''} onChange={e => writeVendor(v.id, { contactName: e.target.value }, null)} aria-label="On-site contact for this vendor's brief" />
                           </div>
                           <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
@@ -8146,13 +8146,13 @@ export default function HostShellV2() {
                               vendor by the host's own word. */}
                           <div className="actions-row" style={{ margin: '0 0 10px', flexWrap: 'wrap', alignItems: 'center' }}>
                             <label className="of" htmlFor={'v-arrive-' + v.id}>arrives</label>
-                            <input id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: '5px 10px' }}
+                            <input id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
                             {!v.isInformal && (<>
                               <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
                               <input id={'v-cost-' + v.id} className="field" type="number" inputMode="numeric" min="0" placeholder="0"
-                                style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: '5px 10px' }}
+                                style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                 value={vendorCostDraft !== null && isOpen ? vendorCostDraft : (v.cost ?? '')}
                                 onFocus={() => setVendorCostDraft(String(v.cost ?? ''))}
                                 onChange={e => setVendorCostDraft(e.target.value)}
@@ -8755,7 +8755,7 @@ export default function HostShellV2() {
                   {deadlineOpen && (
                     <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
                       <span className="of">replies by:</span>
-                      <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: '6px 10px' }} type="date"
+                      <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
                         value={event.rsvpDeadline || (rsvpBy && rsvpBy.iso) || ''}
                         onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — the nudges and countdown read it.')}
                         aria-label="RSVP deadline" />
@@ -8863,9 +8863,9 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
                               <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
                               <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
-                              <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="+1 name"
+                              <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="+1 name"
                                 value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
-                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="needs? (vegan, nut…)"
+                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="needs? (vegan, nut…)"
                                 value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
                               <button className="mini" onClick={() => removeGuest(i)}>remove</button>
                             </div>
@@ -8898,11 +8898,11 @@ export default function HostShellV2() {
                                   aria-label={'Meal for ' + (g.name || 'guest') + ': ' + (String(g.meal || '—') === '—' ? 'not answered' : g.meal) + ' — tap to change'}
                                   onClick={() => setMealPickFor(i)}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
                               )}
-                              <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
+                              <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="phone" type="tel"
                                 value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
-                              <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="email" type="email"
+                              <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="email" type="email"
                                 value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" aria-invalid={isMalformedEmail(g.email)} />
-                              <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="group" list="v2-groups"
+                              <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="group" list="v2-groups"
                                 value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
                             </div>
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
