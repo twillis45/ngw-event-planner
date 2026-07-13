@@ -1367,15 +1367,31 @@ export default function HostShellV2() {
   const VENDOR_STATUS_MEANING = {
     'Considering': 'you’re still deciding',
     'Quoted': 'they’ve given you a price',
-    'Contracted': 'the agreement is signed',
+    'Contracted': 'they’ve said yes / the agreement’s set',
     'Deposit Paid': 'your deposit is in',
-    'Confirmed': 'they’re locked in for your date',
+    'Confirmed': 'you’ve locked them in for your date',
   };
+  // Plain host-facing DISPLAY labels — the stored VALUES above stay the same for
+  // storage + all the status logic (isVendorBooked, workstreams, seed data), only
+  // what the host READS changes. Two fixes for a first-timer (host question,
+  // 2026-07-13): "Contracted" was pro jargon → "Agreed"; and "Confirmed" is now
+  // RESERVED for the vendor's own confirm-back chip — the host's own top state
+  // reads "Locked in" so a new host never mistakes their own tracking for the
+  // vendor's word.
+  const VENDOR_STATUS_LABEL = {
+    'Considering': 'Deciding',
+    'Quoted': 'Got a price',
+    'Contracted': 'Agreed',
+    'Deposit Paid': 'Deposit paid',
+    'Confirmed': 'Locked in',
+    'Booked': 'Locked in', 'Paid': 'Locked in', // legacy stored values
+  };
+  const vendorStatusLabel = (s) => VENDOR_STATUS_LABEL[s] || s;
   const cycleVendorStatus = (v) => {
     const cur = (v.status === 'Booked' || v.status === 'Paid') ? 'Confirmed' : v.status;
     const next = VENDOR_STATUS_LADDER[(VENDOR_STATUS_LADDER.indexOf(cur) + 1) % VENDOR_STATUS_LADDER.length];
     writeVendor(v.id, { status: next },
-      (v.name || v.category || 'This vendor') + ' → ' + next + ' — ' + VENDOR_STATUS_MEANING[next] + '.');
+      (v.name || v.category || 'This vendor') + ' → ' + vendorStatusLabel(next) + ' — ' + VENDOR_STATUS_MEANING[next] + '.');
   };
   // Audit #6 — tap-to-cycle hid the option set (a host couldn't predict what a
   // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
@@ -1384,7 +1400,7 @@ export default function HostShellV2() {
   const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
   const setVendorStatus = (v, status) => {
     writeVendor(v.id, { status },
-      (v.name || v.category || 'This vendor') + ' → ' + status + ' — ' + VENDOR_STATUS_MEANING[status] + '.');
+      (v.name || v.category || 'This vendor') + ' → ' + vendorStatusLabel(status) + ' — ' + VENDOR_STATUS_MEANING[status] + '.');
     setStatusPickFor(null);
   };
   const vendorStatusIsCurrent = (v, s) => (v.status === s) || ((v.status === 'Booked' || v.status === 'Paid') && s === 'Confirmed');
@@ -8043,8 +8059,8 @@ export default function HostShellV2() {
                             <button className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
                               onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
-                              aria-label={'Booking status: ' + (v.status || 'not set') + '. Tap to change.'}>
-                              {v.status || 'set status'}
+                              aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + '. Tap to change.'}>
+                              {v.status ? vendorStatusLabel(v.status) : 'set status'}
                             </button>
                           )}
                         </div>
@@ -8057,7 +8073,7 @@ export default function HostShellV2() {
                                 <button key={s} className={'vc-pill' + (cur ? ' good' : '')}
                                   onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
                                   aria-pressed={cur} style={cur ? undefined : { opacity: .82 }}>
-                                  {s}
+                                  {vendorStatusLabel(s)}
                                 </button>
                               );
                             })}
