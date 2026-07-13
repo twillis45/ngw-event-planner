@@ -787,6 +787,13 @@ export default function HostShellV2() {
   // production field it doesn't know about survives untouched; the original
   // app's own debounced cloud save picks the changes up next time it runs.
   const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+  // Cross-device resume pointer (build-map #3): the account remembers the last
+  // event the host was in; on a fresh device we follow it once it resolves.
+  // resumePointer (STATE, so setting it re-runs the follow effect) holds the
+  // cloud value until the target event is available; didResume ensures we only
+  // auto-follow once and never yank a host who has already picked here.
+  const [resumePointer, setResumePointer] = useState(null);
+  const didResume = useRef(false);
   // ── Session (the SAME Supabase client + storage the original app uses —
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
@@ -803,6 +810,10 @@ export default function HostShellV2() {
       cloudLoadProfile().then(p => {
         if (dead || !p) return;
         setProfileState(p);
+        // Build-map #3: stash the account's last-viewed event; the resume effect
+        // below follows it once the event resolves and only if the host hasn't
+        // already switched away from the boot event on this device.
+        if (p.lastEventId) setResumePointer(p.lastEventId);
         // Cross-device consistency (10+ reaudit, boot-frequency track): adopt
         // the cloud's splashLastSeen if it's more recent than (or absent
         // from) this device's own flag, so a second device the host signs
@@ -1400,7 +1411,25 @@ export default function HostShellV2() {
     redoEventId.current = null; // moving to another event abandons any pending create correction
     setEventId(id); setHandledOpen(false); setStage('plan'); setEditor(null); setSheet(null); setDayIdx(0);
     if (!isCustomEventId(id)) { try { setPatch(JSON.parse(localStorage.getItem(LS_PATCH(id))) || {}); } catch { setPatch({}); } }
+    // Build-map #3: an explicit pick is the resume pointer. Sync it to the
+    // account (signed-in only — local LS_LAST_EVENT already covers same-device)
+    // so the next device the host opens lands on this same event. Once the host
+    // has picked here, stop auto-following any older cloud pointer.
+    didResume.current = true;
+    if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
   };
+  // Follow the account's resume pointer on a fresh device: once the target event
+  // is available (sample, custom, or hydrated real event) AND the host hasn't
+  // already switched here, land on it. Runs at most once (didResume).
+  useEffect(() => {
+    const id = resumePointer;
+    if (!id || didResume.current) return;
+    if (eventId !== BOOT_EVENT_ID) { didResume.current = true; return; } // host already picked
+    if (id === eventId) { didResume.current = true; return; }
+    const known = ALL_SAMPLES.some(e => e && e.id === id) || customs.some(e => e && e.id === id)
+      || hydratedEvents.some(e => e && e.id === id) || REAL_EVENTS.some(e => e && e.id === id);
+    if (known) { didResume.current = true; switchEvent(id); }
+  }, [resumePointer, customs, hydratedEvents, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toast = (msg, action) => {
     setToastMsg(msg);
@@ -2014,6 +2043,22 @@ export default function HostShellV2() {
     }
     if (/^fp-diet/.test(String(route.focusField || ''))) { setSheet({ kind: 'food', focus: 'diet' }); return true; }
     if (/^caprow-/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
+    // "Add the location" essential (phaseProgress: {tab:'Event Details',
+    // focusField:'event-venue'}) had NO handler — its "Take me to it" dead-ended
+    // (host report). The venue is edited inline on the plan (the blocker card or
+    // the "Where is it happening?" card, whichever is showing — both inputs carry
+    // aria-label="Venue"). Land on the plan, then scroll to and focus that exact
+    // input, per the Row-Level CTA rule (never a screen top).
+    if (route.focusField === 'event-venue' || route.tab === 'Event Details') {
+      setStage('plan'); setSheet(null); setEditor(null);
+      setTimeout(() => {
+        try {
+          const inp = document.querySelector('[aria-label="Venue"]');
+          if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
+        } catch { /* DOM not ready — plan stage is still the right landing */ }
+      }, 80);
+      return true;
+    }
     if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
       setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
     }
@@ -2973,6 +3018,9 @@ export default function HostShellV2() {
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '' })); } catch {}
     setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
     setEventId(newId); setRevealed(true);
+    // Build-map #3: a freshly created event is the host's new resume pointer.
+    didResume.current = true;
+    if (session) { try { patchProfile({ lastEventId: newId }); } catch { /* offline — localStorage profile holds it */ } }
     // Signed-in hosts' created events reach the account right away — the same
     // cloudSaveEvent path/shape every real-event edit uses. SYNC-HONESTY-1:
     // record the real result instead of swallowing it.
