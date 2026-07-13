@@ -1608,6 +1608,21 @@ export default function HostShellV2() {
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
+  // Quick-switcher / command palette (build-map #9): jump across events AND
+  // destinations from one search box. Cmd/Ctrl-K toggles it (the phone-frame
+  // ruling caps this at parity, not 9 — there's a visible entry point too).
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQ, setPaletteQ] = useState('');
+  const paletteInputRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen(o => !o); }
+      else if (e.key === 'Escape' && paletteOpen) { setPaletteOpen(false); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [paletteOpen]);
+  useEffect(() => { if (paletteOpen) { setPaletteQ(''); setTimeout(() => { try { paletteInputRef.current?.focus(); } catch { /* not mounted */ } }, 20); } }, [paletteOpen]);
   // Sheet modal a11y (per-screen audit, cross-cutting fix — all 22 sheets share
   // this one container). Adds what every sheet was missing: Escape-to-close,
   // initial focus into the dialog, and focus restore to whatever opened it.
@@ -3260,6 +3275,14 @@ export default function HostShellV2() {
                 target that opens the events sheet, so the appbar only carries
                 the two things that actually live here — sound + profile. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              {/* Quick-switcher entry point (build-map #9) — the keyboard path is
+                  Cmd/Ctrl-K; this button is the touch path (no keyboard on a phone). */}
+              <button className="sheet-x wm-you" onClick={() => setPaletteOpen(true)} aria-label="Jump to an event or place" title="Jump to… (⌘K)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="M21 21l-4.3-4.3" />
+                </svg>
+              </button>
               {/* Header carries ONE control (host request 2026-07-11): the
                   account icon. Sound moved into the You & your account sheet. */}
               <button className="sheet-x wm-you" onClick={() => setSheet({ kind: 'settings' })} aria-label="You and your account">
@@ -8537,6 +8560,57 @@ export default function HostShellV2() {
         <button aria-current={stage === 'after'} onClick={() => setStage('after')}>After</button>
       </nav>
 
+      {paletteOpen && (() => {
+        const q = paletteQ.trim().toLowerCase();
+        const seen = new Set();
+        const evList = [...REAL_EVENTS, ...hydratedEvents, ...ROSTER, ...customs].filter(e => e && e.id && !seen.has(e.id) && seen.add(e.id));
+        const events = evList.map(e => ({
+          kind: 'event', id: e.id,
+          label: e.name || e.type || 'Event',
+          sub: [e.type, e.venue].filter(Boolean).join(' · '),
+          run: () => { switchEvent(e.id); setPaletteOpen(false); },
+        }));
+        const dRaw = [
+          { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
+          { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
+          { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
+          { label: 'New event', sub: 'start another', go: () => setStage('create') },
+          { label: 'Your money', sub: 'budget', go: () => setSheet({ kind: 'budget' }) },
+          { label: 'The spread & shopping', sub: 'food', go: () => setSheet({ kind: 'food' }) },
+          { label: 'People you’re hiring', sub: 'vendors', go: () => setSheet({ kind: 'vendors' }) },
+          { label: 'Who sits where', sub: 'seating', go: () => setSheet({ kind: 'seating' }) },
+          { label: 'Guest list', sub: 'guests & RSVPs', go: () => setSheet({ kind: 'guests' }) },
+          { label: 'Your checklist', sub: 'tasks', go: () => setSheet({ kind: 'tasks' }) },
+          { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
+          { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
+          { label: 'Make it yours', sub: 'the meaning', go: () => setSheet({ kind: 'meaning' }) },
+          { label: 'You & your account', sub: 'settings', go: () => setSheet({ kind: 'settings' }) },
+        ];
+        const dests = dRaw.map(d => ({ kind: 'go', label: d.label, sub: d.sub, run: () => { d.go(); setPaletteOpen(false); } }));
+        const match = (it) => !q || (it.label + ' ' + (it.sub || '')).toLowerCase().includes(q);
+        const results = [...events, ...dests].filter(match).slice(0, 40);
+        return (
+          <div className="palette-scrim" onMouseDown={() => setPaletteOpen(false)}>
+            <div className="palette" role="dialog" aria-modal="true" aria-label="Jump to" onMouseDown={e => e.stopPropagation()}>
+              <input ref={paletteInputRef} className="palette-input" placeholder="Jump to an event or place…" value={paletteQ}
+                onChange={e => setPaletteQ(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && results[0]) { e.preventDefault(); results[0].run(); } }}
+                aria-label="Search events and destinations" />
+              <div className="palette-list">
+                {results.length === 0
+                  ? <div className="palette-empty">Nothing matches “{paletteQ}”.</div>
+                  : results.map((it, i) => (
+                    <button key={it.kind + '-' + (it.id || it.label) + i} className="palette-row" onClick={it.run}>
+                      <span className="palette-kind">{it.kind === 'event' ? 'Event' : 'Go'}</span>
+                      <span className="palette-main"><span className="palette-label">{it.label}</span>{it.sub ? <span className="palette-sub">{it.sub}</span> : null}</span>
+                    </button>
+                  ))}
+              </div>
+              <div className="palette-hint">Enter opens the first match · Esc closes</div>
+            </div>
+          </div>
+        );
+      })()}
       {toastMsg && (
         <div className="toast on" role="status" aria-live="polite">
           {toastMsg}
