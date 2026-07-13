@@ -1690,6 +1690,7 @@ export default function HostShellV2() {
   const [seatOpenTable, setSeatOpenTable] = useState(null); // expanded table number
   const [tableNameDraft, setTableNameDraft] = useState(null); // { num, value }
   const [seatView, setSeatView] = useState('list');   // 'list' | 'plan' (floor plan)
+  const [dayView, setDayView] = useState('walk');     // 'walk' (one moment at a time) | 'list' (whole agenda)
   const [seatDrag, setSeatDrag] = useState(null);      // { number, x, y } during an active puck drag
   const floorRef = useRef(null);                       // the floor-plan canvas element
   const justDraggedRef = useRef(false);                // suppress the tap-to-seat click that follows a drag
@@ -4580,7 +4581,39 @@ export default function HostShellV2() {
                   These moments don’t have times yet — the live clock takes over once times are set. Walking through by hand still records what’s done.
                 </p>
               )}
-              {ros.length === 0 ? (
+              {ros.length > 0 && (
+                <div className="picker" style={{ margin: 'var(--sp-3) 0' }}>
+                  <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={dayView === 'walk'} onClick={() => setDayView('walk')}>Walk it</button>
+                  <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={dayView === 'list'} onClick={() => setDayView('list')}>Full agenda</button>
+                </div>
+              )}
+              {ros.length > 0 && dayView === 'list' ? (
+                <>
+                  {/* Day-Preview agenda-list (task #54 candidate): the whole day as
+                      one scannable list — a planner can see gaps, ownership, and
+                      collisions at a glance instead of stepping one moment at a time.
+                      Same effectiveRos source as the stepper; overlaps flagged inline. */}
+                  {rosOverlaps > 0 && (
+                    <div className="later-row" style={{ margin: '0 0 var(--sp-3)', background: 'var(--warn-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px' }}>
+                      <span className="t" style={{ color: 'var(--warn)', fontWeight: 700 }}>{rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — flagged below.</span>
+                    </div>
+                  )}
+                  <div className="agenda">
+                    {ros.map((r, i) => {
+                      const prev = ros[i - 1];
+                      const clash = !!(r && r.time && prev && prev.time && r.time <= prev.time);
+                      return (
+                        <div className={'then-row' + (r.done ? ' is-done' : '')} key={r.id || i} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                          <span className="d" style={{ minWidth: 54 }}>{r.time || '—'}</span>
+                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}</span>
+                          {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
+                          {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done</span>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : ros.length === 0 ? (
                 <>
                   <h1 className="mega" style={{ fontSize: 'var(--t-display-l)', lineHeight: 1.08 }}>No run of show yet</h1>
                   <p className="day-empty">Your day schedule fills in as vendors and their arrival times settle — then this screen becomes one thing at a time, in the order the day runs.</p>
