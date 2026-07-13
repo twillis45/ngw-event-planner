@@ -755,7 +755,7 @@ export default function InviteV2({ code }) {
                         value={note} onChange={e => setNote(e.target.value)} aria-label="Note to host" />
                       {err && <p className="grounding" role="alert" style={{ marginTop: 10, color: 'var(--danger)' }}>{err}</p>}
                       <div className="actions-row" style={{ marginTop: 14 }}>
-                        <button className="cta big" onClick={submit} disabled={sending} style={sending ? { opacity: .6 } : undefined}>
+                        <button className="cta big" onClick={submit} disabled={sending}>
                           {sending ? 'Sending…' : 'Send my reply'}
                         </button>
                       </div>
