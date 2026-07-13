@@ -177,3 +177,8 @@ export function eventArtworkFile(event) {
   const key = /crab/i.test(t) ? 'crab' : /fish\s*fry|catfish/i.test(t) ? 'fish' : null;
   return key ? (ARTWORK_MARKS[key] || null) : null;
 }
+
+// Shared avatar tints (color audit Cr1): deterministic, muted, on-brand — the
+// only multi-hue accents in the app. Defined ONCE here so the host roster and
+// the invite's social-proof faces can never drift apart (they were copy-pasted).
+export const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];

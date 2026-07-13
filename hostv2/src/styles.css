@@ -188,7 +188,7 @@ button{font-family:inherit}
   /* Audit C3: --danger-solid #E84036 is too bright — near-white text on it was
      only 3.53:1 (fails small-text AA). Deepened to #B01E17 so the conventional
      white-on-alarm-red reads at ~6.2:1. Isolated to this one banner. */
-  background:#B01E17; color:var(--carbon-text); font-size:var(--t-body-s); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-md); margin-bottom:18px;
+  background:#B01E17; color:var(--ink); font-size:var(--t-body-s); padding:var(--sp-3) var(--sp-4); border-radius:var(--r-md); margin-bottom:18px;/* audit Cr3: --ink not the Day-only --carbon-text (same value, right family) */
 }
 
 .eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-6); text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
@@ -248,8 +248,8 @@ button{font-family:inherit}
    near-white text (--carbon-text) ran ~2.3:1 on that green — unreadable (host
    report). Dark green-ink text reads ~7:1 on the fill and keeps the celebratory
    green. Override every text child (they inherit the tile's light color). */
-.tile-d.allset{background:var(--ok); color:#0d2018}
-.tile-d.allset .t-label,.tile-d.allset .t-big,.tile-d.allset .t-num,.tile-d.allset .t-sub,.tile-d.allset .t-go{color:#0d2018}
+.tile-d.allset{background:var(--ok); color:var(--on-ok)}
+.tile-d.allset .t-label,.tile-d.allset .t-big,.tile-d.allset .t-num,.tile-d.allset .t-sub,.tile-d.allset .t-go{color:var(--on-ok)}
 .tile-d.allset .t-label{opacity:.72}
 .tile-d.allset:hover{background:var(--ok); filter:none; transform:none; cursor:default}
 
@@ -686,8 +686,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
              radial-gradient(120% 100% at 46% 42%, transparent 42%, rgba(0,0,0,.42) 100%);
 }
 .reveal-stage .reveal-inner{position:relative; z-index:2; overflow-y:auto; max-height:100%}
-.reveal-stage .eyebrow{color:#8fa4b2}
-.reveal-stage .tick-list li strong{color:#eef0f4}
+/* Color audit T1: the exact-match hexes are tokenized (zero visual change);
+   the reveal's own steel-blue-grey tier (#9aa7b2 / #7a8792) is an INTENTIONAL,
+   locked brand surface for the "who you are" moment — kept as scoped literals,
+   like the splash. Fully re-de-blueing the reveal is a brand call, not a bug. */
+.reveal-stage .eyebrow{color:var(--steel-soft)}
+.reveal-stage .tick-list li strong{color:var(--ink)}
 .reveal-stage .tick-list li{color:#9aa7b2}
 .reveal-stage .tick-list li::before{background:rgba(78,104,119,.35)}
 .reveal-stage .grounding{color:#7a8792}

@@ -82,6 +82,9 @@ export function applyStudioMatte() {
 
   // ── Status anchors (Dark calibrations) ──
   set('--ok', dark.successGreen);
+  // Dark green-ink for text ON the --ok fill (the all-quiet NEXT tile). Tokenized
+  // (was a #0d2018 literal) — 6.2:1 on the green. (Color audit T2.)
+  set('--on-ok', '#0d2018');
   // Status-pill TEXT (--ok on --ok-tint) ran 4.35:1 at α=0.14 — large-text-only.
   // Lightened the tint to α=0.10 (a subtler wash) → 4.64:1, clearing small-text
   // AA for the pill label without touching the green itself (2026-07-13 audit).

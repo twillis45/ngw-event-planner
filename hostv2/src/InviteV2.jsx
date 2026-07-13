@@ -19,7 +19,7 @@ import { dark as steelPalette } from '@app/theme/palette';
 // Pulls ONLY the event pool + artwork resolver — not the 8,500-line host shell.
 // This is the code-split: a guest opening ?rsvp=CODE no longer downloads
 // HostShellV2 just to say yes.
-import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile } from './eventPool.js';
+import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './eventPool.js';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
@@ -120,9 +120,11 @@ function toneVarsFor(pal) {
     // Light skins get deep green/red (≈5:1 on cream/white); dark skins keep the
     // light calibrations (the host theme's own lightened danger, ≈4.5+:1 on dark).
     '--ok': pal.dark ? '#4FAE7A' : '#1e7a46',
-    '--ok-tint': pal.dark ? 'rgba(79,174,122,.14)' : 'color-mix(in srgb, #1e7a46 12%, transparent)',
+    // Color audit I1: normalized to α0.10 to match the host (was .14/12% — the
+    // exact density the host-side pass moved off of).
+    '--ok-tint': pal.dark ? 'rgba(79,174,122,.10)' : 'color-mix(in srgb, #1e7a46 10%, transparent)',
     '--danger': pal.dark ? '#F27A70' : '#c03838',
-    '--danger-tint': pal.dark ? 'rgba(242,122,112,.14)' : 'color-mix(in srgb, #c03838 12%, transparent)',
+    '--danger-tint': pal.dark ? 'rgba(242,122,112,.10)' : 'color-mix(in srgb, #c03838 10%, transparent)',
     ...(steelAccent ? {
       '--steel': steelAccent, '--steel-soft': steelAccent,
       '--steel-tint': `color-mix(in srgb, ${steelAccent} 10%, transparent)`,
@@ -404,7 +406,7 @@ export default function InviteV2({ code }) {
   // system. REAL names only: backend-resolved invites (rosterUnknown) send an
   // anonymized goingCount with NO names, so they get zero faces here (count-only,
   // matching the `social` string) — never a fabricated or privacy-withheld face.
-  const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];
+  // AVA_TINTS now shared from eventPool (audit Cr1) — one source with the host roster.
   const avaTintFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
   const socialFaces = (() => {
     if (somber || event.rosterUnknown) return []; // no names to honestly show

@@ -88,7 +88,7 @@ import { parseMin } from '@app/lib/dayAlerts';
 // Event data pool + artwork resolver moved to ./eventPool.js so main.jsx can
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
-import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile } from './eventPool.js';
+import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode, CUSTOM_EVENTS_AT_LOAD, appCrab, REAL_EVENTS, MY_CRAB_FEAST, ALL_SAMPLES, ROSTER, FALLBACK, BOOT_EVENT_ID, eventArtworkFile, AVA_TINTS } from './eventPool.js';
 
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
@@ -3553,7 +3553,7 @@ export default function HostShellV2() {
                     {/* The name lands LAST — the conclusion the plan reached, not a header.
                         Its period is the same locked bead as the boot splash: it drops in
                         and ignites once the name has landed — the same mark, twice. */}
-                    <h1 className={'mega title-drop' + (revealStep > revealLineCount ? ' in' : '')} style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: '#eef0f4' }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                    <h1 className={'mega title-drop' + (revealStep > revealLineCount ? ' in' : '')} style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: 'var(--ink)' }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                     {/* identityStatement() — the production identity engine, verbatim */}
                     <p className={'mega-sub pre' + (revealStep > revealLineCount ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2' }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
@@ -8821,7 +8821,7 @@ export default function HostShellV2() {
                     // no glanceability vs Partiful's avatars). Deterministic initials +
                     // a MUTED on-brand tint (not a rainbow — respects the colour budget);
                     // no photo pipeline, keeping the structural-data advantage.
-                    const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];
+                    // AVA_TINTS now shared from eventPool (audit Cr1).
                     const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
                     const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
