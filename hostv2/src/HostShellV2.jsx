@@ -1834,6 +1834,31 @@ export default function HostShellV2() {
     gs[idx] = { ...gs[idx], travel: { ...tr, ground: { ...cur, ...rideFieldsFor(next), updatedAt: Date.now() } } };
     patchEvent({ guests: gs }, (gs[idx].name || 'Guest') + ' → ' + RIDE_STATUS_LABEL[next] + '.');
   };
+  // Audit #6 (extended to travel): lodging + ride were tap-to-cycle too. Same
+  // fix — a picker of the whole ladder, tap to set the real state directly.
+  const rowKey = (row) => (row.guestId != null ? 'g' + row.guestId : 'n' + row.name);
+  const [lodgePickFor, setLodgePickFor] = useState(null);
+  const [ridePickFor, setRidePickFor] = useState(null);
+  const setLodgingStatus = (row, status) => {
+    const gs = (event.guests || []).filter(Boolean).map(g => ({ ...g }));
+    const idx = gs.findIndex(g => (row.guestId != null && g.id === row.guestId) || (row.guestId == null && String(g.name || '').trim() === row.name));
+    if (idx < 0) return;
+    const tr = (gs[idx].travel && typeof gs[idx].travel === 'object') ? gs[idx].travel : {};
+    const cur = (tr.lodging && typeof tr.lodging === 'object') ? tr.lodging : {};
+    gs[idx] = { ...gs[idx], travel: { ...tr, lodging: { ...cur, status, updatedAt: Date.now() } } };
+    patchEvent({ guests: gs }, (gs[idx].name || 'Guest') + ' → ' + LODGING_STATUS_LABEL[status] + '.');
+    setLodgePickFor(null);
+  };
+  const setRideStatus = (row, status) => {
+    const gs = (event.guests || []).filter(Boolean).map(g => ({ ...g }));
+    const idx = gs.findIndex(g => (row.guestId != null && g.id === row.guestId) || (row.guestId == null && String(g.name || '').trim() === row.name));
+    if (idx < 0) return;
+    const tr = (gs[idx].travel && typeof gs[idx].travel === 'object') ? gs[idx].travel : {};
+    const cur = (tr.ground && typeof tr.ground === 'object') ? tr.ground : {};
+    gs[idx] = { ...gs[idx], travel: { ...tr, ground: { ...cur, ...rideFieldsFor(status), updatedAt: Date.now() } } };
+    patchEvent({ guests: gs }, (gs[idx].name || 'Guest') + ' → ' + RIDE_STATUS_LABEL[status] + '.');
+    setRidePickFor(null);
+  };
   const setRideSeats = (row, delta) => {
     const gs = (event.guests || []).filter(Boolean).map(g => ({ ...g }));
     const idx = gs.findIndex(g => (row.guestId != null && g.id === row.guestId)
@@ -5347,24 +5372,40 @@ export default function HostShellV2() {
                       <>
                         {/* count + guidance promoted into the sheet hero above */}
                         <div className="shelf-label" style={{ margin: '18px 0 2px' }}>Who’s booked a room</div>
-                        {lg.roster.map((r, i) => (
-                          <button key={r.guestId != null ? r.guestId : 'g' + i}
-                            className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
-                            ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
-                            style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
-                            onClick={() => cycleLodging(r)}
-                            aria-label={r.name + ' — ' + LODGING_STATUS_LABEL[r.status] + '. Tap to update.'}>
-                            <span className="f-main">
-                              <span className="f-name">{r.name}
-                                {r.recentlyChanged && <span className="tag plan">just changed</span>}
+                        {lg.roster.map((r, i) => {
+                          const rk = rowKey(r);
+                          return (
+                          <div key={r.guestId != null ? r.guestId : 'g' + i}>
+                            <button
+                              className={'frow' + (sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId) ? ' rowfocus' : '')}
+                              ref={el => { if (el && sheet.focus != null && r.guestId != null && String(sheet.focus) === String(r.guestId)) el.scrollIntoView({ block: 'center' }); }}
+                              style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                              onClick={() => setLodgePickFor(lodgePickFor === rk ? null : rk)}
+                              aria-expanded={lodgePickFor === rk} aria-haspopup="true"
+                              aria-label={r.name + ' — ' + LODGING_STATUS_LABEL[r.status] + '. Tap to change.'}>
+                              <span className="f-main">
+                                <span className="f-name">{r.name}
+                                  {r.recentlyChanged && <span className="tag plan">just changed</span>}
+                                </span>
+                                {(r.roommate || r.accessibility) && (
+                                  <span className="v-meta">{[r.roommate ? 'rooming with ' + r.roommate : null, r.accessibility].filter(Boolean).join(' · ')}</span>
+                                )}
                               </span>
-                              {(r.roommate || r.accessibility) && (
-                                <span className="v-meta">{[r.roommate ? 'rooming with ' + r.roommate : null, r.accessibility].filter(Boolean).join(' · ')}</span>
-                              )}
-                            </span>
-                            <span className={'tag lodge-' + r.status}>{LODGING_STATUS_LABEL[r.status]}</span>
-                          </button>
-                        ))}
+                              <span className={'tag lodge-' + r.status}>{LODGING_STATUS_LABEL[r.status]}</span>
+                            </button>
+                            {lodgePickFor === rk && (
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 10px', paddingLeft: 2 }} role="group" aria-label={'Lodging status for ' + r.name}>
+                                {Object.keys(LODGING_STATUS_LABEL).map(s => (
+                                  <button key={s} className={'tag lodge-' + s} aria-pressed={r.status === s}
+                                    style={{ cursor: 'pointer', border: 'none', ...(r.status === s ? {} : { opacity: .62 }) }}
+                                    onClick={ev => { ev.stopPropagation(); setLodgingStatus(r, s); }}>
+                                    {LODGING_STATUS_LABEL[s]}</button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          );
+                        })}
                       </>
                     ) : (
                       <p className="v-meta" style={{ padding: 'var(--sp-3) 2px 0' }}>Everyone on the list has declined — nobody needs a room right now.</p>
@@ -5476,13 +5517,15 @@ export default function HostShellV2() {
                             || (sheet.focus === 'riders' && r.status === 'needs_ride'));
                           const scrollHere = sheet.focus != null && ((r.guestId != null && String(sheet.focus) === String(r.guestId))
                             || (sheet.focus === 'riders' && i === firstNeeds));
+                          const rk = rowKey(r);
                           return (
                             <div key={r.guestId != null ? r.guestId : 'g' + i}>
                               <button className={'frow' + (isFocus ? ' rowfocus' : '')}
                                 ref={el => { if (el && scrollHere) el.scrollIntoView({ block: 'center' }); }}
                                 style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
-                                onClick={() => cycleRide(r)}
-                                aria-label={r.name + ' — ' + RIDE_STATUS_LABEL[r.status] + '. Tap to update.'}>
+                                onClick={() => setRidePickFor(ridePickFor === rk ? null : rk)}
+                                aria-expanded={ridePickFor === rk} aria-haspopup="true"
+                                aria-label={r.name + ' — ' + RIDE_STATUS_LABEL[r.status] + '. Tap to change.'}>
                                 <span className="f-main">
                                   <span className="f-name">{r.name}
                                     {r.recentlyChanged && <span className="tag plan">just changed</span>}
@@ -5490,6 +5533,16 @@ export default function HostShellV2() {
                                 </span>
                                 <span className={'tag ride-' + r.status}>{RIDE_STATUS_LABEL[r.status]}</span>
                               </button>
+                              {ridePickFor === rk && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 10px', paddingLeft: 2 }} role="group" aria-label={'Ride plan for ' + r.name}>
+                                  {Object.keys(RIDE_STATUS_LABEL).map(s => (
+                                    <button key={s} className={'tag ride-' + s} aria-pressed={r.status === s}
+                                      style={{ cursor: 'pointer', border: 'none', ...(r.status === s ? {} : { opacity: .62 }) }}
+                                      onClick={ev => { ev.stopPropagation(); setRideStatus(r, s); }}>
+                                      {RIDE_STATUS_LABEL[s]}</button>
+                                  ))}
+                                </div>
+                              )}
                               {r.status === 'offers_ride' && (
                                 <div className="actions-row" style={{ padding: '0 var(--sp-2) var(--sp-2)', alignItems: 'center' }}>
                                   <button className="mini" onClick={() => setRideSeats(r, -1)} aria-label={'Fewer seats from ' + r.name}>−</button>
