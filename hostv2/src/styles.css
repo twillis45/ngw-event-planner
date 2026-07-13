@@ -309,6 +309,14 @@ button{font-family:inherit}
 }
 .later-row .t{font-weight:650; color:var(--ink); letter-spacing:-.01em; flex:1}
 .later-row.done .t{color:var(--muted); font-weight:550}
+/* When a .later-row is a <button> (tappable directory/section rows — the
+   Sections sheet, help-sheet foundations, the settings plan row) reset the UA
+   button chrome so it reads as a clean list row, not a grey box. Inline
+   background/border still win (e.g. the warn-tint compression banner). */
+button.later-row{ -webkit-appearance:none; appearance:none; background:none; border:none;
+  border-top:1px solid var(--line-soft); font:inherit; color:var(--ink-soft); }
+button.later-row .f-name{ color:var(--ink); }
+button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; margin-left:auto; }
 .mini{
   font-size:var(--t-btn); font-weight:700; color:var(--steel-soft); background:var(--steel-tint);
   border:none; border-radius:9px; padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
