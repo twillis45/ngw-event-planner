@@ -1624,6 +1624,20 @@ export default function HostShellV2() {
     // already claimed focus (an autoFocus input in the sheet body).
     if (el && !el.contains(document.activeElement)) el.focus();
     const onKey = (e) => {
+      // FOCUS TRAP (a11y audit #12): aria-modal="true" promises containment, but
+      // Tab used to walk out into the background behind the sheet. Keep Tab inside
+      // the dialog — cycle first<->last, and pull focus back in if it's escaped.
+      if (e.key === 'Tab' && el) {
+        const nodes = Array.from(el.querySelectorAll(
+          'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+        )).filter(n => n.offsetWidth > 0 || n.offsetHeight > 0 || n === document.activeElement);
+        if (!nodes.length) return;
+        const first = nodes[0], last = nodes[nodes.length - 1], a = document.activeElement;
+        if (!el.contains(a)) { e.preventDefault(); first.focus(); }
+        else if (!e.shiftKey && a === last) { e.preventDefault(); first.focus(); }
+        else if (e.shiftKey && a === first) { e.preventDefault(); last.focus(); }
+        return;
+      }
       if (e.key !== 'Escape') return;
       // Where did Escape originate? Check e.target, NOT document.activeElement:
       // React flushes a field's own Escape-to-cancel synchronously (unmounting the
@@ -3233,7 +3247,7 @@ export default function HostShellV2() {
             frame one while the splash is up and releases the instant it
             starts fading, instead of completing invisibly underneath it. */}
         <div className={'content' + (splash === 'up' ? ' dash-hold' : '')}>
-          <div className="appbar">
+          <header className="appbar">
             <div>
               <div className="wordmark">Event Boss<span className="wm-dot" aria-hidden="true" /></div>
               <div className="appbar-note">V2 preview</div>
@@ -3255,11 +3269,11 @@ export default function HostShellV2() {
                 </svg>
               </button>
             </div>
-          </div>
+          </header>
 
           {/* ══════════ CREATE ══════════ */}
           {stage === 'create' && (
-            <section>
+            <section role="main">
               {!revealed ? (
                 /* Modernized create moment (host request 2026-07-11): the prompt
                    is a vertically centered display moment while the screen is
@@ -3481,7 +3495,7 @@ export default function HostShellV2() {
 
           {/* ══════════ PLAN ══════════ */}
           {stage === 'plan' && (
-            <section>
+            <section role="main">
               {/* Event switching lives in the app-bar switcher (events sheet) —
                   the always-on shelf drew more attention than the plan itself. */}
 
@@ -4326,7 +4340,7 @@ export default function HostShellV2() {
           {/* ══════════ THE DAY — live command surface on the day itself,
               walkthrough preview any other day ══════════ */}
           {stage === 'day' && liveDay && (
-            <section className="day-sec">
+            <section className="day-sec" role="main">
               <div className="eyebrow">
                 {dayAllDone ? 'All clear — that’s a wrap' : nowActive ? 'Today · live' : dayStarted ? 'Today · next up' : 'Today · starts soon'}
                 {' · '}{new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
@@ -4509,7 +4523,7 @@ export default function HostShellV2() {
             </section>
           )}
           {stage === 'day' && !liveDay && (
-            <section className="day-sec">
+            <section className="day-sec" role="main">
               <div className="eyebrow">{event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : 'No date'} · {isPast ? 'as it ran' : 'preview'}</div>
               {days === 0 && rosState === 'untimed' && (
                 <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)' }}>
@@ -4617,7 +4631,7 @@ export default function HostShellV2() {
 
           {/* ══════════ AFTER — real budget lines, honest tense ══════════ */}
           {stage === 'after' && (
-            <section>
+            <section role="main">
               <div className="eyebrow">{isPast ? 'Afterward' : 'Preview — how it’ll wrap up'}</div>
               {/* Sans, not serif (font audit): After is an OPERATIONAL host-shell
                   tab, so its hero matches Plan's "56 days" / the sheet heroes (the
@@ -6065,7 +6079,7 @@ export default function HostShellV2() {
                             }}>
                             {l.bought ? 'bought' : 'got it?'}
                           </button>
-                          <button className="mini" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}>×</button>
+                          <button className="mini" aria-label="Remove line" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}><span aria-hidden="true">×</span></button>
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -8524,7 +8538,7 @@ export default function HostShellV2() {
       </nav>
 
       {toastMsg && (
-        <div className="toast on">
+        <div className="toast on" role="status" aria-live="polite">
           {toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {
