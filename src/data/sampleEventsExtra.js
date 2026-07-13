@@ -3809,7 +3809,7 @@ export const SAMPLE_EVENTS_EXTRA = [
   {
     "id": "ev-x-retirement-party",
     "rsvpCode": "retire",
-    "name": "Margaret Adeyemi's Retirement Celebration — 32 Years at Carver Public Library",
+    "name": "Margaret Adeyemi's Retirement Celebration",
     "type": "Retirement Party",
     "date": "2026-08-29",
     "venue": "The Ironwood Room at Maplewood Country Club",

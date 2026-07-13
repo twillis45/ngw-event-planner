@@ -7,6 +7,7 @@ import { buildConfirmationPayload } from './lib/vendorBriefConfirm';
 import { HOME_ARRIVAL, focusTakeoverAllowed } from './lib/homeNav';
 import { withDemoSeeded, withDemoRemoved, isDemoEvent } from './lib/demoSeed';
 import { isPlausibleCityText } from './lib/cityText';
+import { formatPhoneUS, isMalformedEmail } from './lib/contactFormat';
 import { normalizeEventTabRoute, resolveShellTab } from './lib/shellTabs';
 import ImportWizard       from './components/ImportWizard';
 import VendorImportWizard from './components/VendorImportWizard';
@@ -6708,7 +6709,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               <div>
                 <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>Phone</label>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input style={{ ...s.input, flex: 1, minWidth: 120, borderColor: vErr.phone ? C.danger : undefined }} value={vendor.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} />
+                  <input style={{ ...s.input, flex: 1, minWidth: 120, borderColor: vErr.phone ? C.danger : undefined }} value={vendor.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhoneUS(e.target.value))} />
                   {vendor.phone && !vErr.phone && (<>
                     <a href={`sms:${vendor.phone}`} onClick={e => e.stopPropagation()}
                       style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: T.secondary, fontWeight: FW.semibold, color: C.accent2, textDecoration: 'none', whiteSpace: 'nowrap', border: `1px solid ${C.accent2}44`, borderRadius: 8, padding: '5px 10px' }}>
@@ -6860,7 +6861,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
               </div>
               <div style={{ flex: '1 1 160px' }}>
                 <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>On-site phone</label>
-                <input style={{ ...s.input }} value={vendor.onSitePhone || ''} placeholder="cell for the day" onChange={e => onChange('onSitePhone', e.target.value)} />
+                <input style={{ ...s.input }} value={vendor.onSitePhone || ''} placeholder="cell for the day" onChange={e => onChange('onSitePhone', formatPhoneUS(e.target.value))} />
               </div>
             </div>
           </div>
@@ -8054,7 +8055,7 @@ function VendorBriefConfirmBlock({ briefCode, contactName, priorState, LC, cardS
         {state === 'confirmed' ? 'CONFIRM YOUR DETAILS' : "TELL THE PLANNER WHAT'S OFF"}
       </div>
       <input style={inputStyle} placeholder="On-site contact name" value={name} onChange={e => setName(e.target.value)} />
-      <input style={inputStyle} placeholder="On-site phone" value={phone} onChange={e => setPhone(e.target.value)} />
+      <input style={inputStyle} placeholder="On-site phone" value={phone} onChange={e => setPhone(formatPhoneUS(e.target.value))} />
       <textarea style={{ ...inputStyle, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
         placeholder={state === 'confirmed' ? 'Anything the planner should know (optional)' : "What's off?"}
         value={note} onChange={e => setNote(e.target.value)} />
@@ -8598,7 +8599,7 @@ function GuestModal({ guest, tables, onClose, onChange, onDelete }) {
               </div>
               <div>
                 <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>Phone</label>
-                <input style={{ ...s.input, borderColor: gErr.phone ? C.danger : undefined }} value={guest.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} />
+                <input style={{ ...s.input, borderColor: gErr.phone ? C.danger : undefined }} value={guest.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhoneUS(e.target.value))} />
                 {gErr.phone && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>{gErr.phone}</div>}
               </div>
               {(guest.phone || guest.email) && (
@@ -14413,11 +14414,11 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [], profile
           <Sec skey="contact" label="Contact" badge={client.email ? 'Has contact' : null} badgeColor={C.muted}>
             <CMRow>
               <CMField C={C} label="Email">
-                <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }} type="email" value={client.email || ''} placeholder="client@email.com" onChange={e => onChange('email', e.target.value)} onBlur={() => touch('email')} />
+                <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }} type="email" aria-invalid={isMalformedEmail(client.email || '')} value={client.email || ''} placeholder="client@email.com" onChange={e => onChange('email', e.target.value)} onBlur={() => touch('email')} />
                 {errEmail && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
               </CMField>
               <CMField C={C} label="Phone">
-                <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }} type="tel" value={client.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhone(e.target.value))} onBlur={() => touch('phone')} />
+                <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }} type="tel" value={client.phone || ''} placeholder="(555) 555-0100" onChange={e => onChange('phone', formatPhoneUS(e.target.value))} onBlur={() => touch('phone')} />
                 {errPhone && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
               </CMField>
             </CMRow>
@@ -14430,11 +14431,11 @@ function ClientModal({ client, onClose, onChange, onDelete, events = [], profile
             </CMField>
             <CMRow>
               <CMField C={C} label="Partner email">
-                <input style={{ ...s.input, borderColor: (client.partnerEmail && !isEmail(client.partnerEmail)) ? C.danger : undefined }} type="email" value={client.partnerEmail || ''} placeholder="partner@email.com" onChange={e => onChange('partnerEmail', e.target.value)} />
+                <input style={{ ...s.input, borderColor: (client.partnerEmail && !isEmail(client.partnerEmail)) ? C.danger : undefined }} type="email" aria-invalid={isMalformedEmail(client.partnerEmail || '')} value={client.partnerEmail || ''} placeholder="partner@email.com" onChange={e => onChange('partnerEmail', e.target.value)} />
                 {client.partnerEmail && !isEmail(client.partnerEmail) && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 2 }}>Enter a valid email address</div>}
               </CMField>
               <CMField C={C} label="Partner phone">
-                <input style={s.input} type="tel" value={client.partnerPhone || ''} placeholder="(555) 555-0200" onChange={e => onChange('partnerPhone', formatPhone(e.target.value))} />
+                <input style={s.input} type="tel" value={client.partnerPhone || ''} placeholder="(555) 555-0200" onChange={e => onChange('partnerPhone', formatPhoneUS(e.target.value))} />
               </CMField>
             </CMRow>
             <CMRow>
@@ -15264,13 +15265,13 @@ function PublicIntakeForm({ token }) {
             </div>
             <div style={{ flex: '1 1 200px' }}>
               <label style={labelStyle}>Email <span style={{ color: C.danger }}>*</span></label>
-              <input style={(form.email && !isEmail(form.email)) ? { ...fieldStyle, borderColor: C.danger } : fieldStyle} type="email" value={form.email} placeholder="you@email.com" onChange={e => upd('email', e.target.value)} />
+              <input style={(form.email && !isEmail(form.email)) ? { ...fieldStyle, borderColor: C.danger } : fieldStyle} type="email" aria-invalid={isMalformedEmail(form.email)} value={form.email} placeholder="you@email.com" onChange={e => upd('email', e.target.value)} />
               {form.email && !isEmail(form.email) && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>Enter a valid email address</div>}
             </div>
           </div>
           <div>
             <label style={labelStyle}>Phone</label>
-            <input style={(form.phone && !isPhone(form.phone)) ? { ...fieldStyle, borderColor: C.danger } : fieldStyle} type="tel" value={form.phone} placeholder="(555) 000-0000" onChange={e => upd('phone', formatPhone(e.target.value))} />
+            <input style={(form.phone && !isPhone(form.phone)) ? { ...fieldStyle, borderColor: C.danger } : fieldStyle} type="tel" value={form.phone} placeholder="(555) 000-0000" onChange={e => upd('phone', formatPhoneUS(e.target.value))} />
             {form.phone && !isPhone(form.phone) && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>Enter a valid phone number</div>}
           </div>
 
@@ -16135,7 +16136,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
             <div style={{ flex: 1 }}>
               <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 4 }}>Email</label>
               <input style={{ ...s.input, borderColor: errEmail ? C.danger : undefined }}
-                type="email" value={form.email} placeholder={isHostEvent ? 'you@email.com' : 'client@email.com'}
+                type="email" aria-invalid={isMalformedEmail(form.email)} value={form.email} placeholder={isHostEvent ? 'you@email.com' : 'client@email.com'}
                 onChange={e => set('email', e.target.value)} onBlur={() => touch('email')} />
               {errEmail && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>{errEmail}</div>}
             </div>
@@ -16143,7 +16144,7 @@ function NewClientModal({ onClose, onCreate, events = [], profile = null }) {
               <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 4 }}>Phone</label>
               <input style={{ ...s.input, borderColor: errPhone ? C.danger : undefined }}
                 type="tel" value={form.phone} placeholder="(555) 555-0100"
-                onChange={e => set('phone', formatPhone(e.target.value))} onBlur={() => touch('phone')} />
+                onChange={e => set('phone', formatPhoneUS(e.target.value))} onBlur={() => touch('phone')} />
               {errPhone && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 3 }}>{errPhone}</div>}
             </div>
           </div>
@@ -16807,7 +16808,7 @@ function PreferredVendorDirectory({ C, s, events = [], wide = false }) {
             </div>
             <div>
               <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3 }}>Phone</label>
-              <input style={s.input} value={draft.phone} placeholder="(615) 555-0100" onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))} />
+              <input style={s.input} value={draft.phone} placeholder="(615) 555-0100" onChange={e => setDraft(d => ({ ...d, phone: formatPhoneUS(e.target.value) }))} />
             </div>
           </div>
           <div style={{ marginBottom: 8 }}>
@@ -17063,7 +17064,7 @@ function PMField({ C, s, profile, onChange, fkey, label, type = 'text', ph, clie
       <label style={{ fontSize: T.caption, color: C.muted, marginBottom: 3, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span>{label}</span>{clientFacing && <ClientSeesBadge C={C} />}
       </label>
-      <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} value={(fkey === 'phone' || type === 'tel') ? formatPhone(profile?.[fkey] || '') : (profile?.[fkey] || '')} placeholder={ph} onChange={e => onChange(fkey, (fkey === 'phone' || type === 'tel') ? formatPhone(e.target.value) : e.target.value)} />
+      <input style={{ ...s.input, borderColor: err ? C.danger : undefined }} type={type} aria-invalid={(fkey === 'email' || type === 'email') ? isMalformedEmail(profile?.[fkey] || '') : undefined} value={(fkey === 'phone' || type === 'tel') ? formatPhoneUS(profile?.[fkey] || '') : (profile?.[fkey] || '')} placeholder={ph} onChange={e => onChange(fkey, (fkey === 'phone' || type === 'tel') ? formatPhoneUS(e.target.value) : e.target.value)} />
       {err && <div style={{ fontSize: T.caption, color: C.danger, marginTop: 2 }}>{err}</div>}
     </div>
   );
@@ -39142,8 +39143,8 @@ function AddVendorWizard({ C, s, event, bankAvailable, alreadyInBank = [], onCan
                 <div style={{ fontSize: T.caption, fontWeight: FW.bold, letterSpacing: '0.10em', color: C.muted, textTransform: 'uppercase', marginBottom: 6 }}>Optional · add later</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <input data-testid="av-contact-name" value={identity.contactName} onChange={e => setIdentity(d => ({ ...d, contactName: e.target.value }))} placeholder="Contact name" style={s.input} />
-                  <input data-testid="av-phone" value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: e.target.value }))} placeholder="Phone" style={s.input} />
-                  <input data-testid="av-email" value={identity.email} onChange={e => setIdentity(d => ({ ...d, email: e.target.value }))} placeholder="Email" type="email" style={{ ...s.input, gridColumn: '1 / -1', borderColor: (identity.email && !isEmail(identity.email)) ? C.danger : undefined }} />
+                  <input data-testid="av-phone" value={identity.phone} onChange={e => setIdentity(d => ({ ...d, phone: formatPhoneUS(e.target.value) }))} placeholder="Phone" style={s.input} />
+                  <input data-testid="av-email" value={identity.email} onChange={e => setIdentity(d => ({ ...d, email: e.target.value }))} placeholder="Email" type="email" aria-invalid={isMalformedEmail(identity.email || '')} style={{ ...s.input, gridColumn: '1 / -1', borderColor: (identity.email && !isEmail(identity.email)) ? C.danger : undefined }} />
                   <input data-testid="av-website" value={identity.website} onChange={e => setIdentity(d => ({ ...d, website: e.target.value }))} placeholder="Website (https://…)" type="url" style={{ ...s.input, gridColumn: '1 / -1' }} />
                 </div>
               </div>
@@ -40979,7 +40980,7 @@ function EDTField({ C, s, label, value, placeholder, onChange, type = 'text', te
   const err = type === 'email' ? (!value || isEmail(value) ? null : 'Enter a valid email address')
             : type === 'tel'   ? (!value || isPhone(value) ? null : 'Enter a valid phone number')
             : null;
-  const handle = (raw) => onChange(type === 'tel' ? formatPhone(raw) : raw);
+  const handle = (raw) => onChange(type === 'tel' ? formatPhoneUS(raw) : raw);
   return (
     <div>
       <label style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 4 }}>{label}</label>
@@ -40998,6 +40999,7 @@ function EDTField({ C, s, label, value, placeholder, onChange, type = 'text', te
         <input
           type={type}
           {...(type === 'date' ? dateInputProps : {})}
+          aria-invalid={type === 'email' ? isMalformedEmail(value) : undefined}
           style={{ ...s.input, fontSize: T.secondary, borderColor: err ? C.danger : undefined }}
           value={value || ''}
           placeholder={placeholder || ''}
@@ -41939,9 +41941,9 @@ function CrewTab({ event, setEvent, team = [], setTeam, isMobile, onBack }) {
             <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Role</span>
               <input style={field} value={rl} placeholder="e.g. Assistant" onChange={e => setRl(e.target.value)} /></label>
             <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Email</span>
-              <input style={field} value={em} placeholder="teammate@studio.com" onChange={e => setEm(e.target.value)} /></label>
+              <input style={field} aria-invalid={isMalformedEmail(em)} value={em} placeholder="teammate@studio.com" onChange={e => setEm(e.target.value)} /></label>
             <label style={{ flex: 1, minWidth: 130 }}><span style={{ fontSize: T.caption, color: C.muted, display: 'block', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: FW.bold }}>Phone</span>
-              <input style={field} value={ph} placeholder="(555) 555-0123" onChange={e => setPh(formatPhone(e.target.value))} /></label>
+              <input style={field} value={ph} placeholder="(555) 555-0123" onChange={e => setPh(formatPhoneUS(e.target.value))} /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
             <button data-testid="crew-new-save" onClick={addTeammate} disabled={!nm.trim()} style={{ ...s.btn(nm.trim() ? 'primary' : 'secondary'), fontSize: T.secondary, opacity: nm.trim() ? 1 : 0.5 }}>Add to crew</button>

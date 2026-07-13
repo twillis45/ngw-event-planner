@@ -29,6 +29,7 @@ import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf,
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
+import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
@@ -7782,10 +7783,11 @@ export default function HostShellV2() {
                             <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="vendor name"
                               value={v.name || ''} onChange={e => writeVendor(v.id, { name: e.target.value }, null)} aria-label="Vendor name" />
                             <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
-                              value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: e.target.value }, null)} aria-label="Vendor phone" />
+                              value={v.phone || ''} onChange={e => writeVendor(v.id, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Vendor phone" />
                             <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="email" type="email"
-                              value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" />
+                              value={v.email || ''} onChange={e => writeVendor(v.id, { email: e.target.value }, null)} aria-label="Vendor email" aria-invalid={isMalformedEmail(v.email)} />
                           </div>
+                          {isMalformedEmail(v.email) && <p className="grounding" role="alert" style={{ margin: '-4px 0 var(--sp-2)', color: 'var(--warn)' }}>That doesn’t look like an email address.</p>}
                           {/* Vendor Brief authoring (VB2, ported): contactName and
                               briefNote are both in buildVendorBriefPayload's audited
                               whitelist (lib/vendorBrief.js) — legacy has always had a
@@ -8522,9 +8524,9 @@ export default function HostShellV2() {
                                       : (g.name || 'Guest') + ' → ' + next + ' — the meal tally keeps count.');
                                 }}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
                               <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
-                                value={g.phone || ''} onChange={e => writeGuest(i, { phone: e.target.value }, null)} aria-label="Phone" />
+                                value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
                               <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="email" type="email"
-                                value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" />
+                                value={g.email || ''} onChange={e => writeGuest(i, { email: e.target.value }, null)} aria-label="Email" aria-invalid={isMalformedEmail(g.email)} />
                               <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="group" list="v2-groups"
                                 value={g.group || ''} onChange={e => writeGuest(i, { group: e.target.value }, null)} aria-label="Group" />
                             </div>
