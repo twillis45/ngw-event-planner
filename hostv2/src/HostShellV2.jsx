@@ -1550,6 +1550,35 @@ export default function HostShellV2() {
     return () => window.removeEventListener('keydown', onKey);
   }, [paletteOpen]);
   useEffect(() => { if (paletteOpen) { setPaletteQ(''); setTimeout(() => { try { paletteInputRef.current?.focus(); } catch { /* not mounted */ } }, 20); } }, [paletteOpen]);
+  // Audit #1/#2 (host review board): on a phone the Back gesture must CLOSE an
+  // open overlay (a sheet or the command palette), not exit the app. Push ONE
+  // history entry when an overlay opens; Back pops it and we close the overlay.
+  // If it's closed another way (Close button, a deep-link route), we consume the
+  // pushed entry so the history stack stays balanced.
+  const overlayOpen = !!sheet || paletteOpen;
+  const overlayPushedRef = useRef(false);
+  useEffect(() => {
+    if (overlayOpen && !overlayPushedRef.current) {
+      overlayPushedRef.current = true;
+      try { window.history.pushState({ ngwOverlay: true }, ''); } catch { /* history blocked */ }
+    } else if (!overlayOpen && overlayPushedRef.current) {
+      overlayPushedRef.current = false;
+      try { if (window.history.state && window.history.state.ngwOverlay) window.history.back(); } catch { /* history blocked */ }
+    }
+  }, [overlayOpen]);
+  useEffect(() => {
+    const onPop = () => {
+      // Back was pressed. If our entry was live, swallow it and close the overlay
+      // instead of letting the browser leave the app.
+      if (overlayPushedRef.current) {
+        overlayPushedRef.current = false;
+        setPaletteOpen(false);
+        setSheet(null);
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   // Sheet modal a11y (per-screen audit, cross-cutting fix — all 22 sheets share
   // this one container). Adds what every sheet was missing: Escape-to-close,
   // initial focus into the dialog, and focus restore to whatever opened it.
@@ -4919,7 +4948,18 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1 }}>
+                {/* Audit #1: cross-nav — from ANY sheet, hop to the Sections
+                    directory (and from there to any other surface) instead of
+                    Close → re-open. Hidden on the directory itself. */}
+                {sheet.kind !== 'sections' && (
+                  <button onClick={() => setSheet({ kind: 'sections' })} aria-label="Back to all sections"
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--steel-soft)', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: 650, letterSpacing: '.02em', textAlign: 'left', alignSelf: 'flex-start' }}>
+                    ‹ Sections
+                  </button>
+                )}
               <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
