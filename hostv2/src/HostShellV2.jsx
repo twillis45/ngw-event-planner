@@ -80,7 +80,7 @@ import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
-import { mintVendorBriefLink, isVendorBriefApiConfigured } from '@app/lib/api/vendorBrief';
+import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
@@ -2649,6 +2649,28 @@ export default function HostShellV2() {
     })();
     return () => { dead = true; };
   }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Vendor confirm-back read-back (build-map #10, Phase 2): a vendor who opened
+  // the brief link and confirmed (or flagged an issue) lands here, so the host's
+  // cockpit shows the vendor's OWN answer. Read-only display — the backend
+  // capture + the vendor-side form already exist; this is the V2 host surface.
+  // Degrades to [] when the API isn't configured (the demo) — no dead UI.
+  const [vendorConfirmations, setVendorConfirmations] = useState([]);
+  useEffect(() => {
+    if (!isVendorBriefApiConfigured()) { setVendorConfirmations([]); return undefined; }
+    let dead = false;
+    (async () => {
+      try { const rows = await fetchVendorConfirmations(event.id); if (!dead) setVendorConfirmations(Array.isArray(rows) ? rows : []); }
+      catch { if (!dead) setVendorConfirmations([]); }
+    })();
+    return () => { dead = true; };
+  }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Latest confirmation per vendor id (server returns newest-first, so first wins).
+  const confirmationByVendor = useMemo(() => {
+    const m = {};
+    for (const c of vendorConfirmations) { const vid = String(c && c.vendor_id); if (vid && !m[vid]) m[vid] = c; }
+    return m;
+  }, [vendorConfirmations]);
 
   // Which engine actions have a real in-place edit here. Everything else stays an
   // honest route toast — never a button that pretends.
@@ -7662,6 +7684,9 @@ export default function HostShellV2() {
                     try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
                     const isOpen = sheet.focus === v.id;
                     const good = isVendorBooked(v);
+                    // Build-map #10: this vendor's own confirm-back, if they answered
+                    // the brief link (backend + vendor-side form already shipped).
+                    const vConfirm = confirmationByVendor[String(v.id)] || null;
                     return (
                       <div key={v.id} className={'vcard' + (isOpen ? ' open' : '')}
                         ref={el => { if (el && isOpen) el.scrollIntoView({ block: 'center' }); }}
@@ -7690,14 +7715,30 @@ export default function HostShellV2() {
                             </button>
                           )}
                         </div>
-                        {(worry || coiAct || memLine) && (
+                        {(worry || coiAct || memLine || vConfirm) && (
                           <div className="vc-chips">
+                            {vConfirm && <span className="vc-chip" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'Confirmed by vendor' : 'Vendor flagged an issue'}</span>}
                             {worry && <span className="vc-chip">{chipify(worry)}</span>}
                             {coiAct && <span className="vc-chip">COI needed</span>}
                             {!worry && !coiAct && memLine && <span className="vc-chip quiet">{chipify(memLine)}</span>}
                           </div>
                         )}
                         <div className="vc-more" onClick={ev => ev.stopPropagation()}>
+                          {/* Build-map #10: the vendor's own confirm-back on the brief
+                              link — their words, back in the host's ledger. Read-only. */}
+                          {vConfirm && (
+                            <div className="brow" style={{ marginBottom: 'var(--sp-3)' }}>
+                              <div className="f-name" style={{ marginBottom: 3 }}>
+                                {vConfirm.state === 'confirmed' ? 'They confirmed the brief' : 'They flagged something'}
+                                <span className="tag plan" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'confirmed' : 'issue'}</span>
+                              </div>
+                              {(vConfirm.on_site_name || vConfirm.on_site_phone) && (
+                                <p className="grounding" style={{ margin: '0 0 2px' }}>On-site: {[vConfirm.on_site_name, vConfirm.on_site_phone].filter(Boolean).join(' · ')}</p>
+                              )}
+                              {vConfirm.note && <p className="grounding" style={{ margin: '0 0 2px' }}>“{vConfirm.note}”</p>}
+                              <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Answered {(() => { try { return new Date(vConfirm.updated_at || vConfirm.submitted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return 'recently'; } })()} — from the brief link you shared.</p>
+                            </div>
+                          )}
                           {/* Contact info — a vendor added from a suggested category
                               starts life as { category, name:'' } with no way to name it
                               or reach it; nothing in this cockpit ever wrote name/phone/
