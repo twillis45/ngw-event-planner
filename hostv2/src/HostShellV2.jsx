@@ -211,7 +211,7 @@ const mkTest = (id, name, typeRe, plus, extras) => {
       { id: id + '-g4', name: 'Aunt Cee', rsvp: '' },
     ],
     // Realistic mid-flight: early steps done, day-adjacent steps open.
-    timeline: rows.map((r, i) => ({ id: r.id, week: r.week || '', task: r.task || '', done: i < Math.ceil(rows.length / 2), owner: '' })),
+    timeline: rows.map((r, i) => ({ id: r.id, week: r.week || '', task: r.task || '', done: i < Math.ceil(rows.length / 2), owner: '', category: r.category || '' })),
     ...extras,
   };
 };
@@ -1271,6 +1271,61 @@ export default function HostShellV2() {
     setSheet({ kind: 'tasks', focus: u.taskId || null });
   };
 
+  // ROW-LEVEL ACTIONABILITY (host directive 2026-07-12): a checklist step is a
+  // LAUNCH POINT, not just a checkbox. Subject-match the step text to the ONE
+  // surface where the host actually does it — the spread, the people they're
+  // hiring, the space list, the guest list, the weather plan, the day itself —
+  // so the row carries a deep-link to that spot (Row-Level CTA rule). Same
+  // honest keyword approach as routeUpNext: a step with no clear home returns
+  // null and gets NO button — never a dead CTA. Order matters: the more specific
+  // verb wins ("spread the word" is guest comms, not "the spread" of food).
+  const checklistActionFor = (task, meta = {}) => {
+    const t = String(task || '').toLowerCase();
+    const wk = String(meta.week || '').toLowerCase();
+    const dayOf = meta.category === 'event-day' || /day of\b|day-of/.test(wk);
+    // Day-of run of show — setup, serving, the pit, the pack-down. (\bserved?\b
+    // is word-bounded so it never fires on "reserve".)
+    if (dayOf || /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t))
+      return { label: 'See the day plan', go: () => { setSheet(null); setStage('day'); } };
+    // Day-BEFORE kitchen prep (marinate / cook overnight / make-ahead) is real-
+    // world execution with no app surface to open — honest check-off, no CTA.
+    if (/\b(marinate|season the|slow-cook|cook the|make-ahead|prep)\b/.test(t))
+      return null;
+    // Buying / groceries / supplies → the shopping list
+    if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
+      return { label: 'Open the list', go: () => setSheet({ kind: 'food' }) };
+    // Hired help — DJ, band, photographer, caterer, rentals → people you're hiring
+    if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
+      return { label: 'Line them up', go: () => setSheet({ kind: 'vendors' }) };
+    // Weather / forecast / rain → the rain plan
+    if (/\b(forecast|weather|rain plan|shade\/rain)\b/.test(t))
+      return { label: 'Plan for weather', go: () => setSheet({ kind: 'rain' }) };
+    // Guest comms / headcount / who's coming → the guest list (before food, so
+    // "spread the word" doesn't get caught by the food "spread" match)
+    if (/\b(spread the word|group text|flyer|invite|rsvp|headcount|who is coming|firm the (head)?count)\b/.test(t))
+      return { label: 'Open guests', go: () => setSheet({ kind: 'guests' }) };
+    // The menu / spread / dishes / who's bringing what → the food plan
+    if (/\b(spread|menu|dish(es)?|mac|potato salad|beans|greens|cornbread|slaw|dessert|meat|ribs|assign each|bringing what|claimed|potluck)\b/.test(t))
+      return { label: 'Map the spread', go: () => setSheet({ kind: 'food' }) };
+    // Physical setup gear — canopies, chairs, tables, seating, shade → space
+    if (/\b(canop|chairs|tables?|seating|shade|spades table|tent)\b/.test(t))
+      return { label: 'Open the space list', go: () => setSheet({ kind: 'space' }) };
+    // Naming a lead / helper / backup person → the helpers on the space sheet
+    if (/\b(grill master|name the|point person|in charge|backup|helper)\b/.test(t))
+      return { label: 'Assign it', go: () => setSheet({ kind: 'space' }) };
+    return null;
+  };
+  // Split a run-on step into a bold lead action + the detail that follows the
+  // first separator, so the row is scannable ("Map the spread" over the list of
+  // dishes). Display-only — never mutates the stored task text.
+  const splitTask = (task) => {
+    const s = String(task || '').trim();
+    const m = /^(.{3,58}?)(:| — |; | \()(.*)$/.exec(s);
+    if (!m) return { lead: s, detail: '' };
+    const detail = (m[2] === ' (' ? '(' : '') + m[3];
+    return { lead: m[1].trim(), detail: detail.trim() };
+  };
+
   // ── Weather alerting (modern live-activity pill) ──
   // LIVE when configured: the production pipeline verbatim — geocodeVenue →
   // getEventWeatherRisk (proxy via the API base, or the OpenWeather key).
@@ -2242,7 +2297,7 @@ export default function HostShellV2() {
   const draftTimeline = () => {
     const rows = (() => { try { return playbookChecklist(event) || []; } catch { return []; } })();
     if (!rows.length) { toast(event.date ? 'No playbook checklist for this type.' : 'Set the date first — the checklist works backward from it.'); return; }
-    const tasks = rows.map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '' }));
+    const tasks = rows.map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '', category: r.category || '' }));
     patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted — the engine gates them by your choices and works back from the date.');
   };
 
@@ -3073,7 +3128,7 @@ export default function HostShellV2() {
     };
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
-    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '' })); } catch {}
+    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
     setEventId(newId); setRevealed(true);
     // Build-map #3: a freshly created event is the host's new resume pointer.
@@ -3640,7 +3695,7 @@ export default function HostShellV2() {
                   <div className="t-label">Where you stand{' '}
                     <span role="button" tabIndex={0} style={{ opacity: .55, padding: '2px 6px' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setHandledOpen(o => !o); } }}>
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
                       {handledOpen ? "▴ what’s counted" : "▾ what’s counted"}
                     </span>
                   </div>
@@ -5736,7 +5791,7 @@ export default function HostShellV2() {
                     ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
                     style={{ cursor: 'pointer' }} role="button" tabIndex={0}
                     onClick={() => setSeatPick(isPicked ? null : g.id)}
-                    onKeyDown={e => { if (e.key === 'Enter') setSeatPick(isPicked ? null : g.id); }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSeatPick(isPicked ? null : g.id); } }}
                     aria-label={g.name + (seated ? ' — seated. Tap to move them.' : ' — needs a seat. Tap, then tap a table.')}>
                     <span className="f-main">
                       <span className="f-name">{g.name}
@@ -5747,7 +5802,7 @@ export default function HostShellV2() {
                     {seated && (
                       <span className="mini" role="button" tabIndex={0}
                         onClick={e => { e.stopPropagation(); unseatGuest(g); }}
-                        onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); unseatGuest(g); } }}>
+                        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); unseatGuest(g); } }}>
                         unseat
                       </span>
                     )}
@@ -6718,6 +6773,8 @@ export default function HostShellV2() {
                     // other sheet (decisions, lodging, ground, air, seating) already
                     // uses 'rowfocus' for exactly this; this was the one sheet that
                     // never got migrated to it.
+                    const { lead, detail } = splitTask(t.task);
+                    const action = checklistActionFor(t.task, { week: t.week, category: t.category });
                     return (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
@@ -6725,7 +6782,7 @@ export default function HostShellV2() {
                       onClick={() => toggleTask(i)}>
                       <span className="fcheck" aria-hidden="true" />
                       <span className="f-main">
-                        <span className="f-name">{t.task}
+                        <span className="f-name">{lead}
                           {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
                           {(() => { // compressed-timeline urgency, the engine's word (never for standard)
                             try {
@@ -6739,7 +6796,21 @@ export default function HostShellV2() {
                             } catch { return null; }
                           })()}
                         </span>
-                        <span className="v-meta">{[t.week, t.owner].filter(Boolean).join(' · ')}</span>
+                        {detail ? <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{detail}</span> : null}
+                        <span className="v-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          {[t.week, t.owner].filter(Boolean).join(' · ')}
+                          {/* Deep-link to the surface that handles this step — nested
+                              role=button span (same pattern as the food row's tune
+                              control), stopPropagation so it launches instead of
+                              toggling the check. */}
+                          {action ? (
+                            <span role="button" tabIndex={0} className="mini"
+                              onClick={e => { e.stopPropagation(); action.go(); }}
+                              onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); action.go(); } }}>
+                              {action.label} →
+                            </span>
+                          ) : null}
+                        </span>
                       </span>
                     </button>
                     );
@@ -7358,7 +7429,7 @@ export default function HostShellV2() {
                               ) : (
                                 <span className="amt" role="button" tabIndex={0}
                                   onClick={e => { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); }}
-                                  onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); } }}
+                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setTuneCost(midpointStr(it)); setTuneEdited(false); setFoodTune(it.id); } }}
                                   title="Tap to enter the real price">
                                   {/* Host-added lines carry a single committed cost (event.foodAdd's
                                       cost — never a range), so no invented spread. Blank/$0 at add
@@ -7378,7 +7449,7 @@ export default function HostShellV2() {
                               )}
                               <span className="mini" role="button" tabIndex={0} style={{ marginLeft: 6 }}
                                 onClick={e => { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); }}
-                                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); } }}>
+                                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); if (!tuning) { setTuneCost(midpointStr(it)); setTuneEdited(false); } setFoodTune(tuning ? null : it.id); } }}>
                                 {tuning ? 'more' : 'tune'}
                               </span>
                               {/* Host-added lines are fully deletable (not just skippable) —
@@ -8092,6 +8163,34 @@ export default function HostShellV2() {
                                 )}
                               </div>
                             )}
+                            {/* #39 POST-HOC PRICE NUDGE — only when the budget is
+                                actually tight (heroCopy 'over'/'near') AND lines the
+                                host already BOUGHT are still counted at an estimate,
+                                not a real receipt (foodGot set, but not locked+foodReal).
+                                Those estimated dollars are the ones most likely to be
+                                wrong when money is close — so ask for what was really
+                                paid. Routes to the FIRST such line's tune field
+                                (row-level CTA rule), never the sheet top. Silent when
+                                the budget has room: no nagging an on-track host. */}
+                            {r.kind === 'food' && foodPlan && heroCopy && (heroCopy.state === 'over' || heroCopy.state === 'near') && (() => {
+                              const boughtEst = (foodPlan.list || []).filter(it => it && !it.skipped
+                                && (event.foodGot || {})[it.id]
+                                && !((it.locked != null) && (event.foodReal || {})[it.id] === true)
+                                && (Number(it.low) || Number(it.high) || it.locked != null));
+                              if (!boughtEst.length) return null;
+                              const first = boughtEst[0];
+                              const n = boughtEst.length;
+                              return (
+                                <div className="later-row" style={{ marginTop: 6, background: 'var(--warn-tint)', border: 'none', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) var(--sp-3)', flexWrap: 'wrap', gap: 6 }}>
+                                  <span className="t" style={{ color: 'var(--warn)', fontWeight: 600, flex: '1 1 auto' }}>
+                                    {n === 1 ? 'One item you already bought is' : `${n} items you already bought are`} still counted at an estimate. The budget’s tight — enter what you actually paid so “spent” is real, not a guess.
+                                  </span>
+                                  <button className="mini" onClick={() => { setSheet({ kind: 'food', focus: first.id }); setFoodTune(first.id); }}>
+                                    {n === 1 ? 'Enter the real price' : 'Enter the real prices'}
+                                  </button>
+                                </div>
+                              );
+                            })()}
                           </div>
                         );
                       })}
