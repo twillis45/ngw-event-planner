@@ -67,6 +67,9 @@
   --pad-card-compact:var(--sp-3) var(--sp-4); /* dense list-group cards (12 v / 16 h) */
   --field-y:10px;                             /* field vertical padding role */
   --field-compact:6px 10px;                   /* the small inline input size (was 6/10, 5/10, 5/8 — now one) */
+  --field:10px var(--sp-3);                   /* the medium inline input size (was 10/12, 10/14, 10/6) */
+  --break-major:44px;                         /* the LARGE break — major sections & day nodes (was 44/48) */
+  --pad-empty:14px 2px;                        /* the empty-state / v-meta block padding (was inline ×10) */
 
   /* ── Radius scale — the app's rounded-corner set. The card family (.card,
      .vcard, .fgroup) shares --r-lg (they had drifted to 20/18/16 for one
@@ -282,7 +285,7 @@ button{font-family:inherit}
 .lens:hover{border-color:var(--steel)}
 .lens[aria-pressed="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
 
-.sect{display:flex; align-items:baseline; gap:14px; margin:48px 0 var(--sp-4)}
+.sect{display:flex; align-items:baseline; gap:14px; margin:var(--break-major) 0 var(--sp-4)}/* audit: 48→44, one major-break token */
 .sect h2{font-size:var(--t-section); font-weight:800; letter-spacing:-.03em; margin:0; white-space:nowrap}
 .sect .rule{flex:1; height:1px; background:var(--line)}
 .sect .when{font-size:var(--t-note); font-weight:650; color:var(--faint); white-space:nowrap}
@@ -357,7 +360,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .fold-btn .chev{margin-left:auto; color:var(--faint)}
 
 .day-node{
-  margin:44px -20px 0; padding:30px var(--sp-5) var(--sp-7);
+  margin:var(--break-major) calc(-1 * var(--sp-5)) 0; padding:30px var(--sp-5) var(--sp-7);/* audit: --break-major + calc bleed */
   background:linear-gradient(150deg, var(--carbon-panel) 0%, var(--carbon) 70%); color:var(--carbon-text);
 }
 .day-node .eyebrow{color:var(--carbon-muted)}

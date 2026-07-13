@@ -5041,7 +5041,7 @@ export default function HostShellV2() {
                       </span>
                     </button>
                   );
-                }) : <div className="v-meta" style={{ padding: '14px 2px' }}>Nothing waiting on you.</div>}
+                }) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>}
                 {(decisionBoard.locked || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>
@@ -5270,7 +5270,7 @@ export default function HostShellV2() {
                   </>
                 )}
                 {!((capacity && (capacity.items || []).length) || helpers.length) && (
-                  <div className="v-meta" style={{ padding: '14px 2px' }}>Nothing to set up or borrow for this one.</div>
+                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing to set up or borrow for this one.</div>
                 )}
               </>
             )}
@@ -5283,7 +5283,7 @@ export default function HostShellV2() {
               // touches spending math, and the pool is never totaled
               // (per-tier headcounts are the family's business).
               if (!travel.relevant) {
-                return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — everyone covers their own costs. If it becomes a destination event (Space, seats & helpers), you can set up a shared pool here.</div>;
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — everyone covers their own costs. If it becomes a destination event (Space, seats & helpers), you can set up a shared pool here.</div>;
               }
               const cs = costSharingSummary(event);
               const f = csForm || { reason: '', cadence: '', tiers: [] };
@@ -5349,7 +5349,7 @@ export default function HostShellV2() {
               // from lib/travelPlan or the host's own form: headcount mode
               // degrades to the stay card alone — guest rows never invented.
               if (!travel.relevant) {
-                return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody needs a room. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody needs a room. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const lg = travel.lodging;
               const f = lodgeForm || { hotelName: '', rate: '', code: '', deadline: '', backups: [] };
@@ -5488,7 +5488,7 @@ export default function HostShellV2() {
               // toggle. Headcount mode keeps the host info card and degrades
               // the ride board — guest rows are never invented.
               if (!travel.relevant) {
-                return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody’s coordinating travel. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody’s coordinating travel. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const gr = travel.ground;
               const f = groundForm || { lastReturnNote: '', pickups: [{ name: '', note: '' }] };
@@ -5638,7 +5638,7 @@ export default function HostShellV2() {
               // mode keeps the airports card and drops the board — guest rows
               // are never invented.
               if (!travel.relevant) {
-                return <div className="v-meta" style={{ padding: '14px 2px' }}>This is a local event — nobody’s flying in. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>This is a local event — nobody’s flying in. If that changes, mark it as a destination event under Space, seats & helpers.</div>;
               }
               const ar = travel.air;
               const f = airForm || { airports: [{ name: '', code: '', note: '' }] };
@@ -5821,7 +5821,7 @@ export default function HostShellV2() {
               // only occupancy, the average, and the evenness the engine derives.
               const sp = seating;
               if (!sp.hasRoster || sp.totals.confirmed === 0) {
-                return <div className="v-meta" style={{ padding: '14px 2px' }}>Seating works from your guest list — once someone says yes, their name shows up here to be seated.</div>;
+                return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Seating works from your guest list — once someone says yes, their name shows up here to be seated.</div>;
               }
               const picked = seatPick != null ? sp.confirmed.find(g => String(g.id) === String(seatPick)) : null;
               const focusId = sheet.focus != null ? String(sheet.focus) : null;
@@ -6517,7 +6517,7 @@ export default function HostShellV2() {
                   ))}
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Who’s actually picking?</div>
                   <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 'var(--r-md)', padding: '6px var(--sp-1)' }}>
-                    <input className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="0"
+                    <input className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0"
                       placeholder={String(guests || '')} aria-label="Serious crab pickers"
                       value={cp.crabEatingHeadcount || ''}
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
@@ -6537,9 +6537,9 @@ export default function HostShellV2() {
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'center' }}>
-                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="1" aria-label="How many"
+                    <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="1" aria-label="How many"
                       value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
-                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: '10px var(--sp-3)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
+                    <input className="field" style={{ maxWidth: 120, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0" placeholder="$ each" aria-label="Price each"
                       value={crabAdd.price} onChange={e => setCrabAdd(a => ({ ...a, price: e.target.value }))} />
                     <button className="cta" onClick={() => {
                       const l = { id: 'cl-' + lines.length + '-' + crabAdd.size + '-' + crabAdd.unit, size: crabAdd.size, unit: crabAdd.unit, quantity: crabAdd.qty, pricePerUnit: parseFloat(crabAdd.price) || undefined, estimatedCountPerUnit: defaultCountPerUnit(crabAdd.size, crabAdd.unit) || undefined };
@@ -7053,7 +7053,7 @@ export default function HostShellV2() {
                 </>
               ) : (
                 <>
-                  <div className="v-meta" style={{ padding: '14px 2px' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
+                  <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
                   <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
                 </>
               )
@@ -7924,7 +7924,7 @@ export default function HostShellV2() {
                   )}
                 </div>
               </>
-            ) : <div className="v-meta" style={{ padding: '14px 2px' }}>No spread to build for this kind of event yet.</div>)}
+            ) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No spread to build for this kind of event yet.</div>)}
             {sheet.kind === 'vendors' && (() => {
               // Queue item 6 — the promise-model engine (vendorAccountability):
               // cross-vendor conflicts up top, a per-vendor accountability line
@@ -8252,7 +8252,7 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div style={{ marginTop: 'var(--sp-2)', padding: '10px var(--sp-3)', border: '1px solid var(--line)', borderRadius: 10 }}>
+                            <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 10 }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : (
@@ -8316,7 +8316,7 @@ export default function HostShellV2() {
                     </div>
                   ))}
                 </>
-              ) : (!hasVendors && <div className="v-meta" style={{ padding: '14px 2px' }}>No vendors on this event yet.</div>)}
+              ) : (!hasVendors && <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No vendors on this event yet.</div>)}
               </>
               );
             })()}
