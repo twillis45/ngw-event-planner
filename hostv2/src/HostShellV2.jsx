@@ -1373,6 +1373,17 @@ export default function HostShellV2() {
     writeVendor(v.id, { status: next },
       (v.name || v.category || 'This vendor') + ' → ' + next + ' — ' + VENDOR_STATUS_MEANING[next] + '.');
   };
+  // Audit #6 — tap-to-cycle hid the option set (a host couldn't predict what a
+  // tap did, or jump straight to "Confirmed"). This opens an explicit picker of
+  // the whole ladder; the pill toggles it, a chip sets the status directly.
+  const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
+  const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
+  const setVendorStatus = (v, status) => {
+    writeVendor(v.id, { status },
+      (v.name || v.category || 'This vendor') + ' → ' + status + ' — ' + VENDOR_STATUS_MEANING[status] + '.');
+    setStatusPickFor(null);
+  };
+  const vendorStatusIsCurrent = (v, s) => (v.status === s) || ((v.status === 'Booked' || v.status === 'Paid') && s === 'Confirmed');
   // WAVE-B write path (c): money. Draft buffer for the "what you agreed to
   // pay" field (commits on blur/Enter, Escape abandons); both money writes use
   // the budget editor's MONEY-MOVE UNDO pattern — snapshot just the field the
@@ -7896,17 +7907,35 @@ export default function HostShellV2() {
                           {v.isInformal ? (
                             <span className="vc-pill">helping out</span>
                           ) : (
-                            /* WAVE-B (a): the pill WRITES now — every status read
-                               (vendorIntelligence, workstreams, GOOD above) consumed
-                               v.status but nothing in this cockpit could set it.
-                               One tap moves it up the ladder, like lodging rows. */
+                            /* Audit #6: the pill opens an explicit status PICKER
+                               (below) instead of silently cycling — the host sees
+                               every state and taps the real one. */
                             <button className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
-                              onClick={ev => { ev.stopPropagation(); cycleVendorStatus(v); }}
-                              aria-label={'Booking status: ' + (v.status || 'not set') + '. Tap to move it forward.'}>
+                              onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
+                              aria-expanded={statusPickFor === v.id} aria-haspopup="true"
+                              aria-label={'Booking status: ' + (v.status || 'not set') + '. Tap to change.'}>
                               {v.status || 'set status'}
                             </button>
                           )}
                         </div>
+                        {!v.isInformal && statusPickFor === v.id && (
+                          <div className="vc-statuspick" role="group" aria-label="Set booking status"
+                            style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
+                            {VENDOR_STATUS_LADDER.map(s => {
+                              const cur = vendorStatusIsCurrent(v, s);
+                              return (
+                                <button key={s} className={'vc-pill' + (cur ? ' good' : '')}
+                                  onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
+                                  aria-pressed={cur} style={cur ? undefined : { opacity: .82 }}>
+                                  {s}
+                                </button>
+                              );
+                            })}
+                            <span className="grounding" style={{ flexBasis: '100%', margin: '2px 0 0', color: 'var(--faint)' }}>
+                              {v.status ? VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || 'Tap where this vendor really is.' : 'Tap where this vendor really is — you can change it anytime.'}
+                            </span>
+                          </div>
+                        )}
                         {(worry || coiAct || memLine || vConfirm) && (
                           <div className="vc-chips">
                             {vConfirm && <span className="vc-chip" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'Confirmed by vendor' : 'Vendor flagged an issue'}</span>}
@@ -8691,24 +8720,33 @@ export default function HostShellV2() {
                             </div>
                             <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                               {/* Meal edit (guests parity gap #5): writes the SAME
-                                  guest.meal field the RSVP page and CSV import write —
-                                  tap cycles the invite's real meal choices. A free-text
-                                  meal from a CSV shows as-is; tapping replaces it (an
-                                  explicit host edit, confirmed by the toast). */}
+                                  guest.meal field the RSVP page and CSV import write.
+                                  Audit #6 — was tap-to-cycle (couldn't jump to a choice
+                                  or see the set); now the chip opens an inline PICKER of
+                                  the real meal choices, tap one to set it directly. */}
                               <span className="of">meal:</span>
-                              <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
-                                aria-label={'Meal for ' + (g.name || 'guest') + ' — tap to change'}
-                                onClick={() => {
-                                  const MC = ['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'];
-                                  const cur = MC.indexOf(String(g.meal || '—'));
-                                  // A free-text meal (cur === -1) steps into the choice
-                                  // cycle at Standard — never straight to "cleared".
-                                  const next = cur === -1 ? 'Standard' : MC[(cur + 1) % MC.length];
-                                  writeGuest(i, { meal: next },
-                                    next === '—'
-                                      ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
-                                      : (g.name || 'Guest') + ' → ' + next + ' — the meal tally keeps count.');
-                                }}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
+                              {mealPickFor === i ? (
+                                <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }} role="group" aria-label={'Meal for ' + (g.name || 'guest')}>
+                                  {['—', 'Standard', 'Vegetarian', 'Vegan', 'Gluten-Free'].map(m => {
+                                    const cur = String(g.meal || '—') === m;
+                                    return (
+                                      <button key={m} className="chip" aria-pressed={cur}
+                                        style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                        onClick={() => {
+                                          writeGuest(i, { meal: m }, m === '—'
+                                            ? (g.name || 'Guest') + '’s meal cleared — counts as unanswered.'
+                                            : (g.name || 'Guest') + ' → ' + m + ' — the meal tally keeps count.');
+                                          setMealPickFor(null);
+                                        }}>{m === '—' ? 'not answered' : m}</button>
+                                    );
+                                  })}
+                                </span>
+                              ) : (
+                                <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }}
+                                  aria-haspopup="true" aria-expanded={false}
+                                  aria-label={'Meal for ' + (g.name || 'guest') + ': ' + (String(g.meal || '—') === '—' ? 'not answered' : g.meal) + ' — tap to change'}
+                                  onClick={() => setMealPickFor(i)}>{String(g.meal || '—') === '—' ? 'not answered' : g.meal}</button>
+                              )}
                               <input className="field" style={{ maxWidth: 140, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="phone" type="tel"
                                 value={g.phone || ''} onChange={e => writeGuest(i, { phone: formatPhoneUS(e.target.value) }, null)} aria-label="Phone" />
                               <input className="field" style={{ maxWidth: 185, fontSize: 'var(--t-input)', padding: '6px 10px' }} placeholder="email" type="email"
