@@ -3620,7 +3620,7 @@ export default function HostShellV2() {
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit' }}
                   onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
                   <span className="t" style={{ color: 'var(--steel-soft)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>{returnLine.line}</span>
-                  {returnLine.route ? <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                  {returnLine.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                 </button>
               )}
 
@@ -3839,7 +3839,7 @@ export default function HostShellV2() {
                         <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px' }}
                           onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel); }}>
                           <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel}</span></span>
-                          <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                          <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
                         </button>
                       ))}
                     </>
@@ -4022,7 +4022,7 @@ export default function HostShellV2() {
                         <span className="db-lead">{lead}</span>
                         <span className="db-sub">{sub}</span>
                       </span>
-                      <span className="chev">›</span>
+                      <span className="chev" aria-hidden="true">›</span>
                     </button>
                     );
                   })}
@@ -4366,7 +4366,7 @@ export default function HostShellV2() {
                       <button key={r.key} className="qidx-row" onClick={r.go}>
                         <span className="qidx-l">{r.label}</span>
                         <span className={'qidx-s' + (r.attn ? ' attn' : '')}>{r.sub}</span>
-                        <span className="chev">›</span>
+                        <span className="chev" aria-hidden="true">›</span>
                       </button>
                     ))}
                   </div>
@@ -4745,7 +4745,7 @@ export default function HostShellV2() {
                     {hostRowsGo().map(r => (
                       <button key={r.label} className="line" style={{ width: '100%', background: 'none', border: 'none', font: 'inherit', color: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0 }}
                         onClick={r.go} aria-label={'Open ' + r.label}>
-                        <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
+                        <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
                         <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
                       </button>
                     ))}
@@ -4896,7 +4896,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
-              <strong id="sheet-title">{sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -5075,7 +5075,7 @@ export default function HostShellV2() {
                         <button key={s.key} className="line" style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: '7px 0' }}
                           onClick={() => setSheet({ kind: 'rain' })} aria-label={'Open ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
-                            <strong style={{ color: rowColor }}>{s.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></strong>
+                            <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></strong>
                             {s.detail ? ' — ' + s.detail : ''}
                           </span>
                         </button>
@@ -5087,7 +5087,7 @@ export default function HostShellV2() {
                         <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex' }}
                           onClick={() => setPlaceNoteOpen(isNoteOpen ? null : s.key)} aria-label={'Add note for ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
-                            <strong style={{ color: rowColor }}>{s.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>
+                            <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>
                             {s.detail ? ' — ' + s.detail : ''}
                           </span>
                         </button>
@@ -5857,7 +5857,7 @@ export default function HostShellV2() {
                           <span className="of" style={{ fontWeight: 700, color: t.count ? 'var(--ink-soft)' : 'var(--faint)' }}>
                             {t.count ? t.count + ' seated' : 'empty'}
                           </span>
-                          <span className="chev" style={{ position: 'static', color: 'var(--faint)', transform: isOpen ? 'rotate(90deg)' : 'none' }}>›</span>
+                          <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)', transform: isOpen ? 'rotate(90deg)' : 'none' }}>›</span>
                         </button>
                         {isOpen && (
                           <div style={{ padding: '2px 0 var(--sp-2) 14px' }}>
@@ -6747,7 +6747,7 @@ export default function HostShellV2() {
                     <>
                       <button className="fold-btn" style={{ color: 'var(--ok)' }} onClick={() => setDoneOpen(o => !o)}>
                         {(event.timeline || []).filter(t => t && t.done).length} done — the plan has them
-                        <span className="chev">{doneOpen ? '▾' : '›'}</span>
+                        <span className="chev" aria-hidden="true">{doneOpen ? '▾' : '›'}</span>
                       </button>
                       {doneOpen && (event.timeline || []).map((t, i) => (t && t.done) ? (
                         <button key={t.id || i} className="frow got" onClick={() => toggleTask(i)}>
@@ -7202,7 +7202,7 @@ export default function HostShellV2() {
                           </div>
                           <div className={'fg-track' + (gDone ? ' done' : '')}><i style={{ width: (gActive.length ? gBought / gActive.length * 100 : 100) + '%' }} /></div>
                         </div>
-                        <span className="fg-chev">›</span>
+                        <span className="fg-chev" aria-hidden="true">›</span>
                       </button>
                       <div className="fg-items">
                       {isOpen && gItems.map((it, i) => {
@@ -7607,7 +7607,7 @@ export default function HostShellV2() {
                     </div>
                   ) : (
                     <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setFoodAddOpen(true)}>
-                      + Add an item you’re bringing or buying<span className="chev">›</span>
+                      + Add an item you’re bringing or buying<span className="chev" aria-hidden="true">›</span>
                     </button>
                   )}
                 </div>
@@ -7698,7 +7698,7 @@ export default function HostShellV2() {
                   {conflicts.length > 0 && (
                     <button className="conflictbar" onClick={() => setSheet(s => ({ ...s, conflictsOpen: !s.conflictsOpen }))}>
                       <span>{conflicts.length} thing{conflicts.length === 1 ? '' : 's'} between vendors need{conflicts.length === 1 ? 's' : ''} a look</span>
-                      <span style={{ transform: sheet.conflictsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 200ms var(--ease-out)' }}>›</span>
+                      <span aria-hidden="true" style={{ transform: sheet.conflictsOpen ? 'rotate(90deg)' : 'none', transition: 'transform 200ms var(--ease-out)' }}>›</span>
                     </button>
                   )}
                   {sheet.conflictsOpen && conflicts.slice(0, 4).map((c, i) => (
@@ -8061,7 +8061,7 @@ export default function HostShellV2() {
                               style={{ display: 'block', width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: '1px solid var(--line-soft)', font: 'inherit', color: 'inherit', cursor: 'pointer', animation: `cardin 300ms var(--ease-out) ${i * 40}ms both` }}
                               onClick={r.go} aria-label={'Open ' + r.label}>
                               <div className="line" style={{ padding: '0 0 5px' }}>
-                                <span>{r.label} <span className="chev" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
+                                <span>{r.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span></span>
                                 {/* "$0 bought" ×3 before any buying is noise — the
                                     bought figure earns its place once buying starts */}
                                 {allBought
@@ -8131,7 +8131,7 @@ export default function HostShellV2() {
                       </div>
                     ) : (
                       <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setBudgetFoldOpen(true)}>
-                        Your budget — {fmt(money.planned)}<span className="chev">›</span>
+                        Your budget — {fmt(money.planned)}<span className="chev" aria-hidden="true">›</span>
                       </button>
                     )
                   ) : (
@@ -8179,7 +8179,7 @@ export default function HostShellV2() {
               const csvBlock = !csvOpen ? (
                 <button className="fold-btn" onClick={() => setCsvOpen(true)}>
                   Import a guest list (CSV)
-                  <span className="chev">›</span>
+                  <span className="chev" aria-hidden="true">›</span>
                 </button>
               ) : (
                 <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
@@ -8218,7 +8218,7 @@ export default function HostShellV2() {
               const pastImports = importBatches.length === 0 ? null : !importsOpen ? (
                 <button className="fold-btn" style={{ marginTop: 0 }} onClick={() => setImportsOpen(true)}>
                   Past imports · {importBatches.length}
-                  <span className="chev">›</span>
+                  <span className="chev" aria-hidden="true">›</span>
                 </button>
               ) : (
                 <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
@@ -8292,7 +8292,7 @@ export default function HostShellV2() {
                   return (
                     <button className="fold-btn" onClick={() => setInviteRulesOpen(true)}>
                       Invite rules — plus-ones, kids, addresses, gifts
-                      <span className="chev">›</span>
+                      <span className="chev" aria-hidden="true">›</span>
                     </button>
                   );
                 }
@@ -8646,7 +8646,7 @@ export default function HostShellV2() {
                   hosts read. A forecast claim may never outrun its source. */}
               {wxOpen ? 'Weather on your day' : (wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
             </span>
-            <span className="chev" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
+            <span className="chev" aria-hidden="true" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
           </button>
           {wxOpen && (
             <div className="wx-body">
