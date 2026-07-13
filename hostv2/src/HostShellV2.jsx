@@ -28,6 +28,7 @@ import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, dra
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
+import { answerPlanQuestion } from '@app/lib/askPlan';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
@@ -1614,6 +1615,10 @@ export default function HostShellV2() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteQ, setPaletteQ] = useState('');
   const paletteInputRef = useRef(null);
+  // Ask-the-plan Q&A (build-map #7): a typed question answered deterministically
+  // from the plan's own engine outputs, with the assumptions shown — no fake AI.
+  const [askQ, setAskQ] = useState('');
+  const [askResult, setAskResult] = useState(null);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen(o => !o); }
@@ -4836,7 +4841,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
-              <strong id="sheet-title">{sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title">{sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -5930,6 +5935,57 @@ export default function HostShellV2() {
                 </div>
               </>
             )}
+            {sheet.kind === 'ask' && (() => {
+              // Build the Q&A context from the SAME engine outputs the hero shows
+              // — no parallel math. Each term is present only when its data is.
+              const askCtx = {
+                money,
+                foodPlan: foodPlan ? {
+                  foodLow: foodPlan.foodLow, foodHigh: foodPlan.foodHigh,
+                  perHeadLow: foodPlan.guests ? foodPlan.foodLow / foodPlan.guests : null,
+                  perHeadHigh: foodPlan.guests ? foodPlan.foodHigh / foodPlan.guests : null,
+                  guests: foodPlan.guests || guests,
+                } : null,
+                guests: guests || null,
+                guestBand: expect ? `likely ${expect.low}–${expect.high} on the day${expect.note ? ` (${expect.note})` : ''}` : null,
+                wx,
+                readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
+                eventName: event.name,
+              };
+              const ask = (text) => { const t = String(text || '').trim(); if (!t) return; setAskQ(t); setAskResult(answerPlanQuestion(t, askCtx)); };
+              const goAnswer = (route) => {
+                if (route === 'plan') { setStage('plan'); setSheet(null); return; }
+                if (['budget', 'food', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
+              };
+              const examples = ['Will $2,000 cover it?', 'How much food do I need?', 'Am I ready?', 'Will it rain?'];
+              return (
+                <>
+                  <p className="grounding" style={{ margin: '0 0 12px' }}>Ask about your money, food, guests, weather, or what’s next — answered straight from your plan, with the assumptions shown. Nothing made up.</p>
+                  <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                    <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)' }} placeholder="e.g. will $2,000 cover it?"
+                      value={askQ} onChange={e => setAskQ(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') ask(askQ); }} aria-label="Ask a question about your plan" autoFocus />
+                    <button className="cta" onClick={() => ask(askQ)} disabled={!askQ.trim()}>Ask</button>
+                  </div>
+                  {!askResult && (
+                    <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                      {examples.map(ex => <button key={ex} className="mini" onClick={() => ask(ex)}>{ex}</button>)}
+                    </div>
+                  )}
+                  {askResult && (
+                    <div className="brow" style={{ marginTop: 'var(--sp-4)' }}>
+                      <p className="f-name" style={{ marginBottom: askResult.basis.length ? 6 : 0 }}>{askResult.answer}</p>
+                      {askResult.basis.map((b, i) => <p key={i} className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>{b}</p>)}
+                      {askResult.matched && askResult.route && (
+                        <div className="actions-row" style={{ marginTop: 8 }}>
+                          <button className="mini" onClick={() => goAnswer(askResult.route)}>Open it</button>
+                          <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); }}>Ask another</button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
             {sheet.kind === 'events' && (
               <>
                 {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0) && (
@@ -8571,6 +8627,7 @@ export default function HostShellV2() {
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
+          { label: 'Ask the plan', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
           { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
