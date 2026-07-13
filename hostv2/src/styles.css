@@ -247,6 +247,14 @@ button{font-family:inherit}
 .tile-a .t-num{font-size:48px/*one-off jumbo countdown numeral*/}
 .bar{height:10px; border-radius:6px; background:var(--bg-band); overflow:hidden; margin:var(--sp-3) 0 var(--sp-2)}
 .bar i{display:block; height:100%; border-radius:6px; background:var(--steel); transition:width .9s var(--ease-standard)}
+/* Paired stat tiles top-align their content (label + number + sub as one block)
+   instead of inheriting .tile's space-between. The grid stretches b/c to equal
+   height, so on the shorter tile (Budget's sub is short vs Guests') space-between
+   opened a big gap BETWEEN the label and the number — host report. Top-aligned,
+   the number sits right under its label like Guests already reads; any extra
+   height falls harmlessly at the bottom. (.tile-a keeps space-between — it fills
+   its height with the readiness bar.) */
+.tile-b, .tile-c{justify-content:flex-start; gap:var(--sp-2)}
 .tile-b{grid-area:b; background:var(--bg-band)}
 .tile-c{grid-area:c; background:var(--card); border:1px solid var(--line-soft)}
 .tile-d{grid-area:d; background:var(--cta-grad); color:var(--carbon-text); cursor:pointer;
@@ -441,8 +449,11 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px var(--sp-4); letter-spacing:-.01em;
 }
 .field:focus{outline:2px solid var(--steel); outline-offset:1px}
-.tick-list{margin:26px 0 0; padding:0; list-style:none}
-.tick-list li{position:relative; padding:0 0 var(--sp-5) 34px; font-size:var(--t-row); line-height:1.6; color:var(--ink-soft)}
+/* The Reveal is the app's magic moment — let the revealed rows BREATHE (host
+   direction). More space above the list, a generous gap between each line
+   (--sp-5 → --sp-7), and a taller line-height so each realization lands with air. */
+.tick-list{margin:var(--sp-7) 0 0; padding:0; list-style:none}
+.tick-list li{position:relative; padding:0 0 var(--sp-7) 34px; font-size:var(--t-row); line-height:1.72; color:var(--ink-soft)}
 .tick-list li strong{color:var(--ink); font-weight:750}
 .tick-list li::before{content:""; position:absolute; left:0; top:3px; width:20px; height:20px; border-radius:50%; background:var(--steel-tint)}
 .tick-list li::after{
