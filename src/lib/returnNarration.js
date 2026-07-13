@@ -30,7 +30,17 @@ export const RETURN_GAP_MS = 30 * 60 * 1000;
 export function buildReturnSnapshot(event, now = Date.now()) {
   const ev = event || {};
   let phase = 'unknown';
-  try { phase = deriveEventPhaseProgress(ev).phase; } catch { /* keep unknown */ }
+  let ready = null;
+  try {
+    const pp = deriveEventPhaseProgress(ev);
+    phase = pp.phase;
+    // Readiness fraction (same essentials ledger the "where you stand" tile
+    // reads) so a RETURN can show momentum — how many areas moved since the
+    // last visit — which no always-on tile does. Real counts only.
+    if (pp && Number.isFinite(Number(pp.totalCount)) && pp.totalCount > 0) {
+      ready = { done: num(pp.completedCount), total: num(pp.totalCount) };
+    }
+  } catch { /* keep unknown */ }
   let foodLeft = null;
   try {
     const plan = playbookFoodPlan(ev);
@@ -43,6 +53,7 @@ export function buildReturnSnapshot(event, now = Date.now()) {
   return {
     seenAt: now,
     phase,
+    ready,
     // the ONE shared location reader — phaseProgress, the weather source, and
     // this marker can never disagree again (eventLocationStatus !== 'missing')
     location: eventLocationStatus(ev) !== 'missing',

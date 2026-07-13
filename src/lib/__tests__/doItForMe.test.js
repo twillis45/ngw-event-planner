@@ -26,7 +26,7 @@ describe('draftInvite', () => {
   test('composes a warm, ready-to-send invite from real facts', () => {
     const { subject, body } = draftInvite(maya, profile);
     expect(subject).toContain('Maya’s graduation');
-    expect(body).toContain('🎓');
+    expect(body).toContain('You’re invited!');
     expect(body).toContain('Maya’s graduation');
     expect(body).toContain('Tuesday, July 7');
     expect(body).toContain('in the afternoon');
@@ -290,10 +290,10 @@ describe('draftShoppingList', () => {
     const dayOfIdx = body.indexOf('DAY-OF');
     expect(body.indexOf('Ice')).toBeGreaterThan(dayOfIdx);  // Ice lives under day-of
   });
-  test('marks an often-forgotten item with ⭐', () => {
+  test('marks an often-forgotten item with a text label', () => {
     const { body } = draftShoppingList(maya, profile, { items });
-    expect(body).toContain('⭐');
-    expect(body).toMatch(/Sunscreen.*⭐/);
+    expect(body).toContain('(often forgotten)');
+    expect(body).toMatch(/Sunscreen.*\(often forgotten\)/);
   });
   test('never prints a per-line dollar amount', () => {
     const priced = items.map((i) => ({ ...i, costLow: 3, costHigh: 6 }));
@@ -317,14 +317,14 @@ describe('draftShoppingList', () => {
   });
   test('with an anchor, the text carries the live store-finder map link + an order line', () => {
     const { body } = draftShoppingList(maya, profile, { items, anchor: 'Austin, TX' });
-    expect(body).toContain('📍 Find one near you: https://www.google.com/maps/search/?api=1&query=');
+    expect(body).toContain('Find one near you: https://www.google.com/maps/search/?api=1&query=');
     expect(body).toContain(encodeURIComponent('Austin, TX'));
-    expect(body).toMatch(/🛒 Order for pickup\/delivery: Instacart https?:\/\//);
+    expect(body).toMatch(/Order for pickup\/delivery: Instacart https?:\/\//);
   });
   test('no anchor → no map link line (never a fabricated store), order line still present', () => {
     const { body } = draftShoppingList(maya, profile, { items });
     expect(body).not.toContain('Find one near you');
-    expect(body).toMatch(/🛒 Order for pickup\/delivery: Instacart/);
+    expect(body).toMatch(/Order for pickup\/delivery: Instacart/);
   });
   test('venue chrome is stripped from the map link — only the locality reaches the query', () => {
     const { body } = draftShoppingList(maya, profile, { items, anchor: 'My place — Atlanta, Georgia' });

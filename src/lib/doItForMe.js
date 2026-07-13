@@ -80,25 +80,25 @@ function inviteVoice(event) {
   }
   const T = (re, v) => re.test(type) && v;
   return (
-    T(/graduat/, { emoji: '🎓', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} graduation and would love you there.` }) ||
-    T(/wedding/, { emoji: '💍', head: 'Save the date — you’re invited!', line: `We’re getting married and can’t imagine the day without you.` }) ||
+    T(/graduat/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} graduation and would love you there.` }) ||
+    T(/wedding/, { emoji: '', head: 'Save the date — you’re invited!', line: `We’re getting married and can’t imagine the day without you.` }) ||
     // Cultural / faith milestones — named specifically, never flattened into "a party."
-    T(/(quince)/, { emoji: '👑', head: '¡Están invitados! You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} quinceañera — fifteen years — and we’d be honored to have you and your family there.` }) ||
-    T(/(bar ?mitzvah|bat ?mitzvah|b['’]?nai ?mitzvah)/, { emoji: '✡️', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'our child'} becoming a${/bat/i.test(type) ? ' bat' : ' bar'} mitzvah — please join us for this milestone.` }) ||
-    T(/(baptism|christening|first ?communion|confirmation|dedication)/, { emoji: '🕊️', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} ${/communion/i.test(type) ? 'First Communion' : /confirm/i.test(type) ? 'Confirmation' : /christen/i.test(type) ? 'christening' : 'baptism'} — we’d love to share the day with you.` }) ||
-    T(/(diwali)/, { emoji: '🪔', head: 'You’re invited!', line: `We’re celebrating Diwali and would love for you to join us for light, food, and family.` }) ||
-    T(/(eid)/, { emoji: '🌙', head: 'You’re invited!', line: `We’re celebrating Eid and would be delighted to have you join us.` }) ||
-    T(/(lunar ?new ?year|chinese ?new ?year|tết|tet)/, { emoji: '🧧', head: 'You’re invited!', line: `We’re celebrating the Lunar New Year and would love for you to join us.` }) ||
-    T(/(sweet ?16|sweet ?sixteen)/, { emoji: '✨', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'a milestone'} and would love you there.` }) ||
-    T(/(^|\b)(birthday|bday)\b/, { emoji: '🎉', head: 'You’re invited!', line: `We’re throwing ${honoree ? honoree + ' a birthday party' : 'a birthday party'} and want you there.` }) ||
-    T(/anniversary/, { emoji: '💛', head: 'You’re invited!', line: `We’re marking a special anniversary and would love to celebrate with you.` }) ||
-    T(/(baby ?shower)/, { emoji: '👶', head: 'You’re invited!', line: `We’re showering ${honoree || 'the parents-to-be'} with love before the baby arrives — join us!` }) ||
-    T(/(bridal ?shower|bachelorette)/, { emoji: '🥂', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
-    T(/(retire)/, { emoji: '🎊', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
-    T(/(reunion)/, { emoji: '🤗', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
-    T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '🍽️', head: 'You’re invited!', line: `We’re hosting and would love to have you over.` }) ||
-    T(/(holiday|christmas|thanksgiving|hanukkah|new ?year)/, { emoji: '🎄', head: 'You’re invited!', line: `We’re gathering for the holidays and hope you’ll join us.` }) ||
-    { emoji: '🎉', head: 'You’re invited!', line: `We’re hosting ${subjectThing(event)} and would love you there.` }
+    T(/(quince)/, { emoji: '', head: '¡Están invitados! You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} quinceañera — fifteen years — and we’d be honored to have you and your family there.` }) ||
+    T(/(bar ?mitzvah|bat ?mitzvah|b['’]?nai ?mitzvah)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'our child'} becoming a${/bat/i.test(type) ? ' bat' : ' bar'} mitzvah — please join us for this milestone.` }) ||
+    T(/(baptism|christening|first ?communion|confirmation|dedication)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s' : 'a'} ${/communion/i.test(type) ? 'First Communion' : /confirm/i.test(type) ? 'Confirmation' : /christen/i.test(type) ? 'christening' : 'baptism'} — we’d love to share the day with you.` }) ||
+    T(/(diwali)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating Diwali and would love for you to join us for light, food, and family.` }) ||
+    T(/(eid)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating Eid and would be delighted to have you join us.` }) ||
+    T(/(lunar ?new ?year|chinese ?new ?year|tết|tet)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating the Lunar New Year and would love for you to join us.` }) ||
+    T(/(sweet ?16|sweet ?sixteen)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'a milestone'} and would love you there.` }) ||
+    T(/(^|\b)(birthday|bday)\b/, { emoji: '', head: 'You’re invited!', line: `We’re throwing ${honoree ? honoree + ' a birthday party' : 'a birthday party'} and want you there.` }) ||
+    T(/anniversary/, { emoji: '', head: 'You’re invited!', line: `We’re marking a special anniversary and would love to celebrate with you.` }) ||
+    T(/(baby ?shower)/, { emoji: '', head: 'You’re invited!', line: `We’re showering ${honoree || 'the parents-to-be'} with love before the baby arrives — join us!` }) ||
+    T(/(bridal ?shower|bachelorette)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree || 'the bride-to-be'} — come join us!` }) ||
+    T(/(retire)/, { emoji: '', head: 'You’re invited!', line: `We’re celebrating ${honoree ? honoree + '’s retirement' : 'a well-earned retirement'} — come raise a glass.` }) ||
+    T(/(reunion)/, { emoji: '', head: 'You’re invited!', line: `It’s been too long — we’re getting everyone back together.` }) ||
+    T(/(dinner|cookout|bbq|barbecue|cocktail|party|gathering|housewarm)/, { emoji: '', head: 'You’re invited!', line: `We’re hosting and would love to have you over.` }) ||
+    T(/(holiday|christmas|thanksgiving|hanukkah|new ?year)/, { emoji: '', head: 'You’re invited!', line: `We’re gathering for the holidays and hope you’ll join us.` }) ||
+    { emoji: '', head: 'You’re invited!', line: `We’re hosting ${subjectThing(event)} and would love you there.` }
   );
 }
 
@@ -143,8 +143,8 @@ export function draftInvite(event, profile, opts = {}) {
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   const when = [date, time].filter(Boolean).join(' · ');
   const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head, v.line, ''];
-  if (when)  lines.push(`📅 ${when}`);
-  if (place) lines.push(`📍 ${place}`);
+  if (when)  lines.push(when);
+  if (place) lines.push(place);
   if (when || place) lines.push('');
   // Closer follows the TONE. Somber gatherings never get "hope you can make it!"; and
   // when there's a real RSVP page, we point them to it (one place, headcount comes back).
@@ -193,39 +193,39 @@ export function draftGuestBrief(event, profile, opts = {}) {
   const lines = [v.emoji ? `${v.emoji} ${v.head}` : v.head];
   if (v.line) lines.push(v.line);
   lines.push('');
-  if (when) lines.push(`📅 ${when}`);
-  if (place) lines.push(`📍 ${place}`);
+  if (when) lines.push(when);
+  if (place) lines.push(place);
 
   // Parking — override wins; else a light at-home default. Never invented for a real venue.
   const parking = (gb.parking || '').trim() || (atHome ? 'Street parking; a rideshare can drop right at the door.' : '');
-  if (parking) lines.push(`🚗 ${parking}`);
+  if (parking) lines.push(`Parking: ${parking}`);
   // Arrival window — override only (we don't guess come-anytime vs seated-start).
-  if ((gb.arrival || '').trim()) lines.push(`🕐 ${gb.arrival.trim()}`);
+  if ((gb.arrival || '').trim()) lines.push(`Arrival: ${gb.arrival.trim()}`);
   // Dress / vibe — override, else casual only for an at-home, non-somber gathering.
   const dress = (gb.dress || '').trim() || (atHome && !v.sombre ? 'Come as you are — it’s casual.' : '');
-  if (dress) lines.push(`👕 ${dress}`);
+  if (dress) lines.push(`Dress: ${dress}`);
 
   // What to bring — reuse the host's existing bring fields; potluck gift-wish cross-wires here.
   const bring = (event.whatToBring || event.guestBring || event.bringNote || '').trim();
-  if (bring) lines.push(`🧺 Bring: ${bring}`);
-  else if (gw && gw.mode === 'potluck') lines.push(`🧺 Potluck — bring a dish to share${(gw.detail || '').trim() ? ` (${gw.detail.trim()})` : ''}.`);
+  if (bring) lines.push(`Bring: ${bring}`);
+  else if (gw && gw.mode === 'potluck') lines.push(`Potluck — bring a dish to share${(gw.detail || '').trim() ? ` (${gw.detail.trim()})` : ''}.`);
 
   // Gift wish — the host's one answer to "do I bring a gift?" Silence when unset.
-  if (gw && gw.mode && gw.mode !== 'potluck') { const gl = giftWishLine(gw, v); if (gl) lines.push(`🎁 ${gl}`); }
+  if (gw && gw.mode && gw.mode !== 'potluck') { const gl = giftWishLine(gw, v); if (gl) lines.push(gl); }
 
   // Kids / +1 — only when the host set a real stance (defaults need no words).
-  if (event.kidsPolicy === 'adults_only') lines.push('🚫 Adults-only, please.');
-  else if (event.kidsPolicy === 'kids_welcome') lines.push('🧒 Kids are welcome.');
-  if (event.plusOnePolicy === 'plus_one_ok') lines.push('➕ Feel free to bring a plus-one.');
-  else if (event.plusOnePolicy === 'no_plus_ones') lines.push('➕ Named guests only, please.');
+  if (event.kidsPolicy === 'adults_only') lines.push('Adults-only, please.');
+  else if (event.kidsPolicy === 'kids_welcome') lines.push('Kids are welcome.');
+  if (event.plusOnePolicy === 'plus_one_ok') lines.push('Feel free to bring a plus-one.');
+  else if (event.plusOnePolicy === 'no_plus_ones') lines.push('Named guests only, please.');
 
   // Rain plan + accessibility — overrides only, never guessed.
-  if ((gb.rainPlan || '').trim()) lines.push(`☔ Rain plan: ${gb.rainPlan.trim()}`);
-  if ((gb.accessibility || '').trim()) lines.push(`♿ ${gb.accessibility.trim()}`);
+  if ((gb.rainPlan || '').trim()) lines.push(`Rain plan: ${gb.rainPlan.trim()}`);
+  if ((gb.accessibility || '').trim()) lines.push(`Accessibility: ${gb.accessibility.trim()}`);
 
   // Day-of contact — override, else point them to the host by name.
   const contact = (gb.contact || '').trim() || (host ? `Text ${host} if you’re running late or can’t find us.` : '');
-  if (contact) { lines.push(''); lines.push(`📱 ${contact}`); }
+  if (contact) { lines.push(''); lines.push(contact); }
 
   const rsvpUrl = (opts && opts.rsvpUrl) ? String(opts.rsvpUrl).trim() : '';
   if (rsvpUrl) { lines.push(''); lines.push(v.sombre ? 'Please let us know if you’ll be joining us:' : 'Let us know if you can make it:'); lines.push(rsvpUrl); }
@@ -274,7 +274,7 @@ export function draftThankYou(event, profile) {
   }
   const thing = honoree ? `${honoree}’s ${type}` : `our ${type}`;
   const lines = [
-    `Thank you so much for celebrating ${thing} with us. 💛`,
+    `Thank you so much for celebrating ${thing} with us.`,
     'It meant the world to have you there — we’re so grateful for you.',
   ];
   if (host) lines.push('', `With love,\n${host}`);
@@ -300,7 +300,7 @@ export function draftRsvpChase(event, profile, opts = {}) {
     lines.push(`Hi — just a gentle note: we’re gathering for ${thing}${whenBit}.`);
     lines.push('If you’re able to join us it would mean a great deal — please let us know when you can.');
   } else {
-    lines.push(`Hi! Just a friendly nudge 💛 — we’d love to have you at ${thing}${whenBit}.`);
+    lines.push(`Hi! Just a friendly nudge — we’d love to have you at ${thing}${whenBit}.`);
     lines.push('Could you let us know if you can make it when you get a sec?');
   }
   if (rsvpUrl) { lines.push('', 'Tap here to let us know:', rsvpUrl); }
@@ -337,7 +337,7 @@ export function draftHelperBrief(event, profile, opts = {}) {
     if (!byOwner.has(owner)) { byOwner.set(owner, []); order.push(owner); }
     byOwner.get(owner).push({ t: fmtClock(r.time), seg });
   }
-  const lines = [`Here’s the plan for ${name}${date ? ` — ${date}` : ''} 💛`, 'Thanks for helping out — here’s everyone’s part:', ''];
+  const lines = [`Here’s the plan for ${name}${date ? ` — ${date}` : ''}`, 'Thanks for helping out — here’s everyone’s part:', ''];
   if (order.length === 0) {
     lines.push('(The run of the day isn’t filled in yet — I’ll send it once it is.)');
   } else {
@@ -420,7 +420,7 @@ export function draftRecap(event, profile) {
   } else {
     if (mhMeaningful) lines.push(`At the heart of it: ${mh.replace(/\.$/, '')}.`);
     lines.push('What a day — and getting to share it with the people we love made it.');
-    lines.push('Thank you for being part of it. 💛');
+    lines.push('Thank you for being part of it.');
   }
   if (host) { lines.push(''); lines.push(`— ${host}`); }
   return { subject: v.sombre ? `Remembering — ${name}` : `${name} — thank you`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
@@ -591,12 +591,12 @@ export function draftShoppingList(event, profile, opts = {}) {
   };
   // honest-empty: menu not set yet (preserve existing behavior).
   if (items.length === 0) {
-    const lines = [`🛒 Shopping List — ${name}`, '', 'Your menu isn’t set yet — pick your food and I’ll build the list.'];
+    const lines = [`Shopping List — ${name}`, '', 'Your menu isn’t set yet — pick your food and I’ll build the list.'];
     return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
   }
   // everything already checked off → ready.
   if (items.every((i) => i.got)) {
-    const lines = [`🛒 Shopping List — ${name}`, '', 'Everything’s checked off — you’re ready.'];
+    const lines = [`Shopping List — ${name}`, '', 'Everything’s checked off — you’re ready.'];
     return { subject: `Shopping list — ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
   }
   // build from the structured plan, rendering only what's still needed.
@@ -604,14 +604,14 @@ export function draftShoppingList(event, profile, opts = {}) {
   const plan = buildShoppingPlan(need, opts);
   const renderItem = (i) => {
     const q = qtyOf(i);
-    const star = i.forgotten ? '   ⭐' : '';
+    const star = i.forgotten ? '  (often forgotten)' : '';
     // The "because" — the per-person rate this quantity was scaled from (authored
     // in the playbook, never invented). Only shown alongside a real quantity, so a
     // bare item never reads "· ½ lb/guest" with nothing to explain.
     const basis = q && i.basis ? `  · ${String(i.basis).trim()}` : '';
     return `[ ] ${String(i.name).trim()}${q ? ` — ${q}` : ''}${basis}${star}`;
   };
-  const header = `🛒 Shopping List — ${name}${count ? ` (${count} guests)` : ''}`;
+  const header = `Shopping List — ${name}${count ? ` (${count} guests)` : ''}`;
   const lines = [header, ''];
   // single most useful decision line for text.
   if (plan.decisions.length) { lines.push(plan.decisions[0]); lines.push(''); }
@@ -619,7 +619,7 @@ export function draftShoppingList(event, profile, opts = {}) {
     lines.push(String(s.store).toUpperCase());
     // Honest store finder: a live Maps link that opens the real nearby stores of this
     // type WITH distances — only when the host gave us an anchor. Never a fake address.
-    if (s.mapLink) lines.push(`📍 Find one near you: ${s.mapLink}`);
+    if (s.mapLink) lines.push(`Find one near you: ${s.mapLink}`);
     for (const it of s.items) lines.push(renderItem(it));
     lines.push('');
   }
@@ -632,7 +632,7 @@ export function draftShoppingList(event, profile, opts = {}) {
   // other retailers ride along in the structured orderLinks for the UI to surface.
   if (plan.orderLinks && plan.orderLinks.length) {
     const ic = plan.orderLinks.find((l) => l.label === 'Instacart') || plan.orderLinks[0];
-    if (ic) { lines.push(`🛒 Order for pickup/delivery: ${ic.label} ${ic.url}`); lines.push(''); }
+    if (ic) { lines.push(`Order for pickup/delivery: ${ic.label} ${ic.url}`); lines.push(''); }
   }
   if (plan.estTotalRange) {
     lines.push(`Estimated total ~$${plan.estTotalRange[0]}–$${plan.estTotalRange[1]} (modeled, not live prices)`);
@@ -654,10 +654,10 @@ export function draftDayBeforeDetails(event, profile, opts = {}) {
   const when = [date, time].filter(Boolean).join(' · ');
   // Only a real, host-provided "bring" note — never invented.
   const bring = String((event.guestBring || event.whatToBring || event.bringNote || '')).trim();
-  const lines = [v.sombre ? `A few details for ${name}` : `See you soon! 💛 A few details for ${name}:`, ''];
-  if (when)  lines.push(`📅 ${when}`);
-  if (place) lines.push(`📍 ${place === 'our place' ? 'Our place' : place}`);
-  if (bring) lines.push(`🎁 ${bring}`);
+  const lines = [v.sombre ? `A few details for ${name}` : `See you soon! A few details for ${name}:`, ''];
+  if (when)  lines.push(when);
+  if (place) lines.push(place === 'our place' ? 'Our place' : place);
+  if (bring) lines.push(`Bring: ${bring}`);
   lines.push('');
   lines.push(v.sombre ? 'Thank you for being with us.' : 'Can’t wait to see you!');
   if (host) { lines.push(''); lines.push(`— ${host}`); }

@@ -392,6 +392,47 @@ export default function InviteV2({ code }) {
     return yes.length === 1 ? '1 guest is in' : `${yes.length} guests are in`;
   })();
 
+  // Live momentum faces (Goal 2) — colored-initial avatars, LOCAL invites only.
+  // The SAME deterministic tint + initial mechanism as the Guests tab (.gav /
+  // AVA_TINTS in HostShellV2), so the invite and the host roster read as one
+  // system. REAL names only: backend-resolved invites (rosterUnknown) send an
+  // anonymized goingCount with NO names, so they get zero faces here (count-only,
+  // matching the `social` string) — never a fabricated or privacy-withheld face.
+  const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];
+  const avaTintFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
+  const socialFaces = (() => {
+    if (somber || event.rosterUnknown) return []; // no names to honestly show
+    const seen = [];
+    const out = [];
+    for (const g of (event.guests || [])) {
+      if (!g || g.rsvp !== 'Yes') continue;
+      const nm = String(g.name || '').trim();
+      // Same guard the `social` string uses: skip group/table/family entries — a
+      // single initial can't honestly stand for "The Diaz Family" or "Table 4".
+      if (!nm || /\(|group|table|family|team|&| and /i.test(nm)) continue;
+      const first = nm.split(/\s+/)[0];
+      const key = first.toLowerCase();
+      if (!first || seen.includes(key)) continue;
+      seen.push(key);
+      out.push({ initial: first.charAt(0).toUpperCase(), tint: avaTintFor(nm) });
+      if (out.length >= 5) break;
+    }
+    return out;
+  })();
+
+  // Honest going tally for the post-RSVP signature moment (Goal 1). The base
+  // count is the SAME real source the `social` line already trusts: the
+  // anonymized goingCount for backend invites, the local Yes tally otherwise. A
+  // null count yields no line (the moment falls back to "You're in") — never a
+  // fabricated number. Phrased "You + N others" so the base (which predates this
+  // fresh reply) reads as the crowd the guest is joining.
+  const goingTally = event.rosterUnknown
+    ? (Number.isFinite(Number(event.goingCount)) ? Number(event.goingCount) : null)
+    : (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+  const goingJoinLine = (goingTally != null && goingTally > 0)
+    ? (goingTally === 1 ? 'You + 1 other going' : `You + ${goingTally} others going`)
+    : null;
+
   // Post-event RECAP (10+, the only guest-facing growth surface): when a shared
   // link is opened AFTER the event, the invite becomes a recap instead of an
   // RSVP form — honest, real-data only. Attendance reuses the anonymized count
@@ -605,10 +646,24 @@ export default function InviteV2({ code }) {
               {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
                 <div className="inv2-val lp">{event.hostContact}</div></>)}
               {!isPast && ((rsvpBy && rsvpBy.iso && days != null && days >= 0) || social) ? (
-                <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center' }}>
-                  {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
-                  {rsvpBy && rsvpBy.iso && days != null && days >= 0 && social ? ' · ' : ''}{social || ''}
-                </p>
+                <div style={{ margin: '8px 0 0', textAlign: 'center' }}>
+                  {/* Live momentum (Goal 2): real first-name initials on the same
+                      deterministic tints as the Guests tab, overlapped into a
+                      cluster. LOCAL invites only — backend invites show the
+                      count-only `social` string with no faces (roster withheld). */}
+                  {socialFaces.length > 0 && (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {socialFaces.map((f, i) => (
+                        <span key={i} className="gav" aria-hidden="true"
+                          style={{ width: 26, height: 26, fontSize: 10, marginLeft: i ? -8 : 0, background: f.tint, boxShadow: '0 0 0 2px var(--card)' }}>{f.initial}</span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="grounding" style={{ margin: socialFaces.length ? '5px 0 0' : 0 }}>
+                    {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
+                    {rsvpBy && rsvpBy.iso && days != null && days >= 0 && social ? ' · ' : ''}{social || ''}
+                  </p>
+                </div>
               ) : null}
             </div>
             {days != null && days > 0 && (
@@ -665,8 +720,9 @@ export default function InviteV2({ code }) {
                   </div>
                   <input className="field" ref={nameRef} style={{ maxWidth: 'none', ...(nameInvalid ? { borderColor: 'var(--danger)' } : {}) }}
                     autoComplete="name" placeholder="Your name — first and last" aria-invalid={nameInvalid || undefined}
+                    aria-describedby={nameInvalid ? 'rsvp-name-error' : undefined}
                     value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
-                  {nameInvalid && <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
+                  {nameInvalid && <p id="rsvp-name-error" className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
 
                   {rsvp === 'Yes' && (
                     <>
@@ -766,28 +822,58 @@ export default function InviteV2({ code }) {
               </div>
             ) : (
               <div className="inv2-ask" style={{ textAlign: 'center', padding: '20px 4px 8px' }}>
-                <div className="inv2-eyebrow lp" style={{ color: rsvp === 'Yes' ? 'var(--ok)' : undefined }}>
-                  {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
-                </div>
-                <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 21, fontFamily: 'var(--serif)' }}>
-                  {queued ? 'Saved, ' + (first || 'friend') + ' — we’ll send it as soon as you’re back online.'
-                    : rsvp === 'Yes' ? 'See you there, ' + (first || 'friend') + '.'
-                    : rsvp === 'Maybe' ? 'Come back to this link when you know, ' + (first || 'friend') + '.'
-                    : 'Thanks for letting us know, ' + (first || 'friend') + '.'}
-                </h3>
-                {rsvp === 'Yes' && (
-                  <p className="grounding" style={{ margin: '8px 0 0' }}>
-                    {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
-                    {needsJoined ? ' · needs noted: ' + needsJoined : ''}
-                    {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
-                  </p>
-                )}
-                {!queued && rsvp === 'Yes' && !somber && (
-                  <div className="actions-row" style={{ marginTop: 16, justifyContent: 'center' }}>
-                    <button className="cta big" onClick={() => shareForward(true)}>
-                      {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'I’m in — tell a friend'}
-                    </button>
-                  </div>
+                {(!queued && rsvp === 'Yes' && !somber) ? (
+                  /* ── Signature moment (Goal 1) — a screenshot-worthy confirmation
+                     for a delivered Yes: the event mark (same ARTWORK_MARKS crest
+                     as the invite masthead, reused verbatim), the event name +
+                     date, and an HONEST going tally from real data (goingJoinLine
+                     — goingCount/local Yes count; silent when null). The prominent
+                     Share CTA below carries the guest back out to recruit the next
+                     one. Queued / Maybe / No keep the quieter close in the else. ── */
+                  <>
+                    {mark && (
+                      <div className="inv2-crest" style={{ '--crabimg': 'url("' + mark + '")', margin: '0 auto 6px' }}>
+                        <img src={mark} alt="" />
+                      </div>
+                    )}
+                    <div className="inv2-eyebrow lp" style={{ color: 'var(--ok)' }}>You’re in</div>
+                    <h3 className="lp-display" style={{ margin: '8px 0 0', fontSize: 23, fontFamily: 'var(--serif)', lineHeight: 1.12 }}>{event.name}</h3>
+                    {event.date && (
+                      <p className="inv2-deck lp" style={{ margin: '4px 0 0' }}>{dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+                    )}
+                    <p className="grounding" style={{ margin: '10px 0 0', fontWeight: 700, color: 'var(--ok)' }}>
+                      {goingJoinLine || ('See you there, ' + (first || 'friend') + '.')}
+                    </p>
+                    <p className="grounding" style={{ margin: '4px 0 0' }}>
+                      {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
+                      {needsJoined ? ' · needs noted: ' + needsJoined : ''}
+                      {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
+                    </p>
+                    <div className="actions-row" style={{ marginTop: 16, justifyContent: 'center' }}>
+                      <button className="cta big" onClick={() => shareForward(true)}>
+                        {shareState === 'shared' ? 'Shared!' : shareState === 'copied' ? 'Copied!' : 'I’m in — bring a friend'}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="inv2-eyebrow lp" style={{ color: rsvp === 'Yes' ? 'var(--ok)' : undefined }}>
+                      {queued ? 'Saved' : rsvp === 'Yes' ? 'You’re in' : rsvp === 'Maybe' ? 'Noted' : 'We’ll miss you'}
+                    </div>
+                    <h3 className="lp-display" style={{ margin: '10px 0 0', fontSize: 21, fontFamily: 'var(--serif)' }}>
+                      {queued ? 'Saved, ' + (first || 'friend') + ' — we’ll send it as soon as you’re back online.'
+                        : rsvp === 'Yes' ? 'See you there, ' + (first || 'friend') + '.'
+                        : rsvp === 'Maybe' ? 'Come back to this link when you know, ' + (first || 'friend') + '.'
+                        : 'Thanks for letting us know, ' + (first || 'friend') + '.'}
+                    </h3>
+                    {rsvp === 'Yes' && (
+                      <p className="grounding" style={{ margin: '8px 0 0' }}>
+                        {1 + (hasPlusOne && plusOne.trim() ? 1 : 0) + (kids || 0)} of you
+                        {needsJoined ? ' · needs noted: ' + needsJoined : ''}
+                        {meal !== 'Standard' ? ' · ' + meal.toLowerCase() : ''}
+                      </p>
+                    )}
+                  </>
                 )}
                 <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
                   {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}

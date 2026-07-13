@@ -74,6 +74,7 @@ import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
+import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
 import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
@@ -717,6 +718,7 @@ export default function HostShellV2() {
   const stopVoice = () => { clearVoiceIdleTimer(); try { recogRef.current && recogRef.current.stop(); } catch {} setListening(false); };
   const [revealed, setRevealed] = useState(false);
   const [revealStep, setRevealStep] = useState(0); // choreography: 0 thinking → 5 done
+  const revealCtaRef = useRef(null); // a11y: focus lands here when the reveal finishes
   const revealTimers = useRef([]);
   const clearRevealTimers = () => { revealTimers.current.forEach(clearTimeout); revealTimers.current = []; };
   useEffect(() => clearRevealTimers, []);
@@ -1650,6 +1652,14 @@ export default function HostShellV2() {
       if (n.shouldShow && !narrationDuplicatesTelling(n.line,
         plan.nextActions && plan.nextActions[0] && plan.nextActions[0].title,
         phaseCues && phaseCues.nextCue && phaseCues.nextCue.label)) {
+        // #3 activation: on a real return, carry the readiness fraction NOW and
+        // the delta since last visit — the "you moved N forward" momentum reward
+        // that no always-on tile shows. Pure exposure of the phaseCues ledger.
+        if (phaseCues && phaseCues.totalCount > 0) {
+          n.readyNow = { done: phaseCues.completedCount, total: phaseCues.totalCount };
+          const prevDone = prev && prev.ready ? Number(prev.ready.done) : null;
+          n.readyDelta = (prevDone != null && Number.isFinite(prevDone)) ? (phaseCues.completedCount - prevDone) : null;
+        }
         setReturnLine(n);
       } else setReturnLine(null);
     } catch { setReturnLine(null); }
@@ -2108,6 +2118,7 @@ export default function HostShellV2() {
     }
     if (route.tab === 'Budget') { setSheet({ kind: 'budget', focus: null }); return true; }
     if (route.tab === 'Guests') { setSheet({ kind: 'guests', focus: null }); return true; }
+    if (route.tab === 'Budget' || route.focusField === 'budget') { setSheet({ kind: 'budget' }); return true; }
     if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(String(route.focusField || '')))) {
       const rowId = /^foodrow-(.+)$/.exec(String(route.focusField || ''));
       setSheet({ kind: 'food', focus: route.foodFocus || (rowId ? rowId[1] : null) }); return true;
@@ -3166,6 +3177,14 @@ export default function HostShellV2() {
     catch { return []; }
   }, [revealed, activeCustom]);
   const revealLineCount = revealStages.length + 1;
+  // a11y: when the reveal choreography finishes, move keyboard/SR focus to the
+  // primary "Open your plan" CTA so a non-pointer user lands on the action
+  // instead of being stranded at the top of a now-static screen.
+  useEffect(() => {
+    if (revealed && revealStep > revealLineCount + 1 && revealCtaRef.current) {
+      try { revealCtaRef.current.focus(); } catch { /* focus is best-effort */ }
+    }
+  }, [revealed, revealStep, revealLineCount]);
   const revealEyebrow = revealStep > revealLineCount ? 'Here’s what we understood'
     : ['Reading your answers…', 'Sizing the crowd…', 'Pricing the spread…', 'Lining up your steps…'][Math.min(Math.max(revealStep - 1, 0), 3)];
   const customPlan = useMemo(() => {
@@ -3365,6 +3384,16 @@ export default function HostShellV2() {
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="11" cy="11" r="7" />
                   <path d="M21 21l-4.3-4.3" />
+                </svg>
+              </button>
+              {/* #4 recovery path: a first-timer who hits a wall has somewhere to
+                  turn — a help sheet grounded in THIS event's real state (the one
+                  next thing, how it works, ask a question). */}
+              <button className="sheet-x wm-you" onClick={() => setSheet({ kind: 'help' })} aria-label="Help — I'm stuck" title="Stuck? Start here">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M9.2 9.2a2.8 2.8 0 0 1 5.4 1c0 1.9-2.8 2.5-2.8 2.5" />
+                  <path d="M12 17.2h.01" />
                 </svg>
               </button>
               {/* Header carries ONE control (host request 2026-07-11): the
@@ -3585,7 +3614,7 @@ export default function HostShellV2() {
                     <p className={'mega-sub pre' + (revealStep > revealLineCount ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2' }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
                     <div className={'actions-row pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 'var(--sp-6)' }}>
-                      <button className={'cta big' + (revealStep > revealLineCount + 1 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
+                      <button ref={revealCtaRef} className={'cta big' + (revealStep > revealLineCount + 1 ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
                       {/* Build-map #5 — hand the host the thing their guests tap,
                           right at the moment of creation. The share rails already
                           exist; this is sequencing, and it seeds the viral loop
@@ -3673,10 +3702,20 @@ export default function HostShellV2() {
                 </p>
               )}
               {returnLine && (
-                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit' }}
+                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit', display: 'block' }}
                   onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
-                  <span className="t" style={{ color: 'var(--steel-soft)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>{returnLine.line}</span>
-                  {returnLine.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                  <span className="t" style={{ display: 'block', color: 'var(--steel-soft)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>{returnLine.line}
+                    {returnLine.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
+                  </span>
+                  {/* Momentum reward: how far the plan moved since the last visit —
+                      "N of M ready" plus the delta when something actually closed.
+                      Shown only on a real return (returnLine is gated on the 30-min
+                      gap), so it never becomes an always-on duplicate of the tile. */}
+                  {returnLine.readyNow && (
+                    <span className="t" style={{ display: 'block', marginTop: 2, color: 'var(--ink-soft)', fontWeight: 600, fontSize: 'var(--t-row-sub)' }}>
+                      You’re {returnLine.readyNow.done} of {returnLine.readyNow.total} ready{returnLine.readyDelta > 0 ? ` — ${returnLine.readyDelta} more since you were last here` : ''}.
+                    </span>
+                  )}
                 </button>
               )}
 
@@ -4952,7 +4991,7 @@ export default function HostShellV2() {
           <div className="sheet-scrim" onClick={() => setSheet(null)} />
           <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" tabIndex={-1} ref={sheetRef}>
             <div className="sheet-head">
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
             {sheet.kind === 'decisions' && (
@@ -6046,6 +6085,112 @@ export default function HostShellV2() {
                 </div>
               </>
             )}
+            {sheet.kind === 'pass' && (() => {
+              // #2 COMMERCE — the One-Event Pass surface (wedge: DIY host, one
+              // event, one price — NO subscription). CTA TRUTHFULNESS: only offer
+              // a real charge when a payment backend is actually wired
+              // (isStripeApiConfigured). Otherwise say plainly that it's free in
+              // preview and this event is unlocked — never fake a checkout or
+              // imply a charge the app can't take. No credentials are handled here;
+              // payment happens on Stripe's own hosted page.
+              // TWO gates, both required, so we NEVER charge before the business
+              // decides to: the Stripe backend must exist AND billing must be
+              // explicitly switched live (REACT_APP_BILLING_LIVE=1). Default (no
+              // flag) → the honest "free in preview" state, matching the standing
+              // "not ready to charge" decision — the API base being set for RSVP
+              // must not silently turn on a real $39 charge.
+              const canCharge = (() => { try { return isStripeApiConfigured() && process.env.REACT_APP_BILLING_LIVE === '1'; } catch { return false; } })();
+              const buyPass = async () => {
+                try {
+                  const out = await createCheckoutSession({ amountCents: 3900, label: 'Event Boss — One-Event Pass', feeId: 'one-event-pass-' + event.id, eventId: event.id, clientName: (profile && profile.name) || '' });
+                  if (out && out.url) { window.location.assign(out.url); return; }
+                  toast('Couldn’t open checkout just now — please try again.');
+                } catch { toast('Checkout isn’t available right now.'); }
+              };
+              const perks = [
+                ['Every tab, fully unlocked', 'The whole plan for this event — food, guests, budget, the day-of run, the invite — nothing held back.'],
+                ['One event, one price', 'A single $39 for this event. No monthly fee, no auto-renew, nothing to cancel.'],
+                ['Yours to keep', 'The plan, the invite link, and the recap stay live through the event and after.'],
+                ['Real numbers, no upsell traps', 'Every price is an honest estimate you can change — the pass never gates the truth about your own money.'],
+              ];
+              return (
+                <>
+                  <div style={{ padding: '2px 0 8px' }}>
+                    <div className="eyebrow">One event · one price</div>
+                    <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 4px', color: 'var(--ink)' }}>$39</div>
+                    <p className="grounding" style={{ margin: 0 }}>No subscription. Pay once for this event and everything’s yours.</p>
+                  </div>
+                  {perks.map(([t, d], i) => (
+                    <div key={i} className="brow" style={{ borderTop: '1px solid var(--line-soft)', padding: 'var(--sp-3) 0' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px' }}>{t}</p>
+                      <p className="grounding" style={{ margin: 0 }}>{d}</p>
+                    </div>
+                  ))}
+                  {canCharge ? (
+                    <>
+                      <button className="cta" style={{ marginTop: 'var(--sp-3)', width: '100%' }} onClick={buyPass}>Get the pass — $39</button>
+                      <p className="grounding" style={{ margin: '8px 0 0', textAlign: 'center', opacity: .75 }}>Secure checkout on Stripe. We never see your card.</p>
+                    </>
+                  ) : (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--ok-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginTop: 'var(--sp-3)' }}>
+                      <p className="f-name" style={{ margin: '0 0 2px', color: 'var(--ok)' }}>Free while Event Boss is in preview</p>
+                      <p className="grounding" style={{ margin: 0 }}>This event is fully unlocked right now — nothing to pay. When we launch, keeping an event is a one-time $39, and we’ll tell you before anything changes.</p>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+            {sheet.kind === 'help' && (() => {
+              // #4 RECOVERY PATH — deterministic, grounded in THIS event's real
+              // state (no fake AI): where you stand, the ONE next move (the same
+              // nextCue the hero uses, deep-linked), how the app works, a way to
+              // ask a specific question, and the foundations people get stuck on.
+              const nc = phaseCues && phaseCues.nextCue;
+              const ready = (phaseCues && phaseCues.totalCount)
+                ? `${phaseCues.completedCount} of ${phaseCues.totalCount} areas handled` : null;
+              // Foundations — only the ones NOT yet done, so the list shrinks as
+              // the host makes progress (real state, never a static checklist).
+              const foundations = [
+                { done: !!String(event.date || '').trim(), label: 'Set the date', route: { tab: 'Event Details', focusField: 'event-date' } },
+                { done: !!String(event.venue || '').trim(), label: 'Add the location', route: { tab: 'Event Details', focusField: 'event-venue' } },
+                { done: guests > 0, label: 'Set the guest count', route: { tab: 'Guests', focusField: 'guests-entry' } },
+                { done: !!money.planned, label: 'Set a budget', route: { tab: 'Budget', focusField: 'budget' } },
+              ].filter(f => !f.done);
+              return (
+                <>
+                  <p className="grounding" style={{ margin: '0 0 14px' }}>Take a breath — you don’t have to figure this out alone. Here’s exactly where you stand and the next move.{ready ? ` You’re at ${ready}.` : ''}</p>
+                  {nc && (
+                    <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-3)' }}>
+                      <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--steel-soft)' }}>Your next move</div>
+                      <p className="f-name" style={{ margin: '0 0 8px' }}>{nc.label}</p>
+                      <button className="cta" onClick={() => { if (!routeSheet(nc.route)) { setStage('plan'); setSheet(null); } }}>Take me to it</button>
+                    </div>
+                  )}
+                  <div className="shelf-label" style={{ margin: '0 0 6px' }}>How Event Boss works</div>
+                  <p className="grounding" style={{ margin: '0 0 5px' }}><b>Plan</b> works backward from your date — it only ever asks for the next thing that matters, never the whole mountain at once.</p>
+                  <p className="grounding" style={{ margin: '0 0 5px' }}>Check things off as you go and the plan keeps up — the numbers and what’s-next re-figure themselves.</p>
+                  <p className="grounding" style={{ margin: '0 0 5px' }}><b>The Day</b> takes the wheel on the day itself; <b>After</b> helps you wrap up and thank people.</p>
+                  <p className="grounding" style={{ margin: '0 0 14px' }}>Nothing here is made up — every number shows where it came from, and you can always change it.</p>
+                  {foundations.length > 0 && (
+                    <>
+                      <div className="shelf-label" style={{ margin: '0 0 6px' }}>Still to set up</div>
+                      {foundations.map((f, i) => (
+                        <button key={i} className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                          onClick={() => { if (!routeSheet(f.route)) { setStage('plan'); setSheet(null); } }}>
+                          <span className="t" style={{ fontWeight: 550 }}>{f.label}</span>
+                          <span className="chev" aria-hidden="true">›</span>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                  <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Have a specific question?</div>
+                  <button className="cta" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}
+                    onClick={() => { setAskQ(''); setAskResult(null); setSheet({ kind: 'ask' }); }}>
+                    Ask the plan — answered from your own numbers
+                  </button>
+                </>
+              );
+            })()}
             {sheet.kind === 'ask' && (() => {
               // Build the Q&A context from the SAME engine outputs the hero shows
               // — no parallel math. Each term is present only when its data is.
@@ -6453,6 +6598,12 @@ export default function HostShellV2() {
                       patchProfile({ city: v, ...(m ? { state: m[1].toUpperCase() } : {}) }, v ? 'Area saved — local prices and weather line up to it.' : 'Area cleared.');
                     }} />
                   <p className="grounding" style={{ margin: '6px 0 0', opacity: .75 }}>Used for local food prices and as the weather fallback when an event has no town of its own.</p>
+
+                  <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Your plan</div>
+                  <button className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer', borderTop: 'none' }} onClick={() => setSheet({ kind: 'pass' })}>
+                    <span className="t" style={{ fontWeight: 550 }}>The One-Event Pass<span className="of" style={{ marginLeft: 6 }}>$39 · one event, no subscription</span></span>
+                    <span className="chev" aria-hidden="true">›</span>
+                  </button>
 
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>What Event Boss remembers</div>
                   {mem.present && mem.groups.length ? (
@@ -7619,11 +7770,33 @@ export default function HostShellV2() {
                         </>
                       )}
                       {shopStore && (
-                        <p className="grounding" style={{ margin: '0 0 10px' }}>
-                          {runLeft.length === 0
-                            ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
-                            : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
-                        </p>
+                        <>
+                          <p className="grounding" style={{ margin: '0 0 10px' }}>
+                            {runLeft.length === 0
+                              ? 'Everything for ' + shopStore + ' is bought — nothing left on this run.'
+                              : runLeft.length + ' line' + (runLeft.length === 1 ? '' : 's') + ' left at ' + shopStore + ' — walk in expecting about ' + fmt(runLo) + (runHi > runLo ? '–' + fmt(runHi) : '') + '. Check them off as you buy — the real price is optional.'}
+                          </p>
+                          {/* #8 BULK CHECK-OFF (AnyList/Instacart parity): a real store
+                              run is one cart, not 18 taps. One button marks every line
+                              left at THIS store bought — same foodGot write the per-row
+                              tap makes, so it's undoable (patchEvent generic undo) and
+                              prices stay optional. Only when 2+ remain (one line is
+                              faster tapped directly). */}
+                          {runLeft.length >= 2 && (() => {
+                            const markAllInStore = () => {
+                              const next = { ...(event.foodGot || {}) };
+                              runLeft.forEach(it => { next[it.id] = true; });
+                              let ns = null;
+                              try { ns = hostSpending({ ...event, foodGot: next }, foodPP.priceFactor).spent; } catch { ns = null; }
+                              patchEvent({ foodGot: next }, `Marked all ${runLeft.length} lines at ${shopStore} bought` + (ns != null ? ` — spent is now ${fmt(ns)}.` : '.'));
+                            };
+                            return (
+                              <button className="mini" style={{ marginBottom: 10 }} onClick={markAllInStore}>
+                                Got everything at {shopStore} — mark all {runLeft.length} bought
+                              </button>
+                            );
+                          })()}
+                        </>
                       )}
                       {groupRows}
                     </>
