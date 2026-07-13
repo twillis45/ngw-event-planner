@@ -3676,7 +3676,7 @@ export default function HostShellV2() {
                   }}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (actions.length) { setEditor(null); spotlight(String(actions[0].id || 0)); } else setHandledOpen(o => !o); } }}>
                   <div className="t-label">Where you stand{' '}
-                    <span role="button" tabIndex={0} style={{ opacity: .55, padding: '2px 6px' }}
+                    <span role="button" tabIndex={0} style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', display: 'inline-block' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
                       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setHandledOpen(o => !o); } }}>
                       {handledOpen ? "▴ what’s counted" : "▾ what’s counted"}

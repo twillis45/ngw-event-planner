@@ -57,6 +57,15 @@
   --sp-6:24px;
   --sp-7:32px;
 
+  /* Semantic spacing ROLES (spacing audit path-to-10). The 4px --sp ramp is
+     missing a 28 rung (it jumps 24→32), which leaked 26/28/30 into raw px and
+     fragmented the section rhythm. Surfaces should consume these roles, not raw
+     steps — the way leaders keep many components on a few primitives. */
+  --break-section:28px;               /* standard gap between stacked major sections (was 26/28/30) */
+  --gap-chip:7px;                     /* one chip / cluster gap (was split 6 vs 7) */
+  --pad-card:var(--sp-5) var(--sp-4); /* shared card padding role */
+  --field-y:10px;                     /* field vertical padding role */
+
   /* ── Radius scale — the app's rounded-corner set. The card family (.card,
      .vcard, .fgroup) shares --r-lg (they had drifted to 20/18/16 for one
      concept — unified here). The compact row/pill family (.cta.big, .vrow.focus,
@@ -127,7 +136,7 @@ button{font-family:inherit}
      match the dock's already-tuned opacity, with the same saturate boost
      so it doesn't just look washed out at low opacity. */
   position:sticky; top:0; z-index:23;
-  margin:0 -20px; padding:var(--sp-3) 22px var(--sp-3);
+  margin:0 calc(-1 * var(--sp-5)); padding:var(--sp-3) var(--sp-5);/* audit A1: 22→20 so the wordmark's left edge aligns with the masthead/cards below; bleed via calc so it tracks --sp-5 */
   background:color-mix(in srgb, var(--bg) 45%, transparent);
   -webkit-backdrop-filter:blur(20px) saturate(1.2); backdrop-filter:blur(20px) saturate(1.2);
   border-bottom:1px solid var(--line-soft);
@@ -253,7 +262,7 @@ button{font-family:inherit}
 .tile-d.allset .t-label{opacity:.72}
 .tile-d.allset:hover{background:var(--ok); filter:none; transform:none; cursor:default}
 
-.lenses{display:flex; gap:var(--sp-2); flex-wrap:wrap; margin:30px 0 -18px}
+.lenses{display:flex; gap:var(--sp-2); flex-wrap:wrap; margin:var(--break-section) 0 -18px}
 .lens{
   transition:background var(--ms-press) var(--ease-out), border-color var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
   font-size:var(--t-chip); font-weight:700; color:var(--ink-soft); background:transparent;
@@ -330,7 +339,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 }
 
 .fold-btn{
-  display:flex; align-items:center; gap:10px; width:100%; margin:26px 0 0;
+  display:flex; align-items:center; gap:10px; width:100%; margin:var(--break-section) 0 0;
   background:none; border:none; border-top:1px solid var(--line); padding:var(--sp-4) 2px;
   font-size:var(--t-cta); font-weight:700; color:var(--muted); cursor:pointer;
 }
@@ -528,7 +537,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .vrow .tag.vendors{color:var(--steel-soft); background:var(--steel-tint)}
 .grow{
   display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); width:100%;
-  padding:11px var(--sp-2); background:none; border:none; border-top:1px solid var(--line-soft);
+  padding:13px var(--sp-2); background:none; border:none; border-top:1px solid var(--line-soft);/* audit TT2: 11→13px reaches the 44px floor (matches .qidx-row); .grow has interactive children so it can't use the ::after expander */
   font-size:var(--t-row); font-weight:650; color:var(--ink); cursor:pointer; text-align:left;
 }
 .grow:hover{background:var(--bg)}
@@ -647,7 +656,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .field::placeholder{color:var(--faint)}
 
 /* ── Event switcher shelf: snap-scroll, countdown-badged chips ── */
-.picker-shelf{margin-bottom:26px; margin-top:2px}
+.picker-shelf{margin-bottom:var(--break-section); margin-top:2px}
 .picker-shelf .chip{display:inline-flex; align-items:center; gap:7px}
 .chip-sub{
   font-size:var(--t-caption); font-weight:700; letter-spacing:.03em; font-variant-numeric:tabular-nums;
@@ -1030,7 +1039,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    featherweight row: uniform metrics, hairline separators, zero card
    chrome. The eye scans a column of labels + right-aligned status; nothing
    competes with the action cards above it. ── */
-.qidx{margin-top:28px}
+.qidx{margin-top:var(--break-section)}
 .qidx-row{display:flex; align-items:center; gap:var(--sp-3); width:100%; padding:13px 2px;
   background:none; border:none; border-top:1px solid var(--line-soft);
   font:inherit; color:inherit; cursor:pointer; text-align:left}
@@ -1084,7 +1093,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 button.vc-pill{border:none; cursor:pointer; font-family:inherit}
 button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .vc-chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:9px}
-.vc-chip{font-size:var(--t-tag); font-weight:700; padding:3.5px 10px; border-radius:var(--r-pill);
+.vc-chip{font-size:var(--t-tag); font-weight:700; padding:4px 10px; border-radius:var(--r-pill);/* audit T6: was 3.5px fractional */
   color:var(--warn); background:var(--warn-tint)}
 .vc-chip.quiet{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .vc-more{max-height:0; opacity:0; overflow:hidden;
