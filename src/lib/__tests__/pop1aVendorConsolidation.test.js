@@ -19,9 +19,11 @@ test('CommandCenter vendor health + issues reconcile with the canonical rollup',
   const rollup = vendorReadinessRollup(event);
   const data = deriveCommandCenterData(event);
   const vHealth = data.health.find(h => h.label === 'Vendors');
-  // the health "N of M confirmed" number is the rollup's ready/total, not a
-  // separate status filter (Deposit Paid counts as booked in both now)
-  expect(vHealth.note).toBe(`${rollup.booked} of ${rollup.total} confirmed`);
+  // the health number is the rollup's ready/total (single source). SSOT #1:
+  // "confirmed" is reserved for fully-locked-in; the Deposit-Paid vendor here is
+  // booked-not-confirmed, so it's disclosed as "· 1 to confirm" (booked=2: Deposit
+  // Paid + Confirmed; confirmed=1: only the Confirmed one).
+  expect(vHealth.note).toBe(`${rollup.booked} of ${rollup.total} booked · 1 to confirm`);
   // issues count = rollup needsAttention (+ no drift here)
   expect(data.vendorIssuesCount).toBe(rollup.needsAttention);
 });

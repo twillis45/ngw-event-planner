@@ -53,7 +53,7 @@ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveRet
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
-import { isVendorBooked } from '@app/lib/workstreams';
+import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
 import { isPlausibleCityText, parseVenueLocation } from '@app/lib/cityText';
 import { foodShopItems } from '@app/lib/foodShopItems';
@@ -1428,8 +1428,8 @@ export default function HostShellV2() {
   const VENDOR_STATUS_MEANING = {
     'Considering': 'you’re still deciding',
     'Quoted': 'they’ve given you a price',
-    'Contracted': 'they’ve said yes / the agreement’s set',
-    'Deposit Paid': 'your deposit is in',
+    'Contracted': 'they’ve said yes — you’ve agreed on the plan',
+    'Deposit Paid': 'your deposit is in — one more confirm to fully lock them in',
     'Confirmed': 'you’ve locked them in for your date',
   };
   // Plain host-facing DISPLAY labels — the stored VALUES above stay the same for
@@ -4424,7 +4424,16 @@ export default function HostShellV2() {
                 const meaningText = String(event.must_have_moment || event.meaning_why || event.honoree_story || '');
                 const rows = [
                   rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0)
-                    ? { key: 'people', label: 'People you’re hiring', sub: rollup.counts.ready + ' of ' + rollup.counts.total + ' booked', attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
+                    ? { key: 'people', label: 'People you’re hiring', sub: (() => {
+                        // Same confirm-residual disclosure as the vendor-sheet hero
+                        // (SSOT #1) so this summary can't say "all booked" while the
+                        // sheet says "still to confirm" — one story across surfaces.
+                        const ready = rollup.counts.ready, total = rollup.counts.total;
+                        if (ready < total) return ready + ' of ' + total + ' booked';
+                        const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
+                        const toConfirm = Math.max(0, ready - confirmed);
+                        return toConfirm > 0 ? 'all booked · ' + toConfirm + ' to confirm' : 'all locked in';
+                      })(), attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
                   // VENDOR-ENTRY-POINT FIX: the row above only ever appears once
                   // vendors already exist AND need attention — a fresh event with
                   // zero vendors had no reachable way in at all (sheet.kind:'vendors'
@@ -8107,9 +8116,18 @@ export default function HostShellV2() {
                         the sub speaks the same vocabulary. The stricter confirm/
                         arrival/paperwork bar belongs to the day-before row, which
                         names it; borrowing its language here retyped the number. */}
-                    {rc.ready >= rc.total
-                      ? 'Everyone’s locked in — confirms, times, and paperwork all set.'
-                      : `${rc.total - rc.ready} not booked yet — their cards below say which.`}
+                    {(() => {
+                      if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
+                      // All booked — but "locked in / paperwork all set" is reserved
+                      // for fully-confirmed vendors (isVendorConfirmed). Disclose any
+                      // confirm residual instead of over-claiming, so this hero agrees
+                      // with the "Confirm vendor" action + the readiness dot (SSOT #1).
+                      const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
+                      const toConfirm = Math.max(0, rc.ready - confirmed);
+                      return toConfirm > 0
+                        ? `All booked — ${toConfirm} still to confirm before the day.`
+                        : 'Everyone’s locked in — confirms, times, and paperwork all set.';
+                    })()}
                   </p>
                 </div>
               )}
@@ -8177,7 +8195,11 @@ export default function HostShellV2() {
                     let memLine = '';
                     try { memLine = summarizeVendorMemory(vendorMemoryFor([...ALL_SAMPLES.map(se => se.id === event.id ? event : se)], v, event.id)); } catch { memLine = ''; }
                     const isOpen = sheet.focus === v.id;
-                    const good = isVendorBooked(v);
+                    // green pill = fully locked in only (isVendorConfirmed); a
+                    // Deposit-Paid/Contracted vendor is 'mid' (lavender in-progress),
+                    // matching the steel picker + the readiness dot (SSOT #1 — was
+                    // isVendorBooked, which greened a booked-not-confirmed vendor).
+                    const good = isVendorConfirmed(v);
                     // Build-map #10: this vendor's own confirm-back, if they answered
                     // the brief link (backend + vendor-side form already shipped).
                     const vConfirm = confirmationByVendor[String(v.id)] || null;
@@ -8208,7 +8230,8 @@ export default function HostShellV2() {
                             <button className={'vc-pill' + (good ? ' good' : v.status ? ' mid' : '')}
                               onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
-                              aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + '. Tap to change.'}>
+                              title={v.status ? (VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] || vendorStatusLabel(v.status)) : 'Tap to set where this vendor stands'}
+                              aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + (v.status && VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] ? ' — ' + VENDOR_STATUS_MEANING[vendorStatusIsCurrent(v, 'Confirmed') ? 'Confirmed' : v.status] : '') + '. Tap to change.'}>
                               {/* caret so the pill reads as the confirm/status CONTROL,
                                   not a static label — the "confirm with vendor" action
                                   routes here but the tap target wasn't discoverable. */}
@@ -8229,6 +8252,8 @@ export default function HostShellV2() {
                               return (
                                 <button key={s} className="vc-pill"
                                   onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
+                                  title={VENDOR_STATUS_MEANING[s] ? vendorStatusLabel(s) + ' — ' + VENDOR_STATUS_MEANING[s] : vendorStatusLabel(s)}
+                                  aria-label={vendorStatusLabel(s) + (VENDOR_STATUS_MEANING[s] ? ' — ' + VENDOR_STATUS_MEANING[s] : '')}
                                   aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : { opacity: .82 }}>
                                   {vendorStatusLabel(s)}
                                 </button>

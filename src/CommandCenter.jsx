@@ -439,10 +439,13 @@ export function deriveCommandCenterData(event, foodPP = null) {
         : _vendorRollup.status === 'ready' ? 'ON TRACK'
         : _vendorRollup.status === 'needs_attention' ? ((_vendorRollup.counts.needsAttention || 0) >= 3 ? 'AT RISK' : 'ATTENTION')
         : 'ATTENTION',
-      // Count from the canonical rollup (single source); the WORD stays
-      // vendor-scoped 'confirmed' (host-friendly, test-locked) — not generic
-      // readiness jargon.
-      _vendorRollup.counts.total > 0 ? `${_vendorRollup.counts.ready} of ${_vendorRollup.counts.total} confirmed` : 'No vendors yet') : null,
+      // SSOT #1 (board decision i): "confirmed" is reserved for isVendorConfirmed
+      // (fully locked in). A booked-but-not-yet-confirmed vendor (Deposit Paid /
+      // Contracted) is disclosed as "· K to confirm" so this chip AGREES with the
+      // grey readiness dot and the "Confirm vendor" action — a green/"confirmed"
+      // reading never coexists with an open confirm. Count still from the canonical
+      // rollup (single source: booked = rollup.ready).
+      _vendorRollup.counts.total === 0 ? 'No vendors yet' : (() => { const booked = _vendorRollup.counts.ready, confirmed = vendors.filter(isVendorConfirmed).length, toConfirm = Math.max(0, booked - confirmed); return toConfirm > 0 ? `${booked} of ${_vendorRollup.counts.total} booked · ${toConfirm} to confirm` : `${confirmed} of ${_vendorRollup.counts.total} confirmed`; })()) : null,
     stat('Guests',
       guests.length === 0 ? 'AT RISK'
         : yesGuests / guests.length >= 0.7 ? 'ON TRACK'
@@ -873,8 +876,10 @@ export function getCrossEventAttentionItems(events = []) {
       // ONE booked predicate — the old inline Confirmed|Booked set flagged a
       // 'Deposit Paid'/'Contracted' vendor as needing attention here while the
       // rollup called the same vendor ready on the same screen.
-      const isConfirmed = isVendorBooked(v);
-      if (isConfirmed) continue;
+      // SSOT #1: named `booked`, not `isConfirmed` — a booked vendor is correctly
+      // not an attention item here, but "confirmed" is a stricter, different rung.
+      const booked = isVendorBooked(v);
+      if (booked) continue;
       const overdueP = v.payDueDate && daysFrom(v.payDueDate) < 0;
       items.push({
         id: `ven-${ev.id}-${v.id}`, kind: 'vendor', eventId: ev.id, eventName,
@@ -919,8 +924,14 @@ export function getEventReadiness(event) {
   const tasksDone      = timeline.filter(t => effectiveDone(event, t)).length;
   const tasksTotal     = timeline.length;
   // RECON-I1 (POP-1C): the canonical booked predicate — see lib/workstreams.
-  const confirmedV     = vendors.filter(v => isVendorBooked(v)).length;
+  const confirmedV     = vendors.filter(v => isVendorBooked(v)).length;   // booked (secured for the day)
   const unconfirmedV   = vendors.length - confirmedV;
+  // SSOT #1: "confirmed" is reserved for isVendorConfirmed (fully locked in); a
+  // booked-but-not-confirmed vendor (Deposit Paid/Contracted) is disclosed as
+  // "to confirm", so this axis never greens the WORD "confirmed" while an open
+  // "Confirm vendor" action exists — same predicate as the dot/action/hero.
+  const lockedInV      = vendors.filter(v => isVendorConfirmed(v)).length;
+  const toConfirmV     = Math.max(0, confirmedV - lockedInV);
 
   // Decision health — overdue tasks ARE open decisions.
   let decision;
@@ -942,7 +953,8 @@ export function getEventReadiness(event) {
   else if (unconfirmedV >= 3)                  vendor = { status: 'AT_RISK',   label: 'At risk',  note: `${unconfirmedV} unconfirmed` };
   else if (unconfirmedV > 0)                   vendor = { status: 'ATTENTION', label: 'Attention', note: `${unconfirmedV} unconfirmed` };
   else if (confirmedNoContract > 0)            vendor = { status: 'ATTENTION', label: 'Attention', note: `${confirmedNoContract} missing contract` };
-  else                                          vendor = { status: 'ON_TRACK',  label: 'On track', note: `${confirmedV} confirmed` };
+  else if (toConfirmV > 0)                      vendor = { status: 'ON_TRACK',  label: 'On track', note: `all booked · ${toConfirmV} to confirm` };
+  else                                          vendor = { status: 'ON_TRACK',  label: 'On track', note: `${lockedInV} confirmed` };
 
   // Timeline readiness
   const taskPct = tasksTotal > 0 ? tasksDone / tasksTotal : 0;

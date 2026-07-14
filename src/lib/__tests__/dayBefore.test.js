@@ -47,6 +47,32 @@ test('vendor section: suppressed when vendorless; first-undone row when gaps', (
   expect(vsec.route).toEqual({ tab: 'Vendors', vendorId: 'v2' });
 });
 
+// SSOT #1 — this row's copy is "N to lock in" / "Everyone you hired is locked in",
+// so a booked-but-not-CONFIRMED vendor must still count as open. The bar here is
+// isVendorConfirmed, not isVendorBooked: a 'Deposit Paid' vendor with nothing else
+// outstanding (deposit settled, COI clear, arrival time set) used to produce zero
+// gaps and green "Everyone you hired is locked in" while a Confirm action was still
+// live on the vendor sheet — the two surfaces contradicted each other.
+test('vendor section: booked-but-not-confirmed still counts as open (no false "locked in")', () => {
+  const clean = { depositAmt: 0, depositPaid: true, coiStatus: 'ok', arrivalTime: '12:00' };
+  const plan = buildDayBeforePlan(ev({ vendors: [
+    { id: 'v1', name: 'Anacostia Frame & Film', status: 'Confirmed', ...clean },
+    // nothing left EXCEPT the confirm itself — the exact over-claim state
+    { id: 'v2', name: 'Beltway Sound Collective', status: 'Deposit Paid', ...clean },
+  ] }));
+  const vsec = plan.sections.find(s => s.key === 'vendors');
+  expect(vsec.open).toBe(1);
+  expect(vsec.route).toEqual({ tab: 'Vendors', vendorId: 'v2' });
+
+  // and when every vendor IS fully locked in, the row goes quiet — the calm state
+  // stays reachable, so this is a truthfulness bar, not a permanently-open nag.
+  const done = buildDayBeforePlan(ev({ vendors: [
+    { id: 'v1', name: 'Anacostia Frame & Film', status: 'Confirmed', ...clean },
+    { id: 'v2', name: 'Beltway Sound Collective', status: 'Confirmed', ...clean },
+  ] }));
+  expect(done.sections.find(s => s.key === 'vendors').open).toBe(0);
+});
+
 test('rain: saved plan is stop-worrying; missing routes to the shared rain target', () => {
   const dry = buildDayBeforePlan(ev({ rainPlan: 'Garage.' })).sections.find(s => s.key === 'rain');
   expect(dry.open).toBe(0);

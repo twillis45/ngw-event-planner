@@ -14,7 +14,7 @@
 import { playbookFoodPlan, playbookCapacity, effectiveRos } from './playbooks';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
-import { isVendorBooked } from './workstreams';
+import { isVendorConfirmed } from './workstreams';
 import { effectiveDone } from './taskEngine';
 
 const daysTo = (dateStr, now = new Date()) => {
@@ -79,10 +79,14 @@ export function buildDayBeforePlan(event, now = new Date()) {
   // vendor entry) — the old unnamed-vendor filter made this row's denominator
   // disagree with the vendor readiness rollup on the same screen.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(Boolean);
-  // POP-1C: isVendorBooked is the canonical vendor-status reader (workstreams.js) —
-  // the inline regex here used to miss 'Deposit Paid' and 'Contracted'.
+  // SSOT #1: this row's own copy is "N to lock in" / "Everyone you hired is locked
+  // in", so its status bar is isVendorConfirmed (fully locked in), NOT isVendorBooked
+  // — a Deposit-Paid vendor with its deposit paid, COI clear and arrival time set
+  // produced zero gaps here and greened "Everyone's locked in" while a Confirm
+  // action was still open. Same predicate as the area dot (phaseProgress) and the
+  // vendor hero. The arrival/COI/deposit concerns below stay layered on top.
   const vendorGaps = vendors.filter(v =>
-    !isVendorBooked(v)
+    !isVendorConfirmed(v)
     || (Number(v.depositAmt) > 0 && v.depositPaid !== true)
     || v.coiStatus === 'required'
     || !String(v.arrivalTime || '').trim());
