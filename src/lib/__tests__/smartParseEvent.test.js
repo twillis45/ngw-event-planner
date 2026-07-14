@@ -193,3 +193,19 @@ describe('isDestination — a suggestion, not an invented fact', () => {
     expect(parseSmartEventText('crab feast for 20 in the backyard', { now: NOW }).isDestination).toBe(false);
   });
 });
+
+describe('time of day — the coarse word the host said (2026-07-14)', () => {
+  const p = (txt) => parseSmartEventText(txt, { now: NOW });
+  test('"in the afternoon" is captured — it used to be dropped, defeating the grounded start time', () => {
+    expect(p('cookout for 25 in the afternoon on Sept 6').timeOfDay).toBe('afternoon');
+  });
+  test('each bucket', () => {
+    expect(p('brunch for 10').timeOfDay).toBe('morning');
+    expect(p('dinner party for 8').timeOfDay).toBe('evening');
+    expect(p('birthday in the evening').timeOfDay).toBe('evening');
+    expect(p('late night party').timeOfDay).toBe('late');
+  });
+  test('no time word → null, never a guess', () => {
+    expect(p('crab feast for 20').timeOfDay).toBeNull();
+  });
+});

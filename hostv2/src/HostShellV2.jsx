@@ -3364,6 +3364,10 @@ export default function HostShellV2() {
       guestEstimate: effGuests || '',
       totalBudget: effBudget || '',
       isDestination: effIsDestination,
+      // The coarse time-of-day the host said ("cookout in the afternoon"). Persisted so the
+      // grounded start-time default below has a bucket to propose from — without this it was
+      // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
+      ...(parsed.timeOfDay ? { timeOfDay: parsed.timeOfDay } : {}),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };

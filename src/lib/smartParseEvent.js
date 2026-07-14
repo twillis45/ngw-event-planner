@@ -160,8 +160,24 @@ export function parseSmartEventText(text, opts = {}) {
   // options) never silently committed as a fact from wording alone.
   const isDestination = /\bdestination\b|\bfly (?:in|out)\b|\bout[- ]of[- ]town\b/i.test(t) || !!loc;
 
+  // TIME OF DAY — the coarse word the host actually said. This used to be dropped entirely,
+  // so "cookout in the afternoon" created an event with NO time signal at all, and the
+  // grounded start-time default (which needs a bucket OR a forecast to propose from) had
+  // nothing to work with — the one thing the host told us about WHEN was thrown away. This is
+  // the BUCKET, never a clock: "afternoon", not "3:00 PM". eventWhen/startTime turn it into a
+  // proposed hour later, which the host still owns. Order matters — check "late" and specific
+  // words before the generic ones so "late morning" doesn't match "morning".
+  const timeOfDay = (() => {
+    if (/\blate night\b/i.test(t)) return 'late';
+    if (/\bmorning\b|\bbrunch\b|\bam\b/i.test(t)) return 'morning';
+    if (/\bafternoon\b|\bmidday\b|\bnoon\b/i.test(t)) return 'afternoon';
+    if (/\bevening\b|\bsunset\b|\bdinner\b/i.test(t)) return 'evening';
+    if (/\bnight\b|\bpm party\b/i.test(t)) return 'night';
+    return null;
+  })();
+
   return {
-    type, guests, budget, date, monthYear, milestone, isDestination,
+    type, guests, budget, date, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
     venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : ''),

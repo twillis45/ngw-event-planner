@@ -1634,12 +1634,22 @@ export function eventPlan(event, ctx = null) {
   const topDomain = topAction ? (CATEGORY_TO_DOMAIN[top.category] || top.category) : null;
 
   const seen = new Set(topDomain ? [topDomain] : []);
+  // DEDUP ON TITLE, NOT JUST DOMAIN. The domain map (CATEGORY_TO_DOMAIN) only knows two
+  // cases, so a reactive top action whose category is e.g. 'operational' but whose TITLE is
+  // "Decide what you're serving" was not deduped against the phase ledger's 'food' item with
+  // the same title — the crab feast showed that exact task TWICE. Two actions with the same
+  // rendered title are the same task, whatever engine made them and whatever domain each
+  // assigned. Normalize away the trailing period and the "· N open" tail so near-identical
+  // renders collapse.
+  const titleKey = (t) => String(t || '').toLowerCase().replace(/·[^·]*$/, '').replace(/[.\s]+$/, '').trim();
+  const seenTitles = new Set();
   const nextActions = [];
-  if (topAction) nextActions.push(topAction);
+  if (topAction) { nextActions.push(topAction); seenTitles.add(titleKey(topAction.title)); }
   for (const a of foundation) {
     if (a.done) continue;            // satisfied dominoes never surface as a next action
     if (seen.has(a.domain)) continue; // already represented (e.g. by the engine top)
-    seen.add(a.domain);
+    if (seenTitles.has(titleKey(a.title))) continue;
+    seen.add(a.domain); seenTitles.add(titleKey(a.title));
     nextActions.push(a);
   }
 
@@ -1677,7 +1687,8 @@ export function eventPlan(event, ctx = null) {
     for (const i of openPhase) {
       const domain = PHASE_TO_DOMAIN[i.id] || i.id;
       if (seen.has(domain)) continue;   // the foundation or the reactive top already says it
-      seen.add(domain);
+      if (seenTitles.has(titleKey(i.cueLabel))) continue;   // same task, different engine
+      seen.add(domain); seenTitles.add(titleKey(i.cueLabel));
       nextActions.push({
         id: 'phase:' + i.id,
         domain,
