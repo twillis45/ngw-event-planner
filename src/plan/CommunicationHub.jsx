@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { color, space, type, radius } from '../design/tokens';
+import { daysUntil } from '../lib/eventDays';
 
 const P = {
   canvas:       color.surface.canvas,
@@ -1352,7 +1353,12 @@ function ContextPanel({ thread, event, onRoute }) {
 
   // Event context
   const eventDate  = event?.date;
-  const daysToEvt  = eventDate ? Math.ceil((new Date(eventDate) - new Date()) / 86400000) : null;
+  // Was: Math.ceil((new Date(eventDate) - new Date()) / 86400000). `new Date('2026-08-04')`
+  // parses as UTC midnight, so east of Greenwich the subtraction goes negative during
+  // the evening BEFORE the event, ceil()'d to 0, and this label said "Today" the night
+  // before. Same bug as vendorIntelligence's rounder, arrived at by a different route —
+  // which is the argument for one reader rather than three.
+  const daysToEvt  = daysUntil(eventDate);
   const daysLabel  = daysToEvt === null ? null : daysToEvt < 0 ? `${Math.abs(daysToEvt)}d ago` : daysToEvt === 0 ? 'Today' : `${daysToEvt}d`;
 
   // Vendor contact details for quick reach

@@ -26,14 +26,13 @@
 //     NO vendor→document FK. We represent these as 'not_tracked' honestly.
 
 import { getVendorRequiredQuestions } from './vendorQuestions';
+import { daysUntil } from './eventDays';
 
 // ── Tiny date utils (deliberately self-contained — no import from elsewhere) ──
-function daysFrom(iso) {
-  if (!iso) return null;
-  const t = new Date(iso + 'T00:00:00').getTime();
-  if (Number.isNaN(t)) return null;
-  return Math.round((t - Date.now()) / 86400000);
-}
+// daysFrom() used to compute this itself, subtracting a wall-clock instant from a
+// midnight — so from noon onward the day BEFORE the event it returned 0 and every
+// surface below said "Event Day". One reader now, in lib/eventDays.js.
+const daysFrom = (iso) => daysUntil(iso);
 function fieldEither(v, ...keys) {
   for (const k of keys) {
     if (v && v[k] !== undefined && v[k] !== null && v[k] !== '') return v[k];

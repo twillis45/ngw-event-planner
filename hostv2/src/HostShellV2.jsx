@@ -61,7 +61,7 @@ import { eventGeoQuery } from '@app/lib/eventGeoQuery';
 import { parseSmartEventText, HOST_TYPES } from '@app/lib/smartParseEvent';
 import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcomeGate';
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
-import { quickAccountabilityForVendor, inferPromisesFromVendor } from '@app/lib/vendorAccountability/derive';
+import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
@@ -8491,8 +8491,7 @@ export default function HostShellV2() {
                           {(() => {
                             let openPromises = [];
                             try {
-                              openPromises = (inferPromisesFromVendor(v, event) || [])
-                                .filter(p => p.status !== 'completed' && p.status !== 'not_required' && p.status !== 'confirmed');
+                              openPromises = (inferPromisesFromVendor(v, event) || []).filter(promiseNeedsHost);
                             } catch { openPromises = []; }
                             if (!openPromises.length) return null;
                             // cap the visible list — a fresh vendor can carry a whole

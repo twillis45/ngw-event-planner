@@ -66,6 +66,30 @@ export function deriveVendorExpectedPromises(vendor, event) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────
+// promiseEvidenceSatisfied / promiseNeedsHost
+// One definition of "this promise still needs you", so the SURFACES that list
+// open items and the ENGINE that raises the worry cannot disagree.
+//
+// They used to. Both lists filtered on `status !== 'confirmed'`, which was fine
+// only because a confirmed promise always carried faked evidence. With evidence
+// told honestly, a promise can be CONFIRMED (we know the payment terms) and still
+// UNPROVEN (no contract on file) — and the old filters would have hidden exactly
+// that promise from the clearable list while the engine kept raising "evidence
+// missing" about it. A worry with no row to clear it is worse than the lie.
+// ──────────────────────────────────────────────────────────────────────────
+export function promiseEvidenceSatisfied(p) {
+  if (!p || !p.evidenceRequired) return true;
+  return p.evidenceStatus === 'attached' || p.evidenceStatus === 'confirmed';
+}
+
+export function promiseNeedsHost(p) {
+  if (!p) return false;
+  if (p.status === 'completed' || p.status === 'not_required') return false;
+  if (p.status !== 'confirmed') return true;
+  return !promiseEvidenceSatisfied(p);
+}
+
+// ──────────────────────────────────────────────────────────────────────────
 // 2. deriveVendorMissingProof
 // Returns promise records that require evidence but don't have any.
 // ──────────────────────────────────────────────────────────────────────────
@@ -302,24 +326,50 @@ export function inferPromisesFromVendor(vendor, event) {
   const playbook = getVendorPlaybook(vendor.category);
   const expected = deriveVendorExpectedPromises(vendor, event);
 
-  // Heuristic per-vendor field map. Each entry says "if this vendor field
-  // is truthy, mark these promise keys as confirmed (with evidence) at the
-  // corresponding evidence status."
+  // Heuristic per-vendor field map. Each entry says "if this vendor field is
+  // truthy, this promise has been CONFIRMED." Whether that also means PROOF is on
+  // file is a separate question, answered by inferredEvidence() below — a field
+  // holding a value is not, by itself, a document.
+  //
+  // `artifact: true` means the field IS a real artifact (an uploaded file, a link,
+  // an explicit "I signed it") rather than a value typed into a box.
   const heuristics = {
-    arrival_time:    { whenTruthy: !!vendor.arrivalTime,                       evidence: 'not_required' },
-    coverage_hours:  { whenTruthy: !!(vendor.coverageStart || vendor.coverageEnd), evidence: 'not_required' },
-    payment_terms:   { whenTruthy: !!(vendor.cost || vendor.depositAmt || vendor.balancePaid || vendor.depositPaid), evidence: 'attached' },
-    scope_confirmed: { whenTruthy: !!(vendor.contractUrl || vendor.contractFileName || vendor.contractSigned), evidence: 'attached' },
-    day_of_contact:  { whenTruthy: !!(vendor.contact || vendor.phone || vendor.contactName),  evidence: 'not_required' },
-    delivery_time:   { whenTruthy: !!vendor.deliveryTime, evidence: 'not_required' },
-    delivery_window: { whenTruthy: !!(vendor.deliveryWindowStart || vendor.deliveryWindowEnd), evidence: 'not_required' },
-    setup_window:    { whenTruthy: !!(vendor.setupStart || vendor.setupEnd),    evidence: 'not_required' },
-    passenger_count: { whenTruthy: vendor.passengerCount != null,               evidence: 'attached' },
-    headcount:       { whenTruthy: vendor.headcount != null || vendor.staffCount != null, evidence: 'attached' },
-    guard_count:     { whenTruthy: vendor.guardCount != null,                   evidence: 'attached' },
-    staff_count:     { whenTruthy: vendor.staffCount != null,                   evidence: 'attached' },
-    final_guest_count: { whenTruthy: vendor.guestCount != null, evidence: 'attached' },
+    arrival_time:    { whenTruthy: !!vendor.arrivalTime },
+    coverage_hours:  { whenTruthy: !!(vendor.coverageStart || vendor.coverageEnd) },
+    payment_terms:   { whenTruthy: !!(vendor.cost || vendor.depositAmt || vendor.balancePaid || vendor.depositPaid) },
+    scope_confirmed: { whenTruthy: !!(vendor.contractUrl || vendor.contractFileName || vendor.contractSigned), artifact: true },
+    day_of_contact:  { whenTruthy: !!(vendor.contact || vendor.phone || vendor.contactName) },
+    delivery_time:   { whenTruthy: !!vendor.deliveryTime },
+    delivery_window: { whenTruthy: !!(vendor.deliveryWindowStart || vendor.deliveryWindowEnd) },
+    setup_window:    { whenTruthy: !!(vendor.setupStart || vendor.setupEnd) },
+    passenger_count: { whenTruthy: vendor.passengerCount != null },
+    headcount:       { whenTruthy: vendor.headcount != null || vendor.staffCount != null },
+    guard_count:     { whenTruthy: vendor.guardCount != null },
+    staff_count:     { whenTruthy: vendor.staffCount != null },
+    final_guest_count: { whenTruthy: vendor.guestCount != null },
   };
+
+  // ── Evidence honesty (2026-07-14) ───────────────────────────────────────
+  // The bug this replaces: `payment_terms` claimed evidence was `'attached'` the
+  // moment the host typed anything into the cost field. A price is a price. It is
+  // not a signed contract, and telling a host their contract is on file — when all
+  // they did was type "2400" — is the same class of lie as a presence check
+  // licensing a completion claim. Ask the PROMISE what proof it wants:
+  //
+  //   'count'               → the number IS the artifact. Recording it is the proof.
+  //   'document'/'contract' → only a real file, or the planner's explicit
+  //                           "Mark proof on file", may say attached. A typed value
+  //                           confirms the TERM and leaves the proof still missing.
+  //
+  // Downgrading to 'none' (not 'confirmed') is deliberate: deriveVendorMissingProof
+  // treats 'confirmed' as satisfying evidence, so it would have kept the same lie
+  // under a quieter name. 'none' is what surfaces "Needs proof" — which is true.
+  function inferredEvidence(p, h) {
+    if (!p.evidenceRequired) return 'not_required';
+    if (h && h.artifact) return 'attached';
+    if (p.evidenceKind === 'count') return 'attached';
+    return 'none';
+  }
 
   // Broad signal: a vendor whose status is "Confirmed" / "Contracted" /
   // "Deposit Paid" is at least scope-confirmed.
@@ -347,12 +397,15 @@ export function inferPromisesFromVendor(vendor, event) {
       return {
         ...p,
         status: 'confirmed',
-        evidenceStatus: p.evidenceRequired ? h.evidence : 'not_required',
+        evidenceStatus: inferredEvidence(p, h),
         sourceType: 'system',
       };
     }
+    // A status dropdown is not a contract. "Confirmed" / "Contracted" / "Deposit
+    // Paid" tells us the SCOPE is agreed — it does not conjure a document. Evidence
+    // stays open until a file exists or the planner says they have one.
     if (p.promiseKey === 'scope_confirmed' && scopeConfirmedByStatus) {
-      return { ...p, status: 'confirmed', evidenceStatus: 'attached', sourceType: 'system' };
+      return { ...p, status: 'confirmed', evidenceStatus: inferredEvidence(p, null), sourceType: 'system' };
     }
     return p;
   });

@@ -111,6 +111,10 @@ export function makePromise({ vendorId, eventId, categoryKey, playbookPromise, d
     sourceType: 'manual',
     sourceId: null,
     evidenceRequired: !!playbookPromise.evidenceRequired,
+    // What KIND of proof this promise wants: 'count' | 'document' | 'contract'.
+    // Carried onto the record so consumers can ask the promise what would satisfy
+    // it, instead of keeping a second table of their own and letting it drift.
+    evidenceKind: playbookPromise.evidenceKind || null,
     evidenceStatus: playbookPromise.evidenceRequired ? 'none' : 'not_required',
     evidenceRefs: [],
     status: 'not_requested',

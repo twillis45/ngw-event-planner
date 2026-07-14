@@ -17,6 +17,8 @@ export {
   deriveVendorNextAccountabilityAction,
   inferPromisesFromVendor,
   quickAccountabilityForVendor,
+  promiseEvidenceSatisfied,
+  promiseNeedsHost,
 } from './derive.js';
 export { deriveVendorPromiseConflicts, conflictsForVendor } from './conflicts.js';
 export { generateVendorFollowUpDraft, generateAllFollowUpDrafts } from './followUpDrafts.js';

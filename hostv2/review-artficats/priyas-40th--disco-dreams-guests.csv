@@ -1,0 +1,12 @@
+Name,Email,Phone,Group,RSVP,Meal,+1 Name,Table,Dietary,Notes
+Anjali Mehta,anjali.mehta@gmail.com,(415) 555-0142,Family,Yes,Vegetarian,,1,"Mother of guest of honor; seat near dance floor exit, mobility",Bringing the surprise slideshow on USB
+Marcus Thompson,marcus.t@outlook.com,(415) 555-0188,College Friends,Yes,Beef,,3,,Volunteered to MC the toast
+Sofia Reyes,sofia.reyes@workmail.com,(628) 555-0119,Work Friends,Yes,Fish,,4,Gluten-free,Plus-one confirmed
+Daniel O'Connor,d.oconnor@workmail.com,(628) 555-0173,Work Friends,Maybe,,,,,Travel for work may conflict; will confirm by 7/8
+Grace Kim,grace.kim@gmail.com,(510) 555-0156,College Friends,Yes,Chicken,,3,High chair x1; kids meal x2,"Bringing two children, ages 4 and 7"
+Tariq Hassan,tariq.hassan@gmail.com,(415) 555-0204,Family,Pending,,,,Halal,"Cousin; flying in from Chicago, flight not yet booked"
+Eleanor Whitfield,eleanor.w@gmail.com,(415) 555-0167,Neighbors,No,,,,,"Sends regrets, conflicting wedding"
+Diego Fernández,diego.fernandez@gmail.com,(415) 555-0191,College Friends,Yes,Vegan,,1,"Vegan, nut allergy",Coordinating the group gift
+Import Test One,one@test.example,,Friends,Yes,Standard,,,,
+Import Test Two,two@test.example,,Friends,Pending,—,,,vegan,
+Import Test Three,,,,No,—,,,,

@@ -160,6 +160,7 @@ import {
   deriveVendorNextAccountabilityAction,
   deriveVendorBriefReadiness,
   accountabilityLabel,
+  promiseEvidenceSatisfied,
   PROMISE_STATUS_LABEL,
   getVendorPlaybook,
 } from './lib/vendorAccountability';
@@ -6511,10 +6512,14 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
             : acc.tier === 'needs_proof'  ? steelTopPT
             : C.success;
           // Group promises by status — top 3 most-actionable lift to the surface
+          // A promise is only "confirmed" here if its PROOF is settled too. A term we
+          // agreed but never got the contract for belongs in `evidence`, not in the
+          // done pile — otherwise the tracker raises "evidence missing" about a row
+          // it is simultaneously showing as complete.
           const byStatus = {
             overdue:        promises.filter(p => p.status === 'overdue' || (p.dueDate && new Date(p.dueDate) < new Date() && p.status !== 'confirmed' && p.status !== 'completed')),
-            evidence:       promises.filter(p => p.evidenceRequired && p.evidenceStatus !== 'attached' && p.evidenceStatus !== 'confirmed' && p.status !== 'confirmed' && p.status !== 'completed'),
-            confirmed:      promises.filter(p => p.status === 'confirmed' || p.status === 'completed'),
+            evidence:       promises.filter(p => p.status !== 'completed' && p.status !== 'not_required' && !promiseEvidenceSatisfied(p)),
+            confirmed:      promises.filter(p => (p.status === 'confirmed' || p.status === 'completed') && promiseEvidenceSatisfied(p)),
           };
           return (
             <div style={{ padding: '14px 24px', borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
