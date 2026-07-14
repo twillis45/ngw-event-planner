@@ -25,6 +25,8 @@ import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
+import { hostSpending } from './hostSpending';
+import { vendorOutstanding } from './vendorMoney';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -128,16 +130,46 @@ function preProgress(ev, phase, daysOut) {
   } catch { /* skip */ }
 
   // Optional goods: count only once they EXIST (they never manufacture a gap).
-  if (num(ev.totalBudget) > 0) add('budget', true, true, null, { tab: 'Budget' }, 9);
+  // BUDGET — SSOT #1 / R4. This was `add('budget', true, true, ...)`: handled was
+  // the literal `true`, so once a host typed any number the Budget area could NEVER
+  // be a gap again. It was either absent from the ledger or permanently green — it
+  // could not report an overspend even in principle, and a green Budget dot sat on
+  // events with thousands owed. Presence of a number is not control of the money.
+  //
+  // Honest bar: a budget is handled while the KNOWN costs still fit inside it.
+  // Known costs = hostSpending().committed (food/supplies/capacity/crab + entered
+  // rows) PLUS what is owed to committed vendors — the term hostSpending has never
+  // had, which is why every host money surface was blind to vendor balances. Both
+  // numbers come from canonical sources; neither is re-derived here.
+  if (num(ev.totalBudget) > 0) {
+    const money = (() => { try { return hostSpending(ev); } catch { return null; } })();
+    const owedToVendors = (() => { try { return vendorOutstanding(ev); } catch { return 0; } })();
+    const knownCosts = (money ? num(money.committed) : 0) + owedToVendors;
+    const totalBudget = num(ev.totalBudget);
+    const over = Math.round(knownCosts - totalBudget);
+    add('budget', true, over <= 0,
+      over > 0 ? `Known costs are $${over.toLocaleString()} over your budget` : null,
+      { tab: 'Budget' }, 9);
+  }
   if (String(ev.must_have_moment || '').trim()) add('moment', true, true, null, null, 9);
 
   const total = items.length;
   const done = items.filter(i => i.handled).length;
   const left = total - done;
   const label = noDate ? 'Planning setup' : 'Planning readiness';
+  // SSOT #1 / R4 — a claim must not outrun its own scope. This said "Ready for
+  // event day", which is a claim about the EVENT. The ledger is only the areas that
+  // APPLY: an event type with no food playbook never adds Food or Shopping, so an
+  // event carrying nothing but a date, a location and a headcount printed
+  // "3 of 3 · Ready for event day" — nothing was planned, and the app called it
+  // ready. Excluding inapplicable areas is correct (that is the denominator-honesty
+  // rule this file already documents); what was wrong is CLAIMING THE WHOLE EVENT
+  // off a partial ledger. The count now names its own scope. The genuine
+  // "you're set" moment belongs to the engine, which can see every open action
+  // (see lib/exhaleGate) — not to a checklist that cannot.
   const summary = noDate && !String(ev.date || '').trim()
     ? 'Add the event date to time the plan'
-    : left === 0 ? 'Ready for event day' : `${done} of ${total} essentials handled`;
+    : left === 0 ? `All ${total} area${total === 1 ? '' : 's'} handled` : `${done} of ${total} areas handled`;
   return {
     phase, label, completedCount: done, totalCount: total,
     progress: total ? done / total : 0,
@@ -163,16 +195,26 @@ function liveProgress(ev, now) {
   const timed = ros.filter(r => r.time).sort((a, b) => String(a.time).localeCompare(String(b.time)));
   const mins = (t) => { const m = /^(\d{1,2}):(\d{2})/.exec(String(t)); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const past = timed.filter(r => { const m = mins(r.time); return m != null && m <= nowMin; });
   const nextSeg = timed.find(r => { const m = mins(r.time); return m != null && m > nowMin; });
   const total = timed.length;
-  const done = past.length;
-  const lastDone = past[past.length - 1];
+  // SSOT #1 / R4 — ELAPSED TIME IS NOT DONE. This used to count the cues whose
+  // clock time had PASSED (`past.length`) as completed, so on event day the bar
+  // filled itself and the header said "Cake handled" because 4pm arrived — not
+  // because anyone cut the cake. By 9pm it read "All cues run — enjoy the rest"
+  // to a host who had ticked nothing. The run of show carries a REAL per-cue flag
+  // (event.rosDone, overlaid by effectiveRos) — the same one the day-of hero reads.
+  // The clock still says what's NEXT; only the host says what's DONE.
+  const doneRows = timed.filter(r => r.done);
+  const done = doneRows.length;
+  const open = total - done;
+  const lastDone = doneRows[doneRows.length - 1];
   const summary = total === 0
     ? 'Event day — run it your way'
-    : nextSeg
-      ? `${lastDone ? `${lastDone.segment} handled · ` : ''}${nextSeg.segment} next`
-      : 'All cues run — enjoy the rest';
+    : open === 0
+      ? 'All cues run — enjoy the rest'
+      : nextSeg
+        ? `${lastDone ? `${lastDone.segment} handled · ` : ''}${nextSeg.segment} next`
+        : `${open} cue${open === 1 ? '' : 's'} still open`;
   return {
     phase: 'live_event', label: 'Event flow', completedCount: done, totalCount: total,
     progress: total ? done / total : 0,
@@ -205,10 +247,19 @@ function postProgress(ev) {
   }
   const total = items.length;
   const done = items.filter(i => i.handled).length;
+  // SSOT #1 / R4 — ZERO IS NOT DONE (UX_08: "zero is a value, null is missing").
+  // `progress: total ? done/total : 1` rendered an EMPTY ledger as a full green bar
+  // and "All wrapped up" — on an event where no vendor cost was ever entered, no
+  // RSVPs were tracked and no rentals were checked, so there was nothing to wrap
+  // and nothing was wrapped. An empty ledger means we have nothing TRACKED, which
+  // is not the same claim as "you're finished". preProgress (line ~143) already
+  // gets this right with `: 0` — this is now consistent with it.
   return {
     phase: 'post_event', label: 'Wrap-up', completedCount: done, totalCount: total,
-    progress: total ? done / total : 1,
-    summary: total === 0 ? 'All wrapped up' : (total - done) === 0 ? 'All wrapped up' : `${total - done} thing${total - done === 1 ? '' : 's'} left`,
+    progress: total ? done / total : 0,
+    summary: total === 0
+      ? 'Nothing tracked to wrap up'
+      : (total - done) === 0 ? 'All wrapped up' : `${total - done} thing${total - done === 1 ? '' : 's'} left`,
     nextCue: pickCue(items),
     items,
   };

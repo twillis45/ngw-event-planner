@@ -11,19 +11,53 @@ test('1 · pre-event label is Planning readiness with honest counts', () => {
   const p = deriveEventPhaseProgress(base(), NOW);
   expect(p.phase).toBe('pre_event');
   expect(p.label).toBe('Planning readiness');
-  expect(p.summary).toMatch(/of \d essentials handled|Ready for event day/);
+  // R4: the summary NAMES ITS SCOPE. It used to say "Ready for event day" — a claim
+  // about the whole event — off a ledger that only contains the areas that APPLY.
+  expect(p.summary).toMatch(/\d of \d areas handled|All \d areas? handled/);
+  expect(p.summary).not.toMatch(/Ready for event day/);
   expect(JSON.stringify(p)).not.toMatch(/%|percent|score|confidence/i);
 });
 
-test('2 · event-day label is Event flow driven by the run of show', () => {
-  const p = deriveEventPhaseProgress(base({ date: '2026-07-10', rosEdited: true, ros: [
-    { time: '14:00', segment: 'Setup' }, { time: '16:00', segment: 'Food service' },
-  ] }), NOW);
-  expect(p.phase).toBe('live_event');
-  expect(p.label).toBe('Event flow');
-  expect(p.summary).toBe('Setup handled · Food service next');
-  expect(p.nextCue.label).toMatch(/Next: Food service/);
-  expect(p.nextCue.route).toEqual({ tab: 'Event Day Schedule', focusField: 'ros-now' });
+// R4 — ELAPSED TIME IS NOT DONE. This test used to assert the BUG: with NOW at
+// 15:00 and Setup scheduled for 14:00 (and nobody having ticked it), it expected
+// "Setup handled". The bar counted cues whose CLOCK TIME had passed as completed,
+// so on event day it filled itself and congratulated a host who had done nothing.
+// The run of show carries a real per-cue flag (event.rosDone). The clock says
+// what's NEXT; only the host says what's DONE.
+test('2 · event-day flow: a cue whose time has PASSED is not "handled" until the host says so', () => {
+  const rosEvent = (over = {}) => base({
+    date: '2026-07-10', rosEdited: true,
+    ros: [{ id: 'c1', time: '14:00', segment: 'Setup' }, { id: 'c2', time: '16:00', segment: 'Food service' }],
+    ...over,
+  });
+
+  // 15:00 — Setup's slot has passed, but nobody ticked it. It is NOT handled.
+  const untouched = deriveEventPhaseProgress(rosEvent(), NOW);
+  expect(untouched.phase).toBe('live_event');
+  expect(untouched.label).toBe('Event flow');
+  expect(untouched.completedCount).toBe(0);
+  expect(untouched.progress).toBe(0);
+  expect(untouched.summary).toBe('Food service next');
+  expect(untouched.summary).not.toMatch(/Setup handled/);
+  expect(untouched.nextCue.label).toMatch(/Next: Food service/);
+  expect(untouched.nextCue.route).toEqual({ tab: 'Event Day Schedule', focusField: 'ros-now' });
+
+  // The host actually ticks Setup → NOW it is handled, and the bar moves.
+  const ticked = deriveEventPhaseProgress(rosEvent({ rosDone: { c1: true } }), NOW);
+  expect(ticked.completedCount).toBe(1);
+  expect(ticked.summary).toBe('Setup handled · Food service next');
+});
+
+test('2b · the clock running past every cue does NOT read as "all cues run"', () => {
+  const late = new Date('2026-07-10T23:00:00');
+  const p = deriveEventPhaseProgress(base({
+    date: '2026-07-10', rosEdited: true,
+    ros: [{ id: 'c1', time: '14:00', segment: 'Setup' }, { id: 'c2', time: '16:00', segment: 'Food service' }],
+  }), late);
+  // Both slots are long past; the host ticked nothing. The day is not "run".
+  expect(p.completedCount).toBe(0);
+  expect(p.summary).not.toMatch(/All cues run/);
+  expect(p.summary).toBe('2 cues still open');
 });
 
 test('3 · post-event label is Wrap-up; stale planning gaps are retired', () => {
@@ -60,11 +94,44 @@ test('10 · outdoor event counts the rain plan; handled once saved', () => {
   expect(saved.completedCount).toBeGreaterThan(open.completedCount);
 });
 
-test('11 · optional goods (budget, moment) never manufacture a gap — they only add handled', () => {
+// R4 — the doctrine is preserved, but sharpened. "Optional goods never manufacture
+// a gap" was implemented as `add('budget', true, TRUE, ...)` — handled was the
+// literal true, so Budget could NEVER be open once a number existed. It could not
+// report an overspend even in principle, and a green Budget dot sat on events with
+// thousands owed. Presence of a number is not control of the money.
+// Now: PRESENCE still never opens a gap (a budget that covers the costs stays
+// handled) — but a real OVERSPEND does, which is the whole point of a budget.
+test('11 · a budget that covers the known costs is handled — presence alone never opens a gap', () => {
   const without = deriveEventPhaseProgress(base(), NOW);
-  const withBoth = deriveEventPhaseProgress(base({ totalBudget: 500, must_have_moment: 'The toast' }), NOW);
+  const withBoth = deriveEventPhaseProgress(base({ totalBudget: 50000, must_have_moment: 'The toast' }), NOW);
   expect(withBoth.totalCount).toBe(without.totalCount + 2);
   expect(withBoth.completedCount).toBe(without.completedCount + 2);
+});
+
+test('11b · a budget the known costs BLOW THROUGH is an open gap, and says by how much', () => {
+  // A 12-person dinner party carries ~$864 of known food cost. $500 does not cover it.
+  const over = deriveEventPhaseProgress(base({ totalBudget: 500 }), NOW);
+  const budget = over.items.find(i => i.id === 'budget');
+  expect(budget).toBeTruthy();
+  expect(budget.handled).toBe(false);
+  expect(budget.cueLabel).toMatch(/over your budget/);
+  expect(over.summary).not.toMatch(/All \d areas? handled/);
+});
+
+test('11c · vendor balances count against the budget — the term hostSpending never had', () => {
+  // Budget comfortably covers food ($864). The vendor owed $9,000 is what breaks it.
+  const ev = base({
+    totalBudget: 5000,
+    vendors: [{ id: 'v1', name: 'Fired Up BBQ', status: 'Deposit Paid', cost: 9000, depositAmt: 1000, depositPaid: true }],
+  });
+  const p = deriveEventPhaseProgress(ev, NOW);
+  const budget = p.items.find(i => i.id === 'budget');
+  expect(budget.handled).toBe(false);          // $8,000 still owed to the vendor
+  expect(budget.cueLabel).toMatch(/over your budget/);
+
+  // Same event, vendor fully paid → nothing outstanding → budget fits again.
+  const paid = deriveEventPhaseProgress({ ...ev, totalBudget: 15000 }, NOW);
+  expect(paid.items.find(i => i.id === 'budget').handled).toBe(true);
 });
 
 test('13-15 · at most one cue, routed exactly, hidden when nothing is near-finishable', () => {
@@ -141,4 +208,30 @@ test('headcount essential: a real named guest list counts as "set", even with re
     guests: [{ name: 'Alex', rsvp: '' }, { name: 'Sam', rsvp: '' }],
   }), NOW);
   expect(pendingReplies.nextCue && pendingReplies.nextCue.id).not.toBe('headcount');
+});
+
+// R4 — ZERO IS NOT DONE (UX_08: "zero is a value, null is missing").
+// postProgress used `progress: total ? done/total : 1` — an EMPTY wrap-up ledger
+// rendered a full green bar and "All wrapped up", on an event where no vendor cost
+// was entered, no RSVPs were tracked and no rentals were checked. Nothing was
+// wrapped; there was simply nothing tracked. Those are different claims.
+test('R4 · an empty post-event ledger is NOT 100% "All wrapped up"', () => {
+  const after = new Date('2026-07-25T12:00:00');
+  const p = deriveEventPhaseProgress(base({ date: '2026-07-20', vendors: [], guests: [] }), after);
+  expect(p.phase).toBe('post_event');
+  expect(p.totalCount).toBe(0);
+  expect(p.progress).toBe(0);                       // was 1 — a full green bar on nothing
+  expect(p.summary).toBe('Nothing tracked to wrap up');
+  expect(p.summary).not.toMatch(/All wrapped up/);
+});
+
+test('R4 · a real post-event ledger still reaches "All wrapped up" when genuinely done', () => {
+  const after = new Date('2026-07-25T12:00:00');
+  const p = deriveEventPhaseProgress(base({
+    date: '2026-07-20',
+    vendors: [{ id: 'v1', name: 'Fired Up BBQ', status: 'Confirmed', cost: 1000, balancePaid: true }],
+  }), after);
+  expect(p.totalCount).toBe(1);
+  expect(p.progress).toBe(1);
+  expect(p.summary).toBe('All wrapped up');
 });
