@@ -82,7 +82,15 @@ describe('buildVendorBriefPayload — privacy whitelist', () => {
 
   test("run-of-show slice: only this vendor's cues, sorted, with cue-level fields only", () => {
     expect(payload.ros).toHaveLength(2);
-    expect(payload.ros[0]).toEqual({ time: '14:30', segment: 'Caterer load-in', location: 'Side gate', notes: 'Ask for Dana' });
+    // `rel` joined the cue-level whitelist on 2026-07-14, deliberately. The run of show used
+    // to MANUFACTURE a clock time when the host had given only "afternoon" (or nothing at all
+    // — a bare 15:00), and this payload shipped those invented hours to a real caterer as
+    // their load-in time. Times are now null unless the host set a real start time, and `rel`
+    // carries what we actually know ("4h before guests arrive") so the brief stays useful
+    // without lying. A vendor can plan against "4h before guests arrive". A vendor cannot
+    // plan against a made-up 11:00 — they just show up at the wrong hour.
+    // It is schedule information, not PII; the FORBIDDEN_KEYS guard above is unchanged.
+    expect(payload.ros[0]).toEqual({ time: '14:30', rel: null, segment: 'Caterer load-in', location: 'Side gate', notes: 'Ask for Dana' });
     expect(payload.ros.map(r => r.segment)).not.toContain('Cake cutting'); // other vendors' cues excluded
     expect(payload.ros[0].id).toBeUndefined();
   });

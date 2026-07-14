@@ -34,6 +34,8 @@ import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
 import { proposeReplyBy } from '@app/lib/replyBy';
+import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
+import { eventStartMinutes } from '@app/lib/eventWhen';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -1651,6 +1653,10 @@ export default function HostShellV2() {
   // food + budget sheets read — the home tile was the one surface that ignored it.
   const gBand = useMemo(() => { try { return attendanceBand(event); } catch { return null; } }, [event]);
   const rsvpBy = rsvpDeadlineFor(event);                  // lib/dates — reply-by date
+  // Only a date the HOST set exists. `source:'derived'` is our own event.date−7d guess, and
+  // no surface — guest OR host — may state it as fact. The grounded proposal lives in
+  // lib/replyBy.js and is offered, with its reasoning, inside the editor.
+  const rsvpByIsSet = !!(rsvpBy && rsvpBy.iso && rsvpBy.source === 'override');
   const actions = plan.nextActions || [];
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
@@ -2435,7 +2441,13 @@ export default function HostShellV2() {
   const draftTimeline = () => {
     const rows = (() => { try { return playbookChecklist(event) || []; } catch { return []; } })();
     if (!rows.length) { toast(event.date ? 'No playbook checklist for this type.' : 'Set the date first — the checklist works backward from it.'); return; }
-    const tasks = rows.map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '', category: r.category || '' }));
+    // leadDays is CARRIED, not dropped. playbookChecklist authors a real lead for every task
+    // ('T-5d' → -5) and this writer used to keep only `week` — the PROSE label ('Week of').
+    // That is how "nothing in this app was ever overdue" survived: the engine computed the
+    // lead, the runtime threw it away at the moment of persistence, and every consumer was
+    // left re-parsing a sentence. (lib/taskLead.js can still recover a lossy lead from the
+    // prose for legacy events — but a T-5d task deserves to stay a T-5d task.)
+    const tasks = rows.map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' }));
     patchEvent({ timeline: tasks }, tasks.length + ' tasks drafted — the engine gates them by your choices and works back from the date.');
   };
 
@@ -3288,7 +3300,7 @@ export default function HostShellV2() {
     };
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
-    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
+    try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
     setCustoms(list => list.some(c => c && c.id === newId) ? list.map(c => (c && c.id === newId) ? ev : c) : [...list, ev]);
     setEventId(newId); setRevealed(true);
     // Build-map #3: a freshly created event is the host's new resume pointer.
@@ -4957,14 +4969,69 @@ export default function HostShellV2() {
                       <span className="t" style={{ color: 'var(--warn)', fontWeight: 700 }}>{rosOverlaps} {rosOverlaps === 1 ? 'moment overlaps' : 'moments overlap'} another — flagged below.</span>
                     </div>
                   )}
+                  {/* THE START TIME, PROPOSED AND OWNED (2026-07-14).
+                      The schedule used to manufacture clock times out of nothing: with only
+                      "afternoon" it printed 3:00 PM, and with nothing at all it anchored the
+                      whole day to a bare 15:00 — times that were shown as fact, SENT TO
+                      VENDORS in the brief, and frozen into event.ros the moment the host
+                      edited any row. The order of the day is real; the hours were invented.
+
+                      Now the rows say what they actually know ("2h before guests arrive"),
+                      and the host is offered the one decision that turns all of it into real
+                      times. V2 had NO start-time editor at all — the field existed in the
+                      model and nothing could write it — so this is both the proposal and the
+                      capture. Grounded: the seed is the host's OWN time-of-day bucket, and we
+                      say so. Nothing is written until they tap. */}
+                  {ros.length > 0 && ros.some(r => !r.time) && (() => {
+                    const tod = String(event.timeOfDay || '').trim();
+                    const seedMin = (() => { try { return eventStartMinutes({ timeOfDay: tod }); } catch (_e) { return null; } })();
+                    const seed = seedMin != null
+                      ? `${String(Math.floor(seedMin / 60)).padStart(2, '0')}:${String(seedMin % 60).padStart(2, '0')}`
+                      : '';
+                    const pretty = seedMin != null
+                      ? new Date(2020, 0, 1, Math.floor(seedMin / 60), seedMin % 60).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                      : null;
+                    return (
+                      <div className="later-row" style={{ margin: '0 0 var(--sp-3)', background: 'var(--card)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px' }}>
+                        <p className="grounding" style={{ margin: 0 }}>
+                          {tod
+                            ? <>You said <b>{tod.toLowerCase()}</b>, which tells us the order of the day but not its hours — so these are relative. Set a start time and every line below becomes a real one.</>
+                            : <>These are relative — set a start time and every line below becomes a real one.</>}
+                        </p>
+                        <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                          <span className="of">guests arrive:</span>
+                          <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                            value={event.startTime || ''}
+                            onChange={e => patchEvent({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
+                            aria-label="What time guests arrive" />
+                          {pretty && (
+                            <button className="mini" onClick={() => patchEvent({ startTime: seed },
+                              'Start time set — the whole day reads from it now.')}>
+                              use {pretty}
+                            </button>
+                          )}
+                        </div>
+                        {pretty && (
+                          <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>
+                            {pretty} is just the middle of {tod.toLowerCase()} — a starting point, not a guess at your plan. Change it to whatever is true.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="agenda">
                     {ros.map((r, i) => {
                       const prev = ros[i - 1];
                       const clash = !!(r && r.time && prev && prev.time && r.time <= prev.time);
                       return (
                         <div className={'then-row' + (r.done ? ' is-done' : '')} key={r.id || i} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-                          <span className="d" style={{ minWidth: 54 }}>{r.time || '—'}</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}</span>
+                          {/* A row without a clock is not an unknown row — it is a row whose
+                              ORDER we know and whose HOUR the host has not given us. Show the
+                              knowledge we have ("2h before guests arrive"), not an em-dash and
+                              not an invented "15:00". */}
+                          <span className="d" style={{ minWidth: 54 }}>{r.time || (r.rel ? '·' : '—')}</span>
+                          <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
+                            {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
                           {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done</span>}
                         </div>
@@ -7345,19 +7412,35 @@ export default function HostShellV2() {
                           {inferred ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done by your plan — tap to confirm</span> : null}
                           {(() => { // compressed-timeline urgency, the engine's word (never for standard)
                             try {
-                              // the engine wants a week→offset map (production's
-                              // PHASE_OFFSET); V2 checklists carry T-Nd weeks, so
-                              // the map derives from the convention itself.
-                              const mm = /T-(\d+)d/i.exec(String(t.week || ''));
-                              const po = mm ? { [t.week]: -Number(mm[1]) } : null;
-                              const u = days != null && po ? taskUrgencyChip(t, days, event.type, po) : null;
+                              // WAS: /T-(\d+)d/.exec(t.week) — and `week` is PROSE ('Week of'),
+                              // never 'T-5d'. It matched NOTHING, so `po` was always null, so
+                              // this chip NEVER RENDERED, on any task, on any event. The one
+                              // urgency signal in the whole checklist was dead code. The lead
+                              // now comes from the one reader (lib/taskLead.js) off the
+                              // persisted leadDays, and the map is built from the real number.
+                              const lead = taskLeadDays(t);
+                              const po = lead != null ? { [t.week || '_']: lead } : null;
+                              const u = days != null && po ? taskUrgencyChip({ ...t, week: t.week || '_' }, days, event.type, po) : null;
                               return u && u.label ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{u.label}</span> : null;
                             } catch { return null; }
                           })()}
                         </span>
                         {detail ? <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{detail}</span> : null}
                         <span className="v-meta" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                          {[t.week, t.owner].filter(Boolean).join(' · ')}
+                          {/* The DUE DATE, finally. taskDueLabel had zero call sites — the app
+                              computed every task's lead and then showed the host only a prose
+                              bucket ("Week of"), which is why nothing ever read as late.
+                              taskDueLabel also distinguishes "13 days past its window" from
+                              "today", so a closed window stops masquerading as a deadline. */}
+                          {(() => {
+                            let due = null;
+                            try { due = t.done ? null : (taskDueLabel(t, event) || null); } catch (_e) { due = null; }
+                            // Once there is a REAL due label, the prose bucket is noise —
+                            // "7 days past its window · Week of" says the same thing twice and
+                            // the second half is the vaguer one. `week` stays only as the
+                            // fallback for a task whose lead we genuinely cannot resolve.
+                            return [due, due ? null : t.week, t.owner].filter(Boolean).join(' · ');
+                          })()}
                           {/* Deep-link to the surface that handles this step — nested
                               role=button span (same pattern as the food row's tune
                               control), stopPropagation so it launches instead of
@@ -9157,11 +9240,19 @@ export default function HostShellV2() {
                       const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
                       const parts = [];
                       if (heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
-                      if (rsvpBy && rsvpBy.iso && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+                      // I FIXED THE GUEST AND LEFT THE HOST (2026-07-14, same day). dc5abee gated
+                      // the INVITE on `source === 'override'` so a guest could never be shown a
+                      // deadline the host hadn't chosen — and this line, forty rows away, kept
+                      // printing the very same invented `event.date − 7d` to the HOST as a flat
+                      // fact ("replies by Jul 20"), sitting beside real RSVP counts, with a
+                      // "change" button implying a date already existed. Half a fix is its own
+                      // kind of lie: the host would have believed a deadline was set and never
+                      // opened the editor to set one.
+                      if (rsvpByIsSet && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
                       return parts.join(' · ');
                     })()}
                     {!isPast && (
-                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : (rsvpBy && rsvpBy.iso ? 'change' : 'set reply-by')}</button>
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : (rsvpByIsSet ? 'change' : 'set reply-by')}</button>
                     )}
                     {(() => {
                       // leading separator only when something precedes the hint
@@ -9642,7 +9733,7 @@ export default function HostShellV2() {
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
-              <span className="p-time">{r.time || '—'}</span>
+              <span className="p-time">{r.time || (r.rel ? '·' : '—')}</span>
               <span>
                 {r.segment}
                 <span className="p-meta">

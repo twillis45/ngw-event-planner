@@ -27,7 +27,14 @@ export function vendorRosSlice(ros, vendor) {
   return (ros || [])
     .filter(r => r && (r.vendorName === name || r.owner === name))
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-    .map(r => ({ time: r.time, segment: r.segment, location: r.location, notes: r.notes }));
+    // `rel` travels with the row. Until 2026-07-14 the run of show manufactured a clock out
+    // of a coarse "afternoon" (and, with nothing at all, out of a bare 15:00) — and THIS
+    // function shipped those invented hours to a real caterer as their load-in time. The
+    // times are now null unless the host actually set a start time; `rel` carries what we
+    // genuinely know ("4h before guests arrive"), so the brief stays useful without lying.
+    // A vendor reading "4h before guests arrive" can plan. A vendor reading a made-up 11:00
+    // shows up at the wrong hour.
+    .map(r => ({ time: r.time, rel: r.rel || null, segment: r.segment, location: r.location, notes: r.notes }));
 }
 
 export function buildVendorBriefPayload(vendor, event, ros, profile) {

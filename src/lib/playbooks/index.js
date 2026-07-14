@@ -1039,12 +1039,50 @@ export function playbookRunOfShow(event) {
   if (!event) return null;
   const playbook = getPlaybook(event.type);
   if (!playbook || !playbook.schedules) return null;
+  // ── AN INVENTED CLOCK, SENT TO VENDORS (fixed 2026-07-14) ──────────────────
+  // This used to be:
+  //     const bucketHour = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
+  //     const baseMin = startMin != null ? startMin : bucketHour * 60;
+  // Two inventions stacked. With NO start time and NO time-of-day, the entire day silently
+  // anchored to 15:00 — a bare constant nobody chose. And with only a coarse bucket, the
+  // host said "afternoon" and the app said "3:00 PM", manufacturing a precision they never
+  // gave. Those clock strings then printed as plain times (indistinguishable from ones the
+  // host typed), were SENT TO VENDORS in the brief (vendorBrief.js), and were frozen into
+  // `event.ros` the moment the host edited any single row.
+  //
+  // eventWhen.js already models this honestly and has since it was written — its own
+  // comment says "Rendering '3:00 PM' from 'afternoon' would be inventing a precision they
+  // never gave" — and this function simply never called it.
+  //
+  // The ORDER of a run of show is real knowledge (the playbook authored it, T0±h). The
+  // CLOCK is not, unless the host gave us one. So we keep the order and only claim a clock
+  // when we have earned it:
+  //
+  //   anchorSource 'exact'  → the host set a real start time. Clock times, as before.
+  //   anchorSource 'bucket' → only "afternoon". We know the shape of the day, not its hours:
+  //                           rows carry `time: null` and a relative label ("2h before").
+  //   anchorSource null     → we know neither. Same as bucket — relative only.
+  //
+  // Surfaces then offer the host a grounded do-it-for-me: "You said afternoon — plan around
+  // 3:00 PM?" — a PROPOSAL they accept, which writes event.startTime, after which every row
+  // is a real time because it descends from a real decision.
   const tod = String(event.timeOfDay || '').toLowerCase();
-  const bucketHour = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
-  // Precise start time wins over the coarse bucket (single source: the actual time the
-  // host set on "Where & when"). Falls back to the timeOfDay anchor when unset.
   const startMin = parseRosStartMin(event.startTime);
+  const anchorSource = startMin != null ? 'exact' : (ROS_ANCHOR_HOUR[tod] != null ? 'bucket' : null);
+  // The bucket's hour is still used to ORDER and to seed the host's proposal — it is just
+  // never printed as if it were a fact.
+  const bucketHour = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
   const baseMin = startMin != null ? startMin : bucketHour * 60;
+  const exact = anchorSource === 'exact';
+
+  // "2h before guests arrive" / "at guests arrive" / "1h30m in" — true regardless of clock.
+  const relLabel = (off) => {
+    if (off === 0) return 'as guests arrive';
+    const a = Math.abs(off);
+    const h = Math.floor(a / 60); const m = a % 60;
+    const span = [h ? `${h}h` : null, m ? `${m}m` : null].filter(Boolean).join(' ');
+    return off < 0 ? `${span} before guests arrive` : `${span} in`;
+  };
 
   // Food-approach lever — drop "caterer arrives / load-in" day-of cues when the host cooks.
   const dropCatererCue = foodApproach(event).usesCaterer === false;
@@ -1059,7 +1097,11 @@ export function playbookRunOfShow(event) {
       const total = baseMin + off;
       rows.push({
         id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
-        time: `${rosPad2(Math.floor(total / 60))}:${String(((total % 60) + 60) % 60).padStart(2, '0')}`,
+        // A clock only when the host gave us one. Otherwise null — and `rel` carries the
+        // knowledge we actually have.
+        time: exact ? `${rosPad2(Math.floor(total / 60))}:${String(((total % 60) + 60) % 60).padStart(2, '0')}` : null,
+        rel: exact ? null : relLabel(off),
+        anchorSource,
         _min: total,
         segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
         location: '',
@@ -1077,7 +1119,11 @@ export function playbookRunOfShow(event) {
   // Anchor a "Guests arrive" hero segment unless an entry already lands there.
   if (!rows.some((r) => r._min === baseMin)) {
     rows.push({
-      id: `pb-ros-${event.id}-arrival`, time: `${rosPad2(Math.floor(baseMin / 60))}:${String(baseMin % 60).padStart(2, '0')}`, _min: baseMin,
+      id: `pb-ros-${event.id}-arrival`,
+      time: exact ? `${rosPad2(Math.floor(baseMin / 60))}:${String(baseMin % 60).padStart(2, '0')}` : null,
+      rel: exact ? null : relLabel(0),
+      anchorSource,
+      _min: baseMin,
       segment: 'Guests arrive', location: '', type: 'event', owner: 'Host',
       confirmed: false, notes: '', source: 'playbook', generated: true, playbookType: playbook.type,
     });

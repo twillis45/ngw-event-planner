@@ -296,10 +296,17 @@ describe('55H-B1 playbookRunOfShow', () => {
       expect(r.source).toBe('playbook');
       expect(r.generated).toBe(true);
       expect(r.playbookType).toBe('Dinner Party');
-      expect(r.time).toMatch(/^\d{2}:\d{2}$/);
+      // UPDATED 2026-07-14. This used to require a clock time on EVERY row — which is
+      // precisely how a coarse "afternoon" became a hard "15:00" that was printed as fact
+      // and sent to vendors. A row now carries a clock ONLY when the host gave a real
+      // startTime; otherwise it honestly carries a relative label instead.
+      if (r.anchorSource === 'exact') expect(r.time).toMatch(/^\d{2}:\d{2}$/);
+      else { expect(r.time).toBeNull(); expect(typeof r.rel).toBe('string'); }
     });
-    // sorted by time
-    const mins = ros.map((r) => Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3)));
+    // Sorted. The ORDER survives even when there is no clock — that is the point: the
+    // sequence is real knowledge the playbook authored; the hours were not.
+    const withTime = playbookRunOfShow(dp({ startTime: '18:00' }));
+    const mins = withTime.map((r) => Number(r.time.slice(0, 2)) * 60 + Number(r.time.slice(3)));
     expect(mins).toEqual([...mins].sort((a, b) => a - b));
     // includes the arrival hero + real day-of segments
     expect(ros.some((r) => /guests arrive|plate appetizer/i.test(r.segment))).toBe(true);
@@ -312,8 +319,19 @@ describe('55H-B1 playbookRunOfShow', () => {
     expect(ros.some((r) => /pantry|alcohol run|buy .*non-perishable/i.test(r.segment))).toBe(false);
   });
 
-  test('evening anchor (18:00) places arrival at 18:00', () => {
+  test('a BUCKET never becomes a clock — "evening" does not mean 18:00', () => {
+    // THE REGRESSION. This test used to assert `ros.some(r => r.time === '18:00')` — it
+    // pinned the invention as correct. The host said "evening". They did not say six.
     const ros = playbookRunOfShow(dp({ timeOfDay: 'evening' }));
+    expect(ros.every((r) => r.time === null)).toBe(true);
+    expect(ros.every((r) => r.anchorSource === 'bucket')).toBe(true);
+    // The ORDER is still real knowledge, and it is still expressed.
+    expect(ros.some((r) => /before guests arrive|as guests arrive|in$/.test(r.rel || ''))).toBe(true);
+  });
+
+  test('a real startTime DOES yield clock times — the schedule descends from a real decision', () => {
+    const ros = playbookRunOfShow(dp({ timeOfDay: 'evening', startTime: '18:00' }));
+    expect(ros.every((r) => r.anchorSource === 'exact')).toBe(true);
     expect(ros.some((r) => r.time === '18:00')).toBe(true);
   });
 
@@ -347,10 +365,12 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     expect(r.every((row) => row.segment !== 'Stale snapshot')).toBe(true);
     expect(r[0].generated).toBe(true);
   });
-  test('SINGLE SOURCE: changing timeOfDay reflows the derived schedule (evening → morning shifts every cue earlier)', () => {
-    const eve = effectiveRos({ ...dp, ros: [] });        // evening anchor (18:00)
-    const morn = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning' }); // morning anchor (10:00)
+  test('SINGLE SOURCE: changing the START TIME reflows the derived schedule', () => {
+    // Was asserted on timeOfDay buckets producing clock times. A bucket no longer produces
+    // a clock at all, so the reflow is asserted where it is real: on an actual start time.
     const firstMin = (rows) => { const [h, m] = rows[0].time.split(':').map(Number); return h * 60 + m; };
+    const eve = effectiveRos({ ...dp, ros: [], startTime: '18:00' });
+    const morn = effectiveRos({ ...dp, ros: [], startTime: '10:00' });
     expect(firstMin(morn)).toBeLessThan(firstMin(eve));
   });
   test('per-cue done lives in event.rosDone and overlays the DERIVED schedule (never freezes it)', () => {
@@ -372,11 +392,11 @@ describe('55H-B1 effectiveRos (Rule 1 + Rule 5)', () => {
     const r = effectiveRos({ ...dp, ros: [], startTime: '19:30' });
     expect(r.some((row) => row.time === '19:30')).toBe(true);
   });
-  test('startTime overrides the coarse timeOfDay bucket', () => {
-    const firstMin = (rows) => { const [h, m] = rows[0].time.split(':').map(Number); return h * 60 + m; };
-    const bucket = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning' });            // 10:00 anchor
+  test('startTime overrides the coarse timeOfDay bucket — and only IT yields a clock', () => {
+    const bucket = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning' });
     const precise = effectiveRos({ ...dp, ros: [], timeOfDay: 'morning', startTime: '18:00' });
-    expect(firstMin(precise)).toBeGreaterThan(firstMin(bucket));
+    expect(bucket.every((r) => r.time === null)).toBe(true);      // a bucket is not a time
+    expect(precise.some((r) => r.time === '18:00')).toBe(true);   // a decision is
   });
   test('startTime tolerant of 12-hour format ("6:30 PM" → 18:30)', () => {
     const r = effectiveRos({ ...dp, ros: [], startTime: '6:30 PM' });
