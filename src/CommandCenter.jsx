@@ -1571,6 +1571,10 @@ export function eventPlan(event, ctx = null) {
   }
 
   const foundation = _eventFoundationActions(event);
+  // The SAME ledger the "Where you stand" tile counts — read once, here, so the action
+  // list and the progress tile cannot form independent opinions. (See "ONE LEDGER" below.)
+  let phaseProgressForPlan = null;
+  try { phaseProgressForPlan = deriveEventPhaseProgress(event); } catch (_e) { phaseProgressForPlan = null; }
   const progress = {
     done: foundation.filter(a => a.done).length,
     total: foundation.length,
@@ -1613,6 +1617,58 @@ export function eventPlan(event, ctx = null) {
     seen.add(a.domain);
     nextActions.push(a);
   }
+
+  // ── ONE LEDGER (2026-07-14) ─────────────────────────────────────────────────
+  // The attention system had TWO ledgers and the wrong one did the talking.
+  //
+  // `foundation` is FOUR dominoes — date, guests, budget, food. That is the entire
+  // vocabulary of "N things need you". Meanwhile deriveEventPhaseProgress tracks the
+  // REAL surface: location, shopping, vendors, RAIN PLAN, the crab order, over-budget —
+  // each already carrying a `cueLabel` and a working row-level `route`.
+  //
+  // So the engine that KNEW was not the engine that SPOKE. Measured on an outdoor August
+  // crab feast with the four dominoes set: phaseProgress held {id:'rain', handled:false,
+  // cueLabel:'Add a rain backup', route:{tab:'Event Details', focusField:'rain-plan'}} and
+  // {id:'food', cueLabel:"Decide what you're serving · 2 open"} — while nextActions
+  // returned ONE item: the generic "Catch up on overdue planning tasks." The host was told
+  // there was one vague thing to do, by an app that already knew the two specific ones and
+  // how to deep-link to both. The same gap let "N things need you" report 1 while "Where
+  // you stand" said 2 of 5 areas were open, 300px apart on one screen.
+  //
+  // The phase ledger now feeds the action list. It is the SAME items the "Where you stand"
+  // tile counts, so the two numbers are two views of one truth rather than two opinions.
+  // Ordering is the phase engine's own `priority` — the reactive top action still leads,
+  // because a vendor who hasn't confirmed outranks a domino by construction.
+  const PHASE_TO_DOMAIN = {
+    date: 'date', location: 'venue', headcount: 'guests', food: 'food',
+    budget: 'budget', vendors: 'vendors', rain: 'rain', shopping: 'shopping',
+    crabs: 'food', payments: 'vendors', thankyous: 'guests', rentals: 'rentals',
+  };
+  try {
+    const phaseItems = (phaseProgressForPlan && phaseProgressForPlan.items) || [];
+    const openPhase = phaseItems
+      .filter(i => i && !i.handled && i.cueLabel && i.route)
+      .sort((a, b) => (a.priority || 9) - (b.priority || 9));
+    for (const i of openPhase) {
+      const domain = PHASE_TO_DOMAIN[i.id] || i.id;
+      if (seen.has(domain)) continue;   // the foundation or the reactive top already says it
+      seen.add(domain);
+      nextActions.push({
+        id: 'phase:' + i.id,
+        domain,
+        title: i.cueLabel,
+        // The phase engine's cue is the whole sentence; it has no separate consequence
+        // line, and inventing one would be fabricating a reason. Left null honestly.
+        consequence: null,
+        primaryRoute: i.route,
+        ctaLabel: 'Go',
+        level: 'attention',
+        category: 'phase',
+        done: false,
+        source: 'phaseProgress',
+      });
+    }
+  } catch (_e) { /* phase ledger unavailable — the foundation list stands unchanged */ }
   // PAST-EVENT-1 — a wrapped event's action list must agree with the phase engine
   // (deriveEventPhaseProgress already returns 'post_event' / "Wrap-up" for it): it
   // doesn't help a host to be told "3 things need you" about a party that happened

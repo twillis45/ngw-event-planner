@@ -85,6 +85,15 @@ import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmatio
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { parseMin } from '@app/lib/dayAlerts';
 
+// Which engine tiers are NOT actually asks. The calm check used to fingerprint the
+// engine's PROSE — /on track|nothing urgent|good shape/ against actions[0].title —
+// so calm was asserted by string match, and any reworded tier silently broke it.
+// These tiers say so about themselves: 'neutral' ("Event on track. Nothing urgent"),
+// 'calendar' (whose own copy is "nothing to do yet, I'm watching it for you"), and
+// 'heart' ("Nothing's urgent right now — so use the calm"). All three were being
+// counted as "1 thing needs you" while their own body text said the opposite.
+const CALM_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
+
 // Event data pool + artwork resolver moved to ./eventPool.js so main.jsx can
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
 // pool, not the whole shell. Re-imported here; the invite imports from eventPool.
@@ -3904,7 +3913,15 @@ export default function HostShellV2() {
                         // label keeps the ENGINE's own casing (never lowercased
                         // proper nouns) and clamps so a venue-length label can't
                         // restate the masthead right underneath it.
-                        let nl = String((nextCue && nextCue.label) || 'the open one').replace(/^next:\s*/i, '').replace(/\.+$/, '');
+                        // ONE "NEXT" (2026-07-14). This read phaseCues.nextCue while the NEXT
+                        // tile read actions[0] — two engines, two answers to the same
+                        // question, 300px apart: "next: Add a rain backup" here, "first: Set
+                        // your budget" there. Now that nextActions IS the phase ledger plus
+                        // the reactive top, actions[0] is the one answer, and the phase cue
+                        // is only the fallback for the case the action list is empty.
+                        let nl = String(
+                          (actions[0] && actions[0].title) || (nextCue && nextCue.label) || 'the open one'
+                        ).replace(/^next:\s*/i, '').replace(/\.+$/, '');
                         if (nl.length > 44) nl = nl.slice(0, 44) + '…';
                         sub = <>areas handled{setupLine} · next: {nl}</>;
                       }
@@ -3997,7 +4014,7 @@ export default function HostShellV2() {
                     // the phase cue disagreed — e.g. a vendor COI action named here
                     // routes to that vendor's documents, but the phase cue pointed at
                     // a generic area sheet (host-reported wrong-location bug).
-                    const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                    const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
                     if (actions.length && !calmTop) { onCta(actions[0], String(actions[0].id || 0)); return; }
                     // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
@@ -4007,7 +4024,7 @@ export default function HostShellV2() {
                   <div className="t-label">Next</div>
                   <div className="t-big">{(() => {
                     if (days === 0) return 'Run the day';
-                    const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                    const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
                     return actions.length === 0 || calmTop ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
                   })()}</div>
                   <div className="t-sub">
@@ -4025,7 +4042,7 @@ export default function HostShellV2() {
                         if (openTasks) bits.push(openTasks + ' steps open');
                         return (bits.length ? bits.join(' · ') + ' — ' : '') + 'The Day has the wheel ↓';
                       }
-                      const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                      const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
                       if (!actions.length || calmTop) {
                         // Calm ≠ blank: name the next DATED thing (human intelligence).
                         if (upNext.length) {
@@ -4089,7 +4106,16 @@ export default function HostShellV2() {
                     if (!bits.length) return null;
                     return (
                       <p className="grounding" style={{ margin: '0 0 10px', color: 'var(--steel-soft)', fontWeight: 550 }}>
-                        {bits.join(' · ')}{n('Blocked') ? '' : ' · all clear'}
+                        {/* "all clear" used to be `n('Blocked') ? '' : ' · all clear'` — and
+                            'Blocked' is only ever set for an OVERDUE DECISION
+                            (CommandCenter deriveRecommendationLifecycle). So the app printed
+                            "3 handled · all clear" over an event with two open areas and a
+                            NEXT tile saying "1 thing needs you", 40px above it. A presence
+                            predicate (nothing is overdue) licensing a completion claim
+                            (all clear) — the exact invariant this codebase spent the day
+                            closing everywhere else. Calm is now earned against the SAME
+                            action list the tile counts: nothing open, nothing to clear. */}
+                        {bits.join(' · ')}{(n('Blocked') || actions.length) ? '' : ' · all clear'}
                       </p>
                     );
                   })()}
