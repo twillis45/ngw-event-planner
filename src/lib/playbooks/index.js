@@ -8,6 +8,7 @@
 //
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
+import { rsvpState, rsvpIsSettled } from '../rsvp';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -292,34 +293,10 @@ export function guestCountResolved(event) {
 //
 // Returns { applicable, basis:'rsvp'|'count', band:bool, low, high, planning,
 //           confirmed, maybe, pending, declined, invited, because }.
-// C3 — THE ONE RSVP VOCABULARY.
-//
-// Seven predicates in this codebase asked "has this guest replied?" and four of
-// them used different vocabularies. attendanceBand (below) had it RIGHT: anything
-// it doesn't recognise falls to `pending`, because an unrecognised value is
-// certainly not a reply. guestCountResolved had it WRONG: it treated a guest as
-// pending ONLY if rsvp was 'maybe' or '' — an explicit two-value allow-list.
-//
-// And 'Pending' is the exact string the app itself writes. csvParsers maps blank /
-// "no response" / "awaiting" / "invited" → 'Pending' for EVERY import platform. So
-// a host could import 80 guests who had never been asked, and guestCountResolved
-// would report the count RESOLVED — turning the Guests area green and helping
-// license "You're all set — everything that needs you is done."
-//
-// One reader now. An unknown value is never silently promoted to a reply.
-export function rsvpState(guest) {
-  const r = String((guest && guest.rsvp) || '').trim().toLowerCase();
-  if (r === 'yes' || r === 'attending' || r === 'accepted') return 'yes';
-  if (r === 'maybe') return 'maybe';
-  if (r === 'no' || r === 'declined' || r === 'regret' || r === 'regrets') return 'no';
-  return 'pending';   // '' · 'pending' · anything unrecognised — NOT a reply
-}
-
-/** Has this guest actually answered? maybe/pending are NOT answers. */
-export function rsvpIsSettled(guest) {
-  const s = rsvpState(guest);
-  return s === 'yes' || s === 'no';
-}
+// C3 — the ONE RSVP vocabulary now lives in lib/rsvp (taskEngine needs it too, and
+// playbooks already imports taskEngine — importing back would be a cycle).
+// Re-exported here so every existing consumer keeps working unchanged.
+export { rsvpState, rsvpIsSettled, rsvpHasResponded } from '../rsvp';
 
 export function attendanceBand(event) {
   if (!event) return { applicable: false, band: false };

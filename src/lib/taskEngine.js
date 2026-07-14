@@ -1,3 +1,6 @@
+import { vendorIsCommitted, vendorOutstanding } from './vendorMoney';
+import { rsvpHasResponded } from './rsvp';
+
 // Single source of truth for "is this planning task already handled by real event state?"
 //
 // Lifted + generalized from CommandCenter's `_stTask` so that What's-left, Next Up, and
@@ -46,11 +49,58 @@ export function taskSatisfied(event, task) {
   // bundled string never lingers in a "what's left" list once event.date exists. FIRST so it
   // wins over the generic headcount match below.
   if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
+
+  // ── C2 — A PRESENCE PREDICATE MAY NOT SATISFY AN ACT ────────────────────────
+  // This file's own header promises it "returns true ONLY when we can prove from
+  // event facts that the task is handled." Two families broke that promise, and
+  // they are the two where being wrong costs the host the most.
+  //
+  // MONEY. There was no money signal in this file at all, so tasks that tell the
+  // host to PAY fell through to the /cater/ and /vendor/ branches below and were
+  // satisfied by hasNamedVendor — i.e. marked done because a vendor had a NAME.
+  // These are real seeded tasks, not hypotheticals:
+  //     "Confirm all vendors — check balance due status"   (App.js:4689)
+  //     "Negotiate vendor payment plans where possible"    (App.js:4684)
+  //     "Pay the caterer balance once headcount is final"
+  // effectiveDone() is documented as "the value every what's-left surface should
+  // use", and the host checklist DROPS every effectiveDone row — so the task did
+  // not merely turn green, it disappeared. The app hid the bill.
+  //
+  // The honest signal now exists (lib/vendorMoney, extracted for exactly this), so
+  // a money task is proven by MONEY: nothing outstanding. Never by a name.
+  if (/\bpay\b|\bpaid\b|payment|deposit|balance|invoice|remit|settle up/.test(s)) {
+    const committed = (Array.isArray(event.vendors) ? event.vendors : [])
+      .filter(v => v && String(v.name || '').trim() && vendorIsCommitted(v));
+    if (!committed.length) return false;           // nothing to prove it against
+    if (/deposit/.test(s)) {
+      return committed.every(v => !(Number(v.depositAmt) > 0) || v.depositPaid === true);
+    }
+    return vendorOutstanding(event) === 0;         // pay / balance / settle: nothing owed
+  }
+
+  // INVITATIONS. "Send the invitations" and "Chase the RSVPs" were satisfied by
+  // hasGuests — a number the host typed at intake. Typing "40" marked the invites
+  // SENT and dropped them from the list. Nothing had been sent. Sending is an ACT;
+  // a headcount cannot prove it happened. The honest evidence that invitations went
+  // out is that somebody ANSWERED (a reply of any kind, including a maybe) — or
+  // that the host recorded sending them.
+  // NB: the ORIGINAL branch used /invite/, which does not match "invitations"
+  // (invit-A-tions) — so "Send the invitations" fell through to false by accident,
+  // while "Chase the RSVPs" DID match /rsvp/ and was wrongly satisfied by a typed
+  // headcount. /invit/ covers the whole family deliberately, and now every one of
+  // them is answered by real evidence instead of an accident of spelling.
+  if (/invit|rsvp|chase.*(repl|response)|follow.?up on (repl|rsvp)/.test(s)) {
+    if (event.invitesSentAt) return true;
+    return guests.some(g => rsvpHasResponded(g));
+  }
+
   // Caterer-specific FIRST — before the generic guest/headcount match — so a sourcing
   // toggle gates catering tasks even when they also say "headcount" (e.g. "confirm
   // catering headcount"). Satisfied when a real caterer exists OR the host self-provides.
   if (/cater/.test(s))                                                       return hasVendors || cateringSelfProvided(event);
-  if (/invite|rsvp|\bguest|head\s?count|who.?s coming|adult|kids?\b/.test(s)) return hasGuests;
+  // Headcount/guest-count tasks: a typed count DOES prove "set the guest count".
+  // (The invite/RSVP acts are handled above — they are not the same question.)
+  if (/\bguest|head\s?count|who.?s coming|adult|kids?\b/.test(s))             return hasGuests;
   if (/budget|spending plan|set (a |the )?(cost|spend)/.test(s))             return hasBudget;
   if (/venue|location|book.*(space|hall|room|venue)|secure.*(space|venue)/.test(s)) return hasVenue;
   if (/vendor|photograph|\bdj\b|florist|hire|book a /.test(s))               return hasVendors;

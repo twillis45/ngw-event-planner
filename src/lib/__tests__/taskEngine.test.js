@@ -3,10 +3,23 @@ import { taskSatisfied, effectiveDone, cateringSelfProvided, hasNamedVendor } fr
 const t = (task) => ({ task });
 
 describe('taskSatisfied — derives from real event state', () => {
-  test('guest tasks satisfied once a count/roster exists', () => {
+  // C2 — this test previously asserted the BUG on its second line: it pinned
+  // "Invite your guests" as DONE because a guest ROW existed (with no reply at all).
+  // Adding someone to your list is not inviting them, and a typed headcount cannot
+  // prove an invitation was sent. Sending is an ACT; presence never proves an act.
+  // Setting the COUNT is still proven by a count — they are different questions.
+  test('a guest COUNT is proven by a count — but an INVITATION is not', () => {
     expect(taskSatisfied({ guestCount: 30 }, t('Confirm the final headcount'))).toBe(true);
-    expect(taskSatisfied({ guests: [{ id: 'a' }] }, t('Invite your guests'))).toBe(true);
+
+    // a roster row with no reply proves nothing was ever sent
+    expect(taskSatisfied({ guests: [{ id: 'a' }] }, t('Invite your guests'))).toBe(false);
     expect(taskSatisfied({}, t('Invite your guests'))).toBe(false);
+
+    // real evidence the invitations went out: somebody answered
+    expect(taskSatisfied({ guests: [{ id: 'a', rsvp: 'Yes' }] }, t('Invite your guests'))).toBe(true);
+    expect(taskSatisfied({ guests: [{ id: 'a', rsvp: 'Maybe' }] }, t('Invite your guests'))).toBe(true);
+    // …or the host recorded sending them
+    expect(taskSatisfied({ guests: [{ id: 'a' }], invitesSentAt: '2026-07-01' }, t('Invite your guests'))).toBe(true);
   });
 
   test('budget tasks satisfied once a budget exists', () => {
