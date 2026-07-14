@@ -2264,6 +2264,32 @@ export default function HostShellV2() {
     if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
       setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
     }
+    // ── The dead CTAs (2026-07-14) ──────────────────────────────────────────
+    // routeSheet had no branch for 'Decisions', so the engine's HIGHEST-priority
+    // non-foundation tier — the one it stamps `critical` — fell through to
+    // onCta's "Not wired here yet" toast. The host was told the single most
+    // important thing needing them was a thing they could not open. Worse, it
+    // OUTRANKS the compression tier, whose route was wired: the dead route won.
+    //
+    // The destination existed the whole time. `sheet.kind === 'decisions'` is
+    // built and titled ("Calls to make", :5235) and the quiet-index row already
+    // opens it. Only the routing table never learned the way.
+    if (route.tab === 'Decisions') {
+      setSheet({ kind: 'decisions', focus: route.decisionId || route.taskId || null });
+      return true;
+    }
+    // The day-of run of show. `setStage('day')` is the real destination — the
+    // ROS lives on the Day stage, not in a sheet.
+    if (route.tab === 'Event Day Schedule' || /^ros-/.test(String(route.focusField || ''))) {
+      setStage('day');
+      setSheet(null);
+      return true;
+    }
+    // NB: 'Communication' is deliberately NOT routed. V2 has no messages surface at
+    // all (commClient is read in exactly one place, to play a sound), so there is
+    // nowhere honest to land. It keeps falling to onCta's truthful "Not wired here
+    // yet — in the app this opens: …" toast rather than pretending at a destination.
+    // That is UX_07-correct, and it stays that way until the surface exists.
     return false;
   };
 
@@ -4204,8 +4230,18 @@ export default function HostShellV2() {
                       <div className="pills">
                         {pillars.map(([label, r]) => {
                           const conf = grammar ? confidenceFor({ statusLabel: STATUS_WORD[r.status] || r.status, note: r.note }, grammar) : null;
+                          // Was `conf.tier === 'red' ? 'p-risk' : 'p-warn'` — four tiers collapsed
+                          // into two, so `steel` (the "we don't know yet" tier: UNKNOWN, ESTIMATED,
+                          // NEEDS_VERIFICATION) painted AMBER URGENCY. An empty field looked exactly
+                          // like a slipping deadline, on the app's single most important attention
+                          // surface. Each tier now renders as itself.
                           return (
-                            <button key={label} className={'pill ' + (conf ? (conf.tier === 'red' ? 'p-risk' : 'p-warn') : (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk'))}
+                            <button key={label} className={'pill ' + (conf
+                              ? (conf.tier === 'red' ? 'p-risk'
+                                : conf.tier === 'green' ? 'p-ok'
+                                : conf.tier === 'steel' ? 'p-steel'
+                                : 'p-warn')
+                              : (r.status === 'ATTENTION' ? 'p-warn' : 'p-risk'))}
                               title={conf ? conf.word : undefined}
                               onClick={() => {
                                 if (label === 'Checklist') setSheet({ kind: 'tasks', focus: null });
@@ -4507,7 +4543,11 @@ export default function HostShellV2() {
               {actions.filter(show).map((a, i) => {
                 const key = String(a.id || i);
                 const wired = wiredKind(a);
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline'].includes(a.route.tab));
+                // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
+                // they must stop wearing the honest "in the app" tag — the tag exists to warn
+                // a host that a CTA does not land HERE, and these now do. ('Communication'
+                // stays off the list: V2 has no messages surface, so its tag is still true.)
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule'].includes(a.route.tab));
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
                     style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
@@ -8495,6 +8535,26 @@ export default function HostShellV2() {
                               <button className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
                                 {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
                               </button>
+                              {/* WHEN THE MONEY IS DUE (2026-07-14). `payDueDate` is a real field in
+                                  the data model — vendorIntelligence escalates on it (payOverdue →
+                                  critical, ≤7d → attention), dayAlerts raises "Payment due today",
+                                  doItForMe drafts off it, and the CSV importer maps it. FIVE engines
+                                  read it. V2 gave the host no way to SET it — zero occurrences in
+                                  the shell — so the entire payment-escalation lane was dark, and the
+                                  one `level:'critical'` money tier in the whole engine was
+                                  structurally unreachable. An unpaid balance on a booked caterer
+                                  raised nothing at all before the event.
+
+                                  Not shown once it's paid: a due date on a settled balance is noise. */}
+                              {!v.balancePaid && (<>
+                                <label className="of" htmlFor={'v-paydue-' + v.id}>balance due</label>
+                                <input id={'v-paydue-' + v.id} className="field" type="date"
+                                  style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                  value={v.payDueDate || ''}
+                                  onChange={e => writeVendor(v.id, { payDueDate: e.target.value },
+                                    e.target.value ? 'Noted — you’ll get a heads-up before it’s due.' : null)}
+                                  aria-label="When the final balance is due" />
+                              </>)}
                             </>)}
                           </div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: friends/family helping out

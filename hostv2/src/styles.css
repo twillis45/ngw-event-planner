@@ -883,12 +883,37 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   transition:transform var(--ms-press) var(--ease-out);
 }
 .pill:active{transform:scale(.96)}
-.pill-note{font-weight:550; opacity:.75; font-variant-numeric:tabular-nums}
+/* THE NOTE IS THE MESSAGE — and it carried opacity:.75, which made it the dimmest text
+   in the app. The label says "Calls to make"; the NOTE says "Needs you — 3 open", the
+   sentence telling a host WHY they are at risk. Measured live: 3.94:1 on .p-risk and
+   3.89:1 on .p-ok — both WCAG AA failures — while their labels read 5.91:1. The most
+   urgent sentence on the screen was the least legible text on it.
+
+   The previous "fix" was `.p-risk{ … opacity:1 }` — a NO-OP. `.p-risk` is the parent
+   <button>; `.pill-note` is a CHILD <span> with its own opacity. CSS opacity is
+   per-element and cannot cascade-override a child's. It set the parent to the default it
+   already had, changed nothing, and the comment above it asserted a fix that was never
+   applied. Nobody measured.
+
+   Dropped entirely rather than overridden per-class — enumerating .p-ok/.p-warn/.p-risk
+   left .p-steel still failing at 4.03:1, which is exactly how the first version of this
+   fix went wrong an hour ago. Hierarchy comes from the COLOUR (steel recedes, danger
+   advances) and the weight, not from dimming the sentence that does the work. */
+.pill-note{font-weight:550; opacity:1; font-variant-numeric:tabular-nums}
 .p-ok{color:var(--ok); background:var(--ok-tint)}
 .p-warn{color:var(--warn); background:var(--warn-tint)}
-/* opacity:1 overrides .pill-note's opacity:.75, which dropped the danger note to
-   ≈2.6:1 — the note carries the most urgent status, so it can't be the dimmest. */
-.p-risk{color:var(--danger); background:var(--danger-tint); opacity:1}
+.p-risk{color:var(--danger); background:var(--danger-tint)}
+
+/* The FOURTH tier. confidenceGrammar returns green | amber | red | STEEL, and steel is
+   its explicit "estimate / verify / unknown" tier — its own comment says "NEVER green for
+   UNKNOWN, never red for no-data". But no .p-steel class existed, so the render site
+   collapsed four tiers into two and everything not-red became AMBER: an empty field
+   ("Not set yet") was painted the same colour as a slipping deadline. It failed in both
+   directions — an AT_RISK pillar whose note happened to say "estimated" was routed to the
+   steel tier and DOWNGRADED to amber. Confidence overwrote severity.
+
+   Steel is the app's "we don't know yet" colour, not an alarm. That is the whole point. */
+.p-steel{color:var(--steel-soft); background:var(--steel-tint)}
 
 /* ── Slide-down readouts (never-dense: hidden until asked) ── */
 .slidepanel{max-height:0; overflow:hidden; transition:max-height var(--ms-sheet) var(--ease-standard)}

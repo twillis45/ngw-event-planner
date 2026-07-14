@@ -233,9 +233,27 @@ export function deriveCommandCenterData(event, foodPP = null) {
         dueLabel: timing.label || (od > 0 ? `Overdue ${od}d` : 'Today'),
         dueColor: P.red,
         impact: `${timing.label || t.week} · ${t.owner || 'You'} owns`,
+        // THE RANKING FIX. `od` was computed on the line above and then THROWN AWAY — the
+        // object carried no overdue/urgency field at all. So the selector below
+        // (_selectEventNextActionInner) which does
+        //     decisions.find(x => x.urgency === 'URGENT')
+        //  || decisions.find(x => x.overdue && x.overdueDays >= 14)
+        //  || decisions[0]
+        // could never match either find(), and ALWAYS fell to decisions[0]. Its consequence
+        // copy then read `urgent.overdueDays || 0` → always 0, so the host was never told how
+        // late anything was. Attaching them makes the tier actually rank.
+        overdue: od > 0,
+        overdueDays: od,
+        urgency: od > 14 ? 'URGENT' : 'DUE',
       };
     })
-    .sort((a, b) => parseInt(b.dueLabel) - parseInt(a.dueLabel))
+    // Was `parseInt(b.dueLabel) - parseInt(a.dueLabel)` — and dueLabel is PROSE
+    // ("Overdue 3d", "Due today", "Next week"). parseInt() of every one of those is NaN,
+    // every comparison returned NaN, and the array simply kept its original event.timeline
+    // insertion order. The "#1 most urgent decision" was whichever seeded task happened to
+    // sit earliest in the array: a task 60 days overdue lost to one 1 day overdue if the
+    // seed listed it later. Sort by the real number.
+    .sort((a, b) => b.overdueDays - a.overdueDays)
     .slice(0, 6);
 
   // Open Approvals
@@ -972,7 +990,13 @@ export function getEventReadiness(event) {
   // Timeline readiness
   const taskPct = tasksTotal > 0 ? tasksDone / tasksTotal : 0;
   let timelineR;
-  if      (tasksTotal === 0)                   timelineR = { status: 'AT_RISK',  label: 'At risk', note: 'No tasks' };
+  // MISSING DATA IS NOT A RISK. This said AT_RISK/'No tasks' for an empty checklist, which
+  // fed the ladder's Tier 5 and produced "Catch up on overdue planning tasks. No tasks · only
+  // N days left to recover." — a red alarm about work that does not exist. It also forced the
+  // band-aid in confidenceGrammar (a /^No\b/ note-regex downgrading the tier) which in turn
+  // let a REAL at-risk row be downgraded whenever its note happened to start with "No".
+  // UNKNOWN is the honest status for an empty ledger, and now the whole chain can be honest.
+  if      (tasksTotal === 0)                   timelineR = { status: 'UNKNOWN',  label: 'Not started', note: 'No tasks yet' };
   else if (overdueCount > 2)                   timelineR = { status: 'AT_RISK',  label: 'At risk', note: `${overdueCount} overdue` };
   else if (overdueCount > 0)                   timelineR = { status: 'ATTENTION', label: 'Attention', note: `${overdueCount} overdue` };
   else if (taskPct >= 0.8)                     timelineR = { status: 'ON_TRACK', label: 'On track', note: `${Math.round(taskPct*100)}%` };

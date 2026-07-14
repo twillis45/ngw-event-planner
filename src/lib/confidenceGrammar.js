@@ -55,7 +55,15 @@ export function classifyLevel(row) {
   const sl = row.statusLabel;
   if (sl === 'ESTIMATE') return 'ESTIMATED';
   if (sl === 'REVIEW') return 'NEEDS_VERIFICATION';
-  // Data-presence split: an empty dimension is UNKNOWN, not KNOWN-good or KNOWN-bad.
+  // An engine that reports the dimension as empty says so directly (getEventReadiness now
+  // returns UNKNOWN for an empty checklist rather than the alarming AT_RISK/'No tasks').
+  if (sl === 'UNKNOWN' || sl === 'NOT STARTED') return 'UNKNOWN';
+  // Data-presence split: an empty dimension is UNKNOWN, not KNOWN-good or KNOWN-bad. This
+  // deliberately sits ABOVE the status checks — several readiness axes still mint AT_RISK
+  // for a dimension that is merely EMPTY, and steel ("Not set yet") is the honest read of
+  // that, not red. NB this only works because steel now RENDERS as steel: until 2026-07-14
+  // there was no .p-steel class, so every one of these fell through to an amber urgency
+  // pill and an empty field looked exactly like a slipping deadline.
   if (/^\s*No\b/i.test(note) || /no budget set/i.test(note)) return 'UNKNOWN';
   if (/estimated|no rsvps/i.test(note)) return 'ESTIMATED';
   if (sl === 'ON TRACK') return 'KNOWN';
