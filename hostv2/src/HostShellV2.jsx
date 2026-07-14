@@ -36,6 +36,7 @@ import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@a
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
+import { arrivalAsk } from '@app/lib/vendorAsks';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -8711,6 +8712,33 @@ export default function HostShellV2() {
                             <input id={'v-arrive-' + v.id} className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                               value={v.arrivalTime || ''} onChange={e => writeVendor(v.id, { arrivalTime: e.target.value }, null)}
                               aria-label="Arrival time on the day" />
+                            {/* THE DEADLINE IS GROUNDED. THE HOUR IS NOT — SO WE ASK.
+                                The Day tab's own empty state promises the schedule "fills in as
+                                vendors and their arrival times settle", and the app then does
+                                nothing whatsoever to make that happen: this was a bare empty
+                                field and the host had to remember, alone, that a caterer needs
+                                chasing.
+
+                                We do NOT propose an hour. No playbook authors "catering arrives
+                                2h before" — grepped, zero hits — and inventing "4:00 PM" is the
+                                exact bug this sweep exists to kill. Only the vendor knows.
+
+                                What IS authored, and genuinely varies, is the DEADLINE: catering
+                                locks arrival 3 days out, a photographer 7. So we name the date,
+                                say whose rule it is, and draft the ask. (Contrast payment_terms
+                                — daysBefore: 30 in ALL THIRTEEN playbooks — a constant in
+                                playbook clothing, which grounds nothing and is left alone.) */}
+                            {(() => {
+                              const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
+                              if (!ask) return null;
+                              return (
+                                <span className="tag plan" style={ask.overdue
+                                  ? { color: 'var(--warn)', background: 'var(--warn-tint)' }
+                                  : { color: 'var(--steel-soft)', background: 'var(--steel-tint)' }}>
+                                  {ask.label}
+                                </span>
+                              );
+                            })()}
                             {!v.isInformal && (<>
                               <label className="of" htmlFor={'v-cost-' + v.id}>agreed to pay $</label>
                               <input id={'v-cost-' + v.id} className="field" type="number" inputMode="numeric" min="0" placeholder="0"
@@ -8744,6 +8772,22 @@ export default function HostShellV2() {
                                 return (
                                   <p className="grounding" style={{ width: '100%', margin: '4px 0 0', opacity: .85 }}>
                                     Expect {copy}
+                                  </p>
+                                );
+                              })()}
+                              {/* The arrival ask: the deadline is the vendor's own playbook rule,
+                                  the hour is theirs to give, and the message is already written. */}
+                              {(() => {
+                                const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
+                                if (!ask) return null;
+                                return (
+                                  <p className="grounding" style={{ width: '100%', margin: '4px 0 0', opacity: .85 }}>
+                                    {ask.why}{' '}
+                                    <span role="button" tabIndex={0} className="mini rowlink"
+                                      onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile)); }}
+                                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile)); } }}>
+                                      Write the ask →
+                                    </span>
                                   </p>
                                 );
                               })()}
