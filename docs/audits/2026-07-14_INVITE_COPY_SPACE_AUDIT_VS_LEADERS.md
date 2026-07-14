@@ -28,7 +28,7 @@ Both invites, read from the live page.
 | **When** | **`Fri, Jul 24 · 7:30pm — Sun, Jul 26 · 4:30pm`** | `Tuesday, August 4` |
 | **Who's inviting** | **`Hosted by · Erin L, sanchi pandey`** | *(absent — `hostContact` renders only if the host set it, and nothing prompts them to)* |
 | Where | `1351 Hancock st · Hancock St, Brooklyn, NY` | `Backyard` |
-| Social proof | **`48 Going · 59 Interested · 3 Maybe`** + avatar wall | `Be the first to say yes` |
+| Social proof | `48 Going · 59 Interested · 3 Maybe` + avatar wall | **`N going` + avatar faces — see the correction below.** The sample event has zero RSVPs, so what I actually saw was the honest EMPTY state. |
 | Countdown | **none** | **`21` at 117.9px — the largest element on the page** |
 | Secondary action | `Remind me later` | *(none)* |
 
@@ -109,13 +109,19 @@ Seven instances of one style means the style signals nothing. An eyebrow that ap
 
 ---
 
-## F5 — MED · Two messages welded with a middot
+## ~~F5 — Two messages welded with a middot~~ — **WITHDRAWN. I was wrong.**
 
-> `replies by July 28 · Be the first to say yes`
+I claimed `Be the first to say yes` was a growth nudge welded to the deadline, and that social proof was missing. **Both are false**, and the host caught it.
 
-A **deadline** and a **growth nudge**, fused into one line. The nudge is also the *only* social proof we offer, where Partiful shows `48 Going · 59 Interested · 3 Maybe` with an avatar wall. The per-screen audit already named this the **"single highest-leverage 10+ move in the entire report"** — and it remains open.
+Social proof is fully resolved, end to end:
+- **`backend/app/routers/rsvp.py:211`** computes an anonymized **`goingCount`** — the count only, never names, never the roster. Its own comment states it *"closes the invite's 'zero social proof on backend-resolved events' gap (Partiful's growth mechanic)"*.
+- **`InviteV2.jsx:425-445`** reads it (`rosterUnknown` → `goingCount`) and renders **"N going"**; a null count stays silent rather than fabricate a number.
+- **Local invites** show real first names *and* the overlapped avatar faces.
+- **Zero replies → `Be the first to say yes`.** That is the honest EMPTY STATE, not marketing. The sample event has no RSVPs, so the empty state is what I was looking at — and I mistook it for the feature being absent.
 
-`Be the first to say yes` is doing marketing work on an intimate invitation from a friend.
+**The per-screen audit's claim that this is "the single highest-leverage 10+ move in the entire report" is STALE.** It shipped. I ported that artifact verbatim, repeated its stale claim, and then built a finding on top of it.
+
+Only the middot remains: on an event that HAS replies, the line reads `replies by July 28 · 6 going`, which is a deadline and a tally sharing one row. That is a typographic nit, not a missing mechanic. Downgraded from MED to **LOW**.
 
 ---
 
@@ -189,3 +195,19 @@ The real dead space was the **152px above the reply**, and that is what was fixe
 - **F5** — `replies by July 28 · Be the first to say yes` welds a deadline to a growth nudge. The real fix is the leader's actual mechanic: a genuine count (`48 Going · 59 Interested`), which the per-screen audit already called *"the single highest-leverage 10+ move in the entire report."*
 - **F6** — the canned deck line sits in the host's voice.
 - **Host name** — `Hosted by` renders only if `hostContact` is set, and nothing prompts the host to set it. Every leader shows who is inviting you.
+
+
+---
+
+## Postscript — three stale claims in one day
+
+This audit criticised the 2026-07-13 pass for scoring from source instead of from a render. It then:
+
+1. **mis-read its own render** (the "109px top void" is the crab artwork — the measurement walked text nodes and the `<img>` had none), and
+2. **repeated a stale claim from the very audit it was correcting** (F5 / social proof, which shipped months of work ago and is live on both the local and backend paths).
+
+Both were caught by the host, not by me. The lesson is the one this codebase spent 2026-07-14 learning in the engine layer, arriving now in the audit layer:
+
+> **A finding inherited from an audit is not evidence. Verify it against the running thing, or do not repeat it.**
+
+The audits are a map of where to look. They are not a record of what is true.
