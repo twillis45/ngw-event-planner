@@ -83,3 +83,21 @@ test('END TO END — guests answering shrinks the actual crab order and its cost
   expect(after.qty).toBeLessThan(before.qty);
   expect(after.high).toBeLessThan(before.high);
 });
+
+// SAFETY BEFORE MONEY.
+// The full allergy set sits behind progressive disclosure — right for most events,
+// wrong for this one: on a crab feast the allergen IS the menu. The playbook rates a
+// shellfish allergy severity:'high' and its mitigation literally opens "Ask ahead."
+// We were surfacing the question that protects the host's WALLET (are you picking?)
+// and collapsing the one that protects a guest's LIFE. The invite now asks outright.
+test('a shellfish-allergic guest is never counted as a crab picker', () => {
+  const guests = [
+    // answered the invite: allergic, and therefore not picking
+    { id: '1', name: 'A', rsvp: 'Yes', picksCrabs: false, allergens: ['Shellfish'] },
+    { id: '2', name: 'B', rsvp: 'Yes', picksCrabs: true },
+    { id: '3', name: 'C', rsvp: 'Yes', picksCrabs: true },
+  ];
+  const plan = buildCrabPlan(feast(guests));
+  expect(plan.crabEatingHeadcount).toBe(2);          // not 3 — we don't buy crabs for someone who can't eat them
+  expect(plan.guestPickers).toEqual({ yes: 2, no: 1, unanswered: 0, basis: 'guests' });
+});

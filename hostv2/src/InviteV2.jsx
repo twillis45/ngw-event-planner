@@ -805,6 +805,39 @@ export default function InviteV2({ code }) {
                     <>
                       <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Meal</div>
                       <div className="chips">{MEALS.map(m => chip(meal === m, m, () => setMeal(m)))}</div>
+                      {/* SHELLFISH — SAFETY BEFORE MONEY.
+                          The full allergy set lives behind progressive disclosure below,
+                          which is right for most events: most guests have no needs, and a
+                          wall of chips taxes everyone to catch a few.
+                          It is WRONG here. On a crab feast the allergen IS the menu. The
+                          app's own risk card rates this severity:'high' and its mitigation
+                          literally opens with "Ask ahead." — and the invite is the only
+                          place we can ask. Collapsing it while surfacing the money question
+                          ("are you picking?") outright meant we protected the host's wallet
+                          on the main form and hid the question that protects a guest's life.
+                          So on shellfish events we ask it OUTRIGHT, above the picker
+                          question. It writes to the SAME allergensSel state the full set
+                          uses — one source, no double-collection, no new field. */}
+                      {isCrabEvent && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Shellfish allergy?</div>
+                          <div className="chips" role="group" aria-label="Shellfish allergy">
+                            {chip(allergensSel.includes('Shellfish'), 'Yes — I’m allergic to shellfish',
+                              () => setAllergensSel(s => {
+                                const on = !s.includes('Shellfish');
+                                // A guest who can't eat shellfish is not a crab picker. Let the
+                                // form hold that contradiction and the host would size crabs for
+                                // someone who can't touch them — and the picker count is money.
+                                if (on) setPicksCrabs(false);
+                                return on ? [...s, 'Shellfish'] : s.filter(x => x !== 'Shellfish');
+                              }),
+                              'sf-yes')}
+                          </div>
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
+                            The whole menu is shellfish — your host will plan you a separate plate.
+                          </p>
+                        </>
+                      )}
                       {/* PICKERS. The crab order is the biggest cost of the whole event, and
                           it sizes to how many people PICK — not how many come (a third of a
                           table never touches a crab). That count is currently the HOST's
