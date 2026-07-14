@@ -1215,6 +1215,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .wchip.done .wn{color:var(--ok)}
 .wchip.attn{border-color:var(--warn-tint); background:var(--warn-tint)}
 .wchip.attn .wn{color:var(--warn)}
+/* The word that carries the meaning. Until 2026-07-14 this chip said only "PHOTOGRAPHY /
+   3 of 3" and turned amber — so a BLOCKED workstream was signalled by tint ALONE, and a
+   colour-blind host saw an ordinary chip whose number said everything was finished. The
+   state now says itself ("blocked", "2 to confirm"), and the tint is the reinforcement
+   rather than the message. --warn on --warn-tint over --card: 6.38:1, AA-clean. */
+.wchip .ww{font-size:var(--t-caption); font-weight:650; color:var(--warn); letter-spacing:var(--tracking-2)}
+.wchip.done .ww{color:var(--ok)}
 .conflictbar{width:100%; text-align:left; font:inherit; border:none; cursor:pointer;
   background:var(--warn-tint); color:var(--warn); border-radius:var(--r-row); padding:11px 14px;
   font-size:var(--t-btn); font-weight:650; margin:0 0 var(--sp-3);

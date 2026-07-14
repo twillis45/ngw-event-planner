@@ -8355,11 +8355,24 @@ export default function HostShellV2() {
                         // status pill — two contradictory readings 40px apart.
                         const done = w.readiness && w.readiness.total > 0 && w.readiness.confirmed >= w.readiness.total;
                         const attn = w.blocked || (w.readiness && (w.readiness.needsAttention > 0 || w.readiness.toConfirm > 0));
+                        // COLOUR WAS THE ONLY SIGNAL (2026-07-14). The chip rendered just a label
+                        // and "3 of 3", so a BLOCKED workstream was distinguished from a healthy
+                        // one purely by an amber tint — and a colour-blind host saw an ordinary
+                        // chip. UX_02 forbids colour-alone meaning. Worse, "3 of 3" reads as
+                        // finished, so the tint was carrying a message the number contradicted.
+                        // Say what is wrong, in words.
+                        const r = w.readiness || {};
+                        const why = w.blocked ? 'blocked'
+                          : r.needsAttention > 0 ? `${r.needsAttention} need${r.needsAttention === 1 ? 's' : ''} you`
+                          : r.toConfirm > 0 ? `${r.toConfirm} to confirm`
+                          : null;
                         return (
                           <button key={w.id} className={'wchip' + (done ? ' done' : attn ? ' attn' : '')}
+                            aria-label={`${w.label} — ${r.booked != null ? `${r.booked} of ${r.total} booked` : 'none booked'}${why ? ', ' + why : done ? ', all confirmed' : ''}`}
                             onClick={() => { if (!(w.deepLink && routeSheet(w.deepLink))) setSheet({ kind: 'vendors' }); }}>
                             <span className="wl">{w.label}</span>
                             <span className="wn">{w.readiness ? w.readiness.booked + ' of ' + w.readiness.total : '—'}</span>
+                            {why && <span className="ww">{why}</span>}
                           </button>
                         );
                       })}
