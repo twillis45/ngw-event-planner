@@ -37,6 +37,7 @@ import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
+import { applySnooze, canSnooze, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -1658,7 +1659,11 @@ export default function HostShellV2() {
   // no surface — guest OR host — may state it as fact. The grounded proposal lives in
   // lib/replyBy.js and is offered, with its reasoning, inside the editor.
   const rsvpByIsSet = !!(rsvpBy && rsvpBy.iso && rsvpBy.source === 'override');
-  const actions = plan.nextActions || [];
+  // Snoozed items drop out of the ranked list and the count — the host set them down on
+  // purpose, and a queue that won't empty is a queue people stop reading (attention audit,
+  // the reason a zero state can't be believed). A CRITICAL ignores any snooze: something that
+  // has escalated is no longer a someday. lib/snooze.js.
+  const actions = applySnooze(plan.nextActions || [], event);
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -4644,6 +4649,36 @@ export default function HostShellV2() {
                 <div className="empty">Nothing needs you right now — the basics are all settled.</div>
               )}
 
+              {/* SET ASIDE — a snooze the host cannot SEE and UNDO is a trapdoor, not a
+                  feature. Whatever they set down is listed here, with when it comes back and a
+                  one-tap way to bring it back now. This is also what lets "Nothing needs you"
+                  be honest: it means nothing OPEN, and the set-aside pile is shown right below
+                  it, not hidden. */}
+              {(() => {
+                const sleeping = (plan.nextActions || []).filter(a => a && a.id && snoozedUntil(event, a.id) && String(a.level || '') !== 'critical');
+                if (!sleeping.length) return null;
+                return (
+                  <div style={{ marginTop: 'var(--sp-4)' }}>
+                    <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--muted)' }}>
+                      Set aside for now — {sleeping.length === 1 ? 'it comes back on its own' : 'they come back on their own'}.
+                    </p>
+                    {sleeping.map(a => {
+                      const until = snoozedUntil(event, a.id);
+                      const when = new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      return (
+                        <div key={a.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', opacity: .75 }}>
+                          <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String(a.title || '').replace(/\.+$/, '')} · back {when}</span>
+                          <button className="mini" onClick={() => {
+                            const next = { ...(event.snoozed || {}) }; delete next[a.id];
+                            patchEvent({ snoozed: next }, 'Back on your list.');
+                          }}>bring it back</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
               {actions.filter(show).map((a, i) => {
                 const key = String(a.id || i);
                 const wired = wiredKind(a);
@@ -4680,8 +4715,26 @@ export default function HostShellV2() {
                           : null;
                         return why ? <p className="grounding" style={{ margin: '4px 0 0', opacity: .85 }}>{why}</p> : null;
                       })()}
-                      <div className="actions-row">
+                      <div className="actions-row" style={{ alignItems: 'center' }}>
                         {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
+                        {/* SNOOZE — set it down without losing it. The reason a zero state can
+                            be believed: a host who has decided to leave a thing can SAY so, and
+                            the list actually empties. Not a date picker — a grounded proposal
+                            (lib/snooze.js): half the remaining runway, never past the item's own
+                            lead window, and NEVER for a critical ("your caterer hasn't arrived"
+                            is not a someday). The host owns the result and can un-snooze. */}
+                        {canSnooze(a) && (() => {
+                          const until = (() => { try { return proposedSnoozeUntil(event, { leadDays: a.leadDays }); } catch (_e) { return null; } })();
+                          if (!until) return null;
+                          const when = new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          return (
+                            <button className="mini" style={{ marginLeft: 'auto' }}
+                              onClick={() => patchEvent({ snoozed: { ...(event.snoozed || {}), [a.id]: until } },
+                                'Set aside — it’ll come back ' + when + ', with time to spare.')}>
+                              not now
+                            </button>
+                          );
+                        })()}
                       </div>
                       {editor === key && renderEditor(a)}
                     </div>
