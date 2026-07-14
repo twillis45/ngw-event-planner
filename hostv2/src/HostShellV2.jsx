@@ -33,6 +33,7 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
+import { proposeReplyBy } from '@app/lib/replyBy';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -9170,15 +9171,58 @@ export default function HostShellV2() {
                       return hasPre ? ' — tap a tag to change an RSVP, a name to edit.' : 'Tap a tag to change an RSVP, a name to edit.';
                     })()}
                   </div>
-                  {deadlineOpen && (
-                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                      <span className="of">replies by:</span>
-                      <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
-                        value={event.rsvpDeadline || (rsvpBy && rsvpBy.iso) || ''}
-                        onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — the nudges and countdown read it.')}
-                        aria-label="RSVP deadline" />
-                    </div>
-                  )}
+                  {deadlineOpen && (() => {
+                    // DO-IT-FOR-ME, GROUNDED (2026-07-14). The reply-by date used to be an
+                    // invented `event.date − 7d` that the INVITE printed as if the host had
+                    // chosen it. Deleting it from the invite was only half an answer: an RSVP
+                    // deadline genuinely helps, because the whole point of a reply is to LOCK
+                    // THE COUNT, and the count has real downstream walls.
+                    //
+                    // So the app proposes, SHOWS ITS WORK, and the host owns the result. The
+                    // proposal is derived from the things that actually cannot proceed without
+                    // a headcount — each real vendor's own count promise (catering wants it 7
+                    // days out, staffing 14, a florist 21) and the playbook's own
+                    // count-dependent tasks (a crab pre-order is T-5d) — plus the days needed
+                    // to chase whoever hasn't answered.
+                    //
+                    // Nothing is written until the host taps. Until then `rsvpDeadline` is
+                    // unset, `rsvpDeadlineFor` reports source:'derived', and the invite stays
+                    // silent — it will only ever speak a date the host actually committed to.
+                    const prop = (() => { try { return proposeReplyBy(event); } catch (_e) { return null; } })();
+                    const already = String(event.rsvpDeadline || '').trim();
+                    return (
+                      <div style={{ margin: '0 0 10px' }}>
+                        <div className="actions-row" style={{ alignItems: 'center' }}>
+                          <span className="of">replies by:</span>
+                          <input className="field" style={{ maxWidth: 175, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="date"
+                            value={already || ''}
+                            onChange={e => patchEvent({ rsvpDeadline: e.target.value }, 'Reply-by date set — your invite and the nudges read it.')}
+                            aria-label="RSVP deadline" />
+                          {prop && prop.iso && already !== prop.iso && (
+                            <button className="mini" onClick={() => patchEvent({ rsvpDeadline: prop.iso },
+                              'Reply-by date set — your invite says it now.')}>
+                              {already ? 'use ours' : 'pick one for me'}
+                            </button>
+                          )}
+                        </div>
+                        {prop && (
+                          <p className="grounding" style={{ margin: '6px 2px 0' }}>
+                            {prop.tooClose
+                              ? prop.why
+                              : <>
+                                  {!already && <><b>{new Date(prop.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</b>{' — '}</>}
+                                  {prop.why}
+                                </>}
+                          </p>
+                        )}
+                        {!already && (
+                          <p className="grounding" style={{ margin: '4px 2px 0', opacity: .8 }}>
+                            Your invite won’t show a reply-by date until you set one — we won’t put a deadline in your name that you didn’t choose.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })()}
                   {/* Invite tools + settings relocated BELOW the roster (audit S3:
                       the roster is the reason the sheet exists — it now comes right
                       after the hero, not behind a wall of share/look/rules chips). */}
