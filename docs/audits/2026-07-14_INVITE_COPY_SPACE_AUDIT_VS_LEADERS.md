@@ -162,3 +162,30 @@ Fixes 1–4 are the ones that move the score. 1 and 4 are the ones a guest would
 Rendered at `?rsvp=crab` on the live dev server; every type size, weight, colour and gap above is a computed style or a measured bounding box read from the DOM, not inferred from source. The leader comparison is a **real Partiful event page opened and read on 2026-07-14** — not recalled, per the standing rule that a "vs X" claim requires actually looking at X. Source citations verified in `hostv2/src/InviteV2.jsx` at the lines given.
 
 One claim was **checked and dropped**: the invite *does* carry a street address when the host adds one (`HostShellV2.jsx:4384` appends it to `venue`, and the invite renders `venue + venueCity`). The sample event simply has none. Reporting that as a product gap would have been the same stale-audit error this session spent the day correcting.
+
+
+---
+
+## Resolution — 2026-07-14 (same day)
+
+### Shipped
+
+| Finding | Outcome |
+|---|---|
+| **F1 — no time, ever** | ✅ **FIXED.** `lib/eventWhen.js` (zero imports, so the invite pays nothing and there is no second parser to drift). Exact time -> "7:30 PM"; coarse bucket -> "Afternoon"; told nothing -> says nothing. `playbooks` now imports the same reader. |
+| **F2 — countdown outranked the event 3.3x** | ✅ **RESOLVED, host's way.** The countdown is a deliberate emotional beat — the thing people screenshot — so the **host ruled it stays at full size** (117.9px). The fix is therefore to **raise the hero, not shrink the number**: the event name went **35.4px -> 43.2px**. The name reads first; the moment still lands. |
+| **F3 — spacing rhythm inverted** | ✅ **FIXED.** The void above the reply: **152px -> 34px**. `.inv2-ask` had `margin-top:auto`, which collected every pixel of fixed-canvas slack into one hole — and it GREW to 180px the moment the countdown was shrunk, which is how it was caught. The facts got their rhythm back: label->value **0px -> 3px**, between facts **0px -> 13px**. |
+| **F7 — crab-picker question** | ✅ **SHIPPED**, and extended: the invite now also asks the **shellfish allergy outright** (it was collapsed behind progressive disclosure — we were surfacing the question that protects the host's wallet and hiding the one that protects a guest's life); an allergic guest is never counted as a picker; and the **crab order is gated** until allergies are collected. |
+
+### A measurement error in this audit, corrected
+
+**F3 claimed a "109px void at the top." That was wrong.** The measurement walked text leaf-nodes, so the `<img>` crest — the crab artwork — carried no text and its height was recorded as emptiness. It is not dead space; it is the artwork, and it is doing real work.
+
+The real dead space was the **152px above the reply**, and that is what was fixed. Recorded rather than quietly dropped: this audit opened by criticising the previous pass for scoring from source instead of from a render — and then mis-read its own render.
+
+### Still open
+
+- **F4** — one eyebrow role used seven times; `An invitation` (masthead) and `You're invited` (eyebrow) say the same thing; `Aug 2026` duplicates `August 4`.
+- **F5** — `replies by July 28 · Be the first to say yes` welds a deadline to a growth nudge. The real fix is the leader's actual mechanic: a genuine count (`48 Going · 59 Interested`), which the per-screen audit already called *"the single highest-leverage 10+ move in the entire report."*
+- **F6** — the canned deck line sits in the host's voice.
+- **Host name** — `Hosted by` renders only if `hostContact` is set, and nothing prompts the host to set it. Every leader shows who is inviting you.

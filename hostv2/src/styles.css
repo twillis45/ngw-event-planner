@@ -951,8 +951,16 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    block, no longer a greedy flex:1 spacer. .inv2-ask keeps margin-top:auto to
    bottom-anchor the reply, consolidating all the fixed-canvas slack into one
    break above the ask instead of scattering it around the countdown. */
-.inv2-ask{ margin-top:auto; padding-top:14px; }
-.inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:22px 0; }
+/* THE VOID. `margin-top:auto` bottom-anchored the reply, which meant every pixel of
+   slack in the fixed-canvas sheet collected into ONE hole above it — measured at 152px,
+   and it grew to 180px the moment the countdown was (correctly) shrunk. The page was
+   padding nothing and crushing the facts.
+   A top-aligned flex column already leaves its leftover space at the BOTTOM, which is
+   simply the paper's lower margin — where slack on an invitation belongs. So the ask
+   takes a real, bounded break instead of a greedy one. The reply stays well within
+   thumb reach on a phone; it just no longer sits at the far end of a canyon. */
+.inv2-ask{ margin-top:clamp(18px,4vh,34px); padding-top:14px; }
+.inv2-countflex{ flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; min-height:0; margin:14px 0 0; }
 .inv2-dark .inv2-sheet{
   --hue:#d99a63; --hue-deep:#c9854f; --stock-ink:#e4dbc6; --stock-sub:#a89f8e;
   color:#ece5d8;
@@ -1007,13 +1015,24 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* stationery type */
 .inv2-eyebrow{ font-size:11.5px; font-weight:800; letter-spacing:.2em; text-transform:uppercase;
   color:var(--hue-deep); text-align:center; }
+/* THE NAME IS THE HERO. It was clamp(28,9cqw,36) — 35.4px measured — while the
+   countdown was clamp(88,30cqw,124) → 117.9px. The countdown was 3.3x the size of
+   the host's own event name, and the largest thing on the invitation. An invitation's
+   hero is WHAT and WHO, never a number nobody asked for. (Partiful, the leader for
+   this surface, has no countdown at all — it spends that space on "Remind me later",
+   an action where we had an ornament.) */
 .inv2-name{ font-family:var(--serif); font-weight:700; text-align:center;
-  font-size:clamp(28px,9cqw,36px); line-height:1.08; letter-spacing:-.01em; margin:8px 0 2px; }
-.inv2-deck{ font-family:var(--serif); font-style:italic; font-size:15.5px; text-align:center; color:var(--stock-sub); margin:0; }
-.inv2-rule{ width:44px; height:2px; background:var(--hue); margin:8px auto; border:none; }
+  font-size:clamp(32px,11cqw,44px); line-height:1.08; letter-spacing:-.01em; margin:8px 0 2px; }
+.inv2-deck{ font-family:var(--serif); font-style:italic; font-size:15.5px; text-align:center; color:var(--stock-sub); margin:2px 0 0; }
+.inv2-rule{ width:44px; height:2px; background:var(--hue); margin:14px auto; border:none; }
+/* THE FACTS GET THEIR RHYTHM BACK. Measured: label→value was 0px and Where→Backyard
+   was 0px, so "When / Tuesday, August 4 / Where / Backyard" read as one undifferentiated
+   block — the page padded everything except the four things a guest actually needs.
+   Each fact is now its own group: a real break above the label, the value tight beneath
+   it (they belong together), and air between groups. */
 .inv2-label{ font-size:11px; font-weight:800; letter-spacing:.16em; color:var(--hue-deep);
-  text-transform:uppercase; text-align:center; margin-top:4px; }
-.inv2-val{ font-size:15px; font-weight:600; text-align:center; }
+  text-transform:uppercase; text-align:center; margin-top:13px; }
+.inv2-val{ font-size:15px; font-weight:600; text-align:center; margin:3px 0 0; }
 /* The value's own quiet footnote — why we're asking. A real named role: it was
    being written as `inv2-fine` with no rule behind it, so it rendered at default
    body size, LOUDER than the chips it explains. Every size on this page is a role. */
@@ -1024,6 +1043,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* countdown — condenses (never vanishes) once the guest answers */
 .inv2-countwrap{ max-height:240px; overflow:hidden; text-align:center;
   transition:max-height .55s var(--ease-standard), margin .55s var(--ease-standard); }
+/* The countdown stays a full typographic MOMENT — host's call (2026-07-14), and it is
+   the emotional beat of the page: the serif lining numeral is the thing people screenshot.
+   The audit's F2 flagged it as outranking the event name (3.3x); the answer taken here is
+   to raise the NAME rather than shrink the number, so the hero reads first and the
+   countdown still lands. Kept at its original scale deliberately — not an oversight. */
 .inv2-count{ font-family:var(--serif); font-variant-numeric:lining-nums tabular-nums; font-feature-settings:"lnum" 1,"tnum" 1; font-size:clamp(88px,30cqw,124px); font-weight:700; text-align:center;
   line-height:1; margin:8px 0 0; transition:font-size .5s var(--ease-standard), margin .5s var(--ease-standard); }
 .inv2.answered .inv2-countwrap{ max-height:24px; margin:6px 0 0; }
