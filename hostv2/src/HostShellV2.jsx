@@ -1200,6 +1200,17 @@ export default function HostShellV2() {
     meaning_why: event.meaning_why || '',
     feeling_words: event.feeling_words || '',
     must_have_moment: event.must_have_moment || '',
+    // THE INVITE READS THESE AND NOTHING EVER FILLED THEM.
+    // `deckLine` is the line under the event's name on the invitation — the invite
+    // has always preferred the host's own words over its canned DECK_LINES default,
+    // but no screen ever let them write it, so every invitation shipped with a
+    // stock line sitting in the host's voice.
+    // `hostName` is who the invitation is FROM. Every leader shows it (Partiful:
+    // "Hosted by Erin L"). The event model had no name field at all — `hostContact`
+    // is an email/phone, so rendering that as "Hosted by" would print an address on
+    // the invitation.
+    deckLine: event.deckLine || '',
+    hostName: event.hostName || '',
   });
   const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
@@ -6314,6 +6325,8 @@ export default function HostShellV2() {
                   ['meaning_why', 'Why this matters', 'She never lets anyone celebrate her — this time we are', false],
                   ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
                   ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
+                  ['hostName', 'Who is the invitation from?', 'Todd — or “Todd & Sarah”', false],
+                  ['deckLine', 'The line under your event’s name on the invite', 'Good food, good people', false],
                 ].map(([key, label, ph, multi]) => (
                   <div key={key} style={{ marginBottom: 'var(--sp-4)' }}>
                     {/* Warm sentence-case prompt (was a tiny uppercase faint form
@@ -6332,7 +6345,7 @@ export default function HostShellV2() {
                   {(() => {
                     // Dirty-gate (per-screen audit: "Save it" fired a success toast even
                     // with zero changes) — only enabled when a field actually changed.
-                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment'];
+                    const _mk = ['honoree', 'honoree_story', 'meaning_why', 'feeling_words', 'must_have_moment', 'hostName', 'deckLine'];
                     const dirty = _mk.some(k => String(meaningDraft[k] || '').trim() !== String(event[k] || '').trim());
                     return (
                       <button className="cta" disabled={!dirty} style={!dirty ? { opacity: .5 } : undefined} onClick={() => {

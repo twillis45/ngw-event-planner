@@ -689,9 +689,19 @@ export default function InviteV2({ code }) {
               </div>
             )}
             <div {...rv()} >
-              <div className="inv2-eyebrow lp" style={{ marginTop: mark ? 10 : 22 }}>{isPast ? 'Thank you for coming' : somber ? 'Please join us' : 'You’re invited'}</div>
+              {/* F4 — the masthead above already says "An invitation". This eyebrow said
+                  "You're invited" 100px below it: the same message, in the same role, twice.
+                  So the DEFAULT case is dropped and the masthead carries it.
+                  The other two states are NOT redundant — they say something the masthead
+                  cannot ("Thank you for coming" on a recap; "Please join us" on a memorial,
+                  where "An invitation" would be tonally wrong) — so they still render. */}
+              {(isPast || somber) && (
+                <div className="inv2-eyebrow lp" style={{ marginTop: mark ? 10 : 22 }}>{isPast ? 'Thank you for coming' : 'Please join us'}</div>
+              )}
             </div>
-            <h1 {...rv('inv2-name lp-display')}>{event.name}</h1>
+            {/* The dropped eyebrow was carrying the air above the name — without it the
+                crest would sit on the title. The space stays; only the duplicate words go. */}
+            <h1 {...rv('inv2-name lp-display')} style={(isPast || somber) ? undefined : { marginTop: mark ? 18 : 26 }}>{event.name}</h1>
             <p {...rv('inv2-deck lp')}>{deck}</p>
             <div {...rv()}>
               <hr className="inv2-rule" />
@@ -720,6 +730,15 @@ export default function InviteV2({ code }) {
                 <div className="inv2-val lp">{event.dressCode}</div></>)}
               {!isPast && String(event.bringNote || '').trim() && (<><div className="inv2-label lp">Bring</div>
                 <div className="inv2-val lp">{event.bringNote}</div></>)}
+              {/* WHO IS INVITING YOU. Every leader shows this (Partiful: "Hosted by
+                  Erin L") and we showed nothing — the event model had no host-name
+                  field at all. `hostContact` is an email/phone (seeds hold
+                  "gala@hopefoundation.org", "(202) 555-0114"), so rendering IT as
+                  "Hosted by" would print an address on the invitation. hostName is a
+                  real name, captured in "Make it yours". The contact row still renders
+                  below it for the guest who needs to reach someone. */}
+              {!isPast && String(event.hostName || '').trim() && (<><div className="inv2-label lp">Hosted by</div>
+                <div className="inv2-val lp">{event.hostName}</div></>)}
               {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
                 <div className="inv2-val lp">{event.hostContact}</div></>)}
               {!isPast && ((rsvpBy && rsvpBy.iso && days != null && days >= 0) || social) ? (
