@@ -61,7 +61,33 @@ export function buildCrabPlan(event) {
   const lines = (cp && Array.isArray(cp.lines)) ? cp.lines.filter(Boolean) : [];
   const guestFallback = num(ev.guestCount) || num(ev.guestEstimate)
     || (Array.isArray(ev.guests) ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))).length : 0);
-  const rawPickers = (cp && num(cp.crabEatingHeadcount) > 0) ? num(cp.crabEatingHeadcount) : null;
+  // ── WHAT THE GUESTS THEMSELVES SAID ─────────────────────────────────────────
+  // The crab order is the biggest cost of the event and it sizes to PICKERS, not
+  // heads. Until now that number was the host's guess. The invite now asks each
+  // guest outright ("Are you picking crabs?" → guest.picksCrabs), so for the first
+  // time the people who actually know are the ones answering.
+  //
+  // Precedence, deliberately:
+  //   1. An explicit host number ALWAYS wins. They may know something we don't
+  //      (a cousin who eats two dozen), and overriding a human's stated decision
+  //      with a partial roster would be the app lying about who is in charge.
+  //   2. Otherwise, if ANY guest has answered, the yes-count beats the old default
+  //      — which was "assume every single guest picks", the very over-order this
+  //      whole thread is about.
+  //   3. Otherwise, the guest count, exactly as before.
+  //
+  // Unanswered guests are NOT counted either way. A silent guest is not a "no"
+  // (and not a "yes") — the counts are exposed so the host can see the gap and
+  // decide, rather than the app inventing an answer on a guest's behalf.
+  const roster = Array.isArray(ev.guests) ? ev.guests : [];
+  const attending = roster.filter(g => g && /^y/i.test(String(g.rsvp || '')));
+  const pickersYes = attending.filter(g => g.picksCrabs === true).length;
+  const pickersNo = attending.filter(g => g.picksCrabs === false).length;
+  const pickersUnanswered = attending.length - pickersYes - pickersNo;
+  const anyoneAnswered = (pickersYes + pickersNo) > 0;
+
+  const rawPickers = (cp && num(cp.crabEatingHeadcount) > 0) ? num(cp.crabEatingHeadcount)
+    : (anyoneAnswered ? pickersYes : null);
   // PICKERS-GUARDRAIL: pickers are a subset of the event's guests — a count
   // higher than the guest list is impossible and would size the whole order
   // off a number that can't be true. Clamp the MATH, not the host's stored
@@ -175,6 +201,16 @@ export function buildCrabPlan(event) {
     relevant: true,
     role,
     crabEatingHeadcount: heads || null,
+    // What the guests said, so the host can SEE the gap instead of the app guessing
+    // for the silent ones. `basis` names where the number actually came from — the
+    // host should never have to wonder whether a count is theirs or ours.
+    guestPickers: {
+      yes: pickersYes,
+      no: pickersNo,
+      unanswered: pickersUnanswered,
+      basis: (cp && num(cp.crabEatingHeadcount) > 0) ? 'host'
+        : (anyoneAnswered ? 'guests' : 'guest-count'),
+    },
     pickerNote,
     pickerReconcileNote,
     targetCrabsPerPerson: target,

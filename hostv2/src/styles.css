@@ -1014,6 +1014,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .inv2-label{ font-size:11px; font-weight:800; letter-spacing:.16em; color:var(--hue-deep);
   text-transform:uppercase; text-align:center; margin-top:4px; }
 .inv2-val{ font-size:15px; font-weight:600; text-align:center; }
+/* The value's own quiet footnote — why we're asking. A real named role: it was
+   being written as `inv2-fine` with no rule behind it, so it rendered at default
+   body size, LOUDER than the chips it explains. Every size on this page is a role. */
+.inv2-fine{ font-size:12.5px; font-weight:500; text-align:center; color:var(--stock-sub); }
+/* The exact start time, beside the date. Quieter than the date, never a second
+   heading — the date leads, the time follows it. */
+.inv2-when-time{ font-weight:500; color:var(--stock-sub); }
 /* countdown — condenses (never vanishes) once the guest answers */
 .inv2-countwrap{ max-height:240px; overflow:hidden; text-align:center;
   transition:max-height .55s var(--ease-standard), margin .55s var(--ease-standard); }

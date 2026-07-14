@@ -12,6 +12,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
+import { eventStartLabel } from '@app/lib/eventWhen';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
@@ -256,6 +257,16 @@ export default function InviteV2({ code }) {
   }, [code, localEvent, retryTick]);
   const resolveFailed = !!(resolved && resolved.failed);
   const event = (resolved && resolved.event) || null;
+  // What time to arrive — the one thing an invitation exists to say. See lib/eventWhen.
+  const whenLabel = useMemo(() => { try { return eventStartLabel(event); } catch { return null; } }, [event]);
+  // A crab feast's biggest cost is sized by how many people PICK, not how many come
+  // (lib/playbooks — pickers size the shellfish). That count is currently the HOST's
+  // guess. The guests are the only ones who know, and they are already right here
+  // saying yes. Ask them. The answer flows back on the reply as `picksCrabs`.
+  const isCrabEvent = useMemo(
+    () => /crab|crawfish|low.?country|seafood boil/i.test(String((event && event.type) || '') + ' ' + String((event && event.name) || '')),
+    [event],
+  );
   const [guestName, setGuestName] = useState('');
   const [rsvp, setRsvp] = useState('');
   const [meal, setMeal] = useState('Standard');
@@ -269,6 +280,9 @@ export default function InviteV2({ code }) {
   const [plusOneMeal, setPlusOneMeal] = useState('Standard');
   const [plusOneNeeds, setPlusOneNeeds] = useState('');
   const [kids, setKids] = useState(0);
+  // null = not asked/not answered; true/false = the guest told us. Never defaulted —
+  // an unanswered picker question must not be counted as a 'no' (or a 'yes').
+  const [picksCrabs, setPicksCrabs] = useState(null);
   const [note, setNote] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   const [err, setErr] = useState('');
@@ -534,6 +548,9 @@ export default function InviteV2({ code }) {
       plusOne: hasPlusOne ? plusOne.trim() : '', plusOneMeal: hasPlusOne ? plusOneMeal : '—',
       plusOneNeeds: hasPlusOne ? plusOneNeeds.trim() : '',
       kids: rsvp === 'Yes' ? kids : 0,
+      // Only send it when they actually answered AND they're coming — an absent answer
+      // stays absent rather than becoming a fabricated false.
+      ...(rsvp === 'Yes' && isCrabEvent && picksCrabs !== null ? { picksCrabs } : {}),
       note: note.trim(),
       ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
     };
@@ -554,6 +571,7 @@ export default function InviteV2({ code }) {
           idempotency_key: idk, name: payload.name, rsvp: payload.rsvp, meal: payload.meal,
           needs: payload.needs, plus_one: payload.plusOne, plus_one_meal: payload.plusOneMeal,
           plus_one_needs: payload.plusOneNeeds, kids: payload.kids, note: payload.note,
+          ...(payload.picksCrabs !== undefined ? { picks_crabs: payload.picksCrabs } : {}),
         });
         try {
           const q = JSON.parse(localStorage.getItem(key) || '[]');
@@ -677,8 +695,22 @@ export default function InviteV2({ code }) {
             <p {...rv('inv2-deck lp')}>{deck}</p>
             <div {...rv()}>
               <hr className="inv2-rule" />
+              {/* WHEN — F1 of the invite audit (CRITICAL). This formatted
+                  { weekday, month, day } and had NO hour component, for any event —
+                  so the invite could not tell a guest what time to arrive. The app
+                  KNEW: event.startTime / event.timeOfDay anchor the entire run of
+                  show, and the HOST's own cover screen renders "· Afternoon". We
+                  showed the time to the host and withheld it from the guest.
+                  lib/eventWhen is the one reader (zero imports, so the invite pays
+                  nothing for it). An exact time renders as "7:30 PM"; a coarse
+                  bucket renders as "Afternoon" — never a clock time invented from a
+                  bucket; and when the host has told us nothing, we say nothing
+                  rather than guess. */}
               {event.date && (<><div className="inv2-label lp">When</div>
-                <div className="inv2-val lp">{dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}</div></>)}
+                <div className="inv2-val lp">
+                  {dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}
+                  {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}</span> : null}
+                </div></>)}
               {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
                 <div className="inv2-val lp">{[event.venue, event.venueCity].filter(Boolean).join(', ')}</div></>)}
               {/* Details the host set — the backend already sends these on the
@@ -773,6 +805,24 @@ export default function InviteV2({ code }) {
                     <>
                       <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Meal</div>
                       <div className="chips">{MEALS.map(m => chip(meal === m, m, () => setMeal(m)))}</div>
+                      {/* PICKERS. The crab order is the biggest cost of the whole event, and
+                          it sizes to how many people PICK — not how many come (a third of a
+                          table never touches a crab). That count is currently the HOST's
+                          guess. The guests know, and they are already right here. One tap
+                          turns the guess into truth, and it's a question people enjoy
+                          answering. Flows back as `picksCrabs` → crabPlan.crabEatingHeadcount. */}
+                      {isCrabEvent && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Are you picking crabs?</div>
+                          <div className="chips">
+                            {chip(picksCrabs === true, 'Yes — hand me a mallet', () => setPicksCrabs(true))}
+                            {chip(picksCrabs === false, 'Not me — I’ll eat the sides', () => setPicksCrabs(false))}
+                          </div>
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
+                            It’s how your host knows how many crabs to buy.
+                          </p>
+                        </>
+                      )}
                       {allowKids && (
                         <>
                           <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Kids coming with you</div>

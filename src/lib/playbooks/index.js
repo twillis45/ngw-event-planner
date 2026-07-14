@@ -9,6 +9,7 @@
 // ESM-only (per the prod-bundle lesson — no CJS module.exports in src/).
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
+import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -992,19 +993,14 @@ export function topPlaybookDecision(event, asOf) {
 // playbookType } (Rule 2). Derived at read-time, never persisted, so a playbook
 // timing change flows through automatically (Rule 5). Pre-day shopping
 // (purchasing, T-1d/T-3d) is intentionally excluded — it's planning, not day-of.
-const ROS_ANCHOR_HOUR = { morning: 10, afternoon: 15, evening: 18, night: 19, late: 20 };
+// ONE definition — lib/eventWhen owns "when does this event start?" so the INVITE
+// can read the same answer without importing the playbook engine (and without a
+// second parser drifting away from this one).
+const ROS_ANCHOR_HOUR = ANCHOR_HOUR;
 // A precise start time (event.startTime) anchors the run-of-show to the exact minute,
 // overriding the coarse timeOfDay bucket. Tolerant of "18:30", "6:30 PM", "7:00 PM".
 // Returns minutes-since-midnight, or null when unset/unparseable (→ fall back to bucket).
-function parseRosStartMin(s) {
-  const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || ''));
-  if (!m) return null;
-  let h = Number(m[1]); const mm = Number(m[2]); const ap = (m[3] || '').toLowerCase();
-  if (ap === 'pm' && h < 12) h += 12;
-  if (ap === 'am' && h === 12) h = 0;
-  if (h > 23 || mm > 59) return null;
-  return h * 60 + mm;
-}
+const parseRosStartMin = parseStartMinutes;   // lib/eventWhen — one parser, shared with the invite
 // kind → segment type; both 'cooking' (Dinner Party) and 'preparation' (others).
 const ROS_SCHEDULE_KINDS = [
   { key: 'cooking', segType: 'event' },
@@ -2224,8 +2220,16 @@ export function playbookFoodPlan(event, opts = {}) {
   // Only fires when the host EXPLICITLY set a picker count — otherwise nothing
   // changes. The clamp ("pickers can't outnumber your guests") is NOT re-derived
   // here: we read the already-clamped number off buildCrabPlan, which owns it.
-  const _hostSetPickers = !!(event && event.crabPlan && Number(event.crabPlan.crabEatingHeadcount) > 0);
-  const _pickers = (_hostSetPickers && _crabOrder && _crabOrder.relevant
+  // crabPlan OWNS the picker count — it resolves the host's explicit number, else
+  // what the GUESTS said on the invite ("Are you picking crabs?"), else the head
+  // count — and it owns the "pickers can't outnumber guests" clamp. We read its
+  // answer rather than the raw stored field, so a guest's reply reaches the bill.
+  // `basis` tells us WHERE the number came from: 'guest-count' means nobody has
+  // actually said anything, and sizing to it is just the old head-count behaviour,
+  // so we leave it alone.
+  const _pickerBasis = (_crabOrder && _crabOrder.guestPickers && _crabOrder.guestPickers.basis) || null;
+  const _pickers = (_crabOrder && _crabOrder.relevant
+    && (_pickerBasis === 'host' || _pickerBasis === 'guests')
     && Number(_crabOrder.crabEatingHeadcount) > 0)
     ? Number(_crabOrder.crabEatingHeadcount) : null;
   const isShellfish = (name) => /(crab|crawfish|crayfish|shrimp|prawn|lobster|oyster|clam|mussel|shellfish)/i.test(String(name || ''));
