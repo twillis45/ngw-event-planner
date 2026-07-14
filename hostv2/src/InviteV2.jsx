@@ -13,13 +13,24 @@ import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
-import { buildExperienceContext } from '@app/lib/experienceContext';
+// GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
+// ctx.eventIdentity, to choose a headline. But experienceContext imports
+// assembleRevealEngines, which drags the whole planning engine (and the 40
+// playbooks) into the invite chunk. resolveEventIdentity is the OWNER of that
+// field (experienceContext.js:48 just calls it) and has ZERO imports of its own.
+// Same function, same result, none of the freight.
+import { resolveEventIdentity } from '@app/lib/eventIdentityEngine';
 import { geocodeVenue } from '@app/lib/weather';
 import { dark as steelPalette } from '@app/theme/palette';
 // Pulls ONLY the event pool + artwork resolver — not the 8,500-line host shell.
 // This is the code-split: a guest opening ?rsvp=CODE no longer downloads
 // HostShellV2 just to say yes.
-import { ALL_SAMPLES, LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './eventPool.js';
+// GUEST PAYLOAD: the heavy symbol is ALL_SAMPLES — importing it statically pulled
+// eventPool (and, through it, ALL 40 PLAYBOOKS) into the invite chunk, so a guest
+// downloaded ~490 KB gzip to tap "yes" while the invite's own code is 9 KB. The four
+// small things live in inviteShared (free); the pool is dynamic-imported inside
+// findInviteEvent, off the critical path. Same pool, same patch layers, same truth.
+import { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
 
 // Identity crest — the SAME registry the app's glyph system reads (real PD
 // artwork; artwork doctrine), and the HOST'S call whether it appears:
@@ -86,8 +97,15 @@ function deckLineFor(event, somber, isPast) {
   if (explicit) return explicit;
   if (somber) return 'In loving memory';
   try {
-    const ctx = buildExperienceContext(event);
-    const id = ctx && ctx.eventIdentity;
+    // Same derivation experienceContext.js:40-48 performs before handing the result
+    // to eventIdentity — reproduced here so the invite reads the identity WITHOUT
+    // importing the planning engine. One owner (resolveEventIdentity), same inputs.
+    const typeWords = String(event.type || '').toLowerCase().split(/\s+/).filter(Boolean);
+    const nameSansType = String(event.name || '').split(/\s+/)
+      .filter(w => !typeWords.includes(w.toLowerCase())).join(' ');
+    const freeText = [nameSansType, event.secondaryType, event.honoree, event.theme]
+      .filter(Boolean).join('. ');
+    const id = resolveEventIdentity(event, event.type, 'self', freeText);
     if (id) {
       const labels = [id.primaryEventType, ...(id.secondaryEventTypes || [])].filter(Boolean);
       for (const label of labels) {
@@ -138,12 +156,16 @@ function toneVarsFor(pal) {
 
 // Resolve the invite against the SAME event pool + patch layers the host
 // shell reads — the guest sees exactly what the host's plan says.
-function findInviteEvent(code) {
+async function findInviteEvent(code) {
   try {
     const c = String(code || '').trim();
     if (!c) return null;
     let custom = null;
     try { custom = JSON.parse(localStorage.getItem(LS_CUSTOM)) || null; } catch { custom = null; }
+    // The pool (and the playbook engine behind it) loads HERE, not at module scope —
+    // so it never blocks the invite's first paint, and a guest whose invite resolves
+    // from the backend never pays for it at all.
+    const { ALL_SAMPLES } = await import('./eventPool.js');
     const pool = [...ALL_SAMPLES, ...(custom ? [custom] : [])];
     let base = pool.find(e => e && (String(e.rsvpCode || '') === c || String(e.id || '') === c));
     // Demo alias: when the shell adopted the host's REAL crab event from
@@ -194,15 +216,30 @@ export default function InviteV2({ code }) {
   // resolver for a guest opening the link on their own phone (the original's
   // PublicRsvpRoute fallback, App.js). With no backend configured, behavior is
   // unchanged from before: local or the not-found state, no loading flash.
-  const localEvent = useMemo(() => findInviteEvent(code), [code]);
-  // undefined = backend lookup in flight; { event: null } = genuinely not found;
+  // The local pool is now a DYNAMIC import (it drags the playbook engine), so this
+  // is async. `undefined` = the pool is still loading — distinct from `null` = the
+  // code genuinely isn't in the pool. Conflating those would flash "link is dead"
+  // for a beat on every invite, which is exactly the failure this page already goes
+  // out of its way to avoid for the backend lookup.
+  const [localEvent, setLocalEvent] = useState(undefined);
+  useEffect(() => {
+    let cancelled = false;
+    setLocalEvent(undefined);
+    (async () => {
+      const ev = await findInviteEvent(code);
+      if (!cancelled) setLocalEvent(ev || null);
+    })();
+    return () => { cancelled = true; };
+  }, [code]);
+
+  // undefined = a lookup is in flight; { event: null } = genuinely not found;
   // { event: null, failed: true } = the lookup itself failed (offline/5xx) — a
   // retryable state, NOT "this link is dead." retryTick re-runs the effect.
-  const [resolved, setResolved] = useState(() =>
-    (localEvent || !isRsvpApiConfigured()) ? { event: localEvent } : undefined);
+  const [resolved, setResolved] = useState(undefined);
   const [retryTick, setRetryTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    if (localEvent === undefined) { setResolved(undefined); return undefined; }  // pool still loading
     if (localEvent) { setResolved({ event: localEvent }); return undefined; }
     if (!isRsvpApiConfigured()) { setResolved({ event: null }); return undefined; }
     setResolved(undefined);

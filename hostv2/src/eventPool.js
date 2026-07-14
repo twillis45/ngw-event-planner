@@ -23,11 +23,12 @@ import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 export let APP_EVENTS = [];
 try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch { APP_EVENTS = []; }
 
-export const LS_PATCH = id => 'ngw-hostv2-patch-' + id;
-// Legacy single-slot key (one custom event, id 'custom'). Read-only now —
-// folded into LS_CUSTOMS below once, then left intact (never destroyed) so
-// nothing that still reads it loses data.
-export const LS_CUSTOM = 'ngw-hostv2-custom-event';
+// LS_PATCH / LS_CUSTOM / eventArtworkFile / AVA_TINTS now live in inviteShared.js
+// and are RE-EXPORTED here, so every existing host-shell import keeps working and
+// there is still exactly ONE definition of each. They moved because the INVITE
+// needs them and must NOT drag this module (and the 40 playbooks it imports) into
+// a guest's download — see inviteShared.js.
+export { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
 // The multi-event store: EVERY event created in this shell, as an array.
 // Each stores itself whole (no LS_PATCH layer — that's for sample/app bases).
 export const LS_CUSTOMS = 'ngw-hostv2-custom-events';
@@ -235,13 +236,9 @@ export const BOOT_EVENT_ID = (() => {
 // The event's registered artwork mark (ARTWORK_MARKS registry — real PD
 // artwork only). ONE resolver shared by the invite and the host's crest
 // control; returns the filename or null when the type has no mark.
-export function eventArtworkFile(event) {
-  const t = String((event && event.type) || '') + ' ' + String((event && event.name) || '');
-  const key = /crab/i.test(t) ? 'crab' : /fish\s*fry|catfish/i.test(t) ? 'fish' : null;
-  return key ? (ARTWORK_MARKS[key] || null) : null;
-}
+// eventArtworkFile — see inviteShared.js (re-exported at the top of this file).
 
 // Shared avatar tints (color audit Cr1): deterministic, muted, on-brand — the
 // only multi-hue accents in the app. Defined ONCE here so the host roster and
 // the invite's social-proof faces can never drift apart (they were copy-pasted).
-export const AVA_TINTS = ['#3b4a52', '#4a4136', '#3a4a3e', '#463a44', '#3f4657', '#4a3f3a'];
+// AVA_TINTS — see inviteShared.js (re-exported at the top of this file).
