@@ -155,8 +155,9 @@ Verified fixed in code despite their doc saying open. **The audits are stale in 
 
 The claim class is closed. The remaining queue, by host harm:
 
-1. **C1 residual — `hostSpending()` still has no vendor term.** `lib/vendorMoney` now exists and `phaseProgress`'s Budget area uses it, so the *readiness* surfaces are honest. But the **budget hero copy** (`budgetCopy.js` → "ALL SET — you've got about $39,700 left") still reads a vendor-blind `committed`. Wiring `vendorOutstanding()` into `hostSpending()` corrects every money claim at once. **This is the biggest single remaining lie in the app.**
-2. **Vendor accountability infers "evidence attached" from a typed price** (`vendorAccountability/derive.js:342`) — a vendor reads "confirmed · evidence attached" when the host only entered a cost.
+~~1. **C1 — `hostSpending()` has no vendor term.**~~ ✅ **CLOSED** (`f5af294`). `vendorOutstanding()` is wired into `hostSpending()`, so every host money surface sees vendor balances — they all read through that one function. Only the OUTSTANDING balance enters `committed`; money already PAID is deliberately not added to `spent` (a host who also logs it as a budget row would be charged twice). A **real double-count was caught by this repo's own test** — `phaseProgress` had been adding `vendorOutstanding` on top of `committed`; it now reads `committed` and nothing else. Live: the Retirement event went from *"$11,070 spoken for"* with no over-budget signal at all → *"$18,570 spoken for · $4,970 over"*.
+
+1. **Vendor accountability infers "evidence attached" from a typed price** (`vendorAccountability/derive.js:342`) — a vendor reads "confirmed · evidence attached" when the host only entered a cost.
 3. **Invite route not code-split** — a guest downloads the whole ~657KB host shell to tap "yes". The one surface non-hosts touch is the slowest thing in the product.
 4. **`eventDateStatus 'rushed'` can never fire** (`dates.js:29` reads `opts.minLeadDays`; no caller passes it) — a wedding 10 days out is never flagged as compressed.
 5. The rest of §2.
@@ -171,3 +172,26 @@ Plus the **rulings** in §3 — the `vendor_followup` doctrine conflict (doctrin
 > **A checklist may propose calm; only the engine may grant it.**
 
 A cheap standing check: any surface printing an absolute claim ("all", "everyone", "locked in", "set", "covered", "nothing left") must name the predicate licensing it in a comment — as the vendor surfaces now do. If it can't name one, it shouldn't make the claim.
+
+---
+
+## 7. Final state of the claim-truthfulness class (end of 2026-07-14)
+
+**Closed, in full.** Four root causes + four criticals, every one live-verified and pinned by tests.
+
+| | Fix | Commit |
+|---|---|---|
+| R1 | booked licensed "confirmed" — the rollup's own tokens lied; 7 consumers inherited it | `d641aa5` |
+| R2 | untracked counted as passing — green "All set" beside "$5,800 due" | `7dca0c0` |
+| R3 | the exhale outranked the engine — it **hid** the real action | `bf31fc4` |
+| R4 | zero read as done · the clock did the host's work · Budget could never be red | `fe00d6d` |
+| C1 | **`hostSpending()` had no vendor term** — "you've got $39,700 left" with $18,400 owed | `f5af294` |
+| C2 | presence satisfied an act — the app **hid the bill** | `003b401` |
+| C3 | `'Pending'` was not treated as a reply | `ec2c1c6` |
+| C4 | a persisted write marked supplies bought off a food-only count | `13451db` |
+
+**Three new libs, each fixing a bug of its own:** `lib/vendorMoney` (money was *silently vanishing from the ledger* — `STAGES` omitted `'Booked'` and `'Paid'`, two statuses V2 actively writes), `lib/rsvp` (one RSVP vocabulary, replacing four), `lib/exhaleGate` (one named invariant, replacing two inline conditions that had already drifted apart).
+
+**Suite: 181 suites / 2720 passing.** **Ten bug-pinning tests rewritten, not deleted** — each asserted the defect as correct behaviour; each now has a paired positive case, so the calm states stay reachable and the class cannot regress in either direction.
+
+The last fix is the best evidence the approach works: **C1's double-count was caught by a test this repo wrote earlier the same day.** The tests are now doing the job the audits were doing by hand.
