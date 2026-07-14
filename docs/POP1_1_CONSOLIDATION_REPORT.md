@@ -197,3 +197,36 @@ Corollary, generalized past vendors: **consolidating a number does not consolida
 Section 3's status is therefore revised from **complete** to **complete (count) · closed this sprint (claim)**.
 
 Live-verified in the hostv2 dev server, not just unit-tested: staged all 5 vendors booked with 4 unconfirmed → hero reads "All booked — 4 still to confirm before the day", Deposit-Paid/Agreed pills render lavender not green, and home still reads "4 of 5 areas handled" with "Follow up with Maplewood" as the next action. One caveat stated plainly: the `dayBefore` vendors row could **not** be driven live — no sample event is both inside the 0–2 day window and has vendors (the "day of" Cookout has none). That surface is covered by the new unit test only.
+
+---
+
+## 9. Addendum II — the root fix (2026-07-14, later the same day)
+
+§8 above recorded that the COUNT was single-sourced but the CLAIM was not, and listed six surfaces fixed. **That fix was itself at the wrong altitude**, and this is the honest record of why.
+
+A four-lens sweep (predicate consumers · claim strings · visual/green states · legacy App.js) found that §8's six leaf fixes could never have terminated, because the **tokens underneath them still lied**:
+
+- `buildVendorReadinessRollup` (this file's own canonical rollup, `lib/workstreams.js`) returned `status: 'ready'`, `label: 'All vendors booked'` and `nextAction: **'Nothing needs you here right now.'**` whenever every vendor was merely **BOOKED**.
+- `getEventReadiness` returned **`ON_TRACK`** in the same state.
+
+Those two are a **published API**. Seven consumers inherited the lie — including three that §8 never touched, and three of §8's own "fixed" surfaces that were **worse than reported**:
+
+- The **"People you're hiring"** row's guard was `needsAttention > 0` (= `total − booked`), so once every vendor was booked the row returned **`null`** — taking §8's *"· N to confirm"* disclosure with it. **The fix was unreachable in the exact state it was written for.**
+- The vendor hero's **green number** still came from the booked predicate, 40px above the corrected subtitle.
+- The health row went green **and was collapsed into a hidden "✓ N on track" drawer**, hiding its own disclosure.
+
+Words were fixed; pixels and tokens were not.
+
+**The root fix (`d641aa5`):** `'ready'` now means fully **confirmed**; all-booked-but-unconfirmed gets its own honest token `'to_confirm'`; and the rollup carries `counts.confirmed` / `counts.toConfirm` so **no consumer re-derives them**. That re-derivation — four surfaces each re-deriving vendor status with a drifting vocabulary — *is* this bug class, and it is what §4's Completion Logic Matrix was pointing at all along.
+
+Three further root causes were found and fixed the same day: untracked counted as passing (`7dca0c0`), the exhale outranking the engine (`bf31fc4`), and zero/elapsed-time reading as done (`fe00d6d`).
+
+### What this says about §3's "complete"
+
+§3 called vendor integration **complete** because the rollup single-sourced the number. §8 revised that to *complete (count) · closed this sprint (claim)*. The truth is sharper still:
+
+> **A number is not single-sourced until the TOKENS derived from it are too.** `counts.ready` was canonical while `status: 'ready'` — computed from it, in the same function — was a lie. The rollup was its own worst consumer.
+
+Section 3's status is now: **complete (count, claim, and token).**
+
+Tests at close: **180 suites / 2713 passing.** Nine bug-pinning tests rewritten, not deleted — each with a paired positive case, so the calm states stay reachable and the class cannot regress in either direction.

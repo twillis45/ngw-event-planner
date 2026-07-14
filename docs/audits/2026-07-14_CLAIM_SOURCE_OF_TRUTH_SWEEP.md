@@ -150,3 +150,35 @@ A grep-able convention would catch regressions cheaply: any surface printing an 
 | 7 | **§6** — port `usCitiesFull` autocomplete to V2's city field | Parity, small, no API key needed. |
 
 No code was changed by this audit.
+
+---
+
+## 10. OUTCOME — the class was closed the same day (2026-07-14)
+
+This audit was written before the fixes. Everything in §2–§5 above is now shipped. Recorded here so the doc is not left asserting open findings that are closed.
+
+**The audit was right about the disease and wrong about the altitude.** A second, dedicated four-lens sweep (predicate consumers · claim strings · visual/green states · legacy App.js) found the class had **four root causes**, not a list of surfaces — and that patching surfaces could never terminate, because the tokens underneath them still lied:
+
+| Root | What it actually was | Commit |
+|---|---|---|
+| R1 | `buildVendorReadinessRollup` returned `status:'ready'` + *"Nothing needs you here right now"* on the BOOKED predicate, and `getEventReadiness` returned `ON_TRACK`. A published API — **7 consumers inherited the lie.** | `d641aa5` |
+| R2 | `not_tracked` axes were counted and never consulted; untracked gates were filtered OUT of denominators so partial coverage became 100%. | `7dca0c0` |
+| R3 | `showLead = !allProgDone && !!na` — the exhale **suppressed** the engine's action and printed a congratulation from a checklist with no vendor axis. | `bf31fc4` |
+| R4 | Elapsed time counted as done; empty ledgers rendered 100%; Budget could never be red. | `fe00d6d` |
+
+The four criticals (C1–C4) are closed or superseded: **C2** `003b401`, **C3** `ec2c1c6`, **C4** `13451db`. **C1** is partly closed — `lib/vendorMoney` was extracted and `phaseProgress`'s Budget area now counts vendor balances, but `hostSpending()` itself still has no vendor term, so the budget HERO copy remains vendor-blind. That is the top item on the remaining queue.
+
+### Two corrections to this audit, recorded rather than quietly dropped
+
+1. **§1d overstated one case.** *"Send the invitations"* was **not** auto-satisfied — the old regex `/invite/` does not match `"invitations"` (invit**a**tions), so it fell through to `false` by accident of spelling. The real defect in that family was *"Chase the RSVPs"* (`/rsvp/` → `hasGuests`). Fixed, and the guard now uses `/invit/` so the whole family is answered by evidence rather than by a typo.
+
+2. **§5 understated my own incomplete fix.** Three of the six surfaces the morning's pass "fixed" were worse than reported: the "People you're hiring" copy was **unreachable** (the row returned `null` once every vendor was booked, taking the disclosure with it); the vendor hero's **green number** still came from the booked predicate, 40px above the corrected subtitle; and the health row went green **and was collapsed into a hidden drawer**, hiding its own disclosure. Words were fixed; pixels and tokens were not. That is exactly why R1 had to move to the rollup.
+
+### The rule that came out of it
+
+> A presence predicate may never license a completion claim.
+> Zero may never read as done.
+> Unknown is not passing.
+> A checklist may propose calm; only the engine may grant it.
+
+Suite at close: **180 suites / 2713 passing**. Nine bug-pinning tests rewritten (not deleted), each with a paired positive case so the calm states stay reachable.

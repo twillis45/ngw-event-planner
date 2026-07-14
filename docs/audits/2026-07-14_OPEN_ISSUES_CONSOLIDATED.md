@@ -1,14 +1,42 @@
 # Open Issues — Consolidated
 
-Date: 2026-07-14 · Sources: 12 ported artifact audits + the in-repo audit set + the [claim source-of-truth sweep](2026-07-14_CLAIM_SOURCE_OF_TRUTH_SWEEP.md).
+Date: 2026-07-14 · **Last updated: 2026-07-14, end of session** · Sources: 12 ported artifact audits + the in-repo audit set + the [claim source-of-truth sweep](2026-07-14_CLAIM_SOURCE_OF_TRUTH_SWEEP.md) + the four-lens SSOT re-sweep.
 
 **Method:** every item below was **verified against current code**. An audit saying "open" does not mean open — audits go stale, and several here were badly stale. Items the docs called open but that verify FIXED are listed in §5 so nobody re-files them. Nothing in this doc is taken on an audit's word.
 
-**Status of the SSOT re-sweep:** a second, dedicated sweep of the vendor-SSOT bug class (four independent lenses: predicate consumers, claim strings, visual/green states, legacy App.js) is in flight. §1 will grow when it lands — the first sweep was organised by domain and missed `returnNarration` precisely because that surface belongs to no domain.
+---
+
+## ⚠️ STATUS: §1 IS NOW CLOSED. The entire claim-truthfulness class shipped on 2026-07-14.
+
+The second, dedicated sweep (four independent lenses: predicate consumers, claim strings, visual/green states, legacy App.js) found that the class had **four root causes**, not one — and that the morning's leaf-level fixes could never have terminated, because the tokens underneath them still lied.
+
+All four roots and all three remaining C-items are now fixed, live-verified, and pinned by tests:
+
+| | Root cause | Commit |
+|---|---|---|
+| **R1** | **Booked licensed "confirmed."** `buildVendorReadinessRollup` returned `status:'ready'` + *"Nothing needs you here right now"* whenever every vendor was merely BOOKED, and `getEventReadiness` returned `ON_TRACK`. Those are a **published API** — 7 consumers inherited the lie. `'ready'` now means fully confirmed; all-booked gets its own token `'to_confirm'`; the rollup carries `counts.confirmed`/`counts.toConfirm` so **no consumer re-derives them** (that re-derivation, with a drifting vocabulary, *is* the bug class). | `d641aa5` |
+| **R2** | **Untracked counted as passing.** `getVendorReadiness` counted `notTracked` and never consulted it — *"All checks passing"* regardless. The cockpit filtered `not_tracked` gates OUT of the denominator, so partial coverage became arithmetically 100%: green **"All set" / "5/5 sorted"** beside an amber **"$5,800 due"** chip, on the DEFAULT path (`payDueDate` is empty by default). The financial axis also returned `'safe'` with the note *"balance pending"* — the note named the money, the level called it a pass. | `7dca0c0` |
+| **R3** | **The exhale outranked the engine.** `showLead = !allProgDone && !!na` — the app computed *"Confirm the caterer"*, **HID it**, and printed *"You're all set — everything that needs you is done"* from a 7-axis checklist **with no vendor axis**. New invariant in `lib/exhaleGate.js`: **a checklist may propose calm; only the engine may grant it.** | `bf31fc4` |
+| **R4** | **Zero read as done; the clock did the host's work.** The event-day bar counted cues whose *time had passed* as complete (*"Cake handled"* because 4pm arrived; *"All cues run"* to a host who ticked nothing). An empty post-event ledger rendered a **full green bar**. And **Budget could never be red** (`add('budget', true, TRUE, …)`). | `fe00d6d` |
+| **C2** | **Presence satisfied an act.** Money tasks were satisfied by `hasNamedVendor` — done because a vendor had a *name* — and the checklist DROPS satisfied rows, so **the app hid the bill**. | `003b401` |
+| **C3** | **`'Pending'` was not treated as a reply** — though it is the exact string the app's own importer writes. | `ec2c1c6` |
+| **C4** | **A persisted write** marked supply-shopping done off a **food-only** count. | `13451db` |
+
+Two libs came out of it, both fixing bugs of their own:
+- **`lib/vendorMoney.js`** — the one vendor money model. `hostSpending()` had **zero vendor terms** because these helpers were trapped in `App.js`. It also fixes money *silently vanishing from the ledger*: `STAGES` omitted `'Booked'` and `'Paid'`, two statuses V2 actively writes, so those vendors' costs dropped out of Total Committed, Balance Due, and every payment alert.
+- **`lib/rsvp.js`** — the one RSVP vocabulary. Seven predicates asked "has this guest replied?" with four different vocabularies.
+
+**Nine bug-pinning tests were rewritten, not deleted** — each asserted the defect as correct behaviour — and each got a paired positive case, so the calm states stay reachable and nothing can regress in either direction. Suite: **180 suites / 2713 passing**.
+
+**The rule to keep:**
+
+> **A presence predicate may never license a completion claim. Zero may never read as done. Unknown is not passing. A checklist may propose calm; only the engine may grant it.**
+
+§1 below is kept as the historical record of what was found. **Do not re-file it.** The live open list starts at §2.
 
 ---
 
-## 1. The claim-truthfulness class — the through-line of the whole list
+## 1. The claim-truthfulness class — ✅ CLOSED 2026-07-14 (historical record; do not re-file)
 
 > **A predicate establishing PRESENCE or PARTIAL progress is used to license a claim of COMPLETION.**
 > Twin: **an empty collection is read as a finished one.**
@@ -90,12 +118,21 @@ Compounded at `HostShellV2.jsx:7122-7133`: the hero prints **"15 of 15 · Every 
 
 ---
 
-## 4. Closed today (2026-07-14)
+## 4. Closed on 2026-07-14
 
-- **Vendor SSOT #1** — `867af98` / `48f6414`: "confirmed" reserved for `isVendorConfirmed` across six surfaces; `dayBefore` vendors row found outside the original blast radius. *(Three aggregator surfaces remain — §1b.)*
+**The whole claim-truthfulness class** (see the status block at the top):
+`d641aa5` R1 · `7dca0c0` R2 · `bf31fc4` R3 · `fe00d6d` R4 · `003b401` C2 · `ec2c1c6` C3 · `13451db` C4.
+The earlier leaf-level pass (`867af98` / `48f6414`) is superseded by R1 — and worth remembering *why*: three of its six "fixed" surfaces were **worse than reported**. The "People you're hiring" copy was **unreachable** (the row returned `null` once every vendor was booked, taking the disclosure with it); the vendor hero's **green number** still came from the booked predicate 40px above the corrected subtitle; and the health row went green **and got collapsed into a hidden drawer**, hiding its own disclosure. Words were fixed; pixels and tokens were not.
+
+**Also shipped:**
 - **City autocomplete** — `2cc75b1`: the field the app **blocks** you for had no autocomplete, while `saveCity` **rejects** a bare city. Ported the key-less ~29.7k-entry list from legacy.
-- **Address autocomplete on lodging** — `b2bb55e`: hotel/rental + backup fields now use the same lookup as the venue. Disambiguates Charleston SC from Charleston WV.
+- **Address autocomplete on lodging** — `b2bb55e`: hotel/rental + backup fields use the same lookup as the venue. Disambiguates Charleston SC from Charleston WV.
+- **Food area label** — `ec2c1c6`: the area said "Food" but the bar was only `dietaryResolved`. It now means the menu decisions are made *and* dietary is answered, and the cue names which is missing.
 - **12 audits ported from artifacts** — `696be04`: they existed only as published artifacts and were invisible to any repo search.
+
+### Verification limits, stated plainly
+- **C3's V2 surfaces are engine-verified, not browser-verified.** I could not stage a roster-mode event in V2 by patching localStorage (the merged sample keeps `guestMode: 'count'`). Proven by 6 tests including the 80-guest all-`'Pending'` import, and the legacy "You're all set" chain was observed absent.
+- **An audit claim I had to retract:** the sweep said *"Send the invitations"* was auto-satisfied. It was not — the old regex `/invite/` does not match `"invitations"` (invit**a**tions), so it fell through to `false` **by accident of spelling**. The real defect was *"Chase the RSVPs"*.
 
 ---
 
@@ -114,15 +151,23 @@ Verified fixed in code despite their doc saying open. **The audits are stale in 
 
 ---
 
-## 6. Recommended order
+## 6. What to do next
 
-1. **C4** — the persisted write. It is the only finding actively corrupting stored data; every day it runs, more events carry false `done: true`.
-2. **C2** — hidden bills. One-file fix: a payment-verb guard ahead of the `/cater/` and `/vendor/` branches.
-3. **C3** — one token: add `'pending'` to the `guestCountResolved` allow-list. Kills the whole "you're all set" chain for imported rosters.
-4. **C1** — give `hostSpending()` a vendor term via the existing `vendorBalance`/`vendorPaid` helpers. Largest blast radius, so it lands after the cheap kills.
-5. **§1b (S1–S3)** — finish SSOT #1.
-6. **§1c (E1–E5)** — `total > 0` guards + a "nothing planned yet" branch. **Update `dayBefore.test.js` in the same commit** — it currently pins E2.
+The claim class is closed. The remaining queue, by host harm:
 
-Then adopt the rule, mechanically checkable:
+1. **C1 residual — `hostSpending()` still has no vendor term.** `lib/vendorMoney` now exists and `phaseProgress`'s Budget area uses it, so the *readiness* surfaces are honest. But the **budget hero copy** (`budgetCopy.js` → "ALL SET — you've got about $39,700 left") still reads a vendor-blind `committed`. Wiring `vendorOutstanding()` into `hostSpending()` corrects every money claim at once. **This is the biggest single remaining lie in the app.**
+2. **Vendor accountability infers "evidence attached" from a typed price** (`vendorAccountability/derive.js:342`) — a vendor reads "confirmed · evidence attached" when the host only entered a cost.
+3. **Invite route not code-split** — a guest downloads the whole ~657KB host shell to tap "yes". The one surface non-hosts touch is the slowest thing in the product.
+4. **`eventDateStatus 'rushed'` can never fire** (`dates.js:29` reads `opts.minLeadDays`; no caller passes it) — a wedding 10 days out is never flagged as compressed.
+5. The rest of §2.
 
-> **A presence predicate may never license a completion claim. Zero may never read as done.**
+Plus the **rulings** in §3 — the `vendor_followup` doctrine conflict (doctrine bans AI-generated vendor messages; the backend ships one) should be settled before any send-chain work begins.
+
+### The rule, mechanically checkable
+
+> **A presence predicate may never license a completion claim.**
+> **Zero may never read as done.**
+> **Unknown is not passing.**
+> **A checklist may propose calm; only the engine may grant it.**
+
+A cheap standing check: any surface printing an absolute claim ("all", "everyone", "locked in", "set", "covered", "nothing left") must name the predicate licensing it in a comment — as the vendor surfaces now do. If it can't name one, it shouldn't make the claim.
