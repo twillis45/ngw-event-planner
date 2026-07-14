@@ -35,7 +35,7 @@ import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
-import { eventStartMinutes } from '@app/lib/eventWhen';
+import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -2905,6 +2905,7 @@ export default function HostShellV2() {
   // honest route toast — never a button that pretends.
   const wiredKind = (a) => {
     if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
+    if (a.domain === 'starttime') return 'date';   // captured beside the date it belongs to
     // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
     // recognize them by their real deep-link target or category.
     // SPECIFIC deep-link targets first — category fallbacks LAST. (The rain
@@ -2912,7 +2913,7 @@ export default function HostShellV2() {
     // category to budget put the budget editor on the rain card.)
     const f = (a.route && a.route.focusField) || '';
     if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
-    if (f === 'event-date') return 'date';
+    if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
     if (f === 'guests-entry') return 'guests';
     if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
     if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
@@ -3045,7 +3046,7 @@ export default function HostShellV2() {
     }
     if (kind === 'budget') return budgetEditorBlock();
     if (kind === 'date') return (
-      <div className="hc-row">
+      <div className="hc-row" style={{ flexWrap: 'wrap' }}>
         <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
           onChange={e => {
             const v = e.target.value;
@@ -3059,6 +3060,61 @@ export default function HostShellV2() {
             if (check.blocking) { toast(check.reason || "That date doesn't look right — check it."); return; }
             patchEvent({ date: v }, 'Date set — every countdown in the plan just moved.');
           }} />
+        {/* AN EVENT SHOULD START WITH A GROUNDED TIME (2026-07-14).
+            A date without a time is half a decision, and the app was quietly filling the
+            other half by inventing one: the run of show anchored the whole day to a bare
+            15:00, printed it as fact, and SENT IT TO A CATERER. `startTime` was read by
+            three engines and WRITABLE BY NOTHING — the same read-with-no-capture hole as
+            hostName, deckLine and payDueDate.
+
+            So the time is captured HERE, beside the date it belongs to, with a grounded
+            proposal (lib/startTime.js): a real sunset from the forecast, the playbook's own
+            authored run-length, or — failing both — the host's own time-of-day word made
+            precise. If we know none of those, we propose nothing and simply ask. */}
+        {String(event.date || '').trim() && (() => {
+          const prop = (() => { try { return proposeStartTime(event, wx); } catch (_e) { return null; } })();
+          return (
+            <>
+              <div className="actions-row" style={{ width: '100%', marginTop: 8, alignItems: 'center' }}>
+                <span className="of">guests arrive:</span>
+                <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                  value={event.startTime || ''}
+                  onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the day now runs on a real clock.')}
+                  aria-label="What time guests arrive" />
+                {prop && (
+                  <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
+                    'Start time set — the day now runs on a real clock.')}>
+                    use {prop.label}
+                  </button>
+                )}
+              </div>
+              {/* The event ARRIVES with a grounded time, so the usual state here is not an empty
+                  field — it is OUR time, awaiting the host's yes. Say so plainly, give the
+                  reason, and make confirming it one tap. Until they do, no guest and no vendor
+                  is told the hour. */}
+              {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
+                <>
+                  <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right.
+                  </p>
+                  <div className="actions-row" style={{ width: '100%', marginTop: 6 }}>
+                    <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                      'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                      that’s right
+                    </button>
+                  </div>
+                </>
+              )}
+              {prop
+                ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>
+                : !String(event.startTime || '').trim()
+                  ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>
+                      Without this the day has an order but no clock, and nothing we send a vendor can name an hour.
+                    </p>
+                  : null}
+            </>
+          );
+        })()}
       </div>
     );
     if (kind === 'food') {
@@ -3298,6 +3354,15 @@ export default function HostShellV2() {
       budget: [],
       guests: [], vendors: [], timeline: [],
     };
+    // AN EVENT ARRIVES WITH A GROUNDED START TIME (host directive, 2026-07-14).
+    // Not the old invention — that was a bare 15:00, written as fact and indistinguishable
+    // from a host decision. This one is DERIVED (a real sunset + the playbook's own run-length,
+    // or failing that the host's own time-of-day word) and it carries its provenance:
+    // startTimeSource:'derived' plus the sentence that justifies it. So the day runs on a real
+    // clock from the first second, the host is told plainly that we picked it and why, and
+    // nothing OUTWARD — a guest's invitation, a vendor's brief — states the hour until they
+    // have confirmed it. An unconfirmed hour is ours, not theirs.
+    try { Object.assign(ev, defaultStartTime(ev, null) || {}); } catch (_e) { /* no grounding — the list asks */ }
     // Canonical checklist over the real event object (date-relative offsets,
     // choice/caterer gates). No date yet → honestly empty; drafts later.
     try { ev.timeline = (playbookChecklist(ev) || []).map(r => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: false, owner: '', category: r.category || '' })); } catch {}
@@ -4983,20 +5048,32 @@ export default function HostShellV2() {
                       capture. Grounded: the seed is the host's OWN time-of-day bucket, and we
                       say so. Nothing is written until they tap. */}
                   {ros.length > 0 && ros.some(r => !r.time) && (() => {
-                    const tod = String(event.timeOfDay || '').trim();
-                    const seedMin = (() => { try { return eventStartMinutes({ timeOfDay: tod }); } catch (_e) { return null; } })();
-                    const seed = seedMin != null
-                      ? `${String(Math.floor(seedMin / 60)).padStart(2, '0')}:${String(seedMin % 60).padStart(2, '0')}`
-                      : '';
-                    const pretty = seedMin != null
-                      ? new Date(2020, 0, 1, Math.floor(seedMin / 60), seedMin % 60).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-                      : null;
+                    // THE START TIME — GROUNDED, PROPOSED, THE HOST'S TO CHANGE (2026-07-14).
+                    //
+                    // This used to be invented: with only "afternoon" the schedule printed
+                    // 3:00 PM, and with nothing at all it anchored the whole day to a bare
+                    // 15:00 — times shown as fact, SENT TO A CATERER as their load-in, and
+                    // frozen into event.ros on the first edit. The rows now say what they
+                    // actually know ("2h before guests arrive"), and this offers the one
+                    // decision that turns all of them into real times.
+                    //
+                    // The proposal is GROUNDED, not guessed (lib/startTime.js). weather.js
+                    // has been computing a REAL sunset for the event's date and city this
+                    // whole time — "real, computed — never fabricated", its own words — and
+                    // NOTHING CONSUMED IT. An outdoor event should finish in the light, and
+                    // the playbook authors its own typical run-length, so:
+                    //
+                    //    "Sunset is 8:14 PM that day, and a crab feast runs about 4 hours —
+                    //     so a 3:44 PM start has you finishing in the light."
+                    //
+                    // Every number in that sentence is real. With no forecast we fall back to
+                    // the host's OWN time-of-day word (their statement, made precise — and we
+                    // say so). With neither, we propose NOTHING rather than invent.
+                    const prop = (() => { try { return proposeStartTime(event, wx); } catch (_e) { return null; } })();
                     return (
                       <div className="later-row" style={{ margin: '0 0 var(--sp-3)', background: 'var(--card)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px' }}>
                         <p className="grounding" style={{ margin: 0 }}>
-                          {tod
-                            ? <>You said <b>{tod.toLowerCase()}</b>, which tells us the order of the day but not its hours — so these are relative. Set a start time and every line below becomes a real one.</>
-                            : <>These are relative — set a start time and every line below becomes a real one.</>}
+                          These moments are in order but not on a clock — set a start time and every line below becomes a real one.
                         </p>
                         <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
                           <span className="of">guests arrive:</span>
@@ -5004,17 +5081,15 @@ export default function HostShellV2() {
                             value={event.startTime || ''}
                             onChange={e => patchEvent({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
                             aria-label="What time guests arrive" />
-                          {pretty && (
-                            <button className="mini" onClick={() => patchEvent({ startTime: seed },
+                          {prop && (
+                            <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm },
                               'Start time set — the whole day reads from it now.')}>
-                              use {pretty}
+                              use {prop.label}
                             </button>
                           )}
                         </div>
-                        {pretty && (
-                          <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>
-                            {pretty} is just the middle of {tod.toLowerCase()} — a starting point, not a guess at your plan. Change it to whatever is true.
-                          </p>
+                        {prop && (
+                          <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>
                         )}
                       </div>
                     );

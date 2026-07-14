@@ -42,6 +42,10 @@ const readyButOverdue = () => {
   const ev = {
     id: 'lva-1', name: 'Juneteenth Cookout', type: 'juneteenth cookout',
     date: iso(10), guestMode: 'count', guestCount: 30, dietaryNoted: true,
+    // The fixture's premise is "calm EVERYWHERE except the board", and as of 2026-07-14 a
+    // missing START TIME is a real, counted gap — the day cannot run on a clock without it,
+    // and nothing sent to a vendor can name an hour. So a genuinely calm event has one.
+    startTime: '14:00',
     venueKind: 'venue', venue: 'VFW Post 3150 — Alexandria, VA',
     rainPlan: 'Move under the carport',
     guests: [], vendors: [], timeline: [], budget: [],

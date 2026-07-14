@@ -1684,7 +1684,21 @@ export function eventPlan(event, ctx = null) {
         // The phase engine's cue is the whole sentence; it has no separate consequence
         // line, and inventing one would be fabricating a reason. Left null honestly.
         consequence: null,
+        // BOTH KEYS, and the ones the CONSUMER actually reads.
+        //
+        // When I merged the phase ledger into nextActions (14f4973) I set `primaryRoute` and
+        // `ctaLabel` — plausible names, both of which exist elsewhere in this file, and
+        // NEITHER of which HostShellV2 reads. The card renders `a.cta` (:4615) and routes on
+        // `a.route` (onCta/wiredKind). So the phase actions shipped into the ranked list
+        // saying exactly the right thing, with NO BUTTON and NO ROUTE — the very "pure
+        // anxiety, cannot act on it" failure the attention audit had just called critical, and
+        // I reintroduced it while fixing it. Caught only because "Set the start time" needed a
+        // working route to be worth adding at all.
+        //
+        // The foundation actions right above use `route` + `cta`. That is the contract.
+        route: i.route,
         primaryRoute: i.route,
+        cta: 'Go',
         ctaLabel: 'Go',
         level: 'attention',
         category: 'phase',

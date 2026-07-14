@@ -59,7 +59,13 @@ export function eventStartMinutes(event) {
  *                                            missing data is never fabricated).
  */
 export function eventStartLabel(event) {
-  const exact = parseStartMinutes(event && event.startTime);
+  // THE OUTWARD GATE (2026-07-14). An event now ARRIVES with a grounded default start time so
+  // the plan runs on a real clock from the first second — but a default is OURS, not the
+  // host's, until they confirm it. This function is what a GUEST reads on the invitation, and
+  // a guest must never be handed an hour the host never chose. (The same rule the reply-by
+  // date learned the hard way.) Unconfirmed ⇒ fall through to the bucket, or to nothing.
+  const derived = event && String(event.startTimeSource || '') === 'derived';
+  const exact = derived ? null : parseStartMinutes(event && event.startTime);
   if (exact != null) {
     const h24 = Math.floor(exact / 60);
     const mm = exact % 60;

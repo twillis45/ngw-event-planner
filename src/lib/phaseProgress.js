@@ -27,6 +27,7 @@ import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
 import { daysUntil } from './dates';
+import { startTimeIsConfirmed } from './startTime';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -62,6 +63,21 @@ function preProgress(ev, phase, daysOut) {
   // already run off it); only a truly missing location is a readiness gap.
   // (Todd's report: home-hosted event was nagged 'Add the location' while the
   // app was simultaneously using Atlanta, GA for its own features.)
+  // AN EVENT SHOULD START WITH A GROUNDED TIME. `startTime` was read by three engines and
+  // WRITABLE BY NOTHING — so the run of show quietly invented one (a bare 15:00), printed it
+  // as fact, and sent it to a caterer as their load-in. It is a real gap, so it belongs in the
+  // one ledger like any other: it enters the ranked list, it is counted, and it clears when the
+  // host sets a time. Only applies once there IS a date — a time without a date means nothing.
+  // Priority 9, deliberately LAST-ish. A missing hour is a real gap — the day cannot run on
+  // a clock without it, and nothing we send a vendor can name a time — but it is not more
+  // urgent than the venue, the food or the guest count. It surfaces; it does not crowd.
+  // The event now ARRIVES with a grounded default (lib/startTime.defaultStartTime), so the
+  // gap is no longer "there is no time" — it is "the host has not confirmed OUR time". That
+  // still matters: an unconfirmed hour must not reach a guest's invitation or a vendor's
+  // brief, and only the host can settle it. The cue says which of the two it is.
+  add('starttime', !!String(ev.date || '').trim(), startTimeIsConfirmed(ev),
+    String(ev.startTime || '').trim() ? 'Confirm the start time' : 'Set the start time',
+    { tab: 'Event Details', focusField: 'event-start' }, 9);
   add('location', true, eventLocationStatus(ev) !== 'missing', 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host

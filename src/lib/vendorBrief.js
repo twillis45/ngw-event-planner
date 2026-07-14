@@ -64,6 +64,18 @@ export function buildVendorBriefPayload(vendor, event, ros, profile) {
     plannerLogo:     p.logo      || '',
     brandColor:      p.brandColor || '',
     // this vendor's run-of-show slice only
-    ros: vendorRosSlice(ros, v),
+    // THE OUTWARD GATE. The event now arrives with a GROUNDED default start time so the plan
+    // runs on a real clock immediately — but a default is OURS, not the host's, until they
+    // confirm it, and a caterer who shows up at the wrong hour does not care whose default it
+    // was. Until the host says "that's right", the brief carries the RELATIVE schedule it
+    // already computes ("4h before guests arrive") and names no hour. That is honest AND
+    // useful: a vendor can plan against it. A made-up 11:00 they cannot.
+    // Only OUR default is withheld. A host who wrote their own run of show, or set their own
+    // start time, owns those hours — nulling them would be the opposite error, hiding the
+    // host's real decision from the vendor who needs it. `startTimeSource === 'derived'` is
+    // precisely and only "the app picked this and the host has not yet said it's right".
+    ros: String(e.startTimeSource || '') === 'derived'
+      ? vendorRosSlice(ros, v).map(r => ({ ...r, time: null }))
+      : vendorRosSlice(ros, v),
   };
 }

@@ -32,7 +32,11 @@ import {
 //    (Grown only when a new consumer SHIPS — adding here without a consumer is
 //    the exact bug class this audit exists to kill.)
 const STATIC_ANCHORS = new Set([
-  'event-date', 'event-venue', 'guests-entry', 'hsp-budget', 'rain-plan',
+  // 'event-start' ships WITH its consumer (2026-07-14): HostShellV2's wiredKind maps
+  // focusField 'event-start' (and the phase ledger's 'starttime' domain) to the DATE editor,
+  // which now captures the start time beside the date it belongs to. Added here only because
+  // the destination renders — which is the whole rule this list exists to enforce.
+  'event-date', 'event-start', 'event-venue', 'guests-entry', 'hsp-budget', 'rain-plan',
   'parking-notes', 'loadin-notes', 'venue-contact', 'house-rules',
   'vendor-add', 'vendor-list', 'food-plan', 'next-step-hero', 'ros-now',
   'host-decisions', 'guest-roster', 'crab-plan', 'crab-headcount',
