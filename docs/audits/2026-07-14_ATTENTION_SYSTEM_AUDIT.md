@@ -89,6 +89,138 @@ What is true is narrower: there is no standalone *documents sheet*, and `lib/eve
 | — | **Surfaces start life invisible.** The roll-up is hand-wired per surface; nothing is automatic. | The structural call: make the tier list data-driven off the same registry the surface rows come from, so a surface *cannot exist* without declaring how it escalates. |
 | — | **Nothing snoozes or decays.** The ranked list cannot be deferred; context nudges never expire. | Leaders all have this. Needs a design call on what deferral means for an event with a fixed date. |
 
+## The path to 10+
+
+A 10 is not "no bugs." Every dishonesty is already closed — the app no longer says
+anything untrue. A 10 is the **contract a leader can make and we still cannot**:
+
+> *If it isn't in the list, it doesn't need you. If it's in the list, you can act on it or
+> defer it. And the list gets louder as it gets later.*
+
+Three of those four clauses now hold. Here is precisely what each dimension needs, what it
+costs, and which parts are mine versus yours.
+
+---
+
+### Ranking · 7 → 10 — *"the list is everything, and it explains itself"*
+
+**Gap 1 — the count still is not everything.** Only **2 of 7** attention producers feed
+`nextActions` (the task-engine top action, and the phase ledger). Still outside it:
+`computeDayAlerts`, `riskCount`, vendor `conflicts`, the reconfirm `sweep`,
+`positiveAttention`. A weather risk on an outdoor event, or a vendor conflict, still cannot
+outrank "Plan the food" — because it cannot enter the list at all.
+→ **Route every producer through one merge**, the way the phase ledger now is. *Buildable
+now. ~1 day.* This is the single biggest remaining item, and it is the same fix as the
+Coverage registry below — do them as one piece.
+
+**Gap 2 — there is no ranking function, only a hand-ordered ladder.** `_selectEventNextActionInner`
+is a 15-tier `if/return`. It now ranks *correctly within* a tier, but the tier order itself
+is authored, not computed. A leader scores: **consequence × time-to-window-close ×
+recoverability**. A COI missing 2 days out (venue turns you away, unrecoverable) must
+outrank a decision 30 days out, and today that is true only because someone typed the tiers
+in that order.
+→ **Score the tiers instead of ordering them.** *Buildable now. ~1 day.* Low risk: the
+existing order becomes the fallback when scores tie.
+
+**Gap 3 — nothing can be deferred.** The only way to clear an item is to do the work. That
+is why leaders' zero states are believed and ours will not be: a host with an item they
+have *consciously decided to leave* has no way to say so, so the list stays permanently
+non-empty and they stop reading it.
+→ **Snooze.** *Needs a call from you (below), then ~half a day.*
+
+**Gap 4 — no item says why it is first.** "Set your budget" does not say *"because every
+food and vendor estimate is currently guessing."* The engine knows; the card does not print it.
+→ *Buildable now. ~half a day.*
+
+---
+
+### Coverage · 6 → 10 — *"a surface cannot exist without declaring how it escalates"*
+
+**The registry.** This is the one that buys the most, and it is why every other coverage bug
+keeps recurring. Today the roll-up is **twelve bespoke hand-written rows**, each with its own
+`attn` boolean. Nothing is automatic, so **every new surface starts life invisible and stays
+invisible until someone remembers to wire it.** That is not a bug; it is a bug *factory*. It
+is exactly why Risks got a row but never a rank, and why Documents was assumed silent.
+
+→ Every surface declares one contract:
+```js
+{ id, label, raise(event) → [{ severity, title, route, why }], route }
+```
+The index rows, the badges, and the ranked list all *read the registry*. A surface that
+declares nothing is a compile-time hole, not a silent one.
+*Buildable now. ~2 days, including migrating the twelve rows.* **I need your go-ahead —
+it touches every surface.**
+
+**Guest contact.** The RSVP chase cannot act because the roster holds no phone or email.
+That is a data-model change, not a copy change. → *Needs your call: do guests give contact
+details at RSVP, and are we comfortable holding them?*
+
+---
+
+### Over time · 7 → 10 — *"it gets louder as it gets later, and admits when it is too late"*
+
+**Escalation.** Lead times are real now, but urgency is still mostly flat: an item due in 30
+days and one due in 2 look the same until it is overdue. → **One escalation curve** driven off
+`taskDueInDays` (already exists): upcoming → due soon → due → past window. *Buildable now.
+~half a day.*
+
+**Closed-window honesty at the surface.** `taskDueLabel` can now say *"13 days past its
+window"*, but the surfaces still mostly say "today". And the crab order is **completely
+date-blind** — `crabPlan.js` contains no date logic at all, so "Finish the crab order" reads
+identically at T-30 and T-0, when at T-1 the honest message is *"call them, do not order
+online."* → *Buildable now. ~1 day.*
+
+**Expiry.** Context nudges never decay — a nudge nags until killed by hand. → *Buildable
+now, folded into snooze.*
+
+**Reminders.** The app cannot pull a host back at all — no push, no email, no SMS. Attention
+that only exists when the app is open is not attention. → **Needs a channel and keys from
+you** (web push + VAPID, or SendGrid/Twilio). This is the same gate as the Launch punch-list.
+Until it exists, this dimension is capped around 8 no matter what I build.
+
+---
+
+### Visual · 7 → 10 — *"one severity scale, and amber means one thing"*
+
+**One scale, not seven.** There are still **seven parallel status vocabularies** with three
+different "third colours" (danger, lavender, muted). Amber still carries ~13 meanings —
+needs-attention, essential, day-of, dietary flag, a *loading* state. A vendor still has **no
+red tier**; a workstream still has **no blocked tier** (it borrows amber).
+→ **Collapse to one four-level scale** — `ok · steel · attention · critical` — and apply it
+everywhere. Identification (dietary, day-of) moves to a neutral tag; it is not urgency.
+*Buildable now. ~1.5 days.* Mostly mechanical, but it touches every chip, so it wants a
+careful visual QA pass.
+
+**Kill the lavender.** `--progress #B3A0CC` is a purple, and UX_02 says *"No purple."* It is a
+sixth semantic colour nobody sanctioned. *~1 hour.*
+
+**Dock badges.** There is no cross-stage attention channel at all: from The Day or After, an
+at-risk pillar is invisible. Slack's contract — *a dot means something specific, and clearing
+it is possible* — is not failed here, it is **absent**. → *Buildable now, ~half a day, but it
+depends on the registry (a badge must count something real).* 
+
+---
+
+## What I need from you
+
+Three calls. Everything else on this page I can build without you.
+
+1. **The registry — go / no-go.** ~2 days, touches every surface, and it is the item that
+   stops this class of bug recurring. Nothing else moves the coverage score much.
+2. **What does *snooze* mean for an event with a fixed date?** My recommendation: snooze
+   until a computed resurface point (half the remaining runway, never past the item's own
+   lead window), and never allow snoozing a `critical`. Say yes and I build it; say
+   otherwise and I build yours.
+3. **Guest contact + a reminder channel.** Do guests hand over a phone/email at RSVP? And
+   which channel do we pull hosts back with — web push, email, or SMS? Both are gates I
+   cannot open from inside the code.
+
+**Sequenced honestly:** the registry first (it unblocks badges, coverage, and the
+everything-in-one-list merge), then the severity scale, then escalation + snooze. That is
+roughly **a week of build** and it puts every dimension at 9. The last point on each — real
+reminders, real guest contact — is on the other side of your two decisions, not another
+sprint.
+
 ## What is genuinely good
 
 - **Motion is Linear/Apple-grade (9/10).** Nothing pulses or flashes in amber or red. Every attention ring is steel, one-shot, decaying. `prefers-reduced-motion` kills all of it globally.
