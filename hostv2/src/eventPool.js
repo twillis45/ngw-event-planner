@@ -150,13 +150,76 @@ export const TEST_DAY_OF = mkTest('test-day-of', 'Test — Cookout (day of)', /^
 });
 export const TEST_TWO_DAYS = mkTest('test-two-days', 'Test — Game Night (in 2 days)', /game night/i, 2, {});
 
+// ── QA seeds (2026-07-14) — the two states V2 could NOT reach ────────────────
+//
+// These exist because the claim-truthfulness sweep found that the surfaces where
+// over-claiming is MOST costly were exactly the ones QA could not stage:
+//
+//   • The dayBefore vendors row — which fires the NIGHT BEFORE the event — could
+//     not be driven live, because no sample event was both inside the 0–2 day
+//     window AND had vendors. (TEST_DAY_OF/TEST_TWO_DAYS carry `vendors: []`.)
+//   • The 'Pending' RSVP fix (C3) could not be browser-verified at all, because
+//     no sample event was roster-mode — every one is `guestMode: 'count'`, so the
+//     guest tile always renders the estimate band and the roster branch never runs.
+//
+// Both bugs were shipped fixed and engine-verified, but the blind spot is the real
+// finding: a surface QA cannot reach is a surface that can lie for months. These
+// two seeds close it.
+
+// 1 day out, WITH vendors — each in a state that used to produce a false all-clear.
+export const TEST_DAY_BEFORE_VENDORS = mkTest('test-day-before-vendors', 'Test — Dinner (tomorrow, vendors)', /dinner party/i, 1, {
+  venue: 'The Ironwood Room', venueKind: 'venue', venueCity: 'Annapolis', venueState: 'MD',
+  totalBudget: 6000,
+  rainPlan: 'Indoors — no backup needed.',
+  vendors: [
+    // Fully locked in: the ONLY vendor that may license a green/"confirmed" claim.
+    { id: 'tdv-v1', name: 'Ironwood Room', category: 'Venue', status: 'Confirmed',
+      cost: 2200, depositAmt: 600, depositPaid: true, balancePaid: true,
+      contractSigned: true, arrivalTime: '3:00 PM', coiStatus: 'received', coiVerified: true,
+      contact: 'Lauren Petty', phone: '555-0410' },
+    // BOOKED, NOT CONFIRMED, with an unpaid balance and NO payDueDate — the exact
+    // shape behind R1 ("all booked" read as done) and R2 (an untracked balance
+    // scored as a passing check: green "All set" beside "$3,400 due").
+    { id: 'tdv-v2', name: 'Fired Up BBQ', category: 'Catering', status: 'Deposit Paid',
+      cost: 4200, depositAmt: 800, depositPaid: true, balancePaid: false, payDueDate: '',
+      contractSigned: true, arrivalTime: '4:00 PM',
+      contact: 'Reggie', phone: '555-0199' },
+    // Contracted with NO arrival time — the day-before row's own extra concern,
+    // layered on top of the confirm gap.
+    { id: 'tdv-v3', name: 'Sable & Sound', category: 'DJ', status: 'Contracted',
+      cost: 900, depositAmt: 0, depositPaid: false, balancePaid: false,
+      contractSigned: false, arrivalTime: '' },
+  ],
+});
+
+// Roster mode with a REAL mix of replies — including the literal 'Pending' string
+// csvParsers writes for every blank / "no response" / "invited" row on every import
+// platform. That value is what guestCountResolved could not see (C3).
+export const TEST_ROSTER_RSVP = mkTest('test-roster-rsvp', 'Test — Reunion (roster, replies out)', /family reunion|reunion/i, 30, {
+  venue: 'Fort Smallwood Park', venueKind: 'venue', venueCity: 'Pasadena', venueState: 'MD',
+  guestMode: 'list',
+  guestCount: 0, guestEstimate: 0,   // the ROSTER is the source — no typed count to lean on
+  totalBudget: 3000,
+  guests: [
+    { id: 'trr-g1', name: 'Denise & Ray',   rsvp: 'Yes' },
+    { id: 'trr-g2', name: 'The Okafors',    rsvp: 'Yes', kids: 2 },
+    { id: 'trr-g3', name: 'Marcus',         rsvp: 'Maybe' },
+    { id: 'trr-g4', name: 'Aunt Cee',       rsvp: 'No' },
+    // ↓ the poison value. Imported guests who have never been asked.
+    { id: 'trr-g5', name: 'Cousin Jerome',  rsvp: 'Pending' },
+    { id: 'trr-g6', name: 'The Whitfields', rsvp: 'Pending' },
+    { id: 'trr-g7', name: 'Uncle Ray Ray',  rsvp: 'Pending' },
+    { id: 'trr-g8', name: 'Nia + guest',    rsvp: '' },
+  ],
+});
+
 // Exported for the public invite page (InviteV2) — it resolves rsvpCode links
 // against the SAME pool + patch layers the host shell reads (one truth).
 // Includes the created-event store (load-time read — fresh on every invite
 // page load) so every created event's invite link resolves, not just one.
-export const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
+export const ALL_SAMPLES = [...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
 
-export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS];
+export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP];
 export const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 // Boot on the last event the host was working when it still exists on this

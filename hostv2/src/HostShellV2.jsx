@@ -1626,6 +1626,9 @@ export default function HostShellV2() {
   // lib/attendanceModel — likely turnout, WITH the playbook's own attendance
   // overrides (a crab feast's turnout curve isn't a wedding's).
   const expect = expectedFromPlanned(guests, event.type, (() => { try { return getPlaybook(event.type); } catch { return null; } })());
+  // The RSVP truth for this event, when the host keeps a roster. Same engine the
+  // food + budget sheets read — the home tile was the one surface that ignored it.
+  const gBand = useMemo(() => { try { return attendanceBand(event); } catch { return null; } }, [event]);
   const rsvpBy = rsvpDeadlineFor(event);                  // lib/dates — reply-by date
   const actions = plan.nextActions || [];
   const handled = plan.handled || [];
@@ -3941,8 +3944,19 @@ export default function HostShellV2() {
                   <div className="t-label">Guests</div>
                   <div>
                     <div className="t-num">{guests ? gAnim : '—'}</div>
+                    {/* When the host keeps a ROSTER, the honest line is who has actually
+                        replied — not a no-show/plus-one model applied to the roster size.
+                        This tile only ever said "planned around · likely X–Y (some
+                        no-shows, some plus-ones)", which presents a MODELLED band as if
+                        the count were settled, on an event where half the roster has
+                        never answered. attendanceBand already computes the truth
+                        ("2 confirmed · 4 replies still out") and the food + budget sheets
+                        already use it; the home tile did not. Found by driving the new
+                        roster QA seed — the surface QA could not previously reach. */}
                     <div className="t-sub">{guests
-                      ? (expect ? <>planned around · likely <b>{expect.low}–{expect.high}</b> on the day{expect.note ? ` (${expect.note})` : ''}</> : 'planned around')
+                      ? (gBand && gBand.basis === 'rsvp' && gBand.band && gBand.because
+                          ? <>{gBand.because}</>
+                          : expect ? <>planned around · likely <b>{expect.low}–{expect.high}</b> on the day{expect.note ? ` (${expect.note})` : ''}</> : 'planned around')
                       : 'no count yet — the plan can’t size food or seats'}</div>
                   </div>
                 </button>
