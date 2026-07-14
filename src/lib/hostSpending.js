@@ -17,8 +17,16 @@
 //   • foodBought   = $ of food items marked got — each item's locked $ if present,
 //                    else its low/high midpoint. (Mirrors playbookFoodPlan's eff().)
 //   • spent        = sum(budget rows' actual) + foodBought  (food you've BOUGHT is spent).
-//   • committed    = spent + the not-yet-bought portion of foodEstimate (so the
-//                    budget reflects PLANNED food even before it's purchased).
+//   • vendorOwed   = what is still OWED to committed vendors (lib/vendorMoney). C1:
+//                    this file had NO vendor term at all, so the hero could say
+//                    "you've got about $39,700 left" with $18,400 owed. Only the
+//                    OUTSTANDING balance is folded in — vendor money already paid is
+//                    deliberately NOT added to `spent`, because a host who also logs
+//                    that payment as a budget row would be charged for it twice.
+//                    Outstanding money cannot already be in a row's `actual`.
+//   • committed    = spent + the not-yet-bought portion of foodEstimate + vendorOwed
+//                    (so the budget reflects PLANNED food and OWED vendor money
+//                    before either is paid).
 //
 // Honest bounds: foodBought never exceeds foodEstimate's ceiling concern — it's the
 // real checked-off total; committed never dips below spent (the un-bought remainder
@@ -26,6 +34,7 @@
 
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
+import { vendorOutstanding } from './vendorMoney';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -120,15 +129,42 @@ export function hostSpending(event, priceFactor) {
     }
   } catch (_e) { /* honest zero */ }
 
+  // ── C1 — VENDOR MONEY. The term this file never had. ────────────────────────
+  //
+  // Until now the string "vendor" did not appear anywhere in this file, and this
+  // is the host-facing "budget single source". So the hero could print
+  //
+  //     ALL SET — you've got about $39,700 left.
+  //
+  // on an event with ~$18,400 owed to vendors. Perversely, budgetCopy's
+  // `unpricedVendorCount` only flags vendors with NO cost — so a precisely-priced
+  // vendor contributed nothing here AND suppressed the caveat: the more carefully
+  // a host priced their vendors, the more invisible that money became.
+  //
+  // App.js:2241 has always said every "owed to vendors" figure should route
+  // through vendorBalance. The PLANNER views did. No HOST view could — the helpers
+  // were trapped inside App.js, unreachable from any lib. They now live in
+  // lib/vendorMoney (which also fixes 'Booked'/'Paid' vendors silently dropping
+  // out of the ledger entirely).
+  //
+  // WHAT IS ADDED, AND WHY ONLY THIS:
+  // Only the OUTSTANDING balance enters `committed`. Vendor money already PAID is
+  // deliberately NOT added to `spent`, because a host who logs that payment as a
+  // budget row actual would then be charged for it twice. Outstanding money cannot
+  // already be in rowsActual (that is money that has left the account), so this
+  // term can never double-count. It is exposed separately as well, so a surface can
+  // disclose it instead of silently folding it in.
+  const vendorOwed = (() => { try { return Math.max(0, Math.round(vendorOutstanding(ev))); } catch (_e) { return 0; } })();
+
   // Spent = manual actuals + everything actually bought/checked off.
   const spent = Math.max(0, Math.round(rowsActual + foodBought + suppliesBought + capacityBought + crabBought));
   // Committed adds what's still PLANNED but not yet bought (each term clamped —
-  // over-buying an estimate never becomes a credit).
+  // over-buying an estimate never becomes a credit) — and what is still OWED.
   const foodRemaining = Math.max(0, foodEstimate - foodBought);
   const suppliesRemaining = Math.max(0, suppliesEstimate - suppliesBought);
   const capacityRemaining = Math.max(0, capacityEstimate - capacityBought);
   const crabRemaining = Math.max(0, crabEstimate - crabBought);
-  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining));
+  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining + vendorOwed));
 
   // spentEstimated: how much of `spent` is still an estimate, NOT a firm number.
   // Food's estimated portion is granular (foodBoughtEstimated). But supplies and
@@ -139,7 +175,7 @@ export function hostSpending(event, priceFactor) {
   // belong in spentEstimated too. (crabBought stays firm — real entered prices.)
   const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated + suppliesBought + capacityBought));
   const spentFirm = Math.max(0, spent - spentEstimated);
-  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, vendorOwed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

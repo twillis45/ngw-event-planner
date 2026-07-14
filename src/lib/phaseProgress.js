@@ -26,7 +26,6 @@ import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
-import { vendorOutstanding } from './vendorMoney';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -161,9 +160,12 @@ function preProgress(ev, phase, daysOut) {
   // had, which is why every host money surface was blind to vendor balances. Both
   // numbers come from canonical sources; neither is re-derived here.
   if (num(ev.totalBudget) > 0) {
+    // C1: hostSpending().committed NOW INCLUDES what is owed to vendors (it had no
+    // vendor term at all until then, which is why this used to add vendorOutstanding
+    // separately). Adding it again here would double-count the balance — caught by
+    // this file's own test 11c. One source: read `committed` and nothing else.
     const money = (() => { try { return hostSpending(ev); } catch { return null; } })();
-    const owedToVendors = (() => { try { return vendorOutstanding(ev); } catch { return 0; } })();
-    const knownCosts = (money ? num(money.committed) : 0) + owedToVendors;
+    const knownCosts = money ? num(money.committed) : 0;
     const totalBudget = num(ev.totalBudget);
     const over = Math.round(knownCosts - totalBudget);
     add('budget', true, over <= 0,
