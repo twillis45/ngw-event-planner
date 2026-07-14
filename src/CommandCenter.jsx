@@ -433,19 +433,25 @@ export function deriveCommandCenterData(event, foodPP = null) {
       tasksTotal > 0 ? `${Math.round(tasksDone/tasksTotal*100)}% complete · ${overdueCount} overdue` : 'No tasks yet'),
     (!_isHost || _hasVendors) ? stat('Vendors',
       // POP-1A: status + line from the canonical rollup, not local thresholds.
-      // rollup.status is not_started/needs_attention/in_progress/ready — map to
-      // the health vocabulary the row renders.
+      // rollup.status is not_started/needs_attention/in_progress/to_confirm/ready.
+      // SSOT #1 ROOT FIX: 'ready' now means fully CONFIRMED, so only that earns the
+      // green ON TRACK (and with it the collapse into the hidden "✓ N on track"
+      // drawer). 'to_confirm' — all booked, confirms still open — falls through to
+      // ATTENTION, so the row stays VISIBLE and green never coexists with an open
+      // confirm. Previously 'ready' fired on merely-booked and this row went green
+      // AND got hidden, taking its own disclosure with it.
       _vendorRollup.status === 'not_started' ? 'AT RISK'
         : _vendorRollup.status === 'ready' ? 'ON TRACK'
         : _vendorRollup.status === 'needs_attention' ? ((_vendorRollup.counts.needsAttention || 0) >= 3 ? 'AT RISK' : 'ATTENTION')
         : 'ATTENTION',
-      // SSOT #1 (board decision i): "confirmed" is reserved for isVendorConfirmed
-      // (fully locked in). A booked-but-not-yet-confirmed vendor (Deposit Paid /
-      // Contracted) is disclosed as "· K to confirm" so this chip AGREES with the
-      // grey readiness dot and the "Confirm vendor" action — a green/"confirmed"
-      // reading never coexists with an open confirm. Count still from the canonical
-      // rollup (single source: booked = rollup.ready).
-      _vendorRollup.counts.total === 0 ? 'No vendors yet' : (() => { const booked = _vendorRollup.counts.ready, confirmed = vendors.filter(isVendorConfirmed).length, toConfirm = Math.max(0, booked - confirmed); return toConfirm > 0 ? `${booked} of ${_vendorRollup.counts.total} booked · ${toConfirm} to confirm` : `${confirmed} of ${_vendorRollup.counts.total} confirmed`; })()) : null,
+      // Counts come straight from the canonical rollup — including the confirm
+      // residual. This used to re-derive `confirmed` locally; re-derivation with a
+      // drifting vocabulary is precisely what produced this bug class, so the
+      // rollup now carries it and every consumer reads the same numbers.
+      _vendorRollup.counts.total === 0 ? 'No vendors yet'
+        : (_vendorRollup.counts.toConfirm > 0
+            ? `${_vendorRollup.counts.ready} of ${_vendorRollup.counts.total} booked · ${_vendorRollup.counts.toConfirm} to confirm`
+            : `${_vendorRollup.counts.confirmed} of ${_vendorRollup.counts.total} confirmed`)) : null,
     stat('Guests',
       guests.length === 0 ? 'AT RISK'
         : yesGuests / guests.length >= 0.7 ? 'ON TRACK'
@@ -953,7 +959,14 @@ export function getEventReadiness(event) {
   else if (unconfirmedV >= 3)                  vendor = { status: 'AT_RISK',   label: 'At risk',  note: `${unconfirmedV} unconfirmed` };
   else if (unconfirmedV > 0)                   vendor = { status: 'ATTENTION', label: 'Attention', note: `${unconfirmedV} unconfirmed` };
   else if (confirmedNoContract > 0)            vendor = { status: 'ATTENTION', label: 'Attention', note: `${confirmedNoContract} missing contract` };
-  else if (toConfirmV > 0)                      vendor = { status: 'ON_TRACK',  label: 'On track', note: `all booked · ${toConfirmV} to confirm` };
+  // SSOT #1 ROOT FIX. This axis previously returned ON_TRACK with a "· N to confirm"
+  // note — the note was honest but the TOKEN was not, and the token is what other
+  // engines read: positiveAttention lists any ON_TRACK vendor axis under a green
+  // "You're Set On ✓" pill, and decisionConfidence renders it as green "Ready to
+  // lock". Fixing the note while leaving the token is why those two kept lying.
+  // An open confirm IS something the host has to do, so it is ATTENTION, not ON_TRACK.
+  // `toConfirm` rides on the canonical rollup — not re-derived here.
+  else if (toConfirmV > 0)                      vendor = { status: 'ATTENTION', label: 'To confirm', note: `all booked · ${toConfirmV} to confirm` };
   else                                          vendor = { status: 'ON_TRACK',  label: 'On track', note: `${lockedInV} confirmed` };
 
   // Timeline readiness
@@ -1539,11 +1552,11 @@ function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, work
 export function eventPlan(event, ctx = null) {
   if (!event) return {
     nextActions: [], progress: { done: 0, total: 0 }, handled: [],
-    vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [],
+    vendorReadiness: { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 }, workstreams: [],
     vendorReadinessRollup: {
       status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
       ctaLabel: 'Add vendor', target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null,
-      counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
+      counts: { total: 0, ready: 0, confirmed: 0, toConfirm: 0, needsAttention: 0, missing: 0 },
     },
     planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },
   };

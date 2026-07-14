@@ -50,7 +50,7 @@ describe('workstreamsFor — grouping', () => {
     const ws = workstreamsFor(flagshipEvent());
     const food = ws.find(w => w.id === 'food');
     expect(food.vendors.map(v => v.category).sort()).toEqual(['Cake', 'Catering']);
-    expect(food.readiness).toEqual({ total: 2, booked: 0, needsAttention: 2 });
+    expect(food.readiness).toEqual({ total: 2, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 2 });
   });
 
   test('an unrecognized category falls back to "other" rather than guessing', () => {
@@ -68,9 +68,24 @@ describe('workstreamsFor — grouping', () => {
 });
 
 describe('workstreamsFor — per-workstream status', () => {
-  test('venue (1 vendor, Deposit Paid) is "ready"', () => {
+  // SSOT #1 ROOT FIX — this test previously asserted the BUG: it pinned a
+  // Deposit-Paid vendor's workstream as 'ready', and 'ready' is the token that
+  // licenses the green chip, the lifecycle's Completed state, and "Nothing needs
+  // you here right now." A booked vendor who still owes a confirm is NOT ready.
+  // 'ready' now means fully confirmed; the honest middle state is 'to_confirm'.
+  test('venue (1 vendor, Deposit Paid) is "to_confirm" — booked holds the date, a confirm locks it in', () => {
     const ws = workstreamsFor(flagshipEvent());
-    expect(ws.find(w => w.id === 'venue').status).toBe('ready');
+    const venue = ws.find(w => w.id === 'venue');
+    expect(venue.status).toBe('to_confirm');
+    expect(venue.readiness).toEqual(expect.objectContaining({ total: 1, booked: 1, confirmed: 0, toConfirm: 1 }));
+  });
+
+  test('a fully Confirmed vendor IS "ready" — the confirmed roster still earns the calm state', () => {
+    const ev = flagshipEvent();
+    const ws = workstreamsFor({ ...ev, vendors: ev.vendors.map(v => v.category === 'Venue' ? { ...v, status: 'Confirmed' } : v) });
+    const venue = ws.find(w => w.id === 'venue');
+    expect(venue.status).toBe('ready');
+    expect(venue.readiness).toEqual(expect.objectContaining({ confirmed: 1, toConfirm: 0 }));
   });
 
   test('food (2 vendors, both Considering) is "not_started"', () => {
@@ -143,7 +158,7 @@ describe('workstreamsFor — deepLink (preserves existing route shape)', () => {
 
 describe('workstreamReadinessRollup — sums to the same total as the flat vendor count', () => {
   test('matches the flagship\'s known-correct 1 booked / 8 to follow up', () => {
-    expect(workstreamReadinessRollup(flagshipEvent())).toEqual({ total: 9, booked: 1, needsAttention: 8 });
+    expect(workstreamReadinessRollup(flagshipEvent())).toEqual({ total: 9, booked: 1, confirmed: 0, toConfirm: 1, needsAttention: 8 });
   });
 });
 
@@ -168,7 +183,7 @@ describe('single runtime call path: eventPlan() composes workstreamsFor(), Vendo
 
   test('null event → well-formed empty vendorReadiness + workstreams, never throws', () => {
     expect(eventPlan(null)).toEqual(expect.objectContaining({
-      vendorReadiness: { total: 0, booked: 0, needsAttention: 0 },
+      vendorReadiness: { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 },
       workstreams: [],
     }));
   });
@@ -329,23 +344,45 @@ describe('POP-1 Phase 1 (exact first slice): buildVendorReadinessRollup / eventP
     expect(rollup).toEqual({
       status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
       ctaLabel: 'Add vendor', target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null,
-      counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
+      counts: { total: 0, ready: 0, confirmed: 0, toConfirm: 0, needsAttention: 0, missing: 0 },
     });
   });
 
-  test('all vendors booked -> ready status', () => {
+  test('all vendors CONFIRMED -> ready status, and only then "nothing needs you"', () => {
     const event = { ...dmvFlagshipEvent(), vendors: [{ id: 'only', category: 'Venue', status: 'Confirmed', name: 'VFW Post 3150 — Alexandria, VA' }] };
     const rollup = buildVendorReadinessRollup(event);
     expect(rollup.status).toBe('ready');
-    expect(rollup.label).toBe('All vendors booked');
-    expect(rollup.counts).toEqual({ total: 1, ready: 1, needsAttention: 0, missing: 0 });
+    expect(rollup.label).toBe('All vendors confirmed');
+    expect(rollup.nextAction).toBe('Nothing needs you here right now.');
+    expect(rollup.counts).toEqual({ total: 1, ready: 1, confirmed: 1, toConfirm: 0, needsAttention: 0, missing: 0 });
+  });
+
+  // SSOT #1 ROOT FIX — the regression that started all of this. All-booked used to
+  // return status 'ready' + "All vendors booked" + "Nothing needs you here right
+  // now." while the next-action engine was simultaneously offering "Confirm <vendor>".
+  // One screen, two engines, opposite verdicts. The all-booked case is now its own
+  // state that NAMES the open confirm and routes to the vendor who owes it.
+  test('all booked but NOT confirmed -> to_confirm; never "nothing needs you"', () => {
+    const event = { ...dmvFlagshipEvent(), vendors: [
+      { id: 'v1', category: 'Venue', status: 'Confirmed', name: 'VFW Post 3150' },
+      { id: 'v2', category: 'Catering', status: 'Deposit Paid', name: 'Fired Up BBQ' },
+    ] };
+    const rollup = buildVendorReadinessRollup(event);
+    expect(rollup.status).toBe('to_confirm');
+    expect(rollup.label).toBe('All booked · 1 to confirm');
+    expect(rollup.nextAction).toBe('Confirm Fired Up BBQ for your date.');
+    expect(rollup.ctaLabel).toBe('Confirm vendor');
+    // routes to the vendor who owes the confirm, not to the container or to v1
+    expect(rollup.target).toEqual({ tab: 'Vendors', vendorId: 'v2' });
+    expect(rollup.counts).toEqual({ total: 2, ready: 2, confirmed: 1, toConfirm: 1, needsAttention: 0, missing: 0 });
+    expect(rollup.nextAction).not.toMatch(/nothing needs you/i);
   });
 
   test('some vendors still deciding, none blocked -> in_progress status with a real deep link', () => {
     const event = dmvFlagshipEvent();
     const rollup = buildVendorReadinessRollup(event);
     expect(rollup.status).toBe('in_progress');
-    expect(rollup.counts).toEqual({ total: 5, ready: 1, needsAttention: 4, missing: 0 });
+    expect(rollup.counts).toEqual({ total: 5, ready: 1, confirmed: 0, toConfirm: 1, needsAttention: 4, missing: 0 });
     expect(rollup.target).toEqual(expect.objectContaining({ tab: 'Vendors' }));
   });
 

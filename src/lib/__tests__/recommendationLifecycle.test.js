@@ -25,11 +25,32 @@ test('every lifecycle item carries a valid canonical state', () => {
   });
 });
 
-test('a booked vendor workstream is Completed; an unstarted one is Recommended', () => {
+// SSOT #1 ROOT FIX — this test previously asserted the BUG. It fed a 'Deposit Paid'
+// vendor (comment: "booked → ready") and pinned the lifecycle state as **Completed**,
+// which is what let the V2 hero count that workstream under "N handled" and print
+// "· all clear" while a Confirm action was still open on that very vendor.
+// Booked ≠ done. A booked-but-unconfirmed workstream is WORKING; only a confirmed
+// one is Completed.
+test('a booked-but-unconfirmed vendor workstream is Working, NOT Completed (no false "all clear")', () => {
   const event = {
     id: 'e', type: 'Wedding', date: '2026-09-01', venue: 'Hall', guestCount: 80,
     vendors: [
-      { id: 'v1', category: 'Catering', name: 'A', status: 'Deposit Paid' }, // booked → ready
+      { id: 'v1', category: 'Catering', name: 'A', status: 'Deposit Paid' }, // booked, confirm still open
+    ], timeline: [], budget: [],
+  };
+  const lc = eventPlan(event).planningState.recommendationLifecycle;
+  const catering = lc.find(i => i.category === 'vendor' && i.id.includes('food'));
+  expect(catering && catering.state).toBe('Working');
+  // the "all clear" suffix keys off zero Blocked; the real guard is that this
+  // workstream must NOT be countable as handled while the confirm is open.
+  expect(catering && catering.state).not.toBe('Completed');
+});
+
+test('a fully CONFIRMED vendor workstream IS Completed — the calm state is still reachable', () => {
+  const event = {
+    id: 'e', type: 'Wedding', date: '2026-09-01', venue: 'Hall', guestCount: 80,
+    vendors: [
+      { id: 'v1', category: 'Catering', name: 'A', status: 'Confirmed' },
     ], timeline: [], budget: [],
   };
   const lc = eventPlan(event).planningState.recommendationLifecycle;

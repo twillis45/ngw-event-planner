@@ -17,7 +17,7 @@
 
 import { deriveEventPhaseProgress } from './phaseProgress';
 import { effectiveDone } from './taskEngine';
-import { isVendorBooked } from './workstreams';
+import { isVendorConfirmed } from './workstreams';
 import { rainPlanStatus } from './weather';
 import { playbookFoodPlan } from './playbooks';
 import { eventLocationStatus } from './locationAssist';
@@ -48,8 +48,13 @@ export function buildReturnSnapshot(event, now = Date.now()) {
     if (plan && Array.isArray(plan.list)) foodLeft = plan.list.filter(i => i && !i.skipped && !got[i.id]).length;
   } catch { /* null */ }
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && has(v.name));
-  const vendorGaps = vendors.filter(v => !isVendorBooked(v)
-    || (num(v.depositAmt) > 0 && v.depositPaid !== true)).length; // POP-1C canonical status
+  // SSOT #1 ROOT FIX: this count licenses the claim "every vendor is squared away"
+  // (line ~127), so the bar is isVendorConfirmed — nothing left to do — NOT
+  // isVendorBooked. Live-observed contradiction before this fix: the home screen
+  // said "every vendor is squared away" on an event whose own vendor sheet read
+  // "All booked — 4 still to confirm." Booked holds the date; a confirm locks it in.
+  const vendorGaps = vendors.filter(v => !isVendorConfirmed(v)
+    || (num(v.depositAmt) > 0 && v.depositPaid !== true)).length;
   return {
     seenAt: now,
     phase,

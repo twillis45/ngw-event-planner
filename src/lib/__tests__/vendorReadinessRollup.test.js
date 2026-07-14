@@ -45,7 +45,7 @@ const baseEvent = (vendors) => ({
 describe('vendorReadinessRollup', () => {
   test('counts Deposit Paid / Contracted as booked, matching hostStatusWord', () => {
     const event = baseEvent(flagshipVendors());
-    expect(vendorReadinessRollup(event)).toEqual({ total: 9, booked: 1, needsAttention: 8 });
+    expect(vendorReadinessRollup(event)).toEqual({ total: 9, booked: 1, confirmed: 0, toConfirm: 1, needsAttention: 8 });
   });
 
   test('Confirmed / Booked / Contracted all count as booked', () => {
@@ -56,17 +56,17 @@ describe('vendorReadinessRollup', () => {
       { id: 'v4', status: 'Considering' },
       { id: 'v5', status: 'Quoted' },
     ]);
-    expect(vendorReadinessRollup(event)).toEqual({ total: 5, booked: 3, needsAttention: 2 });
+    expect(vendorReadinessRollup(event)).toEqual({ total: 5, booked: 3, confirmed: 2, toConfirm: 1, needsAttention: 2 });
   });
 
   test('handles an event with no vendors', () => {
     const event = baseEvent([]);
-    expect(vendorReadinessRollup(event)).toEqual({ total: 0, booked: 0, needsAttention: 0 });
+    expect(vendorReadinessRollup(event)).toEqual({ total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
   });
 
   test('handles a null/undefined event defensively', () => {
-    expect(vendorReadinessRollup(null)).toEqual({ total: 0, booked: 0, needsAttention: 0 });
-    expect(vendorReadinessRollup(undefined)).toEqual({ total: 0, booked: 0, needsAttention: 0 });
+    expect(vendorReadinessRollup(null)).toEqual({ total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
+    expect(vendorReadinessRollup(undefined)).toEqual({ total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
   });
 });
 
@@ -107,7 +107,7 @@ describe('cross-surface agreement: eventPlan() vs getEventAttention() vs the Ven
   });
 
   test('a null event still returns a well-formed vendorReadiness on eventPlan()', () => {
-    expect(eventPlan(null).vendorReadiness).toEqual({ total: 0, booked: 0, needsAttention: 0 });
-    expect(eventPlan(undefined).vendorReadiness).toEqual({ total: 0, booked: 0, needsAttention: 0 });
+    expect(eventPlan(null).vendorReadiness).toEqual({ total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
+    expect(eventPlan(undefined).vendorReadiness).toEqual({ total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
   });
 });

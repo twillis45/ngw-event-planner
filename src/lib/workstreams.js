@@ -97,9 +97,20 @@ function workstreamKeyForVendor(vendor) {
   return CATEGORY_TO_WORKSTREAM[vendor && vendor.category] || 'other';
 }
 
-function statusFor(booked, total) {
+// SSOT #1 ROOT FIX. 'ready' is the token every consumer treats as "done — nothing
+// left here" (it licenses the green chip, the lifecycle's Completed state, the
+// "Nothing needs you here right now" line, and the collapse-to-hidden health row).
+// It used to fire on BOOKED, so a Deposit-Paid vendor — who still owes a confirm —
+// made all of those say done. Patching each consumer's copy string was the wrong
+// altitude: the token itself was the lie, and every new consumer inherited it.
+//
+// Now: 'ready' means fully CONFIRMED (nothing left). All-booked-but-not-confirmed
+// gets its own token, 'to_confirm', so a consumer can render the honest middle
+// state instead of being forced to choose between "done" and "not started".
+function statusFor(booked, confirmed, total) {
   if (total === 0) return 'empty';
-  if (booked === total) return 'ready';
+  if (confirmed === total) return 'ready';       // nothing left to do
+  if (booked === total) return 'to_confirm';     // secured for the day, confirms still open
   if (booked === 0) return 'not_started';
   return 'in_progress';
 }
@@ -138,6 +149,11 @@ export function workstreamsFor(event, ctx = null, vendors = null, playbook = nul
     const total = vendorsInGroup.length;
     const booked = vendorsInGroup.filter(v => BOOKED_STATUSES.has(v.status)).length;
     const needsAttention = total - booked;
+    // The confirm residual, carried on the readiness object itself so no consumer
+    // has to re-derive it (four of them did, each with a drifting vocabulary — that
+    // drift IS this bug class). booked sizes the day; confirmed licenses the claim.
+    const confirmed = vendorsInGroup.filter(v => CONFIRMED_STATUSES.has(v.status)).length;
+    const toConfirm = Math.max(0, booked - confirmed);
 
     // Blocked: a real, already-existing signal (COI/insurance critical) — not a
     // new blocking concept. Distinct from "needs attention" (routine follow-up).
@@ -146,18 +162,24 @@ export function workstreamsFor(event, ctx = null, vendors = null, playbook = nul
       catch { return false; }
     });
 
-    const firstNeedsAttention = vendorsInGroup.find(v => !BOOKED_STATUSES.has(v.status)) || vendorsInGroup[0] || null;
+    // First-undone routing: an unbooked vendor outranks a booked-but-unconfirmed
+    // one, but once everything is booked the open CONFIRM is the real first-undone
+    // item — previously this fell through to vendorsInGroup[0], landing the host on
+    // a vendor with nothing to do while a confirm sat open on another row.
+    const firstNeedsAttention = vendorsInGroup.find(v => !BOOKED_STATUSES.has(v.status))
+      || vendorsInGroup.find(v => !CONFIRMED_STATUSES.has(v.status))
+      || vendorsInGroup[0] || null;
 
     workstreams.push({
       id: key,
       label: WORKSTREAM_LABELS[key] || key,
-      status: statusFor(booked, total),
+      status: statusFor(booked, confirmed, total),
       blocked,
       nextDecision: nextDecisionFor(key, ctx),
       dependencies: [], // none authored/known yet — see file header
       deepLink: firstNeedsAttention ? { tab: 'Vendors', vendorId: firstNeedsAttention.id } : { tab: 'Vendors' },
       vendors: vendorsInGroup,
-      readiness: { total, booked, needsAttention },
+      readiness: { total, booked, confirmed, toConfirm, needsAttention },
     });
   }
 
@@ -171,8 +193,10 @@ export function workstreamReadinessRollup(event, ctx = null, vendors = null, pla
   return workstreams.reduce((acc, w) => ({
     total: acc.total + w.readiness.total,
     booked: acc.booked + w.readiness.booked,
+    confirmed: acc.confirmed + w.readiness.confirmed,
+    toConfirm: acc.toConfirm + w.readiness.toConfirm,
     needsAttention: acc.needsAttention + w.readiness.needsAttention,
-  }), { total: 0, booked: 0, needsAttention: 0 });
+  }), { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 });
 }
 
 // POP-1 Phase 1 (exact first slice, narrow alignment): a presentational
@@ -184,12 +208,18 @@ export function workstreamReadinessRollup(event, ctx = null, vendors = null, pla
 // workstreamsFor()/workstreamReadinessRollup() in this same file.
 export function buildVendorReadinessRollup(event, ctx = null, vendors = null, playbook = null) {
   const workstreams = workstreamsFor(event, ctx, vendors, playbook);
+  // `ready` keeps its established meaning (= BOOKED — it sizes "secured for the
+  // day", and the arrival/COI/day-of surfaces correctly depend on that). The
+  // confirm residual rides alongside it so a consumer can tell "secured" apart
+  // from "nothing left to do" WITHOUT re-deriving either.
   const counts = workstreams.reduce((acc, w) => ({
     total: acc.total + w.readiness.total,
     ready: acc.ready + w.readiness.booked,
+    confirmed: acc.confirmed + w.readiness.confirmed,
+    toConfirm: acc.toConfirm + w.readiness.toConfirm,
     needsAttention: acc.needsAttention + w.readiness.needsAttention,
     missing: acc.missing, // no "expected but not yet added" signal exists to derive this from — left at 0, not invented
-  }), { total: 0, ready: 0, needsAttention: 0, missing: 0 });
+  }), { total: 0, ready: 0, confirmed: 0, toConfirm: 0, needsAttention: 0, missing: 0 });
 
   const blockedWorkstream = workstreams.find(w => w.blocked) || null;
 
@@ -217,9 +247,29 @@ export function buildVendorReadinessRollup(event, ctx = null, vendors = null, pl
   // first available item); attention open -> the first vendor that needs it.
   const allVendors = workstreams.flatMap(w => w.vendors || []).filter(v => v && v.id);
   if (counts.needsAttention === 0) {
+    // SSOT #1 ROOT FIX. This branch used to fire on ALL-BOOKED and say
+    // "All vendors booked · Nothing needs you here right now." — while a
+    // Deposit-Paid vendor still owed a confirm and the next-action engine was
+    // simultaneously offering "Confirm <vendor>". Now the all-booked case is a
+    // DISTINCT state that names the open confirm and routes to the vendor who
+    // owes it; only a fully-confirmed roster earns "nothing needs you".
+    if (counts.toConfirm > 0) {
+      const firstToConfirm = allVendors.find(v => !CONFIRMED_STATUSES.has(v.status)) || allVendors[0];
+      return {
+        status: 'to_confirm',
+        label: `All booked · ${counts.toConfirm} to confirm`,
+        nextAction: firstToConfirm && firstToConfirm.name
+          ? `Confirm ${firstToConfirm.name} for your date.`
+          : 'Confirm your booked vendors for the date.',
+        ctaLabel: 'Confirm vendor',
+        target: firstToConfirm ? { tab: 'Vendors', vendorId: firstToConfirm.id } : { tab: 'Vendors', focusField: 'vendor-list' },
+        reason: 'Booked holds the date; a confirm is what locks it in.',
+        counts,
+      };
+    }
     const first = allVendors[0];
     return {
-      status: 'ready', label: 'All vendors booked',
+      status: 'ready', label: 'All vendors confirmed',
       nextAction: 'Nothing needs you here right now.', ctaLabel: 'Review vendors',
       target: first ? { tab: 'Vendors', vendorId: first.id } : { tab: 'Vendors', focusField: 'vendor-list' },
       reason: null, counts,

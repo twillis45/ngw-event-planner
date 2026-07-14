@@ -61,11 +61,11 @@ describe('eventPlan — shape & progress', () => {
     // POP-1/WOW-1: vendorReadiness + workstreams + vendorReadinessRollup are additive read-only fields.
     expect(eventPlan(null)).toEqual({
       nextActions: [], progress: { done: 0, total: 0 }, handled: [],
-      vendorReadiness: { total: 0, booked: 0, needsAttention: 0 }, workstreams: [],
+      vendorReadiness: { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 }, workstreams: [],
       vendorReadinessRollup: {
         status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
         ctaLabel: 'Add vendor', target: { tab: 'Vendors', focusField: 'vendor-add' }, reason: null,
-        counts: { total: 0, ready: 0, needsAttention: 0, missing: 0 },
+        counts: { total: 0, ready: 0, confirmed: 0, toConfirm: 0, needsAttention: 0, missing: 0 },
       },
       planningState: { currentPriority: null, currentWorkstream: null, currentMilestone: null, nextMilestone: null, blockedDecisions: [], recommendationLifecycle: undefined, deepLink: null, reasoning: null, confidence: undefined },
     });

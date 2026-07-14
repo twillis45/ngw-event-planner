@@ -4482,16 +4482,18 @@ export default function HostShellV2() {
                 const trunc = (s, n) => { const t = String(s || ''); return t.length > n ? t.slice(0, n) + '…' : t; };
                 const meaningText = String(event.must_have_moment || event.meaning_why || event.honoree_story || '');
                 const rows = [
-                  rollup && rollup.counts && rollup.counts.total > 0 && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0)
+                  // SSOT #1 ROOT FIX — the guard used to be needsAttention/missing only.
+                  // needsAttention is (total - booked), so once every vendor was BOOKED
+                  // this row returned null and vanished from the what's-left index — taking
+                  // the "· N to confirm" disclosure with it. The disclosure was unreachable
+                  // in the exact state it was written for. `toConfirm` now keeps the row
+                  // alive while any confirm is open (counts come from the canonical rollup).
+                  rollup && rollup.counts && rollup.counts.total > 0
+                    && (rollup.counts.needsAttention > 0 || rollup.counts.missing > 0 || rollup.counts.toConfirm > 0)
                     ? { key: 'people', label: 'People you’re hiring', sub: (() => {
-                        // Same confirm-residual disclosure as the vendor-sheet hero
-                        // (SSOT #1) so this summary can't say "all booked" while the
-                        // sheet says "still to confirm" — one story across surfaces.
-                        const ready = rollup.counts.ready, total = rollup.counts.total;
+                        const { ready, total, toConfirm, confirmed } = rollup.counts;
                         if (ready < total) return ready + ' of ' + total + ' booked';
-                        const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
-                        const toConfirm = Math.max(0, ready - confirmed);
-                        return toConfirm > 0 ? 'all booked · ' + toConfirm + ' to confirm' : 'all locked in';
+                        return toConfirm > 0 ? 'all booked · ' + toConfirm + ' to confirm' : 'all ' + confirmed + ' locked in';
                       })(), attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
                   // VENDOR-ENTRY-POINT FIX: the row above only ever appears once
                   // vendors already exist AND need attention — a fresh event with
@@ -8177,7 +8179,7 @@ export default function HostShellV2() {
               {rc && (
                 <div style={{ padding: '2px 0 14px' }}>
                   <div className="eyebrow">Ready for the day</div>
-                  <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color: rc.ready >= rc.total ? 'var(--ok)' : 'var(--ink)' }}>
+                  <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color: (rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? 'var(--ok)' : 'var(--ink)' }}>
                     {rc.ready} of {rc.total}
                   </div>
                   <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: 0, minHeight: 0 }}>
@@ -8231,8 +8233,13 @@ export default function HostShellV2() {
                   {showStreams && (
                     <div className="wstrip">
                       {streams.map(w => {
-                        const done = w.readiness && w.readiness.total > 0 && w.readiness.booked >= w.readiness.total;
-                        const attn = w.blocked || (w.readiness && w.readiness.needsAttention > 0);
+                        // SSOT #1 ROOT FIX: green = fully CONFIRMED, not merely booked.
+                        // This chip used to go green off `booked >= total`, so a
+                        // Deposit-Paid vendor produced a green "PHOTOGRAPHY 1 of 1"
+                        // sitting directly above that same vendor's (correctly) non-green
+                        // status pill — two contradictory readings 40px apart.
+                        const done = w.readiness && w.readiness.total > 0 && w.readiness.confirmed >= w.readiness.total;
+                        const attn = w.blocked || (w.readiness && (w.readiness.needsAttention > 0 || w.readiness.toConfirm > 0));
                         return (
                           <button key={w.id} className={'wchip' + (done ? ' done' : attn ? ' attn' : '')}
                             onClick={() => { if (!(w.deepLink && routeSheet(w.deepLink))) setSheet({ kind: 'vendors' }); }}>
