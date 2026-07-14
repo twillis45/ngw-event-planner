@@ -113,6 +113,7 @@ import MembersModal from './components/MembersModal';
 import EventDayMode from './components/EventDayMode';
 import CommandCenter, { milestoneActionRoute, deriveCommandCenterData, getEventAttention, getCrossEventAttention, getCrossEventAttentionItems, getEventReadiness, applicableReadinessAxes, wholeEventReadinessScore, selectStudioCommand, selectEventNextAction, nextStepOwner, getUnansweredMessages, approvalIsSent, isInboundMessage, eventPlan } from './CommandCenter';
 import { effectiveDone as taskEffectiveDone } from './lib/taskEngine';
+import { mayExhale } from './lib/exhaleGate';
 // Sprint 56d: payment helpers used by both the legacy VendorModal payment row
 // and the new cockpit deep CTAs. Shared module to avoid circular imports.
 import { PAY_METHODS, buildPayLink } from './lib/payLinks';
@@ -23984,8 +23985,12 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
             full CTA/route (wizard-jump vs. direct route) logic; each tracker row keeps its
             dated next step + wizard jump. Caught-up shows the exhale below instead. */}
         {!isDayOf && (() => {
-          // Lead = the engine's single next action (na); shown unless everything's done.
-          const showLead = !allProgDone && !!na;
+          // SSOT #1 ROOT FIX (R3). Was: `!allProgDone && !!na` — the local 7-axis
+          // checklist could SUPPRESS the engine's action. Those 7 axes contain no
+          // vendor term, so "Confirm the caterer" was computed and then hidden,
+          // replaced by "You're all set." The engine is the authority: if it has an
+          // action, the host sees it. Calm is earned by mayExhale(), not asserted here.
+          const showLead = !!na;
           const live = prog.filter((p) => p.state !== 'done');
           const doneCount = prog.length - live.length;
           const heroTab = na && na.primaryRoute && (typeof na.primaryRoute === 'string' ? na.primaryRoute : na.primaryRoute.tab);
@@ -24107,7 +24112,11 @@ function HostHome({ events, profile, onSelectEvent, onOpenDirect, onNew, onProfi
         {/* The exhale — when nothing needs the host, the screen rewards being caught up
             instead of going blank. The opposite of the breathing next-step: calm, warm,
             celebratory. (Attention System: the empty screen IS the reward.) */}
-        {!isDayOf && allProgDone && (
+        {/* SSOT #1 ROOT FIX (R3): the exhale is now VETOED by any open engine action
+            (mayExhale). The 7 axes above have no vendor term, so this card used to
+            congratulate a host whose caterer was never confirmed — while hiding the
+            confirm. A checklist may propose calm; only the engine may grant it. */}
+        {!isDayOf && mayExhale(allProgDone, na) && (
           <div id="hp-exhale-card" style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c`, animation: `ceRise ${choreography.escalation.ms}ms ${choreography.escalation.ease} both` }}>
             <div aria-hidden style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: 10 }}><EventGlyph icon={ident.icon} hue={idColor} size={38} variant="mono" sacred={ident.sacred} quiet={ident.mark === 'quiet'} /></div>
             <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: C.text, lineHeight: 1.25 }}>You’re all set{ev.name ? ` for ${ev.name}` : ''}.</div>
@@ -42751,7 +42760,11 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 
   // ALL SET — the exhale. Mirrors the home hero's allProgDone variant: calm, green,
   // celebratory. The empty-handed screen is the reward (Attention System).
-  if (allDone) {
+  // SSOT #1 ROOT FIX (R3): this ran BEFORE the `if (!na) return null` below, so it
+  // preempted a live "Confirm <vendor>" hero with a congratulation — from a checklist
+  // with no vendor axis. mayExhale() lets the engine veto it. The ordering no longer
+  // matters, which is the point: the invariant holds regardless of where it sits.
+  if (mayExhale(allDone, na)) {
     return (
       <div style={{ ...card, borderLeft: `3px solid ${C.success || C.accent}`, background: `${(C.success || C.accent)}0c` }}>
         <div style={{ fontSize: T.eyebrow, fontWeight: FW.bold, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.success || C.accent, padding: '2px 7px', borderRadius: 4, border: `1px solid ${(C.success || C.accent)}55`, display: 'inline-block', marginBottom: 8 }}>ALL SET</div>
