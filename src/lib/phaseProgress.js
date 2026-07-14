@@ -24,7 +24,7 @@ import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos } 
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
-import { isVendorBooked } from './workstreams';
+import { isVendorConfirmed } from './workstreams';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -102,9 +102,14 @@ function preProgress(ev, phase, daysOut) {
   if (vendors.length) {
     // POP-1C: canonical status predicate (was a regex that missed 'Deposit
     // Paid'); the unpaid-deposit guard stays as this surface's extra concern.
-    const gap = vendors.find(v => !isVendorBooked(v)
+    // The area dot is "handled" ONLY when the vendor is fully locked in (same
+    // predicate the "Confirm vendor" action uses) — "Deposit Paid" is one rung
+    // short, so it reads as open (grey), never green-with-a-pending-confirm.
+    const gap = vendors.find(v => !isVendorConfirmed(v)
       || (num(v.depositAmt) > 0 && v.depositPaid !== true));
-    add('vendors', true, !gap, gap ? `Follow up with ${gap.name}` : null, gap ? { tab: 'Vendors', vendorId: gap.id } : null, 7);
+    // Route even when handled — the chip is also review-navigation to the area,
+    // not only a fix-the-gap link (host: every area chip should open its area).
+    add('vendors', true, !gap, gap ? `Follow up with ${gap.name}` : null, gap ? { tab: 'Vendors', vendorId: gap.id } : { tab: 'Vendors' }, 7);
   }
 
   // Rain plan — outdoor-relevant events only.
@@ -123,7 +128,7 @@ function preProgress(ev, phase, daysOut) {
   } catch { /* skip */ }
 
   // Optional goods: count only once they EXIST (they never manufacture a gap).
-  if (num(ev.totalBudget) > 0) add('budget', true, true, null, null, 9);
+  if (num(ev.totalBudget) > 0) add('budget', true, true, null, { tab: 'Budget' }, 9);
   if (String(ev.must_have_moment || '').trim()) add('moment', true, true, null, null, 9);
 
   const total = items.length;

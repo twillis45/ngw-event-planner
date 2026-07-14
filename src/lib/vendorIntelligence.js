@@ -201,21 +201,21 @@ export function coiNextAction(vendor, event, vname) {
   const coi = getVendorCOIState(vendor, event);
   if (!coi || !coi.required || coi.level === 'safe') return null;
   if (coi.status === 'requested') {
-    return { title: `Get the insurance certificate on file for ${vname}.`, consequence: 'A current COI naming the venue is the most common reason a vendor is turned away at load-in — it is not on file yet.', ctaCopy: 'Mark COI received', sourceCategory: 'coi' };
+    return { title: `Get proof ${vname} is insured.`, consequence: 'Most venues won’t let a vendor set up without proof of insurance — and they haven’t sent it yet.', ctaCopy: 'Mark proof received', sourceCategory: 'coi' };
   }
   if (coi.status === 'received') { // received but not verified valid
-    return { title: `Verify ${vname}'s insurance certificate.`, consequence: 'A PDF arrived, but no one has confirmed it names the venue as additional insured and covers the event date. "Received" is not "valid".', ctaCopy: 'Verify COI', sourceCategory: 'coi' };
+    return { title: `Check ${vname}'s insurance proof.`, consequence: 'They sent something, but no one has checked that it names your venue and covers the event date yet.', ctaCopy: 'Mark insurance checked', sourceCategory: 'coi' };
   }
   if (coi.status === 'expired') {
-    return { title: `Get an updated COI from ${vname}.`, consequence: `The certificate ${coi.label.toLowerCase()} — coverage must extend through the event date or the venue will turn them away.`, ctaCopy: 'Request current COI', sourceCategory: 'coi' };
+    return { title: `Get updated insurance proof from ${vname}.`, consequence: `Their coverage ${coi.label.toLowerCase()} — it needs to run through the event date, or the venue may turn them away.`, ctaCopy: 'Ask for current proof', sourceCategory: 'coi' };
   }
   // required, not yet requested
   if (coi.need === 'recommended') {
     // COI-LOGIC-1: on-site work is a recommendation, not a venue mandate — ask,
     // don't assert.
-    return { title: `Ask ${vname} about insurance.`, consequence: 'This vendor will be working on-site, and many venues want a certificate for that. Worth a quick ask.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
+    return { title: `Ask ${vname} about insurance.`, consequence: 'They’ll be working on-site, and many venues want proof of insurance for that. Worth a quick ask.', ctaCopy: 'Mark asked', sourceCategory: 'coi' };
   }
-  return { title: `Request a certificate of insurance from ${vname}.`, consequence: coi.needReason && /venue notes/.test(coi.needReason) ? 'Your venue notes say insurance is required — the certificate should name the venue and cover the event date.' : 'This vendor creates on-site risk, and most venues require a COI naming them as additional insured, due ~30 days out.', ctaCopy: 'Mark COI requested', sourceCategory: 'coi' };
+  return { title: `Ask ${vname} for proof of insurance.`, consequence: coi.needReason && /venue notes/.test(coi.needReason) ? 'Your venue notes say insurance is required — the proof should name the venue and cover the event date.' : 'They’ll be working on-site, and most venues want proof of insurance naming the venue, usually ~30 days out.', ctaCopy: 'Mark asked', sourceCategory: 'coi' };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

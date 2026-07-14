@@ -884,8 +884,8 @@ export default function InviteV2({ code }) {
                   </>
                 )}
                 <div className="actions-row" style={{ marginTop: 14, justifyContent: 'center' }}>
-                  {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Google Calendar</a>}
-                  {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Apple / .ics</a>}
+                  {rsvp !== 'No' && gcalUrl && <a className="mini" style={{ textDecoration: 'none' }} href={gcalUrl} target="_blank" rel="noreferrer">Add to Google Calendar</a>}
+                  {rsvp !== 'No' && icsHref && <a className="mini" style={{ textDecoration: 'none' }} href={icsHref} download={(event.name || 'event') + '.ics'}>Add to Apple Calendar</a>}
                   <button className="mini" onClick={() => setSubmitted(false)}>Change my answer</button>
                 </div>
               </div>

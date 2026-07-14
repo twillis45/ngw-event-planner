@@ -69,7 +69,7 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // by workstream (Venue/Photography/Food/...) instead of eventPlan/Vendors each
 // computing their own flat vendor tally. See src/lib/workstreams.js header +
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
-import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup, isVendorBooked } from './lib/workstreams';
+import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup, isVendorBooked, isVendorConfirmed } from './lib/workstreams';
 import { buildExperienceContext } from './lib/experienceContext';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1925,7 +1925,11 @@ function _selectEventNextActionInner(event) {
     };
   }
 
-  const unconfirmed = vendors.find(v => v.status !== 'Confirmed' && v.status !== 'Booked' && v.name);
+  // Single source of truth: isVendorConfirmed (workstreams) is the ONE "fully
+  // locked in" predicate — the area readiness dot uses the same one, so a
+  // "Confirm vendor" action never coexists with a green vendors dot. (Was an
+  // ad-hoc `!== 'Confirmed' && !== 'Booked'` that also omitted 'Paid'.)
+  const unconfirmed = vendors.find(v => v.name && !isVendorConfirmed(v));
   if (unconfirmed) {
     return {
       level: 'attention',

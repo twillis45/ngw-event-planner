@@ -107,7 +107,11 @@ button{font-family:inherit}
 
 .stagewrap{position:relative; margin:0 auto}
 .app{
-  height:100%; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none;
+  /* overflow-x:clip mirrors the .sheet guard for the MAIN surfaces (Command
+     Center, The Day, After, create/welcome) — a scroller with overflow-y:auto
+     computes overflow-x to auto, so without this any wide element there would
+     widen .app and reproduce the "screen too wide" bug. Now no surface can. */
+  height:100%; overflow-y:auto; overflow-x:clip; overscroll-behavior:contain; scrollbar-width:none;
   container-type:inline-size;
   background-color:var(--bg);
   background-image:radial-gradient(120% 300px at 50% -40px, var(--steel-tint) 0%, transparent 100%);
@@ -147,7 +151,7 @@ button{font-family:inherit}
   border-bottom:1px solid var(--line-soft);
 }
 .wordmark{font-size:15px/*brand-locked, not the type scale*/; font-weight:800; letter-spacing:-.02em; display:inline-flex; align-items:baseline}
-.wm-you{display:inline-flex; align-items:center; justify-content:center; padding:6px !important; line-height:0}
+.wm-you{display:inline-flex; align-items:center; justify-content:center; padding:7px !important; line-height:0}/* small visual circle; the 44px tap area is the ::after below, so the header stays uncrowded */
 /* The brand period — circular machined steel, seated on the baseline, low
    glow (locked in the splash/header prototype work, 2026-07-11). */
 .wm-dot{
@@ -309,7 +313,7 @@ button{font-family:inherit}
   color:var(--bg-band); line-height:1; pointer-events:none;
 }
 .card-top{display:flex; align-items:center; gap:var(--gap-chip); margin-bottom:11px}/* audit D1: 6→7 (--gap-chip), unifies the chip-gap split */
-.tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:7px; white-space:nowrap}
+.tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:var(--r-pill); white-space:nowrap}/* radius audit: was 7px — every other chip (.chip/.lens/.vc-pill) is a full pill; .tag now matches */
 /* Color budget: category tags stay in the steel/neutral register; only
    money (success) and status use the calibrated anchors. */
 .tag.food, .tag.vendors, .tag.plan{color:var(--ink-soft); background:var(--bg-band)}
@@ -318,9 +322,23 @@ button{font-family:inherit}
 .card h3{font-size:var(--t-card-title); font-weight:750; margin:0 0 7px; letter-spacing:-.02em; padding-right:34px}
 .because{font-size:var(--t-body); line-height:1.55; color:var(--ink-soft); margin:0}
 .actions-row{display:flex; gap:9px; margin-top:14px; flex-wrap:wrap}
+/* ── Balanced pill/button rows (opt-in, systematic) ──────────────────────────
+   Replaces a ragged flex-wrap .actions-row when a row holds 3+ varied-width
+   pills. An auto-fit grid: every pill fills its cell to EQUAL width with aligned
+   edges, and — unlike the nowrap pills in a flex row — the label WRAPS INSIDE
+   its cell so a long label never clips. Column count follows --pill-min: default
+   155px ≈ 2-up on the 353px sheet; set `--pill-min:104px` for a 3-up look row.
+   One class, applied wherever the balance defect appeared. */
+.pill-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(var(--pill-min,155px),1fr)); gap:var(--gap-chip); align-items:stretch; margin-top:0 }
+.pill-grid > *{ white-space:normal; text-align:center; width:auto; min-width:0; margin:0 }
 .cta{
   font-size:var(--t-cta); font-weight:700; color:var(--carbon-text); border:none; cursor:pointer;
-  background:var(--cta-grad); border-radius:11px; padding:10px 18px; letter-spacing:-.01em;
+  background:var(--cta-grad); border-radius:var(--r-row); padding:10px 18px; letter-spacing:-.01em;/* radius audit: 11px→--r-row(14) — ONE radius across the whole .cta family */
+  /* audit S1: primary buttons were ~38px — under the 44px floor and, per the QA
+     scorecard, the tallest tap target should be the primary action, not the
+     shortest. inline-flex centers the label in a >=46px box (a leader-grade
+     chunky primary), and a real min-height works where the ::after trick can't. */
+  display:inline-flex; align-items:center; justify-content:center; min-height:46px;
   transition:filter var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .cta:hover:not(:disabled){filter:brightness(1.07); transform:translateY(-1px)}
@@ -348,7 +366,7 @@ button.later-row .f-name{ color:var(--ink); }
 button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; margin-left:auto; }
 .mini{
   font-size:var(--t-btn); font-weight:700; color:var(--steel-soft); background:var(--steel-tint);
-  border:none; border-radius:9px; padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
+  border:none; border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
 }
 
 .fold-btn{
@@ -425,7 +443,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .toast-undo{
   margin-left:10px; font-size:var(--t-pill); font-weight:800; color:inherit;
   background:color-mix(in srgb, currentColor 16%, transparent);
-  border:none; border-radius:9px;
+  border:none; border-radius:var(--r-sm);
   padding:5px var(--sp-3); cursor:pointer; white-space:nowrap; vertical-align:baseline;
 }
 .toast-undo:hover{background:color-mix(in srgb, currentColor 26%, transparent)}
@@ -449,7 +467,11 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .q-label{font-size:var(--t-sub); font-weight:750; margin-bottom:11px; letter-spacing:-.01em}
 .field{
   width:100%; max-width:320px; font-family:inherit; font-size:var(--t-input-lg); font-weight:650; color:var(--ink);
-  background:var(--card); border:1px solid var(--line); border-radius:13px; padding:13px var(--sp-4); letter-spacing:-.01em;
+  background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:13px var(--sp-4); letter-spacing:-.01em;
+  /* audit S1: inputs can't use the ::after tap-expander (pseudo-elements don't
+     render on <input>), so floor the height directly. Compact-padded fields
+     (--field-compact, ~31-34px) now clear 44px without losing their tight look. */
+  min-height:44px;
 }
 .field:focus{outline:2px solid var(--steel); outline-offset:1px}
 /* The Reveal is the app's magic moment — let the revealed rows BREATHE (host
@@ -514,7 +536,11 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 .sheet-scrim{position:absolute; inset:0; z-index:40; background:rgba(0,0,0,.42); border-radius:inherit}
 .sheet{
   position:absolute; left:0; right:0; bottom:0; z-index:50; max-height:72%;
-  overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none;
+  overflow-y:auto; overflow-x:clip; overscroll-behavior:contain; scrollbar-width:none;
+  /* overflow-x:clip is the systemic guard: no sheet can ever bleed past the
+     viewport horizontally (host-reported "screens too wide"). Root causes are
+     still fixed per-element (min-width:0 / wrap) so nothing is actually clipped;
+     this is the belt to those suspenders. */
   background:var(--card); border-radius:26px 26px 0 0; padding:18px var(--sp-5) 28px;
   box-shadow:inset 0 1px 0 var(--sheen), 0 -18px 60px -20px rgba(0,0,0,.4);
   animation:sheetrise var(--ms-sheet) var(--ease-standard);
@@ -610,11 +636,24 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    scales the whole stage, so these read smaller there but tap fine on a phone).
    position:relative anchors the ::after; none of these pills have absolutely-
    positioned children, so it's inert to layout. */
-.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker{ position:relative; }
-.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after{
+/* button.tag = an INTERACTIVE status pill (lodging/rides/vendor pickers). Spans
+   with .tag are display-only labels and stay out of this — scoping to button.tag
+   floors just the tappable ones (audit S1: picker pills were ~24px). */
+.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill{ position:relative; }
+.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after{
   content:''; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
   height:100%; min-height:44px;
 }
+/* Blocker fix: a .mini used as a deep-link nested in the META line of a tappable
+   row (checklist step, food tune) would, via the 44px expander above, reach UP
+   and cover the row's own toggle label — a thumb on the label fired the link
+   instead of the check. .rowlink bounds the hit area to the link's own box so
+   both stay tappable and never overlap. */
+.rowlink::after{ min-height:0; height:100%; top:0; transform:none; }
+/* Header icon buttons: keep the small ~30px visual circle (uncrowded header) but
+   widen the invisible tap area to 44px, centered — the earlier min-width:44 made
+   the visible circles too big and crowded the appbar. */
+.wm-you::after{ left:50%; right:auto; width:44px; min-width:44px; transform:translate(-50%,-50%); }
 
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
 .brow{padding:11px 0 var(--sp-3); border-top:1px solid var(--line-soft)}
@@ -635,7 +674,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
      with almost no gap, reading as one run-on word ("Auntbringing it") —
      found live testing the custom-item-add feature. Wrap lets that trailing
      group drop to its own line once the name needs the width instead. */
-  display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp-3); width:100%; padding:10px var(--sp-2);
+  display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp-3); width:100%; padding:11px var(--sp-2);/* audit TT2b: 10→11px + the 22px .fcheck = 44px, the touch floor (was 42px, 2px short) */
   background:none; border:none; border-top:1px solid var(--line-soft);
   cursor:pointer; text-align:left; color:var(--ink);
 }
@@ -801,7 +840,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .welcome-ctas .cta.big{width:100%}
 /* secondary path: quiet ghost — present, never competing with Start */
 .cta.ghost{background:transparent; color:var(--steel-soft); font-weight:650;
-  font-size:var(--t-sub); padding:var(--sp-3) 22px; border-radius:13px;
+  font-size:var(--t-sub); padding:var(--sp-3) 22px; border-radius:var(--r-row);
   border:1px solid var(--carbon-line)}
 .cta.ghost:hover{filter:none; transform:none; background:var(--steel-tint)}
 
@@ -1033,8 +1072,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .fg-label{font-size:var(--t-row); font-weight:750}
 .fg-sub{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
 .fg-chev{color:var(--faint); flex-shrink:0; transition:transform 200ms var(--ease-out)}
-.fg-track{height:4px; border-radius:99px; background:var(--line-soft); margin-top:10px; overflow:hidden}
-.fg-track i{display:block; height:100%; background:var(--steel-soft); border-radius:99px;
+.fg-track{height:4px; border-radius:var(--r-pill); background:var(--line-soft); margin-top:10px; overflow:hidden}
+.fg-track i{display:block; height:100%; background:var(--steel-soft); border-radius:var(--r-pill);
   transition:width var(--ms-ambient) var(--ease-standard)}
 .fg-track.done i{background:var(--ok)}
 .fg-items{max-height:0; opacity:0; overflow:hidden;
@@ -1148,8 +1187,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .sweep-row.ready{ border-color:var(--progress-tint); }/* audit S1 */
 .sweep-row.answered{ border-color:var(--ok-tint); background:var(--ok-tint); }
 .sweep-state{
-  float:right; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
-  padding:3px 9px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band);
+  flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
+  padding:3px 9px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band); white-space:nowrap;
   transition:all var(--ms-ambient) var(--ease-standard);
 }
 .sweep-row.drafting .sweep-state{ color:var(--warn); background:var(--warn-tint); }
@@ -1218,14 +1257,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    only. The stay form is a two-column labeled grid inside the sheet; booking
    statuses reuse the .tag chip at the app's semantic color budget: quiet for
    not-started, steel for booked, ok only for confirmed. ── */
-.lodge-form{display:grid; grid-template-columns:1fr 1fr; gap:10px 10px; margin:var(--sp-2) 0 2px}
+/* audit S5: was `1fr 1fr` + a viewport `@media(max-width:380px)` single-col
+   override — but the app renders in a FIXED ~393px stage regardless of device,
+   so that media query never fired and phones got cramped ~171px paired fields.
+   auto-fit collapses on the real container width: 1 column at the 353px sheet,
+   2 only when a genuinely wider surface (tablet+) hosts it. */
+.lodge-form{display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px 10px; margin:var(--sp-2) 0 2px}
 .lodge-form .full{grid-column:1 / -1}
 .lodge-f{display:flex; flex-direction:column; gap:5px}
 .lodge-f .of{font-size:var(--t-caption-min); font-weight:700; letter-spacing:var(--tracking-3); text-transform:uppercase; color:var(--faint)}
 .tag.lodge-not_started{color:var(--muted); background:var(--bg-band)}
 .tag.lodge-booked{color:var(--progress); background:var(--progress-tint)}/* audit S1 */
 .tag.lodge-confirmed{color:var(--ok); background:var(--ok-tint)}
-@media(max-width:380px){.lodge-form{grid-template-columns:1fr}}
+/* (former max-width:380px single-col override removed — auto-fit above handles it) */
 /* DESTINATION-2 slice 2 — ride-board status tags, same shape/tokens as lodge-*.
    Semantics: needs a ride = the open gap (warn); offering seats = the thing
    that closes it (ok); renting = self-covered, calm steel; not set = quiet. */

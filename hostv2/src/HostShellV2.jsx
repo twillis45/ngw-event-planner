@@ -214,6 +214,68 @@ function SheetHero({ eyebrow, star, tone, sub, grounding }) {
   );
 }
 
+// ── Shared address autocomplete ──────────────────────────────────────────────
+// ONE source so every address input in the app suggests the same way (host
+// request: wire the autocomplete anywhere an address is input). Google Places
+// when a key is present (localStorage 'ngw-google-places-key' /
+// REACT_APP_GOOGLE_MAPS_KEY), else OSM Nominatim. Extracted from the venue
+// field's original fetchAddrSugs so the venue and every other address field
+// share the exact same provider + result shape.
+export async function fetchAddressSuggestions(query) {
+  const q = String(query || '').trim();
+  if (q.length < 3) return [];
+  try {
+    if (window.google && window.google.maps && window.google.maps.places) {
+      return await new Promise(res => {
+        const svc = new window.google.maps.places.AutocompleteService();
+        svc.getPlacePredictions({ input: q, componentRestrictions: { country: 'us' } }, preds => {
+          res((preds || []).slice(0, 5).map(p => ({ label: p.description, city: '' })));
+        });
+      });
+    }
+    const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=5&countrycodes=us&q=' + encodeURIComponent(q));
+    const j = await r.json();
+    return (Array.isArray(j) ? j : []).map(x => {
+      const a = x.address || {};
+      const city = a.city || a.town || a.village || a.hamlet || '';
+      const short = String(x.display_name || '').split(',').slice(0, 3).join(',');
+      return { label: short, city: city + (a.state ? ', ' + a.state : '') };
+    });
+  } catch { return []; }
+}
+
+// Reusable address input with its OWN debounced suggestion dropdown. Each
+// instance keeps its own suggestions, so several address fields on one screen
+// never share a dropdown. Controlled: pass value + onChange; onPick fires with
+// the chosen {label, city} (defaults to onChange(label)).
+function AddressField({ value, onChange, onPick, onEnter, placeholder, ariaLabel, className, style, inputStyle }) {
+  const [sugs, setSugs] = useState([]);
+  const timer = useRef(null);
+  const run = (q) => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(async () => { setSugs(await fetchAddressSuggestions(q)); }, 380);
+  };
+  return (
+    <div style={{ position: 'relative', flex: 1, ...style }}>
+      <input className={className || 'field'} style={inputStyle} value={value} placeholder={placeholder}
+        aria-label={ariaLabel} autoComplete="off"
+        onChange={e => { onChange(e.target.value); run(e.target.value); }}
+        onKeyDown={e => { if (e.key === 'Enter' && onEnter) { onEnter(e.target.value); setSugs([]); } }} />
+      {sugs.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          {sugs.map((sg, si) => (
+            <button key={si} type="button" className="later-row"
+              style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+              onClick={() => { onPick ? onPick(sg) : onChange(sg.label); setSugs([]); }}>
+              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function HostShellV2() {
   const [stage, setStage] = useState('plan');
   const [eventId, setEventId] = useState(BOOT_EVENT_ID);
@@ -329,7 +391,7 @@ export default function HostShellV2() {
       // 1000ms, not 1200 — matches Android's own SplashScreen API bound
       // exactly (the one concrete numeric target the vs-leaders research
       // found) rather than sitting 200ms over it for no reason.
-      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1000 : 4750);
+      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1000 : 2200);
     } else if (splash === 'leaving') {
       splashTimer.current = setTimeout(() => setSplash('gone'), 220);
     }
@@ -1061,6 +1123,7 @@ export default function HostShellV2() {
   // 'rain' is deliberately absent: it already has a real editor (the rain
   // sheet) and routes there instead of a plain note.
   const [placeNoteOpen, setPlaceNoteOpen] = useState(null);
+  const [placeNoteDraft, setPlaceNoteDraft] = useState(''); // controlled draft for the place-note editor (address field autocompletes)
   const PLACE_NOTE_FIELD = { venue: 'venue', arrival: 'venueAddress', parking: 'parkingNotes', loadIn: 'loadInNotes', contact: 'venueContact', rules: 'houseRules' };
   const [shopStore, setShopStore] = useState(null); // shopping-run mode: 'I'm at X' filter (session-only)
   const [budgetFoldOpen, setBudgetFoldOpen] = useState(false); // budget editor folds once a number exists
@@ -1072,16 +1135,14 @@ export default function HostShellV2() {
   // dayBefore's protect-the-moment, phaseProgress's moment item, the nudge
   // layer, and doItForMe's toast all DERIVE from these; V2 only writes them).
   const [meaningDraft, setMeaningDraft] = useState(null);
-  const openMeaning = () => {
-    setMeaningDraft({
-      honoree: event.honoree || '',
-      honoree_story: event.honoree_story || '',
-      meaning_why: event.meaning_why || '',
-      feeling_words: event.feeling_words || '',
-      must_have_moment: event.must_have_moment || '',
-    });
-    setSheet({ kind: 'meaning' });
-  };
+  const buildMeaningDraft = () => ({
+    honoree: event.honoree || '',
+    honoree_story: event.honoree_story || '',
+    meaning_why: event.meaning_why || '',
+    feeling_words: event.feeling_words || '',
+    must_have_moment: event.must_have_moment || '',
+  });
+  const openMeaning = () => { setMeaningDraft(buildMeaningDraft()); setSheet({ kind: 'meaning' }); };
   const hasMeaning = !!(String(event.must_have_moment || '').trim() || String(event.meaning_why || '').trim() || String(event.honoree_story || '').trim());
   const [lessonDraft, setLessonDraft] = useState('');
   // Seed the draft from the saved lesson whenever the event changes (getLesson
@@ -1547,6 +1608,23 @@ export default function HostShellV2() {
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
+  // The meaning sheet can be opened generically (Sections directory) which
+  // doesn't call openMeaning — seed the draft here so the sheet is never blank
+  // (audit: title over empty body). Only seeds when null, so it never clobbers edits.
+  useEffect(() => {
+    if (sheet && sheet.kind === 'meaning' && !meaningDraft) setMeaningDraft(buildMeaningDraft());
+  }, [sheet, meaningDraft]); // eslint-disable-line react-hooks/exhaustive-deps
+  // When the plan's "Confirm [vendor]" routes here (Vendors + a vendorId, no
+  // specific section like documents/payment), auto-open that vendor's status
+  // picker so the confirm choices are right there — the host asked "where do I
+  // do that?". Keyed on [sheet] so it fires once on open, never re-opens after
+  // the host closes it. COI/payment routes carry a vendorSection, so they skip.
+  useEffect(() => {
+    if (sheet && sheet.kind === 'vendors' && sheet.focus && !sheet.vendorSection) {
+      const v = (event.vendors || []).find(x => x && x.id === sheet.focus);
+      if (v && !v.isInformal && !vendorStatusIsCurrent(v, 'Confirmed')) setStatusPickFor(sheet.focus);
+    }
+  }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   // Quick-switcher / command palette (build-map #9): jump across events AND
   // destinations from one search box. Cmd/Ctrl-K toggles it (the phone-frame
   // ruling caps this at parity, not 9 — there's a visible entry point too).
@@ -2035,7 +2113,7 @@ export default function HostShellV2() {
     // were tab-less and dead-CTA'd back to the risks sheet. Unmatched routes
     // still fall through to the `return false` at the end.
     if (!route || (!route.tab && !route.focusField)) return false;
-    if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null }); return true; }
+    if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null, vendorSection: route.vendorSection || null }); return true; }
     // Sprint 1 seating: legacy readiness items route tab:'Seating' — land on
     // the seating sheet, on the exact guest row when the route names one.
     if (route.tab === 'Seating' || /^seat/.test(String(route.focusField || ''))) {
@@ -2077,6 +2155,20 @@ export default function HostShellV2() {
     // the "Where is it happening?" card, whichever is showing — both inputs carry
     // aria-label="Venue"). Land on the plan, then scroll to and focus that exact
     // input, per the Row-Level CTA rule (never a screen top).
+    // Set-the-date foundation ({tab:'Event Details', focusField:'event-date'})
+    // MUST branch before the venue/Event-Details catch-all below — otherwise the
+    // app's #1 onboarding foundation matched `tab === 'Event Details'` and scrolled
+    // to the Venue input instead of the date (host-reported wrong-field routing).
+    if (route.focusField === 'event-date') {
+      setStage('plan'); setSheet(null); setEditor(null);
+      setTimeout(() => {
+        try {
+          const inp = document.querySelector('[aria-label="Event date"]');
+          if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
+        } catch { /* DOM not ready — plan stage is still the right landing */ }
+      }, 80);
+      return true;
+    }
     if (route.focusField === 'event-venue' || route.tab === 'Event Details') {
       setStage('plan'); setSheet(null); setEditor(null);
       setTimeout(() => {
@@ -3563,8 +3655,10 @@ export default function HostShellV2() {
                           right at the moment of creation. The share rails already
                           exist; this is sequencing, and it seeds the viral loop
                           before the host ever leaves the reveal. */}
-                      <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={shareInviteLink}>Share the invite</button>
-                      <button className="cta soft" style={{ padding: '13px 22px', borderRadius: 13 }} onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
+                      {/* Demoted to ghost so "Open your plan" is the sole primary at
+                          the reveal climax (one primary ask — invite-remake directive). */}
+                      <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
+                      <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                     </div>
                     <p className={'grounding pre' + (revealStep > revealLineCount + 1 ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', textAlign: 'center' }}>Your guests reply at that link — nothing to install, no account.</p>
                   </div>
@@ -3621,7 +3715,7 @@ export default function HostShellV2() {
                   if (od) slips.push(od === 1 ? 'one decision is past its easy window' : od + ' decisions are past their easy window');
                 } catch { /* board unavailable */ }
                 if (compression && compression.headline) slips.push('time got tight');
-                if (money.planned && money.committed > money.planned) slips.push('the budget is running over');
+                if (money.planned && money.committed > money.planned) slips.push('the budget is over by ' + fmt(money.committed - money.planned));
                 if (slips.length) {
                   return (
                     <p className="verdict slipping">
@@ -3778,7 +3872,7 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? ' · over' : ''}</> : 'no number yet — tap to set one'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? ` · ${fmt(money.committed - money.planned)} over` : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>
@@ -3789,10 +3883,19 @@ export default function HostShellV2() {
                   className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
                   onClick={() => {
                     if (days === 0) { setStage('day'); return; }
-                    // the engine's next cue carries its own route — honor it first
+                    // The tile NAMES actions[0] ("first: …"), so tapping it must go
+                    // where THAT action goes — through onCta, the exact path the named
+                    // card's CTA uses (its own deep-link / editor). Routing via
+                    // phaseCues.nextCue (a DIFFERENT engine — the phase-area ledger)
+                    // sent the tap to the wrong sheet whenever the named action and
+                    // the phase cue disagreed — e.g. a vendor COI action named here
+                    // routes to that vendor's documents, but the phase cue pointed at
+                    // a generic area sheet (host-reported wrong-location bug).
+                    const calmTop = actions.length === 1 && /on track|nothing urgent|good shape/i.test(String(actions[0].title || ''));
+                    if (actions.length && !calmTop) { onCta(actions[0], String(actions[0].id || 0)); return; }
+                    // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
-                    if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
-                    else document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
+                    document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
                   }}
                 >
                   <div className="t-label">Next</div>
@@ -3846,7 +3949,7 @@ export default function HostShellV2() {
               {sweepWindow && reconfirmedN < reconfirmables.length && (
                 <div className="sweepcard" role="region" aria-label="Reconfirm your vendors">
                   <div className="sc-eyebrow">{days === 0 ? 'Today' : days === 1 ? 'Tomorrow' : days + ' days out'} · the reconfirm window</div>
-                  <h3>Make sure everyone’s coming</h3>
+                  <h3>Reconfirm your vendors</h3>
                   <p>{reconfirmables.length === 1 ? reconfirmables[0].name + ' holds your day' : reconfirmables.length + ' vendors hold your day'} — one tap drafts every reconfirm, each with their own time and details.{reconfirmedN > 0 ? ' ' + reconfirmedN + ' of ' + reconfirmables.length + ' already answered.' : ''}</p>
                   <button className="mini" onClick={() => { setSheet({ kind: 'sweep' }); runSweepDrafts(); }}>Reconfirm everyone</button>
                 </div>
@@ -3904,7 +4007,7 @@ export default function HostShellV2() {
                           <span className="of">{c.id}</span><span className="amt" style={{ color: 'var(--ok)', fontWeight: 600 }}>handled</span>
                         </div>
                       ) : (
-                        <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px' }}
+                        <button key={c.id || i} className="frow" style={{ padding: 'var(--sp-2) 2px', minHeight: 44, alignItems: 'center' }}
                           onClick={() => { if (c.route && routeSheet(c.route)) return; toast(c.cueLabel); }}>
                           <span className="f-main"><span className="f-name" style={{ fontSize: 'var(--t-body)' }}>{c.cueLabel}</span></span>
                           <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
@@ -4178,8 +4281,8 @@ export default function HostShellV2() {
               )}
               {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
-                  <input className="field" style={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it"
-                    value={addressDraft} onChange={e => setAddressDraft(e.target.value)} aria-label="Venue address" />
+                  <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
+                    inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
                   <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
                     onClick={() => {
                       if (!validPlace(addressDraft) && !/\d/.test(addressDraft)) { toast('That doesn’t read like an address — street and number help guests find you.'); return; }
@@ -4623,19 +4726,21 @@ export default function HostShellV2() {
                       }}>{String(h.name).trim().charAt(0).toUpperCase()}</span>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontWeight: 700 }}>{h.name}
-                          {h.coi && h.coi.label ? <span className="tag plan" style={{ marginLeft: 'var(--sp-2)', color: h.coi.level === 'safe' ? 'var(--carbon-muted)' : 'var(--warn)', background: 'var(--steel-tint)' }}>{h.coi.label}</span> : null}
+                          {h.coi && h.coi.label ? <span className="tag plan" style={{ marginLeft: 'var(--sp-2)', color: h.coi.level === 'safe' ? 'var(--muted)' : 'var(--warn)', background: h.coi.level === 'safe' ? 'var(--bg-band)' : 'var(--warn-tint)' }}>{h.coi.label}</span> : null}
                         </span>
                         <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', color: 'var(--carbon-muted)' }}>{h.role}</span>
                       </span>
                       <span className="d" style={{ minWidth: 0 }}>{h.time || ''}</span>
                     </div>
                   ))}
-                  <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="cta soft" onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
+                  <div style={{ marginTop: 10 }}>
+                    <button className="cta soft" style={{ width: '100%' }} onClick={() => { try { openDraft('Everyone’s part today', draftHelperBrief(event, profile, { ros })); } catch { toast('Couldn’t draft it.'); } }}>
                       Draft the helper brief
                     </button>
-                    <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
-                    {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
+                    <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
+                      <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
+                      {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
+                    </div>
                   </div>
                 </div>
               )}
@@ -4948,10 +5053,14 @@ export default function HostShellV2() {
                   </div>
                 </div>
               )}
-              <div className="actions-row" style={{ marginTop: 14 }}>
-                <button className="cta" onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>Draft the thank-you</button>
-                <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
-                <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
+              {/* Primary full-width, the two secondaries in a balanced 2-col grid
+                  (was a ragged cta+mini+mini flex-wrap). */}
+              <div style={{ marginTop: 14 }}>
+                <button className="cta" style={{ width: '100%' }} onClick={() => openDraft('The thank-you', draftThankYou(event, profile))}>Draft the thank-you</button>
+                <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
+                  <button className="mini" onClick={() => { try { openDraft('The recap', draftRecap(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Write the recap</button>
+                  <button className="mini" onClick={() => setSheet({ kind: 'thanks' })}>Start the thank-you run</button>
+                </div>
               </div>
             </section>
           )}
@@ -4974,7 +5083,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Make sure everyone’s coming' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
@@ -5164,29 +5273,34 @@ export default function HostShellV2() {
                     return (
                       <div key={s.key} style={{ padding: '7px 0' }}>
                         <button style={{ width: '100%', alignItems: 'flex-start', background: 'none', border: 'none', font: 'inherit', textAlign: 'left', cursor: 'pointer', padding: 0, display: 'flex' }}
-                          onClick={() => setPlaceNoteOpen(isNoteOpen ? null : s.key)} aria-label={'Add note for ' + s.label}>
+                          onClick={() => { const opening = !isNoteOpen; setPlaceNoteOpen(opening ? s.key : null); if (opening) setPlaceNoteDraft(event[noteField] || ''); }} aria-label={'Add note for ' + s.label}>
                           <span style={{ fontSize: 'var(--t-body-s)' }}>
                             <strong style={{ color: rowColor }}>{s.label} <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>{isNoteOpen ? '⌄' : '›'}</span></strong>
                             {s.detail ? ' — ' + s.detail : ''}
                           </span>
                         </button>
-                        {isNoteOpen && (
-                          <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                            <input className="field" style={{ flex: 1 }} placeholder={'Add ' + s.label.toLowerCase() + '…'}
-                              defaultValue={event[noteField] || ''} aria-label={s.label}
-                              onKeyDown={e => {
-                                if (e.key !== 'Enter') return;
-                                const v = e.target.value.trim();
-                                patchEvent({ [noteField]: v }, s.label + ' saved.');
-                                setPlaceNoteOpen(null);
-                              }} />
-                            <button className="mini" onClick={e => {
-                              const v = e.target.previousSibling.value.trim();
-                              patchEvent({ [noteField]: v }, s.label + ' saved.');
-                              setPlaceNoteOpen(null);
-                            }}>Save</button>
-                          </div>
-                        )}
+                        {isNoteOpen && (() => {
+                          // Controlled draft (was uncontrolled + a fragile
+                          // previousSibling.value read). The 'arrival' row edits
+                          // venueAddress — a real street address — so it gets the
+                          // shared AddressField autocomplete like the venue field;
+                          // parking/load-in/contact/rules are free-text notes.
+                          const save = () => { patchEvent({ [noteField]: placeNoteDraft.trim() }, s.label + ' saved.'); setPlaceNoteOpen(null); };
+                          return (
+                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                              {noteField === 'venueAddress' ? (
+                                <AddressField value={placeNoteDraft} onChange={setPlaceNoteDraft} onPick={sg => setPlaceNoteDraft(sg.label)} onEnter={save}
+                                  placeholder={'Add ' + s.label.toLowerCase() + '…'} ariaLabel={s.label} />
+                              ) : (
+                                <input className="field" style={{ flex: 1 }} placeholder={'Add ' + s.label.toLowerCase() + '…'}
+                                  value={placeNoteDraft} aria-label={s.label}
+                                  onChange={e => setPlaceNoteDraft(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') save(); }} />
+                              )}
+                              <button className="mini" onClick={save}>Save</button>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}
@@ -5258,15 +5372,29 @@ export default function HostShellV2() {
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>Who’s helping</span>
                       {(helperData.helpers || []).length > 0 && (
-                        <button className="mini" onClick={startHelperMessages}>Message all helpers</button>
+                        <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
                     </div>
-                    {helpers.map((h, i) => (
-                      <div key={i} className="line">
-                        <span>{h.helperName} <span className="of">· {h.label}</span></span>
-                        <span className="of">{(() => { try { return helperStatusLine(h) || h.status || ''; } catch { return h.status || ''; } })()}</span>
-                      </div>
-                    ))}
+                    {/* Stacked row (was a ragged 2-col .line where the status
+                        REPEATED the owner name and both columns wrapped
+                        independently into a text wall on 393px). Task on line 1,
+                        owner + one short color-coded status chip on line 2. */}
+                    {helpers.map((h, i) => {
+                      const st = h.status;
+                      const short = st === 'handled' ? 'brought it' : st === 'confirmed' ? 'covered' : 'not confirmed';
+                      const stColor = (st === 'handled' || st === 'confirmed')
+                        ? { color: 'var(--ok)', background: 'var(--ok-tint)' }
+                        : { color: 'var(--warn)', background: 'var(--warn-tint)' };
+                      return (
+                        <div key={i} style={{ padding: '11px 2px', borderTop: '1px solid var(--line-soft)' }}>
+                          <div style={{ fontWeight: 600, lineHeight: 1.4 }}>{h.label}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3, flexWrap: 'wrap' }}>
+                            <span className="of">{h.helperName}</span>
+                            <span className="tag plan" style={stColor}>{short}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </>
                 )}
                 {!((capacity && (capacity.items || []).length) || helpers.length) && (
@@ -6017,7 +6145,7 @@ export default function HostShellV2() {
                   <div key={'ctx-' + (r.type || i)} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
@@ -6035,7 +6163,7 @@ export default function HostShellV2() {
                   <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{r.severity}</span>
+                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
@@ -6052,8 +6180,17 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'meaning' && meaningDraft && (
               <>
-                <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
-                  This is what the plan protects — the day-before brief, the run of show, and the toast all draw from your own words. Nothing here is required.
+                {/* Hero (parity with the app's other sheet heroes: eyebrow + lead)
+                    with the steel accent on the eyebrow — replaces a flat grey
+                    paragraph so the emotional core reads with real hierarchy instead
+                    of a monotone form. Sans, not serif (serif is doctrine-locked to
+                    welcome/invite/reveal). */}
+                <div className="eyebrow" style={{ color: 'var(--steel-soft)', marginBottom: 8 }}>The heart of it</div>
+                <p style={{ fontSize: 'var(--t-card-title)', fontWeight: 750, letterSpacing: '-.02em', lineHeight: 1.25, margin: '0 0 8px', color: 'var(--ink)' }}>
+                  What are we really protecting?
+                </p>
+                <p className="grounding" style={{ margin: '0 0 var(--sp-5)' }}>
+                  The day-before brief, the run of show, and the toast all draw from your own words — nothing here is required.
                 </p>
                 {[
                   ['honoree', 'Who is it for?', 'Margaret — my mom', false],
@@ -6062,8 +6199,10 @@ export default function HostShellV2() {
                   ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
                   ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
                 ].map(([key, label, ph, multi]) => (
-                  <div key={key} style={{ marginBottom: 'var(--sp-3)' }}>
-                    <div className="shelf-label" style={{ marginBottom: 5 }}>{label}</div>
+                  <div key={key} style={{ marginBottom: 'var(--sp-4)' }}>
+                    {/* Warm sentence-case prompt (was a tiny uppercase faint form
+                        label) — these are questions to the host, not field captions. */}
+                    <div style={{ fontSize: 'var(--t-body)', fontWeight: 650, color: 'var(--ink)', letterSpacing: '-.01em', marginBottom: 6 }}>{label}</div>
                     {multi ? (
                       <textarea className="field" style={{ maxWidth: 'none', minHeight: 58, resize: 'vertical', fontSize: 'var(--t-input)' }} placeholder={ph}
                         value={meaningDraft[key]} onChange={e => setMeaningDraft(d => ({ ...d, [key]: e.target.value }))} aria-label={label} />
@@ -6290,7 +6429,7 @@ export default function HostShellV2() {
                     <button className="cta" onClick={() => ask(askQ)} disabled={!askQ.trim()}>Ask</button>
                   </div>
                   {!askResult && (
-                    <div className="actions-row" style={{ marginTop: 'var(--sp-2)', flexWrap: 'wrap' }}>
+                    <div className="pill-grid" style={{ marginTop: 'var(--sp-2)' }}>
                       {examples.map(ex => <button key={ex} className="mini" onClick={() => ask(ex)}>{ex}</button>)}
                     </div>
                   )}
@@ -6300,7 +6439,7 @@ export default function HostShellV2() {
                       {askResult.basis.map((b, i) => <p key={i} className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>{b}</p>)}
                       {askResult.matched && askResult.route && (
                         <div className="actions-row" style={{ marginTop: 8 }}>
-                          <button className="mini" onClick={() => goAnswer(askResult.route)}>Open it</button>
+                          <button className="mini" onClick={() => goAnswer(askResult.route)}>Take me there</button>
                           <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); }}>Ask another</button>
                         </div>
                       )}
@@ -6313,7 +6452,7 @@ export default function HostShellV2() {
               <>
                 {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0) && (
                   <>
-                    <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours{hydratedEvents.length ? ' — synced to your account' : ' — from the app'}</div>
+                    <div className="shelf-label" style={{ margin: '0 0 6px' }}>Yours{hydratedEvents.length ? ' — synced to your account' : ' — on this device'}</div>
                     {[...REAL_EVENTS, ...hydratedEvents.filter(he => !REAL_EVENTS.some(re => re.id === he.id))].map((e, i) => {
                       const isActive = e.id === eventId;
                       const d = daysUntil(e.date);
@@ -6328,7 +6467,7 @@ export default function HostShellV2() {
                         </button>
                       );
                     })}
-                    <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples & tests</div>
+                    <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples</div>
                   </>
                 )}
                 {[...ROSTER, ...customs.map(c => ({ ...c, _custom: true }))].map((e, i) => {
@@ -6346,7 +6485,7 @@ export default function HostShellV2() {
                     <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
                       onClick={() => { switchEvent(e.id); setSheet(null); }}>
                       <span className="f-main">
-                        <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 10, padding: '1px 7px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
+                        <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', padding: '1px 8px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
                         <span className="v-meta">{src.name === label ? '' : src.name}{src.venue ? (src.name === label ? '' : ' · ') + src.venue : ''}</span>
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
@@ -6479,7 +6618,7 @@ export default function HostShellV2() {
                               }
                               writeLine({ bought: !l.bought }, l.bought ? 'Back on the order.' : 'Marked bought — real spend now, not an estimate.');
                             }}>
-                            {l.bought ? 'bought' : 'got it?'}
+                            {l.bought ? 'bought' : 'mark bought'}
                           </button>
                           <button className="mini" aria-label="Remove line" onClick={() => writeCp({ lines: lines.filter((_, ix) => ix !== i) }, 'Line removed — the coverage math just recomputed.')}><span aria-hidden="true">×</span></button>
                         </span>
@@ -6606,9 +6745,15 @@ export default function HostShellV2() {
                     const arrival = String(v.arrivalTime || v.loadIn || v.arrival || '').trim();
                     return (
                       <div key={v.id} className={'sweep-row ' + st}>
-                        <span className="sweep-state">{st === 'waiting' ? 'waiting' : st === 'drafting' ? 'drafting…' : st === 'ready' ? 'draft ready' : 'they answered'}</span>
-                        <div className="f-name">{v.name}</div>
-                        <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
+                        {/* flex row (was float:right on the state pill → name/meta
+                            wrapped raggedly around it on 393px) */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div className="f-name">{v.name}</div>
+                            <div className="sv-meta">{[v.category, arrival ? 'arrives ' + arrival : null, v.cost ? '$' + Number(v.cost).toLocaleString() : null].filter(Boolean).join(' · ')}</div>
+                          </div>
+                          <span className="sweep-state">{st === 'waiting' ? 'no reply yet' : st === 'drafting' ? 'drafting…' : st === 'ready' ? 'draft ready' : 'they answered'}</span>
+                        </div>
                         {st === 'ready' && !v.reconfirmed72 && (
                           <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                             {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(d.body)}>Text them</a>}
@@ -6806,7 +6951,7 @@ export default function HostShellV2() {
                         <div className="actions-row" style={{ marginTop: 10 }}>
                           {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
                           <button className="mini" onClick={() => { try { navigator.clipboard.writeText(body); toast('Copied.'); } catch { /* nothing */ } }}>Copy</button>
-                          <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : 'That was the last one — every yes is thanked.')}>Sent — next</button>
+                          <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : 'That was the last one — every yes is thanked.')}>Mark thanked</button>
                           <button className="mini" onClick={() => writeGuest(i, { thankYouSent: true }, 'Skipped — marked handled.')}>Skip</button>
                         </div>
                       </div>
@@ -6862,7 +7007,7 @@ export default function HostShellV2() {
                 {event.rainPlan && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Written for you — every audience</div>
-                    <div className="actions-row">
+                    <div className="pill-grid">
                       <button className="mini" onClick={() => { try { openDraft('Rain note to guests', guestRainMessage(event, wx || null)); } catch { toast('Couldn’t draft the note.'); } }}>Guest note</button>
                       <button className="mini" onClick={() => openDraft('Heads-up for your helpers', rainNoteFor('helpers'))}>Helper heads-up</button>
                       {reconfirmables.length > 0 && <button className="mini" onClick={() => openDraft('Weather note to vendors', rainNoteFor('vendors'))}>Vendor heads-up</button>}
@@ -6927,11 +7072,11 @@ export default function HostShellV2() {
                   {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
                     <button className="cta"
                       onClick={() => { navigator.share({ title: sheet.title || 'From your plan', text: shownDraft() }).catch(() => {}); }}>
-                      Send it…
+                      Share…
                     </button>
                   )}
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())}>Text</a>
-                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'sms:?&body=' + encodeURIComponent(shownDraft())}>Text it</a>
+                  <a className="mini" style={{ textDecoration: 'none' }} href={'https://wa.me/?text=' + encodeURIComponent(shownDraft())} target="_blank" rel="noreferrer">Open WhatsApp</a>
                   <button className="mini" onClick={() => copyDraft(shownDraft())}>Copy it</button>
                 </div>
                 {/* "Message all helpers": each person still gets reviewed and
@@ -6945,7 +7090,7 @@ export default function HostShellV2() {
                     </button>
                   </div>
                 )}
-                <p className="grounding" style={{ marginTop: 10 }}>“Send it…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Voices re-shape the same real details mechanically — and you can edit every word above; your voice choice is remembered for every draft.</p>
+                <p className="grounding" style={{ marginTop: 10 }}>“Share…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Voices re-shape the same real details mechanically — and you can edit every word above; your voice choice is remembered for every draft.</p>
               </>
             )}
             {sheet.kind === 'tasks' && (
@@ -7022,7 +7167,7 @@ export default function HostShellV2() {
                               control), stopPropagation so it launches instead of
                               toggling the check. */}
                           {action ? (
-                            <span role="button" tabIndex={0} className="mini"
+                            <span role="button" tabIndex={0} className="mini rowlink"
                               onClick={e => { e.stopPropagation(); action.go(); }}
                               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); action.go(); } }}>
                               {action.label} →
@@ -7229,7 +7374,7 @@ export default function HostShellV2() {
                         <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => setDietOtherOpen(true)}>+ Other</button>
                       )}
                       {pending.length > 0 && (
-                        <button className="later-row" style={{ marginTop: 10, width: '100%', textAlign: 'left', background: 'var(--steel-tint)', border: 'none', borderRadius: 9, padding: '9px var(--sp-3)', cursor: 'pointer' }}
+                        <button className="later-row" style={{ marginTop: 10, width: '100%', textAlign: 'left', background: 'var(--steel-tint)', border: 'none', borderRadius: 'var(--r-md)', padding: '9px var(--sp-3)', cursor: 'pointer' }}
                           onClick={pullFromGuests}>
                           <span className="t" style={{ color: 'var(--ink)' }}>From your RSVPs</span>
                           <span className="v-meta" style={{ flex: 1 }}>{pending.map(([d, n]) => d + ' ×' + n).join(' · ')}</span>
@@ -7238,7 +7383,7 @@ export default function HostShellV2() {
                       )}
                       {event.dietMergeUndo && (
                         <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => patchEvent({ dietCounts: event.dietMergeUndo, dietMergeUndo: null }, 'Merge undone.')}>
-                          ✓ Merged from your RSVPs — Undo
+                          Merged from your RSVPs — Undo
                         </button>
                       )}
                       <p className="grounding" style={{ margin: '10px 0 0' }}>
@@ -7368,7 +7513,7 @@ export default function HostShellV2() {
                           <button key={id} className="line" aria-pressed={on}
                             style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0', alignItems: 'flex-start' }}
                             onClick={() => patchEvent({ sourcing: id }, 'Sourcing: ' + (t.label || id) + ' — proteins re-priced, stores updated.')}>
-                            <span style={{ flex: 1 }}>
+                            <span style={{ flex: 1, minWidth: 0 }}>
                               <span className="vc-name" style={{ display: 'block' }}>{t.label || id}</span>
                               {(t.note || cost > 0) && (
                                 <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>
@@ -7525,19 +7670,23 @@ export default function HostShellV2() {
                               <span className="f-main">
                                 <span className="f-name" style={it.skipped ? { textDecoration: 'line-through', color: 'var(--muted)' } : undefined}>
                                   {it.short || it.item}
-                                  {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : null}
-                                  {/* Host-added line (event.foodAdd) — who's bringing it, if named. */}
-                                  {!it.skipped && it.added && it.owner ? <span className="tag plan">{it.owner}</span> : null}
-                                  {!it.skipped && it.added && !it.owner ? <span className="tag plan">yours</span> : null}
-                                  {!it.skipped && it.swappedFrom ? <span className="tag plan">swapped</span> : null}
-                                  {!it.skipped && undecidedAffects[it.id] ? <span className="tag essential" title={undecidedAffects[it.id]}>decision open</span> : null}
-                                  {!it.skipped && it.essential && !got ? <span className="tag essential">essential</span> : null}
-                                  {!it.skipped && it.badge ? <span className="tag plan">{String(it.badge).toLowerCase()}</span> : null}
-                                  {!it.skipped && it.buyAt === 'day-of' ? <span className="tag essential">day-of</span> : null}
-                                  {/* Engine dietary heads-up (dietFlags: roster needs +
-                                      dietCounts, keyword-matched) — "watch this", never
-                                      a hard contains-X claim. */}
-                                  {Array.isArray(it.dietFlags) && it.dietFlags.length ? <span className="tag essential">{it.dietFlags.join(' · ').toLowerCase()}</span> : null}
+                                  {it.skipped ? <span className="tag plan">skipped — tap to restore</span> : (() => {
+                                    // Cap at 2 tags by priority (was up to 7 → wrapped and
+                                    // shoved the price/tune controls onto a 3rd line). The
+                                    // rest fold into a "+N" that the tune panel expands.
+                                    const tags = [];
+                                    if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
+                                    if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
+                                    if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag essential">day-of</span>);
+                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag essential">{it.dietFlags.join(' · ').toLowerCase()}</span>);
+                                    if (it.added && it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
+                                    else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
+                                    if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
+                                    if (it.badge) tags.push(<span key="badge" className="tag plan">{String(it.badge).toLowerCase()}</span>);
+                                    const shown = tags.slice(0, 2);
+                                    if (tags.length > 2) shown.push(<span key="more" className="tag plan" style={{ opacity: .7 }}>+{tags.length - 2}</span>);
+                                    return shown;
+                                  })()}
                                 </span>
                                 <span className="v-meta">
                                   {[
@@ -7890,7 +8039,7 @@ export default function HostShellV2() {
                         <input className="field" style={{ maxWidth: 220, flex: 1 }} placeholder="Who's bringing it (optional)"
                           value={foodAddOwner} onChange={e => setFoodAddOwner(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') commitFoodAdd(); }} />
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-1)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', padding: '0 10px' }}>
                           <span className="of">$</span>
                           <input type="number" inputMode="decimal" min="0" placeholder="cost (optional)"
                             style={{ width: 115, background: 'none', border: 'none', outline: 'none', color: 'var(--ink)', fontSize: 'var(--t-input)', fontWeight: 650, fontFamily: 'inherit', padding: '9px var(--sp-1)' }}
@@ -8060,7 +8209,11 @@ export default function HostShellV2() {
                               onClick={ev => { ev.stopPropagation(); setStatusPickFor(statusPickFor === v.id ? null : v.id); }}
                               aria-expanded={statusPickFor === v.id} aria-haspopup="true"
                               aria-label={'Booking status: ' + (v.status ? vendorStatusLabel(v.status) : 'not set') + '. Tap to change.'}>
+                              {/* caret so the pill reads as the confirm/status CONTROL,
+                                  not a static label — the "confirm with vendor" action
+                                  routes here but the tap target wasn't discoverable. */}
                               {v.status ? vendorStatusLabel(v.status) : 'set status'}
+                              <span aria-hidden="true" style={{ marginLeft: 5, opacity: .55, fontSize: '.85em' }}>▾</span>
                             </button>
                           )}
                         </div>
@@ -8069,10 +8222,14 @@ export default function HostShellV2() {
                             style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', margin: '2px 0 8px' }}>
                             {VENDOR_STATUS_LADDER.map(s => {
                               const cur = vendorStatusIsCurrent(v, s);
+                              // current step = SELECTION (steel), not --ok green — green
+                              // means done/confirmed; steel is the doctrine's selection
+                              // color, so a mid-ladder step like "Deposit paid" no longer
+                              // reads as "good/done".
                               return (
-                                <button key={s} className={'vc-pill' + (cur ? ' good' : '')}
+                                <button key={s} className="vc-pill"
                                   onClick={ev => { ev.stopPropagation(); setVendorStatus(v, s); }}
-                                  aria-pressed={cur} style={cur ? undefined : { opacity: .82 }}>
+                                  aria-pressed={cur} style={cur ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)', fontWeight: 700 } : { opacity: .82 }}>
                                   {vendorStatusLabel(s)}
                                 </button>
                               );
@@ -8086,7 +8243,7 @@ export default function HostShellV2() {
                           <div className="vc-chips">
                             {vConfirm && <span className="vc-chip" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'Confirmed by vendor' : 'Vendor flagged an issue'}</span>}
                             {worry && <span className="vc-chip">{chipify(worry)}</span>}
-                            {coiAct && <span className="vc-chip">COI needed</span>}
+                            {coiAct && <span className="vc-chip">Insurance</span>}
                             {!worry && !coiAct && memLine && <span className="vc-chip quiet">{chipify(memLine)}</span>}
                           </div>
                         )}
@@ -8160,7 +8317,7 @@ export default function HostShellV2() {
                                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setVendorCostDraft(null); }}
                                 aria-label="What you agreed to pay" />
                               <button className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
-                                {v.balancePaid ? '✓ paid in full' : 'mark paid in full'}
+                                {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
                               </button>
                             </>)}
                           </div>
@@ -8174,7 +8331,7 @@ export default function HostShellV2() {
                             aria-pressed={!!v.isInformal}
                             onClick={() => writeVendor(v.id, { isInformal: !v.isInformal },
                               !v.isInformal ? (v.name || 'This') + ' is a friend or family member helping out — no paperwork tracked.' : (v.name || 'This') + ' switched back to a paid vendor.')}>
-                            {v.isInformal ? '✓ friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
+                            {v.isInformal ? 'Friend or family helping (not a paid vendor)' : 'not a paid vendor — friend or family helping?'}
                           </button>
                           {/* Every open promise is CLEARABLE — the same promiseEvidence
                               override production's vendor detail uses ("Mark proof on
@@ -8196,9 +8353,15 @@ export default function HostShellV2() {
                             return [...shown.map(p => (
                               <div key={p.promiseKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
                                 <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + p.dueDate : ''}</span>
+                                {/* Item-scoped label (was a generic "Mark confirmed"
+                                    that read as confirming the VENDOR — a host tapped
+                                    it and got a "parking … marked confirmed" toast for
+                                    a single promise). "Mark done" is clearly about the
+                                    promise on this row, distinct from the vendor status
+                                    pills above. */}
                                 <button className="mini" onClick={() => writeVendor(v.id, { promiseEvidence: { ...(v.promiseEvidence || {}), [p.promiseKey]: 'attached' } },
-                                  p.promiseText + ' — marked confirmed.')}>
-                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark confirmed'}
+                                  p.promiseText + ' — marked done.')}>
+                                  {p.evidenceRequired ? 'Mark proof on file' : 'Mark done'}
                                 </button>
                               </div>
                             )), more > 0 ? (
@@ -8225,16 +8388,16 @@ export default function HostShellV2() {
                               )}
                               <button className="mini" style={{ flexShrink: 0, marginLeft: 'auto' }} onClick={() => {
                                 // The same status ladder coiNextAction reads: requested → received → verified.
-                                if (coi && coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, 'COI marked received.');
-                                else if (coi && coi.status === 'received') writeVendor(v.id, { coiVerified: true }, v.coiExpiryDate ? 'COI verified — covered through ' + v.coiExpiryDate + '.' : 'COI verified.');
-                                else if (coi && coi.status === 'expired') writeVendor(v.id, { coiStatus: 'requested', coiVerified: false, coiExpiryDate: null }, 'Asked for a current COI.');
-                                else writeVendor(v.id, { coiStatus: 'requested' }, 'COI marked requested.');
-                              }}>{coiAct.ctaCopy || 'Mark COI requested'}</button>
+                                if (coi && coi.status === 'requested') writeVendor(v.id, { coiStatus: 'received' }, 'Insurance proof marked received.');
+                                else if (coi && coi.status === 'received') writeVendor(v.id, { coiVerified: true }, v.coiExpiryDate ? 'Insurance checked — covered through ' + v.coiExpiryDate + '.' : 'Insurance checked.');
+                                else if (coi && coi.status === 'expired') writeVendor(v.id, { coiStatus: 'requested', coiVerified: false, coiExpiryDate: null }, 'Asked for current insurance proof.');
+                                else writeVendor(v.id, { coiStatus: 'requested' }, 'Marked as asked.');
+                              }}>{coiAct.ctaCopy || 'Mark asked'}</button>
                             </div>
                             );
                           })()}
                           {memLine && <p className="vc-detail">{memLine}</p>}
-                          <div className="vc-actions">
+                          <div className="pill-grid" style={{ marginTop: 'var(--sp-3)' }}>
                             <button className="mini" onClick={() => openDraft('Note to ' + (v.name || 'your vendor'), draftVendorOutreach(event, v, profile))}>Draft note</button>
                             {Number(v.cost) > 0 && !v.balancePaid && (
                               <button className="mini" onClick={() => { try { openDraft('Payment reminder', draftVendorPaymentReminder(event, v)); } catch { toast('Couldn’t draft it.'); } }}>Payment note</button>
@@ -8252,7 +8415,7 @@ export default function HostShellV2() {
                           {/* The minted link: a plain URL the host copies and sends
                               themselves — nothing here auto-sends anything. */}
                           {vendorBrief && vendorBrief.vendorId === v.id && (
-                            <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 10 }}>
+                            <div style={{ marginTop: 'var(--sp-2)', padding: 'var(--field)', border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
                               {vendorBrief.minting ? (
                                 <p className="vc-detail" style={{ margin: 0 }}>Putting the brief together…</p>
                               ) : (
@@ -8307,8 +8470,10 @@ export default function HostShellV2() {
                       list, not a new pattern. */}
                   {unbookedSuggestions.map(cat => (
                     <div key={cat.category} className="line" style={{ alignItems: 'flex-start', padding: '10px 0', borderTop: '1px solid var(--line-soft)' }}>
-                      <div style={{ flex: 1 }}>
-                        <div className="vc-name">{cat.category}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {/* wrap (not the vendor row's nowrap+ellipsis) — a suggestion
+                            with parenthetical examples should show in full, not clip. */}
+                        <div className="vc-name" style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{cat.category}</div>
                         {cat.estimateCopy && <p className="grounding" style={{ margin: '3px 0 0' }}>{cat.estimateCopy}</p>}
                         {cat.altToDIY && <p className="grounding" style={{ margin: '2px 0 0', opacity: .75 }}>{cat.altToDIY}</p>}
                       </div>
@@ -8701,13 +8866,13 @@ export default function HostShellV2() {
                       <button className="chip" style={chipSm} aria-pressed={!!event.collectAddresses}
                         onClick={() => patchEvent({ collectAddresses: !event.collectAddresses },
                           !event.collectAddresses ? 'Yeses now get an optional mailing-address ask — framed as for thank-yous, never required.' : 'Address question removed from the RSVP page.')}>
-                        {event.collectAddresses ? '✓ collecting for thank-you mail' : 'collect for thank-you mail?'}
+                        {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
                       </button>
                     </div>
-                    <div className="actions-row" style={{ margin: '0 0 var(--sp-1)', alignItems: 'center' }}>
-                      <span className="of">gifts:</span>
+                    <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
+                    <div className="pill-grid" style={{ '--pill-min': '104px', margin: '0 0 var(--sp-1)' }}>
                       {GIFTS.map(([mode, label]) => (
-                        <button key={mode} className="chip" style={chipSm} aria-pressed={gw.mode === mode}
+                        <button key={mode} className="chip" style={{ ...chipSm, padding: '7px 4px' }} aria-pressed={gw.mode === mode}
                           onClick={() => patchEvent({ giftWish: gw.mode === mode ? null : { mode, detail: '' } },
                             gw.mode === mode ? 'Unset — the invite stays quiet on gifts.' : GIFT_TOAST[mode])}>{label}</button>
                       ))}
@@ -8725,11 +8890,6 @@ export default function HostShellV2() {
               return (event.guests || []).length ? (
                 <>
                   {guestHero}
-                  {chase && gcr && gcr.pending > 0 && (
-                    <div className="v-meta" style={{ padding: '0 2px 6px' }}>
-                      {gcr.pending} still unanswered{bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''} — the count settles as replies land.
-                    </div>
-                  )}
                   {(plusOnes > 0 || kidsHere > 0) && (
                     <div className="v-meta" style={{ padding: '0 2px 6px' }}>
                       {[plusOnes ? '+' + plusOnes + ' plus-one' + (plusOnes === 1 ? '' : 's') : null, kidsHere ? kidsHere + ' kid' + (kidsHere === 1 ? '' : 's') + ' — food sizes them lighter' : null].filter(Boolean).join(' · ')}
@@ -8740,17 +8900,27 @@ export default function HostShellV2() {
                       You went by headcount — replies here are just for tracking, no chasing.
                     </div>
                   )}
+                  {/* One-line reply-by + edit hint — the count itself lives in the
+                      hero above (audit S3: was a third restatement of "N yes of M"). */}
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-3)' }}>
                     {(() => {
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
                       const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
-                      return heads !== yes.length ? `${yes.length} yes (+${heads - yes.length} with them = ${heads} heads) of ${(event.guests || []).length}` : `${yes.length} yes of ${(event.guests || []).length}`;
+                      const parts = [];
+                      if (heads !== yes.length) parts.push(`${heads} heads with plus-ones`);
+                      if (rsvpBy && rsvpBy.iso && !isPast) parts.push(`replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
+                      return parts.join(' · ');
                     })()}
-                    {rsvpBy && rsvpBy.iso && !isPast ? ` · replies by ${new Date(rsvpBy.iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
                     {!isPast && (
-                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : 'change'}</button>
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : (rsvpBy && rsvpBy.iso ? 'change' : 'set reply-by')}</button>
                     )}
-                    {' — tap the tag to flip an RSVP, the name for kids, +1s and needs.'}
+                    {(() => {
+                      // leading separator only when something precedes the hint
+                      const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
+                      const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
+                      const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
+                      return hasPre ? ' — tap a tag to change an RSVP, a name to edit.' : 'Tap a tag to change an RSVP, a name to edit.';
+                    })()}
                   </div>
                   {deadlineOpen && (
                     <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
@@ -8761,43 +8931,9 @@ export default function HostShellV2() {
                         aria-label="RSVP deadline" />
                     </div>
                   )}
-                  <div className="actions-row" style={{ margin: '0 0 var(--sp-2)' }}>
-                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
-                    <button className="mini" onClick={showQr}>Show the QR</button>
-                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
-                    {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
-                        (when/where/parking/bring/dress/gifts), DRAFT-only per
-                        UX_07: written for the host, sent by the host. */}
-                    <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
-                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
-                  </div>
-                  {/* Invite look — the tone engine guesses from the event's mood
-                      (paper by day, elegant by night, muted when somber); the
-                      host's word always wins (lib/inviteTone). */}
-                  <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                    <span className="of">invite look:</span>
-                    {[['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].map(([val, label]) => (
-                      <button key={val || 'auto'} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={(event.inviteStyle || '') === val}
-                        onClick={() => patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.')}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Crest choice — only offered when this event HAS registered
-                      artwork (never a toggle that does nothing). The host's
-                      call: artwork on the invite, or purely typographic. */}
-                  {eventArtworkFile(event) && (
-                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
-                      <span className="of">artwork:</span>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
-                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
-                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
-                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
-                    </div>
-                  )}
-                  {inviteRules}
-                  {countingChips}
+                  {/* Invite tools + settings relocated BELOW the roster (audit S3:
+                      the roster is the reason the sheet exists — it now comes right
+                      after the hero, not behind a wall of share/look/rules chips). */}
                   {(() => { // INTEL R1 — the only hostIntelligence read-forward: gated + clamped by the engine
                     try {
                       const adj = attendanceAdjustment(profile, event);
@@ -8828,17 +8964,26 @@ export default function HostShellV2() {
                       <div key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
-                          <button style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0 }}
+                          <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
-                            {g.name || 'Guest ' + (i + 1)}
-                            {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
-                            {Number(g.kids) > 0 ? <span className="of"> · {g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
-                            {/* Audit #8: the meal was hidden until you expanded each
-                                guest — so a host couldn't scan the table's meals at a
-                                glance. Show it (short form) on the collapsed row, next
-                                to the needs tag, so the whole roster reads side-by-side. */}
-                            {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of" style={{ marginLeft: 6 }}>· {MEAL_SHORT[g.meal] || g.meal}</span> : null}
-                            {String(g.needs || '').trim() ? <span className="tag essential" style={{ marginLeft: 6 }}>{g.needs}</span> : null}
+                            {/* Mobile fit (393px stage): name owns line 1 (nowrap +
+                                ellipsis so it never breaks mid-word); the meta — kids,
+                                meal, the nowrap needs-tag — drops to a wrapping line 2.
+                                One inline run made the tag fight the name for the row's
+                                width and overflow the sheet (min-width:auto held it wide). */}
+                            <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {g.name || 'Guest ' + (i + 1)}
+                              {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                            </span>
+                            {/* Audit #8: meal shown on the collapsed row (short form) so
+                                the whole roster's meals read at a glance, not one-by-one. */}
+                            {(Number(g.kids) > 0 || (String(g.meal || '').trim() && g.meal !== '—') || String(g.needs || '').trim()) ? (
+                              <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                                {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                                {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
+                                {String(g.needs || '').trim() ? <span className="tag essential">{g.needs}</span> : null}
+                              </span>
+                            ) : null}
                           </button>
                           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
                             <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
@@ -8927,7 +9072,7 @@ export default function HostShellV2() {
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
                     return buckets.map(b => (
                       <div key={b.gr || 'ungrouped'}>
-                        <div className="shelf-label" style={{ margin: 'var(--sp-3) 0 2px' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
+                        <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
                         {b.items.map(row)}
                       </div>
                     ));
@@ -8935,6 +9080,50 @@ export default function HostShellV2() {
                   <datalist id="v2-groups">
                     <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />
                   </datalist>
+                  {/* Share & invite settings — relocated here from above the roster
+                      (audit S3: list-first). The roster now sits right under the hero;
+                      sharing + look/artwork/rules/counting live below it. */}
+                  <div className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)' }}>Share &amp; invite</div>
+                  {/* Balanced 2-up button grid (systematic .pill-grid). */}
+                  <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
+                    <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
+                    <button className="mini" onClick={showQr}>Show the QR</button>
+                    <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
+                    {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
+                        (when/where/parking/bring/dress/gifts), DRAFT-only per
+                        UX_07: written for the host, sent by the host. */}
+                    <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
+                    <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
+                  </div>
+                  {/* Invite look — the tone engine guesses from the event's mood
+                      (paper by day, elegant by night, muted when somber); the
+                      host's word always wins (lib/inviteTone). */}
+                  {/* Label on its own line + a 3-col grid so the three looks read as
+                      an even segmented control instead of a 2+1 ragged wrap. */}
+                  <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
+                  <div className="pill-grid" style={{ '--pill-min': '104px', margin: '0 0 10px' }}>
+                    {[['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].map(([val, label]) => (
+                      <button key={val || 'auto'} className="chip" style={{ padding: '7px 4px', fontSize: 'var(--t-pill)' }} aria-pressed={(event.inviteStyle || '') === val}
+                        onClick={() => patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.')}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Crest choice — only offered when this event HAS registered
+                      artwork (never a toggle that does nothing). The host's
+                      call: artwork on the invite, or purely typographic. */}
+                  {eventArtworkFile(event) && (
+                    <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                      <span className="of">artwork:</span>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest !== 'off'}
+                        onClick={() => patchEvent({ inviteCrest: '' }, 'The artwork is on the invite.')}>On the invite</button>
+                      <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={event.inviteCrest === 'off'}
+                        onClick={() => patchEvent({ inviteCrest: 'off' }, 'Words only — the invite stays purely typographic.')}>Words only</button>
+                    </div>
+                  )}
+                  {inviteRules}
+                  {countingChips}
                   {quickAdd}
                   {csvBlock}
                   {pastImports}
@@ -9017,7 +9206,15 @@ export default function HostShellV2() {
       {wxImpact && stage === 'plan' && (
         <div className={'wxpill' + (wxOpen ? ' open' : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
-            <span className="wx-glyph">☂</span>
+            {/* Real stroke SVG (matches the shared Icon component's style) — was a
+                ☂ text dingbat, which the no-emoji doctrine bans in UI. aria-hidden;
+                the wx-line text carries the meaning. */}
+            <span className="wx-glyph" aria-hidden="true">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                <path d="M7 16.5a4.5 4.5 0 0 1-.5-8.97 5 5 0 0 1 9.8-1.2A3.75 3.75 0 0 1 17 16.5Z" />
+                <path d="M8.5 19l-1 2M12 19l-1 2M15.5 19l-1 2" />
+              </svg>
+            </span>
             <span className="wx-line">
               {/* The sample marker rides the COLLAPSED line — the only line most
                   hosts read. A forecast claim may never outrun its source. */}
@@ -9048,7 +9245,7 @@ export default function HostShellV2() {
                 )}
                 {(wxImpact.shouldPromptGuestUpdate || rainPlanStatus(event).hasPlan) && (
                   <button className="mini" onClick={() => { setWxOpen(false); try { openDraft('Rain note to guests', guestRainMessage(event, wx)); } catch { toast('Couldn’t draft the note.'); } }}>
-                    {wxImpact.shouldPromptGuestUpdate ? 'Tell the guests' : 'Guest note'}
+                    {wxImpact.shouldPromptGuestUpdate ? 'Draft guest note' : 'Guest note'}
                   </button>
                 )}
               </div>
@@ -9114,7 +9311,8 @@ export default function HostShellV2() {
                     </button>
                   ))}
               </div>
-              <div className="palette-hint">Enter opens the first match · Esc closes</div>
+              {/* touch-truthful (was keyboard-only "Enter…/Esc…" on a touch-first palette) */}
+              <div className="palette-hint">Tap a result to jump there</div>
             </div>
           </div>
         );

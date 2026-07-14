@@ -81,6 +81,18 @@ export function isVendorBooked(vendor) {
   return !!vendor && BOOKED_STATUSES.has(vendor.status);
 }
 
+// The STRICT "fully locked in" set — the final rung of the host's status ladder
+// (Confirmed/"Locked in"; legacy Booked/Paid are equivalents). DISTINCT from
+// isVendorBooked, which also counts Deposit Paid / Contracted as "secured enough
+// for the day". A vendor can be booked-enough-for-day-of yet NOT fully locked in,
+// so "is this vendor DONE — nothing left to confirm?" needs its own ONE source.
+// Used by BOTH the readiness area dot (phaseProgress) and the "Confirm vendor"
+// action (CommandCenter) so a green dot never coexists with a confirm action.
+const CONFIRMED_STATUSES = new Set(['Confirmed', 'Booked', 'Paid']);
+export function isVendorConfirmed(vendor) {
+  return !!vendor && CONFIRMED_STATUSES.has(vendor.status);
+}
+
 function workstreamKeyForVendor(vendor) {
   return CATEGORY_TO_WORKSTREAM[vendor && vendor.category] || 'other';
 }

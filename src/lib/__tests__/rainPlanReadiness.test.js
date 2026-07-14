@@ -97,7 +97,7 @@ describe('Guest Brief behavior unchanged — event.guestBrief.rainPlan stays gue
       guestBrief: { rainPlan: 'If it rains we move under the covered patio.' },
     };
     const { body } = draftGuestBrief(event, null);
-    expect(body).toContain('☔ Rain plan: If it rains we move under the covered patio.');
+    expect(body).toContain('Rain plan: If it rains we move under the covered patio.');
     expect(body).not.toContain('PLANNER-ONLY');
   });
 
@@ -108,6 +108,6 @@ describe('Guest Brief behavior unchanged — event.guestBrief.rainPlan stays gue
       guestBrief: {},
     };
     const { body } = draftGuestBrief(event, null);
-    expect(body).not.toContain('☔ Rain plan:');
+    expect(body).not.toContain('Rain plan:');
   });
 });
