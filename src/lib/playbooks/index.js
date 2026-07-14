@@ -742,6 +742,10 @@ export function playbookChecklist(event, asOf) {
       category: eventDay ? 'event-day' : 'planning',
       phase: t.phase || 'planning',
       week: taskPhaseLabel(offset),
+      // The STABLE lead — days relative to the event, which never decays. `week` is prose
+      // and `dueInDays` is a snapshot taken at generation time; persisting either as the
+      // source of truth is how "nothing was ever overdue" happened (see lib/taskLead.js).
+      leadDays: offset,
       owner: '', // a solo host owns everything — no owner chip clutter
       dueInDays,
       provenance: { source: `${playbook.type} playbook`, taskId: t.id },

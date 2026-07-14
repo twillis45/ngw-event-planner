@@ -4,14 +4,21 @@
 // guest-mode gate on RSVP chasing, and the exported parseMin contract.
 import { computeDayAlerts, parseMin } from '../dayAlerts';
 
-// Freeze the clock at local noon so "past" and "future" arrival times are
-// deterministic. Event date is derived the same way the module derives
-// "today" (toISOString) so the same-day gate holds in any timezone.
+// Freeze the clock at local noon so "past" and "future" arrival times are deterministic.
+//
+// UPDATED 2026-07-14. This used to derive the event date with `toISOString()` — "the same
+// way the module derives today" — which meant the test faithfully reproduced the module's
+// bug instead of catching it. `today8601()` was a UTC date compared against a LOCAL event
+// date, so east of UTC-0 the whole day-of alert stack switched off during the event
+// evening (8pm ET). The test agreed with it because it made the same mistake.
+//
+// The event date is now the LOCAL calendar date, which is what a host's event date is.
 const NOON = new Date(2026, 6, 8, 12, 0, 0);
+const localDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 const freezeAtNoon = () => {
   jest.useFakeTimers();
   jest.setSystemTime(NOON);
-  return new Date().toISOString().slice(0, 10); // module's today8601
+  return localDate(NOON);
 };
 
 afterEach(() => { jest.useRealTimers(); });

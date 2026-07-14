@@ -1,4 +1,5 @@
 // demo/src/lib/workflowCompression.js
+import { taskLeadDays } from './taskLead';
 // Sprint 57f · Compressed Workflow Intelligence
 //
 // PROBLEM
@@ -226,11 +227,17 @@ export const classifyTemplateTaskUrgency = (
   eventType,
   phaseOffset,
 ) => {
-  if (!task || !phaseOffset || daysUntil === null || daysUntil === undefined || daysUntil < 0) {
+  if (!task || daysUntil === null || daysUntil === undefined || daysUntil < 0) {
     return { urgency: 'standard', ...URGENCY_META.standard };
   }
-  const off = phaseOffset[task.week];
-  if (off === undefined) {
+  // Was `phaseOffset[task.week]`, which returned undefined for EVERY task — PHASE_OFFSET's
+  // keys are TitleCase ('Week Of') and playbookChecklist writes sentence case ('Week of').
+  // So this bailed to 'standard' every time and no task was ever classified do_now/risk_lost.
+  // The lead now comes from the one reader; `phaseOffset` stays as a caller-supplied
+  // fallback for any task still carrying only a legacy label.
+  const _lead = taskLeadDays(task);
+  const off = _lead != null ? _lead : (phaseOffset ? phaseOffset[task.week] : undefined);
+  if (off === undefined || off === null) {
     return { urgency: 'standard', ...URGENCY_META.standard };
   }
   const phaseDistance = Math.abs(off); // how many days before event this phase starts

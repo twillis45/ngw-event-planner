@@ -52,6 +52,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
+import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
 import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
@@ -148,30 +149,29 @@ function fmtRelative(isoStr) {
   if (d < 7)   return `${d}d ago`;
   return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+// `task.week in PHASE_OFFSET` was the gate, and it NEVER passed: PHASE_OFFSET's keys are
+// TitleCase ('Week Of', '2 Weeks Out') while playbookChecklist writes taskPhaseLabel's
+// prose ('Week of', '2 weeks out'). Wrong case AND wrong wording, so this returned false
+// for every task on every event, forever — which is why overdueCount was permanently 0
+// and the readiness engine's decision axis was permanently "No open decisions".
+// lib/taskLead.js now owns the lead, read off the stable `leadDays` the playbook authors.
 function isTaskOverdue(task, eventDate, eventType) {
-  if (task.done || !eventDate || !(task.week in PHASE_OFFSET)) return false;
-  // Compression-aware "behind" — mirrors App.js's isTaskOverdue so the
-  // CommandCenter (Your Call to Make / readiness / attention) agrees with the
-  // rest of the app. A tight booking that pushes a phase's FIXED offset into the
-  // past must NOT mark every task overdue: route through the compression engine
-  // so a task counts as behind only when it's genuinely past recovery
-  // (risk_lost), not merely compressed into a shorter runway. Naive past-date
-  // fallback only when the event type is unknown. PL-3: due-today counts (`<=`).
+  if (!task || task.done || !eventDate) return false;
+  const ev = { date: eventDate };
+  // Compression-aware "behind": a tight booking that pushes a fixed offset into the past
+  // must NOT mark every task overdue — a task counts as behind only when it is genuinely
+  // past recovery (risk_lost), not merely compressed into a shorter runway. That guard is
+  // still the right one; it just never used to be reachable.
   const days = daysFrom(eventDate);
   if (eventType && days !== null && days >= 0) {
     return classifyTemplateTaskUrgency(task, days, eventType, PHASE_OFFSET).urgency === 'risk_lost';
   }
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return due <= today;
+  return taskIsOverdue(task, ev);
 }
 function overdueDays(task, eventDate) {
-  if (!eventDate || !(task.week in PHASE_OFFSET)) return 0;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return Math.ceil((today - due) / 86400000);
+  if (!eventDate) return 0;
+  const due = taskDueInDays(task, { date: eventDate });
+  return due == null || due >= 0 ? 0 : Math.abs(due);
 }
 
 // ── taskTiming — THE one source for a task's real-date-derived timing ─────────
