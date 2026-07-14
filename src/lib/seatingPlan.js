@@ -39,10 +39,44 @@
 //     round-robins per GUEST, so one group's members scatter across
 //     consecutive tables — that is what shipped; noted, not changed).
 
+import { playbookCapacity } from './playbooks';
+
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
-/** How many tables the legacy default gives an event with none set. */
+/**
+ * The last-resort table count. Kept ONLY for an event whose playbook authors no tables at
+ * all — see tableCountOf below, which now derives a real number first.
+ *
+ * This used to be the WHOLE answer: `event.tables || 5`. Five tables the host never chose,
+ * drawn as fact, with the evenness advice ("balances the room evenly") computed against
+ * them. Meanwhile playbookCapacity was ALREADY turning the playbook's own authored rentals
+ * factor — a crab feast is `qtyPerGuest: 0.15` for long folding tables, about one per 6–7
+ * pickers — into a real count, from an engine the runtime already imports. Two engines that
+ * never spoke.
+ */
 export const DEFAULT_TABLE_COUNT = 5;
+
+const TABLE_ROW = /table/i;
+
+/**
+ * Tables the PLAYBOOK says this event needs, from its own authored rentals factor × the real
+ * guest count. Null when the playbook authors no table row — in which case we do not invent
+ * one, we fall back and the surface says it is a starting point.
+ */
+export function playbookTableCount(event) {
+  try {
+    // Static import, NOT require(). I reached for a lazy require() to dodge a circular
+    // dependency that does not exist — playbooks/index.js has no reference to this file — and
+    // require() does not exist in the Vite/ESM browser bundle. It threw, the catch swallowed
+    // it, and every event silently fell back to the bare 5 IN THE APP while the unit tests
+    // (running under Jest/CJS, where require works) passed. The tests said one thing and the
+    // running app did another; only opening the sheet caught it.
+    const cap = playbookCapacity(event);
+    const row = ((cap && cap.items) || []).find((i) => i && TABLE_ROW.test(String(i.short || i.item || '')));
+    const qty = row && Number(row.qty);
+    return Number.isFinite(qty) && qty > 0 ? qty : null;
+  } catch (_e) { return null; }
+}
 
 /** Short meal labels used on seating pills (legacy `mealShort`). */
 export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'Gluten-Free': 'GF', '—': '' };
@@ -54,7 +88,18 @@ export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'G
  * @returns {number}
  */
 export function tableCountOf(event) {
-  return num(event && event.tables) || DEFAULT_TABLE_COUNT;
+  // The host's own number always wins — they are the one standing in the room.
+  const own = num(event && event.tables);
+  if (own) return own;
+  // Otherwise the playbook's real factor, not a bare 5.
+  const derived = playbookTableCount(event);
+  return derived || DEFAULT_TABLE_COUNT;
+}
+
+/** Where the table count came from, so a surface can say so instead of drawing it as fact. */
+export function tableCountBasis(event) {
+  if (num(event && event.tables)) return 'host';
+  return playbookTableCount(event) ? 'playbook' : 'default';
 }
 
 /**

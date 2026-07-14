@@ -26,7 +26,7 @@ import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEven
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase } from '@app/lib/doItForMe';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
-import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, MEAL_SHORT } from '@app/lib/seatingPlan';
+import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
@@ -6383,6 +6383,23 @@ export default function HostShellV2() {
                   )}
                   <div className="actions-row" style={{ margin: '14px 0 2px', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span className="shelf-label">The tables{picked ? ' — tap one to seat ' + picked.name : ''}</span>
+                    {/* WHERE THE TABLE COUNT CAME FROM. It used to be a bare 5 — five tables
+                        the host never chose, drawn as fact, with the evenness advice
+                        ("balances the room evenly") computed against them. The playbook has
+                        always authored the real factor (a crab feast: one long table per ~6–7
+                        guests) and playbookCapacity has always turned it into a number. Two
+                        engines that never spoke. Now it says which one is talking. */}
+                    {!event.tables && (() => {
+                      const basis = (() => { try { return tableCountBasis(event); } catch (_e) { return 'default'; } })();
+                      if (basis === 'host') return null;
+                      return (
+                        <p className="grounding" style={{ margin: '2px 0 0' }}>
+                          {basis === 'playbook'
+                            ? `${sp.tables.length} tables — what a ${String(event.type || 'event').toLowerCase()} this size usually needs. Use the ± to change it.`
+                            : `${sp.tables.length} tables — a starting point, not a read of your room. Use the ± to change it.`}
+                        </p>
+                      );
+                    })()}
                     <span className="chips">
                       <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'list'} onClick={() => setSeatView('list')}>List</button>
                       <button className="chip" style={{ padding: 'var(--sp-1) 10px', fontSize: 'var(--t-pill)' }} aria-pressed={seatView === 'plan'} onClick={() => setSeatView('plan')}>Floor plan</button>
@@ -8704,6 +8721,32 @@ export default function HostShellV2() {
                                 onBlur={() => commitVendorCost(v)}
                                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setVendorCostDraft(null); }}
                                 aria-label="What you agreed to pay" />
+                              {/* THE ESTIMATE THE APP ALREADY MADE, AND THEN THREW AWAY.
+                                  buildVendorPlan computes a real range for every category —
+                                  the playbook's authored costRange × guests × the metro factor
+                                  × the rush factor — and shows it on the suggestion row
+                                  ("about $650–1,400, before your quotes come in"). Then
+                                  addVendorCategory creates {id, category, name}, the row
+                                  disappears from the suggestion list, and the host lands HERE
+                                  on placeholder="0" — at the exact moment the number would
+                                  have been useful. The app knew, and then forgot, on purpose.
+
+                                  It goes beside the field, NOT into it: `cost` means "what you
+                                  AGREED to pay", and writing an estimate there would make a
+                                  guess indistinguishable from a negotiated price — money
+                                  invention, the worst class. The estimate stays an estimate,
+                                  and says so. */}
+                              {!v.cost && (() => {
+                                const row = ((vendorPlan && vendorPlan.categories) || [])
+                                  .find(c => c && String(c.category || '').toLowerCase() === String(v.category || '').toLowerCase());
+                                const copy = row && row.estimateCopy;
+                                if (!copy || /from your quote/i.test(copy)) return null;
+                                return (
+                                  <p className="grounding" style={{ width: '100%', margin: '4px 0 0', opacity: .85 }}>
+                                    Expect {copy}
+                                  </p>
+                                );
+                              })()}
                               <button className="chip" aria-pressed={!!v.balancePaid} onClick={() => toggleVendorPaid(v)}>
                                 {v.balancePaid ? 'Paid in full' : 'mark paid in full'}
                               </button>
