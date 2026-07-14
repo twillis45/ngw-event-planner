@@ -1977,7 +1977,13 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
                 planner reads the vendor's state in one look and can act from the top. */}
             {(() => {
               const planning = getVendorPlanningState(vendor, event);
-              const gates = LOCKIN_GATES.map(g => (planning || []).find(x => x.key === g.key)).filter(g => g && g.status !== 'not_tracked');
+              // R2: same defect as LockInTracker — untracked gates were filtered out
+              // of the denominator, so "5/5 sorted" rendered GREEN right next to the
+              // amber "$5,800 due" chip below. A gate we never checked is not a gate
+              // we passed. Untracked gates stay in the total and block the green.
+              const allGates = LOCKIN_GATES.map(g => (planning || []).find(x => x.key === g.key)).filter(Boolean);
+              const gates = allGates.filter(g => g.status !== 'not_tracked');
+              const lockUntracked = allGates.length - gates.length;
               const lockedIn = gates.filter(g => g.status === 'done').length;
               const lockTotal = gates.length;
               const openCount = (readiness.counts?.critical || 0) + (readiness.counts?.attention || 0);
@@ -1995,7 +2001,9 @@ function CommandHeader({ vendor, event, readiness, stage, nextAction, onEdit, on
               // Color budget: the KPI is a COUNT, not the alarm — amber always
               // (the needs-you panel below is the one red voice).
               if (openCount > 0) chips.push(chip('open', `${openCount} need you`, P.amber, () => onAddressItem && alsoItems[0] && onAddressItem(alsoItems[0])));
-              if (lockTotal > 0) chips.push(chip('lock', `${lockedIn}/${lockTotal} ${hostHdr ? 'sorted' : 'locked in'}`, lockedIn === lockTotal ? P.green : P.steelBlue, null));
+              if (lockTotal > 0) chips.push(chip('lock',
+                `${lockedIn}/${lockTotal} ${hostHdr ? 'sorted' : 'locked in'}${lockUntracked > 0 ? ` · ${lockUntracked} not tracked` : ''}`,
+                (lockedIn === lockTotal && lockUntracked === 0) ? P.green : P.steelBlue, null));
               if (balanceDue > 0) chips.push(chip('bal', `$${balanceDue.toLocaleString()} due`, P.amber, () => onAddressItem && onAddressItem({ key: 'financial' })));
               if (!chips.length) return null;
               return <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>{chips}</div>;
@@ -3604,10 +3612,23 @@ const GATE_REVERSAL = {
 };
 function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, host = false }) {
   const [confirmKey, setConfirmKey] = useState(null);
-  const gates = LOCKIN_GATES.map(g => {
+  const allGates = LOCKIN_GATES.map(g => {
     const r = (rows || []).find(x => x.key === g.key);
     return r ? { ...g, status: r.status } : null;
-  }).filter(g => g && g.status !== 'not_tracked');
+  }).filter(Boolean);
+  // SSOT #1 / R2 — UNTRACKED GATES MAY NOT LEAVE THE DENOMINATOR.
+  // This used to be one `.filter(g => g.status !== 'not_tracked')` feeding BOTH the
+  // rendered rows AND the completion claim, so an untracked gate didn't count as
+  // incomplete — it vanished, and partial coverage became arithmetically 100%.
+  // getVendorPlanningState marks the final-payment gate 'not_tracked' whenever
+  // payDueDate is empty, and empty is the DEFAULT for every vendor the app's own
+  // scaffold creates — so this was the normal path, not an edge case: a Contracted
+  // vendor with $5,800 unpaid showed a green "All set" header and a "5/5 sorted"
+  // chip sitting directly beside an amber "$5,800 due" chip.
+  // Rows still only render the gates we can actually act on; the CLAIM is now
+  // computed over every gate, and an untracked one blocks "All set".
+  const gates = allGates.filter(g => g.status !== 'not_tracked');
+  const untracked = allGates.length - gates.length;
   if (gates.length < 2) return null;
   const reverse = (key) => {
     const rev = GATE_REVERSAL[key];
@@ -3618,7 +3639,9 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, ho
   };
   const done = gates.filter(g => g.status === 'done').length;
   const total = gates.length;
-  const allDone = done === total;
+  // R2: "All set" requires every ACTIONABLE gate done AND nothing left untracked.
+  // An untracked gate is an unknown, and an unknown is not a pass.
+  const allDone = done === total && untracked === 0;
   const headColor = allDone ? P.green : P.steelBlue;
   return (
     <div style={{
@@ -3633,7 +3656,12 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, ho
               phrase for this concept — one vocabulary across both apps). */}
           {host ? (allDone ? 'All set' : 'Where you stand') : (allDone ? 'Fully locked in' : 'Lock-in progress')}
         </span>
-        <span style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>{done} of {total}</span>
+        {/* R2: name the untracked gates rather than quietly dropping them — the
+            host must be able to tell "everything checked out" from "we never
+            looked". */}
+        <span style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textSecondary, fontFamily: FF }}>
+          {done} of {total}{untracked > 0 ? ` · ${untracked} not tracked` : ''}
+        </span>
       </div>
       <div style={{ display: 'flex', gap: space[2], flexWrap: 'wrap', alignItems: 'center' }}>
         {gates.map(g => {

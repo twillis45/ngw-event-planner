@@ -383,6 +383,19 @@ export function getVendorChallengeSummary(vendor, event) {
   else if (payOverdue) financial = { level: 'critical', note: `Final payment overdue by ${-payDays}d.` };
   else if (isConfirmed && balancePaid) financial = { level: 'safe', note: 'Paid in full.' };
   else if (isConfirmed && depositPaid && payDays !== null && payDays >= 0 && payDays <= 7) financial = { level: 'attention', note: `Final payment due in ${payDays}d.` };
+  // SSOT #1 / R2 — an outstanding balance that NOBODY IS WATCHING is not "safe".
+  // This branch used to return level 'safe' with the note "Deposit paid; balance
+  // pending." — the note named the outstanding money while the level called it a
+  // passing check, and that green fed straight into "All checks passing — ready
+  // for event day" on a vendor owed thousands.
+  // The honest question is not "has some money moved?" but "is the rest being
+  // TRACKED?". With no payDueDate on file — which is the DEFAULT for every vendor
+  // the app scaffolds — the answer is no. That is precisely 'not_tracked', and
+  // untracked now blocks an all-clear and escalates as the event nears.
+  else if (depositPaid && !balancePaid && (cost - (vendor.depositAmt || 0)) > 0 && !vendor.payDueDate) {
+    const owed = Math.max(0, cost - (vendor.depositAmt || 0));
+    financial = { level: 'not_tracked', note: `Deposit paid; $${owed.toLocaleString()} balance has no due date on file.` };
+  }
   else if (depositPaid) financial = { level: 'safe', note: 'Deposit paid; balance pending.' };
   else if (isCommitted && !depositPaid) financial = { level: 'attention', note: 'Deposit not yet recorded.' };
   else financial = { level: 'not_tracked', note: 'Payment state not tracked yet.' };
@@ -477,10 +490,40 @@ export function getVendorReadiness(vendor, event) {
     return { level: 'attention', label, summary: first ? first.note : 'Items pending.', counts };
   }
 
-  // Safe — leans on event proximity for label
+  // SSOT #1 / R2 — UNTRACKED IS NOT PASSING.
+  // `notTracked` was counted above (line ~452) and then never consulted: this
+  // fallthrough claimed "All checks passing — ready for event day" no matter how
+  // many checks had never run. A vendor could have 3 of 9 axes untracked (no
+  // arrival time, no run-of-show row, an insurance question nobody could classify)
+  // and $5,000 outstanding, and still report all-clear.
+  //
+  // The distinction that matters is TIME. An untracked arrival time 45 days out is
+  // not a problem — nothing is due yet, and nagging about it would be noise. The
+  // same gap inside the final two weeks is exactly what the host needs to see. So
+  // untracked stays quiet early and escalates as the day approaches, rather than
+  // being silently scored as a pass.
+  const untrackedNames = Object.entries(c)
+    .filter(([, v]) => v && v.level === 'not_tracked')
+    .map(([k]) => k);
+  const nameList = untrackedNames.join(', ');
+
+  if (notTracked > 0 && (eventSoon || eventToday)) {
+    return {
+      level: 'attention',
+      label: eventToday ? 'Day-of follow-up' : 'Needs follow-up',
+      summary: `Nothing flagged, but ${notTracked} check${notTracked === 1 ? '' : 's'} never ran${nameList ? ` (${nameList})` : ''} — not the same as passing, and the day is close.`,
+      counts,
+    };
+  }
+
+  // Safe — leans on event proximity for label. "All checks passing" may ONLY be
+  // said when every check actually ran.
   let label = 'Safe';
   if (eventSoon || eventToday) label = 'Ready for day-of';
-  return { level: 'safe', label, summary: eventSoon ? 'All checks passing — ready for event day.' : 'Booking healthy.', counts };
+  const summary = notTracked > 0
+    ? `${safe} of ${safe + notTracked} checks passing · ${notTracked} not tracked yet${nameList ? ` (${nameList})` : ''}.`
+    : (eventSoon ? 'All checks passing — ready for event day.' : 'Booking healthy.');
+  return { level: 'safe', label, summary, counts };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
