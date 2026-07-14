@@ -88,14 +88,14 @@ Compounded at `HostShellV2.jsx:7122-7133`: the hero prints **"15 of 15 · Every 
 
 | # | Finding | Source | file:line | Sev |
 |---|---|---|---|---|
-| 1 | **Vendor accountability infers "evidence attached" from a typed price** — sets `sourceType:'system'`; **zero** vendor-UI readers honour it | Layer Rated | `lib/vendorAccountability/derive.js:342,351,355` | HIGH |
+| ~~1~~ | ~~**Vendor accountability infers "evidence attached" from a typed price**~~ ✅ **CLOSED** (`3f70a07`) — see §4 | Layer Rated | `lib/vendorAccountability/derive.js` | ~~HIGH~~ |
 | 2 | **Research pipeline fabricates by default** — 4 of 6 provider families simulate; only a human gate stops synthetic citations reaching product data | Layer Rated, Scorecard | `backend/app/research_executor.py:49`; `lib/knowledge/providerExecutors.js:349` | HIGH — **needs a ruling** |
 | 3 | **Food engine ignores its own risk layer's "count by pickers"** | Layer Rated | no `picker` token in `playbooks/index.js` food math | HIGH |
 | 4 | **Invite route not code-split** — a guest downloads the whole ~657KB host shell to tap "yes" | vs Leaders | no `React.lazy` anywhere in `hostv2/src` | HIGH |
 | 5 | **`eventDateStatus 'rushed'` can never fire** — reads `opts.minLeadDays`; **no caller passes it** | Engine Doctrine | `lib/dates.js:29,37` | MED-HIGH |
 | 6 | **COI/insurance jargon + "Verify COI"** overclaims verification of a self-attestation | Copy Audit | `lib/vendorIntelligence.js:776,778,990` | MED-HIGH — violates the standing no-jargon rule + UX_07 |
 | 7 | **V2 budget estimate carries no metro premium** — omits `metroFactor` (defaults to 1); legacy computes it | Engine Doctrine | `HostShellV2.jsx:3058` vs `App.js:15900` | MED |
-| 8 | **≥5 independent day-rounders** (`ceil` vs `round`, local vs UTC) | Layer Rated | `dates.js:17`, `disclosure.js:43`, `dayBefore.js:25`, `phaseProgress.js:35`, `vendorIntelligence.js:35` | MED — two surfaces can disagree by a day |
+| ~~8~~ | ~~**≥5 independent day-rounders**~~ ✅ **CLOSED** (`091987b`) — **but the finding as filed was mostly wrong**; see §4 | Layer Rated | now one reader: `lib/dates.js` | ~~MED~~ |
 | 9 | **Identity "confidence" measures input length** — base 0.75, +0.10 for a type (always true), +0.05 if `freeText.length > 50` | Layer Rated | `lib/eventIdentityEngine.js:343-348` | MED |
 | 10 | **No shellfish-allergy nudge on a crab feast** — the knowledge exists only as risk copy | Layer Rated | `lib/eventContextNudges.js` (absent) | MED |
 | 11 | **Head-start draft queue vanishes on event day** | Agent Audit | `App.js:23848` (`{!isDayOf && …}`) | MED — the drafts vanish on the day they matter |
@@ -129,6 +129,36 @@ The earlier leaf-level pass (`867af98` / `48f6414`) is superseded by R1 — and 
 - **Address autocomplete on lodging** — `b2bb55e`: hotel/rental + backup fields use the same lookup as the venue. Disambiguates Charleston SC from Charleston WV.
 - **Food area label** — `ec2c1c6`: the area said "Food" but the bar was only `dietaryResolved`. It now means the menu decisions are made *and* dietary is answered, and the cue names which is missing.
 - **12 audits ported from artifacts** — `696be04`: they existed only as published artifacts and were invisible to any repo search.
+
+**Two more truthfulness defects, closed 2026-07-14 (evening):**
+
+- **#1 — "evidence attached" from a typed price** (`3f70a07`). `derive.js` inferred, per vendor field, `payment_terms: { whenTruthy: !!(vendor.cost || …), evidence: 'attached' }` — so typing `2400` into the cost box made the app tell the host a **contract was on file**. Same for `passenger_count`, `headcount`, `guard_count`; and a vendor whose *status dropdown* read "Confirmed" got `scope_confirmed` evidence `'attached'` — a dropdown conjuring a document.
+
+  Root cause, one level below the symptom: `makePromise()` never copied `evidenceKind` onto the promise record, so `derive.js` **had no way to ask what proof was wanted** and kept a private guess-table instead. The promise now carries its `evidenceKind`, and inference asks it: for a `count` promise the number IS the artifact; for a `document`/`contract` promise only a real file — or the planner's explicit "Mark proof on file" — may say attached.
+
+  Downgraded to `'none'`, deliberately **not** `'confirmed'`: `deriveVendorMissingProof` treats `'confirmed'` as satisfying evidence, so that would have preserved the same lie under a quieter name.
+
+  **The trap the fix walked into, and why it matters more than the fix.** Both promise lists (V2 + legacy) filtered on `status !== 'confirmed'` — safe only *because* confirmation had always implied faked evidence. Told honestly, a promise can be confirmed (terms known) and unproven (no contract), and the old filters would have hidden exactly that row **while the engine kept complaining about it**. A worry with no row to clear it is worse than the original lie. Hence `promiseNeedsHost()` / `promiseEvidenceSatisfied()` — one predicate, both surfaces, plus the tier math (which was reading `evidenceMissing` off a list that dropped confirmed promises, so the tier would have said "on track" about the very promise the proof list was flagging).
+
+- **#2 — "Event Day" on the afternoon BEFORE the event** (`091987b`). `vendorIntelligence.js` and `vendorCopilot.js` each carried `Math.round((eventMidnight - Date.now()) / 86400000)`, under a comment declaring them *"deliberately self-contained — no import from elsewhere."* That subtracts a wall-clock **instant** from a **midnight**: at 3pm the day before, nine hours remain, nine hours round to zero days, and `getVendorLifecycleStage` returned `'Event Day'` while arrival time read *"Not set — needed today"*. Rounding was hiding a units error.
+
+### An audit finding that was wrong — #8, "≥5 independent day-rounders"
+
+Filed as *"MED — two surfaces can disagree by a day,"* citing `dates.js`, `disclosure.js`, `dayBefore.js`, `phaseProgress.js`, `vendorIntelligence.js`. Checked against the code: **four of the five were correct.** They all normalize BOTH sides to midnight, and with both sides at midnight the difference is an exact integer — so `ceil` and `round` return *identical* answers. They could not disagree by a day. The audit counted `Math.ceil` vs `Math.round`, saw variety, and inferred a bug that was not there.
+
+Two real ones were **not named in the finding**:
+- `assembleRevealEngines.js` (×2) — `Math.floor` over a diff whose right side still carried the wall clock, so for most of every day it reported one day *fewer* than remained; the 30-day weather and compression risk thresholds fired a day early, and the outdoor-ceremony warning silently vanished the day before.
+- `CommunicationHub.jsx` — `new Date('2026-08-04')` parses as **UTC** midnight, so east of Greenwich its `ceil()` said "Today" during the evening before.
+
+Every private copy now delegates to `daysUntil()` in `lib/dates.js` (grown an injectable clock, plus `isEventDay`/`isPastEvent`) — **including the four that were correct**, because correct-and-duplicated is one edit away from wrong-and-duplicated, which is precisely how `vendorIntelligence`'s copy drifted. En route I briefly added `lib/eventDays.js` as the shared reader before noticing `dates.js` already exported a correct `daysUntil` — that would have made me the **sixth** copy. Deleted.
+
+> Restating the standing lesson, which this proves twice more (once for the F5 social-count retraction, once here): **a finding inherited from an audit is not evidence. Verify it against the running thing, or do not repeat it.**
+
+### Hero fit — the primary CTA was below the fold on every event (`d6d9da5`)
+
+Host-reported as *"the Next CTA is scrolling past the viewport."* Measured live: `.hero` budgets `min-height: calc(852px - 64px - 88px)` = **700px** and actually needs **823px** (day-before dinner) / **799px** (crab feast). The NEXT tile is the hero's last child, so the whole overflow lands on it — it painted at y=812 in an 852px scrollport whose dock starts at y=810. *"1 thing needs you — first: Confirm Fired Up BBQ"* was rendering **underneath the dock, below the fold, on first load, on every event.** Its own comment claimed `margin-top:auto` "anchors it just above the dock"; `margin-top:auto` distributes **slack**, and there is a 100–123px **deficit**, so it has been silently doing nothing.
+
+Now `position:sticky` against the `.app` scrollport. Open cost, stated: because the hero genuinely overflows, the pinned tile floats over the tail of the Guests/Budget sub-lines until you scroll. **The real repair is to reclaim ~110px in the tile cluster** so the hero fits its own budget — a UX_04 hierarchy call, still open.
 
 ### Verification limits, stated plainly
 - **C3's V2 surfaces are engine-verified, not browser-verified.** I could not stage a roster-mode event in V2 by patching localStorage (the merged sample keeps `guestMode: 'count'`). Proven by 6 tests including the 80-guest all-`'Pending'` import, and the legacy "You're all set" chain was observed absent.
