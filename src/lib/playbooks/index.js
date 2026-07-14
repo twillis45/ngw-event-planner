@@ -2208,6 +2208,28 @@ export function playbookFoodPlan(event, opts = {}) {
     && Array.isArray(_crabOrder.lines) && _crabOrder.lines.length > 0
     && _crabOrder.totalEstimatedCost != null);
 
+  // ── PICKERS SIZE THE SHELLFISH. Not heads. ──────────────────────────────────
+  //
+  // The app already asks the host how many people actually PICK crabs, stores it
+  // (event.crabPlan.crabEatingHeadcount), toasts "Sizing crabs to 10 pickers —
+  // kids and light eaters don't drive the count", and its own risk card says
+  // "count by ADULT PICKERS, not heads." Then the food plan sized the crab line
+  // to the full guest count anyway — and the food plan is what BILLS.
+  //
+  // Measured on a 24-guest feast where the host said 10 pick: the spread ordered
+  // 21 dozen (~252 crabs, $672–$3,948) while the crab card recommended ~90. The
+  // biggest line item on the flagship event type, and the app was contradicting
+  // itself on one screen.
+  //
+  // Only fires when the host EXPLICITLY set a picker count — otherwise nothing
+  // changes. The clamp ("pickers can't outnumber your guests") is NOT re-derived
+  // here: we read the already-clamped number off buildCrabPlan, which owns it.
+  const _hostSetPickers = !!(event && event.crabPlan && Number(event.crabPlan.crabEatingHeadcount) > 0);
+  const _pickers = (_hostSetPickers && _crabOrder && _crabOrder.relevant
+    && Number(_crabOrder.crabEatingHeadcount) > 0)
+    ? Number(_crabOrder.crabEatingHeadcount) : null;
+  const isShellfish = (name) => /(crab|crawfish|crayfish|shrimp|prawn|lobster|oyster|clam|mussel|shellfish)/i.test(String(name || ''));
+
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p) && hostCooksIt(p))
@@ -2223,7 +2245,13 @@ export function playbookFoodPlan(event, opts = {}) {
       // Proteins size off the appetite-adjusted count (kids at 0.4, vegetarians/vegans at 0
       // — they eat the diet-derived veg main instead); everything else off the full guest
       // count. _kids === 0 && vegN === 0 ⇒ proteinGuests === guests ⇒ no change.
-      const _qtyGuests = ((_kids > 0 || vegN > 0) && isAppetiteFood(swappedName || p.item)) ? proteinGuests : guests;
+      // Shellfish sizes to the host's declared PICKERS (see above) — a stronger,
+      // host-stated signal than the kids/veg appetite adjustment, and the one the
+      // rest of the app already claims to be using. Everything else is unchanged.
+      const _itemName = swappedName || p.item;
+      const _qtyGuests = (_pickers != null && isShellfish(_itemName))
+        ? _pickers
+        : (((_kids > 0 || vegN > 0) && isAppetiteFood(_itemName)) ? proteinGuests : guests);
       const baseQty = resolveQuantity(pForQty, _qtyGuests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
       // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
@@ -2327,8 +2355,12 @@ export function playbookFoodPlan(event, opts = {}) {
         // purchase unit (dozen / half bushel / bushel) from the chosen size decision and
         // adult guest count. The shopping list prefers this over the raw dozen-based qty.
         // null for any purchase without this data — no-op for the rest of the plan.
-        ...((resolveBulkPurchase(p, _decisions, _choices, proteinGuests) != null)
-          ? { bulkRecommendation: resolveBulkPurchase(p, _decisions, _choices, proteinGuests) }
+        // PICKERS: `_qtyGuests` already resolves to the host's declared picker count for
+        // shellfish (and to proteinGuests / guests otherwise), so the BUSHEL recommendation
+        // sizes off the same basis as the line's quantity. It previously used proteinGuests
+        // — so the crab card said "10 pickers" while the bushel maths still said 28 heads.
+        ...((resolveBulkPurchase(p, _decisions, _choices, _qtyGuests) != null)
+          ? { bulkRecommendation: resolveBulkPurchase(p, _decisions, _choices, _qtyGuests) }
           : {}),
       };
     });
