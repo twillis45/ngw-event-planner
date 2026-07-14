@@ -101,3 +101,32 @@ test('a shellfish-allergic guest is never counted as a crab picker', () => {
   expect(plan.crabEatingHeadcount).toBe(2);          // not 3 — we don't buy crabs for someone who can't eat them
   expect(plan.guestPickers).toEqual({ yes: 2, no: 1, unanswered: 0, basis: 'guests' });
 });
+
+// THE GATE. Asking the guests is only half of it — the order must WAIT for the answer.
+// blockingDecision() (playbooks/index.js:463) blocks food purchases when the playbook
+// DECLARES a dietary decision and it isn't resolved. crabFeast declared none, so the
+// app warned about the shellfish allergy in a dismissible risk sheet and then let the
+// host order 21 dozen crabs before a single guest had been asked. dinnerParty has
+// carried this gate all along: "one unflagged severe allergy can send a guest to the ER."
+import { getPlaybook, playbookFoodPlan as _fp } from '../playbooks';
+
+test('crab feast now DECLARES a dietary decision — the gate the engine was waiting for', () => {
+  const pb = getPlaybook('Crab Feast');
+  const dietary = (pb.decisions || []).find(d => d.id === 'dietary');
+  expect(dietary).toBeTruthy();
+  expect(dietary.blocks).toContain('food');     // it gates the crab order itself
+});
+
+test('the crab order is BLOCKED until allergies are collected, and clears once they are', () => {
+  const base = {
+    id: 'e-gate', type: 'Crab Feast', date: '2026-08-20',
+    guestMode: 'count', guestCount: 12, guests: [], foodGot: {},
+  };
+  const blocked = _fp(base);
+  // dietaryResolved() is false → every food purchase carries the dietary blocker
+  expect(blocked.dietaryResolved).toBe(false);
+
+  // the host notes the allergies (or the guests answered on the invite) → gate clears
+  const cleared = _fp({ ...base, dietaryNoted: true });
+  expect(cleared.dietaryResolved).toBe(true);
+});
