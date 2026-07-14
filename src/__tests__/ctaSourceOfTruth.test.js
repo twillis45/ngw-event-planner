@@ -41,7 +41,12 @@ const STATIC_ANCHORS = new Set([
   'vendor-add', 'vendor-list', 'food-plan', 'next-step-hero', 'ros-now',
   'host-decisions', 'guest-roster', 'crab-plan', 'crab-headcount',
 ]);
-const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline']);
+// 'Risks' ships WITH its consumer (2026-07-14): routeSheet now has a real branch for it, and
+// the surface registry raises high-severity risks into the ranked list. Before this, the risk
+// engine could reach exactly one passive index row — nothing could route to it, so nothing
+// could raise it. Added here only because the destination renders, which is the rule this list
+// exists to enforce.
+const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline', 'Risks']);
 
 // ── Scenario matrix: 10 types × 10 states = 100.
 const TYPES = ['bbq', 'crab feast', 'birthday', 'graduation', 'juneteenth',

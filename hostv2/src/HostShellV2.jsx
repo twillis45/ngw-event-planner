@@ -2282,6 +2282,13 @@ export default function HostShellV2() {
     // The destination existed the whole time. `sheet.kind === 'decisions'` is
     // built and titled ("Calls to make", :5235) and the quiet-index row already
     // opens it. Only the routing table never learned the way.
+    // The registry raises risks — so risks must land. Until now `sheet.kind === 'risks'` was
+    // reachable only by tapping the quiet-index row; nothing could ROUTE to it, which is
+    // precisely why the risk engine could raise nothing.
+    if (route.tab === 'Risks') {
+      setSheet({ kind: 'risks', focus: route.riskId || null });
+      return true;
+    }
     if (route.tab === 'Decisions') {
       setSheet({ kind: 'decisions', focus: route.decisionId || route.taskId || null });
       return true;
@@ -4194,6 +4201,24 @@ export default function HostShellV2() {
                   the engine's handled facts. */}
               <div className={'slidepanel' + (handledOpen ? ' open' : '')}>
                 <div className="slidepanel-inner">
+                  {/* WHAT THESE TWO NUMBERS ARE (host, 2026-07-14).
+                      The hero shows "3 of 5" in one tile and "3 things need you" in the other,
+                      and never once says what an AREA is, what a THING is, or why the two
+                      numbers differ. They are not the same count and they never were — one is
+                      a map, the other is a queue — and a host reading them side by side was
+                      left to reconcile that themselves. (They used to genuinely disagree, too:
+                      two engines, two answers. That is fixed — they now read the same list —
+                      but agreeing is not the same as EXPLAINING.) */}
+                  <p className="grounding" style={{ margin: '0 0 10px' }}>
+                    <b>Areas</b> are the parts of a plan — the date, the venue, the guest count, the food, the rest.
+                    This says how many are settled. <b>Next</b> is the shorter thing: what actually needs you today,
+                    in order, starting with the one at the top.
+                  </p>
+                  <p className="grounding" style={{ margin: '0 0 12px' }}>
+                    They read from the same list, so they can’t contradict each other — but they won’t match, and
+                    they shouldn’t. An area can be settled and still have one loose end, and a single job can close
+                    two areas at once.
+                  </p>
                   {/* POP-1C consumer: the recommendation lifecycle is the one
                       source that classifies EVERY recommendation (foundation,
                       vendors, decisions, risks) by a single state vocabulary.
@@ -4626,7 +4651,7 @@ export default function HostShellV2() {
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
                 // a host that a CTA does not land HERE, and these now do. ('Communication'
                 // stays off the list: V2 has no messages surface, so its tag is still true.)
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule'].includes(a.route.tab));
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks'].includes(a.route.tab));
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
                     style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
@@ -4638,6 +4663,23 @@ export default function HostShellV2() {
                       </div>
                       <h3>{a.title}</h3>
                       {a.consequence && <p className="because">{a.consequence}</p>}
+                      {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
+                          been for a while, and it never once said WHY — the host was handed a
+                          ranking and asked to trust it. Every line below is true of the item's
+                          own data (its severity, or the domain everything else sizes off), not
+                          a flourish: if we cannot say something true about why it leads, we say
+                          nothing. Only ever on the first card. */}
+                      {i === 0 && (() => {
+                        const why = a.level === 'critical'
+                          ? 'This is first because it can’t wait — everything else can.'
+                          : a.domain === 'date' ? 'This is first because every deadline in the plan counts back from it.'
+                          : a.domain === 'guests' ? 'This is first because the food, the seats and the budget all size off the headcount.'
+                          : a.domain === 'budget' ? 'This is first because every estimate below is guessing until it has a number to work against.'
+                          : a.domain === 'food' ? 'This is first because the shopping list and the crab order both wait on it.'
+                          : a.domain === 'starttime' ? 'This is first because the day has an order but no clock until you set it.'
+                          : null;
+                        return why ? <p className="grounding" style={{ margin: '4px 0 0', opacity: .85 }}>{why}</p> : null;
+                      })()}
                       <div className="actions-row">
                         {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
                       </div>

@@ -53,6 +53,7 @@ import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
+import { raiseAll } from './lib/surfaceRegistry';
 import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
@@ -1707,6 +1708,47 @@ export function eventPlan(event, ctx = null) {
       });
     }
   } catch (_e) { /* phase ledger unavailable — the foundation list stands unchanged */ }
+
+  // ── THE SURFACE REGISTRY ────────────────────────────────────────────────────
+  // The attention audit's #1 structural finding: only 2 of 7 attention producers fed this
+  // list. Risks, vendor conflicts, the day-of alert stack and the arrival asks all ran, were
+  // all correct in isolation, and all reached NOTHING — a weather risk on an outdoor event
+  // could not outrank "Plan the food", not because it ranked low but because it could not
+  // ENTER THE LIST AT ALL. Each was hand-wired to one passive row, or to one sheet a host
+  // might never open.
+  //
+  // Now every surface DECLARES what it raises (lib/surfaceRegistry.js) and this reads the
+  // declaration. Criticals lead — a caterer who hasn't arrived outranks a domino by
+  // construction — and dedupe is by domain, so a surface already speaking for itself in the
+  // list is not doubled.
+  //
+  // The rule the registry exists to enforce: a surface cannot be silent by ACCIDENT. It can
+  // only be silent by declaring nothing, visibly, in one file.
+  try {
+    const raised = raiseAll(event) || [];
+    const criticals = raised.filter(r => r.severity === 'critical');
+    const rest = raised.filter(r => r.severity !== 'critical');
+    let insertAt = topAction ? 1 : 0;   // the reactive top action keeps the lead
+    for (const r of [...criticals, ...rest]) {
+      const domain = 'surface:' + r.surface;
+      if (seen.has(domain)) continue;
+      seen.add(domain);
+      const action = {
+        id: domain, domain,
+        title: r.title,
+        consequence: r.why,
+        route: r.route, primaryRoute: r.route,
+        cta: 'Go', ctaLabel: 'Go',
+        level: r.severity, category: 'surface',
+        done: false, source: 'surfaceRegistry', surface: r.surface,
+      };
+      // A CRITICAL raised by a surface (a vendor who hasn't arrived, a high risk with no
+      // plan) belongs above the foundational dominoes — "Set your budget" does not outrank
+      // "Your caterer hasn't shown up".
+      if (r.severity === 'critical') { nextActions.splice(insertAt++, 0, action); }
+      else nextActions.push(action);
+    }
+  } catch (_e) { /* registry unavailable — the list stands unchanged */ }
   // PAST-EVENT-1 — a wrapped event's action list must agree with the phase engine
   // (deriveEventPhaseProgress already returns 'post_event' / "Wrap-up" for it): it
   // doesn't help a host to be told "3 things need you" about a party that happened
