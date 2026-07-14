@@ -58,6 +58,7 @@ import { SOURCING_TIERS, DEFAULT_SOURCING, sourcingTier, sourcingFactor, isProte
 import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only normalized projection of `list`
 import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked } from '../workstreams';
+import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -135,14 +136,15 @@ function resolveBulkPurchase(p, decisions, choices, adultGuests) {
   const ladder = p.priceLadder[ladderKey];
   if (!ladder) return null;
   const servingKey = ladder.servingKey || ladderKey;
-  const guide = (p.servingGuide.bySize && p.servingGuide.bySize[servingKey])
-    || (p.servingGuide.bySize && p.servingGuide.bySize.large)
-    || { withSides: 6, mainOnly: 8 };
-  const crabsPerPerson = guide.withSides;
+  // withSides used to be a bare number here and a `|| { withSides: 6 }` literal backed
+  // it up — a FIFTH copy of the crab figure, and the fallback was the medium number
+  // being applied to whatever size the host actually chose. It now reads the sourced,
+  // size-aware table, which returns a published [low, high] range.
+  const crabsPerPerson = crabsPerPicker(servingKey);
   const guests = Math.max(1, Math.round(adultGuests));
   const totalUnits = Math.ceil(guests * crabsPerPerson);
-  const perBushel = ladder.approxPerBushel || 72;
-  const perHalfBushel = ladder.approxPerHalfBushel || 36;
+  const perBushel = ladder.approxPerBushel || crabsPerBushel(servingKey);
+  const perHalfBushel = ladder.approxPerHalfBushel || Math.round(crabsPerBushel(servingKey) / 2);
   if (totalUnits <= 12 && ladder.perDz) {
     return { qty: 1, unit: 'dozen', totalUnits, unitLabel: '1 dozen', price: ladder.perDz };
   }
@@ -2256,7 +2258,34 @@ export function playbookFoodPlan(event, opts = {}) {
       const _qtyGuests = (_pickers != null && isShellfish(_itemName))
         ? _pickers
         : (((_kids > 0 || vegN > 0) && isAppetiteFood(_itemName)) ? proteinGuests : guests);
-      const baseQty = resolveQuantity(pForQty, _qtyGuests);
+      // ── The blue-crab line reads through the crab engine, it does not re-derive ──
+      // These two disagreed in production, on one screen: the food row said
+      // "12.6 dozens · ¾ dozen/guest × 18 guests" (~151 crabs) while the crab plan
+      // said "1 bushel + 1 half-bushel — about 108 crabs · 18 pickers at ~6 each".
+      //
+      // Both were reading this same playbook — just different fields of it. p_crabs
+      // carries a flat `qtyPerGuest: 0.75` (9 crabs a head) AND a `servingGuide`
+      // whose entry for the chosen size says 6 with sides. The food row multiplied
+      // the flat number; crabPlan read the guide. The guide is the honest one: it is
+      // size-aware (bigger crabs, fewer per person) and it discounts kids to ~60% of
+      // an adult's share. The flat 0.75 knows neither, and drove a ~40-crab overbuy.
+      //
+      // So the crab engine OWNS the crab count and this row renders its answer.
+      // Deliberately not gated on whether guests answered the picker question — when
+      // nobody has, crabPlan still resolves heads to the guest count, so it is the
+      // right source either way. Only blue crabs: shrimp and snow-crab lines are not
+      // what the plan is about, and a line swapped away from crabs keeps its own math.
+      const _crabHeads = Number(_crabOrder && _crabOrder.effectivePickerCount) || 0;
+      const _crabPlanQty = (
+        _crabOrder && _crabOrder.relevant && !swappedName &&
+        (p.id === 'p_crabs' || /blue crab/i.test(String(p.item || ''))) &&
+        p.unit === 'dozen' &&
+        Number(_crabOrder.targetCrabsPerPerson) > 0 &&
+        _crabHeads > 0
+      )
+        ? Math.round((Number(_crabOrder.targetCrabsPerPerson) * _crabHeads / 12) * 10) / 10
+        : null;
+      const baseQty = _crabPlanQty != null ? _crabPlanQty : resolveQuantity(pForQty, _qtyGuests);
       // 64-#3 — host quantity override (event.foodQty[id]); flows straight into the
       // cost so changing "15 lbs" to "20 lbs" moves the food total + the budget.
       const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
@@ -2328,7 +2357,16 @@ export function playbookFoodPlan(event, opts = {}) {
         // into the shopping-list deliverable so the hand-off shows its reasoning
         // ("12 lbs · ½ lb/guest"). '' when there's no per-person basis or the
         // line was unit-converted (same honesty rule as perGuest above).
-        basis: buyable ? '' : quantityBasis(p),
+        basis: (buyable || _crabPlanQty != null) ? '' : quantityBasis(p),
+        // A pre-composed basis sentence, used when the rate×guests template cannot tell
+        // the truth. The row renders `basis + ' × N guests'`, and the crab count is not
+        // per GUEST — it is per PICKER, at a per-size rate the crab engine owns. Rather
+        // than bend the template, the crab line states its own reasoning, in the same
+        // words the crab plan uses, so the two screens now read as one number with one
+        // explanation. Every other line keeps `basis` untouched.
+        basisNote: _crabPlanQty != null
+          ? `${_crabOrder.targetCrabsPerPerson} crabs a picker × ${_crabOrder.crabEatingHeadcount} ${_crabOrder.crabEatingHeadcount === 1 ? 'picker' : 'pickers'} — sized by your crab plan`
+          : null,
         qtyOverridden: qOver != null, baseQty,
         // DENOMINATORS-2 (7× food-cost band): both ends price the SAME ceiling-sized
         // quantity (`units`) — only uLow vs uHigh differ. Previously `low` also

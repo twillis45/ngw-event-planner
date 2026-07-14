@@ -11,11 +11,22 @@ const ev = (extra) => ({ id: 'e', type: 'Crab Feast', date: future, guestCount: 
 const lineById = (plan, id) => (plan.list || []).find((x) => x.id === id);
 
 describe('7x food-cost band — both ends price the same ceiling headcount', () => {
-  test('the crab line\'s low/high both use the ceiling qty; the ratio is the pure price-tier spread (188/32), not price × attendance', () => {
+  test('the crab line\'s low/high both use the same qty; the ratio is the pure price-tier spread (188/32), not price × attendance', () => {
     const plan = playbookFoodPlan(ev());
     const crabs = lineById(plan, 'p_crabs');
-    // casual_open shift on 75 planned: floor=60, ceiling=86. units = round(0.75*86*10)/10 = 64.5.
-    const units = 64.5;
+    // UPDATED 2026-07-14. Was `round(0.75 * 86 * 10)/10 = 64.5` — the flat 0.75 dozen a
+    // head (9 crabs) applied to the attendance ceiling. Both halves of that are gone:
+    //   · the RATE is now sourced and size-aware — Cameron's says a large crab with sides
+    //     is 4 a picker, not 9 (0.75 dozen was higher than ANY published figure);
+    //   · the HEADCOUNT now comes from the crab engine, so the food row and the crab plan
+    //     cannot print different crab totals on the same screen, which they were doing.
+    // 75 pickers × 4 crabs = 300 crabs = 25 dozen.
+    //
+    // What this test is actually FOR is unchanged and still enforced below: low and high
+    // price the SAME quantity, so attendance uncertainty is never multiplied into the
+    // dollar band. (The ceiling behaviour itself is still pinned — by the non-crab lines
+    // in the next test, which is where it belongs, since crabs now have a better source.)
+    const units = 25;
     expect(crabs.units).toBe(units);
     expect(crabs.low).toBe(Math.round(units * 32));   // ceiling-heads × price-low — NOT floor-heads × price-low
     expect(crabs.high).toBe(Math.round(units * 188));  // ceiling-heads × price-high (unchanged)

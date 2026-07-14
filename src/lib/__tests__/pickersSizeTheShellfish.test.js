@@ -54,10 +54,17 @@ test('pickers cannot outnumber guests — the clamp is crabPlan\'s, not re-deriv
   expect(absurd.qty).toBeLessThanOrEqual(plain.qty);
   expect(absurd.qty).toBeGreaterThan(ten.qty);   // still more than the 10-picker order
 
-  // Note the clamp lands on the RAW guest count (24), while the un-clamped plan sizes
-  // to the attendance-band planning number (28 — plus-ones and walk-ins). Both are
-  // honest; they answer different questions. crabPlan owns the clamp and we read it.
-  expect(absurd.qty).toBeLessThan(plain.qty);
+  // UPDATED 2026-07-14. This used to assert `absurd.qty < plain.qty`, and explained the
+  // gap away: "the clamp lands on the RAW guest count (24), while the un-clamped plan
+  // sizes to the attendance-band planning number (28 — plus-ones and walk-ins). Both are
+  // honest; they answer different questions."
+  //
+  // They were not both honest. That gap WAS the bug — the food row and the crab plan
+  // were reading different headcounts, and so printed different crab totals on one
+  // screen. The crab line now reads the crab engine for BOTH the rate and the head
+  // count, so the clamped case and the plain case land on the same 24 pickers and agree
+  // exactly. The crab plan owns the crab number; the food row renders it.
+  expect(absurd.qty).toBe(plain.qty);
 });
 
 test('NON-shellfish lines still size to the full guest count — this is a shellfish rule', () => {
