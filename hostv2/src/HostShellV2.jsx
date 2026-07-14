@@ -5594,8 +5594,14 @@ export default function HostShellV2() {
                   })()}
                   <div className="shelf-label">The stay</div>
                   <div className="lodge-form">
+                    {/* A hotel/rental IS an address — same lookup the venue field
+                        uses (Places when a key exists, OSM otherwise), so the host
+                        types "hamp" and gets the real Hampton Inn rather than
+                        hand-typing a name the maps link can't resolve later. */}
                     <label className="lodge-f full"><span className="of">Place</span>
-                      <input className="field" style={fld} placeholder="Hotel or rental name" value={f.hotelName} onChange={setF('hotelName')} aria-label="Where guests stay" /></label>
+                      <AddressField value={f.hotelName} onChange={v => setLodgeForm(d => ({ ...d, hotelName: v }))}
+                        onPick={sg => setLodgeForm(d => ({ ...d, hotelName: sg.label }))}
+                        placeholder="Hotel or rental name" ariaLabel="Where guests stay" inputStyle={fld} /></label>
                     <label className="lodge-f"><span className="of">A night</span>
                       <input className="field" style={fld} type="number" min="0" inputMode="decimal" placeholder="$" value={f.rate} onChange={setF('rate')} aria-label="Nightly rate in dollars" /></label>
                     <label className="lodge-f"><span className="of">Booking code</span>
@@ -5604,9 +5610,11 @@ export default function HostShellV2() {
                       <input className="field" style={fld} type="date" value={f.deadline} onChange={setF('deadline')} aria-label="Last day to book at the group rate" /></label>
                     {(f.backups || []).flatMap((bk, bi) => [
                       <label key={'bn' + bi} className="lodge-f"><span className="of">{bi === 0 ? 'Backup place' : 'Another backup'}</span>
-                        <input className="field" style={fld} placeholder={bi === 0 ? 'If the first fills up' : 'One more option'} value={bk.name}
-                          onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, name: e.target.value } : x) }))}
-                          aria-label={'Backup place ' + (bi + 1)} /></label>,
+                        <AddressField value={bk.name}
+                          onChange={v => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, name: v } : x) }))}
+                          onPick={sg => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, name: sg.label } : x) }))}
+                          placeholder={bi === 0 ? 'If the first fills up' : 'One more option'}
+                          ariaLabel={'Backup place ' + (bi + 1)} inputStyle={fld} /></label>,
                       <label key={'bt' + bi} className="lodge-f"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Farther? Cheaper?" value={bk.note}
                           onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: e.target.value } : x) }))}
