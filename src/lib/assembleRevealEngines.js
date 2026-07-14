@@ -4,6 +4,10 @@
 // Outputs: Array of cards matching the unified contract
 
 import { playbookFoodPlan, effectiveRos } from './playbooks';
+// Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
+// right side still carried the wall clock, so for most of every day it reported one day
+// FEWER than remained, and the 30-day risk thresholds below fired a day early.
+import { daysUntil as daysToEvent } from './dates';
 
 // ─── Card Contract ─────────────────────────────────────────────────────────
 // Every stage (identity, timeline, food, risks, blockers) uses this shape:
@@ -372,15 +376,7 @@ function deriveTopRisks(event, eventIdentity) {
 
   // RULE: Outdoor + ceremony = weather
   if (eventIdentity.ceremonyComponents && eventIdentity.ceremonyComponents.includes('formal-salute')) {
-    const daysUntil = (() => {
-      try {
-        const d = new Date(event.date + 'T00:00:00');
-        const now = new Date();
-        return Math.floor((d - now) / (1000 * 60 * 60 * 24));
-      } catch {
-        return null;
-      }
-    })();
+    const daysUntil = daysToEvent(event.date);
 
     if (daysUntil !== null && daysUntil > 0 && daysUntil <= 30 && !event.indoorVenue) {
       risks.push({
@@ -394,15 +390,7 @@ function deriveTopRisks(event, eventIdentity) {
 
   // RULE: Large guest count + limited timeline
   const guestCount = event.guestCount || (event.guests && event.guests.length) || 0;
-  const daysUntil = (() => {
-    try {
-      const d = new Date(event.date + 'T00:00:00');
-      const now = new Date();
-      return Math.floor((d - now) / (1000 * 60 * 60 * 24));
-    } catch {
-      return null;
-    }
-  })();
+  const daysUntil = daysToEvent(event.date);
 
   if (guestCount > 100 && daysUntil !== null && daysUntil < 30) {
     risks.push({

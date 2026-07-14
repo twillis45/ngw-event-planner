@@ -4,7 +4,7 @@
 //   1. "Event Day" on the afternoon BEFORE the event (a units error, hidden by rounding)
 //   2. "evidence attached" because the host typed a price (a value mistaken for a document)
 
-import { daysUntil, isEventDay, isPastEvent } from '../eventDays';
+import { daysUntil, isEventDay, isPastEvent } from '../dates';
 import { inferPromisesFromVendor, deriveVendorMissingProof, promiseNeedsHost, promiseEvidenceSatisfied } from '../vendorAccountability/derive';
 import { getVendorDayOfState, getVendorLifecycleStage } from '../vendorIntelligence';
 

@@ -15,6 +15,7 @@
 //      state below Dormant — nothing is ever Hidden / Locked / Disabled.
 
 import { audiencePersona } from './nextActionRenderer';
+import { daysUntil } from './dates';
 
 // ── Visibility enum (the ONLY four states) ────────────────────────────────────
 export const VIS = {
@@ -35,13 +36,11 @@ const hasAnyData = (e) => guestsN(e) > 0 || namedVendors(e) > 0 || timelineN(e) 
 // progress, so they don't "start" the event for disclosure purposes.
 const hostStarted = (e) => guestsN(e) > 0 || namedVendors(e) > 0 || docsN(e) > 0;
 
+// One reader: daysUntil() in lib/dates.js. This was a private copy — correct, but a
+// private copy is how vendorIntelligence's copy drifted into announcing "Event Day" the
+// day before. Correct-and-duplicated is one edit away from wrong-and-duplicated.
 function daysTo(e) {
-  if (!e || !e.date) return null;
-  try {
-    const d = new Date(e.date + 'T00:00:00');
-    const t = new Date(); t.setHours(0, 0, 0, 0);
-    return Math.ceil((d - t) / 86400000);
-  } catch (err) { return null; }
+  return e && e.date ? daysUntil(e.date) : null;
 }
 
 const isPlanner = (e) => audiencePersona(e) !== 'host'; // planner / operator keep the full cockpit

@@ -26,12 +26,12 @@
 //     NO vendor→document FK. We represent these as 'not_tracked' honestly.
 
 import { getVendorRequiredQuestions } from './vendorQuestions';
-import { daysUntil } from './eventDays';
+import { daysUntil } from './dates';
 
 // ── Tiny date utils (deliberately self-contained — no import from elsewhere) ──
 // daysFrom() used to compute this itself, subtracting a wall-clock instant from a
 // midnight — so from noon onward the day BEFORE the event it returned 0 and every
-// surface below said "Event Day". One reader now, in lib/eventDays.js.
+// surface below said "Event Day". One reader now: daysUntil() in lib/dates.js.
 const daysFrom = (iso) => daysUntil(iso);
 function fieldEither(v, ...keys) {
   for (const k of keys) {

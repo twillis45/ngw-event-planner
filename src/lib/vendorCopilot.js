@@ -46,7 +46,7 @@ import {
   getVendorLinkedWork,
 } from './vendorIntelligence';
 import { getVendorRequiredQuestions, getVendorCategoryKey } from './vendorQuestions';
-import { daysUntil } from './eventDays';
+import { daysUntil } from './dates';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. Context builder — assembles the grounded "facts" object passed to BOTH
@@ -103,7 +103,7 @@ export function buildVendorCopilotContext(vendor, event) {
 
 // daysFrom() used to compute this itself, subtracting a wall-clock instant from a
 // midnight — so from noon onward the day BEFORE the event it returned 0 and every
-// surface below said "Event Day". One reader now, in lib/eventDays.js.
+// surface below said "Event Day". One reader now: daysUntil() in lib/dates.js.
 const daysFrom = (iso) => daysUntil(iso);
 function pickLastLogDate(log) {
   if (!Array.isArray(log) || log.length === 0) return null;

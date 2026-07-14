@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { color, space, type, radius } from '../design/tokens';
-import { daysUntil } from '../lib/eventDays';
+import { daysUntil } from '../lib/dates';
 
 const P = {
   canvas:       color.surface.canvas,

@@ -9,13 +9,39 @@
 // disagreed by a day right at the 14-day boundary, so a forecast occasionally
 // wouldn't show for an event sitting exactly 14 days out.
 
-export const getToday = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+// Read "now" through Date.now() rather than a bare `new Date()` so a caller can pin
+// the clock. Not a test affordance: this module's whole job is time, and time you
+// cannot pin is time you cannot check.
+export const getToday = (now) => { const d = now ? new Date(now) : new Date(Date.now()); d.setHours(0, 0, 0, 0); return d; };
 
-export const daysUntil = (d) => {
+// Whole CALENDAR days from today until `d`. Both sides are midnight, so the result
+// is an exact integer and the clock never moves the date: the day before the event
+// answers 1 at dawn and at 11pm alike.
+//
+// This is THE reader. On 2026-07-14 vendorIntelligence.js and vendorCopilot.js were
+// each found carrying a private copy that subtracted a wall-clock INSTANT from a
+// midnight — `Math.round((eventMidnight - Date.now()) / 86400000)` — under a comment
+// declaring them "deliberately self-contained — no import from elsewhere." At 3pm the
+// day before, nine hours remain, nine hours round to zero days, and the vendor
+// surfaces began announcing "Event Day" and "needed today" to a host whose event was
+// tomorrow. CommunicationHub had a third copy that reached the same lie by a different
+// route: `new Date('2026-08-04')` parses as UTC midnight, so east of Greenwich its
+// ceil() said "Today" the evening before.
+//
+// Days between two DATES is a calendar question, not a duration question. Anything
+// asking it imports this. A private copy of this arithmetic is a bug, not an
+// optimization — that is the whole finding.
+export const daysUntil = (d, now) => {
   if (!d) return null;
-  const target = new Date(String(d).slice(0, 10) + 'T00:00:00');
-  return isNaN(target) ? null : Math.ceil((target - getToday()) / 86400000);
+  const target = d instanceof Date ? getToday(d) : new Date(String(d).slice(0, 10) + 'T00:00:00');
+  return isNaN(target) ? null : Math.round((target - getToday(now)) / 86400000);
 };
+
+/** True only on the event's actual calendar date — all day, and only that day. */
+export const isEventDay = (d, now) => daysUntil(d, now) === 0;
+
+/** True once the event's date has passed. */
+export const isPastEvent = (d, now) => { const n = daysUntil(d, now); return n != null && n < 0; };
 
 // ── TIME INTELLIGENCE ─────────────────────────────────────────────────────────
 // ONE source for "is this event date usable, and what is its standing relative to

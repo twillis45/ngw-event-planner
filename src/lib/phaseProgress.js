@@ -26,14 +26,11 @@ import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
+import { daysUntil } from './dates';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
-  if (!dateStr) return null;
-  const d = new Date(String(dateStr) + 'T00:00:00');
-  if (isNaN(d)) return null;
-  const t = new Date(now); t.setHours(0, 0, 0, 0);
-  return Math.round((d - t) / 86400000);
+  return daysUntil(dateStr, now);
 };
 const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
 

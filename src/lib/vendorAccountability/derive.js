@@ -5,6 +5,7 @@
 
 import { getVendorPlaybook, normalizeCategory, UNIVERSAL_VENDOR_QUESTIONS } from './playbooks.js';
 import { makePromise, PROMISE_STATUS_SEVERITY } from './promiseModel.js';
+import { daysUntil } from '../dates.js';
 
 // Internal accountability tier (machine-internal). UI maps to display labels.
 export const ACCOUNTABILITY_TIERS = Object.freeze([
@@ -24,12 +25,10 @@ export const ACCOUNTABILITY_LABEL = Object.freeze({
 });
 
 // ─── Utilities ────────────────────────────────────────────────────────────
-function daysUntil(iso) {
-  if (!iso) return null;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const target = new Date(iso); target.setHours(0,0,0,0);
-  return Math.round((target - today) / 86_400_000);
-}
+// One reader: daysUntil() in lib/dates.js. This was a private copy — correct, but a
+// private copy is how vendorIntelligence's copy drifted into announcing "Event Day" the
+// day before. Correct-and-duplicated is one edit away from wrong-and-duplicated.
+// (Also: `new Date(iso)` parsed a bare YYYY-MM-DD as UTC — the CommunicationHub bug.)
 
 function isPast(iso) {
   if (!iso) return false;
@@ -139,10 +138,14 @@ export function deriveVendorAccountability(vendor, event, promises = []) {
     const d = daysUntil(p.dueDate);
     return d !== null && d >= 0 && d <= 3;
   });
-  const evidenceMissing = actionable.filter(p =>
-    p.evidenceRequired &&
-    p.evidenceStatus !== 'attached' &&
-    p.evidenceStatus !== 'confirmed'
+  // NOT `actionable` (which drops anything confirmed): a promise can be confirmed and
+  // still unproven — that is the whole point of the evidence fix. Reading this off
+  // `actionable` would let the tier say "on track" about the very promise
+  // deriveVendorMissingProof is listing as missing its proof.
+  const evidenceMissing = promises.filter(p =>
+    p.status !== 'completed' &&
+    p.status !== 'not_required' &&
+    !promiseEvidenceSatisfied(p)
   );
 
   // Critical confirmations missing from playbook

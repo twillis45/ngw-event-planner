@@ -71,6 +71,7 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
 import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup, isVendorBooked, isVendorConfirmed } from './lib/workstreams';
 import { buildExperienceContext } from './lib/experienceContext';
+import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
 // requestSentAt is the canonical flag but is not always written, so fall back to
@@ -131,11 +132,10 @@ const PHASE_OFFSET = {
 function fmtMoney(n) {
   return '$' + Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 }
-function daysFrom(dateStr) {
-  if (!dateStr) return null;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  return Math.ceil((new Date(dateStr + 'T00:00:00') - today) / 86400000);
-}
+// One reader: daysUntil() in lib/dates.js. This was a private copy — correct, but a
+// private copy is how vendorIntelligence's copy drifted into announcing "Event Day" the
+// day before. Correct-and-duplicated is one edit away from wrong-and-duplicated.
+const daysFrom = (dateStr) => daysUntil(dateStr);
 function fmtRelative(isoStr) {
   if (!isoStr) return '';
   const diff = Date.now() - new Date(isoStr).getTime();

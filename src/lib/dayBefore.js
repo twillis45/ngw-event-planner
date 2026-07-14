@@ -16,13 +16,11 @@ import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed } from './workstreams';
 import { effectiveDone } from './taskEngine';
+import { daysUntil } from './dates';
 
 const daysTo = (dateStr, now = new Date()) => {
   if (!dateStr) return null;
-  const d = new Date(String(dateStr) + 'T00:00:00');
-  if (isNaN(d)) return null;
-  const t = new Date(now); t.setHours(0, 0, 0, 0);
-  return Math.round((d - t) / 86400000);
+  return daysUntil(dateStr, now);
 };
 
 // The plan applies from two days out through the event day itself.
