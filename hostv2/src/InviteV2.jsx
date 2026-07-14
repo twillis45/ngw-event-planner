@@ -417,6 +417,9 @@ export default function InviteV2({ code }) {
 
   const days = (() => { try { return daysUntil(event.date); } catch { return null; } })();
   const rsvpBy = (() => { try { return rsvpDeadlineFor(event); } catch { return null; } })();
+  // Only a date the HOST set is a date a guest can be held to. 'derived' is our own
+  // event.date − 7d guess; printing it as "replies by" puts words in the host's mouth.
+  const rsvpByIsReal = !!(rsvpBy && rsvpBy.iso && rsvpBy.source === 'override');
   const somber = tone === 'muted';
   const allowPlusOne = event.plusOnePolicy !== 'no_plus_ones';
   const allowKids = event.kidsPolicy !== 'adults_only';
@@ -741,7 +744,22 @@ export default function InviteV2({ code }) {
                 <div className="inv2-val lp">{event.hostName}</div></>)}
               {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
                 <div className="inv2-val lp">{event.hostContact}</div></>)}
-              {!isPast && ((rsvpBy && rsvpBy.iso && days != null && days >= 0) || social) ? (
+              {/* A REPLY-BY DATE THE HOST NEVER SET (2026-07-14).
+                  rsvpDeadlineFor() returns `source: 'derived'` with `hard: true` when the
+                  host set nothing — an invented `event.date − 7d` flagged as FIRM — and this
+                  line never read `.source`, so a fabricated deadline printed identically to
+                  one the host actually chose. A guest was shown a date nobody committed to.
+
+                  Only the host's own date is presented as an ask. They CAN set one (Guests
+                  sheet → "replies by"), and the field is even prefilled with the derived
+                  suggestion — a suggestion in the HOST's UI is fine; a claim on a GUEST's
+                  invitation is not.
+
+                  Second bug on the same line: the gate read `days` — days to the EVENT — not
+                  `rsvpBy.days`, days to the DEADLINE. `rsvpBy.days` was computed and never
+                  used, so a reply-by date that had already PASSED kept rendering as live
+                  urgency. Now it stops when it lapses. */}
+              {!isPast && ((rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0) || social) ? (
                 <div style={{ margin: '8px 0 0', textAlign: 'center' }}>
                   {/* Live momentum (Goal 2): real first-name initials on the same
                       deterministic tints as the Guests tab, overlapped into a
@@ -756,8 +774,8 @@ export default function InviteV2({ code }) {
                     </div>
                   )}
                   <p className="grounding" style={{ margin: socialFaces.length ? '5px 0 0' : 0 }}>
-                    {rsvpBy && rsvpBy.iso && days != null && days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
-                    {rsvpBy && rsvpBy.iso && days != null && days >= 0 && social ? ' · ' : ''}{social || ''}
+                    {rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0 ? 'replies by ' + dfmt(rsvpBy.iso, { month: 'long', day: 'numeric' }) : ''}
+                    {rsvpByIsReal && rsvpBy.days != null && rsvpBy.days >= 0 && social ? ' · ' : ''}{social || ''}
                   </p>
                 </div>
               ) : null}

@@ -9329,7 +9329,14 @@ export default function HostShellV2() {
                         UX_07: written for the host, sent by the host. */}
                     <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
                     <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
-                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Nudge the quiet ones</button>}
+                    {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
+                        them. It cannot: the guest roster carries no phone and no email, so no
+                        recipient list can be built, and the draft's only exits are share/copy
+                        (its sms: link has no number to address). The SHEET is scrupulously
+                        honest about this — it never fakes a "sent" state — so the LABEL was the
+                        only thing lying. UX_07: a CTA says exactly what happens when you tap it.
+                        This one opens a written message for the host to send themselves. */}
+                    {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Write a nudge to send</button>}
                   </div>
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the

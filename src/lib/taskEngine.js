@@ -89,7 +89,24 @@ export function taskSatisfied(event, task) {
   // while "Chase the RSVPs" DID match /rsvp/ and was wrongly satisfied by a typed
   // headcount. /invit/ covers the whole family deliberately, and now every one of
   // them is answered by real evidence instead of an accident of spelling.
-  if (/invit|rsvp|chase.*(repl|response)|follow.?up on (repl|rsvp)/.test(s)) {
+  // CHASE ≠ SEND (2026-07-14). These two tasks shared one predicate, and it was the
+  // SEND predicate — `guests.some(hasResponded)`. So "Chase the RSVPs; lock the count"
+  // was marked DONE the moment a single guest replied. One yes out of forty retired the
+  // chase, and the host was told the count was locked while thirty-nine people had said
+  // nothing. The task exists precisely BECAUSE people are slow to reply.
+  //
+  // Chasing is finished when nobody is left to chase — not when somebody answered.
+  if (/chase|follow.?up on (repl|rsvp)|lock the count|nudge/.test(s)) {
+    if (!guests.length) return false;               // nobody to chase yet — not "done"
+    return guests.every(g => rsvpHasResponded(g));  // everyone has answered, yes or no
+  }
+
+  // Sending, on the other hand, IS evidenced by a single reply — someone could only have
+  // replied if the invitation reached them.
+  // NB: the ORIGINAL branch used /invite/, which does not match "invitations"
+  // (invit-A-tions) — so "Send the invitations" fell through to false by accident.
+  // /invit/ covers the whole family deliberately.
+  if (/invit|rsvp/.test(s)) {
     if (event.invitesSentAt) return true;
     return guests.some(g => rsvpHasResponded(g));
   }
