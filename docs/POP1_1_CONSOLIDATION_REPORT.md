@@ -149,3 +149,51 @@ Requested stages: Discovered → Recommended → Accepted → Working → Blocke
 | Full 7-stage recommendation lifecycle | **Park** — no domain needs more than `riskStatus`'s 3-state pattern yet; extend that pattern before inventing more stages |
 | Vendor "has any vendor named" duplication (distinct from readiness) | **Consolidate** — same `taskEngine.js` pattern, not done this sprint |
 | Procurement scaling, dependency graph, military playbook content | **Park** — unchanged, correctly out of scope |
+
+---
+
+## 8. Addendum — SSOT #1: the COUNT was single-sourced, the CLAIM was not
+
+Date: 2026-07-14 · Commits `867af98` (source) + `48f6414` (build sync)
+
+### What Section 3 got wrong
+
+Section 3 above declared vendor integration **"complete"** on the strength of a real fix: `vendorReadinessRollup`/`workstreamReadinessRollup` became the one source for the vendor *number*, and the pinned regression (`Deposit Paid` counted as an issue on one surface, booked on the other) genuinely cannot recur.
+
+That claim was **true of the count and false of the language**. `isVendorBooked` (Considering→Quoted→**Contracted**→**Deposit Paid**→Confirmed, where the last three are "booked") answers *"is this vendor secured for the day?"*. It does **not** answer *"is there anything left for the host to do with this vendor?"* — a Deposit-Paid vendor is secured but still owes a confirm. Five surfaces used the booked predicate to license the **word "confirmed"** or a **green state**, so the app could tell the host:
+
+> "Everyone's locked in — confirms, times, and paperwork all set."
+
+…on the same event where the readiness dot was grey and a **"Confirm vendor"** action was still live. One number, two contradictory stories. The single-source fix consolidated the arithmetic and left the claim un-audited.
+
+### Before → after, per surface
+
+| Surface | Before (booked predicate) | After (`isVendorConfirmed`) |
+|---|---|---|
+| CommandCenter vendor health chip | "3 of 5 confirmed" | "3 of 5 booked · 2 to confirm" |
+| `getEventReadiness` vendor axis | "3 confirmed" | "all booked · 2 to confirm" |
+| HostShellV2 vendor-sheet hero | "Everyone's locked in — confirms, times, and paperwork all set." | "All booked — 2 still to confirm before the day." |
+| HostShellV2 "People you're hiring" row | "5 of 5 booked" | "all booked · 2 to confirm" |
+| HostShellV2 status pill | green on **any** booked status | green **only** when fully locked in |
+| `dayBefore` vendors row | "Everyone you hired is locked in" (0 open) | booked-not-confirmed still counts open |
+
+The `dayBefore` row is the one this sprint **found**, not just ported — it was outside the four surfaces the fix originally touched, and it is the worst place to over-claim, since it fires the night before the event.
+
+### The rule that now governs
+
+**`isVendorBooked` sizes the day. `isVendorConfirmed` licenses the claim.** A green state or the word "confirmed" may only be spoken by `isVendorConfirmed` — the same predicate the readiness dot (`phaseProgress`) and the "Confirm vendor" action already used. Wherever the real concern *is* day-of readiness (arrival times, COI, day-alerts, attention items), `isVendorBooked` keeps its correct meaning and was left alone.
+
+Corollary, generalized past vendors: **consolidating a number does not consolidate the sentence built on it.** Any surface that turns a count into a claim ("all", "everyone", "locked in", "set") needs its own source-of-truth pass. Section 3's "complete" is the shape of that mistake.
+
+### Score, recomputed
+
+| | Before | After |
+|---|---|---|
+| Vendor *count* single-sourced | ✅ (as Section 3 said) | ✅ unchanged |
+| Vendor *claim* single-sourced | ❌ — 5 surfaces over-claimed off the booked predicate | ✅ all 6 read `isVendorConfirmed` |
+| Green state can coexist with an open confirm | ❌ yes (the bug) | ✅ no — impossible by construction |
+| Tests | 841/841 at time of writing; **2675/2675 (175 suites)** at this sprint's start | **2676/2676 (175 suites)** — +1 `dayBefore` guard that fails against the old predicate |
+
+Section 3's status is therefore revised from **complete** to **complete (count) · closed this sprint (claim)**.
+
+Live-verified in the hostv2 dev server, not just unit-tested: staged all 5 vendors booked with 4 unconfirmed → hero reads "All booked — 4 still to confirm before the day", Deposit-Paid/Agreed pills render lavender not green, and home still reads "4 of 5 areas handled" with "Follow up with Maplewood" as the next action. One caveat stated plainly: the `dayBefore` vendors row could **not** be driven live — no sample event is both inside the 0–2 day window and has vendors (the "day of" Cookout has none). That surface is covered by the new unit test only.
