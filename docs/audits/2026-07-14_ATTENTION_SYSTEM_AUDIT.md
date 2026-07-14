@@ -8,12 +8,16 @@
 
 Score = the **lowest** dimension, not the average.
 
-| Slice | Leader compared | Score | Capping dimension |
-|---|---|---|---|
-| What earns attention (ranking/triage) | Linear triage, Superhuman split inbox | **3/10** | The ranking function does not exist |
-| Coverage across every surface | Linear inbox, Asana/Monday roll-up | **3/10** | Surfaces can hold a real problem silently |
-| Attention over time (decay/escalation) | Things 3, Google Calendar, Linear cycles | **3/10** | Lead times are decorative |
-| How attention looks (visual semantics) | Linear, Slack badges, Apple HIG | **4/10** | Attention inflation — no severity scale |
+| Slice | Leader compared | Before | After | Capping dimension now |
+|---|---|---|---|---|
+| What earns attention (ranking/triage) | Linear triage, Superhuman split inbox | **3/10** | **7/10** | One inbox, but no snooze/decay and no cross-surface registry |
+| Coverage across every surface | Linear inbox, Asana/Monday roll-up | **3/10** | **6/10** | Roll-up is still hand-wired per surface |
+| Attention over time (decay/escalation) | Things 3, Google Calendar, Linear cycles | **3/10** | **7/10** | No snooze; nudges never expire |
+| How attention looks (visual semantics) | Linear, Slack badges, Apple HIG | **4/10** | **7/10** | Amber still carries several meanings; no dock badges |
+
+Scores recomputed against the code as it now stands, not tagged onto the old numbers. The
+remaining caps are all *structural* rather than dishonest — the app no longer says things
+that aren't true; it is now merely less complete than a leader.
 
 ## The one-sentence finding
 
@@ -54,22 +58,36 @@ Wrong case *and* wrong wording. So `isTaskOverdue` was permanently false, `overd
 
 **A test that agreed with the bug:** `dayAlertsBehavior.test.js` derived its event date with `toISOString()` — "the same way the module derives today" — so it reproduced the UTC mistake faithfully and could never catch it.
 
-## Open — ranked by host harm
+## Closed 2026-07-14
 
-| # | Finding | Evidence | Harm |
+| # | Finding | Fix | Commit |
 |---|---|---|---|
-| 1 | **The "urgent decision" tier ranks by timeline array order.** `x.urgency` / `x.overdue` / `x.overdueDays` are never set on the object; the `parseInt(dueLabel)` sort is all-`NaN`, so the array keeps insertion order. Always resolves to `decisions[0]`. Stamped `critical` regardless. | `CommandCenter.jsx:225-238, 1865-1872` | Host is sent at the wrong problem first, told it's critical, never told how overdue (`od` always 0). |
-| 2 | **The top-ranked critical tier is a dead CTA in V2.** `{tab:'Decisions'}` has no `routeSheet` branch → falls to "Not wired here yet" toast. Same for `Communication`, `Event Day Schedule`. | `HostShellV2.jsx:2182-2259, 2884` | The #1 item is pure anxiety, and it *outranks* the wired compression route. |
-| 3 | **An overdue vendor payment is invisible during planning.** The critical money tier requires `v.payDueDate`, which has **zero occurrences** in V2 — no input, no write. Structurally unreachable. | `CommandCenter.jsx:1912-1916` | An unpaid balance on a booked caterer raises nothing pre-event. |
-| 4 | **`.p-risk .pill-note` = 3.94:1** (WCAG AA fail). The `opacity:1` "fix" is a **no-op** — it sets the parent; the child has its own `opacity:.75`. The comment describes a fix that was never applied. | `styles.css:886-891` | The sentence explaining the emergency is the least legible text in the app. |
-| 5 | **`confidenceGrammar`'s 4 tiers collapse to 2 at render.** No `.p-steel` class exists, so `UNKNOWN` / `ESTIMATED` / `NEEDS_VERIFICATION` all paint **amber urgency** — an empty field looks like a slipping deadline. Worse: an `AT_RISK` pillar whose note says "estimated" **downgrades to amber**. | `HostShellV2.jsx:4182` vs `confidenceGrammar.js:70-77` | Real risk hidden; empty fields cry wolf. |
-| 6 | **Documents / COI have no surface in V2 at all.** `lib/eventDocuments` imported zero times. The `coiCritical` tier can fire with nowhere to go. | — | A COI expiring is a venue-turns-you-away event. |
-| 7 | **No severity scale.** Seven parallel status vocabularies, three different "third colours" (danger / lavender / muted). Amber carries **13 distinct meanings**. Vendors have **no red tier**; workstreams have **no blocked tier**. | `styles.css:887-891, 1190-92, 1211-12` | A blocked vendor and a dietary tag are the same colour. |
-| 8 | **`.wchip.attn` signals blocked by colour alone** — rendered text is only the label and "3 of 3". | `styles.css:1191-92`; `HostShellV2.jsx:8291-96` | A colour-blind host misses a blocked vendor entirely. |
-| 9 | **"Nudge the quiet ones" targets nobody.** The draft's exits are `sms:?&body=` with **no recipient**; no list is built from the non-responders. | `HostShellV2.jsx:9246, 7184-7222` | The label is the untruthful part; the sheet is honest that it never sends. |
-| 10 | **The invite fabricates a reply-by date.** With no `event.rsvpDeadline`, `rsvpDeadlineFor` invents `event.date − 7d` and returns `hard: true`. The invite never reads `.source`. | `dates.js:75-81`; `InviteV2.jsx:744` | A guest is shown a deadline the host never committed to. |
-| 11 | **Chase task self-satisfies.** "Chase non-responders; lock the count" is done when **any one** guest replies. | `taskEngine.js:92-95` | One reply out of forty retires it. |
-| 12 | **Zero nav/dock badges.** No cross-section attention channel — from The Day, an at-risk pillar is invisible. | `HostShellV2.jsx:9409-14` | Not dishonest — absent. |
+| 1 | **The "urgent decision" tier ranked by timeline array order.** `x.urgency` / `x.overdue` / `x.overdueDays` were never set on the object — `od` was computed one line above the return and thrown away — so both `find()`s always missed and it fell to `decisions[0]`. Which wasn't the worst one either: the sort was `parseInt(dueLabel)` over prose ("Overdue 3d") → `NaN` for every comparison → insertion order preserved. | Attach the fields; sort by the real number. `criticalNeeds`, which read the same phantom fields and was permanently 0, works for free. | `646750a` |
+| 2 | **The top-ranked critical tier was a dead CTA.** `{tab:'Decisions'}` had no `routeSheet` branch → "Not wired here yet" toast, while *outranking* the compression tier whose route was wired. | The destination existed the whole time (`sheet.kind === 'decisions'`, "Calls to make"). Wired it, plus `Event Day Schedule`. `Communication` deliberately still toasts — V2 has no messages surface, so there is nowhere honest to land. | `646750a` |
+| 3 | **An overdue vendor payment was invisible while planning.** The one `critical` money tier needs `v.payDueDate` — **five** engines read that field and V2 gave the host no way to set it. | Added the field to the vendor money row. Live: *"Send payment to Fired Up BBQ · Balance was due 5 days ago ($4,200)"* is now the #1 action. | `646750a` |
+| 4 | **The emergency sentence was the least legible text in the app.** `.pill-note` at `opacity:.75` → 3.94:1 on `.p-risk`, 3.89:1 on `.p-ok`. The existing "fix" (`.p-risk{opacity:1}`) was a **no-op**: `.p-risk` is the parent button, `.pill-note` a child span with its own opacity. The comment asserted a fix that had never applied. | Dropped the dimming. All four tiers measured live: **p-ok 5.80 · p-warn 7.19 · p-risk 5.91 · p-steel 6.04**. (My *own* first pass enumerated three classes and left `.p-steel` failing at 4.03 — the same mistake, one hour later.) | `646750a` |
+| 5 | **Four confidence tiers collapsed into two.** No `.p-steel` class existed, so `UNKNOWN`/`ESTIMATED` painted **amber urgency** — an empty field looked like a slipping deadline. | Added `.p-steel`; routed all four tiers. Root cause beneath it: `getEventReadiness` returned `AT_RISK`/"No tasks" for an **empty** checklist — a red alarm about work that does not exist. Missing data is not a risk; it now returns `UNKNOWN`. | `646750a` |
+| 8 | **`.wchip` signalled blocked by colour alone** — and its number *contradicted* the tint ("3 of 3" reads as finished). | The state says itself now — "blocked", "2 to confirm" — with a full aria-label. Tint is reinforcement, not the message. | `c8d7c8d` |
+| 9 | **"Nudge the quiet ones" nudges nobody.** No guest contact exists, so no recipient list can be built. The *sheet* was honest (it never fakes a send); the **label** was the lie. | Now "Write a nudge to send". The real fix — capturing guest contact — is a data-model change, filed not faked. | `dc5abee` |
+| 10 | **The invite fabricated a reply-by date.** `rsvpDeadlineFor` invents `event.date − 7d` with `hard:true`; the invite never read `.source`. Also gated on days-to-**event**, not days-to-**deadline**, so a lapsed date kept rendering as live urgency. | Only `source === 'override'` — a date the host actually set — is shown to a guest. Verified both ways: gone when unset, still renders when set. | `dc5abee` |
+| 11 | **The chase task retired itself.** "Chase non-responders; lock the count" shared the *send* predicate: one reply out of forty marked it done. | Chasing is finished when nobody is left to chase (`every`), not when somebody answered (`some`). Sending is still honestly evidenced by one reply. | `dc5abee` |
+
+## An audit finding that was WRONG — #6, "Documents/COI have no surface in V2"
+
+Filed on the evidence that `lib/eventDocuments` is imported zero times. Checked against the code: **COI is fully surfaced and fully actionable.** It lives on the vendor card — `coiNextAction` renders at `HostShellV2.jsx:8398`, the requested → received → verified ladder writes at `:8638-8640` — and the `coiCritical` tier routes to `{tab:'Vendors', vendorSection:'documents'}`, which `routeSheet` **does** handle.
+
+What is true is narrower: there is no standalone *documents sheet*, and `lib/eventDocuments` is unused. That is not "a COI can expire silently."
+
+> The standing lesson, earned a third time today: **a finding inherited from an audit is not evidence.** Verify it against the running thing, or do not repeat it.
+
+## Still open
+
+| # | Finding | Why it survived |
+|---|---|---|
+| 7 | **No single severity scale.** Seven status vocabularies; amber still carries several meanings. Vendors have no red tier. | Real work — a semantic pass across every chip, not a patch. |
+| 12 | **Zero nav/dock badges.** From The Day, an at-risk pillar is invisible. | Absent rather than dishonest. |
+| — | **Surfaces start life invisible.** The roll-up is hand-wired per surface; nothing is automatic. | The structural call: make the tier list data-driven off the same registry the surface rows come from, so a surface *cannot exist* without declaring how it escalates. |
+| — | **Nothing snoozes or decays.** The ranked list cannot be deferred; context nudges never expire. | Leaders all have this. Needs a design call on what deferral means for an event with a fixed date. |
 
 ## What is genuinely good
 
