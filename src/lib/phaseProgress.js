@@ -87,7 +87,26 @@ function preProgress(ev, phase, daysOut) {
   // plan-section top — every route targets the exact row/field of the next
   // action. Dietary → the allergies & diets gate card; shopping → the FIRST
   // unbought line (foodFocus expands the spread + group and highlights it).
-  add('food', usesFood && hasCount, !!(plan && plan.dietaryResolved), 'Note dietary needs on the food plan', { tab: 'Planning', focusField: `fp-diet-${ev.id}` }, 6);
+  // FOOD — the label and the predicate must describe the same thing.
+  // This area is called "Food", but `handled` was ONLY `plan.dietaryResolved` — so a
+  // host who had noted allergies but never decided what they were serving read as
+  // Food ✓. The label said food; the bar said dietary.
+  // The app already knows the difference: the food sheet itself renders "3 decisions
+  // open" for menu picks the host hasn't made (a choice falls back to a DEFAULT for
+  // rendering, but `event.foodChoices[id]` is what the host actually chose). Food is
+  // handled when the menu decisions are made AND the dietary question is answered.
+  const foodPicks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  const openChoices = plan ? (plan.choices || []).filter(c => c && foodPicks[c.id] == null) : [];
+  const dietaryDone = !!(plan && plan.dietaryResolved);
+  const foodHandled = openChoices.length === 0 && dietaryDone;
+  add('food', usesFood && hasCount, foodHandled,
+    openChoices.length > 0
+      ? `Decide what you're serving · ${openChoices.length} open`
+      : 'Note dietary needs on the food plan',
+    openChoices.length > 0
+      ? { tab: 'Planning', focusField: 'food-plan' }
+      : { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
+    6);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.

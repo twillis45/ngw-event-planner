@@ -3,8 +3,21 @@
 // no scores, no fake percentages, no counting suppressed panels.
 
 import { deriveEventPhaseProgress } from '../phaseProgress';
+import { playbookFoodPlan } from '../playbooks';
 
 const NOW = new Date('2026-07-10T15:00:00');
+
+// C3/Food-label: the Food area now means "the menu is decided AND dietary is noted"
+// (it used to mean dietary only, while calling itself "Food"). These cue tests
+// isolate the SHOPPING and DIETARY routes, so their fixtures make the menu picks —
+// otherwise the (correct) "Decide what you're serving" cue outranks the one under test.
+const withMenuPicked = (ev) => {
+  const fp = playbookFoodPlan(ev);
+  const foodChoices = {};
+  (fp && fp.choices ? fp.choices : []).forEach((c) => { foodChoices[c.id] = c.chosen != null ? c.chosen : (c.options && c.options[0]); });
+  return { ...ev, foodChoices };
+};
+
 const base = (over = {}) => ({ id: 'e-pp', type: 'dinner party', date: '2026-07-20', venue: 'Home', guestMode: 'count', guestCount: 12, guests: [], vendors: [], timeline: [], ...over });
 
 test('1 · pre-event label is Planning readiness with honest counts', () => {
@@ -180,7 +193,7 @@ test('shopping becomes an essential only inside the final week', () => {
 // ROW-LEVEL CTA RULE (Todd, 2026-07-07): no cue lands on a tab, screen, or
 // plan-section top — the route names the exact row/field of the next action.
 test('shopping cue routes to the FIRST unbought line, never the food-plan section top', () => {
-  const p = deriveEventPhaseProgress(base({ type: 'bbq', date: '2026-07-14', rainPlan: 'Carport', dietaryNoted: true }), NOW);
+  const p = deriveEventPhaseProgress(withMenuPicked(base({ type: 'bbq', date: '2026-07-14', rainPlan: 'Carport', dietaryNoted: true })), NOW);
   expect(p.nextCue).toBeTruthy();
   expect(p.nextCue.label).toMatch(/Buy the remaining items/);
   expect(p.nextCue.route.tab).toBe('Planning');
@@ -189,7 +202,7 @@ test('shopping cue routes to the FIRST unbought line, never the food-plan sectio
 });
 
 test('dietary cue routes to the allergies & diets gate, not the food plan top', () => {
-  const p = deriveEventPhaseProgress(base({ type: 'bbq', date: '2026-08-20', rainPlan: 'Carport' }), NOW);
+  const p = deriveEventPhaseProgress(withMenuPicked(base({ type: 'bbq', date: '2026-08-20', rainPlan: 'Carport' })), NOW);
   expect(p.nextCue).toBeTruthy();
   expect(p.nextCue.label).toMatch(/dietary/i);
   expect(p.nextCue.route).toEqual({ tab: 'Planning', focusField: 'fp-diet-e-pp' });

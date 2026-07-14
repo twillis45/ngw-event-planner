@@ -22,7 +22,7 @@
 // suppression (nextActions empty, no stale blame).
 
 import { eventPlan } from '../CommandCenter';
-import { playbookDecisionBoard } from '../lib/playbooks';
+import { playbookFoodPlan, playbookDecisionBoard } from '../lib/playbooks';
 import { deriveEventPhaseProgress } from '../lib/phaseProgress';
 
 const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
@@ -38,13 +38,22 @@ const boardItemsOf = (ev) => lifecycleOf(ev).filter((i) => String(i.id).startsWi
 // event day") AND no blocked workstream — yet the seeded playbook decisions
 // (T-14d windows, event 10 days out, legacy no-createdAt ⇒ reachable) are past
 // their easy window. Lifecycle said "all clear"; the verdict said "N overdue".
-const readyButOverdue = () => ({
-  id: 'lva-1', name: 'Juneteenth Cookout', type: 'juneteenth cookout',
-  date: iso(10), guestMode: 'count', guestCount: 30, dietaryNoted: true,
-  venueKind: 'venue', venue: 'VFW Post 3150 — Alexandria, VA',
-  rainPlan: 'Move under the carport',
-  guests: [], vendors: [], timeline: [], budget: [],
-});
+const readyButOverdue = () => {
+  const ev = {
+    id: 'lva-1', name: 'Juneteenth Cookout', type: 'juneteenth cookout',
+    date: iso(10), guestMode: 'count', guestCount: 30, dietaryNoted: true,
+    venueKind: 'venue', venue: 'VFW Post 3150 — Alexandria, VA',
+    rainPlan: 'Move under the carport',
+    guests: [], vendors: [], timeline: [], budget: [],
+  };
+  // The fixture's premise is "calm EVERYWHERE except the board". The Food essential
+  // now means the menu is DECIDED (it used to mean only "dietary noted", while
+  // calling itself "Food"), so a genuinely calm event must have made its menu picks.
+  const fp = playbookFoodPlan(ev);
+  const foodChoices = {};
+  (fp && fp.choices ? fp.choices : []).forEach((c) => { foodChoices[c.id] = c.chosen != null ? c.chosen : (c.options && c.options[0]); });
+  return { ...ev, foodChoices };
+};
 
 describe('reproduction — lifecycle "all clear" above a "N overdue" verdict', () => {
   test('scenario integrity: the event really is calm everywhere EXCEPT the board', () => {

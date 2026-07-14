@@ -265,10 +265,12 @@ export function guestCountResolved(event) {
   // A "final" count means no still-pending RSVPs. Only a real guest list can
   // tell us this; an estimate-only event is treated as resolved (we can't see
   // maybes, and we won't block a host who already gave a number).
-  const pending = list.filter((g) => {
-    const r = String((g && g.rsvp) || '').trim().toLowerCase();
-    return r === 'maybe' || r === '';
-  }).length;
+  // C3 ROOT FIX. This was an explicit two-value allow-list — `r === 'maybe' || r === ''` —
+  // so the value the app's OWN importer writes, 'Pending', fell straight through to
+  // `resolved: true`. Import a roster nobody has answered and the guest count read as
+  // final. Now it reads the ONE canonical vocabulary (rsvpState), where anything that
+  // is not an explicit yes/no is still outstanding.
+  const pending = list.filter((g) => !rsvpIsSettled(g)).length;
   if (list.length > 0 && pending > 0) return { resolved: false, pending, reason: 'pending-rsvps' };
   return { resolved: true, pending: 0, mode: list.length > 0 ? 'roster' : 'estimate' };
 }
@@ -290,6 +292,35 @@ export function guestCountResolved(event) {
 //
 // Returns { applicable, basis:'rsvp'|'count', band:bool, low, high, planning,
 //           confirmed, maybe, pending, declined, invited, because }.
+// C3 — THE ONE RSVP VOCABULARY.
+//
+// Seven predicates in this codebase asked "has this guest replied?" and four of
+// them used different vocabularies. attendanceBand (below) had it RIGHT: anything
+// it doesn't recognise falls to `pending`, because an unrecognised value is
+// certainly not a reply. guestCountResolved had it WRONG: it treated a guest as
+// pending ONLY if rsvp was 'maybe' or '' — an explicit two-value allow-list.
+//
+// And 'Pending' is the exact string the app itself writes. csvParsers maps blank /
+// "no response" / "awaiting" / "invited" → 'Pending' for EVERY import platform. So
+// a host could import 80 guests who had never been asked, and guestCountResolved
+// would report the count RESOLVED — turning the Guests area green and helping
+// license "You're all set — everything that needs you is done."
+//
+// One reader now. An unknown value is never silently promoted to a reply.
+export function rsvpState(guest) {
+  const r = String((guest && guest.rsvp) || '').trim().toLowerCase();
+  if (r === 'yes' || r === 'attending' || r === 'accepted') return 'yes';
+  if (r === 'maybe') return 'maybe';
+  if (r === 'no' || r === 'declined' || r === 'regret' || r === 'regrets') return 'no';
+  return 'pending';   // '' · 'pending' · anything unrecognised — NOT a reply
+}
+
+/** Has this guest actually answered? maybe/pending are NOT answers. */
+export function rsvpIsSettled(guest) {
+  const s = rsvpState(guest);
+  return s === 'yes' || s === 'no';
+}
+
 export function attendanceBand(event) {
   if (!event) return { applicable: false, band: false };
   const list = Array.isArray(event.guests) ? event.guests : [];
@@ -302,12 +333,14 @@ export function attendanceBand(event) {
     // summed for rows that haven't said no — the same set low/high already count.
     let confirmed = 0, maybe = 0, pending = 0, declined = 0, kidsConfirmed = 0, kidsOut = 0;
     for (const g of list) {
-      const r = norm(g);
+      // C3: one shared reader (rsvpState) — this loop was already correct, and it is
+      // the model the rest of the app now follows rather than re-deriving its own.
+      const s = rsvpState(g);
       const gKids = Math.max(0, Math.round(Number(g && g.kids) || 0));
-      if (r === 'yes' || r === 'attending' || r === 'accepted') { confirmed++; kidsConfirmed += gKids; }
-      else if (r === 'maybe') { maybe++; kidsOut += gKids; }
-      else if (r === 'no' || r === 'declined' || r === 'regret' || r === 'regrets') declined++;
-      else { pending++; kidsOut += gKids; } // '' / unknown → not yet replied
+      if (s === 'yes') { confirmed++; kidsConfirmed += gKids; }
+      else if (s === 'maybe') { maybe++; kidsOut += gKids; }
+      else if (s === 'no') declined++;
+      else { pending++; kidsOut += gKids; } // '' · 'Pending' · unknown → not yet replied
     }
     const kids = kidsConfirmed + kidsOut; // total kids among everyone who hasn't said no
     const low = confirmed + kidsConfirmed; // only a CONFIRMED row's kids are locked in
