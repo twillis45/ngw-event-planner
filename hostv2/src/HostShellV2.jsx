@@ -2671,16 +2671,38 @@ export default function HostShellV2() {
   // the plan already knows. Conservative matching: only the unambiguous case
   // (shopping steps, once every spread item is bought). Writes timeline.done
   // for real, so every reader (engine readiness, counts, sheets) agrees.
+  // C4 — THE PERSISTED WRITE MUST USE THE STRICTER PREDICATE, NOT THE LOOSER ONE.
+  //
+  // This gated on `foodPlan.boughtCount >= foodPlan.itemCount`, and BOTH of those
+  // counts are FOOD-ONLY: playbooks/index.js filters with
+  // `isFood = i.group !== 'Supplies'`. Ice, charcoal, cups, plates and foil are
+  // excluded from both. So ticking off the crabs and the corn wrote `done: true`
+  // onto "Buy ice, charcoal and paper goods" — and it is a real WRITE, so every
+  // reader agreed with it and the step vanished from the checklist for good. The
+  // host never buys the ice.
+  //
+  // The honest predicate was already right here in this file:
+  // isTimelineStepResolved() (line ~992) requires EVERY non-skipped item — Supplies
+  // included — and explicitly refuses an empty list. The display used it; the write
+  // did not. Two predicates for one concept, and the looser one was the one that
+  // persisted. Now the write asks the same question the screen asks.
+  //
+  // Note this stays a real write (not an inference): every item was ticked by the
+  // HOST, so the step genuinely is done — we are deriving from their actions, not
+  // guessing on their behalf.
   useEffect(() => {
     try {
-      if (!foodPlan || !foodPlan.itemCount || foodPlan.boughtCount < foodPlan.itemCount) return;
       const tl = event.timeline || [];
-      const idx = tl.map((t, i) => (t && !t.done && /\b(buy|shop)\b|shopping/i.test(String(t.task || '')) ? i : -1)).filter(i => i >= 0);
+      const idx = tl
+        .map((t, i) => (t && !t.done
+          && /\b(buy|shop)\b|shopping/i.test(String(t.task || ''))
+          && isTimelineStepResolved(t) ? i : -1))
+        .filter(i => i >= 0);
       if (!idx.length) return;
       patchEvent({ timeline: tl.map((t, i) => idx.includes(i) ? { ...t, done: true } : t) },
-        idx.length + ' shopping step' + (idx.length === 1 ? '' : 's') + ' completed ' + (idx.length === 1 ? 'itself' : 'themselves') + ' — everything on the spread is bought.');
+        idx.length + ' shopping step' + (idx.length === 1 ? '' : 's') + ' completed ' + (idx.length === 1 ? 'itself' : 'themselves') + ' — everything on the list is bought, supplies included.');
     } catch {}
-  }, [foodPlan && foodPlan.boughtCount, foodPlan && foodPlan.itemCount]);
+  }, [event.foodGot, event.timeline, foodPlan && foodPlan.itemCount]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sprint 60.Y PARITY — the ORIGINAL's one chime placement: ring softly when
   // the total inbound-message count across events increases (a message
