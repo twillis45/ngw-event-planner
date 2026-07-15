@@ -16,7 +16,7 @@
   --t-display-xl:clamp(36px,11cqw,48px); /* serif display XL — welcome/after heroes */
   --t-display-l:clamp(30px,9.5cqw,40px); /* serif display L — reveal name, empty-state heroes */
   --t-hero-star:38px;    /* SheetHero stat number (sheet headline figure) */
-  --t-stat:34px;         /* tile stat numbers, card corner index */
+  --t-stat:37px;         /* tile stat numbers, card corner index (bumped 34→37 for legibility, host request 2026-07-14) */
   --t-stat-sm:24px;      /* compact stat (CTA tile number) */
   --t-section:22px;      /* section heads (.sect h2) */
   --t-card-title:19px;   /* card titles (h3) */
@@ -254,6 +254,17 @@ button{font-family:inherit}
   /* clear the dock: its own 16px inset + ~46px of pill + a 10px breath */
   bottom:calc(72px + env(safe-area-inset-bottom, 0px));
   z-index:20; /* under the dock (30), over the bento */
+  /* COMPACT WHEN IT FLOATS (2026-07-14, host-reported twice: "spacing off" + "numbers not
+     readable on card"). On a tall-content event — a two-line name, a two-line verdict — the
+     hero overflows its 700px budget by ~100px, so this sticky tile pinned to the bottom of
+     the scrollport and clipped the BOTTOM of the Guests/Budget numerals right behind it.
+     Trimming its own height (compact padding + no min-height floor) drops its top edge below
+     those numerals, so it floats over the sub-lines it was always meant to cover, not the
+     numbers. `justify-content:center` keeps the two short lines centred in the shorter box. */
+  min-height:0;
+  padding:var(--pad-card-compact);
+  justify-content:center;
+  row-gap:0;
   /* When it IS lifted it sits over the tail of the stat tiles. Give it the dock's
      floating language — a real drop shadow — so it reads as a layer deliberately
      above them, not as a tile that has clipped the ones behind it. When the hero
@@ -262,7 +273,7 @@ button{font-family:inherit}
 }
 .tile{border-radius:var(--r-xl); padding:var(--pad-card); display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
-.tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
+.tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:var(--sp-2) 0 6px; font-variant-numeric:tabular-nums}
 /* Found in the typography audit: this class had NO rule anywhere — the
    NEXT tile's directive text (the single most important line on the whole
    Command Center, per this app's own hierarchy doctrine) was rendering as
@@ -301,6 +312,10 @@ button{font-family:inherit}
 .tile-d .t-label{color:var(--carbon-text); opacity:.7}
 .tile-d .t-num{font-size:var(--t-stat-sm); letter-spacing:-.02em}
 .tile-d .t-go{font-size:var(--t-meta); font-weight:700}
+/* Tighten the sticky NEXT's headline margins so, on an overflowing hero, the tile is short
+   enough for its top edge to clear the Guests/Budget numerals it floats in front of. Only
+   the sticky hero copy — the create/day NEXT tiles keep their roomier default. */
+.hero > .tile-d .t-big{margin:4px 0 2px}
 /* All-quiet success state fills the tile with --ok green. The tile's default
    near-white text (--carbon-text) ran ~2.3:1 on that green — unreadable (host
    report). Dark green-ink text reads ~7:1 on the fill and keeps the celebratory

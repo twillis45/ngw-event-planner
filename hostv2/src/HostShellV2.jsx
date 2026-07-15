@@ -4709,13 +4709,23 @@ export default function HostShellV2() {
                           a flourish: if we cannot say something true about why it leads, we say
                           nothing. Only ever on the first card. */}
                       {i === 0 && (() => {
+                        // Recognize the item by WHAT IT IS, not which engine labeled it. Keying
+                        // purely on `a.domain` meant the common case — the reactive top action,
+                        // whose domain is its CATEGORY ('operational'), not 'food' — never
+                        // matched, so the line that explains the ranking almost never showed. The
+                        // title says what it is ("Decide what you're serving" is food) as
+                        // reliably as any domain, and the same normalization the dedup uses reads
+                        // it. Still only ever a TRUE sentence: no match, no line.
+                        const title = String(a.title || '').toLowerCase();
+                        const is = (dom, re) => a.domain === dom || re.test(title);
                         const why = a.level === 'critical'
                           ? 'This is first because it can’t wait — everything else can.'
-                          : a.domain === 'date' ? 'This is first because every deadline in the plan counts back from it.'
-                          : a.domain === 'guests' ? 'This is first because the food, the seats and the budget all size off the headcount.'
-                          : a.domain === 'budget' ? 'This is first because every estimate below is guessing until it has a number to work against.'
-                          : a.domain === 'food' ? 'This is first because the shopping list and the crab order both wait on it.'
-                          : a.domain === 'starttime' ? 'This is first because the day has an order but no clock until you set it.'
+                          : is('date', /set the date|the event date/) ? 'This is first because every deadline in the plan counts back from it.'
+                          : is('guests', /guest (list|count)|add your guests|headcount/) ? 'This is first because the food, the seats and the budget all size off the headcount.'
+                          : is('budget', /budget|spending plan/) ? 'This is first because every estimate below is guessing until it has a number to work against.'
+                          : is('food', /serving|the food|menu|the spread/) ? 'This is first because the shopping list and the crab order both wait on it.'
+                          : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
+                          : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
                           : null;
                         return why ? <p className="grounding" style={{ margin: '4px 0 0', opacity: .85 }}>{why}</p> : null;
                       })()}

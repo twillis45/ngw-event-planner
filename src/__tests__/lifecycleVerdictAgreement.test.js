@@ -25,7 +25,12 @@ import { eventPlan } from '../CommandCenter';
 import { playbookFoodPlan, playbookDecisionBoard } from '../lib/playbooks';
 import { deriveEventPhaseProgress } from '../lib/phaseProgress';
 
-const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+// LOCAL date, not UTC. This used to be `x.toISOString().slice(0, 10)` — a UTC date — while the
+// production code it feeds (daysUntil, the board's day-of gate) compares LOCAL midnights. Every
+// evening after UTC crossed midnight (≈8pm US-Eastern) iso(0) returned TOMORROW while the code
+// still read today, the day-of gate flipped open, and this suite failed until morning. The same
+// wall-clock-coupling bug the day-alert fixes chased in production, here in the test's own helper.
+const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
 
 // Exactly the two reads HostShellV2 performs (lines ~2440 and ~2632-2643).
 const verdictOverdue = (ev) => (playbookDecisionBoard(ev).open || [])
