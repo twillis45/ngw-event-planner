@@ -27,6 +27,7 @@ import { rainPlanStatus } from '../lib/weather';
 import {
   playbookFoodPlan, playbookCapacity, nextUpcomingTask, playbookDecisionBoard,
 } from '../lib/playbooks';
+import { ROUTESHEET_TABS } from '../lib/routeResolver';
 
 // ── The consumer registry: every static anchor a host-shell route may target.
 //    (Grown only when a new consumer SHIPS — adding here without a consumer is
@@ -51,7 +52,19 @@ const STATIC_ANCHORS = new Set([
 // EventPlanner renders Decisions as a first-class tab. This list lagged the shipped consumer;
 // wave-6's band-1 due-date ordering legitimately promotes overdue decision raises to the hero,
 // which is what exposed the staleness.
-const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline', 'Risks', 'Decisions']);
+// DE-MIRRORED (2026-07-15, ENFORCEMENT-GAP-1): the routeSheet-owned portion of
+// this allow-list is now DERIVED from lib/routeResolver.ROUTESHEET_TABS — the
+// same constant the real resolver is bound to (routeExecution.test.js asserts
+// every tab there actually resolves, and that every tab a surface raises is
+// listed). Before this, HOST_TABS was hand-typed and could drift from routeSheet:
+// a tab routeSheet stopped handling still read as valid here, a false pass — the
+// exact bug-factory pattern this suite exists to kill, one layer up. Only the
+// tabs routeSheet does NOT route to by tab-name (rendered surfaces reachable by
+// other means) remain hand-listed. If routeSheet drops a tab, ROUTESHEET_TABS
+// shrinks and this set shrinks with it, so a producer emitting the now-orphaned
+// tab fails here — the mirror can no longer lie.
+const NON_ROUTESHEET_TABS = ['Command', 'Documents'];
+const HOST_TABS = new Set([...ROUTESHEET_TABS, ...NON_ROUTESHEET_TABS]);
 
 // ── Scenario matrix: 10 types × 10 states = 100.
 const TYPES = ['bbq', 'crab feast', 'birthday', 'graduation', 'juneteenth',

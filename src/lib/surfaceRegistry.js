@@ -73,6 +73,18 @@ const notDismissed = (event, map, id) => {
   return st[id] !== 'dismissed';
 };
 
+// A vendor-conflict's STABLE, record-derived identity (never its ephemeral c.id —
+// see the vendor-conflicts raiser). `kind` + the sorted sourceRef record ids uniquely
+// and durably name a conflict; the affected vendor row is the row-level fallback.
+function conflictRecordKey(c) {
+  const refs = Array.isArray(c && c.sourceRefs)
+    ? c.sourceRefs.map((s) => s && s.id).filter(Boolean).sort().join('-')
+    : '';
+  const kind = c && c.kind ? String(c.kind) : '';
+  if (kind && refs) return `${kind}:${refs}`;
+  return c && c.affectedVendorId != null ? String(c.affectedVendorId) : null;
+}
+
 export const SURFACES = [
   // ── Risks ──────────────────────────────────────────────────────────────────
   // The engine has always run. It reached exactly ONE passive index row ("What could go
@@ -144,9 +156,16 @@ export const SURFACES = [
           title: c.title || 'Two vendors need the same thing',
           why: c.explanation || c.recommendedAction || null,
           route: { tab: 'Vendors', vendorId: c.affectedVendorId },
-          // WAVE-6: the conflict's own id when the engine assigns one, else the
-          // vendor row it lands on — either way a record, never the title.
-          key: c.id || c.affectedVendorId,
+          // IDENTITY-CLASS FIX (2026-07-15): the key must be a STABLE RECORD. The
+          // old `c.id || c.affectedVendorId` used c.id — which is minted fresh every
+          // render (`cf-${Date.now()}-${counter}`, conflicts.js:16), so the id, and
+          // any snooze written against it, changed on the very next recompute and
+          // silently detached. Key on the conflict's stable RECORD content instead:
+          // its `kind` plus the sorted ids of its sourceRefs (vendor + ROS-segment
+          // record ids — all durable), so two distinct conflicts stay distinct and
+          // the SAME conflict keeps the SAME id across renders. Falls back to the
+          // affected vendor row (still a record) when a conflict carries no refs.
+          key: conflictRecordKey(c),
         }));
     },
   },
@@ -285,11 +304,18 @@ export const SURFACES = [
         severity: 'attention',
         title: n === 1 ? '1 confirmed guest still needs a seat' : `${n} confirmed guests still need seats`,
         why: `${plan.totals.seated} of ${plan.totals.confirmed} confirmed guests are seated`,
+        // The route still lands ON the first unassigned guest's row (row-level or not
+        // at all) — but that guest is NOT this raise's identity.
         route: { tab: 'Seating', guestId: first.id },
-        // WAVE-6: keyed on the guest row the raise routes to — the count in the
-        // title moves as guests get seated, and a count-bearing key detaches the
-        // snooze (the wave-6 proof's exact failure).
-        key: first.id,
+        // IDENTITY-CLASS FIX (2026-07-15): NO key — a RECORDLESS AGGREGATE. This is
+        // ONE debt about the whole unassigned SET ("N still need seats"), not about
+        // any single guest. Wave-6 keyed it on the first-unassigned guest to escape
+        // the count-in-title id — but that only moved the moving target: seat that
+        // very guest and `first` advances to the next one, so the id jumped and the
+        // snooze detached exactly when the host acted on the debt. The surface id
+        // ALONE (`surface:seating`) is the stable identity — it does not move as the
+        // count falls, whichever guest gets seated. Same treatment as lodging /
+        // travel-ground below; all three are on the recordless-aggregate allow-list.
       }];
     },
   },

@@ -1865,9 +1865,9 @@ const PHASE_FOCUS = {
 
 const phaseDate = (week, eventDate) => {
   if (!eventDate || !(week in PHASE_OFFSET)) return null;
-  const d = new Date(eventDate + 'T00:00:00');
-  d.setDate(d.getDate() + PHASE_OFFSET[week]);
-  return fmtDate(d.toISOString().slice(0, 10));
+  // addDaysISO formats via LOCAL midnight — toISOString().slice(0,10) drifted a day
+  // east of Greenwich (see lib/dateChips). PHASE_OFFSET[week] is ≤ 0 (days-before-event).
+  return fmtDate(addDaysISO(eventDate, PHASE_OFFSET[week]));
 };
 
 // 2026-07-15 wave-6: DELEGATES to lib/taskLead — the ONE overdue policy. This body
@@ -35589,7 +35589,7 @@ function downloadICS(filename, ics) {
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventName }) {
+function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventName, event }) {
   const C        = useT();
   const s        = makeS(C);
   const bp       = useContext(BpCtx);
@@ -35627,7 +35627,9 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
   Object.values(phaseGroups).forEach(({ phase, tasks, date }) => {
     const ds      = date.toISOString().slice(0, 10);
     const done    = tasks.filter(t => t.done).length;
-    const overdue = tasks.filter(t => !t.done && date <= getToday()).length;
+    // Overdue STATE is the ONE policy (snooze + createdAt reachability bind); the phase
+    // `date` still decides WHERE the dot sits, not whether it's red. (wave-7 fork fix.)
+    const overdue = tasks.filter(t => isTaskOverdue(t, eventDate, event && event.type, event)).length;
     const total   = tasks.length;
     const color   = overdue > 0 ? C.danger : done === total ? C.success : C.accent2;
     const label   = done === total ? `${phase}: all done`
@@ -35878,7 +35880,7 @@ function CalendarView({ timeline, vendors, eventDate, ros, onTabChange, eventNam
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {dayPhase.tasks.map(t => {
-                      const ov = dayPhase.date <= getToday() && !t.done;
+                      const ov = isTaskOverdue(t, eventDate, event && event.type, event);
                       return (
                         <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.secondary }}>
                           <span style={{ color: t.done ? C.success : ov ? C.danger : C.muted }}>{t.done ? '✓' : ov ? '!' : '○'}</span>
@@ -36046,13 +36048,15 @@ function MasterCalendarView({ events, onSelectEvent }) {
     Object.values(phaseGroups).forEach(({ phase, tasks, date }) => {
       const ds      = date.toISOString().slice(0, 10);
       const done    = tasks.filter(t => t.done).length;
-      const overdue = tasks.filter(t => !t.done && date <= getToday()).length;
+      // Overdue STATE via the ONE policy (snooze + reachability); phase `date` is only
+      // placement. `ev` is the full event so createdAt reachability binds. (wave-7 fix.)
+      const overdue = tasks.filter(t => isTaskOverdue(t, ev.date, ev.type, ev)).length;
       const total   = tasks.length;
       const chipColor = overdue > 0 ? C.danger : done === total ? C.success : evColor;
       const label     = `${ev.name}: ${done}/${total} done`;
       addItem(ds, { type: 'task', label, color: chipColor, eventId: ev.id, title: `${ev.name} — ${phase}` });
       phaseStore[ds] = phaseStore[ds] || [];
-      phaseStore[ds].push({ eventId: ev.id, eventName: ev.name, phase, tasks, date, color: chipColor, evColor });
+      phaseStore[ds].push({ eventId: ev.id, eventName: ev.name, phase, tasks, date, color: chipColor, evColor, event: ev });
     });
 
     // Payments
@@ -36495,7 +36499,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
             <div style={{ padding: '12px 20px', borderBottom: `1px solid ${C.border}`, background: C.surface2 + '88', display: 'flex', flexDirection: 'column', gap: 10 }}>
               {selPhases.map((ph, i) => {
                 const done = ph.tasks.filter(t => t.done).length;
-                const overdue = ph.tasks.filter(t => !t.done && ph.date <= getToday()).length;
+                const overdue = ph.tasks.filter(t => isTaskOverdue(t, ph.event && ph.event.date, ph.event && ph.event.type, ph.event)).length;
                 return (
                   <div key={i}>
                     <div style={{ fontSize: T.caption, fontWeight: FW.bold, textTransform: 'uppercase', letterSpacing: '0.08em', color: ph.color, marginBottom: 6 }}>
@@ -36503,7 +36507,7 @@ function MasterCalendarView({ events, onSelectEvent }) {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       {ph.tasks.map(t => {
-                        const ov = ph.date <= getToday() && !t.done;
+                        const ov = isTaskOverdue(t, ph.event && ph.event.date, ph.event && ph.event.type, ph.event);
                         return (
                           <div role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }} key={t.id} onClick={() => onSelectEvent(ph.eventId)} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: T.secondary, cursor: 'pointer', padding: '2px 4px', borderRadius: 4 }}
                             onMouseEnter={e => e.currentTarget.style.background = C.accent + '0d'}
@@ -37615,14 +37619,14 @@ const getTaskTargetDateStr = (task, eventDate) => {
   if (!eventDate) return null;
   const lead = taskLeadDaysLib(task);
   if (lead == null) return null;
-  const d = new Date(eventDate + 'T00:00:00');
-  d.setDate(d.getDate() + lead);
-  return d.toISOString().slice(0, 10);
+  // LOCAL calendar math — toISOString().slice(0,10) drifted a day east of Greenwich,
+  // bucketing a task into the wrong day. addDaysISO stays on local midnights. lead ≤ 0.
+  return addDaysISO(eventDate, lead);
 };
 
 const bucketTasks = (tasks, eventDate, eventType, event) => {
   const td = today8601();
-  const inSeven = (() => { const d = new Date(td + 'T00:00:00'); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); })();
+  const inSeven = addDaysISO(td, 7);
   const now = [], next = [], later = [];
   tasks.filter(t => !t.done).forEach(t => {
     const over   = isTaskOverdue(t, eventDate, eventType, event);
@@ -44305,7 +44309,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           onBack={() => handleTabChange('Command')}
         />
       )}
-      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={effectiveRos(event)} onTabChange={setTab} eventName={event.name} /></>}
+      {tab === 'Calendar'    && <><LegacyTabHeader label="Calendar" hint="See tasks, vendor arrivals, and the event itself laid out by date." onBack={() => handleTabChange('Command')} /><CalendarView timeline={event.timeline} vendors={event.vendors} eventDate={event.date} ros={effectiveRos(event)} onTabChange={setTab} eventName={event.name} event={event} /></>}
       {tab === 'Event Day Schedule' && (
         <>
           {/* Host audit — a host weeks out read the full prep schedule ("heat the

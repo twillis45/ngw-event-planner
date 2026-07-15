@@ -53,6 +53,7 @@ import { downloadCSV } from '@app/lib/download';
 import { deriveEventPhaseProgress } from '@app/lib/phaseProgress';
 import { deriveEventCompressionSummary } from '@app/lib/workflowCompression';
 import { buildDayBeforePlan } from '@app/lib/dayBefore';
+import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
@@ -1857,6 +1858,28 @@ export default function HostShellV2() {
       const v = (event.vendors || []).find(x => x && x.id === sheet.focus);
       if (v && !v.isInformal && !vendorStatusIsCurrent(v, 'Confirmed')) setStatusPickFor(sheet.focus);
     }
+    // ENFORCEMENT-GAP-1 (2026-07-15): vendorSection was WRITE-ONLY — a payment /
+    // COI raise (surfaceRegistry vendor-payments / vendor-coi) routed here with
+    // vendorSection:'payment'|'documents', the card expanded on the vendor row,
+    // but nothing ever landed the SECTION (the wave-6 audit flagged exactly this).
+    // Now the money/insurance sub-block is scrolled into view once the card is
+    // open, so a "Send payment" / "Get proof of insurance" CTA lands on the field
+    // it names, not the top of the card. Anchors: v-paydue-/v-cost- (payment),
+    // v-coi- (documents); falls back to the card if the block isn't rendered.
+    if (sheet && sheet.kind === 'vendors' && sheet.focus && sheet.vendorSection) {
+      const id = String(sheet.focus);
+      const targets = sheet.vendorSection === 'payment'
+        ? ['v-paydue-' + id, 'v-cost-' + id]
+        : sheet.vendorSection === 'documents'
+        ? ['v-coi-' + id]
+        : [];
+      setTimeout(() => {
+        try {
+          const el = targets.map(t => document.getElementById(t)).find(Boolean);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } catch { /* DOM not ready — the expanded card is still the right landing */ }
+      }, 90);
+    }
   }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   // Quick-switcher / command palette (build-map #9): jump across events AND
   // destinations from one search box. Cmd/Ctrl-K toggles it (the phone-frame
@@ -2339,123 +2362,46 @@ export default function HostShellV2() {
     );
   };
 
+  // ENFORCEMENT-GAP-1 (2026-07-15): routeSheet is now a THIN EXECUTOR. The
+  // decision — which route lands where — is the pure resolveRoute() in
+  // lib/routeResolver.js, the SINGLE authority that this executor and the
+  // route-execution test (src/__tests__/routeExecution.test.js) both run. The
+  // long if-ladder that used to live here could only be exercised inside the
+  // React tree, so the CTA source-of-truth test validated routes against a
+  // hand-synced mirror instead of the real routing code — and a route with a
+  // valid tab but an unhandled focusField (the wave-6 helpers 'space' bug)
+  // passed every test yet mis-landed live. With the decision extracted, the
+  // gate is executed, not mirrored: a route that stops landing row-level fails
+  // a test that runs the real resolver. This executor performs ONLY the side
+  // effects the descriptor names; every landing (kinds, focus, order) is
+  // resolveRoute's, unchanged.
+  //
+  // 'Communication' is still deliberately unroutable (resolveRoute returns
+  // null) — V2 has no messages surface, so there is nowhere honest to land;
+  // the caller falls to onCta's truthful "Not wired here yet" toast.
   const routeSheet = (route) => {
-    // Accept focusField-only routes (rain-plan, crab-plan, ground/air/lodging,
-    // caprow, fp-diet all resolve on focusField alone). The old `!route.tab`
-    // guard silently killed them — the Risks "Plan for this" weather/crab routes
-    // were tab-less and dead-CTA'd back to the risks sheet. Unmatched routes
-    // still fall through to the `return false` at the end.
-    if (!route || (!route.tab && !route.focusField)) return false;
-    if (route.tab === 'Vendors') { setSheet({ kind: 'vendors', focus: route.vendorId || null, vendorSection: route.vendorSection || null }); return true; }
-    // Sprint 1 seating: legacy readiness items route tab:'Seating' — land on
-    // the seating sheet, on the exact guest row when the route names one.
-    if (route.tab === 'Seating' || /^seat/.test(String(route.focusField || ''))) {
-      setSheet({ kind: 'seating', focus: route.guestId != null ? route.guestId : null });
-      return true;
-    }
-    if (route.tab === 'Budget') { setSheet({ kind: 'budget', focus: null }); return true; }
-    if (route.tab === 'Guests') { setSheet({ kind: 'guests', focus: null }); return true; }
-    if (route.tab === 'Budget' || route.focusField === 'budget') { setSheet({ kind: 'budget' }); return true; }
-    if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(String(route.focusField || '')))) {
-      const rowId = /^foodrow-(.+)$/.exec(String(route.focusField || ''));
-      setSheet({ kind: 'food', focus: route.foodFocus || (rowId ? rowId[1] : null) }); return true;
-    }
-    if (route.focusField === 'rain-plan') { setSheet({ kind: 'rain' }); return true; }
-    if (route.focusField === 'crab-plan') { setSheet({ kind: 'crabs' }); return true; }
-    // DESTINATION-2 slice 2: ground routes land on the exact spot — a guest's
-    // ride-board row (guestId) or the riders who still need a way back.
-    if (/^ground/.test(String(route.focusField || ''))) {
-      setSheet({ kind: 'ground', focus: route.guestId != null ? route.guestId : (route.focusField === 'ground-riders' ? 'riders' : null) });
-      return true;
-    }
-    // DESTINATION-2 slice 3: air routes land on the exact spot — a guest's
-    // arrivals-board row (guestId) or the airports card itself.
-    if (/^air/.test(String(route.focusField || ''))) {
-      setSheet({ kind: 'air', focus: route.guestId != null ? route.guestId : null });
-      return true;
-    }
-    // DESTINATION-2: lodging routes land on the exact spot — a guest's roster
-    // row (guestId), the deadline card ('deadline'), or the stay card itself.
-    if (route.tab === 'Travel' || /^lodging/.test(String(route.focusField || ''))) {
-      setSheet({ kind: 'lodging', focus: route.guestId != null ? route.guestId : (route.focusField === 'lodging-deadline' ? 'deadline' : null) });
-      return true;
-    }
-    if (/^fp-diet/.test(String(route.focusField || ''))) { setSheet({ kind: 'food', focus: 'diet' }); return true; }
-    if (/^caprow-/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
-    // WAVE-6 (a): the helper supply-class raises ({tab:'Planning', focusField:
-    // 'space'} — helperResponsibility.js capacityHelpers items) used to fall
-    // through to the Planning catch-all below and land on the CHECKLIST — the
-    // wrong sheet entirely. The capacity/helper rows render on the space sheet
-    // (sheet.kind 'space', same landing the caprow- routes above use), so a
-    // 'space' focus lands there. MUST branch before tab==='Planning'.
-    if (/^space/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
-    // "Add the location" essential (phaseProgress: {tab:'Event Details',
-    // focusField:'event-venue'}) had NO handler — its "Take me to it" dead-ended
-    // (host report). The venue is edited inline on the plan (the blocker card or
-    // the "Where is it happening?" card, whichever is showing — both inputs carry
-    // aria-label="Venue"). Land on the plan, then scroll to and focus that exact
-    // input, per the Row-Level CTA rule (never a screen top).
-    // Set-the-date foundation ({tab:'Event Details', focusField:'event-date'})
-    // MUST branch before the venue/Event-Details catch-all below — otherwise the
-    // app's #1 onboarding foundation matched `tab === 'Event Details'` and scrolled
-    // to the Venue input instead of the date (host-reported wrong-field routing).
-    if (route.focusField === 'event-date') {
+    const r = resolveRoute(route);
+    if (!r) return false;
+    // Stage landings: the target is a full-screen stage, not a sheet. The plan
+    // editor (event-date / event-venue) scrolls to and focuses the exact input
+    // per the Row-Level CTA rule; the day-of run of show lives on the Day stage.
+    if (r.kind === 'stage:plan') {
       setStage('plan'); setSheet(null); setEditor(null);
-      setTimeout(() => {
+      if (r.anchor) setTimeout(() => {
         try {
-          const inp = document.querySelector('[aria-label="Event date"]');
+          const inp = document.querySelector('[aria-label="' + r.anchor + '"]');
           if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
         } catch { /* DOM not ready — plan stage is still the right landing */ }
       }, 80);
       return true;
     }
-    if (route.focusField === 'event-venue' || route.tab === 'Event Details') {
-      setStage('plan'); setSheet(null); setEditor(null);
-      setTimeout(() => {
-        try {
-          const inp = document.querySelector('[aria-label="Venue"]');
-          if (inp) { inp.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
-        } catch { /* DOM not ready — plan stage is still the right landing */ }
-      }, 80);
-      return true;
-    }
-    if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
-      setSheet({ kind: 'tasks', focus: route.taskId || null }); return true;
-    }
-    // ── The dead CTAs (2026-07-14) ──────────────────────────────────────────
-    // routeSheet had no branch for 'Decisions', so the engine's HIGHEST-priority
-    // non-foundation tier — the one it stamps `critical` — fell through to
-    // onCta's "Not wired here yet" toast. The host was told the single most
-    // important thing needing them was a thing they could not open. Worse, it
-    // OUTRANKS the compression tier, whose route was wired: the dead route won.
-    //
-    // The destination existed the whole time. `sheet.kind === 'decisions'` is
-    // built and titled ("Calls to make", :5235) and the quiet-index row already
-    // opens it. Only the routing table never learned the way.
-    // The registry raises risks — so risks must land. Until now `sheet.kind === 'risks'` was
-    // reachable only by tapping the quiet-index row; nothing could ROUTE to it, which is
-    // precisely why the risk engine could raise nothing.
-    if (route.tab === 'Risks') {
-      setSheet({ kind: 'risks', focus: route.riskId || null });
-      return true;
-    }
-    if (route.tab === 'Decisions') {
-      setSheet({ kind: 'decisions', focus: route.decisionId || route.taskId || null });
-      return true;
-    }
-    // The day-of run of show. `setStage('day')` is the real destination — the
-    // ROS lives on the Day stage, not in a sheet.
-    if (route.tab === 'Event Day Schedule' || /^ros-/.test(String(route.focusField || ''))) {
-      setStage('day');
-      setSheet(null);
-      return true;
-    }
-    // NB: 'Communication' is deliberately NOT routed. V2 has no messages surface at
-    // all (commClient is read in exactly one place, to play a sound), so there is
-    // nowhere honest to land. It keeps falling to onCta's truthful "Not wired here
-    // yet — in the app this opens: …" toast rather than pretending at a destination.
-    // That is UX_07-correct, and it stays that way until the surface exists.
-    return false;
+    if (r.kind === 'stage:day') { setStage('day'); setSheet(null); return true; }
+    // Sheet landings: open the named sheet on its row/section. vendorSection is
+    // carried through only for vendor routes (money/insurance sub-sections).
+    const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
+    if (r.vendorSection !== undefined) s.vendorSection = r.vendorSection || null;
+    setSheet(s);
+    return true;
   };
 
   // Do-it-for-me: the app's REAL drafting engine (lib/doItForMe), verbatim.
@@ -9373,7 +9319,7 @@ export default function HostShellV2() {
                           {coiAct && (() => {
                             let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
                             return (
-                            <div className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
+                            <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
                               <span className="vc-detail" style={{ margin: 0, flex: '1 1 100%' }}>{coiAct.title} {coiAct.consequence}</span>
                               {/* WAVE-B (d): optional expiry while marking verified —
                                   getVendorCOIState reads coiExpiryDate to catch coverage

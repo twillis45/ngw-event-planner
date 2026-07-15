@@ -84,7 +84,12 @@ describe('record-keyed ids — the count moves, the id stays', () => {
     expect(a2).toBeTruthy();
     expect(a1.title).not.toBe(a2.title);          // the count really moved
     expect(a1.id).toBe(a2.id);                    // the identity did not
-    expect(a1.id).toBe('surface:seating:g1');     // the record, never the prose
+    // IDENTITY-CLASS FIX (2026-07-15): seating is a RECORDLESS AGGREGATE now —
+    // the surface id ALONE. Wave-6's `surface:seating:g1` (the first-unassigned
+    // guest) escaped the count-in-title id but still jumped the moment that very
+    // guest was seated; the recordless id is stable whichever guest gets seated.
+    // (See identityRecordKeyed.test.js for the count-mutation stability proof.)
+    expect(a1.id).toBe('surface:seating');        // the debt, never a moving proxy
   });
 
   test('…so a snooze written before the count moved still holds after it', () => {
