@@ -17,6 +17,7 @@ the one before it.
 | 5. Post-fix re-score (night) | 4 NEW adversarial re-scorers vs 9a92d90; score-critical findings live-verified in Chrome | **4/4/5/6.** Every wave-4 fix CONFIRMED in code + tests — and lowest-sub-dimension scoring then bit on what the fixes sat next to: snooze's lead cap never binds where "not now" renders, the top action snoozes by CATEGORY, four qidx producers bypass the ledger, two legacy surfaces still run the dead PHASE_OFFSET gate, day-of alert tiers are hue-only. |
 | 6. Post-fix re-score #2 (2026-07-15) | 4 NEW re-scorers vs 21b964a; proofs executed against the real engines | **3/5/3/6.** All wave-5 fixes CONFIRMED again — and the deeper layer they exposed scored worse than the shallower one they fixed: registry raises carry no leadDays (closed-window decisions snoozable again, one seam over), heroes are snooze-blind, no record-keyed dedup (3 food choices = 4 cards), 20 flat cards at T-1 is not triage; the stored-timeline schema (`offsetDays` + 19-key TitleCase) is unreadable by taskLead, converting "uniformly dead" into a live four-way disagreement; the NOW chip shipped for accessibility itself fails AA (3.76:1). |
 | 7. Post-fix re-score #3 (2026-07-15) | 4 NEW re-scorers vs 78307ee6; proofs executed against the real engines + live Chrome | **4/5/5/7 — the scoreboard ROSE for the first time.** Three of four dimensions cleared their wave-6 cap: registry snooze binds, record-keyed dedup gives one card, the four-way overdue parity executes 1=1=1=1, `--danger-text` clears AA at 6.40:1. The remaining caps prove the classes recur one surface further out: prioritization has no aging/promote (most-overdue-first buries a due-tomorrow item), reply-by-passed still raises nothing, the two CALENDAR readers are a fifth/sixth overdue policy, and the 8→1 vocabulary unification is still deferred. |
+| 8. Class-closure re-score (2026-07-15) | 4 NEW re-scorers vs 8dc00e60 (the three enforcement-gate commit), told to ATTACK the gates | **3/5/5/7 — Ranking slipped 1; the gates are real but two of three are INCOMPLETE.** ENFORCEMENT (routes) genuinely closed — the auditor tried to prove the resolver a new mirror and couldn't. IDENTITY closed its scope (dedup now the strongest sub-dim) but the sweep isn't structural for future ladder tiers. POLICY-FORK is REFUTED: a 7th overdue reader survives in hostv2 because my scanner only walks `src/` and only catches `getToday()` idioms. And Ranking's floor (prioritization) got nothing and a fresh adversary graded it a 3. The lesson: shipping a gate is not closing a class — the gate has to span every tree and every idiom, or the class relocates to where the gate can't see. |
 
 Every wave-4 confirmed break is fixed (`639c3e8` + the four-agent parallel batch, landed and
 live-verified in the running app: reconciliation counts agree with the queue on two events,
@@ -27,13 +28,13 @@ informal helpers). Full suite: 197 suites / 2,874 tests. The lesson held four ti
 
 ## The scoreboard
 
-| Dimension | Leader | W1 | W4 | W5 | W6 | **W7 re-score** | What set the W7 score (lowest sub-dim wins) |
+| Dimension | Leader | W1 | W5 | W6 | W7 | **W8 re-score** | What set the W8 score (lowest sub-dim wins) |
 |---|---|---|---|---|---|---|---|
-| Ranking | Linear triage / Superhuman | 3 | 5 | 4 | 3 | **4** | All wave-6 mechanics fixed and executed-verified: registry snooze cap binds (past-window decisions refuse), heroes read the worry-exclusive post-snooze head, record-keyed dedup gives one dietary card, bundling caps T-1 20→10. Capped at (e) prioritization: no aging, no host promote/pin (defer is the only lever), and most-overdue-first mis-ranks — live-confirmed the T-1 queue leads with a 29-day-stale COI over "Reconfirm 3 vendors · due tomorrow". |
-| Coverage | Linear inbox / Asana rollup | 3 | 5 | 4 | 5 | **5** | Held. Three of four wave-6 findings closed (helpers route traced end-to-end, parser field-parity clears the reconfirm raise, one-number-per-row shipped) — but the floor did not move: reply-by-passed + silent guests STILL raises nothing (contact capture + chase links make chasing easier, they are not a producer), and registry→routeSheet binding is enforced by a hand-synced mirror list, not by executing routeSheet — the enforcement class one layer up. |
-| Over time | Things 3 / Google Calendar | 3 | 5 | 5 | 3 | **5** | The wave-6 killer is genuinely closed — the four-way parity was EXECUTED and reads 1=1=1=1, the full 19-key vocabulary resolves, TimelineBuilder places every row. Capped at (c) because the same class survives one surface over: CalendarView + MasterCalendarView carry their own `date <= today` overdue math — a fifth/sixth policy that flags a snoozed or unreachable task red overdue while all four fixed readers say 0; the parity test only guards the four named legs. |
-| Visual | Slack badges / Apple HIG | 4 | 6 | 6 | 6 | **7** | The first clean riser. Every wave-6 defect independently reproduced as fixed: `--danger-text` clears AA at 6.40:1 (was 3.76), all four contrast figures in the comment reproduce to the decimal, "Can't wait" kills the homonym without minting a word, tag-lens split is non-overlapping, one-number-per-row shipped. Capped at (d) by the ONE deferred item — the 8→1 vocabulary unification (still ~8-10 status vocabularies). Minor: `--danger-text` wired to only the 2 day-of sites, so two red-text colors for one meaning. |
-| Hero intuitiveness | Things 3 home | — | 4 | 4 | 4 | **7*** | \*Not a board re-score (that needs the host panel) — but the approved redesign SHIPPED and live-verified: one status line, Start-here row, worries in the uncounted heads-up lane, reconciliation sentence deleted, bundles cap the wall. The engineer's read is 7; the board's own number waits on the panel. |
+| Ranking | Linear triage / Superhuman | 3 | 4 | 3 | 4 | **3** | The IDENTITY gate closed its scope (dedup now the strongest sub-dim at 6 — count-mutation stability executed, conflict/seating ids fixed) — but the sprint spent its whole budget on identity while the FLOOR is prioritization, untouched, and a fresh adversary graded (e) a 3, harsher than W7: executed the T-1 pathology in starker form (a 29-day-DEAD COI ranks #0, above tomorrow's vendor reconfirm), plus band-0 criticals are unordered by overdue-ness and the W7-F1 snooze-boundary divergence is still live. A gate on one axis can't lift a dimension floored on another. |
+| Coverage | Linear inbox / Asana rollup | 3 | 4 | 5 | 5 | **5** | Held — and the ENFORCEMENT gate genuinely CLOSED: the auditor tried to prove routeResolver is a new mirror and could not (one source of truth, the test executes it over real raiseAll output, HOST_TABS derived). But the gate was only ONE of W7's two cap reasons; the other — the missing reply-by/silent-guest PRODUCER — was out of scope and is confirmed still unclosed. A gate can't lift a floor that needs a feature. (Also: booking-progress bypasses the ledger; callsPill vs decisions = two thresholds.) |
+| Over time | Things 3 / Google Calendar | 3 | 5 | 3 | 5 | **5** | Held — and the POLICY-FORK gate is REFUTED as incomplete. It closed the 5 calendar sites (six-reader parity executes 0=0=0=0=0=0), but a 7th overdue reader survives in hostv2 (`taskTimeStatus` via dates.js) that renders "· past due" on the calm hero for snoozed/unreachable tasks — the W7 fork verbatim, relocated. It survives because the scanner's `SRC_ROOT` is `demo/src` and never walks hostv2/backend, and its regex only catches `getToday()` idioms (not `daysUntil(x)<0`, `slack<0`). My own gate does not span every surface — the exact principle, violated. |
+| Visual | Slack badges / Apple HIG | 4 | 6 | 6 | 7 | **7** | Held, no regression. The class-closure sprint touched HostShellV2 (route executor, vendorSection scroll, new `v-coi-` id) but all three are inert markup-wise — verified against the diff, no focus ring / layout jump / duplicated section — and every W7 contrast figure reproduces to rounding. Still capped at (d): the deferred 8→1 vocabulary unification, unchanged, plus the two-reds-for-one-meaning. The engine sprint neither helped nor hurt the visual axis. |
+| Hero intuitiveness | Things 3 home | — | 4 | 4 | 7* | **7*** | \*Unchanged — the redesign shipped and holds; the board's own number still waits on the host panel. |
 
 W7 verification (2026-07-15, vs 78307ee6): the first wave where the scoreboard ROSE —
 **4 / 5 / 5 / 7** (from wave-6's 3/5/3/6), hero redesign shipped. Every wave-6 fix survived
@@ -51,6 +52,33 @@ cap now proves is that the classes recur one surface further out every time: pol
 moved from four planning readers to the two CALENDAR readers; enforcement moved from the
 qidx booleans to the routeSheet mirror. 10+ is reached when a class is closed with a test
 that spans EVERY surface at once, not the surfaces a given wave happened to name.
+
+W8 verification (2026-07-15, vs 8dc00e60 — the class-closure sprint): the wave-8 re-scorers
+were told to ATTACK the three gates, and the result is the most useful of the series because
+it graded the gates, not the fixes. **ENFORCEMENT (routes) closed** — a determined attempt
+to prove `routeResolver` a new mirror failed: one source, the test executes it over real
+`raiseAll` output, `HOST_TABS` derived. **IDENTITY closed its scope** — count-mutation detach
+and the decision double-bill are gone, executed-verified — but the sweep only covers ladder
+tiers its fixtures reach, so it is not provably structural for future tiers, and cross-producer
+id unification is decision-only (vendors stay dual-keyed, latent). **POLICY-FORK is refuted as
+incomplete**: the gate reconciled the two calendar readers, but a 7th reader (`taskTimeStatus`
+in hostv2, `dates.js:88`) renders "· past due" on the calm hero for snoozed/unreachable tasks
+— the W7 fork verbatim — and it survives because the scanner's `SRC_ROOT` is `demo/src` (never
+walks `hostv2/`, `backend/`) and its regex only bites `getToday()` (not `daysUntil(x)<0`,
+`new Date()<new Date()`, `slack<0`). Ranking fell 4→3: the identity budget can't lift a
+dimension floored on prioritization, which an adversary graded harder while executing the
+buries-the-imminent pathology in a starker form (a 29-day-DEAD COI at #0, above tomorrow's
+reconfirm).
+
+The corrected lesson, and it sharpens the previous one: a gate only closes a class to the
+extent it SPANS. A scanner that walks one tree and matches one idiom is a convention wearing a
+test's clothes — the class relocates to the tree it can't see, exactly as the qidx bug once
+relocated to the calendar. So the wave-8 fix queue is not "more gates" but "make the two
+incomplete gates total": the policy scanner must walk every tree and forbid every overdue
+idiom (and hostv2's `upNext` must read `taskIsOverdue`); the identity sweep must enumerate
+ladder tiers structurally, not by fixture reach. Everything else on the board is now genuinely
+additive (recoverability weighting + host pin for Ranking; the silent-guest producer for
+Coverage; the 8→1 vocabulary for Visual) or gated (reminders channel; RSVP backend columns).
 
 ## W6's confirmed findings (the next fix queue — structural, not per-finding)
 
