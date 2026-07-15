@@ -67,16 +67,24 @@ a 22-day runway, the amber seating row beside a queue that never mentions seatin
 
 ## What "10+" concretely requires now
 
-**Buildable, no permission needed** (all now traced to W5 findings, priority order):
-1. Snooze integrity (Ranking's cap): per-item top-action ids + `leadDays` on every snoozeable
-   action — the two HIGH bugs above are the same fix.
-2. Registry as the *enforced* gate + the bypass producers registered + qidx tints derived
-   from the ledger + a completeness test.
-3. The last time bypasses: PHASE_OFFSET stragglers, legacy UTC day-shifters, one overdue
-   policy.
-4. `raiseCounts()` badges + `surface:*` lens mapping (fixes Ranking F-D and Coverage F-C at once).
-5. One severity vocabulary + day-of tier form encoding; aging: an item untouched for N× its
-   half-runway quietly escalates its `why`.
+**Buildable, no permission needed** (all traced to W5 findings — status as of `21b964a`,
+2026-07-15, all live-verified in Chrome dev; scores move only on the next refute-me pass):
+1. ✅ SHIPPED — Snooze integrity: per-item top-action ids, `leadDays` through six ladder
+   tiers, overdue-decision top demoted to attention (cap binds; window-closed refuses —
+   verified on 6 overdue decisions), calm fillers unsnoozeable, one #1 everywhere.
+2. ✅ SHIPPED — Registry as the gate: 8 bypass producers registered (seating, lodging,
+   travel-air/ground, helpers, per-item decisions/payments/COI; payment shadowing fixed),
+   qidx tints + count badges read `raiseCounts()`, completeness test fails CI on any new
+   hand-wired `attn:` boolean.
+3. ✅ SHIPPED — Time bypasses: ChecklistGenerator + TimelineBuilder on taskLead (overdue
+   fires there for the first time), lib/dateChips.js kills the UTC day-shifters, Extend
+   local + capped at event−1d, milestones local, second T-Nd parser retired.
+4. ✅ SHIPPED — Lens mapping: plain domains end-to-end; the Vendors and Guests lenses now
+   exist and the #1 vendor critical files with its peers.
+5. ⏳ REMAINING — one severity vocabulary across 8 chip families (own pass; day-of NOW/WATCH
+   form tiers and the 4 amber repayments DID ship); dock badges (deliberate restraint —
+   dock is navigation); aging escalation; TimelineBuilder grid placement still TitleCase
+   (badges correct, playbook rows don't render as grid rows — follow-up defect, noted).
 
 **Host calls (blocked on you):**
 1. **The hero redesign** — the board's unanimous prescription: one status line, one next
