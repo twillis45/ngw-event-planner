@@ -56,28 +56,30 @@ function preProgress(ev, phase, daysOut) {
     items.push({ id, handled: !!handled, cueLabel, route, priority });
   };
 
-  // Always-applicable foundations.
-  add('date', true, !!String(ev.date || '').trim(), 'Add the event date to time the plan', { tab: 'Event Details', focusField: 'event-date' }, 1);
+  // ── DATE & TIME — ONE area (host directive 2026-07-14) ──────────────────────
+  // The day and the hour are both "when", and counting them as two separate areas
+  // padded the scoreboard (a host reads "5 of 7" and rightly asks why "when" is two
+  // of them). They are now one area, "Date & time", handled only when BOTH the date
+  // is set AND the start time is confirmed. The gap still surfaces its own action in
+  // the queue — the cue below is "Add the event date" until there's a date, then
+  // "Set the start time" — and that action still routes to the editor that drives the
+  // run of show and the vendor briefs. Merged for the COUNT; not lost from the queue.
+  const _hasDate = !!String(ev.date || '').trim();
+  const _timeOk = (() => { try { return startTimeIsConfirmed(ev); } catch (_e) { return false; } })();
+  // Priority splits by which half is open: a MISSING DATE is the #1 foundation (everything
+  // counts back from it, priority 1); a merely-unconfirmed start time is a real but low-stakes
+  // gap (priority 9, same as when it was its own area — it surfaces without crowding the venue,
+  // the food or the guest count).
+  add('datetime', true, _hasDate && _timeOk,
+    !_hasDate ? 'Add the event date to time the plan'
+      : String(ev.startTime || '').trim() ? 'Confirm the start time' : 'Set the start time',
+    !_hasDate ? { tab: 'Event Details', focusField: 'event-date' } : { tab: 'Event Details', focusField: 'event-start' },
+    !_hasDate ? 1 : 9);
   // Location essential uses the ONE shared reader (eventLocationStatus) — an
   // at-home host with their city on file has a location (weather and shopping
   // already run off it); only a truly missing location is a readiness gap.
   // (Todd's report: home-hosted event was nagged 'Add the location' while the
   // app was simultaneously using Atlanta, GA for its own features.)
-  // AN EVENT SHOULD START WITH A GROUNDED TIME. `startTime` was read by three engines and
-  // WRITABLE BY NOTHING — so the run of show quietly invented one (a bare 15:00), printed it
-  // as fact, and sent it to a caterer as their load-in. It is a real gap, so it belongs in the
-  // one ledger like any other: it enters the ranked list, it is counted, and it clears when the
-  // host sets a time. Only applies once there IS a date — a time without a date means nothing.
-  // Priority 9, deliberately LAST-ish. A missing hour is a real gap — the day cannot run on
-  // a clock without it, and nothing we send a vendor can name a time — but it is not more
-  // urgent than the venue, the food or the guest count. It surfaces; it does not crowd.
-  // The event now ARRIVES with a grounded default (lib/startTime.defaultStartTime), so the
-  // gap is no longer "there is no time" — it is "the host has not confirmed OUR time". That
-  // still matters: an unconfirmed hour must not reach a guest's invitation or a vendor's
-  // brief, and only the host can settle it. The cue says which of the two it is.
-  add('starttime', !!String(ev.date || '').trim(), startTimeIsConfirmed(ev),
-    String(ev.startTime || '').trim() ? 'Confirm the start time' : 'Set the start time',
-    { tab: 'Event Details', focusField: 'event-start' }, 9);
   add('location', true, eventLocationStatus(ev) !== 'missing', 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host

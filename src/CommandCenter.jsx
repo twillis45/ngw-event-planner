@@ -1675,7 +1675,7 @@ export function eventPlan(event, ctx = null) {
   // Ordering is the phase engine's own `priority` — the reactive top action still leads,
   // because a vendor who hasn't confirmed outranks a domino by construction.
   const PHASE_TO_DOMAIN = {
-    date: 'date', location: 'venue', headcount: 'guests', food: 'food',
+    datetime: 'date', date: 'date', location: 'venue', headcount: 'guests', food: 'food',
     budget: 'budget', vendors: 'vendors', rain: 'rain', shopping: 'shopping',
     crabs: 'food', payments: 'vendors', thankyous: 'guests', rentals: 'rentals',
   };

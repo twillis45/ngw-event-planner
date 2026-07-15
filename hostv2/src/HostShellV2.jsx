@@ -2918,7 +2918,7 @@ export default function HostShellV2() {
   // honest route toast — never a button that pretends.
   const wiredKind = (a) => {
     if (['date', 'guests', 'budget', 'food'].includes(a.domain)) return a.domain;
-    if (a.domain === 'starttime') return 'date';   // captured beside the date it belongs to
+    if (a.domain === 'starttime' || a.domain === 'datetime') return 'date';   // day + hour share the date editor
     // Engine top actions carry their CATEGORY as domain ('start', 'readiness'…);
     // recognize them by their real deep-link target or category.
     // SPECIFIC deep-link targets first — category fallbacks LAST. (The rain
@@ -4082,7 +4082,7 @@ export default function HostShellV2() {
                               dimmed with a done-dot, the open ones bright. The caret
                               still opens the full interactive breakdown below. */}
                           {hasCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (() => {
-                            const areaLabel = (id) => ({ date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
+                            const areaLabel = (id) => ({ datetime: 'Date & time', date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 7 }}>

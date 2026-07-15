@@ -59,7 +59,7 @@ describe('one ledger — nextActions cannot be blind to what phaseProgress knows
     for (const id of openPhaseIds(ev)) {
       // 'crabs' folds into the food domain (one domain, one row) — a domain being
       // represented is the contract, not a 1:1 id mapping.
-      const expected = { crabs: 'food', location: 'venue', headcount: 'guests' }[id] || id;
+      const expected = { crabs: 'food', location: 'venue', headcount: 'guests', datetime: 'date' }[id] || id;
       expect({ id, domains: [...domains] }).toEqual({ id, domains: expect.arrayContaining([expected]) });
     }
   });
