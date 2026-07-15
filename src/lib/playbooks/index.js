@@ -560,9 +560,12 @@ function taskOffsetDays(when) {
   const m = /^T(-?\d+)/.exec(String(when || '').trim());
   return m ? parseInt(m[1], 10) : null;
 }
-// A calm, honest phase label for a task's relative date — no fake calendar dates,
-// no OVERDUE pill (these labels are intentionally NOT in ChecklistGenerator's
-// PHASE_OFFSET map, so the host never gets a "behind" verdict on the plan view).
+// A calm, honest phase label for a task's relative date — no fake calendar dates.
+// (2026-07-15: the old note here claimed these labels were "intentionally NOT in
+// ChecklistGenerator's PHASE_OFFSET map" to spare the host a behind-verdict — but
+// that was the app-wide never-overdue bug wearing a design rationale. The label is
+// a LABEL; the due math everywhere now reads the numeric leadDays via lib/taskLead,
+// and ChecklistGenerator's dead table is gone.)
 function taskPhaseLabel(offset) {
   if (offset == null) return '';
   if (offset >= 0) return 'Day of';
@@ -768,6 +771,10 @@ export function playbookChecklist(event, asOf) {
       id: `pbt-${event.id}-fa-caterer`,
       task: 'Confirm your caterer and send them the final headcount',
       category: 'planning', phase: 'food', week: taskPhaseLabel(off), owner: '',
+      // 2026-07-15: persist the numeric lead like every other row above — this task
+      // carried only the prose `week`, so lib/taskLead's readers fell back to the
+      // lossy label bucket instead of the authored T-7d lead.
+      leadDays: off,
       dueInDays: dte + off,
       provenance: { source: `${playbook.type} playbook`, taskId: 'fa-caterer', derived: 'food-approach' },
     });
@@ -1566,12 +1573,11 @@ export function playbookMilestones(event, asOf) {
   return pb.milestones
     .filter((m) => m && m.category !== 'event' && typeof m.offsetDays === 'number')
     .map((m) => {
-      let dueDate = null;
-      if (event.date) {
-        const d = new Date(event.date + 'T00:00:00');
-        d.setDate(d.getDate() - m.offsetDays);
-        dueDate = d.toISOString().slice(0, 10);
-      }
+      // 2026-07-15: LOCAL-format the due date (decisionDueDate), not toISOString —
+      // the UTC slice emitted the previous day east of Greenwich, the same day-shift
+      // class the daysUntil convergence killed. decisionDueDate takes a negative
+      // offset (days before the event), so the milestone's positive offsetDays flips.
+      const dueDate = decisionDueDate(event.date, -m.offsetDays);
       return {
         id: m.id, name: String(m.name || '').trim(), owner: m.owner || 'host',
         category: m.category || 'planning', offsetDays: m.offsetDays,

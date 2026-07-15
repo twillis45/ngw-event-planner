@@ -20,6 +20,7 @@ import {
 // still works (it sets `done`, which effectiveDone honors). Planner behavior unchanged.
 import { effectiveDone } from '../lib/taskEngine';
 import { feedbackCommit } from '../lib/feedback';
+import { taskIsOverdue } from '../lib/taskLead';
 
 const P = {
   canvas: color.surface.canvas, base: color.surface.base, card: color.surface.card,
@@ -31,19 +32,26 @@ const FF = type.family;
 const sp = space;
 const r  = radius;
 
-const PHASE_OFFSET = {
-  '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
-  '6 Months Out':  -182, '5 Months Out':  -152, '4 Months Out': -121,
-  '3 Months Out':   -91, '2 Months Out':   -61, '1 Month Out':   -30,
-  '2 Weeks Out':    -14, 'Week Of': -7,
-};
-
-function isOverdue(task, eventDate) {
-  if (!eventDate || !(task.week in PHASE_OFFSET)) return false;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return today > due;
+// 2026-07-15 wave-5 over-time fix: this surface still ran the ORIGINAL dead overdue
+// gate — a local PHASE_OFFSET table with TitleCase keys ('Week Of', '2 Weeks Out')
+// checked via `task.week in PHASE_OFFSET`, while playbook tasks carry taskPhaseLabel's
+// sentence-case prose ('Week of', '2 weeks out') plus a numeric leadDays. The
+// membership test never matched, so no playbook task could EVER read overdue here:
+// the OVERDUE pill and the host's "N need a look" count were permanently dead.
+// Same conversion as DecisionApprovalCenter (9a92d90): the table is deleted and the
+// derivation delegates to lib/taskLead — ONE reader (authored leadDays first, then
+// T-Nd, then the lowercased prose bucket) — with the FULL event passed through so
+// createdAt reachability applies (an event created two days out never had a shot at
+// a 21-day-lead task; that's a tight timeline, not a late host). The wrapper also
+// honors the decision board's Extend (snoozedUntil), so a deferred item doesn't
+// flash OVERDUE here while hidden there. Rendering shape unchanged.
+// Exported for the over-time gate tests.
+export function isOverdue(task, event) {
+  if (task.snoozedUntil) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (new Date(task.snoozedUntil + 'T00:00:00') > today) return false;
+  }
+  return taskIsOverdue(task, event);
 }
 
 function progressColor(ratio) {
@@ -121,9 +129,9 @@ function StatCard({ label, value, valueColor }) {
 }
 
 // ── CheckRow ──────────────────────────────────────────────────────────────────
-function CheckRow({ task, eventDate, onToggle, onOpen, urgency }) {
+function CheckRow({ task, event, onToggle, onOpen, urgency }) {
   const subs = Array.isArray(task.subtasks) ? task.subtasks : [];
-  const overdue = !task.done && isOverdue(task, eventDate);
+  const overdue = !task.done && isOverdue(task, event);
   // Sprint 57f.2: when any compression urgency chip is showing, suppress
   // the OVERDUE pill. The two carry overlapping meaning ("long-lead window
   // passed" vs "task date past") and rendering both on one row pushes the
@@ -192,7 +200,6 @@ export default function ChecklistGenerator({
   isHost = false, // Reality-Fix 2 P1: host sees host-language only (no CLIENT lane, no jargon)
 }) {
   const timeline  = event?.timeline || [];
-  const eventDate = event?.date || null;
   // Sprint 57f.2: live urgency derivation for the checklist rows. Skippable
   // is intentionally silent on this surface to keep scanning quiet — we
   // surface only do_now / risk_lost (the meaningful actions).
@@ -202,7 +209,10 @@ export default function ChecklistGenerator({
     const tgt = new Date(event.date + 'T00:00:00');
     const days = Math.round((tgt - today) / 86400000);
     return (task) => {
-      const u = classifyTemplateTaskUrgency(task, days, event.type, PHASE_OFFSET);
+      // 2026-07-15: phaseOffset arg is null — the classifier reads the lead through
+      // lib/taskLead (taskLeadDays), which already covers both the numeric leadDays
+      // and every legacy TitleCase label the deleted local table held.
+      const u = classifyTemplateTaskUrgency(task, days, event.type, null);
       if (!u || u.urgency === 'standard' || u.urgency === 'skippable') return null;
       return u;
     };
@@ -217,7 +227,7 @@ export default function ChecklistGenerator({
         const tgt = new Date(d + 'T00:00:00');
         return Math.round((tgt - today) / 86400000);
       },
-      PHASE_OFFSET,
+      null, // 2026-07-15: lead comes from lib/taskLead inside the classifier
     );
   }, [event]);
 
@@ -251,7 +261,7 @@ export default function ChecklistGenerator({
   // Host = current-only projection of the engine: drop everything effectiveDone.
   const tasks = isHost ? allTasks.filter(t => !t.done) : allTasks;
   const remaining = tasks.filter(t => !t.done).length;
-  const overdue   = tasks.filter(t => !t.done && isOverdue(t, eventDate)).length;
+  const overdue   = tasks.filter(t => !t.done && isOverdue(t, event)).length;
   const total     = allTasks.length;
 
   const catBuckets = buildCategoryBuckets(tasks);
@@ -427,7 +437,7 @@ export default function ChecklistGenerator({
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {tabTasks.length === 0
             ? <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: sp[10], fontFamily: FF, fontSize: type.size.base, color: P.textTertiary }}>{ownerFilter ? `No tasks for ${ownerFilter}` : 'No tasks in this category'}</div>
-            : tabTasks.map(t => <CheckRow key={t.id} task={t} eventDate={eventDate} onToggle={handleToggle} onOpen={onOpenTask} urgency={urgencyOf(t)} />)
+            : tabTasks.map(t => <CheckRow key={t.id} task={t} event={event} onToggle={handleToggle} onOpen={onOpenTask} urgency={urgencyOf(t)} />)
           }
         </div>
 

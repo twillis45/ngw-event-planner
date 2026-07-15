@@ -200,7 +200,7 @@ button{font-family:inherit}
    (radiogroup chips, e.g. the invite's Yes/Maybe/No) — without the aria-checked
    half, radio chips render identically selected vs unselected. */
 .chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
-.chip.reset{color:var(--warn); border-color:var(--warn-tint); background:var(--warn-tint)}
+/* .chip.reset deleted 2026-07-15 (wave-5 amber audit): warn-styled rule with no renderer anywhere in the shell — dead CSS spending amber budget on nothing. */
 
 .engine-error{
   /* Audit C3: --danger-solid #E84036 is too bright — near-white text on it was
@@ -1228,6 +1228,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-align:right;
   font-variant-numeric:tabular-nums}
 .qidx-s.attn{color:var(--warn); font-weight:600}
+/* Ledger count badge (wave-5): the raise ledger's own number for the row's surface —
+   it counts something real (raiseCounts) and clears when the work clears. Amber is
+   earned here: a raised count IS "needs you" (UX_02). */
+.qidx-n{flex-shrink:0; font-size:var(--t-caption-min); font-weight:750; font-variant-numeric:tabular-nums; color:var(--warn); background:var(--warn-tint); border-radius:var(--r-pill); padding:2px 7px}
 .qidx-row .chev{position:static; color:var(--faint); flex-shrink:0}
 
 /* ── Vendors: modern card system (host directive 2026-07-08 late) ──
@@ -1315,7 +1319,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   padding:3px 9px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band); white-space:nowrap;
   transition:all var(--ms-ambient) var(--ease-standard);
 }
-.sweep-row.drafting .sweep-state{ color:var(--warn); background:var(--warn-tint); }
+.sweep-row.drafting .sweep-state{ color:var(--progress); background:var(--progress-tint); }/* wave-5 amber audit: drafting is work IN MOTION, not a gap — progress family like .ready below; the state word, not the hue, tells the two apart */
 .sweep-row.ready .sweep-state{ color:var(--progress); background:var(--progress-tint); }/* audit S1 */
 .sweep-row.answered .sweep-state{ color:var(--ok); background:var(--ok-tint); }/* audit I1a: every other "good" pill pairs ok with ok-tint */
 .sweep-row .sv-meta{ font-size:var(--t-row-sub); color:var(--muted); margin-top:2px; }

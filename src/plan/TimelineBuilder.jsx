@@ -14,6 +14,7 @@ import {
   classifyTemplateTaskUrgency,
   deriveEventCompressionSummary,
 } from '../lib/workflowCompression';
+import { taskIsOverdue } from '../lib/taskLead';
 
 const P = {
   canvas:      color.surface.canvas,
@@ -35,12 +36,8 @@ const P = {
 const FF = type.family;
 const T  = type;
 
-const PHASE_OFFSET = {
-  '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
-  '6 Months Out':  -182, '5 Months Out':  -152, '4 Months Out': -121,
-  '3 Months Out':   -91, '2 Months Out':   -61, '1 Month Out':  -30,
-  '2 Weeks Out':    -14, 'Week Of':          -7,
-};
+// PHASES is the grid's COLUMN vocabulary (presentation), not the due-date source —
+// the dead local PHASE_OFFSET table that used to sit beside it is gone (see taskStatus).
 const PHASES = [
   '12 Months Out','10 Months Out','8 Months Out','6 Months Out',
   '5 Months Out','4 Months Out','3 Months Out','2 Months Out',
@@ -48,16 +45,19 @@ const PHASES = [
 ];
 
 // ── Status helpers ────────────────────────────────────────────────────────────
-function phaseIsPast(phase, eventDate) {
-  if (!eventDate || !(phase in PHASE_OFFSET)) return false;
-  const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[phase]);
-  return due < today;
-}
-function taskStatus(t, eventDate) {
+// 2026-07-15 wave-5 over-time fix: phaseIsPast checked `phase in PHASE_OFFSET` with
+// TitleCase keys ('Week Of', '2 Weeks Out') against playbook tasks' sentence-case
+// prose ('Week of') — never a member, so the DUE UPCOMING badge could never fire
+// and every open task read PENDING forever. Same conversion as ChecklistGenerator
+// and DecisionApprovalCenter (9a92d90): the local table is deleted and the
+// derivation delegates to lib/taskLead (ONE reader — authored leadDays, then T-Nd,
+// then the lowercased prose bucket), with the FULL event passed through so
+// createdAt reachability applies (a task that was never reachable isn't "late").
+// Badge labels, colors, and the grid's rendering shape are unchanged.
+// Exported for the over-time gate tests.
+export function taskStatus(t, event) {
   if (t.done) return { label: 'DONE', bg: P.greenBg, fg: P.green };
-  if (phaseIsPast(t.week, eventDate)) return { label: 'DUE UPCOMING', bg: P.amberBg, fg: P.amber };
+  if (taskIsOverdue(t, event)) return { label: 'DUE UPCOMING', bg: P.amberBg, fg: P.amber };
   return { label: 'PENDING', bg: P.elevated, fg: P.textSec };
 }
 function vendorStatus(v) {
@@ -137,7 +137,7 @@ function Bar({ item, barColor, dashed, selected, onClick, urgency }) {
 }
 
 // ── Phase grid ────────────────────────────────────────────────────────────────
-function PhaseGrid({ lanes, eventDate, selectedId, onSelect, urgencyOf }) {
+function PhaseGrid({ lanes, selectedId, onSelect, urgencyOf }) {
   const col = `repeat(${PHASES.length}, minmax(90px, 1fr))`;
 
   function renderRows(items, colorFn, dashed) {
@@ -202,8 +202,8 @@ function PhaseGrid({ lanes, eventDate, selectedId, onSelect, urgencyOf }) {
 }
 
 // ── Detail panel ──────────────────────────────────────────────────────────────
-function DetailPanel({ item, eventDate, onClose }) {
-  const s = !item ? null : item._vendor ? vendorStatus(item._vendorData) : taskStatus(item, eventDate);
+function DetailPanel({ item, event, onClose }) {
+  const s = !item ? null : item._vendor ? vendorStatus(item._vendorData) : taskStatus(item, event);
   return (
     <div style={{ width:230, flexShrink:0, borderLeft:`1px solid ${P.borderS}`,
       padding:`${space[5]}px ${space[4]}px`, display:'flex', flexDirection:'column', gap:space[4] }}>
@@ -237,7 +237,7 @@ function DetailPanel({ item, eventDate, onClose }) {
 }
 
 // ── Mobile list ───────────────────────────────────────────────────────────────
-function MobileList({ lanes, eventDate, urgencyOf }) {
+function MobileList({ lanes, event, urgencyOf }) {
   const all = [
     ...lanes.milestones.map(t => ({ ...t, _lane:'M' })),
     ...lanes.vendorItems.map(t => ({ ...t, _lane:'V' })),
@@ -252,7 +252,7 @@ function MobileList({ lanes, eventDate, urgencyOf }) {
             paddingBottom:space[2], borderBottom:`1px solid ${P.borderS}` }}>{ph}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:space[2] }}>
             {all.filter(t => t.week === ph).map(item => {
-              const s = item._vendor ? vendorStatus(item._vendorData) : taskStatus(item, eventDate);
+              const s = item._vendor ? vendorStatus(item._vendorData) : taskStatus(item, event);
               const u = urgencyOf && !item._vendor ? urgencyOf(item) : null;
               const uTone = u ? (u.tone === 'danger' ? P.red : u.tone === 'warn' ? P.amber : P.textSec) : null;
               return (
@@ -316,7 +316,6 @@ export default function TimelineBuilder({
   phaseFocus,
 }) {
   const [viewMode, setViewMode]     = useState('Phase');
-  const eventDate = event?.date || null;
   const lanes     = useMemo(() => buildLanes(event || {}), [event]);
   // Sprint 57f.2: per-task urgency for grid bars + mobile rows. Derived
   // live from event.date + task.week — never trust a stale stored
@@ -332,7 +331,7 @@ export default function TimelineBuilder({
         const tgt = new Date(d + 'T00:00:00');
         return Math.round((tgt - today) / 86400000);
       },
-      PHASE_OFFSET,
+      null, // 2026-07-15: lead comes from lib/taskLead inside the classifier
     );
   }, [event]);
   const urgencyOf = useMemo(() => {
@@ -341,7 +340,10 @@ export default function TimelineBuilder({
     const tgt = new Date(event.date + 'T00:00:00');
     const days = Math.round((tgt - today) / 86400000);
     return (task) => {
-      const u = classifyTemplateTaskUrgency(task, days, event.type, PHASE_OFFSET);
+      // 2026-07-15: phaseOffset arg is null — the classifier reads the lead through
+      // lib/taskLead (taskLeadDays), which covers both numeric leadDays and every
+      // legacy TitleCase label the deleted local table held.
+      const u = classifyTemplateTaskUrgency(task, days, event.type, null);
       // Skippable is intentionally silent on this surface — restraint.
       if (!u || u.urgency === 'standard' || u.urgency === 'skippable') return null;
       return u;
@@ -485,7 +487,7 @@ export default function TimelineBuilder({
           <span style={{ color:P.text, fontSize:T.size.md, fontWeight:T.weight.semibold, fontFamily:FF }}>Timeline</span>
           <span style={{ color:P.textTer, fontSize:T.size.xs, fontFamily:FF }}>Phase view</span>
         </div>
-        <MobileList lanes={lanes} eventDate={eventDate} urgencyOf={urgencyOf} />
+        <MobileList lanes={lanes} event={event} urgencyOf={urgencyOf} />
       </div>
       </div>
     );
@@ -521,8 +523,8 @@ export default function TimelineBuilder({
         </div>
       ) : (
         <div style={{ flex:1, display:'flex', overflow:'hidden' }}>
-          <PhaseGrid lanes={lanes} eventDate={eventDate} selectedId={selected?.id} onSelect={onSelect} urgencyOf={urgencyOf} />
-          <DetailPanel item={selected} eventDate={eventDate} onClose={() => setSelected(null)} />
+          <PhaseGrid lanes={lanes} selectedId={selected?.id} onSelect={onSelect} urgencyOf={urgencyOf} />
+          <DetailPanel item={selected} event={event} onClose={() => setSelected(null)} />
         </div>
       )}
     </div>

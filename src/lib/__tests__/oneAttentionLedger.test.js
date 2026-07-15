@@ -87,7 +87,12 @@ describe('one ledger — nextActions cannot be blind to what phaseProgress knows
     const ids = actions.map(a => a.id).filter(Boolean);
     expect(ids.length).toBe(new Set(ids).size);
     // Foundation/phase DOMAINS still dedupe among themselves (one row per plan area).
-    const planDomains = actions.map(a => a.domain).filter(d => d && !String(d).startsWith('surface:'));
+    // UPDATED (wave-5 ranking, 2026-07-15): registry actions carry PLAIN domains now
+    // ('vendors' | 'risks' | 'day') for the shell's domain lens, so several raises may
+    // share one — exclude them by SOURCE, not by the retired 'surface:' prefix.
+    const planDomains = actions
+      .filter(a => a.source !== 'surfaceRegistry')
+      .map(a => a.domain).filter(Boolean);
     expect(planDomains.length).toBe(new Set(planDomains).size);
   });
 

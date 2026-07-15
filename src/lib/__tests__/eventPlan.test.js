@@ -147,7 +147,13 @@ describe('eventPlan — ordering, dedup, and the #1 = the hero everywhere', () =
     const plan = eventPlan(baseBBQ({ guests: [{ rsvp: 'Yes' }] }));
     const ids = plan.nextActions.map(a => a.id);
     expect(new Set(ids).size).toBe(ids.length);
-    const planDomains = plan.nextActions.map(a => a.domain).filter(d => d && !String(d).startsWith('surface:'));
+    // UPDATED (wave-5 ranking, 2026-07-15): registry actions now carry their surface's
+    // PLAIN domain ('vendors' | 'risks' | 'day') so the shell's domain lens can file
+    // them — three risk raises legitimately share 'risks'. Exclude them by SOURCE
+    // (the dedup/snooze key is the id, unchanged); plan-area domains still dedupe.
+    const planDomains = plan.nextActions
+      .filter(a => a.source !== 'surfaceRegistry')
+      .map(a => a.domain).filter(Boolean);
     expect(new Set(planDomains).size).toBe(planDomains.length);
   });
 

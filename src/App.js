@@ -59,6 +59,10 @@ import { isWeatherConfigured, isLikelyOutdoor, geocodeVenue, getEventWeatherRisk
 import { derivePlaceIntelligence } from './lib/placeIntelligence';
 import { buildDayBeforePlan } from './lib/dayBefore';
 import { getToday, daysUntil, eventDateStatus } from './lib/dates';
+// 2026-07-15 wave-5 over-time fix: the chip-date helpers moved to lib/dateChips —
+// they were UTC/local split-brained here (after ~8pm ET "Today" wrote tomorrow;
+// Friday 9pm ET "This weekend" wrote Sunday). One local-ISO formatter, testable clocks.
+import { today8601, addDaysISO, nextWeekendISO, followingWeekendISO, addMonthsISO, nextFridayISO, extendSnoozeUntil } from './lib/dateChips';
 import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from './lib/vendorEstimator';
 import { checkDocuSignStatus, startDocuSignOAuth, parseDocuSignCallback, sendForSignature, getEnvelopeStatus, envelopeStatusLabel, envelopeStatusColor } from './lib/docusign';
 import { isMapsConfigured, loadMapsScript, attachAutocomplete } from './lib/maps';
@@ -1742,7 +1746,7 @@ const fmtTime12 = (t) => {
 };
 const fmtDate   = (d) => { if (!d) return '—'; const dt = new Date(d + 'T00:00:00'); return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); };
 const fmtMon    = (ym) => { const [y, m] = ym.split('-'); return new Date(y, m - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); };
-const today8601 = () => new Date().toISOString().slice(0, 10);
+// today8601 now lives in lib/dateChips (imported above) — LOCAL calendar date.
 
 // Sprint Date Friction Phase B — universal one-tap native picker helper.
 // Spread {...dateInputProps} onto any <input type="date"> to:
@@ -1760,41 +1764,11 @@ const dateInputProps = {
 // strings only. No relative-storage metadata is introduced; the chip's
 // output is a plain string equivalent to what the picker would produce.
 //
-// addDaysISO(base, n): add n calendar days to an ISO date string (or to
-// today when base is empty).
-const addDaysISO = (baseIso, n) => {
-  const base = baseIso ? new Date(baseIso + 'T00:00:00') : getToday();
-  const out = new Date(base);
-  out.setDate(out.getDate() + n);
-  return out.toISOString().slice(0, 10);
-};
-// nextWeekendISO(): nearest upcoming Saturday from today. If today IS
-// Saturday, returns today; if Sunday, returns next Saturday (6 days).
-const nextWeekendISO = () => {
-  const d = getToday();
-  const day = d.getDay(); // 0 Sun ... 6 Sat
-  const add = day === 6 ? 0 : (6 - day + 7) % 7;
-  return addDaysISO(today8601(), add);
-};
-// weekendAfter(): the Saturday after the one returned by nextWeekendISO.
-const followingWeekendISO = () => addDaysISO(nextWeekendISO(), 7);
-// addMonthsISO(n): nearest-real-day add. Handles end-of-month rollover.
-const addMonthsISO = (n) => {
-  const d = getToday();
-  const m = d.getMonth();
-  const target = new Date(d);
-  target.setMonth(m + n);
-  // Guard end-of-month overflow (e.g., Mar 31 + 1 month → May 1 in JS)
-  if (target.getMonth() !== ((m + n) % 12 + 12) % 12) target.setDate(0);
-  return target.toISOString().slice(0, 10);
-};
-// nextFridayISO(): the next Friday strictly after today (a common party night).
-const nextFridayISO = () => {
-  const day = getToday().getDay(); // 0 Sun..6 Sat
-  let add = (5 - day + 7) % 7;
-  if (add === 0) add = 7;
-  return addDaysISO(today8601(), add);
-};
+// 2026-07-15: addDaysISO / nextWeekendISO / followingWeekendISO / addMonthsISO /
+// nextFridayISO moved to lib/dateChips (imported above). The local copies mixed a
+// LOCAL day-of-week with a UTC-formatted base, so Friday 9pm ET "This weekend"
+// resolved to SUNDAY and every toISOString().slice output drifted a day east of
+// Greenwich. All chip math is now local-midnight in, localISO out.
 // seasonISO(monthIdx, day): a representative date in the next occurrence of a
 // season, at least ~30 days out. Couples/committees think in seasons, not exact
 // days — this only POSITIONS the grid; the host still commits the exact day.
@@ -39904,20 +39878,29 @@ function EventDecisionsTab({ event, setEvent, openId, isMobile, onBack, onRouteT
   // Decision actions so a planner can act ON the decision inline (no hunting):
   // Extend pushes the deadline a week (snooze); Reassign changes the owner.
   const onExtendDecision = (taskId) => {
+    // 2026-07-15 wave-5 over-time fix: the old writer was `new Date()+7d →
+    // toISOString().slice(0,10)` — UTC (after ~8pm ET it hid the decision for 8
+    // days) and UNCAPPED (near the event it could push snoozedUntil PAST the event
+    // date, so the decision vanished until after the party). extendSnoozeUntil
+    // (lib/dateChips) is local-calendar and caps at min(+7d, event date − 1 day);
+    // when even that cap is ≤ today it returns null and we refuse to extend —
+    // the decision stays visible (lib/snooze.js's refuse-when-the-window-is-closed
+    // rule).
+    const untilISO = extendSnoozeUntil(event && event.date, 7);
+    if (!untilISO) return; // no room left to defer — leave it on the board
+    const deferredDays = daysUntil(untilISO);
     // Sprint 58C — Decision Memory: deferring an engine-flagged decision is a
     // planner override. Capture why (non-blocking; the snooze applies regardless).
     if (promptDecision) {
       const t = (event.timeline || []).find(x => x.id === taskId);
       promptDecision({ decisionType: 'planner_override', subjectId: taskId, subjectLabel: (t && t.task) || 'this item',
-        decision: `Deferred 7 days: ${(t && t.task) || 'item'}`, question: 'Why defer this now?' });
+        decision: `Deferred ${deferredDays} day${deferredDays === 1 ? '' : 's'}: ${(t && t.task) || 'item'}`, question: 'Why defer this now?' });
     }
     setEvent(e => ({
       ...e,
-      timeline: (e.timeline || []).map(t => {
-        if (t.id !== taskId) return t;
-        const until = new Date(); until.setDate(until.getDate() + 7);
-        return { ...t, snoozedUntil: until.toISOString().slice(0, 10), extendedAt: new Date().toISOString() };
-      }),
+      timeline: (e.timeline || []).map(t => t.id === taskId
+        ? { ...t, snoozedUntil: untilISO, extendedAt: new Date().toISOString() }
+        : t),
     }));
   };
   const onReassignDecision = (taskId, owner) => {

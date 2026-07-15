@@ -58,6 +58,7 @@ import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
+import { raiseCounts } from '@app/lib/surfaceRegistry';
 import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -3508,6 +3509,11 @@ export default function HostShellV2() {
     if (days !== 0) return [];
     try { return computeDayAlerts(event) || []; } catch { return []; }
   }, [event, days, nowMin]); // eslint-disable-line react-hooks/exhaustive-deps
+  // WAVE-5: the raise ledger, read ONCE. Every qidx attention tint and count
+  // badge derives from this — never from a hand-wired local boolean (see
+  // surfaceRegistry's header: hand-wiring is the "bug FACTORY" the registry
+  // exists to kill). registryCompleteness.test.js enforces it mechanically.
+  const raised = useMemo(() => { try { return raiseCounts(event) || {}; } catch { return {}; } }, [event]);
   const alertSheet = (a) => {
     const to = String(a.navTo || '');
     const vm = /^(?:ov|confirm|pay)-(.+)$/.exec(String(a.id || ''));
@@ -4838,7 +4844,7 @@ export default function HostShellV2() {
                         const { ready, total, toConfirm, confirmed } = rollup.counts;
                         if (ready < total) return ready + ' of ' + total + ' booked';
                         return toConfirm > 0 ? 'all booked · ' + toConfirm + ' to confirm' : 'all ' + confirmed + ' locked in';
-                      })(), attn: true, go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
+                      })(), attn: true, /* registry-gap: booking PROGRESS lives in the canonical vendor rollup (rollup.counts), not the raise ledger — no SURFACES id covers "not yet booked", and the row only renders in needs-you states. The completeness test counts this exact marker; add a real raiser before adding another. */ go: () => { if (!routeSheet(rollup.target)) setSheet({ kind: 'vendors' }); } } : null,
                   // VENDOR-ENTRY-POINT FIX: the row above only ever appears once
                   // vendors already exist AND need attention — a fresh event with
                   // zero vendors had no reachable way in at all (sheet.kind:'vendors'
@@ -4862,7 +4868,11 @@ export default function HostShellV2() {
                         sub: seating.totals.allSeated
                           ? 'everyone’s seated'
                           : seating.totals.seated + ' of ' + seating.totals.confirmed + ' confirmed guests seated',
-                        attn: seating.totals.unassigned > 0,
+                        // WAVE-5: attention state comes from the raise ledger, not the
+                        // local predicate — the sub above may still READ local totals
+                        // for its label, but only the registry decides "needs you".
+                        attn: (raised['seating'] || 0) > 0,
+                        n: raised['seating'] || 0,
                         go: () => setSheet({ kind: 'seating' }),
                       } : null,
                   // DESTINATION-2: lodging gets a row ONLY for destination
@@ -4877,7 +4887,8 @@ export default function HostShellV2() {
                               ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
                               : 'everyone has a room lined up')
                           : (travel.lodging.hotelName || 'no place picked yet'),
-                        attn: travel.lodging.notBookedCount != null && travel.lodging.notBookedCount > 0 && !!travel.lodging.deadline,
+                        attn: (raised['lodging'] || 0) > 0,
+                        n: raised['lodging'] || 0,
                         go: () => setSheet({ kind: 'lodging' }),
                       } : null,
                   // DESTINATION-2 slice 3: getting here, same gate. The sub is
@@ -4897,7 +4908,8 @@ export default function HostShellV2() {
                             : (arr.airportOptions.length > 0
                                 ? arr.airportOptions.length + ' airport' + (arr.airportOptions.length === 1 ? '' : 's') + ' listed'
                                 : 'no airports listed yet'),
-                          attn: nc > 0,
+                          attn: (raised['travel-air'] || 0) > 0,
+                          n: raised['travel-air'] || 0,
                           go: () => setSheet({ kind: 'air' }),
                         };
                       })()
@@ -4918,7 +4930,8 @@ export default function HostShellV2() {
                             : (gr.transportProvided === true ? 'a shuttle or van is the plan'
                               : gr.transportProvided === false ? 'everyone gets themselves around'
                               : 'group transport not decided yet'),
-                          attn: travel.rosterMode && gr.unmatched > 0 && gr.transportProvided !== true,
+                          attn: (raised['travel-ground'] || 0) > 0,
+                          n: raised['travel-ground'] || 0,
                           go: () => setSheet({ kind: 'ground' }),
                         };
                       })()
@@ -4940,7 +4953,11 @@ export default function HostShellV2() {
                       })()
                     : null,
                   riskCount > 0
-                    ? { key: 'risks', label: 'What could go wrong', sub: riskCount + ' to know about', go: () => setSheet({ kind: 'risks' }) } : null,
+                    // WAVE-5: the row tints only when the registry actually raises a
+                    // high risk — "N to know about" alone is information, not an ask.
+                    // No count badge: the sub's count means "to know about", and a
+                    // second (smaller) ledger number beside it would just contradict it.
+                    ? { key: 'risks', label: 'What could go wrong', sub: riskCount + ' to know about', attn: (raised['risks'] || 0) > 0, go: () => setSheet({ kind: 'risks' }) } : null,
                   !isPast
                     ? { key: 'meaning', label: hasMeaning ? 'The moment that must happen' : 'Make it yours', sub: hasMeaning ? trunc(meaningText, 36) : 'the story, the feeling', go: openMeaning } : null,
                 ].filter(Boolean);
@@ -4951,6 +4968,9 @@ export default function HostShellV2() {
                       <button key={r.key} className="qidx-row" onClick={r.go}>
                         <span className="qidx-l">{r.label}</span>
                         <span className={'qidx-s' + (r.attn ? ' attn' : '')}>{r.sub}</span>
+                        {/* The ledger's own count — a badge that counts something real
+                            (raiseCounts) and clears the moment the work clears. */}
+                        {(r.n || 0) > 0 ? <span className="qidx-n">{r.n}</span> : null}
                         <span className="chev" aria-hidden="true">›</span>
                       </button>
                     ))}
@@ -5033,11 +5053,23 @@ export default function HostShellV2() {
                 <button key={a.id} onClick={() => alertSheet(a)}
                   style={{
                     display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
-                    borderRadius: 14, padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-2)', font: 'inherit',
+                    borderRadius: 'var(--r-row)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-2)', font: 'inherit',
                     background: a.tier === 'critical' ? 'var(--danger-tint)' : a.tier === 'warning' ? 'var(--warn-tint)' : 'var(--steel-tint)',
                     color: 'var(--carbon-text)',
                   }}>
-                  <span style={{ display: 'block', fontSize: 'var(--t-body-s)', fontWeight: 750, color: a.tier === 'critical' ? 'var(--danger)' : a.tier === 'warning' ? 'var(--warn)' : 'var(--steel-soft)' }}>{a.headline}</span>
+                  {/* WAVE-5 (visual): critical vs warning used to differ by HUE alone —
+                      identical in grayscale. One mechanism, a tier word chip: "Now"
+                      (act on it) vs "Watch" (keep an eye) — the WORD carries the tier,
+                      color just agrees with it. The calm info tier stays chipless:
+                      no chip is itself the third form. */}
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {(a.tier === 'critical' || a.tier === 'warning') && (
+                      <span style={{ flexShrink: 0, fontSize: 'var(--t-caption-min)', fontWeight: 800, letterSpacing: 'var(--tracking-2)', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 'var(--r-pill)', color: a.tier === 'critical' ? 'var(--danger)' : 'var(--warn)', background: 'var(--bg-band)' }}>
+                        {a.tier === 'critical' ? 'Now' : 'Watch'}
+                      </span>
+                    )}
+                    <span style={{ minWidth: 0, fontSize: 'var(--t-body-s)', fontWeight: 750, color: a.tier === 'critical' ? 'var(--danger)' : a.tier === 'warning' ? 'var(--warn)' : 'var(--steel-soft)' }}>{a.headline}</span>
+                  </span>
                   {a.move && <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', marginTop: 2, color: 'var(--carbon-muted)' }}>{a.move}</span>}
                 </button>
               ))}
@@ -8228,8 +8260,13 @@ export default function HostShellV2() {
                                     const tags = [];
                                     if (undecidedAffects[it.id]) tags.push(<span key="dec" className="tag essential" title={undecidedAffects[it.id]}>decision open</span>);
                                     if (it.essential && !got) tags.push(<span key="ess" className="tag essential">essential</span>);
-                                    if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag essential">day-of</span>);
-                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag essential">{it.dietFlags.join(' · ').toLowerCase()}</span>);
+                                    // WAVE-5 (UX_02 amber budget): "day-of" and diet flags are
+                                    // IDENTIFICATION labels — when to buy, who it serves — not
+                                    // gap warnings, so they take the neutral .tag.plan treatment
+                                    // their sibling tags (owner/yours/swapped) already use.
+                                    // Only `essential && !got` above stays amber: that one IS a gap.
+                                    if (it.buyAt === 'day-of') tags.push(<span key="dof" className="tag plan">day-of</span>);
+                                    if (Array.isArray(it.dietFlags) && it.dietFlags.length) tags.push(<span key="diet" className="tag plan">{it.dietFlags.join(' · ').toLowerCase()}</span>);
                                     if (it.added && it.owner) tags.push(<span key="own" className="tag plan">{it.owner}</span>);
                                     else if (it.added) tags.push(<span key="yours" className="tag plan">yours</span>);
                                     if (it.swappedFrom) tags.push(<span key="swap" className="tag plan">swapped</span>);
@@ -9714,7 +9751,10 @@ export default function HostShellV2() {
                               <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
                                 {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
                                 {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
-                                {String(g.needs || '').trim() ? <span className="tag essential">{g.needs}</span> : null}
+                                {/* WAVE-5 (UX_02 amber budget): a guest's needs note identifies
+                                    the guest, it doesn't warn about a gap — neutral .tag.plan,
+                                    same treatment as the RSVP tag on this row. */}
+                                {String(g.needs || '').trim() ? <span className="tag plan">{g.needs}</span> : null}
                               </span>
                             ) : null}
                           </button>
@@ -9999,6 +10039,7 @@ export default function HostShellV2() {
       )}
 
       <nav className={'dock' + (dockHidden ? ' dock-hidden' : '')} aria-label="Sections">
+        {/* No attention badge here by design: the dock is navigation, not an inbox — ledger counts (raiseCounts) surface on the qidx rows instead. */}
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
         <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>
         <button aria-current={stage === 'day'} onClick={() => setStage('day')}>The Day</button>

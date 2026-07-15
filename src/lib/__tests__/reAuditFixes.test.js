@@ -26,16 +26,36 @@ describe('F1 — the reactive top action carries its level; a critical is never 
     timeline: [{ id: 'bad', task: 'Pre-order the crabs', leadDays: -60, done: false }],
   });
 
-  test('the overdue-decision top action reaches the list AS critical', () => {
+  // UPDATED (wave-5 ranking, 2026-07-15): F1's finding was that `level` was DROPPED
+  // in the topAction rebuild. The level is still carried — but the overdue-decision
+  // tier is now 'attention', not 'critical' (doctrine: 'critical' is reserved for
+  // reactive raises; an overdue self-authored decision is a late chore). What keeps
+  // it from being buried is no longer the critical short-circuit but the snooze
+  // cap's window-closed branch: proposedSnoozeUntil refuses (null), so the shell
+  // never offers or writes a "not now" for it.
+  test('the overdue-decision top action reaches the list WITH its level (attention since wave-5)', () => {
     const top = eventPlan(ev()).nextActions[0];
-    expect(top.level).toBe('critical');
+    expect(top.level).toBe('attention');
   });
 
-  test('and therefore cannot be snoozed — the exact hole the re-audit found', () => {
+  test('its window is closed, so the cap refuses to propose a snooze at all', () => {
     const top = eventPlan(ev()).nextActions[0];
+    expect(canSnooze(top)).toBe(true);                 // no longer critical-blocked…
+    expect(top.leadDays).toBe(-60);                    // …but it carries its real lead…
+    const { proposedSnoozeUntil } = require('../snooze');
+    expect(proposedSnoozeUntil(ev(), { leadDays: top.leadDays })).toBeNull(); // …and the cap says no.
+  });
+
+  test('a REAL critical (payment overdue to a vendor) still cannot be snoozed', () => {
+    const payEv = {
+      ...ev(), timeline: [],
+      vendors: [{ id: 'v-pay', name: 'Sable & Sound', category: 'DJ', status: 'Confirmed', contractSigned: true, cost: 500, payDueDate: iso(-3), balancePaid: false }],
+    };
+    const top = eventPlan(payEv).nextActions[0];
+    expect(top.level).toBe('critical');
     expect(canSnooze(top)).toBe(false);
     // even a stale snooze entry written before it escalated must not bury it
-    const withStale = { ...ev(), snoozed: { [top.id]: iso(5) } };
+    const withStale = { ...payEv, snoozed: { [top.id]: iso(5) } };
     expect(applySnooze([top], withStale)).toHaveLength(1);
   });
 });

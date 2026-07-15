@@ -135,9 +135,28 @@ describe('F5 — calm fillers never share a list with real work', () => {
   });
 });
 
+// UPDATED (wave-5 ranking, 2026-07-15): the overdue-DECISION top is DEMOTED to
+// 'attention' — doctrine (surfaceRegistry.js) reserves 'critical' for REACTIVE
+// raises (a payment overdue to a real vendor, a no-show, a same-hour conflict);
+// an overdue self-authored decision is a late chore, not an emergency. The band
+// invariant itself is unchanged and is now pinned on a genuine reactive critical.
 describe('F6 — severity is a computed band, not a splice position', () => {
+  // A REAL critical: a confirmed vendor whose balance was due 3 days ago (tier-4
+  // reactive raise) alongside real attention work (an unconfirmed second vendor,
+  // registry raises). Replaces the demoted overdue-decision fixture here.
+  const evPaymentCritical = () => ({
+    id: 'band-4', type: 'Crab Feast', name: 'Feast', date: iso(6),
+    guestMode: 'count', guestCount: 18, guestEstimate: 18, totalBudget: 1200,
+    venue: 'Backyard', venueCity: 'Annapolis', venueState: 'MD',
+    guests: [], timeline: [],
+    vendors: [
+      { id: 'v-pay', name: 'Sable & Sound', category: 'DJ', status: 'Confirmed', contractSigned: true, cost: 500, payDueDate: iso(-3), balancePaid: false },
+      { id: 'v-open', name: 'Fork & Flower', category: 'Catering', status: 'Considering' },
+    ],
+  });
+
   test('every critical sorts ahead of every non-critical, whatever producer made it', () => {
-    const actions = eventPlan(evOverdueDecisions()).nextActions;
+    const actions = eventPlan(evPaymentCritical()).nextActions;
     expect(actions.length).toBeGreaterThan(1); // a critical AND real follow-up work
     const flags = actions.map((a) => a.level === 'critical');
     const lastCritical = flags.lastIndexOf(true);
@@ -146,17 +165,19 @@ describe('F6 — severity is a computed band, not a splice position', () => {
     if (firstNonCritical !== -1) expect(lastCritical).toBeLessThan(firstNonCritical);
   });
 
-  test('the 60-day-overdue decision IS the top action (critical band leads)', () => {
+  test('the 60-day-overdue decision IS the top action — at ATTENTION, not critical (wave-5 demotion)', () => {
     const top = eventPlan(evOverdueDecisions()).nextActions[0];
-    expect(top.level).toBe('critical');
+    expect(top.level).toBe('attention'); // was 'critical' before 2026-07-15 — a late chore, not an emergency
     expect(String(top.title)).toMatch(/crabs/i);
   });
 });
 
 describe('F7 — the top action finally carries its lead, so the snooze cap can bind', () => {
-  test("the critical top action carries the source task's numeric leadDays", () => {
+  test("the overdue-decision top action carries the source task's numeric leadDays", () => {
     const top = eventPlan(evOverdueDecisions()).nextActions[0];
-    expect(top.level).toBe('critical');
+    // UPDATED (wave-5, 2026-07-15): 'attention' now — which is exactly what lets the
+    // cap matter: at 'critical' canSnooze() short-circuited and leadDays was moot.
+    expect(top.level).toBe('attention');
     // -60 is 'bad''s authored lead — proposedSnoozeDays(event, { leadDays: top.leadDays })
     // reads exactly this number; before F7 it was always undefined (dead cap).
     expect(top.leadDays).toBe(-60);

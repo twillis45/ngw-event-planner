@@ -50,7 +50,12 @@ export function proposedSnoozeUntil(event, opts = {}) {
   return `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
 }
 
-/** A CRITICAL is never snoozeable — that is the one hard rule, not a default. */
+/** A CRITICAL is never snoozeable — that is the one hard rule, not a default.
+ *  An action with NO id is equally unsnoozeable: there is nothing stable to write
+ *  the snooze against. That is a contract, not just a guard — calm fillers ("Event
+ *  on track…", the calendar and heart lines) deliberately carry NO id (see
+ *  CommandCenter _topActionId), because the lone calm line is a state, not a task,
+ *  and "not now" on it would be meaningless. (WAVE-5 RANKING, 2026-07-15.) */
 export function canSnooze(action) {
   if (!action || !action.id) return false;
   return String(action.level || '') !== 'critical';

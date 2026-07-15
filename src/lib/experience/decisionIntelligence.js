@@ -4,6 +4,7 @@
 // lives in the playbook; this returns references, not copies.
 
 import { ROLES, PHASES } from './experienceContext';
+import { taskLeadDays } from '../taskLead';
 
 // Blocks → roles that care about them
 const BLOCK_ROLE_MAP = {
@@ -17,13 +18,17 @@ const BLOCK_ROLE_MAP = {
   timeline:   ['coordinator', 'photographer', 'operations', 'planner'],
 };
 
-// Parse 'T-7d' → 7, 'T0' → 0, unknown → null
+// Parse a decision's authored timing → positive days-before-event ('T-7d' → 7,
+// 'T0' → 0, unknown → null).
+// 2026-07-15: this file kept a SECOND private /T-(\d+)d/ regex after lib/taskLead.js
+// became the one lead reader — same `when` field, same vocabulary. It now delegates:
+// taskLeadDays returns the lead as ≤0 days relative to the event, while this module's
+// daysOut convention is positive days-before, so the sign flips here. (taskLeadDays
+// is a strict superset of the old regex — it also honors a numeric leadDays and the
+// prose week labels, should a decision ever carry them.)
 function parseDaysOut(when) {
-  if (!when) return null;
-  const m = String(when).match(/T-(\d+)d/i);
-  if (m) return parseInt(m[1], 10);
-  if (/T0/i.test(String(when))) return 0;
-  return null;
+  const lead = taskLeadDays({ when });
+  return lead == null ? null : -lead;
 }
 
 // Does the decision's timing fall within the current phase's window?

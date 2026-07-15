@@ -349,6 +349,10 @@ export function deriveCommandCenterData(event, foodPP = null) {
         label: t.task || 'Untitled task',
         // owner stays; the static phase becomes the real-date-derived timing label.
         sub: `${timing.label || t.week} · ${t.owner || 'You'}`,
+        // WAVE-5 RANKING (2026-07-15): carry the source task's authored lead
+        // through the projection (same non-lossy rule as `decisions` above) so
+        // the ladder's milestone tier can hand it to the snooze cap.
+        leadDays: taskLeadDays(t),
         color: timing.overdue ? P.red : P.amber,
         dateLabel: timing.badge || (isTaskOverdue(t, event.date, event.type) ? 'OVD' : 'SOON'),
         dateNum: timing.num || (t.week === 'Week Of' ? '7d' : t.week === '2 Weeks Out' ? '14d' : (t.week || '').replace(/[^0-9]/g, '') + 'm'),
@@ -1583,6 +1587,32 @@ function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, work
   return items;
 }
 
+// ── WAVE-5 RANKING (2026-07-15): per-ITEM identity for the reactive top ───────
+// The reactive top action's id was `top.category || 'top'` — a per-CATEGORY key.
+// Snoozing "Confirm the DJ." wrote event.snoozed['vendor']; after the DJ was
+// confirmed, "Confirm the caterer." INHERITED the id and was silently hidden,
+// and the shell's Set-aside row showed the new title against the old date.
+// The id is now derived from the underlying record (the vendor/decision/task/
+// message the tier's route names), falling back to a slug of the title — never
+// the bare category — so it is stable across recomputes and unique per item.
+//
+// Calm fillers ('neutral' Tier 8, 'calendar' Tier 7, 'heart' Tier 7.9) get NO id
+// at all: the lone calm line is a state, not a task, and canSnooze() (lib/snooze)
+// refuses an id-less action — so "not now" can never render on "Event on track."
+const CALM_FILLER_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
+const _slugTitle = (t) => String(t || '').toLowerCase()
+  .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+export function _topActionId(cmd) {
+  if (!cmd || !cmd.title) return null;
+  if (CALM_FILLER_CATEGORIES.has(cmd.category)) return null; // calm filler → unsnoozeable by construction
+  const r = cmd.primaryRoute || {};
+  // The row the action routes to IS its identity — same doctrine as the registry
+  // itemKey (RE-AUDIT F4). Only the bare category is forbidden.
+  const rec = r.vendorId || r.decisionId || r.taskId || r.commId || r.riskId
+    || r.timelineId || r.foodFocus || null;
+  return 'top:' + (cmd.category || 'top') + ':' + (rec != null ? String(rec) : _slugTitle(cmd.title));
+}
+
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event, ctx = null) {
   if (!event) return {
@@ -1628,7 +1658,10 @@ export function eventPlan(event, ctx = null) {
     event,
   );
   const topAction = top && top.title ? {
-    id: top.category || 'top',
+    // WAVE-5 RANKING (2026-07-15): per-ITEM id, not per-category — snooze keys on
+    // this, and a category key made "Confirm the caterer" inherit the DJ's snooze
+    // (see _topActionId above). Calm fillers get null → never snoozeable.
+    id: _topActionId(top),
     domain: top.category || 'top',
     title: top.title,
     consequence: top.consequence || null,
@@ -1649,6 +1682,11 @@ export function eventPlan(event, ctx = null) {
     // return. The ladder's overdue-decision tier now attaches it; copy it through.
     leadDays: top.leadDays ?? null,
     done: false,
+    // WAVE-5 RANKING (2026-07-15): name the producer, like phaseProgress and
+    // surfaceRegistry actions already do — selectEventNextAction reads this to
+    // know whether the band-sorted head is the ladder's own top (render the rich
+    // ladder result) or another producer's (return the head itself). One #1.
+    source: 'ladder',
   } : null;
 
   // Map the top action's category to a foundational domain so we can dedupe — e.g. the
@@ -1660,6 +1698,11 @@ export function eventPlan(event, ctx = null) {
   // two cards. Mapped.
   const CATEGORY_TO_DOMAIN = { start: 'guests', readiness: 'budget', vendor: 'vendors' };
   const topDomain = topAction ? (CATEGORY_TO_DOMAIN[top.category] || top.category) : null;
+  // WAVE-5 INTEGRATION (2026-07-15): the action carries the MAPPED domain, not the raw
+  // category — 'vendor' (singular) is invisible to the shell's DOMAIN_LENS ('vendors'),
+  // which filed "Confirm Fired Up BBQ." under Plan while every other vendor ask sat in
+  // the Vendors lens. Same one-vocabulary rule as the dedup below.
+  if (topAction) topAction.domain = topDomain;
 
   const seen = new Set(topDomain ? [topDomain] : []);
   // DEDUP ON TITLE, NOT JUST DOMAIN. The domain map (CATEGORY_TO_DOMAIN) only knows two
@@ -1744,6 +1787,14 @@ export function eventPlan(event, ctx = null) {
         category: 'phase',
         done: false,
         source: 'phaseProgress',
+        // WAVE-5 RANKING (2026-07-15): the snooze lead cap (lib/snooze.js) reads
+        // opts.leadDays off the action. A phase item maps to its underlying
+        // timeline task's authored lead WHERE ONE EXISTS (a route naming a task);
+        // essentials with no authored lead keep null — an uncapped half-runway
+        // snooze is then honest, and inventing a lead here would be fabrication.
+        leadDays: (i.route && i.route.taskId)
+          ? taskLeadDays((event.timeline || []).find(t => t && t.id === i.route.taskId))
+          : null,
       });
     }
   } catch (_e) { /* phase ledger unavailable — the foundation list stands unchanged */ }
@@ -1785,7 +1836,11 @@ export function eventPlan(event, ctx = null) {
       if (seen.has(itemKey) || seenTitles.has(titleKey(r.title))) continue;
       seen.add(itemKey); seenTitles.add(titleKey(r.title));
       const action = {
-        id: itemKey, domain: 'surface:' + r.surface,
+        // WAVE-5 RANKING (2026-07-15): `domain` is the surface's PLAIN domain
+        // ('vendors' | 'risks' | 'day'), not the old 'surface:*' form — the shell's
+        // DOMAIN_LENS files a vendor raise under the Vendors lens off exactly this
+        // word. The snooze/dedup key (itemKey/id) is separate and UNCHANGED.
+        id: itemKey, domain: r.domain,
         title: r.title,
         consequence: r.why,
         route: r.route, primaryRoute: r.route,
@@ -1812,8 +1867,9 @@ export function eventPlan(event, ctx = null) {
   // producer beats a non-critical from any other. Band the whole list —
   // critical (0) → real work (1) → calm (2) — with a STABLE sort so each
   // producer's own internal ranking (insertion order) survives within a band.
-  const CALM_FILLER = new Set(['neutral', 'calendar', 'heart']);
-  const _isCalmFiller = (a) => !!a && CALM_FILLER.has(a.category);
+  // (One vocabulary: the same CALM_FILLER_CATEGORIES set _topActionId uses to
+  // withhold a snooze id — the filler gate and the no-snooze rule cannot drift.)
+  const _isCalmFiller = (a) => !!a && CALM_FILLER_CATEGORIES.has(a.category);
   if (nextActions.some((a) => !_isCalmFiller(a))) {
     for (let i = nextActions.length - 1; i >= 0; i--) {
       if (_isCalmFiller(nextActions[i])) nextActions.splice(i, 1);
@@ -1916,6 +1972,35 @@ export function selectEventNextAction(event) {
       };
     }
   } catch { /* fall through to the planning ladder */ }
+  // ── WAVE-5 RANKING (2026-07-15): ONE #1, by construction. ──────────────────
+  // This wrapper used to return the raw ladder result while eventPlan's
+  // nextActions[0] was the BAND-SORTED head (criticals lead, calm fillers leave
+  // when real work exists) — so the App.js heroes could name a different #1
+  // than the ranked list (registry critical vs ladder non-critical; heart
+  // filler vs a live risk raise). Now both read one path: when the band-sorted
+  // head is NOT the ladder's own top action, the head IS the answer, returned
+  // in the same shape every consumer reads (title / level / category /
+  // consequence / primaryCta / primaryRoute). When the head IS the ladder top,
+  // the rich ladder render below (persona voice, compression sub-badge,
+  // identity `because`) is byte-identical to before.
+  try {
+    const _head = (eventPlan(event).nextActions || [])[0] || null;
+    if (_head && _head.source !== 'ladder') {
+      return {
+        level: _head.level || null,
+        category: _head.category || null,
+        title: _head.title,
+        consequence: _head.consequence || null,
+        primaryCta: _head.cta || _head.ctaLabel || 'Go',
+        primaryRoute: _head.route || _head.primaryRoute || null,
+        // Carried so a hero that snoozes/filters can key the SAME item the list does.
+        id: _head.id || null,
+        domain: _head.domain || null,
+        leadDays: _head.leadDays ?? null,
+        source: _head.source || null,
+      };
+    }
+  } catch { /* plan unavailable — the ladder render below stands */ }
   // Decompose any stale "Set date, headcount, menu" composite into the atomic remaining
   // domino so the Focus "ONE thing" + spine never show a half-done bundle (same single
   // source as eventPlan).
@@ -2079,7 +2164,16 @@ function _selectEventNextActionInner(event) {
   if (urgent) {
     const od = urgent.overdueDays || 0;
     return {
-      level: 'critical',
+      // WAVE-5 RANKING (2026-07-15): demoted from 'critical'. Doctrine
+      // (surfaceRegistry.js): 'critical' is reserved for REACTIVE raises — a
+      // payment overdue to a real vendor, a no-show, a same-hour conflict. An
+      // overdue SELF-AUTHORED decision is a late chore, not an emergency; at
+      // 'critical' it was also unsnoozeable (canSnooze hard rule), so the one
+      // action carrying a real leadDays never reached the snooze cap. At
+      // 'attention' it stays the band-1 top AND the cap finally binds —
+      // including the refuse-when-window-closed branch (proposedSnoozeDays
+      // returns null for a task already past its window: never hidden).
+      level: 'attention',
       category: 'decision',
       title: `Resolve "${(urgent.title || 'an open decision').slice(0, 80)}".`,
       consequence: od > 0
@@ -2210,10 +2304,15 @@ function _selectEventNextActionInner(event) {
     // real route). If EVERY part is already done, it isn't a real do-now at all — fall
     // through to the next genuine tier so a satisfied bundle never reaches the hero/spine.
     let _skipCompression = false;
+    // WAVE-5 RANKING (2026-07-15): the lead of the ACTUAL task this action names,
+    // for the snooze cap. Nulled when the composite decomposes to a foundational
+    // domino below — the domino has no authored lead, and borrowing the bundle's
+    // would be inventing one.
+    let firstLead = first ? taskLeadDays(first) : null;
     if (_isSetCompositeTitle(firstText)) {
       const atomic = _eventFoundationActions(event).find((a) => !a.done);
       if (!atomic) _skipCompression = true;
-      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; }
+      else { firstText = atomic.title.replace(/[.\s]+$/, ''); firstRoute = atomic.route || firstRoute; firstLead = null; }
     }
     // A food/menu lead task should DEEP-LINK to the menu the host actually makes (the "Your choices"
     // card focuses + scrolls to the open choice), not dump them on the generic tasks tab. When a
@@ -2238,6 +2337,9 @@ function _selectEventNextActionInner(event) {
         firstAction: firstText,
         moreCount: more,
         primaryRoute: firstRoute,
+        // WAVE-5 RANKING (2026-07-15): built from a timeline task → carries its
+        // authored lead so the snooze cap can bind. Null when no task/lead exists.
+        leadDays: firstLead,
         contextLine: daysSub,
       };
     }
@@ -2257,6 +2359,9 @@ function _selectEventNextActionInner(event) {
       consequence: `${readiness.timeline.note}${days !== null && days >= 0 ? ` · only ${daysWord(days)} left to recover` : ''}. Falling further behind compounds vendor and budget risk.`,
       primaryCta: 'Catch up',
       primaryRoute: firstOverdue ? { tab: 'Planning Tasks', taskId: firstOverdue.id } : { tab: 'Timeline' },
+      // WAVE-5 RANKING (2026-07-15): the first overdue task's authored lead —
+      // it is overdue, so the cap's window-closed branch refuses to hide it.
+      leadDays: firstOverdue ? taskLeadDays(firstOverdue) : null,
       contextLine: daysSub,
     };
   }
@@ -2317,6 +2422,14 @@ function _selectEventNextActionInner(event) {
       // #12: use the task's OWN route — it carries foodFocus (the line id) so
       // "Take me to it" lands on the exact item, not just the Planning tab.
       primaryRoute: opTask.primaryRoute || { tab: 'Planning' },
+      // WAVE-5 RANKING (2026-07-15): the buy's authored lead — the playbook's
+      // buyAt token ('T-3d'), or recovered exactly as dueInDays − daysToEvent
+      // (dueInDays = dte + offset by construction). No lead → null, honestly.
+      leadDays: (() => {
+        const authored = taskLeadDays({ when: (opTask.provenance || {}).buyAt });
+        if (authored != null) return authored;
+        return (Number.isFinite(opTask.dueInDays) && days != null) ? opTask.dueInDays - days : null;
+      })(),
       contextLine: daysSub,
     };
   }
@@ -2347,6 +2460,9 @@ function _selectEventNextActionInner(event) {
       // EARLIEST-KEYWORD-WINS router, shared with every Next Up row (see
       // milestoneActionRoute) so the hero and the rows can never disagree.
       primaryRoute: milestoneActionRoute(nextUp.label, event, nextUp.id),
+      // WAVE-5 RANKING (2026-07-15): built from a timeline task — its authored
+      // lead rides along (null when the task carries none).
+      leadDays: nextUp.leadDays ?? null,
       contextLine: daysSub,
     };
   }
@@ -2393,6 +2509,12 @@ function _selectEventNextActionInner(event) {
           : `${_over.length} decisions are past their easy window — this one first. The spread and shopping list size from them.`,
         primaryCta: 'Settle it',
         primaryRoute: { tab: 'Planning', focusField: 'host-decisions' },
+        // WAVE-5 RANKING (2026-07-15): the decision's authored lead, recovered
+        // exactly (the board's daysOut = daysToEvent + offset by construction).
+        // These rows are overdue, so the snooze cap's window-closed branch
+        // refuses to hide them — the honest outcome.
+        leadDays: (Number.isFinite(_over[0].daysOut) && days != null)
+          ? _over[0].daysOut - days : null,
         contextLine: daysSub,
       };
     }
