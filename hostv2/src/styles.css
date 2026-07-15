@@ -375,11 +375,19 @@ button{font-family:inherit}
 }
 .card-top{display:flex; align-items:center; gap:var(--gap-chip); margin-bottom:11px}/* audit D1: 6→7 (--gap-chip), unifies the chip-gap split */
 .tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:var(--r-pill); white-space:nowrap}/* radius audit: was 7px — every other chip (.chip/.lens/.vc-pill) is a full pill; .tag now matches */
+/* WAVE-6 (c): '.tag plan' used to be BOTH the queue card's lens identity chip
+   AND the generic recolorable status chip (~25 inline-styled render sites) —
+   one classname, two meanings, so restyling either restyled the other. The
+   lens identity chips now wear their own base class, .tag-lens (same metrics
+   as .tag, same rendered look as before); '.tag.plan' below is now ONLY the
+   status chips' neutral default. Non-overlapping selectors, identical pixels. */
+.tag-lens{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:var(--r-pill); white-space:nowrap}
 /* Color budget: category tags stay in the steel/neutral register; only
    money (success) and status use the calibrated anchors. */
-.tag.food, .tag.vendors, .tag.plan{color:var(--ink-soft); background:var(--bg-band)}
-.tag.budget{color:var(--ink-soft); background:var(--bg-band)}
-.tag.guests{color:var(--steel-soft); background:var(--steel-tint)}
+.tag-lens.food, .tag-lens.vendors, .tag-lens.plan, .tag-lens.budget{color:var(--ink-soft); background:var(--bg-band)}
+.tag-lens.guests{color:var(--steel-soft); background:var(--steel-tint)}
+/* The status chips' neutral default (recolored inline where a state earns it). */
+.tag.plan{color:var(--ink-soft); background:var(--bg-band)}
 .card h3{font-size:var(--t-card-title); font-weight:750; margin:0 0 7px; letter-spacing:-.02em; padding-right:34px}
 .because{font-size:var(--t-body); line-height:1.55; color:var(--ink-soft); margin:0}
 .actions-row{display:flex; gap:9px; margin-top:14px; flex-wrap:wrap}
@@ -1211,6 +1219,22 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .verdict{font-size:var(--t-row); font-weight:600; letter-spacing:-.01em; line-height:1.45;
   color:var(--ink-soft); margin:10px 0 0; max-width:34ch}
 .verdict.slipping{color:var(--warn)}
+
+/* ── The one next action (host board, wave 6): the post-snooze #1, right
+   under the status line, tappable through the same path as its own card.
+   A quiet card row on purpose — the NEXT bar keeps the screen's single
+   accent CTA (UX_02: accent marks exactly one primary per section). ── */
+.hero-next{display:flex; align-items:center; gap:var(--sp-2); width:100%; text-align:left;
+  background:var(--card); border:1px solid var(--line-soft); border-radius:var(--r-md);
+  padding:var(--sp-2) var(--sp-3); margin-top:var(--sp-2); cursor:pointer; font:inherit;
+  color:var(--ink); box-shadow:inset 0 1px 0 var(--sheen);
+  transition:transform var(--ms-press) var(--ease-out), background var(--ms-press) var(--ease-out)}
+.hero-next:active{transform:scale(.985)}
+.hero-next .hn-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4);
+  text-transform:uppercase; color:var(--muted); flex-shrink:0}
+.hero-next .hn-title{flex:1; min-width:0; font-size:var(--t-row-sub); font-weight:650;
+  letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.hero-next .chev{position:static; color:var(--faint); flex-shrink:0}
 
 /* ── Quiet index — below-fold wayfinding. Every secondary surface is ONE
    featherweight row: uniform metrics, hairline separators, zero card

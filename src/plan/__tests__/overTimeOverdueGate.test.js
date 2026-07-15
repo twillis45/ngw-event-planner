@@ -75,6 +75,38 @@ describe('legacy TitleCase tasks — the vocabulary the old tables DID hold stil
   });
 });
 
+// Wave-6: the STORED timeline schema (playbookTimelineEntries — TitleCase near-term
+// labels + positive offsetDays, NO leadDays) must clear the same gates. Wave-5 taught
+// the surfaces to read leadDays/prose; these rows carried neither and stayed
+// permanently PENDING. Full parity coverage lives in storedSchemaParity.test.js —
+// this describe pins the surface exports on the raw vocabulary.
+describe('stored-schema rows (TitleCase crunch-band labels + offsetDays) resolve', () => {
+  const ev = () => ({ id: 'e4', type: 'Crab Feast', date: inDays(1), createdAt: inDays(-60) + 'T12:00:00.000Z' });
+
+  test('offsetDays row: T-5d stored as { week: "5 Days Out", offsetDays: 5 } → overdue + badged', () => {
+    const row = { id: 's1', task: 'Pre-order the crabs', week: '5 Days Out', offsetDays: 5, done: false };
+    expect(isOverdue(row, ev())).toBe(true);
+    expect(taskStatus(row, ev()).label).toBe('DUE UPCOMING');
+  });
+
+  test('label-only crunch-band rows (no offsetDays) resolve too', () => {
+    for (const week of ['5 Days Out', '3 Weeks Out', '10 Days Out', '3 Days Out', 'Event Day']) {
+      const row = { id: `s-${week}`, task: 'x', week, done: false };
+      // On an event tomorrow with two months of runway, every one of these windows
+      // (leads -21 … -3) has closed; 'Event Day' (lead 0) is still ahead.
+      const expected = week !== 'Event Day';
+      expect({ week, overdue: isOverdue(row, ev()) }).toEqual({ week, overdue: expected });
+    }
+  });
+
+  test('a stored row still ahead of its window stays calm', () => {
+    const future = { id: 's2', task: 'Lock headcount', week: '3 Days Out', offsetDays: 3, done: false };
+    const ei = { id: 'e5', type: 'Crab Feast', date: inDays(10), createdAt: inDays(-60) };
+    expect(isOverdue(future, ei)).toBe(false);
+    expect(taskStatus(future, ei).label).toBe('PENDING');
+  });
+});
+
 describe('the guards travel with the conversion', () => {
   test('createdAt reachability: an event created yesterday for tomorrow is a tight timeline, not a late host', () => {
     const ev = { ...staleEvent(), createdAt: inDays(-1) + 'T12:00:00.000Z' }; // never had 5 days of runway

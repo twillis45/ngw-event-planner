@@ -51,9 +51,14 @@ export function deriveEventPhaseProgress(event, now = new Date()) {
 function preProgress(ev, phase, daysOut) {
   const noDate = phase === 'unknown';
   const items = [];
-  const add = (id, applies, handled, cueLabel, route, priority) => {
+  // WAVE-6 (2026-07-15): `extra` lets an item name the RECORDS it summarizes
+  // (records: [...ids]) — the food cue counts choice records the surface
+  // registry's `decisions` raiser can ALSO raise individually, and eventPlan's
+  // record-level dedup needs the ids, not just the count, to drop the summary's
+  // claim to exactly the records already raised. Additive: no reader breaks.
+  const add = (id, applies, handled, cueLabel, route, priority, extra) => {
     if (!applies) return;
-    items.push({ id, handled: !!handled, cueLabel, route, priority });
+    items.push({ id, handled: !!handled, cueLabel, route, priority, ...(extra || null) });
   };
 
   // ── DATE & TIME — ONE area (host directive 2026-07-14) ──────────────────────
@@ -120,7 +125,11 @@ function preProgress(ev, phase, daysOut) {
     openChoices.length > 0
       ? { tab: 'Planning', focusField: 'food-plan' }
       : { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
-    6);
+    6,
+    // WAVE-6: the exact choice records the "N open" count claims — the same ids
+    // playbookDecisionBoard rows carry, so record-level dedup can subtract the
+    // ones the decisions surface raises individually instead of double-counting.
+    openChoices.length > 0 ? { records: openChoices.map((c) => c.id) } : null);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.

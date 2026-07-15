@@ -59,8 +59,12 @@ describe('eventPlan — shape & progress', () => {
 
   test('null event → empty plan, never throws', () => {
     // POP-1/WOW-1: vendorReadiness + workstreams + vendorReadinessRollup are additive read-only fields.
+    // WAVE-6 (2026-07-15): setAside added — eventPlan applies snooze itself now, and the
+    // set-aside pile (snoozed items + comeback dates) rides out beside nextActions.
+    // WAVE-7 (2026-07-15): worries added — the heads-up lane rides out beside them,
+    // and the null-event/error backstop is worries: [] (same as setAside).
     expect(eventPlan(null)).toEqual({
-      nextActions: [], progress: { done: 0, total: 0 }, handled: [],
+      nextActions: [], setAside: [], worries: [], progress: { done: 0, total: 0 }, handled: [],
       vendorReadiness: { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 }, workstreams: [],
       vendorReadinessRollup: {
         status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
@@ -163,6 +167,150 @@ describe('eventPlan — ordering, dedup, and the #1 = the hero everywhere', () =
     const top = eventPlan(ev).nextActions[0];
     // The wrapper renders the SAME action the plan leads with (title parity).
     expect(na.title).toBe(top.title);
+  });
+});
+
+// ── WAVE-7 (2026-07-15): THE WORRY LANE — worries leave nextActions in the ENGINE ──
+// The split used to live only in the V2 shell (HostShellV2 isWorry), so every other
+// consumer — V1 heroes, mayExhale, App.js auto-route, the reveal's step count,
+// planningState — spoke the worry-INCLUSIVE head. CONTRACT: eventPlan(event) returns
+// `worries` (risks-surface raises at 'attention'; bundle:risks wholesale) and
+// nextActions EXCLUDES them everywhere. Worries keep the full action shape — they
+// are actionable heads-ups, just uncounted and unranked.
+
+import { SURFACES } from '../surfaceRegistry';
+import { playbookFoodPlan, playbookRisks } from '../playbooks';
+
+const isoLocal = (n) => {
+  const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+// A risk-bearing fixture: the Crab Feast playbook raises 2 high risks (r_supply,
+// r_seafood) from the moment the event exists.
+const riskFeast = (over = {}) => ({
+  id: 'w7-feast', type: 'Crab Feast', name: 'Feast', date: isoLocal(20),
+  guestMode: 'count', guestCount: 18, guestEstimate: 18, totalBudget: 1500,
+  venue: 'Backyard', venueCity: 'Annapolis', venueState: 'MD',
+  startTime: '14:00', startTimeSource: 'host',
+  guests: [], vendors: [], timeline: [], ...over,
+});
+
+// Every essential handled, must-have captured — the risk surface is the ONLY
+// raiser left, so this is the only-worries event. (Same construction as
+// severityBand.test.js's quietRetirement.)
+const onlyWorries = () => {
+  const base = {
+    id: 'w7-only', recordKind: 'host_event', type: 'Retirement Party', name: 'Ret',
+    date: isoLocal(40), startTime: '14:00',
+    venueKind: 'venue', venue: 'The Ironwood Room', venueCity: 'Annapolis', venueState: 'MD',
+    rainPlan: 'Indoors — the Ironwood Room is covered.',
+    guestMode: 'count', guestCount: 40, totalBudget: 8000, dietaryNoted: true,
+    must_have_moment: 'The toast from her old unit.',
+    budget: [{ id: 'b1', category: 'Venue', budgeted: 3000, actual: 3000 }],
+    timeline: [], guests: [],
+    vendors: [{
+      id: 'v1', name: 'Fired Up BBQ', category: 'Catering', status: 'Confirmed',
+      contractSigned: true, contractFileName: 'contract.pdf',
+    }],
+  };
+  const fp = playbookFoodPlan(base);
+  const foodChoices = {};
+  (fp && fp.choices ? fp.choices : []).forEach((c) => { foodChoices[c.id] = c.chosen != null ? c.chosen : (c.options && c.options[0]); });
+  return { ...base, foodChoices };
+};
+
+describe('WAVE-7 — worries are excluded from nextActions, everywhere', () => {
+  test('a risk-bearing event: the raises land in worries, never in nextActions', () => {
+    const plan = eventPlan(riskFeast());
+    // The raises exist and file as worries…
+    expect(plan.worries.length).toBeGreaterThan(0);
+    const flat = plan.worries.flatMap((w) => (w.kind === 'bundle' ? w.items : [w]));
+    for (const w of flat) {
+      expect(w.surface).toBe('risks');
+      expect(String(w.level)).toBe('attention');
+      // Full action shape — an actionable heads-up, just uncounted and unranked.
+      expect(w.id).toBeTruthy();
+      expect(w.title).toMatch(/^Have a plan for:/i);
+      expect(w.route && w.route.tab).toBe('Risks');
+      expect(w.route.riskId).toBeTruthy();
+      expect(w.cta).toBeTruthy();
+    }
+    // …and nextActions carries NONE of them (no count/hero/badge bills a worry).
+    for (const a of plan.nextActions) {
+      expect(a.surface === 'risks').toBe(false);
+      expect(String(a.title)).not.toMatch(/^Have a plan for:/i);
+    }
+  });
+
+  test('ONLY worries → nextActions [], selectEventNextAction null (V1 may exhale), worries N', () => {
+    const ev = onlyWorries();
+    const plan = eventPlan(ev);
+    expect(plan.nextActions).toEqual([]);           // no calm filler beside a live heads-up
+    expect(plan.worries.length).toBeGreaterThan(0);
+    // ≥3 risk raises bundle — the risks bundle is a worry WHOLESALE.
+    const bundle = plan.worries.find((w) => w.id === 'bundle:risks');
+    if (bundle) {
+      expect(bundle.kind).toBe('bundle');
+      expect(bundle.level).toBe('attention');
+    }
+    // The hero is honestly silent — mayExhale call sites read this truthiness.
+    expect(selectEventNextAction(ev)).toBeNull();
+    // planningState speaks the worry-exclusive head (null here) — the V2
+    // grounding line and the App.js auto-route both read these fields.
+    expect(plan.planningState.currentPriority).toBeNull();
+    expect(plan.planningState.reasoning).toBeNull();
+    expect(plan.planningState.deepLink).toBeNull();
+  });
+
+  test('dismissing the risks (riskStatus, the worry dismissal lane) restores the calm line', () => {
+    const base = onlyWorries();
+    const riskStatus = {};
+    (((playbookRisks(base) || {}).items) || []).forEach((r) => { riskStatus[r.id] = 'dismissed'; });
+    const plan = eventPlan({ ...base, riskStatus });
+    expect(plan.worries).toEqual([]);
+    expect(plan.nextActions).toHaveLength(1);       // the single calm line returns
+    expect(['neutral', 'calendar', 'heart']).toContain(plan.nextActions[0].category);
+  });
+
+  test('a CRITICAL from the risks surface stays in nextActions — a critical never files as a worry', () => {
+    // No in-repo raiser produces a critical risk today (risk raises are
+    // attention-only by doctrine), so pin the FILTER LOGIC with a synthetic
+    // surface entry: same surface id, escalated severity.
+    const synthetic = {
+      id: 'risks', label: 'What could go wrong', domain: 'risks',
+      route: { tab: 'Risks' },
+      bundleTitle: (n) => `Have a plan for ${n} things that could go wrong`,
+      raise: () => [{
+        severity: 'critical', title: 'RISK ESCALATED: the caterer cancelled for event day',
+        why: 'Reactive, real, now — work, not a worry.',
+        route: { tab: 'Risks', riskId: 'r_synthetic' }, key: 'r_synthetic',
+      }],
+    };
+    SURFACES.push(synthetic);
+    try {
+      // Dismiss one real risk so the risks group stays under the ≥3 bundle
+      // threshold — this pins the per-item filter itself, not bundle mechanics.
+      // (A mixed bundle would carry the critical and stay in nextActions whole:
+      // a critical never files as a worry, bundled or not.)
+      const plan = eventPlan(riskFeast({ id: 'w7-crit', riskStatus: { r_supply: 'dismissed' } }));
+      const inList = plan.nextActions.find((a) => a.id === 'surface:risks:r_synthetic');
+      expect(inList).toBeTruthy();
+      expect(inList.level).toBe('critical');
+      // The attention-level risk raises still file as worries beside it.
+      const flat = plan.worries.flatMap((w) => (w.kind === 'bundle' ? w.items : [w]));
+      expect(flat.some((w) => w.id === 'surface:risks:r_synthetic')).toBe(false);
+      expect(flat.length).toBeGreaterThan(0);
+    } finally {
+      SURFACES.splice(SURFACES.indexOf(synthetic), 1);
+    }
+  });
+
+  test('backstop: a past event empties the worry lane too', () => {
+    const plan = eventPlan(riskFeast({ date: isoLocal(-10) }));
+    expect(plan.nextActions).toEqual([]);
+    expect(plan.setAside).toEqual([]);
+    expect(plan.worries).toEqual([]);
   });
 });
 

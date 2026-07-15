@@ -415,13 +415,20 @@ Use null for fields that cannot be determined."""
 # per-user rate-limited, server-owned prompt (no client system-prompt passthrough).
 #
 # (key, hint) — keys MUST stay in sync with src/lib/vendorReplyParse.js FIELDS.
+# Parity is PINNED by src/lib/__tests__/vendorReplyParse.test.js, which reads
+# this file and asserts the key sets are identical — change both together.
+#
+# 2026-07-14 parser audit F2: all time fields state the output format — 24-hour
+# "HH:MM" — because that is the app's stored contract (time inputs, ICS math).
+# The frontend re-normalizes and DROPS anything that isn't parseable, so the
+# hint and the coercion agree.
 VENDOR_REPLY_FIELDS = [
-    ("arrival_time",        "when they will arrive on site (e.g. '2:00 PM')"),
-    ("coverage_start",      "when their coverage/service begins"),
-    ("coverage_end",        "when their coverage/service ends"),
-    ("delivery_time",       "when they will deliver"),
-    ("setup_start",         "when setup begins"),
-    ("setup_end",           "when setup ends"),
+    ("arrival_time",        "when they will arrive on site — output 24-hour HH:MM (e.g. '14:00')"),
+    ("coverage_start",      "when their coverage/service begins — output 24-hour HH:MM (e.g. '13:30')"),
+    ("coverage_end",        "when their coverage/service ends — output 24-hour HH:MM (e.g. '21:00')"),
+    ("delivery_time",       "when they will deliver — output 24-hour HH:MM (e.g. '11:00')"),
+    ("setup_start",         "when setup begins — output 24-hour HH:MM (e.g. '09:00')"),
+    ("setup_end",           "when setup ends — output 24-hour HH:MM (e.g. '10:30')"),
     ("day_of_contact_name", "name of the on-site / day-of point of contact"),
     ("day_of_phone",        "phone number for the day-of contact"),
     ("email",               "an email address they give"),
@@ -429,6 +436,9 @@ VENDOR_REPLY_FIELDS = [
     ("deposit_amount",      "deposit amount in dollars (number only)"),
     ("deposit_paid",        "true ONLY if they say the deposit was received/paid"),
     ("balance_paid",        "true ONLY if they say the balance was paid in full"),
+    # 2026-07-14 parser audit F5: "yes, we're all set for Saturday" is the #1
+    # real inbound reply. True-only; merely mentioning the date is NOT enough.
+    ("reconfirmed",         "true ONLY when the vendor clearly confirms they are all set / confirmed for the event date — merely mentioning the date is not confirmation"),
     ("final_guest_count",   "a final headcount/guest count they confirm"),
     ("staff_count",         "how many staff they will bring"),
     ("passenger_count",     "passenger capacity/count (transport)"),
@@ -468,6 +478,9 @@ async def parse_vendor_reply(
     reply = (body.reply_text or "").strip()
     if not reply:
         raise HTTPException(status_code=400, detail="Empty reply")
+    # 2026-07-14 parser audit F8: don't trim silently — the response carries
+    # `truncated` so the UI can tell the planner only the first part was read.
+    truncated = len(reply) > AI_MAX_INPUT_CHARS
     reply = reply[:AI_MAX_INPUT_CHARS]
 
     # 4. Per-user rate limit.
@@ -492,7 +505,8 @@ async def parse_vendor_reply(
         "If the message does not clearly state a field, its value MUST be null. "
         "For each field you DO fill, set 'evidence' to a short verbatim quote from the message that "
         "supports it. Booleans are true only when the message explicitly asserts them; otherwise null "
-        "(never false). Return money and counts as plain numbers. Return ONLY valid JSON, no prose."
+        "(never false). Return money and counts as plain numbers. Return every time as 24-hour "
+        "HH:MM (e.g. '14:00', never '2:00 PM'). Return ONLY valid JSON, no prose."
     )
     user_content = (
         f"{ctx}\n\n"
@@ -540,7 +554,10 @@ async def parse_vendor_reply(
         return {
             "ok": True,
             "fields": fields,
+            # Logged/diagnostic only — the UI must not present this as a
+            # confidence claim (2026-07-14 parser audit F4, 06_AI_GROUNDING).
             "confidence": confidence if confidence in ("high", "medium", "low") else "low",
+            "truncated": truncated,
             "disclaimer": "AI-extracted from the vendor's message — review each field against the original before applying.",
         }
     except httpx.HTTPStatusError as e:

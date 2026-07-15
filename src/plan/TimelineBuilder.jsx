@@ -14,7 +14,7 @@ import {
   classifyTemplateTaskUrgency,
   deriveEventCompressionSummary,
 } from '../lib/workflowCompression';
-import { taskIsOverdue } from '../lib/taskLead';
+import { taskIsOverdue, taskLeadDays } from '../lib/taskLead';
 
 const P = {
   canvas:      color.surface.canvas,
@@ -38,11 +38,43 @@ const T  = type;
 
 // PHASES is the grid's COLUMN vocabulary (presentation), not the due-date source —
 // the dead local PHASE_OFFSET table that used to sit beside it is gone (see taskStatus).
-const PHASES = [
+//
+// 2026-07-15 wave-6: placement is by NUMERIC LEAD, not label equality. Stored playbook
+// rows carry the FULL 19-label vocabulary ('5 Days Out', '3 Weeks Out', '10 Days Out',
+// 'Event Day', …) — `item.week === ph` against the old 11 columns rendered the whole
+// crunch band NOWHERE: the grid literally hid the final-week work. Each item now maps
+// through taskLeadDays to the NEAREST column anchor (placementPhase below), so a row
+// can never be unplaced. 'Final Days' is the added near-term column the vocabulary
+// implied (the T-4d…T0 band); everything closer than a week lands there or in Week Of.
+// Exported (with placementPhase) for the placement tests.
+export const PHASES = [
   '12 Months Out','10 Months Out','8 Months Out','6 Months Out',
   '5 Months Out','4 Months Out','3 Months Out','2 Months Out',
-  '1 Month Out','2 Weeks Out','Week Of',
+  '1 Month Out','2 Weeks Out','Week Of','Final Days',
 ];
+// Column anchor leads (days relative to event, ≤ 0) — same numbers the runtime phase
+// model uses for these labels; 'Final Days' anchors at -2, the middle of the T-4d…T0
+// band it exists to hold.
+const PHASE_ANCHOR = {
+  '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
+  '6 Months Out': -182,  '5 Months Out': -152,  '4 Months Out': -121,
+  '3 Months Out': -91,   '2 Months Out': -61,   '1 Month Out':  -30,
+  '2 Weeks Out':  -14,   'Week Of':      -7,    'Final Days':   -2,
+};
+// Which column does this item render in? Numeric lead → nearest anchor. A row with no
+// readable lead at all keeps its own label if that label IS a column, else falls back
+// to 'Week Of' — visible either way; a row must NEVER be unplaced.
+// Exported for the placement tests.
+export function placementPhase(item) {
+  const lead = taskLeadDays(item);
+  if (lead == null) return PHASES.includes(item.week) ? item.week : 'Week Of';
+  let best = PHASES[0], bestDist = Infinity;
+  for (const ph of PHASES) {
+    const d = Math.abs(lead - PHASE_ANCHOR[ph]);
+    if (d < bestDist) { bestDist = d; best = ph; }
+  }
+  return best;
+}
 
 // ── Status helpers ────────────────────────────────────────────────────────────
 // 2026-07-15 wave-5 over-time fix: phaseIsPast checked `phase in PHASE_OFFSET` with
@@ -143,11 +175,13 @@ function PhaseGrid({ lanes, selectedId, onSelect, urgencyOf }) {
   function renderRows(items, colorFn, dashed) {
     return items.map(item => {
       const u = urgencyOf ? urgencyOf(item) : null;
+      // Wave-6: place by numeric lead (nearest column anchor), computed once per row.
+      const place = placementPhase(item);
       return (
         <div key={item.id} style={{ display:'contents' }}>
           {PHASES.map(ph => (
             <div key={ph} style={{ padding:`3px ${space[1]}px`, borderRight:`1px solid ${P.borderS}`, minHeight:30 }}>
-              {item.week === ph && <Bar item={item} barColor={colorFn(item)} dashed={dashed}
+              {place === ph && <Bar item={item} barColor={colorFn(item)} dashed={dashed}
                 selected={selectedId === item.id} onClick={() => onSelect(item)} urgency={u} />}
             </div>
           ))}
@@ -238,20 +272,23 @@ function DetailPanel({ item, event, onClose }) {
 
 // ── Mobile list ───────────────────────────────────────────────────────────────
 function MobileList({ lanes, event, urgencyOf }) {
+  // Wave-6: group by the same numeric-lead placement as the grid — `t.week === ph`
+  // dropped every stored near-term row ('5 Days Out', 'Event Day', …) from the
+  // mobile list too. _place is precomputed once per item.
   const all = [
     ...lanes.milestones.map(t => ({ ...t, _lane:'M' })),
     ...lanes.vendorItems.map(t => ({ ...t, _lane:'V' })),
     ...lanes.buffers.map(t => ({ ...t, _lane:'B' })),
-  ];
+  ].map(t => ({ ...t, _place: placementPhase(t) }));
   return (
     <div style={{ padding:`${space[4]}px`, display:'flex', flexDirection:'column', gap:space[5] }}>
-      {PHASES.filter(ph => all.some(t => t.week === ph)).map(ph => (
+      {PHASES.filter(ph => all.some(t => t._place === ph)).map(ph => (
         <div key={ph}>
           <div style={{ color:P.textTer, fontSize:T.size.xs, fontWeight:T.weight.semibold,
             fontFamily:FF, letterSpacing:T.tracking.label, marginBottom:space[3],
             paddingBottom:space[2], borderBottom:`1px solid ${P.borderS}` }}>{ph}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:space[2] }}>
-            {all.filter(t => t.week === ph).map(item => {
+            {all.filter(t => t._place === ph).map(item => {
               const s = item._vendor ? vendorStatus(item._vendorData) : taskStatus(item, event);
               const u = urgencyOf && !item._vendor ? urgencyOf(item) : null;
               const uTone = u ? (u.tone === 'danger' ? P.red : u.tone === 'warn' ? P.amber : P.textSec) : null;

@@ -176,6 +176,12 @@ export function createContext({
     objectives,
     eventState,
     scope,
-    asOf: asOf || new Date().toISOString().slice(0, 10),
+    // Wave-6: LOCAL calendar date, mirroring lib/dates getToday. The old
+    // toISOString().slice(0, 10) was UTC-today — in America/New_York it flipped to
+    // tomorrow at 8pm, so every evening projection ran a day ahead of the host.
+    asOf: asOf || (() => {
+      const d = new Date(); d.setHours(0, 0, 0, 0);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })(),
   });
 }

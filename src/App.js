@@ -34,6 +34,7 @@ import { mergeGuestReplies } from './lib/guestMerge';
 import { GUEST_IMPORT_BATCHES_KEY, VENDOR_IMPORT_BATCHES_KEY, loadImportBatches, persistImportBatches, makeImportBatch, undoLastImportBatch } from './lib/importHistory';
 import { pickDroppableBudgetRow } from './lib/budgetSwap';
 import { computeDayAlerts as computeDayAlertsLib } from './lib/dayAlerts';
+import { taskIsOverdue as taskIsOverdueLib, taskLeadDays as taskLeadDaysLib } from './lib/taskLead';
 import { inviteTone as inviteToneLib, invitePalette as invitePaletteLib } from './lib/inviteTone';
 import { eventContextNudge } from './lib/eventContextNudges';
 import { buildCrabPlan, CRAB_SIZES, CRAB_UNITS, UNIT_LABEL, SIZE_LABEL, defaultCountPerUnit, lineCrabCount, recommendCrabOrder } from './lib/crabPlan';
@@ -1869,27 +1870,19 @@ const phaseDate = (week, eventDate) => {
   return fmtDate(d.toISOString().slice(0, 10));
 };
 
-const isTaskOverdue = (task, eventDate, eventType) => {
-  if (task.done || !eventDate || !(task.week in PHASE_OFFSET)) return false;
-  // Decision "Extend": a snoozed task isn't overdue until the snooze date passes.
-  if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > new Date(new Date().setHours(0, 0, 0, 0))) return false;
-  // Chair Option A — compression-aware "overdue". A tight booking that pushes a
-  // phase's FIXED offset into the past must NOT mark every task overdue. Route
-  // through the workflow-compression engine: a task counts as behind only when it
-  // has genuinely slipped past recovery (risk_lost), not when it's merely
-  // compressed into a shorter runway (those read as "do now" elsewhere). Falls
-  // back to the naive past-date check only when the event type is unknown.
-  const days = daysUntil(eventDate);
-  if (eventType && days !== null && days >= 0) {
-    return classifyTemplateTaskUrgency(task, days, eventType, PHASE_OFFSET).urgency === 'risk_lost';
-  }
-  const d = new Date(eventDate + 'T00:00:00');
-  d.setDate(d.getDate() + PHASE_OFFSET[task.week]);
-  // PL-3: due TODAY counts as behind. Strict `<` silently dropped today's
-  // misses — neither done nor flagged — exactly the urgency this product
-  // exists to surface. `<=` includes a phase whose date is today.
-  return d <= getToday();
-};
+// 2026-07-15 wave-6: DELEGATES to lib/taskLead — the ONE overdue policy. This body
+// used to be a third policy: a TitleCase PHASE_OFFSET membership gate (which rejected
+// every playbook row whose week wasn't a table key) plus "only risk_lost counts" —
+// so a task 29 days past its window wore a "do now" chip yet vanished from every
+// overdue count here while dayAlerts' default counted it. taskIsOverdue (lib) reads
+// the authored lead through taskLeadDays (leadDays → offsetDays → T-Nd → full label
+// vocabulary), honors the decision board's Extend (snoozedUntil), and applies
+// createdAt reachability — the defensible part of the old compression forgiveness.
+// Pass the full `event` (4th arg) wherever it's in scope so reachability can see
+// createdAt; the (eventDate, eventType) pair remains for legacy call sites, where
+// unknown createdAt means "assume reachable" — exactly the lib's own fallback.
+const isTaskOverdue = (task, eventDate, eventType, event) =>
+  taskIsOverdueLib(task, event || { date: eventDate, type: eventType });
 
 // NOW-relative due label for a planning task. The phase bucket ("2 Weeks Out")
 // is event-relative and reads as if it were now-relative — misleading once the
@@ -24477,7 +24470,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
 
   const urgentTasks = useMemo(() => events.flatMap(ev =>
     (ev.timeline || [])
-      .filter(t => !t.done && isTaskOverdue(t, ev.date, ev.type))
+      .filter(t => !t.done && isTaskOverdue(t, ev.date, ev.type, ev))
       .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type, eventDate: ev.date }))
   ), [events]);
 
@@ -24488,7 +24481,7 @@ function MainDashboard({ clients, events, onSelectClient, onSelectEvent, onNew, 
     const phaseOrder = Object.keys(PHASE_OFFSET);
     const phaseIdx = phaseOrder.indexOf(phase);
     return (ev.timeline || [])
-      .filter(t => !t.done && !isTaskOverdue(t, ev.date, ev.type) && phaseOrder.indexOf(t.week) <= phaseIdx + 1 && phaseOrder.indexOf(t.week) >= 0)
+      .filter(t => !t.done && !isTaskOverdue(t, ev.date, ev.type, ev) && phaseOrder.indexOf(t.week) <= phaseIdx + 1 && phaseOrder.indexOf(t.week) >= 0)
       .map(t => ({ ...t, eventId: ev.id, eventName: ev.name, eventType: ev.type, eventDate: ev.date }));
   }), [events]);
 
@@ -33792,7 +33785,7 @@ function TaskRow({ t, C, s, bp, isOverdue, toggle, setModalId, urgency, onToggle
 
 // ─── Timeline ─────────────────────────────────────────────────────────────────
 
-function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodChoices }) {
+function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodChoices, event }) {
   const C  = useT();
   const s  = makeS(C);
   const bp = useContext(BpCtx);
@@ -33843,7 +33836,7 @@ function Timeline({ timeline, setTimeline, eventDate, openId, eventType, foodCho
   };
   const del = (id) => { setTimeline(t => t.filter(r => r.id !== id)); setModalId(null); };
   const upd = (id, key, val) => setTimeline(t => t.map(r => r.id === id ? { ...r, [key]: val } : r));
-  const isOverdue = (task) => isTaskOverdue(task, eventDate, eventType);
+  const isOverdue = (task) => isTaskOverdue(task, eventDate, eventType, event);
 
   const phaseOrder = Object.keys(PHASE_OFFSET);
   const done = timeline.filter(t => t.done).length;
@@ -37614,19 +37607,25 @@ function AgendaBuilder({ agenda = [], setAgenda, meetingStart, setMeetingStart, 
 
 // ─── Event Day Mode — helpers + components ───────────────────────────────────
 
+// 2026-07-15 wave-6: the target date now reads the lead through lib/taskLead — the old
+// `task.week in PHASE_OFFSET` membership gate returned null for every stored playbook
+// row (TitleCase near-term labels + offsetDays, no leadDays), so those tasks could only
+// ever reach the "now" bucket via the overdue flag, never via "due today / this week".
 const getTaskTargetDateStr = (task, eventDate) => {
-  if (!eventDate || !task.week || !(task.week in PHASE_OFFSET)) return null;
+  if (!eventDate) return null;
+  const lead = taskLeadDaysLib(task);
+  if (lead == null) return null;
   const d = new Date(eventDate + 'T00:00:00');
-  d.setDate(d.getDate() + PHASE_OFFSET[task.week]);
+  d.setDate(d.getDate() + lead);
   return d.toISOString().slice(0, 10);
 };
 
-const bucketTasks = (tasks, eventDate, eventType) => {
+const bucketTasks = (tasks, eventDate, eventType, event) => {
   const td = today8601();
   const inSeven = (() => { const d = new Date(td + 'T00:00:00'); d.setDate(d.getDate() + 7); return d.toISOString().slice(0, 10); })();
   const now = [], next = [], later = [];
   tasks.filter(t => !t.done).forEach(t => {
-    const over   = isTaskOverdue(t, eventDate, eventType);
+    const over   = isTaskOverdue(t, eventDate, eventType, event);
     const target = getTaskTargetDateStr(t, eventDate);
     if (over || target === td)              now.push(t);
     else if (target && target <= inSeven)   next.push(t);
@@ -37637,11 +37636,13 @@ const bucketTasks = (tasks, eventDate, eventType) => {
 
 // computeDayAlerts — day-of severity reader. Sprint 64 (Figma B2 1558:49).
 // EXTRACTED to lib/dayAlerts.js so both shells read the same truth (this app's
-// HostDaySeverityStack / planner EventDayBar, and the V2 prototype's Day
-// stage). This wrapper injects the app's compression-aware overdue predicate;
-// the alert logic itself lives in the lib, unchanged.
-const computeDayAlerts = (event) =>
-  computeDayAlertsLib(event, { isTaskOverdue: (t) => isTaskOverdue(t, event.date, event.type) });
+// HostDaySeverityStack / planner EventDayBar, and the V2 prototype's Day stage).
+// 2026-07-15 wave-6: the injected predicate is GONE. It used to inject the app's
+// compression-aware policy while HostShellV2 got the lib default — two shells, two
+// verdicts on the same task. Both policies are now the same function (lib/taskLead's
+// taskIsOverdue, which the lib default already uses, with the FULL event so createdAt
+// reachability applies), so the wrapper passes nothing.
+const computeDayAlerts = (event) => computeDayAlertsLib(event);
 
 // ─── WeatherAlert — Sprint 63: outdoor event weather risk ────────────────────
 // Event types that are outdoor by nature (the weather check shouldn't depend only on
@@ -38249,7 +38250,7 @@ function VendorArrivalView({ vendors, setVendors, event, onOpenVendor }) {
 }
 
 // ─── DayTaskView ──────────────────────────────────────────────────────────────
-function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices }) {
+function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices, event }) {
   const C  = useT();
   const T  = useType(); // responsive type tokens (parity sweep)
   const s  = makeS(C);
@@ -38288,9 +38289,9 @@ function DayTaskView({ timeline, eventDate, setTimeline, eventType, foodChoices 
   };
   const upd      = (id, key, val) => setTimeline(t => t.map(r => r.id === id ? { ...r, [key]: val } : r));
   const del      = (id) => { setTimeline(t => t.filter(r => r.id !== id)); setModalId(null); };
-  const isOverdue = (task) => isTaskOverdue(task, eventDate, eventType);
+  const isOverdue = (task) => isTaskOverdue(task, eventDate, eventType, event);
 
-  const { now, next, later } = bucketTasks(timeline, eventDate, eventType);
+  const { now, next, later } = bucketTasks(timeline, eventDate, eventType, event);
   const doneCount = timeline.filter(t => t.done).length;
 
   // Sprint 60.P Day-of Now hero — live operational time + state-aware headline.
@@ -40642,6 +40643,7 @@ function EventPlanningTab({ event, setEvent, wrap, isMobile, onBack, planningVie
           openId={openTaskId}
           eventType={event.type}
           foodChoices={event.foodChoices}
+          event={event}
         />
         </div>
       )}
@@ -43831,7 +43833,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
   const taskDone     = (event.timeline || []).filter(t => taskEffectiveDone(event, t)).length;
   const taskTotal    = (event.timeline || []).length;
   const rosCount     = effectiveRos(event).length; // 55H-B1: includes the derived playbook run-of-show
-  const overdueCount = (event.timeline || []).filter(t => !taskEffectiveDone(event, t) && isTaskOverdue(t, event.date, event.type)).length;
+  const overdueCount = (event.timeline || []).filter(t => !taskEffectiveDone(event, t) && isTaskOverdue(t, event.date, event.type, event)).length;
   const agendaCount  = (event.agenda   || []).length;
   // Sprint 50 friction fix #10: badges for the Sprint 49 promoted tabs so the
   // sidebar surfaces operational signal for Decisions / Timeline / Checklist /
@@ -44383,7 +44385,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
       {tab === 'Now'      && dayMode && (
         <>
           <LegacyTabHeader label="Now" hint="What needs you right now — overdue tasks, late vendors, anything that can't wait." onBack={() => handleTabChange('Command')} />
-          <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} eventType={event.type} foodChoices={event.foodChoices} />
+          <DayTaskView timeline={event.timeline || []} eventDate={event.date} setTimeline={wrap('timeline')} eventType={event.type} foodChoices={event.foodChoices} event={event} />
         </>
       )}
       {tab === 'Arrivals' && dayMode && (

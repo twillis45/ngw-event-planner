@@ -206,14 +206,18 @@ describe('one #1 — the hero and the ranked list can never name different leade
     expect(na.primaryCta).toBeTruthy();
   });
 
-  test('ladder fell to a calm filler while the registry raised: both say the raise', () => {
+  test('ladder fell to a calm filler while ONLY the risk surface raised: both go quiet', () => {
+    // UPDATED (wave-7 worry lane, 2026-07-15): risk raises are WORRIES now — they
+    // leave nextActions inside eventPlan, so this fixture is the only-worries
+    // event. One #1 still holds, by both being NULL: the ranked list is empty
+    // (no filler beside a live heads-up) and the hero is honestly silent — it
+    // must never resurface the purged filler through the raw ladder. The raises
+    // themselves stand in plan.worries, actionable but uncounted.
     const ev = quietRetirement();                  // heart filler vs live risk raises
     const plan = eventPlan(ev);
-    const head = plan.nextActions[0];
-    expect(head.source).toBe('surfaceRegistry');   // the filler left the list
-    const na = selectEventNextAction(ev);
-    expect(na.title).toBe(head.title);
-    expect(na.category).toBe(head.category);
+    expect(plan.nextActions).toEqual([]);
+    expect(plan.worries.length).toBeGreaterThan(0);
+    expect(selectEventNextAction(ev)).toBeNull();
   });
 
   test('when the ladder top IS the head, the rich ladder render is preserved (title parity)', () => {
@@ -260,9 +264,9 @@ describe("registry actions carry the surface's plain domain, not 'surface:*'", (
     expect(String(conflict.id)).toMatch(/^surface:/);
   });
 
-  test("risk raises file under 'risks'", () => {
-    const actions = eventPlan(quietRetirement()).nextActions.filter(a => a.source === 'surfaceRegistry');
-    expect(actions.length).toBeGreaterThan(0);
-    expect(actions.every(a => a.domain === 'risks' || a.domain === 'vendors' || a.domain === 'day')).toBe(true);
+  test("risk raises file under 'risks' — in the worry lane now (wave-7, 2026-07-15)", () => {
+    const worries = eventPlan(quietRetirement()).worries;
+    expect(worries.length).toBeGreaterThan(0);
+    expect(worries.every(a => a.source === 'surfaceRegistry' && a.domain === 'risks')).toBe(true);
   });
 });

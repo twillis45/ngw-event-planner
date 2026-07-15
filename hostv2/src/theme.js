@@ -100,10 +100,23 @@ export function applyStudioMatte() {
   // (the alert banner) — lightening that fill would have dropped its white-text
   // contrast (per-screen audit cross-cutting fix).
   set('--danger', dark.dangerRed);
-  // Same small-text fix as --ok-tint: --danger on --danger-tint ran 4.42:1 at
-  // α=0.14; α=0.10 → 4.78:1, clearing 4.5:1 for the danger pill/label text.
+  // Same small-text fix as --ok-tint: the tint dropped α 0.14 → 0.10 for the
+  // danger pill/label text. WAVE-6 CORRECTION: the "4.42:1 → 4.78:1" figures
+  // this comment used to carry did not reproduce. Measured (WCAG relative
+  // luminance, dangerRed #F27A70, α=0.10 composited): 5.27:1 over --card,
+  // 4.82:1 over --bg-band, 6.71:1 over --carbon — all clear 4.5:1.
   set('--danger-tint', tint(dark.dangerRed, 0.10));
   set('--danger-solid', dark.dangerSolid);
+  // WAVE-6 AA REPAIR: danger TEXT on dark grounds gets its OWN token so text
+  // legibility never rides on the fill anchors (--danger/--danger-solid are
+  // fills/accents and stay untouched — dimming them would break the alert
+  // banner's white-on-red). The day-of stack's critical text (the tier word
+  // chip on --bg-band, the critical alert headline on --danger-tint) reads
+  // this. A literal on purpose, one step lighter than dangerRed — same move
+  // as --steel-soft above. Measured: 6.40:1 on --bg-band; on danger-tint(.10)
+  // 6.01:1 over --card, 5.50:1 over --bg-band, 7.66:1 over --carbon — every
+  // ground clears small-text AA (4.5:1) with margin.
+  set('--danger-text', '#F58B82');
 
   // ── The Day: Dark Standard Carbon ramp ──
   set('--carbon', dark.carbonBody);

@@ -53,7 +53,11 @@ export async function callAiFeature(feature, prompt, context = null) {
   return data; // { ok, feature, text, usage }
 }
 
-// parseVendorReply(reply, vendorCtx?) → { ok, fields, confidence, disclaimer } | throws.
+// parseVendorReply(reply, vendorCtx?) → { ok, fields, confidence, truncated, disclaimer } | throws.
+// `truncated` (2026-07-14 audit F8): true when the server read only the first
+// part of a long reply — surface a plain note, never trim silently.
+// `confidence` is diagnostic/logging only — never show it as a user-facing
+// confidence claim (audit F4, 06_AI_GROUNDING).
 // Agent Opportunity Audit P0: extracts structured vendor fields from a pasted
 // vendor reply so the planner reviews a diff and applies it (never auto-write).
 // Structured-JSON path (not callAiFeature, which returns text) — same auth,
@@ -83,5 +87,5 @@ export async function parseVendorReply(reply, vendorCtx = {}) {
   if (!res.ok) throw new Error('AI service error — please try again.');
   const data = await res.json().catch(() => null);
   if (!data?.ok) throw new Error('AI returned no result.');
-  return data; // { ok, fields, confidence, disclaimer }
+  return data; // { ok, fields, confidence, truncated, disclaimer }
 }

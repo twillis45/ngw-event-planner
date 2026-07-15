@@ -46,7 +46,12 @@ const STATIC_ANCHORS = new Set([
 // engine could reach exactly one passive index row — nothing could route to it, so nothing
 // could raise it. Added here only because the destination renders, which is the rule this list
 // exists to enforce.
-const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline', 'Risks']);
+// 'Decisions' ships WITH its consumer too (wave-5/wave-6, 2026-07-15): HostShellV2's
+// routeSheet has a real 'Decisions' branch (focuses the sheet on route.decisionId), and V1's
+// EventPlanner renders Decisions as a first-class tab. This list lagged the shipped consumer;
+// wave-6's band-1 due-date ordering legitimately promotes overdue decision raises to the hero,
+// which is what exposed the staleness.
+const HOST_TABS = new Set(['Command', 'Guests', 'Budget', 'Planning', 'Planning Tasks', 'Vendors', 'Event Details', 'Documents', 'Event Day Schedule', 'Timeline', 'Risks', 'Decisions']);
 
 // ── Scenario matrix: 10 types × 10 states = 100.
 const TYPES = ['bbq', 'crab feast', 'birthday', 'graduation', 'juneteenth',

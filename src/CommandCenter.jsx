@@ -31,7 +31,7 @@ import { color, space, type, radius, elevation, edge } from './design/tokens';
 // Event Command can surface "Tight timeline — N tasks moved to the front"
 // when the planner most needs to see it, with a CTA that routes into the
 // existing Timeline tab compressed-priorities filter.
-import { deriveEventCompressionSummary, classifyTemplateTaskUrgency } from './lib/workflowCompression';
+import { deriveEventCompressionSummary } from './lib/workflowCompression';
 import { summarizeCrew } from './lib/studioTeam';
 // Sprint 57F-A: Positive Attention — the read-only "You're Set On ✓" reader over
 // existing readiness (pi.attention flag, host-only, presentation-only).
@@ -53,7 +53,11 @@ import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
 import { deriveEventPhaseProgress } from './lib/phaseProgress';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
-import { raiseAll } from './lib/surfaceRegistry';
+import { raiseAll, surfaceMeta } from './lib/surfaceRegistry';
+// WAVE-6 (2026-07-15): snooze is applied INSIDE eventPlan — nextActions is the
+// post-snooze truth and setAside carries what the host set down (one truth, no
+// consumer can speak a set-aside item).
+import { isSnoozed, snoozedUntil } from './lib/snooze';
 import { readinessScore } from './lib/readinessHistory';
 import { renderAction, personaFor, audiencePersona } from './lib/nextActionRenderer';
 // Sprint UX-4 — Disclosure architecture: ONE resolver decides section visibility; dormant
@@ -122,13 +126,13 @@ const cardEdge = {
   borderRadius: radius.md,
 };
 
-// ── PHASE_OFFSET mirror (kept local so adapter has no App.js dependency) ──────
-const PHASE_OFFSET = {
-  '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
-  '6 Months Out':  -182, '5 Months Out':  -152, '4 Months Out': -121,
-  '3 Months Out':   -91, '2 Months Out':   -61, '1 Month Out':   -30,
-  '2 Weeks Out':    -14, 'Week Of':          -7,
-};
+// WAVE-6 (2026-07-15): the local 11-key TitleCase PHASE_OFFSET mirror is DELETED.
+// It was the second copy of the lead vocabulary — the copy whose TitleCase keys
+// never matched the stored prose labels, the exact drift lib/taskLead.js was built
+// to end. Everything that read it now reads the ONE lead reader (taskLeadDays:
+// authored leadDays / offsetDays / any week label), and overdue verdicts read the
+// ONE policy (taskIsOverdue). workflowCompression's phaseOffset param was already
+// only a legacy fallback behind taskLeadDays — callers here simply stop passing it.
 
 // ── Utils ─────────────────────────────────────────────────────────────────────
 function fmtMoney(n) {
@@ -150,25 +154,14 @@ function fmtRelative(isoStr) {
   if (d < 7)   return `${d}d ago`;
   return new Date(isoStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
-// `task.week in PHASE_OFFSET` was the gate, and it NEVER passed: PHASE_OFFSET's keys are
-// TitleCase ('Week Of', '2 Weeks Out') while playbookChecklist writes taskPhaseLabel's
-// prose ('Week of', '2 weeks out'). Wrong case AND wrong wording, so this returned false
-// for every task on every event, forever — which is why overdueCount was permanently 0
-// and the readiness engine's decision axis was permanently "No open decisions".
-// lib/taskLead.js now owns the lead, read off the stable `leadDays` the playbook authors.
-function isTaskOverdue(task, eventDate, eventType) {
-  if (!task || task.done || !eventDate) return false;
-  const ev = { date: eventDate };
-  // Compression-aware "behind": a tight booking that pushes a fixed offset into the past
-  // must NOT mark every task overdue — a task counts as behind only when it is genuinely
-  // past recovery (risk_lost), not merely compressed into a shorter runway. That guard is
-  // still the right one; it just never used to be reachable.
-  const days = daysFrom(eventDate);
-  if (eventType && days !== null && days >= 0) {
-    return classifyTemplateTaskUrgency(task, days, eventType, PHASE_OFFSET).urgency === 'risk_lost';
-  }
-  return taskIsOverdue(task, ev);
-}
+// WAVE-6 (2026-07-15): the local isTaskOverdue wrapper — and its risk_lost gating —
+// is DELETED. It was a SECOND overdue policy: with a type and a future date it
+// answered "compression rush verdict", otherwise "past window", so the same task
+// could be overdue to one caller and fine to another. lib/taskLead.js taskIsOverdue
+// is the ONE policy (past its window + still open + was ever reachable — the
+// reachability guard covers the tight-booking case the risk_lost gate existed for,
+// off event.createdAt instead of a rush ratio). Call sites pass the real event so
+// reachability can actually bind.
 function overdueDays(task, eventDate) {
   if (!eventDate) return 0;
   const due = taskDueInDays(task, { date: eventDate });
@@ -177,21 +170,26 @@ function overdueDays(task, eventDate) {
 
 // ── taskTiming — THE one source for a task's real-date-derived timing ─────────
 // Given the event's actual `event.date` + a task (its `offsetDays`, days-before-event,
-// or its `week`/PHASE_OFFSET phase), return the canonical timing DERIVED FROM THE REAL
-// DATE — never the static "2 Weeks Out" phase string (which is event-relative and lies
-// once the real countdown is near/past). Built off the SAME PHASE_OFFSET + event date
-// that isTaskOverdue/overdueDays use, so the Next-Up label, the Open-Decisions label,
-// and the readiness "overdue" count can never disagree.
+// or any lead vocabulary taskLeadDays reads), return the canonical timing DERIVED FROM
+// THE REAL DATE — never the static "2 Weeks Out" phase string (which is event-relative
+// and lies once the real countdown is near/past). WAVE-6: the lead comes from the ONE
+// reader (lib/taskLead taskLeadDays — authored leadDays, T-Nd strings, week labels in
+// any casing), so this can never again disagree with the overdue policy about when a
+// task is due. The stored-schema `offsetDays` (positive days-before-event) keeps its
+// first-read precedence.
 //   { dueDate:Date|null, daysUntil:number|null, overdue:bool, label:string, badge, num }
 // label examples: "Overdue 3d" / "Due today" / "Due in 5d" / "Next week" / "Due Jul 9".
+// The days-before-event a task claims, on the stored schema first, then the one
+// lead reader. Shared by taskTiming and the Next-Up window below.
+function _taskDaysBefore(task) {
+  if (!task) return null;
+  if (typeof task.offsetDays === 'number') return Math.abs(task.offsetDays);
+  const lead = taskLeadDays(task);
+  return lead == null ? null : -lead;
+}
 export function taskTiming(task, eventDate) {
   if (!task || !eventDate) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
-  const daysBefore = typeof task.offsetDays === 'number' ? task.offsetDays
-    // leadDays is the persisted authored lead (negative, T-5d → -5); offsetDays and the
-    // legacy TitleCase week-map are older vocabularies. Without this read, playbook tasks
-    // (prose weeks) got blank timing labels even after the overdue math was fixed.
-    : (Number.isFinite(Number(task.leadDays)) ? -Number(task.leadDays)
-    : (task.week in PHASE_OFFSET ? -PHASE_OFFSET[task.week] : null));
+  const daysBefore = _taskDaysBefore(task);
   if (daysBefore == null) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
   const due = new Date(eventDate + 'T00:00:00');
   due.setDate(due.getDate() - daysBefore);
@@ -221,9 +219,10 @@ export function deriveCommandCenterData(event, foodPP = null) {
   const guests   = event.guests || [];
   const budget   = event.budget || [];
 
-  // Open Decisions = overdue uncompleted tasks
+  // Open Decisions = overdue uncompleted tasks — WAVE-6: the ONE overdue policy
+  // (lib/taskLead), handed the real event so the reachability guard can bind.
   const decisions = timeline
-    .filter(t => !t.done && isTaskOverdue(t, event.date, event.type))
+    .filter(t => !t.done && taskIsOverdue(t, event))
     .map(t => {
       const od = overdueDays(t, event.date);
       const timing = taskTiming(t, event.date); // real-date-derived, single source
@@ -315,23 +314,19 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // Removed. A real unanswered-thread signal can use getUnansweredMessages() later.
   const questions = [];
 
-  // Next Up — upcoming tasks within next two phases
-  const phaseOrder = Object.keys(PHASE_OFFSET);
+  // Next Up — upcoming tasks within the current countdown bucket and the next-nearer
+  // one. WAVE-6: the TitleCase phase index is gone — a task's own lead (_taskDaysBefore:
+  // stored offsetDays, authored leadDays, any week label in any casing) maps into the
+  // SAME numeric buckets the old phase ladder used, so stored-schema tasks the TitleCase
+  // mirror could never read now qualify instead of silently vanishing from Next Up.
+  const NEXTUP_BOUNDS = [7, 14, 30, 61, 91, 121, 152, 182, 243, 304, 365];
+  const bucketOf = (daysBefore) => {
+    const idx = NEXTUP_BOUNDS.findIndex((b) => daysBefore <= b);
+    return idx === -1 ? NEXTUP_BOUNDS.length - 1 : idx;
+  };
   const d = daysFrom(event.date);
-  let phaseIdx = phaseOrder.length - 1;
-  if (d !== null && d >= 0) {
-    if      (d <= 7)   phaseIdx = phaseOrder.indexOf('Week Of');
-    else if (d <= 14)  phaseIdx = phaseOrder.indexOf('2 Weeks Out');
-    else if (d <= 30)  phaseIdx = phaseOrder.indexOf('1 Month Out');
-    else if (d <= 61)  phaseIdx = phaseOrder.indexOf('2 Months Out');
-    else if (d <= 91)  phaseIdx = phaseOrder.indexOf('3 Months Out');
-    else if (d <= 121) phaseIdx = phaseOrder.indexOf('4 Months Out');
-    else if (d <= 152) phaseIdx = phaseOrder.indexOf('5 Months Out');
-    else if (d <= 182) phaseIdx = phaseOrder.indexOf('6 Months Out');
-    else if (d <= 243) phaseIdx = phaseOrder.indexOf('8 Months Out');
-    else if (d <= 304) phaseIdx = phaseOrder.indexOf('10 Months Out');
-    else               phaseIdx = phaseOrder.indexOf('12 Months Out');
-  }
+  // No date → only nearest-window tasks (the legacy default of "last phase").
+  const evBucket = (d !== null && d >= 0) ? bucketOf(d) : 0;
   // Next Up — upcoming, NOT-yet-handled tasks. effectiveDone (taskEngine) is the single
   // satisfaction predicate: a task drops the moment real event state proves it handled
   // (a count is locked, the budget is set…) — so "Set date, headcount, menu" never shows
@@ -340,7 +335,12 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // Timing is DERIVED FROM THE REAL DATE via taskTiming — no static "2 Weeks Out" phase.
   const nextUp = timeline
     .filter(t => !effectiveDone(event, t))
-    .filter(t => phaseOrder.indexOf(t.week) >= phaseIdx && phaseOrder.indexOf(t.week) <= phaseIdx + 1)
+    .filter(t => {
+      const daysBefore = _taskDaysBefore(t);
+      if (daysBefore == null) return false;   // undatable — same drop as the old unknown-week
+      const b = bucketOf(daysBefore);
+      return b === evBucket || b === evBucket - 1;   // current bucket + the next-nearer one
+    })
     .slice(0, 4)
     .map(t => {
       const timing = taskTiming(t, event.date);
@@ -354,7 +354,7 @@ export function deriveCommandCenterData(event, foodPP = null) {
         // the ladder's milestone tier can hand it to the snooze cap.
         leadDays: taskLeadDays(t),
         color: timing.overdue ? P.red : P.amber,
-        dateLabel: timing.badge || (isTaskOverdue(t, event.date, event.type) ? 'OVD' : 'SOON'),
+        dateLabel: timing.badge || (taskIsOverdue(t, event) ? 'OVD' : 'SOON'),
         dateNum: timing.num || (t.week === 'Week Of' ? '7d' : t.week === '2 Weeks Out' ? '14d' : (t.week || '').replace(/[^0-9]/g, '') + 'm'),
       };
     });
@@ -423,7 +423,7 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // Planning Health (operational readiness, not financial)
   const tasksDone   = timeline.filter(t => t.done).length;
   const tasksTotal  = timeline.length;
-  const overdueCount = timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length;
+  const overdueCount = timeline.filter(t => !t.done && taskIsOverdue(t, event)).length;
   const yesGuests = guests.filter(g => g.rsvp === 'Yes').length;
   const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
   const totalActual   = budget.reduce((s, r) => s + (r.actual   || 0), 0);
@@ -720,7 +720,7 @@ export function getEventAttention(event) {
   const timeline = event.timeline || [];
   const comms    = event.commClient || [];
   return {
-    decisions: timeline.filter(t => !t.done && isTaskOverdue(t, event.date, event.type)).length,
+    decisions: timeline.filter(t => !t.done && taskIsOverdue(t, event)).length,
     approvals: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status)).length,
     // Split: an approval still on the planner to SEND is not "awaiting client".
     approvalsAwaiting: comms.filter(m => m.message_type === 'approval_request' && !['approved', 'rejected'].includes(m.approval_status) && approvalIsSent(m)).length,
@@ -759,7 +759,9 @@ export function getCrossEventAttentionItems(events = []) {
     // 14 derivative overdue rows alongside is noise. We suppress decision
     // rows (overdue timeline tasks) but never approvals/requests/vendor
     // rows; those are independent signals not caused by the lead time.
-    const compression = deriveEventCompressionSummary(ev, daysFrom, PHASE_OFFSET);
+    // WAVE-6: no phaseOffset arg — classifyTemplateTaskUrgency reads taskLeadDays
+    // itself; the map was only a legacy fallback this file no longer mirrors.
+    const compression = deriveEventCompressionSummary(ev, daysFrom);
     const suppressDerivativeDecisions = !!(compression && compression.significant);
     // We always keep do_now tasks (they're the planner's first move). The
     // dedupe targets the risk_lost/long-tail overdue tasks that bloat the
@@ -772,7 +774,7 @@ export function getCrossEventAttentionItems(events = []) {
 
     // Decisions = overdue uncompleted tasks
     for (const t of timeline) {
-      if (t.done || !isTaskOverdue(t, ev.date, ev.type)) continue;
+      if (t.done || !taskIsOverdue(t, ev)) continue;
       // Sprint 57f.2: when compression meta-row will appear, hide most
       // derivative overdue rows. Keep the top do_now items so a planner
       // who clicks the compression row OR taps a do_now row still sees
@@ -959,7 +961,7 @@ export function getEventReadiness(event) {
   // Stage C: read effectiveDone (engine-satisfied OR manually ticked), not raw t.done,
   // so rich event state (guests/budget/venue/vendor/food) counts as work handled and a
   // satisfied task is never flagged overdue.
-  const overdueCount   = timeline.filter(t => !effectiveDone(event, t) && isTaskOverdue(t, event.date, event.type)).length;
+  const overdueCount   = timeline.filter(t => !effectiveDone(event, t) && taskIsOverdue(t, event)).length;
   const tasksDone      = timeline.filter(t => effectiveDone(event, t)).length;
   const tasksTotal     = timeline.length;
   // RECON-I1 (POP-1C): the canonical booked predicate — see lib/workstreams.
@@ -1606,6 +1608,18 @@ export function _topActionId(cmd) {
   if (!cmd || !cmd.title) return null;
   if (CALM_FILLER_CATEGORIES.has(cmd.category)) return null; // calm filler → unsnoozeable by construction
   const r = cmd.primaryRoute || {};
+  // WAVE-6 (2026-07-15): ONE canonical id for a decision debt, whoever produces it.
+  // Tier 2 wrote 'top:decision:<taskId>', tier 7.8 wrote 'top:decision:<slug>' and
+  // the registry wrote 'surface:decisions:<key>' — three ids for what can be the
+  // SAME record, so a snooze written against one producer detached the moment
+  // another producer picked the debt up. Every decision-category action whose
+  // record is known now keys 'decision:<recordId>' (the board/playbook decision id,
+  // the timeline task id, or the blocker's own decision key), and the registry
+  // splice in eventPlan uses the SAME form — the snooze follows the debt.
+  if (cmd.category === 'decision') {
+    const decRec = cmd.decisionId || r.decisionId || cmd.decision || r.foodFocus || null;
+    if (decRec != null) return 'decision:' + String(decRec);
+  }
   // The row the action routes to IS its identity — same doctrine as the registry
   // itemKey (RE-AUDIT F4). Only the bare category is forbidden.
   const rec = r.vendorId || r.decisionId || r.taskId || r.commId || r.riskId
@@ -1616,7 +1630,7 @@ export function _topActionId(cmd) {
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
 export function eventPlan(event, ctx = null) {
   if (!event) return {
-    nextActions: [], progress: { done: 0, total: 0 }, handled: [],
+    nextActions: [], setAside: [], worries: [], progress: { done: 0, total: 0 }, handled: [],
     vendorReadiness: { total: 0, booked: 0, confirmed: 0, toConfirm: 0, needsAttention: 0 }, workstreams: [],
     vendorReadinessRollup: {
       status: 'not_started', label: 'No vendors added yet', nextAction: 'Add your first vendor.',
@@ -1657,6 +1671,12 @@ export function eventPlan(event, ctx = null) {
     (() => { try { return _selectEventNextActionInner(event); } catch { return null; } })(),
     event,
   );
+  // WAVE-6: days-to-event, read once — dueInDays for any action carrying a real
+  // leadDays is dte + leadDays (the same relation lib/taskLead computes; a derived
+  // number, not an invented one). Actions with no lead keep dueInDays null.
+  const _dte = event.date ? daysFrom(event.date) : null;
+  const _dueFromLead = (leadDays) =>
+    (Number.isFinite(leadDays) && _dte != null) ? _dte + Number(leadDays) : null;
   const topAction = top && top.title ? {
     // WAVE-5 RANKING (2026-07-15): per-ITEM id, not per-category — snooze keys on
     // this, and a category key made "Confirm the caterer" inherit the DJ's snooze
@@ -1681,6 +1701,9 @@ export function eventPlan(event, ctx = null) {
     // window could be proposed a 10-day snooze and quietly slept past the point of no
     // return. The ladder's overdue-decision tier now attaches it; copy it through.
     leadDays: top.leadDays ?? null,
+    // WAVE-6: the real clock, derived from the lead where one exists — band-1
+    // ordering and the shell both read this; null where the engine has no number.
+    dueInDays: _dueFromLead(top.leadDays),
     done: false,
     // WAVE-5 RANKING (2026-07-15): name the producer, like phaseProgress and
     // surfaceRegistry actions already do — selectEventNextAction reads this to
@@ -1705,6 +1728,10 @@ export function eventPlan(event, ctx = null) {
   if (topAction) topAction.domain = topDomain;
 
   const seen = new Set(topDomain ? [topDomain] : []);
+  // WAVE-6: the top action's canonical id joins the dedup set so a registry raise
+  // for the SAME record (e.g. tier 7.8's board decision vs the decisions surface)
+  // collapses on identity, not just on title prose.
+  if (topAction && topAction.id) seen.add(topAction.id);
   // DEDUP ON TITLE, NOT JUST DOMAIN. The domain map (CATEGORY_TO_DOMAIN) only knows two
   // cases, so a reactive top action whose category is e.g. 'operational' but whose TITLE is
   // "Decide what you're serving" was not deduped against the phase ledger's 'food' item with
@@ -1750,6 +1777,14 @@ export function eventPlan(event, ctx = null) {
     budget: 'budget', vendors: 'vendors', rain: 'rain', shopping: 'shopping',
     crabs: 'food', payments: 'vendors', thankyous: 'guests', rentals: 'rentals',
   };
+  // WAVE-6: read the registry ONCE, ahead of the phase splice — the record-level
+  // dedup below needs to know which decision RECORDS the registry raises before the
+  // phase ledger's summary item gets to claim them.
+  let raised = [];
+  try { raised = raiseAll(event) || []; } catch (_e) { raised = []; }
+  const raisedDecisionKeys = new Set(
+    raised.filter((r) => r.surface === 'decisions' && r.key != null).map((r) => r.key),
+  );
   try {
     const phaseItems = (phaseProgressForPlan && phaseProgressForPlan.items) || [];
     const openPhase = phaseItems
@@ -1759,11 +1794,28 @@ export function eventPlan(event, ctx = null) {
       const domain = PHASE_TO_DOMAIN[i.id] || i.id;
       if (seen.has(domain)) continue;   // the foundation or the reactive top already says it
       if (seenTitles.has(titleKey(i.cueLabel))) continue;   // same task, different engine
-      seen.add(domain); seenTitles.add(titleKey(i.cueLabel));
+      // ── WAVE-6 RECORD-LEVEL DEDUP ────────────────────────────────────────────
+      // The food cue ("Decide what you're serving · 3 open") COUNTS choice records
+      // the `decisions` surface also raises individually — same playbook ids on
+      // both sides (phaseProgress exposes them as i.records). Direction chosen: the
+      // PER-ITEM raises win and the summary drops its claim to exactly those
+      // records — the raises carry row-level routes (decisionId) and fold into the
+      // surface's bundle below, while the summary can only land on the plan top; a
+      // list must never bill one record twice across a summary and its own row.
+      let cueLabel = i.cueLabel;
+      if (Array.isArray(i.records) && i.records.length && raisedDecisionKeys.size) {
+        const remaining = i.records.filter((id) => !raisedDecisionKeys.has(String(id)));
+        if (remaining.length === 0) continue;              // every record is individually raised
+        if (remaining.length < i.records.length) {
+          // The summary keeps only the records nobody else raises — recount honestly.
+          cueLabel = String(i.cueLabel).replace(/·\s*\d+\s+open/, `· ${remaining.length} open`);
+        }
+      }
+      seen.add(domain); seenTitles.add(titleKey(cueLabel));
       nextActions.push({
         id: 'phase:' + i.id,
         domain,
-        title: i.cueLabel,
+        title: cueLabel,
         // The phase engine's cue is the whole sentence; it has no separate consequence
         // line, and inventing one would be fabricating a reason. Left null honestly.
         consequence: null,
@@ -1796,6 +1848,9 @@ export function eventPlan(event, ctx = null) {
           ? taskLeadDays((event.timeline || []).find(t => t && t.id === i.route.taskId))
           : null,
       });
+      // WAVE-6: derive the clock from the lead where one exists (null stays null).
+      const _justPushed = nextActions[nextActions.length - 1];
+      _justPushed.dueInDays = _dueFromLead(_justPushed.leadDays);
     }
   } catch (_e) { /* phase ledger unavailable — the foundation list stands unchanged */ }
 
@@ -1814,8 +1869,30 @@ export function eventPlan(event, ctx = null) {
   //
   // The rule the registry exists to enforce: a surface cannot be silent by ACCIDENT. It can
   // only be silent by declaring nothing, visibly, in one file.
+  // WAVE-6: what the host set down, carried out of eventPlan as `setAside` — the
+  // shell renders its Set-aside pile from THIS, and nextActions is post-snooze.
+  const setAside = [];
+  // ── WAVE-7: THE WORRY LANE LIVES IN THE ENGINE (2026-07-15) ─────────────────
+  // The worry split used to live only in the V2 shell (HostShellV2 isWorry) — so
+  // every OTHER consumer (V1 heroes, mayExhale, App.js auto-route, the reveal's
+  // step count, planningState) spoke the worry-INCLUSIVE head. The split moves
+  // here, into the single source: a WORRY is a raise from the registry's `risks`
+  // surface at level 'attention' (risk raises are attention-only today; if a
+  // risks item were ever critical it is WORK and stays in nextActions — a
+  // critical never files as a worry). The risks bundle (bundle:risks) is a worry
+  // wholesale. Worries keep the full action shape (id/title/consequence/route/
+  // cta) — actionable heads-ups, just uncounted and unranked: they leave
+  // nextActions BEFORE banding/counting, so no count, hero, or grounding line
+  // ever bills a contingency as a chore.
+  //
+  // SNOOZE SEMANTICS (decided + documented, wave-7): a worry is NOT snoozeable —
+  // a heads-up row has no "not now" (its lane is already the quiet lane; the
+  // dismissal path is riskStatus, the ONE place risks leave the flow). Worries
+  // keep their ids (React keys + riskStatus routing), but the shell must not
+  // offer snooze on the heads-up lane. Back-compat: a risk snoozed BEFORE this
+  // split (pass 2 below) still honors its date in setAside until it lapses.
+  const worries = [];
   try {
-    const raised = raiseAll(event) || [];
     const criticals = raised.filter(r => r.severity === 'critical');
     const rest = raised.filter(r => r.severity !== 'critical');
     // RE-AUDIT F2: `insertAt = topAction ? 1 : 0` put every registry critical BEHIND the
@@ -1824,22 +1901,38 @@ export function eventPlan(event, ctx = null) {
     // need you · first: Event on track…" with a CRITICAL parked second. Criticals lead over
     // ANY non-critical top; a reactive top that is itself critical (a payment) stays first.
     let insertAt = (topAction && topAction.level === 'critical') ? 1 : 0;
+    // ── Pass 1: collect deduped per-item actions, RECORD-KEYED ─────────────────
+    const registryActions = [];
     for (const r of [...criticals, ...rest]) {
-      // RE-AUDIT F4: the dedup key was 'surface:' + surface — ONE raise per surface, so two
-      // overdue arrival asks collapsed to one and snoozing the DJ's ask silently hid the
-      // caterer's (both wrote event.snoozed['surface:vendor-arrivals']). The key — and the
-      // action id snooze writes against — is now per ITEM: the row it routes to, or the
-      // normalized title. Registry items also join the title dedup like everything else.
-      const itemKey = 'surface:' + r.surface + ':' + (
-        (r.route && (r.route.vendorId || r.route.riskId)) || titleKey(r.title)
-      );
+      // WAVE-6 RECORD-KEYED IDENTITY. The old key was vendorId||riskId with a
+      // TITLE fallback — and titles carry live counts ('2 confirmed guests still
+      // need seats'), so the id changed every time the count moved and the snooze
+      // detached. The raiser now declares its own record (`key`: decisionId,
+      // guestId, itemType:itemId…); an aggregate raise that deliberately declares
+      // NO record (lodging, ground) uses the surface id ALONE — stable whatever
+      // the count says. Only when a keyless surface raises SIBLINGS (no in-repo
+      // raiser does) do the extras fall back to the normalized title, so they
+      // dedup-collide loudly in tests instead of silently shadowing each other.
+      const rec = r.key != null ? r.key : null;
+      // ONE canonical id per decision debt (see _topActionId): the decisions
+      // surface keys 'decision:<recordId>' — the SAME form the ladder's tiers use —
+      // so a snooze follows the debt across producers.
+      let itemKey;
+      if (r.surface === 'decisions' && rec != null) itemKey = 'decision:' + rec;
+      else if (rec != null) itemKey = 'surface:' + r.surface + ':' + rec;
+      else {
+        const siblings = raised.filter((x) => x && x.surface === r.surface).length;
+        itemKey = siblings > 1
+          ? 'surface:' + r.surface + ':' + titleKey(r.title)
+          : 'surface:' + r.surface;
+      }
       if (seen.has(itemKey) || seenTitles.has(titleKey(r.title))) continue;
       seen.add(itemKey); seenTitles.add(titleKey(r.title));
-      const action = {
+      registryActions.push({
         // WAVE-5 RANKING (2026-07-15): `domain` is the surface's PLAIN domain
         // ('vendors' | 'risks' | 'day'), not the old 'surface:*' form — the shell's
         // DOMAIN_LENS files a vendor raise under the Vendors lens off exactly this
-        // word. The snooze/dedup key (itemKey/id) is separate and UNCHANGED.
+        // word. The snooze/dedup key (itemKey/id) is separate.
         id: itemKey, domain: r.domain,
         title: r.title,
         consequence: r.why,
@@ -1847,8 +1940,67 @@ export function eventPlan(event, ctx = null) {
         cta: 'Go', ctaLabel: 'Go',
         level: r.severity, category: 'surface',
         done: false, source: 'surfaceRegistry', surface: r.surface,
-      };
-      if (r.severity === 'critical') { nextActions.splice(insertAt++, 0, action); }
+        // WAVE-6: the raiser's own clock (decision daysOut, payDueDate, COI line,
+        // reconfirm window) — null where the engine has none. leadDays is what the
+        // snooze cap reads; with it, a past-window decision is REFUSED a snooze
+        // (the wave-6 proof: 4 past-window decisions were offered "back Jul 20").
+        dueInDays: r.dueInDays != null ? r.dueInDays : null,
+        leadDays: r.leadDays != null ? r.leadDays : null,
+      });
+    }
+    // ── Pass 2: per-item snoozes drop children BEFORE bundling ─────────────────
+    // (so a bundle's count reflects only what is actually up; a critical ignores
+    // its own stale snooze, as everywhere). Set-aside children carry their dates.
+    const visible = [];
+    for (const a of registryActions) {
+      if (a.level !== 'critical' && isSnoozed(event, a.id)) {
+        setAside.push({ ...a, snoozedUntil: snoozedUntil(event, a.id) });
+      } else visible.push(a);
+    }
+    // ── Pass 3: bundle — one surface contributing ≥3 raises becomes ONE action ──
+    // Registry surfaces only (never phase/foundation/ladder items — those are
+    // curated singles already). Shape is the shell contract: { id:'bundle:<surface>',
+    // kind:'bundle', title, level, category:'surface', domain, route, count, items }.
+    const bySurface = new Map();
+    for (const a of visible) {
+      if (!bySurface.has(a.surface)) bySurface.set(a.surface, []);
+      bySurface.get(a.surface).push(a);
+    }
+    const merged = [];
+    for (const [surfaceId, group] of bySurface) {
+      if (group.length < 3) { merged.push(...group); continue; }
+      const meta = surfaceMeta(surfaceId);
+      const dues = group.map((a) => a.dueInDays).filter((n) => Number.isFinite(n));
+      const leads = group.map((a) => a.leadDays).filter((n) => Number.isFinite(n));
+      merged.push({
+        id: 'bundle:' + surfaceId,
+        kind: 'bundle',
+        // The surface's own host-language title — the raise vocabulary, counted.
+        title: meta ? meta.bundleTitle(group.length)
+          : `${group.length} things need a look`,
+        consequence: null,               // the children carry the specifics
+        level: group.some((a) => a.level === 'critical') ? 'critical' : 'attention',
+        category: 'surface',
+        domain: group[0].domain,
+        route: (meta && meta.route) || group[0].route,
+        primaryRoute: (meta && meta.route) || group[0].route,
+        cta: 'Go', ctaLabel: 'Go',
+        count: group.length,
+        items: group,                    // the children, in their internal order
+        done: false, source: 'surfaceRegistry', surface: surfaceId,
+        dueInDays: dues.length ? Math.min(...dues) : null,   // most urgent child
+        // Tightest child window governs the bundle's snooze cap (most negative
+        // lead = earliest close); snoozing the bundle sets aside ALL children
+        // (see lib/snooze.js bundle semantics).
+        leadDays: leads.length ? Math.min(...leads) : null,
+      });
+    }
+    for (const action of merged) {
+      // WAVE-7 worry split (see the lane header above): an attention-level raise
+      // from the risks surface — single or bundle — files as a worry, not work.
+      // A critical from risks (none exists in-repo today) stays in the list.
+      if (action.surface === 'risks' && action.level !== 'critical') { worries.push(action); continue; }
+      if (action.level === 'critical') { nextActions.splice(insertAt++, 0, action); }
       else nextActions.push(action);
     }
   } catch (_e) { /* registry unavailable — the list stands unchanged */ }
@@ -1870,7 +2022,11 @@ export function eventPlan(event, ctx = null) {
   // (One vocabulary: the same CALM_FILLER_CATEGORIES set _topActionId uses to
   // withhold a snooze id — the filler gate and the no-snooze rule cannot drift.)
   const _isCalmFiller = (a) => !!a && CALM_FILLER_CATEGORIES.has(a.category);
-  if (nextActions.some((a) => !_isCalmFiller(a))) {
+  // WAVE-7: a live worry ALSO purges the fillers. A filler's claim is that nothing
+  // is open; with a heads-up standing, the honest queue is EMPTY (the shell's
+  // heads-up lane and the V1 exhale speak for the state), not "Event on track."
+  // beside "Have a plan for: rain". Only-worries ⇒ nextActions [] by construction.
+  if (nextActions.some((a) => !_isCalmFiller(a)) || worries.length > 0) {
     for (let i = nextActions.length - 1; i >= 0; i--) {
       if (_isCalmFiller(nextActions[i])) nextActions.splice(i, 1);
     }
@@ -1878,15 +2034,58 @@ export function eventPlan(event, ctx = null) {
     nextActions.splice(1); // only fillers: one calm line, never a stack of them
   }
   const _severityBand = (a) => (a && a.level === 'critical') ? 0 : (_isCalmFiller(a) ? 2 : 1);
-  nextActions.sort((a, b) => _severityBand(a) - _severityBand(b)); // Array.prototype.sort is stable (V8)
+  // WAVE-6 shell contract: every ranked action exposes dueInDays and leadDays as
+  // number|null — a uniform read, never a sometimes-missing field. Null stays
+  // null: no invented numbers, only normalization of absence.
+  for (const a of [...nextActions, ...worries]) {
+    if (!a) continue;
+    a.dueInDays = Number.isFinite(a.dueInDays) ? a.dueInDays : null;
+    a.leadDays = Number.isFinite(a.leadDays) ? a.leadDays : null;
+  }
+  // WAVE-6 BAND-1 ORDERING: within the attention band, TIME-TO-WINDOW decides —
+  // dueInDays ascending (most past-due first, then soonest), nulls last, stable
+  // within ties so each producer's internal ranking survives. Criticals stay band
+  // 0 (their urgency is categorical, not a date race); the calm band stays 2.
+  nextActions.sort((a, b) => {                    // Array.prototype.sort is stable (V8)
+    const ba = _severityBand(a), bb = _severityBand(b);
+    if (ba !== bb) return ba - bb;
+    if (ba === 1) {
+      const da = Number.isFinite(a.dueInDays) ? a.dueInDays : Infinity;
+      const db = Number.isFinite(b.dueInDays) ? b.dueInDays : Infinity;
+      if (da !== db) return da - db;
+    }
+    return 0;
+  });
+
+  // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────
+  // Snooze applies HERE, inside the single source — `nextActions` is post-snooze
+  // and `setAside` carries what the host set down (with its comeback date), so
+  // selectEventNextAction, planningState.currentPriority/reasoning, the V1
+  // heroes and the shell all read the same head and none can speak a set-aside
+  // item. A critical ignores its own stale snooze (the standing rule); calm
+  // fillers carry no id and pass through untouched. Bundles set aside as a unit
+  // (bundle id covers all children — lib/snooze.js documents the semantics).
+  for (let i = nextActions.length - 1; i >= 0; i--) {
+    const a = nextActions[i];
+    if (!a || !a.id || a.level === 'critical') continue;
+    if (isSnoozed(event, a.id)) {
+      setAside.unshift({ ...a, snoozedUntil: snoozedUntil(event, a.id) });
+      nextActions.splice(i, 1);
+    }
+  }
 
   // PAST-EVENT-1 — a wrapped event's action list must agree with the phase engine
   // (deriveEventPhaseProgress already returns 'post_event' / "Wrap-up" for it): it
   // doesn't help a host to be told "3 things need you" about a party that happened
   // years ago. Once the event is unambiguously in the past, no domino surfaces as a
   // next action — progress/handled above still reflect real completion, unaffected.
+  // WAVE-6: the set-aside pile empties too — a party that already happened has
+  // nothing waiting to come back.
   const _eventDays = event.date ? daysFrom(event.date) : null;
-  if (_eventDays != null && _eventDays < 0) nextActions.length = 0;
+  // WAVE-7: the worry lane empties too — a party that already happened has no
+  // contingencies left to hold. (The risks surface already declines to raise on a
+  // past event; this is the same wipe the other two lanes get, for symmetry.)
+  if (_eventDays != null && _eventDays < 0) { nextActions.length = 0; setAside.length = 0; worries.length = 0; }
   // Read-only, additive — does not affect nextActions ranking/ordering.
   // vendorReadiness is now derived FROM workstreams (single computation), not a
   // parallel flat tally, so eventPlan/HostHome and any workstream-aware surface
@@ -1923,7 +2122,11 @@ export function eventPlan(event, ctx = null) {
     confidence: undefined, // no existing per-action confidence signal to compose — not invented here
   };
 
-  return { nextActions, progress, handled, vendorReadiness, workstreams, planningState, vendorReadinessRollup: vendorReadinessRollupPresentation };
+  // WAVE-6: setAside rides out beside nextActions — one post-snooze truth.
+  // WAVE-7: worries ride out too — the heads-up lane, uncounted and unranked,
+  // never in nextActions. Null-event and error paths return worries: [] (the
+  // registry try/catch above leaves the array empty, same as setAside).
+  return { nextActions, setAside, worries, progress, handled, vendorReadiness, workstreams, planningState, vendorReadinessRollup: vendorReadinessRollupPresentation };
 }
 
 // L3 — within a single event for the Event Command Center top panel.
@@ -1984,7 +2187,17 @@ export function selectEventNextAction(event) {
   // the rich ladder render below (persona voice, compression sub-badge,
   // identity `because`) is byte-identical to before.
   try {
-    const _head = (eventPlan(event).nextActions || [])[0] || null;
+    const _plan = eventPlan(event);
+    const _head = (_plan.nextActions || [])[0] || null;
+    // WAVE-6: eventPlan's nextActions is POST-snooze. When everything real is set
+    // aside, the honest hero is NO task — never a set-aside item resurfaced through
+    // the raw ladder below (the ladder knows nothing about snoozes). The shell
+    // renders the Set-aside pile from plan.setAside instead.
+    // WAVE-7: same for the worry lane — when ONLY worries exist, the hero is NO
+    // task (a heads-up is not a chore) and mayExhale call sites may exhale; the
+    // heads-up lane speaks from plan.worries. Never fall through to the raw
+    // ladder here: it would resurface a calm filler the worry split just purged.
+    if (!_head && ((_plan.setAside || []).length > 0 || (_plan.worries || []).length > 0)) return null;
     if (_head && _head.source !== 'ladder') {
       return {
         level: _head.level || null,
@@ -1997,9 +2210,18 @@ export function selectEventNextAction(event) {
         id: _head.id || null,
         domain: _head.domain || null,
         leadDays: _head.leadDays ?? null,
+        // WAVE-6 shell contract: the head's clock and bundle fields ride along.
+        dueInDays: _head.dueInDays ?? null,
+        kind: _head.kind || null,
+        count: _head.count ?? null,
+        items: _head.items || null,
         source: _head.source || null,
       };
     }
+    // WAVE-6: the ladder's own top can be snoozed too. If the band-sorted head IS
+    // a ladder action, the rich render below is byte-identical to before — but if
+    // the ladder top was set aside and something else now leads, the head branch
+    // above already returned it. The remaining case (head is ladder) falls through.
   } catch { /* plan unavailable — the ladder render below stands */ }
   // Decompose any stale "Set date, headcount, menu" composite into the atomic remaining
   // domino so the Focus "ONE thing" + spine never show a half-done bundle (same single
@@ -2039,7 +2261,7 @@ function _selectEventNextActionWithBadge(event) {
   if (!cmd || !event) return cmd;
   // Don't double up — if compression IS the primary, no sub-badge.
   if (cmd.category === 'compression') return cmd;
-  const compression = deriveEventCompressionSummary(event, daysFrom, PHASE_OFFSET);
+  const compression = deriveEventCompressionSummary(event, daysFrom);
   if (!compression || !compression.significant) return cmd;
   return {
     ...cmd,
@@ -2282,7 +2504,7 @@ function _selectEventNextActionInner(event) {
   // this BEFORE the generic "timeline AT_RISK" so the planner sees the
   // compression framing first (which has a clearer next move) rather than
   // a generic "catch up on tasks" prompt.
-  const compression = deriveEventCompressionSummary(event, daysFrom, PHASE_OFFSET);
+  const compression = deriveEventCompressionSummary(event, daysFrom);
   if (compression && compression.significant) {
     const doNow = compression.doNow.length;
     // Owner directive 2026-06-24: the next step must BE the action — never a situational
@@ -2351,7 +2573,7 @@ function _selectEventNextActionInner(event) {
     // Owner directive 2026-06-24: a verb CTA must DEEP-LINK to the action, not dump the
     // host on a whole tab. "Catch up" lands on the FIRST overdue task (the editor scrolls
     // to it); fall back to the Timeline only when there's no specific task to open.
-    const firstOverdue = (event.timeline || []).find((t) => t && !t.done && isTaskOverdue(t, event.date, event.type));
+    const firstOverdue = (event.timeline || []).find((t) => t && !t.done && taskIsOverdue(t, event));
     return {
       level: 'attention',
       category: 'timeline',
@@ -2393,6 +2615,15 @@ function _selectEventNextActionInner(event) {
     return {
       level: opDecision.level,
       category: 'decision',
+      // WAVE-7 SEAM FIX (2026-07-15): this re-wrap DROPPED the blocker's own record
+      // key (`decision: 'dietary' | 'guestCount'`), so _topActionId had nothing to
+      // read and slugged the title ('top:decision:collect-dietary-…') while the
+      // registry's decisions surface keyed the SAME record 'decision:dietary' —
+      // the one debt was billed twice (ladder card + child of bundle:decisions)
+      // and a snooze written against either id detached from the other. Carry the
+      // record through so the canonical 'decision:<recordId>' form wins here too.
+      decision: opDecision.decision || null,
+      decisionId: opDecision.decisionId != null ? opDecision.decisionId : null,
       title: opDecision.title,
       consequence: opDecision.consequence,
       primaryCta: opDecision.primaryCta,
@@ -2503,6 +2734,10 @@ function _selectEventNextActionInner(event) {
         level: 'attention',
         category: 'decision',
         title: `Resolve "${_over[0].label}".`,
+        // WAVE-6: the decision RECORD this action is about — the canonical
+        // cross-producer snooze id ('decision:<id>') keys on it even though the
+        // route intentionally lands on the settle board, not the single row.
+        decisionId: _over[0].id,
         settleCount: _over.length,
         consequence: _over.length === 1
           ? 'It’s past its easy window — the spread and shopping list size from it.'

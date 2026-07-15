@@ -257,18 +257,26 @@ export const classifyTemplateTaskUrgency = (
   }
 
   // Slipped less than ~30 days → do it now (still the most-important
-  // surviving signal from the standard template)
+  // surviving signal from the standard template).
+  //
+  // 2026-07-15 wave-6 re-derivation: this ≤30-day band is TRIAGE LANGUAGE ONLY.
+  // It used to leak into overdue COUNTS because App.js's isTaskOverdue counted a
+  // task overdue only when this function said 'risk_lost' — so a task 29 days past
+  // its window was "do now" on a chip and absent from every overdue badge, while
+  // dayAlerts' default (lib/taskLead) counted it. Hero and board disagreed. That
+  // gate is gone: every overdue count now reads lib/taskLead's taskIsOverdue
+  // (past window + reachable + not snoozed), and a past-window task classifies
+  // do_now / risk_lost / skippable here — never "not overdue". The only forgiveness
+  // that survives lives in taskLead: createdAt reachability ("never had a chance").
   if (slipDays <= 30) {
     return { urgency: 'do_now', ...URGENCY_META.do_now };
   }
 
-  // Slipped significantly. BUT a behind-template phase is only genuinely "lost"
-  // (→ overdue) when the event is in DEEP RUSH — no runway left to recover it.
-  // With real lead time (a normal 6-month wedding is 'compressed', not rush),
-  // these early phases are front-loaded CATCH-UP work the planner does first
-  // (do_now), NOT missed deadlines. Without this gate, freshly creating a viable
-  // 6-month event read as "most tasks overdue" — confusing and wrong. risk_lost
-  // re-emerges naturally as the event approaches and the ratio drops into rush.
+  // Slipped significantly. do_now vs risk_lost is a RECOVERABILITY grade, not an
+  // overdue verdict: with real runway left (tight/compressed) a far-behind phase is
+  // front-loaded catch-up work the planner does first (do_now); in deep rush there's
+  // no runway to recover it and the honest chip is "consider replacing" (risk_lost).
+  // Both are past-window; taskIsOverdue counts both.
   if (level === 'rush') {
     return { urgency: 'risk_lost', ...URGENCY_META.risk_lost };
   }

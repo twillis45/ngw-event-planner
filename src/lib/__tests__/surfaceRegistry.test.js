@@ -44,15 +44,22 @@ describe('the contract', () => {
 });
 
 describe('surfaces that used to be silent now reach the list', () => {
-  test('THE REGRESSION: a high risk enters the ranked list — it never could before', () => {
+  test('THE REGRESSION: a high risk reaches the engine output — it never could before', () => {
+    // UPDATED (wave-7 worry lane, 2026-07-15): the raise now lands in eventPlan's
+    // `worries` lane, not nextActions — a worry is a contingency to hold, not a
+    // chore to count. Still raised, still actionable (full shape, routed), just
+    // uncounted and unranked. nextActions must carry NONE of it.
     const ev = feast();
     const risks = raiseAll(ev).filter(r => r.surface === 'risks');
     if (risks.length) {
-      // Risks raise at ATTENTION now (a worry is not a chore) — still in the list, no
-      // longer allowed to open a brand-new event as its #1.
       expect(risks[0].severity).toBe('attention');
-      const titles = eventPlan(ev).nextActions.map(a => String(a.title || ''));
-      expect(titles).toContain(risks[0].title);
+      const plan = eventPlan(ev);
+      const worryTitles = plan.worries
+        .flatMap(w => (w.kind === 'bundle' ? w.items : [w]))
+        .map(a => String(a.title || ''));
+      expect(worryTitles).toContain(risks[0].title);
+      const rankedTitles = plan.nextActions.map(a => String(a.title || ''));
+      expect(rankedTitles).not.toContain(risks[0].title);
     } else {
       // A playbook with no HIGH risk raises nothing — and says so, rather than inventing one.
       expect(risks).toEqual([]);

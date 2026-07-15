@@ -40,7 +40,7 @@ import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
-import { applySnooze, canSnooze, isSnoozed, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
+import { canSnooze, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -130,7 +130,13 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
     setBusy(true); setErr(null); setResult(null);
     try {
       const data = await parseVendorReply(replyText, { vendorName: vendor.name, vendorCategory: vendor.category, eventName: event?.name });
-      setResult({ rows: buildReplyDiff(data.fields, vendor), confidence: data.confidence, disclaimer: data.disclaimer });
+      // No `confidence` kept: a model grading its own extraction is invented
+      // confidence (06_AI_GROUNDING) — the honest signals are the verbatim
+      // quote under each row and its evidenceVerified check, nothing else.
+      // replyText is the 3rd arg ON PURPOSE: buildReplyDiff verifies each row's
+      // evidence is a verbatim quote of THIS text — omit it and every row
+      // arrives unverified/unchecked (safe, but wrong for evidenced rows).
+      setResult({ rows: buildReplyDiff(data.fields, vendor, replyText), truncated: data.truncated === true, disclaimer: data.disclaimer });
     } catch (e) { setErr(e.message || 'Could not read that message — try again.'); }
     finally { setBusy(false); }
   };
@@ -163,7 +169,10 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
       )}
       {result && result.rows.length > 0 && (
         <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--carbon-1, rgba(0,0,0,0.16))', border: '1px solid var(--steel-soft)' }}>
-          <div className="of" style={{ marginBottom: 8, letterSpacing: '0.06em' }}>AI-extracted · review against the message{result.confidence ? (' · ' + result.confidence + ' confidence') : ''}</div>
+          <div className="of" style={{ marginBottom: 8, letterSpacing: '0.06em' }}>AI-extracted · review against the message</div>
+          {result.truncated && (
+            <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 6 }}>Long reply — we read the first part.</div>
+          )}
           {result.rows.map((row, i) => {
             const cur = fmtV(row.type, row.current), next = fmtV(row.type, row.proposed);
             return (
@@ -175,7 +184,13 @@ function VendorReplyParserV2({ vendor, event, writeVendor }) {
                     <span style={{ color: 'var(--carbon-muted)' }}>{cur ? (cur + ' → ') : 'set to '}</span>
                     <strong style={{ color: 'var(--steel-soft)' }}>{next}</strong>
                   </div>
-                  {row.evidence && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 2 }}>“{row.evidence}”</div>}
+                  {row.evidence && row.evidenceVerified !== false && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 2 }}>“{row.evidence}”</div>}
+                  {/* PARSER CONTRACT: evidenceVerified is the lib's verbatim-
+                      substring check. false = the model couldn't show its work,
+                      so the quote (if any) is NOT displayed as if it were one,
+                      and the lib ships the row unchecked (accepted:false) —
+                      this marker says why, in host language, no grading. */}
+                  {row.evidenceVerified === false && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 2 }}>No supporting quote from the reply — check the message before applying this one.</div>}
                 </div>
               </label>
             );
@@ -979,7 +994,7 @@ export default function HostShellV2() {
   // ── THE REAL ENGINE ──
   const plan = useMemo(() => {
     try { return eventPlan(event, ctx); }
-    catch (err) { return { _error: String(err), nextActions: [], progress: { done: 0, total: 0 }, handled: [], vendorReadinessRollup: null }; }
+    catch (err) { return { _error: String(err), nextActions: [], worries: [], setAside: [], progress: { done: 0, total: 0 }, handled: [], vendorReadinessRollup: null }; }
   }, [event, ctx]);
 
   // Blockers (the Reveal's own stage builder, ongoing view), decision board,
@@ -1751,17 +1766,30 @@ export default function HostShellV2() {
   // no surface — guest OR host — may state it as fact. The grounded proposal lives in
   // lib/replyBy.js and is offered, with its reasoning, inside the editor.
   const rsvpByIsSet = !!(rsvpBy && rsvpBy.iso && rsvpBy.source === 'override');
-  // Snoozed items drop out of the ranked list and the count — the host set them down on
-  // purpose, and a queue that won't empty is a queue people stop reading (attention audit,
-  // the reason a zero state can't be believed). A CRITICAL ignores any snooze: something that
-  // has escalated is no longer a someday. lib/snooze.js.
-  const actions = applySnooze(plan.nextActions || [], event);
+  // WAVE-6/7 CONTRACT: eventPlan(event) owns the whole attention split now —
+  // `nextActions` arrives post-snooze AND worry-free (the counted queue),
+  // `setAside` is the snoozed pile (items carry their comeback dates), and
+  // `worries` is the HEADS-UP lane (risks-surface attention items incl. the
+  // risks bundle, full action shape, never counted). The shell renders; it
+  // re-derives none of it. Guard: setAside reads as [] unless it's a real
+  // array (same for the engine's own error path, which returns all three).
+  const actions = plan.nextActions || [];
+  const setAsideItems = Array.isArray(plan.setAside) ? plan.setAside : [];
+  // HERO REDESIGN (host board ruling, approved): risk raises ("Have a plan
+  // for: …") are WORRIES — a contingency to hold, not a chore to do. The
+  // ENGINE owns the split (eventPlan.worries; nextActions arrives worry-free)
+  // so every consumer — V1 heroes, exhale, auto-route, this queue — speaks
+  // the same numbers. The wave-6 seam audit caught the shell-only split
+  // making V1 say "Have a plan for 4 things…" over V2's "All quiet".
+  const worries = Array.isArray(plan.worries) ? plan.worries : [];
+  const queue = actions;
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
-  // Both now consult this predicate; a single neutral/calendar/heart item IS quiet.
-  const listIsCalm = actions.length === 0
-    || (actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || '')));
+  // Both now consult this predicate; a single neutral/calendar/heart item IS
+  // quiet. Reads the QUEUE (post-worry-split): heads-ups never break the calm.
+  const listIsCalm = queue.length === 0
+    || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -1776,7 +1804,9 @@ export default function HostShellV2() {
       const n = deriveReturnNarration(event, prev);
       writeReturnSnapshot(event.id, buildReturnSnapshot(event));
       if (n.shouldShow && !narrationDuplicatesTelling(n.line,
-        plan.nextActions && plan.nextActions[0] && plan.nextActions[0].title,
+        // The QUEUE's head, never a worry: the returning host is greeted with
+        // what the board actually leads with (post-snooze, post-worry-split).
+        queue[0] && queue[0].title,
         phaseCues && phaseCues.nextCue && phaseCues.nextCue.label)) {
         // #3 activation: on a real return, carry the readiness fraction NOW and
         // the delta since last visit — the "you moved N forward" momentum reward
@@ -1792,8 +1822,13 @@ export default function HostShellV2() {
   }, [event.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [lens, setLens] = useState('all');
-  const lensSet = [...new Set(actions.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
+  const lensSet = [...new Set(queue.map(a => DOMAIN_LENS[a.domain] || 'Plan'))];
   const show = a => lens === 'all' || (DOMAIN_LENS[a.domain] || 'Plan') === lens;
+  // Queue presentation state (wave-6 hero): the "+N more" expander past the
+  // 6-card cap, and per-bundle in-place expansion. Both reset per event.
+  const [queueOpen, setQueueOpen] = useState(false);
+  const [bundleOpen, setBundleOpen] = useState({});
+  useEffect(() => { setQueueOpen(false); setBundleOpen({}); }, [event.id]);
 
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
@@ -2342,6 +2377,13 @@ export default function HostShellV2() {
     }
     if (/^fp-diet/.test(String(route.focusField || ''))) { setSheet({ kind: 'food', focus: 'diet' }); return true; }
     if (/^caprow-/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
+    // WAVE-6 (a): the helper supply-class raises ({tab:'Planning', focusField:
+    // 'space'} — helperResponsibility.js capacityHelpers items) used to fall
+    // through to the Planning catch-all below and land on the CHECKLIST — the
+    // wrong sheet entirely. The capacity/helper rows render on the space sheet
+    // (sheet.kind 'space', same landing the caprow- routes above use), so a
+    // 'space' focus lands there. MUST branch before tab==='Planning'.
+    if (/^space/.test(String(route.focusField || ''))) { setSheet({ kind: 'space' }); return true; }
     // "Add the location" essential (phaseProgress: {tab:'Event Details',
     // focusField:'event-venue'}) had NO handler — its "Take me to it" dead-ended
     // (host report). The venue is edited inline on the plan (the blocker card or
@@ -4035,21 +4077,24 @@ export default function HostShellV2() {
                 {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
                 {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
               </p>
-              {/* THE VERDICT (host, 2026-07-09): the one sentence the readouts
-                  circle but never say — "am I okay?" answered plainly, in the
-                  app's voice. Grounded ONLY in already-computed engine state:
-                  overdue board decisions, timeline compression, budget overage
-                  — the engines' own escalation states, never invented cheer.
-                  Division of labor: this line owns "how am I doing"; the NEXT
-                  tile owns "what do I do"; the tiles below are the evidence. */}
+              {/* THE STATUS LINE (host board ruling, wave 6 — hero prescription):
+                  ONE honest sentence of where they stand. Calm when calm, direct
+                  when not, and NO ARITHMETIC — no counts, no dollar deltas, no
+                  reconciliation. The tiles below are the evidence; the queue is
+                  the work. Grounded ONLY in already-computed engine state:
+                  a critical in the queue, overdue board decisions, timeline
+                  compression, budget overage — never invented cheer. */}
               {!isPast && days !== null && days > 0 && (() => {
+                if (queue.some(a => a && a.level === 'critical')) {
+                  return <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
+                }
                 const slips = [];
                 try {
                   const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
-                  if (od) slips.push(od === 1 ? 'one decision is past its easy window' : od + ' decisions are past their easy window');
+                  if (od) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                 } catch { /* board unavailable */ }
                 if (compression && compression.headline) slips.push('time got tight');
-                if (money.planned && money.committed > money.planned) slips.push('the budget is over by ' + fmt(money.committed - money.planned));
+                if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
                 if (slips.length) {
                   return (
                     <p className="verdict slipping">
@@ -4057,15 +4102,25 @@ export default function HostShellV2() {
                     </p>
                   );
                 }
-                if (!actions.length) return <p className="verdict">All quiet — you’re genuinely set for now.</p>;
-                // Found in the per-screen audit: this used to say "nothing's
-                // slipping" whenever the escalation-state checks above came
-                // back clean — even with real actions still pending, so it
-                // could render directly above the NEXT tile's "2 things need
-                // you" on the same screen. Same actions.length check as NEXT
-                // now, so the two lines can't disagree.
-                return <p className="verdict">On track — {actions.length === 1 ? 'one small thing' : actions.length + ' small things'} to handle when you’re ready.</p>;
+                if (listIsCalm) {
+                  return <p className="verdict">{worries.length
+                    ? 'All quiet — just the heads-ups below, when you have a minute.'
+                    : 'All quiet — you’re genuinely set for now.'}</p>;
+                }
+                return <p className="verdict">On track — nothing is slipping.</p>;
               })()}
+              {/* THE ONE NEXT ACTION (host board ruling, wave 6): the post-snooze
+                  #1, right under the status line, tappable — through onCta, the
+                  exact path the named card's own CTA takes. Quiet card row, not a
+                  second accent CTA: the NEXT bar below stays the one primary
+                  (UX_02 — accent marks exactly one target per section). */}
+              {!isPast && days !== null && days > 0 && !listIsCalm && queue.length > 0 && (
+                <button className="hero-next" onClick={() => onCta(queue[0], String(queue[0].id || 0))}>
+                  <span className="hn-label">Start here</span>
+                  <span className="hn-title">{String(queue[0].title || '').replace(/\.+$/, '')}</span>
+                  <span className="chev" aria-hidden="true">›</span>
+                </button>
+              )}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (
@@ -4099,10 +4154,10 @@ export default function HostShellV2() {
                   onClick={() => {
                     // Tap = take me to what's next, front and center (attention
                     // system); the caret corner toggles the readouts panel.
-                    if (actions.length) { const k = String(actions[0].id || 0); setEditor(null); spotlight(k); }
+                    if (queue.length) { const k = String(queue[0].id || 0); setEditor(null); spotlight(k); }
                     else setHandledOpen(o => !o);
                   }}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (actions.length) { setEditor(null); spotlight(String(actions[0].id || 0)); } else setHandledOpen(o => !o); } }}>
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (queue.length) { setEditor(null); spotlight(String(queue[0].id || 0)); } else setHandledOpen(o => !o); } }}>
                   <div className="t-label">Where you stand{' '}
                     <span role="button" tabIndex={0} style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', display: 'inline-block' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
@@ -4138,45 +4193,15 @@ export default function HostShellV2() {
                       let sub;
                       if (!essTotal) sub = 'Nothing to read for this event yet.';
                       else if (essDone < essTotal) {
-                        // BALANCE RULES (host, 2026-07-08): the big number already
-                        // says "2 of 4" — no dangling "handled" prefix; the cue
-                        // label keeps the ENGINE's own casing (never lowercased
-                        // proper nouns) and clamps so a venue-length label can't
-                        // restate the masthead right underneath it.
-                        // ONE "NEXT" (2026-07-14). This read phaseCues.nextCue while the NEXT
-                        // tile read actions[0] — two engines, two answers to the same
-                        // question, 300px apart: "next: Add a rain backup" here, "first: Set
-                        // your budget" there. Now that nextActions IS the phase ledger plus
-                        // the reactive top, actions[0] is the one answer, and the phase cue
-                        // is only the fallback for the case the action list is empty.
-                        let nl = String(
-                          (actions[0] && actions[0].title) || (nextCue && nextCue.label) || 'the open one'
-                        ).replace(/^next:\s*/i, '').replace(/\.+$/, '');
-                        if (nl.length > 44) nl = nl.slice(0, 44) + '…';
-                        // RECONCILE THE TWO NUMBERS (host-reported: "7 things or 3 things?").
-                        // The tile says "5 of 7 areas" while NEXT says "3 things need you", and
-                        // the host was left to reconcile them with the explanation hidden behind
-                        // the "what's counted" toggle. They ARE different — areas are the plan's
-                        // parts, "things" is the queue, and the queue also carries items that
-                        // aren't areas (a risk to watch, a vendor to chase). The delta is exactly
-                        // those: (things) − (open areas). Stating it inline makes the arithmetic
-                        // click — 2 open + 1 to watch = the 3 below — instead of looking like a
-                        // contradiction. The NEXT tile already names the first action, so the
-                        // redundant "next: X" here gives way to the reconciliation when it helps.
-                        const openAreas = Math.max(0, essTotal - essDone);
-                        // The queue below renders actions.filter(show) — under an active lens
-                        // the stated total must be the SHOWN count or the arithmetic breaks.
-                        const shownCount = actions.filter(show).length;
-                        const extra = Math.max(0, shownCount - openAreas);
-                        if (extra > 0 && openAreas > 0) {
-                          // "plus N more", not "N to watch" — the extras beyond the open areas
-                          // can be a risk to watch OR an active to-do (a vendor to chase, a
-                          // second action on an area). "more" is true of all of them; the point
-                          // is the arithmetic: open areas + the rest = the count in NEXT.
-                          sub = <>areas handled · <b>{openAreas}</b> still open, plus <b>{extra}</b> more — that’s the <b>{shownCount}</b> below</>;
-                        } else {
-                          sub = <>areas handled{setupLine} · next: {nl}</>;
-                        }
+                        // BOARD RULING (wave 6, hero — approved by the host): the
+                        // reconciliation sentence ("2 still open, plus 2 more —
+                        // that's the 4 below") is DELETED, not reworded. The tile
+                        // counts open AREAS, names the unit, and stops talking;
+                        // the queue speaks for itself in NEXT. The "· next: X"
+                        // tail left with it — the hero now has ONE next action
+                        // (the Start-here row above), and a second naming here
+                        // would be the double-telling this screen keeps killing.
+                        sub = <>areas handled{setupLine}</>;
                       }
                       else if (openTasks > 0) sub = <>areas handled — but <b>{openTasks}</b> checklist step{openTasks === 1 ? '' : 's'} still on the list. Not done yet.</>;
                       else sub = 'areas handled and the checklist is clear — ready for the day.';
@@ -4256,7 +4281,7 @@ export default function HostShellV2() {
               {/* NEXT — out of the grid, anchored to the bottom of the hero
                   viewport (margin-top:auto) so it rides just above the dock. */}
               <button
-                  className={'tile tile-d' + (actions.length === 0 ? ' allset' : '')}
+                  className={'tile tile-d' + (queue.length === 0 ? ' allset' : '')}
                   onClick={() => {
                     if (days === 0) { setStage('day'); return; }
                     // The tile NAMES actions[0] ("first: …"), so tapping it must go
@@ -4267,7 +4292,7 @@ export default function HostShellV2() {
                     // the phase cue disagreed — e.g. a vendor COI action named here
                     // routes to that vendor's documents, but the phase cue pointed at
                     // a generic area sheet (host-reported wrong-location bug).
-                    if (actions.length && !listIsCalm) { onCta(actions[0], String(actions[0].id || 0)); return; }
+                    if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0)); return; }
                     // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
                     document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
@@ -4276,7 +4301,9 @@ export default function HostShellV2() {
                   <div className="t-label">Next</div>
                   <div className="t-big">{(() => {
                     if (days === 0) return 'Run the day';
-                    return listIsCalm ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
+                    // Counts the QUEUE as it actually renders — post-snooze,
+                    // post-bundling (a bundle is ONE thing), worries excluded.
+                    return listIsCalm ? 'All quiet' : queue.length === 1 ? '1 thing needs you' : queue.length + ' things need you';
                   })()}</div>
                   <div className="t-sub">
                     {(() => {
@@ -4309,7 +4336,7 @@ export default function HostShellV2() {
                       // count is the Where-you-stand tile's one job, directly
                       // above — restating it here was the last double-telling
                       // on the hero. NEXT names only the first thing.
-                      const first = String(actions[0].title || '').replace(/\.+$/, '');
+                      const first = String(queue[0].title || '').replace(/\.+$/, '');
                       return 'first: ' + (first.length > 52 ? first.slice(0, 52) + '…' : first) + ' ↓';
                     })()}
                   </div>
@@ -4764,7 +4791,7 @@ export default function HostShellV2() {
                 // QUIET: don't restate the first card's own title/consequence a
                 // few lines above it — only show the reasoning when it says
                 // something the card itself doesn't already carry.
-                const firstCard = actions[0];
+                const firstCard = queue[0];
                 const reasoning = plan.planningState.reasoning || '';
                 const redundant = firstCard && reasoning && (
                   (firstCard.consequence && firstCard.consequence.slice(0, 24) === reasoning.slice(0, 24)) ||
@@ -4779,17 +4806,21 @@ export default function HostShellV2() {
                 );
               })()}
 
-              {actions.length === 0 && (
-                <div className="empty">Nothing needs you right now — the basics are all settled.</div>
+              {queue.length === 0 && (
+                <div className="empty">{worries.length
+                  ? 'Nothing needs you right now — just the heads-ups below.'
+                  : 'Nothing needs you right now — the basics are all settled.'}</div>
               )}
 
               {/* SET ASIDE — a snooze the host cannot SEE and UNDO is a trapdoor, not a
                   feature. Whatever they set down is listed here, with when it comes back and a
                   one-tap way to bring it back now. This is also what lets "Nothing needs you"
                   be honest: it means nothing OPEN, and the set-aside pile is shown right below
-                  it, not hidden. */}
+                  it, not hidden. WAVE-6: the pile is the ENGINE's plan.setAside (it owns
+                  snooze now); the comeback date rides the item, with the event map as the
+                  fallback read while the contract field name settles. */}
               {(() => {
-                const sleeping = (plan.nextActions || []).filter(a => a && a.id && isSnoozed(event, a.id) && String(a.level || '') !== 'critical');
+                const sleeping = setAsideItems || [];
                 if (!sleeping.length) return null;
                 return (
                   <div style={{ marginTop: 'var(--sp-4)' }}>
@@ -4797,8 +4828,8 @@ export default function HostShellV2() {
                       Set aside for now — {sleeping.length === 1 ? 'it comes back on its own' : 'they come back on their own'}.
                     </p>
                     {sleeping.map(a => {
-                      const until = snoozedUntil(event, a.id);
-                      const when = new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      const until = a.until || a.snoozedUntil || a.comebackDate || snoozedUntil(event, a.id);
+                      const when = until ? new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon';
                       return (
                         <div key={a.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', opacity: .75 }}>
                           <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String(a.title || '').replace(/\.+$/, '')} · back {when}</span>
@@ -4813,8 +4844,63 @@ export default function HostShellV2() {
                 );
               })()}
 
-              {actions.filter(show).map((a, i) => {
+              {(() => {
+                const shown = queue.filter(show);
+                // BOARD RULING (wave 6): cap the visible queue at 6 cards; the
+                // rest sit behind a quiet "+N more" expander at the end. Ranks
+                // number straight through — a bundle is ONE rank.
+                const QUEUE_CAP = 6;
+                const visible = queueOpen ? shown : shown.slice(0, QUEUE_CAP);
+                const hiddenCount = shown.length - visible.length;
+                // Time-to-window, worn quietly on the card (engine contract:
+                // actions MAY carry dueInDays; absent = say nothing).
+                const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
+                  <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                    {a.dueInDays < 0 ? 'past due' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + 'd'}
+                  </span>
+                ) : null;
+                return (<>
+              {visible.map((a, i) => {
                 const key = String(a.id || i);
+                // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
+                // items, route}): ONE card, one rank. Expands in place to child
+                // rows, each with its own Go — the same card anatomy as every
+                // other queue card (UX_05), no new component vocabulary.
+                if (a.kind === 'bundle') {
+                  const kids = Array.isArray(a.items) ? a.items : [];
+                  const count = a.count != null ? a.count : kids.length;
+                  const open = !!bundleOpen[key];
+                  return (
+                    <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
+                      style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                      <span className="idx">{i + 1}</span>
+                      <div className="card-head">
+                        <div className="card-top">
+                          <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
+                          {dueChip(a)}
+                        </div>
+                        <h3>{a.title}</h3>
+                        {a.consequence && <p className="because">{a.consequence}</p>}
+                        <div className="actions-row" style={{ alignItems: 'center' }}>
+                          <button className="cta" onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                            {open ? 'Fold them away' : 'See all ' + count}
+                          </button>
+                          {a.route && (
+                            <button className="mini" onClick={() => { if (!routeSheet(a.route)) toast('In the app this opens: ' + (describeRoute(a.route) || 'the right spot')); }}>
+                              Open the section
+                            </button>
+                          )}
+                        </div>
+                        {open && kids.map((c, ci) => (
+                          <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+                            <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
+                            <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(c && c.cta) || 'Go'}</button>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                }
                 const wired = wiredKind(a);
                 // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
@@ -4827,8 +4913,9 @@ export default function HostShellV2() {
                     <span className="idx">{i + 1}</span>
                     <div className="card-head">
                       <div className="card-top">
-                        <span className={'tag ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
+                        <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
                         {!lands && <span className="tag plan">in the app</span>}
+                        {dueChip(a)}
                       </div>
                       <h3>{a.title}</h3>
                       {a.consequence && <p className="because">{a.consequence}</p>}
@@ -4885,9 +4972,42 @@ export default function HostShellV2() {
                   </article>
                 );
               })}
+              {hiddenCount > 0 && (
+                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  onClick={() => setQueueOpen(true)}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                </button>
+              )}
+                </>);
+              })()}
 
+              {/* HEADS-UP — the worries lane (host board ruling, wave 6): risk
+                  raises leave the counted queue and sit here, quiet and steel,
+                  never numbered, never in "N things need you" — but still real
+                  rows that land on the exact risk (routeSheet's Risks branch).
+                  The lane label carries the ask once, so each row reads as the
+                  risk itself, in the registry's own words. */}
+              {worries.length > 0 && (() => {
+                const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);
+                return (
+                  <div style={{ marginTop: 'var(--sp-5)' }}>
+                    <div className="shelf-label">Heads-up — have a plan for these</div>
+                    {rows.map((w, i) => (
+                      <button key={String((w && w.id) || 'worry-' + i)} className="later-row"
+                        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                        onClick={() => { if (w && w.route && routeSheet(w.route)) return; setSheet({ kind: 'risks' }); }}>
+                        <span className="t" style={{ color: 'var(--steel-soft)', fontWeight: 550 }}>
+                          {String((w && w.title) || '').replace(/^have a plan for:\s*/i, '')}
+                        </span>
+                        <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
 
-              {actions.length <= 1 && upNext.length > 0 && (
+              {queue.length <= 1 && upNext.length > 0 && (
                 <>
                   <div className="sect" style={{ marginTop: 26 }}><h2 style={{ fontSize: 'var(--t-card-title)' }}>Coming up</h2><div className="rule" /><span className="when">dated, not urgent</span></div>
                   {upNext.map((u, i) => (
@@ -4952,8 +5072,11 @@ export default function HostShellV2() {
                         // WAVE-5: attention state comes from the raise ledger, not the
                         // local predicate — the sub above may still READ local totals
                         // for its label, but only the registry decides "needs you".
+                        // WAVE-6 (one number per row — the risks row's own rule): the
+                        // seating raise is an AGGREGATE (one raise however many guests
+                        // are unseated), so a ledger "1" beside the sub's own "3 of 8
+                        // seated" would just contradict it. Tint only, no badge.
                         attn: (raised['seating'] || 0) > 0,
-                        n: raised['seating'] || 0,
                         go: () => setSheet({ kind: 'seating' }),
                       } : null,
                   // DESTINATION-2: lodging gets a row ONLY for destination
@@ -4968,8 +5091,10 @@ export default function HostShellV2() {
                               ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
                               : 'everyone has a room lined up')
                           : (travel.lodging.hotelName || 'no place picked yet'),
+                        // WAVE-6 (one number per row): the lodging raise is an aggregate —
+                        // the sub already carries the real count ("3 of 8 haven't booked").
+                        // Tint only, no ledger badge beside it.
                         attn: (raised['lodging'] || 0) > 0,
-                        n: raised['lodging'] || 0,
                         go: () => setSheet({ kind: 'lodging' }),
                       } : null,
                   // DESTINATION-2 slice 3: getting here, same gate. The sub is
@@ -4989,6 +5114,9 @@ export default function HostShellV2() {
                             : (arr.airportOptions.length > 0
                                 ? arr.airportOptions.length + ' airport' + (arr.airportOptions.length === 1 ? '' : 's') + ' listed'
                                 : 'no airports listed yet'),
+                          // WAVE-6 (one number per row): air KEEPS its ledger badge — the
+                          // registry raises PER CONFLICT here, so the ledger count IS the
+                          // row's natural count, not a second number beside one.
                           attn: (raised['travel-air'] || 0) > 0,
                           n: raised['travel-air'] || 0,
                           go: () => setSheet({ kind: 'air' }),
@@ -5011,8 +5139,10 @@ export default function HostShellV2() {
                             : (gr.transportProvided === true ? 'a shuttle or van is the plan'
                               : gr.transportProvided === false ? 'everyone gets themselves around'
                               : 'group transport not decided yet'),
+                          // WAVE-6 (one number per row): the ground raise is an aggregate
+                          // (one raise for the whole ride gap; the sub carries the real
+                          // "N need a ride" math). Tint only, no ledger badge.
                           attn: (raised['travel-ground'] || 0) > 0,
-                          n: raised['travel-ground'] || 0,
                           go: () => setSheet({ kind: 'ground' }),
                         };
                       })()
@@ -5139,17 +5269,23 @@ export default function HostShellV2() {
                     color: 'var(--carbon-text)',
                   }}>
                   {/* WAVE-5 (visual): critical vs warning used to differ by HUE alone —
-                      identical in grayscale. One mechanism, a tier word chip: "Now"
-                      (act on it) vs "Watch" (keep an eye) — the WORD carries the tier,
-                      color just agrees with it. The calm info tier stays chipless:
-                      no chip is itself the third form. */}
+                      identical in grayscale. One mechanism, a tier word chip — the WORD
+                      carries the tier, color just agrees with it. The calm info tier
+                      stays chipless: no chip is itself the third form.
+                      WAVE-6 (e): the critical word was "Now" — the third "Now" on this
+                      screen ("Happening now", the walkthrough's "Now" header). Renamed
+                      "Can't wait": the same urgency in host words (the app already says
+                      "This can't wait" on day-of venue copy), zero collision.
+                      WAVE-6 (b): critical text on dark grounds reads --danger-text
+                      (theme.js — measured ≥5.5:1 on every day-of ground; --danger and
+                      --danger-solid stay fill anchors). */}
                   <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     {(a.tier === 'critical' || a.tier === 'warning') && (
-                      <span style={{ flexShrink: 0, fontSize: 'var(--t-caption-min)', fontWeight: 800, letterSpacing: 'var(--tracking-2)', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 'var(--r-pill)', color: a.tier === 'critical' ? 'var(--danger)' : 'var(--warn)', background: 'var(--bg-band)' }}>
-                        {a.tier === 'critical' ? 'Now' : 'Watch'}
+                      <span style={{ flexShrink: 0, fontSize: 'var(--t-caption-min)', fontWeight: 800, letterSpacing: 'var(--tracking-2)', textTransform: 'uppercase', padding: '2px 7px', borderRadius: 'var(--r-pill)', color: a.tier === 'critical' ? 'var(--danger-text)' : 'var(--warn)', background: 'var(--bg-band)' }}>
+                        {a.tier === 'critical' ? 'Can’t wait' : 'Watch'}
                       </span>
                     )}
-                    <span style={{ minWidth: 0, fontSize: 'var(--t-body-s)', fontWeight: 750, color: a.tier === 'critical' ? 'var(--danger)' : a.tier === 'warning' ? 'var(--warn)' : 'var(--steel-soft)' }}>{a.headline}</span>
+                    <span style={{ minWidth: 0, fontSize: 'var(--t-body-s)', fontWeight: 750, color: a.tier === 'critical' ? 'var(--danger-text)' : a.tier === 'warning' ? 'var(--warn)' : 'var(--steel-soft)' }}>{a.headline}</span>
                   </span>
                   {a.move && <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', marginTop: 2, color: 'var(--carbon-muted)' }}>{a.move}</span>}
                 </button>

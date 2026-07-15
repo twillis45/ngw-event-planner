@@ -45,12 +45,10 @@ const r  = radius;
 // a 21-day-lead task; that's a tight timeline, not a late host). The wrapper also
 // honors the decision board's Extend (snoozedUntil), so a deferred item doesn't
 // flash OVERDUE here while hidden there. Rendering shape unchanged.
-// Exported for the over-time gate tests.
+// 2026-07-15 wave-6: the local snooze guard moved INTO taskIsOverdue (one policy,
+// snooze included), so this is now a pure delegate — kept as an export because the
+// over-time gate tests drive the surface through this exact symbol.
 export function isOverdue(task, event) {
-  if (task.snoozedUntil) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    if (new Date(task.snoozedUntil + 'T00:00:00') > today) return false;
-  }
   return taskIsOverdue(task, event);
 }
 

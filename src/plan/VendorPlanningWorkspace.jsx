@@ -3724,7 +3724,15 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
   const [replyText, setReplyText] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
-  const [result, setResult] = useState(null); // { rows, confidence, disclaimer } | null
+  const [result, setResult] = useState(null); // { rows, truncated, disclaimer } | null
+
+  // Audit F1 belt-and-braces: VendorDetail is keyed by vendor.id so switching
+  // vendors remounts this component, but never rely on the parent alone — a
+  // parsed diff for the caterer must not survive onto the photographer.
+  const vendorId = vendor?.id;
+  useEffect(() => {
+    setReplyText(''); setResult(null); setErr(null);
+  }, [vendorId]);
 
   // No proxy, or nowhere to write → the feature can't do its job. Render nothing
   // rather than a dead control (mirrors VendorConfirmationNote / the doc extractor).
@@ -3740,8 +3748,11 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
         vendorCategory: vendor.category,
         eventName: event?.name,
       });
-      const rows = buildReplyDiff(data.fields, vendor);
-      setResult({ rows, confidence: data.confidence, disclaimer: data.disclaimer });
+      // Audit F3: the diff verifies each row's quote against the pasted reply;
+      // unverified rows come back unchecked (opt-in). F4: `data.confidence` is
+      // deliberately NOT kept — nothing user-facing may claim confidence.
+      const rows = buildReplyDiff(data.fields, vendor, replyText);
+      setResult({ rows, truncated: !!data.truncated, disclaimer: data.disclaimer });
     } catch (e) {
       setErr(e.message || 'Could not read that message — try again.');
     } finally {
@@ -3799,6 +3810,13 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
           {err && <span style={{ fontSize: type.size['sm'], color: P.red }}>{err}</span>}
         </div>
 
+        {/* Audit F8: never trim a long reply silently. */}
+        {result && result.truncated && (
+          <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginTop: space[3], fontStyle: 'italic' }}>
+            Long reply — we read the first part.
+          </div>
+        )}
+
         {result && result.rows.length === 0 && (
           <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginTop: space[4] }}>
             Nothing new to apply — this message doesn’t change any field already on record.
@@ -3807,8 +3825,9 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
 
         {result && result.rows.length > 0 && (
           <div style={{ marginTop: space[4], background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: space[4] }}>
+            {/* Audit F4: no confidence chip — 06_AI_GROUNDING bans invented confidence. */}
             <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3] }}>
-              AI-extracted · review against the message{result.confidence ? ` · ${result.confidence} confidence` : ''}
+              AI-extracted · review against the message
             </div>
             {result.rows.map((row, i) => {
               const cur = fmtVal(row.type, row.current);
@@ -3823,9 +3842,16 @@ function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onT
                       <span style={{ color: P.textTertiary }}>{cur ? `${cur} → ` : 'set to '}</span>
                       <span style={{ fontWeight: type.weight.semibold, color: P.accent }}>{next}</span>
                     </div>
-                    {row.evidence && (
+                    {/* Audit F3: only a quote we verified is verbatim from the
+                        message renders as support; anything else gets a plain
+                        marker and the row arrives unchecked (opt-in). */}
+                    {row.evidenceVerified ? (
                       <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: 2, lineHeight: 1.4 }}>
                         “{row.evidence}”
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: type.size['xs'], color: P.textTertiary, marginTop: 2, lineHeight: 1.4 }}>
+                        No supporting quote from the message — check the original before applying.
                       </div>
                     )}
                   </div>
@@ -4419,6 +4445,7 @@ export default function VendorPlanningWorkspace({
             </button>
             {selected ? (
               <VendorDetail
+                key={selected.id} // audit F1: remount per vendor — never let one vendor's in-progress state (e.g. a parsed reply diff) leak onto another
                 vendor={selected} event={event}
                 isMobile={true}
                 onEdit={onEditVendor ? () => onEditVendor(selected) : undefined}
@@ -4467,6 +4494,7 @@ export default function VendorPlanningWorkspace({
         />
         {selected ? (
           <VendorDetail
+            key={selected.id} // audit F1: remount per vendor — never let one vendor's in-progress state (e.g. a parsed reply diff) leak onto another
             vendor={selected} event={event}
             onEdit={onEditVendor ? () => onEditVendor(selected) : undefined}
             onAddLog={onAddLog}

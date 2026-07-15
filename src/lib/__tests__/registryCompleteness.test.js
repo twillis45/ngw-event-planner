@@ -115,6 +115,19 @@ describe('registry completeness: qidx attention derives from the raise ledger', 
     }
   });
 
+  test('one number per row (wave 6): aggregate raises carry no ledger badge; per-item raises keep theirs', () => {
+    // The risks row documented the rule first: where a raise is an AGGREGATE
+    // (one raise however many items are inside), a ledger "1" beside the sub's
+    // own domain count ("3 of 8 seated") is a second, contradicting number —
+    // tint only. Where the registry raises PER ITEM (air: one raise per flight
+    // conflict), the ledger count IS the row's natural count and the badge stays.
+    const region = qidxRegion();
+    for (const aggregateId of ['seating', 'lodging', 'travel-ground']) {
+      expect(region).not.toMatch(new RegExp(`n:\\s*raised\\[\\s*['"]${aggregateId}['"]\\s*\\]`));
+    }
+    expect(region).toMatch(/n:\s*raised\[\s*['"]travel-air['"]\s*\]/);
+  });
+
   test('contract ids are the agreed set — registry may grow only through the contract or a conscious edit here', () => {
     // Every id the registry exports today must be part of the agreed contract;
     // a brand-new id should arrive by expanding the contract consciously (and

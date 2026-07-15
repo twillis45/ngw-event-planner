@@ -110,10 +110,15 @@ describe('F5 — calm fillers never share a list with real work', () => {
     // Essentials all handled ⇒ the ladder returns 'heart' (proven by the calm-alone
     // test below, which is this fixture plus a settled registry). But the risk surface
     // still raises real "Have a plan for" items — so the filler must vanish, not lead.
-    const actions = eventPlan(quietRetirement()).nextActions;
-    expect(actions.length).toBeGreaterThan(0);
-    expect(actions.some((a) => a.source === 'surfaceRegistry')).toBe(true);
-    expect(actions.filter((a) => CALM.has(a.category))).toEqual([]);
+    // UPDATED (wave-7 worry lane, 2026-07-15): the risk raises now file as WORRIES —
+    // eventPlan's heads-up lane, uncounted — so the raises stand in plan.worries and
+    // nextActions is honestly EMPTY: no filler beside a live heads-up, and no worry
+    // counted as a chore. (This fixture is now the canonical only-worries event.)
+    const plan = eventPlan(quietRetirement());
+    expect(plan.worries.length).toBeGreaterThan(0);
+    expect(plan.worries.every((a) => a.source === 'surfaceRegistry' && a.surface === 'risks')).toBe(true);
+    expect(plan.nextActions).toEqual([]);
+    expect(plan.nextActions.filter((a) => CALM.has(a.category))).toEqual([]);
   });
 
   test('when genuinely nothing is open, the single calm action survives — calm is still reachable', () => {

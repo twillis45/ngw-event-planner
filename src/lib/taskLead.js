@@ -26,16 +26,34 @@
 // A note on the label: taskPhaseLabel's prose ('Week of', 'Day before') is a fine thing
 // to SHOW a host. Its sin was being load-bearing. It stays a label; it stops being data.
 
-import { daysUntil } from './dates';
+import { daysUntil, getToday } from './dates';
 
 // The prose buckets taskPhaseLabel emits, mapped back to the lead they represent — the
 // fallback for tasks persisted before `leadDays` existed. Lowercased on lookup so the
 // TitleCase-vs-sentence-case mismatch that caused this whole bug cannot recur.
+//
+// 2026-07-15 wave-6: extended to the FULL runtime vocabulary. App.js's PHASE_OFFSET
+// table (the phase model the stored timeline's TitleCase `week` labels come from,
+// App.js ~:1832) holds 19 keys including the near-term crunch band — '3 Weeks Out',
+// '10 Days Out', '5 Days Out' … 'Event Day'. None of those resolved here, so a stored
+// playbook row ('5 Days Out', offsetDays: 5) had NO readable lead and could never be
+// overdue. Every key that table holds must resolve below (see taskLeadVocabulary test).
+// '1 month out' stays -31 (taskPhaseLabel's own bucket claim, test-pinned) even though
+// PHASE_OFFSET says '1 Month Out' → -30; stored rows carry the exact offsetDays anyway,
+// so the label only decides for label-only legacy rows and 1 day of slack is the
+// label's own imprecision, not ours.
 const LABEL_TO_LEAD = {
   'day of': 0,
+  'event day': 0,
   'day before': -1,
+  '2 days out': -2,
+  '3 days out': -3,
+  '4 days out': -4,
+  '5 days out': -5,
   'week of': -7,
+  '10 days out': -10,
   '2 weeks out': -14,
+  '3 weeks out': -21,
   '1 month out': -31,
   // '12 Months Out' etc. from the legacy PHASE_OFFSET vocabulary — same table, one place.
   '1 months out': -30, '2 months out': -61, '3 months out': -91, '4 months out': -121,
@@ -50,22 +68,36 @@ const LABEL_TO_LEAD = {
  */
 export function taskLeadDays(task) {
   if (!task) return null;
-  // 1. The authored number, persisted. The only non-lossy source.
-  if (Number.isFinite(Number(task.leadDays))) return Number(task.leadDays);
-  // 2. An authored 'T-5d' string, if a caller kept one.
+  // 1. The authored number, persisted. The only non-lossy source. The != null guard
+  //    matters: Number(null) is 0, and a playbookChecklist row whose `when` was null
+  //    persists leadDays: null — "no lead" must stay null, never coerce to "due today".
+  if (task.leadDays != null && Number.isFinite(Number(task.leadDays))) return Number(task.leadDays);
+  // 2. The STORED timeline schema's authored number. playbookTimelineEntries persists
+  //    `offsetDays` — POSITIVE days-before-event, straight from the playbook milestone
+  //    (App.js ~:3005) — alongside a TitleCase `week`. This is the schema every event
+  //    created from a playbook actually carries; before wave-6 this reader skipped it
+  //    and fell through to a label table that didn't know '5 Days Out' either.
+  if (Number.isFinite(task.offsetDays)) return 0 - task.offsetDays; // 0 - 0 = +0, never -0
+  // 3. An authored 'T-5d' string, if a caller kept one.
   const m = /T-\s*(\d+)\s*d/i.exec(String(task.when || ''));
   if (m) return -Math.abs(Number(m[1]));
   if (/^T-?0|^T0/i.test(String(task.when || ''))) return 0;
-  // 3. The prose bucket, for tasks written before leadDays existed. Lossy but honest:
+  // 4. The prose bucket, for tasks written before leadDays existed. Lossy but honest:
   //    it is the label's own bucket, not a guess dressed up as precision.
   const label = String(task.week || '').trim().toLowerCase();
   const lead = LABEL_TO_LEAD[label];
   if (lead != null) return lead;
   // taskPhaseLabel can emit ANY "N months out" (7, 9, 11…), not just the ones the table
   // lists — seed events surfaced '7 months out' and got a null lead. Same bucket logic,
-  // generic: a month is ~30 days, lossy but the label's own claim.
+  // generic — and the same courtesy for weeks and days, so the near-term vocabulary
+  // ('6 days out', '4 weeks out') can never regrow a dead spot: the number is the
+  // label's own claim, lossy only to the extent the label was.
   const mm = /^(\d+)\s*months? out$/.exec(label);
   if (mm) return -(Number(mm[1]) * 30);
+  const mw = /^(\d+)\s*weeks? out$/.exec(label);
+  if (mw) return -(Number(mw[1]) * 7);
+  const md = /^(\d+)\s*days? out$/.exec(label);
+  if (md) return -Number(md[1]);
   return null;
 }
 
@@ -97,9 +129,29 @@ export function taskWasReachable(task, event) {
   return (runwayAtCreation + lead) >= 0;
 }
 
-/** Past its window, still not done, and it was fair to expect it. */
+/**
+ * Past its window, still not done, and it was fair to expect it.
+ *
+ * THE overdue policy — 2026-07-15 wave-6. There were three: this one, App.js's private
+ * isTaskOverdue (a TitleCase PHASE_OFFSET membership gate + "only risk_lost counts"),
+ * and workflowCompression's ≤30-day do_now forgiveness leaking into counts via that
+ * risk_lost gate. Same task, three verdicts, hero and board disagreeing. Now App.js
+ * delegates here, dayAlerts defaults here, and CommandCenter reads this export for its
+ * counts. workflowCompression keeps grading urgency TIERS (do_now vs risk_lost is real
+ * triage language) but no tier ever decides whether a task is overdue again.
+ *
+ * The one piece of "compression forgiveness" that was defensible lives here already:
+ * createdAt reachability (taskWasReachable). An event created 2 days out never had a
+ * chance at a T-21d task — tight timeline, not a late host. The rest of the forgiveness
+ * (a window ≤30 days past reads as not-overdue) was the bug, not a feature.
+ *
+ * Also honors the decision board's Extend: a snooze (task.snoozedUntil, YYYY-MM-DD)
+ * suppresses overdue until the snooze date passes — previously App.js applied this and
+ * the lib didn't, so a deferred item was hidden on one surface and counted on another.
+ */
 export function taskIsOverdue(task, event, now) {
   if (!task || task.done) return false;
+  if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > getToday(now)) return false;
   const due = taskDueInDays(task, event, now);
   if (due == null) return false;
   if (due >= 0) return false;

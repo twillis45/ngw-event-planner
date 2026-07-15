@@ -251,8 +251,11 @@ describe('decisions — every overdue board decision raises, not just the ladder
 
   test('TITLE PARITY: the ladder and the registry never show the same decision twice', () => {
     const actions = assertNoDuplicateTitles(late());
-    // And the registry's raises actually reached the merged list.
-    expect(actions.some((a) => /^Resolve "/.test(String(a.title || '')))).toBe(true);
+    // UPDATED (wave-6, 2026-07-15): ≥3 decision raises now collapse into ONE bundle
+    // action ({ kind:'bundle', items:[…] }) — the raises still reach the merged list,
+    // as the bundle's own children, each keeping its 'Resolve "…".' row-level copy.
+    const asRows = actions.flatMap((a) => (a.kind === 'bundle' ? a.items : [a]));
+    expect(asRows.some((a) => /^Resolve "/.test(String(a.title || '')))).toBe(true);
   });
 });
 

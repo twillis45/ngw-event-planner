@@ -18,7 +18,30 @@
 // ── The contract ─────────────────────────────────────────────────────────────
 // A surface declares what it can raise. One shape, no exceptions:
 //
-//     { id, label, domain, raise(event) → [{ severity, title, why, route }] }
+//     { id, label, domain, raise(event) → [{ severity, title, why, route,
+//                                            key?, dueInDays?, leadDays? }] }
+//
+// WAVE-6 (2026-07-15) — three optional fields, each read off the raiser's OWN engine,
+// never invented (null/omitted where the engine has no number):
+//   key       — the RECORD this raise is about (vendorId, decisionId, guestId, the
+//               responsibility's itemType:itemId…). This is what snooze/dedup keys on:
+//               a title carrying a live count ('2 confirmed guests still need seats')
+//               changes every time the count moves, and a snooze written against it
+//               silently detaches. An aggregate raise with no single record (lodging,
+//               ground) declares NO key — the surface id alone is its stable identity.
+//   dueInDays — days from today until this item's own deadline (negative = past it),
+//               from the engine that already knows it: the decision board's daysOut,
+//               a vendor's payDueDate, the COI classifier's dueInDays, the reconfirm
+//               window's days-to-event, the lodging deadline.
+//   leadDays  — the same number expressed relative to the event (negative, T-Nd form),
+//               so the snooze cap (lib/snooze.js, opts.leadDays) can refuse to hide an
+//               item whose window is already closed — the wave-6 proof showed 4
+//               past-window decisions offered "back Jul 20" because no lead reached
+//               the cap on the registry path.
+//
+// A surface may also declare bundleTitle(n) — the host-language title eventPlan uses
+// when the surface contributes ≥3 raises and they collapse into one bundle action.
+// The vocabulary is the surface's own raise copy, never new jargon.
 //
 // The ranked list reads raiseAll(); raiseCounts() is exported for badges when they ship —
 // it has no runtime consumer yet (re-audit F7). A surface that declares nothing raises
@@ -61,6 +84,7 @@ export const SURFACES = [
     label: 'What could go wrong',
     domain: 'risks',
     route: { tab: 'Risks' },
+    bundleTitle: (n) => `Have a plan for ${n} things that could go wrong`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let items = [];
@@ -84,6 +108,7 @@ export const SURFACES = [
           title: `Have a plan for: ${r.trigger}`,
           why: r.mitigation || null,
           route: { tab: 'Risks', riskId: r.id },
+          key: r.id,                    // WAVE-6: the risk record, not its prose
         }));
     },
   },
@@ -97,6 +122,7 @@ export const SURFACES = [
     label: 'Between your vendors',
     domain: 'vendors',
     route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Untangle ${n} conflicts between your vendors`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
@@ -118,6 +144,9 @@ export const SURFACES = [
           title: c.title || 'Two vendors need the same thing',
           why: c.explanation || c.recommendedAction || null,
           route: { tab: 'Vendors', vendorId: c.affectedVendorId },
+          // WAVE-6: the conflict's own id when the engine assigns one, else the
+          // vendor row it lands on — either way a record, never the title.
+          key: c.id || c.affectedVendorId,
         }));
     },
   },
@@ -131,6 +160,7 @@ export const SURFACES = [
     label: 'Arrival times',
     domain: 'vendors',
     route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Get ${n} vendors' arrival times`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let asks = [];
@@ -142,6 +172,7 @@ export const SURFACES = [
           title: `Get ${x.vendor.name}'s arrival time`,
           why: x.ask.why,
           route: { tab: 'Vendors', vendorId: x.vendor.id },
+          key: x.vendor.id,             // WAVE-6: the vendor record
         }));
     },
   },
@@ -159,6 +190,7 @@ export const SURFACES = [
     label: 'The reconfirm window',
     domain: 'vendors',
     route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Reconfirm ${n} vendors for the day`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let days = null;
@@ -177,6 +209,11 @@ export const SURFACES = [
           title: `Reconfirm ${v.name} for the day`,
           why: `${when} — a quick reconfirm now beats a no-show`,
           route: { tab: 'Vendors', vendorId: v.id },
+          key: v.id,                    // WAVE-6: the vendor record
+          // WAVE-6: the window's own clock — a reconfirm is due by event day
+          // (days-to-event is the raiser's own gate, 0..3), lead 0 by definition.
+          dueInDays: days,
+          leadDays: 0,
         }));
     },
   },
@@ -191,6 +228,7 @@ export const SURFACES = [
     label: 'The day',
     domain: 'day',
     route: { tab: 'Event Day Schedule' },
+    bundleTitle: (n) => `${n} things need you today`,
     raise(event) {
       if (!isEventDay(event && event.date)) return [];
       let alerts = [];
@@ -203,6 +241,8 @@ export const SURFACES = [
         // vendorId — the tab-top landing the house rule forbids. On the day, the Day stage
         // IS where these alerts are actionable.
         route: { tab: 'Event Day Schedule' },
+        key: a.id || null,              // WAVE-6: the alert's own id ('ov-v1', 'dietary'…)
+        dueInDays: 0,                   // WAVE-6: isEventDay is the raiser's own gate — due today
       }));
     },
   },
@@ -227,6 +267,7 @@ export const SURFACES = [
     label: 'Who sits where',
     domain: 'guests',
     route: { tab: 'Seating' },
+    bundleTitle: (n) => `${n} confirmed guests still need seats`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let plan = null;
@@ -245,6 +286,10 @@ export const SURFACES = [
         title: n === 1 ? '1 confirmed guest still needs a seat' : `${n} confirmed guests still need seats`,
         why: `${plan.totals.seated} of ${plan.totals.confirmed} confirmed guests are seated`,
         route: { tab: 'Seating', guestId: first.id },
+        // WAVE-6: keyed on the guest row the raise routes to — the count in the
+        // title moves as guests get seated, and a count-bearing key detaches the
+        // snooze (the wave-6 proof's exact failure).
+        key: first.id,
       }];
     },
   },
@@ -261,6 +306,7 @@ export const SURFACES = [
     label: 'Where everyone stays',
     domain: 'travel',
     route: { tab: 'Travel' },
+    bundleTitle: (n) => `${n} lodging deadlines to watch`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let travel = null;
@@ -280,6 +326,10 @@ export const SURFACES = [
         // The deadline card is the row this raise is about — routeSheet's lodging
         // branch focuses it ('lodging-deadline' → sheet.focus 'deadline').
         route: { tab: 'Travel', focusField: 'lodging-deadline' },
+        // WAVE-6: NO key — an aggregate raise about one shared deadline; the surface
+        // id alone is its stable identity (the not-booked count moves, the id must not).
+        // The deadline is the host's own dated obligation — its clock is real.
+        dueInDays: (() => { try { return daysUntil(lg.deadline); } catch (_e) { return null; } })(),
       }];
     },
   },
@@ -295,6 +345,7 @@ export const SURFACES = [
     label: 'Getting here',
     domain: 'travel',
     route: { tab: 'Travel' },
+    bundleTitle: (n) => `${n} guests' flights don't line up with the event`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let travel = null;
@@ -311,6 +362,9 @@ export const SURFACES = [
             : `${c.name} lands after the event starts`,
           why: c.copy || null,
           route: { tab: 'Travel', focusField: 'air-board', guestId: c.guestId },
+          // WAVE-6: guest record + conflict type — one guest can hold BOTH an
+          // arrives-late and a leaves-early conflict; the type keeps them distinct.
+          key: `${c.guestId}:${c.type || 'conflict'}`,
         }));
     },
   },
@@ -327,6 +381,7 @@ export const SURFACES = [
     label: 'Getting around',
     domain: 'travel',
     route: { tab: 'Travel' },
+    bundleTitle: (n) => `${n} guests still need a way around`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let travel = null;
@@ -342,6 +397,8 @@ export const SURFACES = [
           : `${gr.unmatched} guests still need a way around`,
         why: `${(gr.needRide || []).length} need a ride · ${seats} seat${seats === 1 ? '' : 's'} offered — introduce riders to drivers, or settle group transport`,
         route: { tab: 'Travel', focusField: 'ground-riders' },
+        // WAVE-6: NO key — the gap is one aggregate number (unmatched riders); the
+        // surface id alone is the stable identity, whatever the count says today.
       }];
     },
   },
@@ -359,6 +416,7 @@ export const SURFACES = [
     label: 'People bringing things',
     domain: 'day',
     route: { tab: 'Planning' },
+    bundleTitle: (n) => `Confirm ${n} helpers are still bringing what they offered`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let days = null;
@@ -375,6 +433,9 @@ export const SURFACES = [
           title: `Confirm ${r.helperName} is still bringing ${r.label}`,
           why: helperStatusLine(r),
           route: r.route,
+          // WAVE-6: the responsibility's own record — the lib keys each item as
+          // itemType + itemId (food line / task row / ROS cue / supplies / vendor).
+          key: (r.itemType != null && r.itemId != null) ? `${r.itemType}:${r.itemId}` : null,
         }));
     },
   },
@@ -396,6 +457,7 @@ export const SURFACES = [
     label: 'Calls to make',
     domain: 'plan',
     route: { tab: 'Decisions' },
+    bundleTitle: (n) => `Resolve ${n} decisions — they're past their easy window`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       let days = null;
@@ -412,6 +474,17 @@ export const SURFACES = [
           // The decision's own row: routeSheet's 'Decisions' branch focuses the
           // sheet on decisionId (same addressing the shell uses for a single call).
           route: { tab: 'Decisions', decisionId: r.id },
+          // WAVE-6: the decision RECORD — eventPlan folds this into the canonical
+          // cross-producer id ('decision:<id>') so a snooze follows the debt whether
+          // the ladder's tier or this raiser surfaces it.
+          key: r.id,
+          // WAVE-6: the board's own clock. daysOut IS days-from-today until the
+          // decision's window (dte + authored offset), so dueInDays = daysOut and
+          // leadDays = daysOut − dte recovers the authored T-Nd exactly. This is
+          // what lets the snooze cap REFUSE on a past-window decision — the wave-6
+          // proof caught 4 of them being offered "back Jul 20".
+          dueInDays: Number.isFinite(r.daysOut) ? r.daysOut : null,
+          leadDays: Number.isFinite(r.daysOut) ? r.daysOut - days : null,
         }));
     },
   },
@@ -428,9 +501,12 @@ export const SURFACES = [
     label: 'Money you owe',
     domain: 'vendors',
     route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Send payment to ${n} vendors`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
+      let dte = null;
+      try { dte = daysUntil(event && event.date); } catch (_e) { dte = null; }
       const out = [];
       for (const v of vendors) {
         if (!v || !v.id) continue;
@@ -445,6 +521,12 @@ export const SURFACES = [
           why: `Balance was due ${late} ${late === 1 ? 'day' : 'days'} ago`,
           // Same row the ladder routes to: the vendor's payment section.
           route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'payment' },
+          key: v.id,                    // WAVE-6: the vendor record
+          // WAVE-6: the vendor's own due date, live. leadDays re-expresses it
+          // relative to the event so the snooze cap's arithmetic holds (moot for a
+          // critical — unsnoozeable — but ordering reads dueInDays either way).
+          dueInDays: od,
+          leadDays: dte != null ? od - dte : null,
         });
       }
       return out;
@@ -466,9 +548,12 @@ export const SURFACES = [
     label: 'Proof of insurance',
     domain: 'vendors',
     route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Get proof of insurance from ${n} vendors`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
       const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
+      let dte = null;
+      try { dte = daysUntil(event && event.date); } catch (_e) { dte = null; }
       const out = [];
       for (const v of vendors) {
         if (!v || !v.id || !String(v.name || '').trim()) continue;
@@ -485,6 +570,10 @@ export const SURFACES = [
           title: (cna && cna.title) || `Get an updated COI from ${v.name}.`,
           why: (cna && cna.consequence) || null,
           route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' },
+          key: v.id,                    // WAVE-6: the vendor record
+          // WAVE-6: the classifier's own "due 30 days out" clock, passed through.
+          dueInDays: coi.dueInDays != null ? coi.dueInDays : null,
+          leadDays: (coi.dueInDays != null && dte != null) ? coi.dueInDays - dte : null,
         });
       }
       return out;
@@ -494,8 +583,11 @@ export const SURFACES = [
 
 /**
  * Everything every surface is raising, most severe first.
+ * WAVE-6: raises carry through `key` (the record id — null for aggregates),
+ * `dueInDays` and `leadDays` (the raiser's own clock — null where it has none).
  * @returns {{ surface: string, label: string, domain: string, severity: string,
- *             title: string, why: string|null, route: object }[]}
+ *             title: string, why: string|null, route: object,
+ *             key: string|null, dueInDays: number|null, leadDays: number|null }[]}
  */
 export function raiseAll(event) {
   if (!event) return [];
@@ -510,10 +602,30 @@ export function raiseAll(event) {
         severity: i.severity === 'critical' ? 'critical' : 'attention',
         title: i.title, why: i.why || null,
         route: i.route || s.route,
+        key: i.key != null ? String(i.key) : null,
+        dueInDays: Number.isFinite(i.dueInDays) ? i.dueInDays : null,
+        leadDays: Number.isFinite(i.leadDays) ? i.leadDays : null,
       });
     }
   }
   return out.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'critical' ? -1 : 1));
+}
+
+/**
+ * WAVE-6: a surface's declared identity — for bundling. eventPlan collapses ≥3
+ * raises from one surface into a single bundle action titled in the surface's
+ * own host language (bundleTitle), routed to the surface's own route. Returns
+ * null for an unknown surface so a caller can fall back honestly.
+ */
+export function surfaceMeta(surfaceId) {
+  const s = SURFACES.find((x) => x.id === surfaceId);
+  if (!s) return null;
+  return {
+    id: s.id, label: s.label, domain: s.domain, route: s.route,
+    bundleTitle: typeof s.bundleTitle === 'function'
+      ? s.bundleTitle
+      : (n) => `${n} things need a look — ${String(s.label || '').toLowerCase()}`,
+  };
 }
 
 /**
