@@ -16,7 +16,7 @@
   --t-display-xl:clamp(36px,11cqw,48px); /* serif display XL — welcome/after heroes */
   --t-display-l:clamp(30px,9.5cqw,40px); /* serif display L — reveal name, empty-state heroes */
   --t-hero-star:38px;    /* SheetHero stat number (sheet headline figure) */
-  --t-stat:37px;         /* tile stat numbers, card corner index (bumped 34→37 for legibility, host request 2026-07-14) */
+  --t-stat:38px;         /* tile stat numbers, card corner index — bumped 34→38 for legibility (host request 2026-07-14); 38 JOINS the existing --t-hero-star tier rather than minting a bespoke 37 one pixel off it */
   --t-stat-sm:24px;      /* compact stat (CTA tile number) */
   --t-section:22px;      /* section heads (.sect h2) */
   --t-card-title:19px;   /* card titles (h3) */
@@ -262,7 +262,9 @@ button{font-family:inherit}
      those numerals, so it floats over the sub-lines it was always meant to cover, not the
      numbers. `justify-content:center` keeps the two short lines centred in the shorter box. */
   min-height:0;
-  padding:var(--pad-card-compact) var(--sp-5);
+  /* NB: --pad-card-compact is itself a two-value token — appending a third value expanded
+     to a 3-value shorthand (12/16/20, asymmetric bottom) by accident. Spell the axes. */
+  padding:var(--sp-3) var(--sp-5);
   justify-content:center;
   row-gap:0;
   /* OWN THE BOTTOM (host directive 2026-07-14): NEXT is the primary action, so it spans the
@@ -323,7 +325,7 @@ button{font-family:inherit}
 /* Tighten the sticky NEXT's headline margins so, on an overflowing hero, the tile is short
    enough for its top edge to clear the Guests/Budget numerals it floats in front of. Only
    the sticky hero copy — the create/day NEXT tiles keep their roomier default. */
-.hero > .tile-d .t-big{margin:4px 0 2px}
+.hero > .tile-d .t-big{margin:var(--sp-1) 0 2px}/* 2px = optical nudge below the scale, same class as the dock/wchip 2px gaps */
 /* All-quiet success state fills the tile with --ok green. The tile's default
    near-white text (--carbon-text) ran ~2.3:1 on that green — unreadable (host
    report). Dark green-ink text reads ~7:1 on the fill and keeps the celebratory

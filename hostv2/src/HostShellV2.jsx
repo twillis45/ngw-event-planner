@@ -3095,7 +3095,7 @@ export default function HostShellV2() {
           const prop = (() => { try { return proposeStartTime(event, wx); } catch (_e) { return null; } })();
           return (
             <>
-              <div className="actions-row" style={{ width: '100%', marginTop: 8, alignItems: 'center' }}>
+              <div className="actions-row" style={{ width: '100%', marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                 <span className="of">guests arrive:</span>
                 <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                   value={event.startTime || ''}
@@ -4757,7 +4757,7 @@ export default function HostShellV2() {
                           : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
                           : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
                           : null;
-                        return why ? <p className="grounding" style={{ margin: '4px 0 0', opacity: .85 }}>{why}</p> : null;
+                        return why ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{why}</p> : null;
                       })()}
                       <div className="actions-row" style={{ alignItems: 'center' }}>
                         {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
@@ -5224,7 +5224,7 @@ export default function HostShellV2() {
                             ? <><b>We pencilled in {(() => { const [h, m] = String(event.startTime).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`; })()} — not you.</b> Confirm it and every line below becomes a real clock time.</>
                             : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
-                        <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
+                        <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                           <span className="of">guests arrive:</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
@@ -8932,7 +8932,7 @@ export default function HostShellV2() {
                                 const copy = row && row.estimateCopy;
                                 if (!copy || /from your quote/i.test(copy)) return null;
                                 return (
-                                  <p className="grounding" style={{ width: '100%', margin: '4px 0 0', opacity: .85 }}>
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0', opacity: .85 }}>
                                     Expect {copy}
                                   </p>
                                 );
@@ -8943,7 +8943,7 @@ export default function HostShellV2() {
                                 const ask = (() => { try { return arrivalAsk(v, event); } catch (_e) { return null; } })();
                                 if (!ask) return null;
                                 return (
-                                  <p className="grounding" style={{ width: '100%', margin: '4px 0 0', opacity: .85 }}>
+                                  <p className="grounding" style={{ width: '100%', margin: 'var(--sp-1) 0 0', opacity: .85 }}>
                                     {ask.why}{' '}
                                     <span role="button" tabIndex={0} className="mini rowlink"
                                       onClick={(e) => { e.stopPropagation(); openDraft('Ask ' + v.name + ' for their arrival time', draftVendorReconfirm(event, v, profile)); }}
