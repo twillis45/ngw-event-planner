@@ -40,7 +40,7 @@ import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
-import { canSnooze, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
+import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -1828,7 +1828,12 @@ export default function HostShellV2() {
   // 6-card cap, and per-bundle in-place expansion. Both reset per event.
   const [queueOpen, setQueueOpen] = useState(false);
   const [bundleOpen, setBundleOpen] = useState({});
-  useEffect(() => { setQueueOpen(false); setBundleOpen({}); }, [event.id]);
+  // Snooze "pick a day" (host-approved 2026-07-15): which queue card has the
+  // inline day picker open, plus the in-progress choice — { key, val }. The
+  // grounded proposal stays the DEFAULT ("not now" is untouched); this is the
+  // quiet second path, and every write still goes through clampSnoozeUntil.
+  const [snoozePick, setSnoozePick] = useState(null);
+  useEffect(() => { setQueueOpen(false); setBundleOpen({}); setSnoozePick(null); }, [event.id]);
 
   // ── Actions that ACT: patch the real event, let the engine recompute ──
   const [editor, setEditor] = useState(null); // which card's inline editor is open
@@ -4902,6 +4907,32 @@ export default function HostShellV2() {
                   );
                 }
                 const wired = wiredKind(a);
+                // SNOOZE — set it down without losing it. The grounded proposal
+                // (lib/snooze.js: half the remaining runway, never past the item's
+                // own lead window) stays the one-tap DEFAULT. "pick a day" is the
+                // quiet second path (host-approved 2026-07-15): a raw date input
+                // whose bounds AND write both run through clampSnoozeUntil, so a
+                // picked day can never land past the window — the clock still owns
+                // the bounds, the host owns the day. NEVER for a critical.
+                const snoozeProposed = canSnooze(a)
+                  ? (() => { try { return proposedSnoozeUntil(event, { leadDays: a.leadDays }); } catch (_e) { return null; } })()
+                  : null;
+                const fmtBack = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const snoozeTo = (iso, msg) => { setSnoozePick(null); patchEvent({ snoozed: { ...(event.snoozed || {}), [a.id]: iso } }, msg); };
+                // The honest picking window, asked of the SAME clamp that writes:
+                // clamp(tomorrow) is the earliest allowed day, clamp(far future) is
+                // the latest. If either comes back null there is no valid custom
+                // day at all and the affordance simply doesn't render.
+                let snoozePickMin = null, snoozePickMax = null;
+                if (snoozeProposed) {
+                  const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + 1);
+                  const tomorrowIso = `${t0.getFullYear()}-${String(t0.getMonth() + 1).padStart(2, '0')}-${String(t0.getDate()).padStart(2, '0')}`;
+                  try {
+                    snoozePickMin = clampSnoozeUntil(event, tomorrowIso, { leadDays: a.leadDays });
+                    snoozePickMax = clampSnoozeUntil(event, '9999-12-31', { leadDays: a.leadDays });
+                  } catch (_e) { snoozePickMin = null; snoozePickMax = null; }
+                }
+                const pickingDay = !!(snoozePickMin && snoozePickMax && snoozePick && snoozePick.key === key);
                 // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
                 // a host that a CTA does not land HERE, and these now do. ('Communication'
@@ -4950,23 +4981,54 @@ export default function HostShellV2() {
                         {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
-                            the list actually empties. Not a date picker — a grounded proposal
-                            (lib/snooze.js): half the remaining runway, never past the item's own
-                            lead window, and NEVER for a critical ("your caterer hasn't arrived"
-                            is not a someday). The host owns the result and can un-snooze. */}
-                        {canSnooze(a) && (() => {
-                          const until = (() => { try { return proposedSnoozeUntil(event, { leadDays: a.leadDays }); } catch (_e) { return null; } })();
-                          if (!until) return null;
-                          const when = new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                          return (
+                            the list actually empties. The grounded proposal (computed above) is
+                            still the one-tap default; "pick a day" folds open the clamped date
+                            row below. NEVER for a critical ("your caterer hasn't arrived" is
+                            not a someday). The host owns the result and can un-snooze. */}
+                        {snoozeProposed && (
+                          <>
                             <button className="mini" style={{ marginLeft: 'auto' }}
-                              onClick={() => patchEvent({ snoozed: { ...(event.snoozed || {}), [a.id]: until } },
-                                'Set aside — it’ll come back ' + when + ', with time to spare.')}>
+                              onClick={() => snoozeTo(snoozeProposed, 'Set aside — it’ll come back ' + fmtBack(snoozeProposed) + ', with time to spare.')}>
                               not now
                             </button>
-                          );
-                        })()}
+                            {snoozePickMin && snoozePickMax && !pickingDay && (
+                              <button className="mini" aria-expanded={false} aria-controls={'snooze-pick-' + key}
+                                onClick={() => setSnoozePick({ key, val: snoozeProposed })}>
+                                pick a day
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
+                      {/* The day picker — progressive disclosure: this row exists only after
+                          "pick a day", so cards never carry it by default. Bounds come from
+                          clampSnoozeUntil and the confirm re-clamps, so a typed date past the
+                          window writes the last honest day — and the toast says so plainly. */}
+                      {pickingDay && (
+                        <div id={'snooze-pick-' + key} className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
+                          <span className="of">back on:</span>
+                          <input className="field" type="date" style={{ maxWidth: 160, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                            value={snoozePick.val || ''} min={snoozePickMin} max={snoozePickMax}
+                            onChange={e => setSnoozePick({ key, val: e.target.value })}
+                            aria-label="Day this comes back" />
+                          <button className="mini" disabled={!snoozePick.val} style={!snoozePick.val ? { opacity: .45 } : undefined}
+                            onClick={() => {
+                              const chosen = String(snoozePick.val || '');
+                              let clamped = null;
+                              try { clamped = clampSnoozeUntil(event, chosen, { leadDays: a.leadDays }); } catch (_e) { clamped = null; }
+                              if (!clamped) { setSnoozePick(null); return; } // window closed since render — refuse quietly, the card stays
+                              const backOn = fmtBack(clamped);
+                              snoozeTo(clamped, clamped === chosen
+                                ? 'Set aside — it’ll come back ' + backOn + ', the day you picked.'
+                                : chosen > clamped
+                                  ? 'That’s past the window for this one — it’ll come back ' + backOn + ' instead.'
+                                  : 'That day’s already here — it’ll come back ' + backOn + ' instead.');
+                            }}>
+                            set it aside
+                          </button>
+                          <button className="mini" onClick={() => setSnoozePick(null)}>never mind</button>
+                        </div>
+                      )}
                       {editor === key && renderEditor(a)}
                     </div>
                   </article>
@@ -7734,6 +7796,7 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', whiteSpace: 'pre-wrap' }}>{body}</p>
                         <div className="actions-row" style={{ marginTop: 10 }}>
                           {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
+                          {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent('Thank you') + '&body=' + encodeURIComponent(body)}>Email it</a>}
                           <button className="mini" onClick={() => { try { navigator.clipboard.writeText(body); toast('Copied.'); } catch { /* nothing */ } }}>Copy</button>
                           <button className="cta" onClick={() => writeGuest(i, { thankYouSent: true }, queue.length > 1 ? g.name.split(' ')[0] + ' thanked — next up.' : 'That was the last one — every yes is thanked.')}>Mark thanked</button>
                           <button className="mini" onClick={() => writeGuest(i, { thankYouSent: true }, 'Skipped — marked handled.')}>Skip</button>
@@ -10047,13 +10110,33 @@ export default function HostShellV2() {
                             {chase && !g.rsvp && (String(g.phone || '').trim() || String(g.email || '').trim()) && (() => {
                               // PER-GUEST chase — the engine's nudge (with the real
                               // RSVP link) straight to THIS person's phone or inbox.
+                              // Links only (UX_07): the OS's own composer opens with
+                              // the draft in it; nothing here claims to have sent.
                               const d = draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() });
                               const body = [d.subject, d.body].filter(Boolean).join('\n\n');
                               const first = String(g.name || 'them').split(/\s+/)[0];
+                              const digits = String(g.phone || '').replace(/[^+\d]/g, ''); // sms:/tel: want digits, not "(919) 555-…"
                               return (
                                 <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                                  {String(g.phone || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + encodeURIComponent(g.phone.trim()) + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits + '?&body=' + encodeURIComponent(body)}>Text {first} the nudge</a>}
                                   {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim()) + '?subject=' + encodeURIComponent(d.subject || 'Can you make it?') + '&body=' + encodeURIComponent(d.body || body)}>Email {first}</a>}
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
+                                </div>
+                              );
+                            })()}
+                            {(String(g.phone || '').trim() || String(g.email || '').trim()) && !(chase && !g.rsvp) && (() => {
+                              // QUIET CONTACT LINE (host-approved 2026-07-15) — when a
+                              // guest left a number or email, reaching them is one tap
+                              // through the phone's own apps (tel:/sms:/mailto:, UX_07 —
+                              // the OS sends, we never claim to). Silent guests in chase
+                              // mode get the nudge row above instead, never both.
+                              const first = String(g.name || 'them').split(/\s+/)[0];
+                              const digits = String(g.phone || '').replace(/[^+\d]/g, '');
+                              return (
+                                <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'tel:' + digits}>Call {first}</a>}
+                                  {digits && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + digits}>Text {first}</a>}
+                                  {String(g.email || '').trim() && <a className="mini" style={{ textDecoration: 'none' }} href={'mailto:' + encodeURIComponent(g.email.trim())}>Email {first}</a>}
                                 </div>
                               );
                             })()}
@@ -10089,14 +10172,29 @@ export default function HostShellV2() {
                     <button className="mini" onClick={() => { try { openDraft('The guest brief', draftGuestBrief(event, profile, { rsvpUrl: inviteLinkUrl() })); } catch { toast('Couldn’t draft it.'); } }}>Draft the guest brief</button>
                     <button className="mini" onClick={() => { try { openDraft('Update to everyone', draftGuestUpdate(event, {})); } catch { toast('Couldn’t draft it.'); } }}>Update everyone</button>
                     {/* WAS "Nudge the quiet ones" — which promises the app will go and nudge
-                        them. It cannot: the guest roster carries no phone and no email, so no
-                        recipient list can be built, and the draft's only exits are share/copy
-                        (its sms: link has no number to address). The SHEET is scrupulously
-                        honest about this — it never fakes a "sent" state — so the LABEL was the
-                        only thing lying. UX_07: a CTA says exactly what happens when you tap it.
-                        This one opens a written message for the host to send themselves. */}
+                        them. It cannot: this bulk draft has no recipient list, and its only
+                        exits are share/copy (its sms: link has no number to address). The
+                        SHEET is scrupulously honest about this — it never fakes a "sent"
+                        state — so the LABEL was the only thing lying. UX_07: a CTA says
+                        exactly what happens when you tap it. This one opens a written message
+                        for the host to send themselves. (Guests who DID leave a phone or
+                        email get one-tap text/email nudge links on their own rows above.) */}
                     {showsReplyTracking(event) && <button className="mini" onClick={() => openDraft('The RSVP nudge', draftRsvpChase(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Write a nudge to send</button>}
                   </div>
+                  {/* ONE quiet line, only when chasing is on, someone is silent, and not a
+                      single silent guest left a way to reach them — pointing at where a
+                      number or email gets captured. Never a per-row nag (restraint). */}
+                  {(() => {
+                    if (!chase) return null;
+                    const silent = (event.guests || []).filter(g => g && !g.rsvp);
+                    if (!silent.length) return null;
+                    if (silent.some(g => String(g.phone || '').trim() || String(g.email || '').trim())) return null;
+                    return (
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>
+                        None of the quiet ones left a phone or email — add one on a guest’s row and a one-tap text or email nudge appears right there.
+                      </p>
+                    );
+                  })()}
                   {/* Invite look — the tone engine guesses from the event's mood
                       (paper by day, elegant by night, muted when somber); the
                       host's word always wins (lib/inviteTone). */}

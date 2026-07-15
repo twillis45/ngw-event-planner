@@ -22,7 +22,12 @@
 //
 // Submissions use the normalized camelCase field names:
 //   name, rsvp, meal, needs, plusOne, plusOneMeal, plusOneNeeds, kids,
-//   note, mailingAddress, idempotencyKey
+//   note, mailingAddress, phone, email, idempotencyKey
+// phone/email are the OPTIONAL contact a guest chose to leave at RSVP — they
+// land on the guest row under the same `phone`/`email` names the roster editor
+// and CSV import already use (host-side only; the invite never shows another
+// guest's contact). Truthy-only overwrite: a reply without contact never
+// clears a number the host already has.
 // (server snake_case rows must be normalized BEFORE calling this — see the
 // callers' `guest_name → name` etc. mapping).
 //
@@ -91,6 +96,11 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         kids: sub.kids || g.kids,
         address: sub.mailingAddress || g.address,
         partyNotes: sub.note || g.partyNotes,
+        // Guest-offered contact (invite's optional "how to reach you" ask) —
+        // same field names the roster editor writes, so the host's chase
+        // affordances (tel:/sms:/mailto:) read one shape from either source.
+        phone: sub.phone || g.phone,
+        email: sub.email || g.email,
       };
       // Server rows re-arrive on every visit — only count real changes.
       if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; merged += 1; }
@@ -111,6 +121,8 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         kids: sub.kids || 0,
         address: sub.mailingAddress || '',
         partyNotes: sub.note || '',
+        phone: sub.phone || '',
+        email: sub.email || '',
       });
       added += 1;
     }

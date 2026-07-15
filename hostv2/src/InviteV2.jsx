@@ -14,6 +14,11 @@ import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, f
 import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
+// Optional contact at RSVP (host-approved 2026-07-14): ONE formatter/validator
+// with the host shell (lib/contactFormat — zero imports, so the guest bundle
+// pays nothing), so a number typed here reads identically in the roster and
+// the host's call/text/email affordances.
+import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
 // assembleRevealEngines, which drags the whole planning engine (and the 40
@@ -285,6 +290,11 @@ export default function InviteV2({ code }) {
   const [picksCrabs, setPicksCrabs] = useState(null);
   const [note, setNote] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
+  // Optional contact — phone OR email, both skippable. Never gates the reply:
+  // an incomplete/garbled value simply isn't sent (inline hint says so), the
+  // RSVP itself always goes through. Host-side only; never shown to guests.
+  const [contactPhone, setContactPhone] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
   const [err, setErr] = useState('');
   // Field-level validation (original a11y WIN 2): each missing field lights up
   // on its own, aria-invalid + inline message; focus moves to the first one.
@@ -556,6 +566,12 @@ export default function InviteV2({ code }) {
       ...(rsvp === 'Yes' && isCrabEvent && picksCrabs !== null ? { picksCrabs } : {}),
       note: note.trim(),
       ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
+      // Contact rides along ONLY when it's real: a complete US-shaped phone
+      // (stored in the roster's one display format) or an email-shaped email.
+      // Garbage is dropped here — the inline hints already said it wouldn't
+      // send — and the reply itself is never held up by it.
+      ...(normalizePhone(contactPhone) && isValidPhone(contactPhone) ? { phone: formatPhoneUS(contactPhone) } : {}),
+      ...(contactEmail.trim() && !isMalformedEmail(contactEmail) ? { email: contactEmail.trim() } : {}),
     };
     const idk = rsvpIdempotencyKey(event.id + ':' + code);
     const key = 'ngw-rsvp-queue-' + event.id;
@@ -575,6 +591,8 @@ export default function InviteV2({ code }) {
           needs: payload.needs, plus_one: payload.plusOne, plus_one_meal: payload.plusOneMeal,
           plus_one_needs: payload.plusOneNeeds, kids: payload.kids, note: payload.note,
           ...(payload.picksCrabs !== undefined ? { picks_crabs: payload.picksCrabs } : {}),
+          ...(payload.phone ? { phone: payload.phone } : {}),
+          ...(payload.email ? { email: payload.email } : {}),
         });
         try {
           const q = JSON.parse(localStorage.getItem(key) || '[]');
@@ -955,6 +973,37 @@ export default function InviteV2({ code }) {
                           <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Anything else we should know about food or access"
                             value={needsOther} onChange={e => setNeedsOther(e.target.value)} aria-label="Other needs" />
                         </>
+                      )}
+                    </>
+                  )}
+
+                  {rsvp && rsvp !== 'No' && (
+                    <>
+                      {/* OPTIONAL CONTACT (host-approved "guest contact at RSVP").
+                          Lives HERE — well below the one ask, beside the other
+                          optional extras — so it never competes with the reply
+                          itself. Phone or email, both skippable; the phone
+                          formats through the SAME lib/contactFormat the host
+                          roster uses, so one number reads one way everywhere.
+                          A partial/garbled value gets a plain inline note and is
+                          simply left off the reply — it never blocks Send. Only
+                          the host sees it (the roster never travels to guests;
+                          the invite shows first names only). */}
+                      <div className="shelf-label" style={{ margin: '14px 0 6px' }}>How to reach you — optional</div>
+                      <p className="grounding" style={{ margin: '0 0 6px' }}>A phone or email lets your host reach you with day-of details. Only your host sees it — skip it if you’d rather not.</p>
+                      <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)' }} placeholder="Phone"
+                        inputMode="tel" autoComplete="tel" value={contactPhone}
+                        onChange={e => setContactPhone(formatPhoneUS(e.target.value))}
+                        aria-label="Your phone — optional" aria-invalid={isIncompletePhone(contactPhone) || undefined} />
+                      {isIncompletePhone(contactPhone) && (
+                        <p className="inv2-fine" style={{ margin: '4px 0 0' }}>That doesn’t look like a full number — finish it or leave it blank. Your reply sends either way.</p>
+                      )}
+                      <input className="field" style={{ maxWidth: 'none', marginTop: 8, fontSize: 'var(--t-input)' }} placeholder="Email"
+                        type="email" inputMode="email" autoComplete="email" value={contactEmail}
+                        onChange={e => setContactEmail(e.target.value)}
+                        aria-label="Your email — optional" aria-invalid={isMalformedEmail(contactEmail) || undefined} />
+                      {isMalformedEmail(contactEmail) && (
+                        <p className="inv2-fine" style={{ margin: '4px 0 0' }}>That doesn’t look like an email address — check it or leave it blank. Your reply sends either way.</p>
                       )}
                     </>
                   )}

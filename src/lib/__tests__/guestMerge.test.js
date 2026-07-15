@@ -64,6 +64,9 @@ test('no match adds a new guest with the roster default shape and sub values', (
     allergens: [], diets: [], access: [],
     plusOne: '', plusOneMeal: '—', plusOneNeeds: '',
     kids: 2, address: '9 Elm Ave', partyNotes: 'bringing a cake',
+    // Optional contact (invite's "how to reach you") — absent on this reply,
+    // so the roster default is an honest empty string, never an invented value.
+    phone: '', email: '',
   });
 });
 
@@ -119,6 +122,59 @@ test('blank-name submissions are skipped entirely', () => {
   ]);
   expect(guests).toHaveLength(3);
   expect(merged + added + yesCount).toBe(0);
+});
+
+// ── Optional guest contact at RSVP (phone/email) ──────────────────────────────
+// The invite may attach a phone and/or email the GUEST chose to leave; they land
+// on the roster row under the same field names the roster editor and CSV import
+// write, so the host's call/text/email affordances read one shape.
+
+test('a new guest from a reply carries the contact they offered', () => {
+  const { guests, added } = mergeGuestReplies(roster(), [
+    { name: 'Zora Neale', rsvp: 'Yes', phone: '(410) 555-0134', email: 'zora@example.com', idempotencyKey: 'k7' },
+  ]);
+  expect(added).toBe(1);
+  const zora = guests.find(g => g.name === 'Zora Neale');
+  expect(zora.phone).toBe('(410) 555-0134');
+  expect(zora.email).toBe('zora@example.com');
+});
+
+test('a matched guest gains the contact from their reply', () => {
+  const { guests, merged } = mergeGuestReplies(roster(), [
+    { name: 'Ada Byron', rsvp: 'Yes', phone: '(301) 555-0187', email: 'ada@example.com' },
+  ]);
+  expect(merged).toBe(1);
+  const ada = guests.find(g => g.id === 'g1');
+  expect(ada.phone).toBe('(301) 555-0187');
+  expect(ada.email).toBe('ada@example.com');
+});
+
+test('a reply WITHOUT contact never clears a phone/email the host already has', () => {
+  const base = roster().map(g => (g.id === 'g2' ? { ...g, phone: '(443) 555-0102', email: 'sam@example.com' } : g));
+  const { guests } = mergeGuestReplies(base, [
+    { name: 'Samuel Hill', rsvp: 'Yes', phone: '', email: '' },   // skipped the ask
+  ]);
+  const sam = guests.find(g => g.id === 'g2');
+  expect(sam.phone).toBe('(443) 555-0102');
+  expect(sam.email).toBe('sam@example.com');
+});
+
+test('re-arriving contact-carrying reply is change-only: identical re-merge counts 0', () => {
+  const sub = { name: 'Ada Byron', rsvp: 'Yes', phone: '(301) 555-0187', email: 'ada@example.com' };
+  const first = mergeGuestReplies(roster(), [sub]);
+  expect(first.merged).toBe(1);
+  const second = mergeGuestReplies(first.guests, [sub]);
+  expect(second.merged).toBe(0);
+  expect(second.guests).toEqual(first.guests);
+});
+
+test('merge is NOT a whitelist — fields it does not know on an existing row survive an update', () => {
+  const base = roster().map(g => (g.id === 'g1' ? { ...g, table: 'Head table', import_batch_id: 'b-9' } : g));
+  const { guests } = mergeGuestReplies(base, [{ name: 'Ada Byron', rsvp: 'Yes', phone: '(301) 555-0187' }]);
+  const ada = guests.find(g => g.id === 'g1');
+  expect(ada.table).toBe('Head table');            // spread preserves unknowns
+  expect(ada.import_batch_id).toBe('b-9');
+  expect(ada.phone).toBe('(301) 555-0187');
 });
 
 test('never mutates inputs — arrays, guest objects, or submissions', () => {

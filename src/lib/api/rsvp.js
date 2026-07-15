@@ -161,6 +161,12 @@ export async function flushRsvpOutbox(eventId, code) {
         plus_one_needs: item.plusOneNeeds,
         kids:           item.kids,
         note:           item.note,
+        // Optional guest contact (invite's "how to reach you" ask). The current
+        // backend RsvpSubmit model ignores unknown fields, so replaying these is
+        // harmless today and correct the day the server learns to store them.
+        // JSON.stringify drops undefined — an entry without contact sends none.
+        phone:          item.phone,
+        email:          item.email,
       });
       flushed++;
     } catch {
