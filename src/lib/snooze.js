@@ -20,7 +20,8 @@
 // Capped at the lead window, because an item due in 4 days must not resurface in 6. And a
 // CRITICAL can never be snoozed at all — "your caterer hasn't arrived" is not a someday.
 //
-// The host can always choose a different day; this is the starting point, not a cage.
+// Today the proposal is the only snooze target the UI offers (one "not now" action, no
+// date picker); letting the host pick a custom day is a possible future affordance.
 
 import { daysUntil } from './dates';
 

@@ -1500,9 +1500,12 @@ export default function HostShellV2() {
   const dstat = eventDateStatus(event.date);            // lib/dates — time intelligence
   const days = dstat.days;
 
-  // ── T-72h reconfirm window ── named vendors only; the sweep exists inside
-  // the last three days, and closes itself once every vendor has answered.
-  const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim()), [event]);
+  // ── T-72h reconfirm window ── named FORMAL vendors only; the sweep exists
+  // inside the last three days, and closes itself once every vendor has
+  // answered. Informal helpers (a friend bringing the cooler) are excluded —
+  // same host-appropriate rule the registry raiser applies (surfaceRegistry
+  // vendor-reconfirm); the banner counting them was the last divergence.
+  const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal), [event]);
   const sweepWindow = days != null && days >= 0 && days <= 3 && reconfirmables.length > 0 && !isPastEvent(event);
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
@@ -1671,6 +1674,12 @@ export default function HostShellV2() {
   // the reason a zero state can't be believed). A CRITICAL ignores any snooze: something that
   // has escalated is no longer a someday. lib/snooze.js.
   const actions = applySnooze(plan.nextActions || [], event);
+  // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
+  // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
+  // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
+  // Both now consult this predicate; a single neutral/calendar/heart item IS quiet.
+  const listIsCalm = actions.length === 0
+    || (actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || '')));
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -3697,7 +3706,10 @@ export default function HostShellV2() {
                       onChange={e => { setSmartText(e.target.value); setFType(null); setCreateEdit(null); }}
                       aria-label="Describe your event"
                     />
-                    <button className="cta soft" style={listening ? { background: 'var(--warn-tint)', color: 'var(--warn)' } : undefined}
+                    {/* UX_02 amber budget: listening is a status, not a warning — steel, not warn.
+                        .cta.soft's resting state is already steel-tint/steel-soft, so a 1px steel
+                        ring keeps the aria-pressed state visually distinct without leaving the register. */}
+                    <button className="cta soft" style={listening ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', boxShadow: '0 0 0 1px var(--steel-soft)' } : undefined}
                       onClick={() => listening ? stopVoice() : startVoice()} aria-pressed={listening} aria-label="Speak it instead">
                       {listening ? 'Listening… tap to stop' : 'Say it'}
                     </button>
@@ -4065,13 +4077,16 @@ export default function HostShellV2() {
                         // contradiction. The NEXT tile already names the first action, so the
                         // redundant "next: X" here gives way to the reconciliation when it helps.
                         const openAreas = Math.max(0, essTotal - essDone);
-                        const extra = Math.max(0, actions.length - openAreas);
+                        // The queue below renders actions.filter(show) — under an active lens
+                        // the stated total must be the SHOWN count or the arithmetic breaks.
+                        const shownCount = actions.filter(show).length;
+                        const extra = Math.max(0, shownCount - openAreas);
                         if (extra > 0 && openAreas > 0) {
                           // "plus N more", not "N to watch" — the extras beyond the open areas
                           // can be a risk to watch OR an active to-do (a vendor to chase, a
                           // second action on an area). "more" is true of all of them; the point
                           // is the arithmetic: open areas + the rest = the count in NEXT.
-                          sub = <>areas handled · <b>{openAreas}</b> still open, plus <b>{extra}</b> more — that’s the <b>{actions.length}</b> below</>;
+                          sub = <>areas handled · <b>{openAreas}</b> still open, plus <b>{extra}</b> more — that’s the <b>{shownCount}</b> below</>;
                         } else {
                           sub = <>areas handled{setupLine} · next: {nl}</>;
                         }
@@ -4165,8 +4180,7 @@ export default function HostShellV2() {
                     // the phase cue disagreed — e.g. a vendor COI action named here
                     // routes to that vendor's documents, but the phase cue pointed at
                     // a generic area sheet (host-reported wrong-location bug).
-                    const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
-                    if (actions.length && !calmTop) { onCta(actions[0], String(actions[0].id || 0)); return; }
+                    if (actions.length && !listIsCalm) { onCta(actions[0], String(actions[0].id || 0)); return; }
                     // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
                     document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
@@ -4175,8 +4189,7 @@ export default function HostShellV2() {
                   <div className="t-label">Next</div>
                   <div className="t-big">{(() => {
                     if (days === 0) return 'Run the day';
-                    const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
-                    return actions.length === 0 || calmTop ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
+                    return listIsCalm ? 'All quiet' : actions.length === 1 ? '1 thing needs you' : actions.length + ' things need you';
                   })()}</div>
                   <div className="t-sub">
                     {(() => {
@@ -4193,8 +4206,7 @@ export default function HostShellV2() {
                         if (openTasks) bits.push(openTasks + ' steps open');
                         return (bits.length ? bits.join(' · ') + ' — ' : '') + 'The Day has the wheel ↓';
                       }
-                      const calmTop = actions.length === 1 && CALM_CATEGORIES.has(String(actions[0].category || ''));
-                      if (!actions.length || calmTop) {
+                      if (listIsCalm) {
                         // Calm ≠ blank: name the next DATED thing (human intelligence).
                         if (upNext.length) {
                           const u = upNext[0];
@@ -4283,8 +4295,9 @@ export default function HostShellV2() {
                             predicate (nothing is overdue) licensing a completion claim
                             (all clear) — the exact invariant this codebase spent the day
                             closing everywhere else. Calm is now earned against the SAME
-                            action list the tile counts: nothing open, nothing to clear. */}
-                        {bits.join(' · ')}{(n('Blocked') || actions.length) ? '' : ' · all clear'}
+                            predicate the NEXT tile reads (listIsCalm) — one strictness of
+                            quiet per screen, calm fillers included. */}
+                        {bits.join(' · ')}{(n('Blocked') || !listIsCalm) ? '' : ' · all clear'}
                       </p>
                     );
                   })()}
@@ -6648,8 +6661,15 @@ export default function HostShellV2() {
                 {ctx && (ctx.activeRisks || []).map((r, i) => {
                   const why = riskWhy(r);
                   const route = riskRouteFor(r);
+                  // Row-level landing: a registry raise routes {tab:'Risks', riskId} and
+                  // routeSheet stores it as sheet.focus — ctx risks key on r.type. Same
+                  // rowfocus + scroll pattern as the tasks sheet; the CTA rule says land
+                  // on the row, never the sheet top.
+                  const focused = sheet.focus != null && String(sheet.focus) === String(r.type);
                   return (
-                  <div key={'ctx-' + (r.type || i)} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                  <div key={'ctx-' + (r.type || i)} className={'brow' + (focused ? ' rowfocus' : '')}
+                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
                       <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
@@ -6666,8 +6686,13 @@ export default function HostShellV2() {
                 {staticRisks.map((r, i) => {
                   const why = riskWhy(r);
                   const route = riskRouteFor(r);
+                  // Playbook risks are what the registry actually raises (riskId = r.id) —
+                  // this is the row a "Have a plan for: X" tap must land on.
+                  const focused = sheet.focus != null && String(sheet.focus) === String(r.id);
                   return (
-                  <div key={r.id || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
+                  <div key={r.id || i} className={'brow' + (focused ? ' rowfocus' : '')}
+                    ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                    style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
                       <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
@@ -7455,7 +7480,8 @@ export default function HostShellV2() {
                     return (
                       <div className="brow" style={{ padding: '14px var(--sp-4)' }}>
                         <div className="f-name">{g.name}</div>
-                        {g.giftReceived && <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--warn)' }}>gift noted</p>}
+                        {/* UX_02 amber budget: a noted gift is identification, not urgency — steel. */}
+                        {g.giftReceived && <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--steel-soft)' }}>gift noted</p>}
                         <p className="grounding" style={{ margin: 'var(--sp-2) 0 0', whiteSpace: 'pre-wrap' }}>{body}</p>
                         <div className="actions-row" style={{ marginTop: 10 }}>
                           {phone && <a className="mini" style={{ textDecoration: 'none' }} href={'sms:' + phone.replace(/[^+\d]/g, '') + '?&body=' + encodeURIComponent(body)}>Text it</a>}
@@ -9693,7 +9719,8 @@ export default function HostShellV2() {
                             ) : null}
                           </button>
                           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--warn)', background: 'var(--warn-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
+                            {/* UX_02 amber budget: a Maybe is UNKNOWN, and unknown is steel — amber is needs-attention only. */}
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
                           </button>
                         </div>
                         {guestOpen === i && (

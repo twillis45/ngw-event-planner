@@ -20,8 +20,9 @@
 //
 //     { id, label, domain, raise(event) → [{ severity, title, why, route }] }
 //
-// The ranked list, the counts, and the badges all READ this. A surface that declares nothing
-// raises nothing — visibly, in one place, instead of silently, in twelve.
+// The ranked list reads raiseAll(); raiseCounts() is exported for badges when they ship —
+// it has no runtime consumer yet (re-audit F7). A surface that declares nothing raises
+// nothing — visibly, in one place, instead of silently, in twelve.
 //
 // severity: 'critical' | 'attention'   (steel/ok are not asks; they do not belong in a list
 //                                       of things that need you)
@@ -37,7 +38,7 @@ import { deriveVendorPromiseConflicts } from './vendorAccountability/conflicts';
 import { inferPromisesFromVendor } from './vendorAccountability/derive';
 import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks } from './playbooks';
-import { isEventDay, isPastEvent } from './dates';
+import { daysUntil, isEventDay, isPastEvent } from './dates';
 
 const notDismissed = (event, map, id) => {
   const st = (event && event[map] && typeof event[map] === 'object') ? event[map] : {};
@@ -136,6 +137,42 @@ export const SURFACES = [
           title: `Get ${x.vendor.name}'s arrival time`,
           why: x.ask.why,
           route: { tab: 'Vendors', vendorId: x.vendor.id },
+        }));
+    },
+  },
+
+  // ── T-72h reconfirm sweep ──────────────────────────────────────────────────
+  // HostShellV2 computes `reconfirmables` locally (HostShellV2.jsx ~1505) and renders a
+  // banner only — a host who never saw the banner never learned, and the ranked list never
+  // counted it. Same predicate as the shell: a NAMED vendor, inside the last three days
+  // (days 0..3), who hasn't answered yet (`reconfirmed72` truthy = answered, same truthy
+  // read as the shell's own skip at ~1635). One deliberate divergence: informal helpers
+  // (`isInformal`) never raise here — a friend bringing the cooler is not put through a
+  // paid-vendor reconfirm ask (host-appropriate vendor UI rule); the shell banner predates
+  // that rule and still counts them.
+  {
+    id: 'vendor-reconfirm',
+    label: 'The reconfirm window',
+    domain: 'vendors',
+    route: { tab: 'Vendors' },
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let days = null;
+      try { days = daysUntil(event && event.date); } catch (_e) { return []; }
+      if (days == null || days < 0 || days > 3) return [];
+      const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
+      // The window, in the host's own time words — same ladder as the shell's banner
+      // eyebrow (Today / Tomorrow / N days out).
+      const when = days === 0 ? 'your event is today'
+        : days === 1 ? 'your event is tomorrow'
+        : `the event is ${days} days out`;
+      return vendors
+        .filter((v) => v && v.id && String(v.name || '').trim() && !v.isInformal && !v.reconfirmed72)
+        .map((v) => ({
+          severity: 'attention',
+          title: `Reconfirm ${v.name} for the day`,
+          why: `${when} — a quick reconfirm now beats a no-show`,
+          route: { tab: 'Vendors', vendorId: v.id },
         }));
     },
   },

@@ -10,30 +10,28 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { color, space, type, radius } from '../design/tokens';
+import { taskIsOverdue, taskDueInDays } from '../lib/taskLead';
 
-// Sprint 49: Phase offsets mirror App.js — drives "URGENT" classification for
-// timeline-derived decisions (overdue tasks).
-const PHASE_OFFSET = {
-  '12 Months Out': -365, '10 Months Out': -304, '8 Months Out': -243,
-  '6 Months Out':  -182, '5 Months Out':  -152, '4 Months Out': -121,
-  '3 Months Out':   -91, '2 Months Out':   -61, '1 Month Out':   -30,
-  '2 Weeks Out':    -14, 'Week Of':          -7,
-};
-function isOverdue(task, eventDate) {
-  if (!eventDate || !(task.week in PHASE_OFFSET)) return false;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+// 2026-07-14 fresh-eyes re-audit: this surface still carried its own copy of the
+// original dead lead-time bug — a local PHASE_OFFSET with TitleCase keys ('Week Of',
+// '2 Weeks Out') checked via `task.week in PHASE_OFFSET`, while playbook tasks carry
+// taskPhaseLabel's sentence-case prose ('Week of', '2 weeks out'). The membership
+// test never matched, so nothing ever read overdue here and the derived DECISION
+// list stayed permanently empty. Fixed the same way CommandCenter.isTaskOverdue was:
+// derivation goes through lib/taskLead (ONE reader — prefers authored leadDays,
+// lowercases the prose label so casing can never bite again). Only the derivation
+// changed; the local wrappers keep this file's rendering shape and its snooze rule.
+function isOverdue(task, event) {
   // Decision "Extend": a snoozed task drops off the board until the snooze passes.
-  if (task.snoozedUntil && new Date(task.snoozedUntil + 'T00:00:00') > today) return false;
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return due < today && !task.done;
+  if (task.snoozedUntil) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (new Date(task.snoozedUntil + 'T00:00:00') > today) return false;
+  }
+  return taskIsOverdue(task, event);
 }
-function overdueDays(task, eventDate) {
-  if (!eventDate || !(task.week in PHASE_OFFSET)) return 0;
-  const today = new Date(); today.setHours(0, 0, 0, 0);
-  const due = new Date(eventDate + 'T00:00:00');
-  due.setDate(due.getDate() + PHASE_OFFSET[task.week]);
-  return Math.ceil((today - due) / 86400000);
+function overdueDays(task, event) {
+  const due = taskDueInDays(task, event);
+  return due != null && due < 0 ? -due : 0;
 }
 
 const P = {
@@ -126,8 +124,8 @@ function buildItems(event) {
   // a concept across L1/L3/L4 instead of requiring a separate event.decisions
   // schema. Closed (done) tasks are excluded; only uncompleted overdue.
   (event.timeline || []).forEach(t => {
-    if (!isOverdue(t, event.date)) return;
-    const od = overdueDays(t, event.date);
+    if (!isOverdue(t, event)) return;
+    const od = overdueDays(t, event);
     items.push({
       id: t.id, // use task id directly so Command Center routing lines up
       type: 'DECISION',

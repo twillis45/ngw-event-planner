@@ -43,6 +43,8 @@
 //   · Corporate Event / Conference / Gala — professional-event territory;
 //     the "many hosts…" host-language nudge format doesn't fit.
 
+import { daysUntil } from './dates';
+
 const CONTEXTS = [
   {
     key: 'juneteenth',
@@ -421,6 +423,15 @@ const contextText = (event) => [event && event.type, event && event.name, event 
 
 export function eventContextNudge(event, surface) {
   const ev = event || {};
+  // 2026-07-14 fresh-eyes re-audit: nudges had no expiry at all — dismiss was the
+  // only way one ever went away. ONE honest decay rule: a PAST event raises no
+  // nudges. Every nudge here is planning advice ("confirm the cake early",
+  // "put the registry in the invite") — after the party it's pure noise.
+  // Deliberately NOT adding per-nudge decay windows (e.g. the vendor-confirm
+  // nudge going stale inside the last week): that's a design call nobody has
+  // made yet, and inventing it here would be freestyling.
+  const dte = daysUntil(ev.date);
+  if (dte != null && dte < 0) return null;
   const t = contextText(ev);
   if (!t) return null;
   const ctxDef = CONTEXTS.find(c => c.re.test(t));

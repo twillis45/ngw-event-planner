@@ -250,6 +250,12 @@ export function deriveCommandCenterData(event, foodPP = null) {
         overdue: od > 0,
         overdueDays: od,
         urgency: od > 14 ? 'URGENT' : 'DUE',
+        // RE-AUDIT F7 (2026-07-14): carry the source task's lead through the projection.
+        // The snooze cap (lib/snooze.js) reads opts.leadDays off the action; the ladder's
+        // overdue-decision tier reads it off THIS object via taskLeadDays(urgent) — which
+        // checks Number(x.leadDays) first. Without this line the projection was lossy and
+        // the cap never received a real number (dead cap, re-audit finding).
+        leadDays: taskLeadDays(t),
       };
     })
     // Was `parseInt(b.dueLabel) - parseInt(a.dueLabel)` — and dueLabel is PROSE
@@ -1635,6 +1641,13 @@ export function eventPlan(event, ctx = null) {
     // line — a critical is never a someday — was false exactly at the top of the list.
     level: top.level || null,
     category: top.category || null,
+    // RE-AUDIT F7 (fresh-eyes, 2026-07-14): `leadDays` was ALSO dropped here — and it is
+    // the number the snooze lead-window cap reads (lib/snooze.js proposedSnoozeDays,
+    // opts.leadDays). Nothing upstream ever handed the top action a real lead, so the
+    // cap was DEAD CODE at the exact spot it matters most: a decision 4 days from its
+    // window could be proposed a 10-day snooze and quietly slept past the point of no
+    // return. The ladder's overdue-decision tier now attaches it; copy it through.
+    leadDays: top.leadDays ?? null,
     done: false,
   } : null;
 
@@ -1784,6 +1797,33 @@ export function eventPlan(event, ctx = null) {
       else nextActions.push(action);
     }
   } catch (_e) { /* registry unavailable — the list stands unchanged */ }
+
+  // ── RE-AUDIT F5 + F6 (fresh-eyes, 2026-07-14): the merge gets a spine ────────
+  // F5 — A CALM FILLER BESIDE REAL WORK IS A CONTRADICTION. The ladder ALWAYS
+  // returns something; its calm tiers ('neutral' Tier 8, 'calendar' Tier 7,
+  // 'heart' Tier 7.9) exist to fill an EMPTY list, not to compete in a full one.
+  // Merged ahead of real items they produced the live absurdity: "2 things need
+  // you · first: Event on track. Nothing urgent right now." A filler's entire
+  // claim is that nothing else is open — so the moment anything else IS open,
+  // every filler leaves. When ONLY fillers exist, exactly the first survives:
+  // that is the calm state, said once.
+  // F6 — SEVERITY WAS SPLICE POSITION, NOT A COMPUTED ORDER. Registry criticals
+  // were hand-spliced ahead (F2), but nothing GUARANTEED a critical from any
+  // producer beats a non-critical from any other. Band the whole list —
+  // critical (0) → real work (1) → calm (2) — with a STABLE sort so each
+  // producer's own internal ranking (insertion order) survives within a band.
+  const CALM_FILLER = new Set(['neutral', 'calendar', 'heart']);
+  const _isCalmFiller = (a) => !!a && CALM_FILLER.has(a.category);
+  if (nextActions.some((a) => !_isCalmFiller(a))) {
+    for (let i = nextActions.length - 1; i >= 0; i--) {
+      if (_isCalmFiller(nextActions[i])) nextActions.splice(i, 1);
+    }
+  } else if (nextActions.length > 1) {
+    nextActions.splice(1); // only fillers: one calm line, never a stack of them
+  }
+  const _severityBand = (a) => (a && a.level === 'critical') ? 0 : (_isCalmFiller(a) ? 2 : 1);
+  nextActions.sort((a, b) => _severityBand(a) - _severityBand(b)); // Array.prototype.sort is stable (V8)
+
   // PAST-EVENT-1 — a wrapped event's action list must agree with the phase engine
   // (deriveEventPhaseProgress already returns 'post_event' / "Wrap-up" for it): it
   // doesn't help a host to be told "3 things need you" about a party that happened
@@ -2047,6 +2087,9 @@ function _selectEventNextActionInner(event) {
         : `Pending decision. Holding it open blocks downstream timeline + vendor work.`,
       primaryCta: 'Decide',
       primaryRoute: { tab: 'Decisions', decisionId: urgent.id },
+      // RE-AUDIT F7: the task's own lead, so the snooze lead-window cap
+      // (proposedSnoozeDays opts.leadDays) finally binds for the top action.
+      leadDays: taskLeadDays(urgent),
       contextLine: daysSub,
     };
   }
