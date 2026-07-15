@@ -29,18 +29,41 @@
 //      move. When BOTH exist, daylight refines the bucket rather than contradicting it: we
 //      never move the host outside the window they chose.
 //
-//   3. NOTHING. Then we say nothing, or say it is a rule of thumb. We do not invent.
+//   3. A RULE OF THUMB. When neither the sky nor the host's own word is available, we still
+//      propose — but we say plainly that it is a common starting point for this KIND of event,
+//      not a reading of their plan, and we mark it the weakest basis so nothing treats it as
+//      fact. The host asked for the app to never hand them a blank field, and that is right.
 //
-// A note on what is NOT here: there is no authored "a crab feast starts at 1pm" anywhere in
-// the playbooks, and inventing one — even a sensible one — would be the same bug in better
-// clothes. Every number below traces to the forecast, the playbook's own duration, or the
-// host's own words.
+// A note on why the rule-of-thumb tier is SAFE now, when the bare 15:00 it replaced was a bug:
+// the old invention was indistinguishable from a host decision — shown as fact, SENT TO
+// VENDORS, frozen into event.ros on the first edit. What makes tier 3 different is not that
+// the guess got smarter; it is PROVENANCE. Every proposal carries `startTimeSource: 'derived'`
+// and `basis: 'rule-of-thumb'`, the sentence says out loud that it is a starting point, and the
+// outward gate (invite, vendor brief, ROS clock) refuses a derived hour until the host confirms
+// it. A guess the host can see, is told is a guess, and that never reaches a caterer until they
+// accept it is not the 15:00 bug — it is the reply-by date and the budget default, applied to
+// the clock. The tiers above still trace to the forecast, the playbook's duration, or the
+// host's own words; tier 3 traces to "most events of this kind" and says so.
 
 import { getPlaybook } from './playbooks';
 import { ANCHOR_HOUR } from './eventWhen';
 
 // Types that live outdoors — the same list phaseProgress uses to decide a rain plan matters.
 const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|picnic|day party|block party|tailgate|luau|beach|garden party|graduation|juneteenth|family reunion|reunion/i;
+
+// The rule-of-thumb tier (3): when nothing grounds a time, which part of the day is the
+// COMMON starting point for this kind of event. Coarse on purpose — a bucket, not a clock —
+// and it becomes a real hour through the same ANCHOR_HOUR the ROS uses, so a rule-of-thumb
+// proposal and the run of show never disagree. Not authored data; a stated convention the
+// sentence owns as such ("most crab feasts are afternoon gatherings — change it").
+const EVENING_TYPE = /dinner|gala|cocktail|reception|formal|wedding|rehearsal|holiday party|new year/i;
+const MORNING_TYPE = /brunch|breakfast|morning|sunrise|coffee/i;
+function ruleOfThumbBucket(event) {
+  const t = String((event || {}).type || '');
+  if (MORNING_TYPE.test(t)) return 'morning';
+  if (EVENING_TYPE.test(t)) return 'evening';
+  return 'afternoon';               // the safe common default for host gatherings; host changes it
+}
 
 // Finish this long before the light goes. Not a fudge factor — it is the difference between
 // "the last guest leaves as the sun sets" and "everyone is packing coolers in the dark".
@@ -193,6 +216,17 @@ export function proposeStartTime(event, weather) {
     };
   }
 
-  // ── 3. We know nothing. Say nothing. ─────────────────────────────────────────
-  return null;
+  // ── 3. Rule of thumb: a common start for this KIND of event, said as such ─────
+  // No sky, no host word — but a blank field is friction the host asked us to end. Propose the
+  // middle of the part-of-day most events of this type land in, as the weakest basis, in a
+  // sentence that admits it is a starting point and not a reading of their plan. Provenance +
+  // the outward gate keep it honest: nobody downstream sees this hour until the host accepts.
+  const rotBucket = ruleOfThumbBucket(ev);
+  const rotMin = ANCHOR_HOUR[rotBucket] != null ? ANCHOR_HOUR[rotBucket] * 60 : 15 * 60;
+  const typeWord = String(ev.type || 'event').toLowerCase();
+  return {
+    hhmm: hhmm(rotMin), minutes: rotMin, label: pretty(rotMin),
+    basis: 'rule-of-thumb', grounded: false, drivers: [`most ${typeWord}s are ${rotBucket}`],
+    why: `Most ${typeWord}s are ${rotBucket} gatherings, so we set a ${pretty(rotMin)} start to plan around — this is a starting point, not your plan. Change it to whatever is true.`,
+  };
 }

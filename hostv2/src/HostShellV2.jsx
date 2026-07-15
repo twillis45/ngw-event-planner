@@ -2960,6 +2960,19 @@ export default function HostShellV2() {
       n + (n === 1 ? ' reply' : ' replies') + ' came in from your invite link' + (yesCount ? ' — ' + yesCount + ' yes' : '') + '. The count just updated.',
       { noUndo: true }); // real replies arriving isn't a host edit to undo
   };
+  // NEVER A BLANK START TIME (host directive 2026-07-15, frictionless). The create flow already
+  // grounds a new event's start time; this does the same, ONCE, for an event that ARRIVED
+  // without one — a seed, or anything made before the grounded default existed — so the whole
+  // app runs on a real clock and the host sees "Confirm the start time" to accept/change, never
+  // "Set" it from blank. Silent (no toast). Stays 'derived', so the outward gate keeps it off
+  // every guest/vendor surface until they confirm; if they clear it, we re-propose — a blank
+  // field is the friction we're removing.
+  useEffect(() => {
+    if (activeCustom) return;
+    if (String(event.startTime || '').trim()) return;
+    try { const p = defaultStartTime(event, wx); if (p) patchEvent(p); } catch (_e) { /* no ground — the list asks */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id]);
   useEffect(() => {
     try {
       const key = 'ngw-rsvp-queue-' + event.id;

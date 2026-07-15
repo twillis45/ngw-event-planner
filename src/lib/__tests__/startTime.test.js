@@ -55,9 +55,20 @@ describe("the host's own word is never quietly overruled", () => {
 });
 
 describe('we do not invent', () => {
-  test('no forecast, no bucket, nothing said → propose NOTHING', () => {
-    // This is the case that used to silently anchor the entire day to 15:00.
-    expect(proposeStartTime(crab(), null)).toBeNull();
+  // 2026-07-15 (host directive: frictionless, never a blank field): when nothing grounds a
+  // time we now propose a RULE OF THUMB rather than nothing — the middle of the part-of-day
+  // most events of this kind land in, marked the weakest basis, in a sentence that owns it as a
+  // starting point. This is safe where the old 15:00 was a bug ONLY because of provenance: it
+  // carries startTimeSource:'derived' + basis:'rule-of-thumb', and the outward gate still hides
+  // it from guests/vendors/ROS until the host confirms (the "we do not INVENT AS FACT" invariant
+  // the rest of this block still guards).
+  test('no forecast, no bucket, nothing said → rule-of-thumb, honestly labelled', () => {
+    const p = proposeStartTime(crab(), null);
+    expect(p).not.toBeNull();
+    expect(p.basis).toBe('rule-of-thumb');
+    expect(p.grounded).toBe(false);                 // never dressed as a derivation
+    expect(p.hhmm).toBe('15:00');                    // afternoon anchor for a crab feast
+    expect(p.why).toMatch(/starting point/i);        // the sentence admits what it is
   });
 
   test('a host who already chose a time is left alone', () => {
@@ -67,7 +78,11 @@ describe('we do not invent', () => {
   test('an unreadable sunset is not guessed at', () => {
     expect(parseClock('soon')).toBeNull();
     expect(parseClock('')).toBeNull();
-    expect(proposeStartTime(crab(), { sunset: 'soon' })).toBeNull();
+    // A garbage sunset is never turned into a daylight-derived time; we fall past it to the
+    // rule of thumb, which does NOT claim daylight as its basis.
+    const p = proposeStartTime(crab(), { sunset: 'soon' });
+    expect(p.basis).toBe('rule-of-thumb');
+    expect(p.drivers.join(' ')).not.toMatch(/sunset/i);
   });
 
   test('an INDOOR event has no daylight constraint — do not pretend it does', () => {
@@ -103,8 +118,12 @@ describe('the event arrives with a grounded start time', () => {
     expect(patch.startTimeBasis).toBe('daylight');
   });
 
-  test('when we can ground NOTHING, we default nothing', () => {
-    expect(defaultStartTime(crab(), null)).toBeNull();
+  test('when we cannot ground it, we still default a rule of thumb — never a blank field', () => {
+    // 2026-07-15 host directive: the app arrives with a time to accept or change, always.
+    const patch = defaultStartTime(crab(), null);
+    expect(patch.startTime).toBe('15:00');
+    expect(patch.startTimeSource).toBe('derived');       // still ours until confirmed → still gated outward
+    expect(patch.startTimeBasis).toBe('rule-of-thumb');  // honestly the weakest tier
   });
 });
 
