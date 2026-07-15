@@ -4044,7 +4044,27 @@ export default function HostShellV2() {
                           (actions[0] && actions[0].title) || (nextCue && nextCue.label) || 'the open one'
                         ).replace(/^next:\s*/i, '').replace(/\.+$/, '');
                         if (nl.length > 44) nl = nl.slice(0, 44) + '…';
-                        sub = <>areas handled{setupLine} · next: {nl}</>;
+                        // RECONCILE THE TWO NUMBERS (host-reported: "7 things or 3 things?").
+                        // The tile says "5 of 7 areas" while NEXT says "3 things need you", and
+                        // the host was left to reconcile them with the explanation hidden behind
+                        // the "what's counted" toggle. They ARE different — areas are the plan's
+                        // parts, "things" is the queue, and the queue also carries items that
+                        // aren't areas (a risk to watch, a vendor to chase). The delta is exactly
+                        // those: (things) − (open areas). Stating it inline makes the arithmetic
+                        // click — 2 open + 1 to watch = the 3 below — instead of looking like a
+                        // contradiction. The NEXT tile already names the first action, so the
+                        // redundant "next: X" here gives way to the reconciliation when it helps.
+                        const openAreas = Math.max(0, essTotal - essDone);
+                        const extra = Math.max(0, actions.length - openAreas);
+                        if (extra > 0 && openAreas > 0) {
+                          // "plus N more", not "N to watch" — the extras beyond the open areas
+                          // can be a risk to watch OR an active to-do (a vendor to chase, a
+                          // second action on an area). "more" is true of all of them; the point
+                          // is the arithmetic: open areas + the rest = the count in NEXT.
+                          sub = <>areas handled · <b>{openAreas}</b> still open, plus <b>{extra}</b> more — that’s the <b>{actions.length}</b> below</>;
+                        } else {
+                          sub = <>areas handled{setupLine} · next: {nl}</>;
+                        }
                       }
                       else if (openTasks > 0) sub = <>areas handled — but <b>{openTasks}</b> checklist step{openTasks === 1 ? '' : 's'} still on the list. Not done yet.</>;
                       else sub = 'areas handled and the checklist is clear — ready for the day.';
