@@ -358,10 +358,10 @@ button{font-family:inherit}
   position:absolute; top:12px; right:16px; font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em;
   /* WAS var(--bg-band) — the band colour ON the card, a 1.09:1 ghost that was invisible
      (host-reported: "the numbers aren't coming through"). It is a RANK — do #1 first — so
-     it must be readable. --muted at full strength read too loud against the title; pulled
-     back to 0.6 it's a soft, unmistakably-secondary corner numeral (~2.8:1) — present enough
-     to read the rank, quiet enough to sit behind the headline. */
-  color:var(--muted); opacity:.6; line-height:1; pointer-events:none;
+     it must be readable. Dialed by eye with the host across four rounds: full --muted too
+     loud → .6 a touch too faint → settled at .66 (~3.0:1), a quiet-but-present corner
+     numeral that reads the rank without competing with the headline. */
+  color:var(--muted); opacity:.66; line-height:1; pointer-events:none;
 }
 .card-top{display:flex; align-items:center; gap:var(--gap-chip); margin-bottom:11px}/* audit D1: 6→7 (--gap-chip), unifies the chip-gap split */
 .tag{font-size:var(--t-tag); font-weight:750; letter-spacing:.03em; padding:var(--sp-1) 10px; border-radius:var(--r-pill); white-space:nowrap}/* radius audit: was 7px — every other chip (.chip/.lens/.vc-pill) is a full pill; .tag now matches */
