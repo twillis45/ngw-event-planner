@@ -14,6 +14,7 @@ the one before it.
 | 2. Fix sprint + recompute | this session | One ledger, real lead times, registry, snooze, criticals wired. Self-recomputed 7/6/7/7. |
 | 3. Host board (afternoon) | everyday host, info-design, trust, planner pro, Grandmother, first-timer | Hero intuitiveness **4/10** — four competing "what's left" totals; "the app doing math at me." Ruling: never fold risks into the area denominator; a worry is not a chore. |
 | 4. Fresh-eyes re-audit (evening, model change) | 4 adversarial re-auditors told to REFUTE wave 2 | **5/5/5/6 — wave 2's recompute was GENEROUS.** Criticals were snoozeable (dropped `level`), calm filler outranked criticals, one-raise-per-surface, derived hours leaked into 7 outward drafts, two jumbo-bushel counts, "one reader" claims false in two places. |
+| 5. Post-fix re-score (night) | 4 NEW adversarial re-scorers vs 9a92d90; score-critical findings live-verified in Chrome | **4/4/5/6.** Every wave-4 fix CONFIRMED in code + tests — and lowest-sub-dimension scoring then bit on what the fixes sat next to: snooze's lead cap never binds where "not now" renders, the top action snoozes by CATEGORY, four qidx producers bypass the ledger, two legacy surfaces still run the dead PHASE_OFFSET gate, day-of alert tiers are hue-only. |
 
 Every wave-4 confirmed break is fixed (`639c3e8` + the four-agent parallel batch, landed and
 live-verified in the running app: reconciliation counts agree with the queue on two events,
@@ -24,29 +25,58 @@ informal helpers). Full suite: 197 suites / 2,874 tests. The lesson held four ti
 
 ## The scoreboard
 
-| Dimension | Leader | W1 | W2 claim | W4 re-score | After fixes* | 10 needs |
+| Dimension | Leader | W1 | W2 claim | W4 re-score | **W5 re-score** | What set the W5 score (lowest sub-dim wins) |
 |---|---|---|---|---|---|---|
-| Ranking | Linear triage / Superhuman | 3 | 7 | **5** (generous) | ~7 | severity ordering formalized ✅ · calm fillers never beside real work ✅ · snooze lead-cap live ✅ · remaining: per-item defer picker, aging/decay |
-| Coverage | Linear inbox / Asana rollup | 3 | 6 | **5** | ~6 | registry per-item ✅ · reconfirm sweep registered ✅ · remaining: qidx `attn` booleans, comm inbound, positiveAttention — **registry as the enforced gate** |
-| Over time | Things 3 / Google Calendar | 3 | 7 | **5** | ~7 | lead pipeline whole ✅ (3 writers, upNext, taskTiming, legacy DecisionApprovalCenter) · past-event nudge decay ✅ · remaining: per-nudge expiry design, **reminders channel (GATED: keys)** |
-| Visual | Slack badges / Apple HIG | 4 | 7 | **6** | ~7 | AA-clean ✅ · steel tier ✅ · amber drift −3 meanings ✅ · remaining: one 4-level scale across all 7 vocabularies, dock badges (raiseCounts is exported and waiting) |
-| Hero intuitiveness | Things 3 home | — | — | **4 (host board)** | 4 | **HOST CALL PENDING**: one status + one action; split worries out of the count ("2 things to plan · one heads-up"); the reconciliation sentence deleted, not improved |
+| Ranking | Linear triage / Superhuman | 3 | 7 | 5 (generous) | **4** | Ordering/calm/dedup are leader-shaped now — but snooze semantics scored 4: the lead cap never binds where "not now" renders (only unsnoozeable criticals carry `leadDays`), the top action snoozes by CATEGORY (snoozing "Confirm the DJ" later hides "Confirm the caterer"), and App.js heroes still read the pre-sort #1. |
+| Coverage | Linear inbox / Asana rollup | 3 | 6 | 5 | **4** | Fix batch fully confirmed; score set by enforcement (4): the registry is a convention, not a gate — seating/lodging/flight/ride qidx rows are live hand-wired `attn` booleans whose dated deadlines never reach the list — and `raiseCounts()` still has zero badge consumers (4). Registry raises also vanish under a Vendors lens that doesn't even render (live-verified). |
+| Over time | Things 3 / Google Calendar | 3 | 7 | 5 | **5** | taskLead chain verified end-to-end (author→persist→seed→rank→label) — but ChecklistGenerator + TimelineBuilder still run the dead TitleCase PHASE_OFFSET gate (never-overdue), legacy App.js keeps after-8pm UTC day-shifters (weekend chips, Extend writer), and hero-vs-board overdue policy forks (same task, two truths). |
+| Visual | Slack badges / Apple HIG | 4 | 7 | 6 | **6** | Amber repayments + AA contrast all confirmed (muted-on-band genuinely closed). Held at 6 by: day-of alert tiers hue-only (critical ≈ warning in grayscale), 8 distinct status vocabularies with no unified scale, zero badge consumers. 4 minor amber drifts remain (sweep "drafting…", 3 identification tags). |
+| Hero intuitiveness | Things 3 home | — | — | 4 (host board) | **4** | Unchanged — **HOST CALL PENDING**: one status + one action; worries split out of the count; the reconciliation sentence deleted, not improved. |
 
-\* "After fixes" are working estimates pending the next adversarial re-score — the last
-self-recompute was shown generous, so these are deliberately conservative and NOT claimed as
-verified. The fixes behind the ✅ marks ARE verified (unit + live browser), but a
-self-verification is not a re-score; only a fresh refute-me pass moves the numbers.
+W5 verification: every wave-4 fix survived the refute pass (code + 23–90 targeted tests per
+dimension); the score-critical NEW findings were live-verified in Chrome dev — the missing
+Vendors lens on a vendor-heavy event, the pure half-runway "back Jul 25" snooze proposal on
+a 22-day runway, the amber seating row beside a queue that never mentions seating.
+
+## W5's confirmed new findings (the fix queue for the next round)
+
+**Ranking (4):**
+- HIGH — thread real `leadDays` + stable per-item ids through EVERY snoozeable action; top-action
+  snooze id must come from the underlying record, not its category.
+- MED — one #1 everywhere: `selectEventNextAction` must return the band-sorted head.
+- LOW — registry domains (`surface:*`) need DOMAIN_LENS mapping; the lone calm filler shouldn't offer "not now".
+
+**Coverage (4):**
+- HIGH — register the bypass producers (seating, lodging, air, ground, helpers, per-item decisions,
+  per-item COI/payments) and derive qidx tints FROM the ledger; add a completeness test so a new
+  `attn:` boolean fails CI.
+- MED — one-slot ladder producers shadow each other (two overdue payments → one card, or none).
+- MED — ship `raiseCounts()` badges (dock/sections/lenses). LOW — reply-by passing has no producer;
+  helper confirms never raise.
+
+**Over time (5):**
+- HIGH — kill the last two PHASE_OFFSET bypasses (ChecklistGenerator, TimelineBuilder); replace
+  `today8601`/Extend writer UTC math with local ISO; cap Extend at the event date.
+- MED — ONE overdue policy: fold compression forgiveness into taskLead so hero, board, labels,
+  and alerts can never disagree. MED — milestones dueDate still UTC-sliced (UTC+ zones shift a day).
+
+**Visual (6):**
+- MED — encode day-of alert tier in form (tier word or 3px bar, the sweepcard pattern).
+- LOW — last ambers: "drafting…" → `--progress`; day-of/diet/needs tags → neutral; one 4-level
+  severity scale (calm/watch/needs-you/critical) across all 8 chip families.
 
 ## What "10+" concretely requires now
 
-**Buildable, no permission needed** (each traced to a wave-4 finding):
-- Registry as the *enforced* gate: migrate the remaining hand-wired `attn` booleans
-  (seating/lodging/air/ground qidx rows) into raisers; a surface that declares nothing is a
-  visible hole, not a silent one.
-- One severity vocabulary across the seven chip families (vendors gain a red tier;
-  workstreams gain a blocked tier); amber budget enforced by grep-able rule.
-- Dock badges from `raiseCounts()` — the export exists, zero consumers.
-- Aging: an item untouched for N× its half-runway quietly escalates its `why`.
+**Buildable, no permission needed** (all now traced to W5 findings, priority order):
+1. Snooze integrity (Ranking's cap): per-item top-action ids + `leadDays` on every snoozeable
+   action — the two HIGH bugs above are the same fix.
+2. Registry as the *enforced* gate + the bypass producers registered + qidx tints derived
+   from the ledger + a completeness test.
+3. The last time bypasses: PHASE_OFFSET stragglers, legacy UTC day-shifters, one overdue
+   policy.
+4. `raiseCounts()` badges + `surface:*` lens mapping (fixes Ranking F-D and Coverage F-C at once).
+5. One severity vocabulary + day-of tier form encoding; aging: an item untouched for N× its
+   half-runway quietly escalates its `why`.
 
 **Host calls (blocked on you):**
 1. **The hero redesign** — the board's unanimous prescription: one status line, one next

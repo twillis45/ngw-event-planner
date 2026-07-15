@@ -146,10 +146,9 @@ export const SURFACES = [
   // banner only — a host who never saw the banner never learned, and the ranked list never
   // counted it. Same predicate as the shell: a NAMED vendor, inside the last three days
   // (days 0..3), who hasn't answered yet (`reconfirmed72` truthy = answered, same truthy
-  // read as the shell's own skip at ~1635). One deliberate divergence: informal helpers
-  // (`isInformal`) never raise here — a friend bringing the cooler is not put through a
-  // paid-vendor reconfirm ask (host-appropriate vendor UI rule); the shell banner predates
-  // that rule and still counts them.
+  // read as the shell's own skip at ~1635). Informal helpers (`isInformal`) never raise —
+  // a friend bringing the cooler is not put through a paid-vendor reconfirm ask
+  // (host-appropriate vendor UI rule); the shell banner applies the same filter (~1508).
   {
     id: 'vendor-reconfirm',
     label: 'The reconfirm window',
