@@ -59,6 +59,7 @@ import { resolveEffectiveItem } from '../effectiveItem'; // FOOD-2A: read-only n
 import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
+import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -143,8 +144,14 @@ function resolveBulkPurchase(p, decisions, choices, adultGuests) {
   const crabsPerPerson = crabsPerPicker(servingKey);
   const guests = Math.max(1, Math.round(adultGuests));
   const totalUnits = Math.ceil(guests * crabsPerPerson);
-  const perBushel = ladder.approxPerBushel || crabsPerBushel(servingKey);
-  const perHalfBushel = ladder.approxPerHalfBushel || Math.round(crabsPerBushel(servingKey) / 2);
+  // RE-AUDIT (fresh-eyes, 2026-07-14): approxPerBushel used to WIN over the sourced table —
+  // and the jumboMale ladder says 48/bushel (the guide's COLOSSAL figure) while the sourced
+  // jumbo count is 60. The shopping list computed Jumbo Males at 48/bushel while the crab
+  // sheet's defaultCountPerUnit counted 60 — two screens, two jumbo-bushel counts, on the
+  // costliest line item. The ONE sourced table (crabServing) wins; the ladder's approx is
+  // only the fallback for a servingKey the table doesn't know.
+  const perBushel = crabsPerBushel(servingKey) || ladder.approxPerBushel || 72;
+  const perHalfBushel = Math.round(perBushel / 2);
   if (totalUnits <= 12 && ladder.perDz) {
     return { qty: 1, unit: 'dozen', totalUnits, unitLabel: '1 dozen', price: ladder.perDz };
   }
@@ -1068,12 +1075,21 @@ export function playbookRunOfShow(event) {
   // is a real time because it descends from a real decision.
   const tod = String(event.timeOfDay || '').toLowerCase();
   const startMin = parseRosStartMin(event.startTime);
-  const anchorSource = startMin != null ? 'exact' : (ROS_ANCHOR_HOUR[tod] != null ? 'bucket' : null);
+  // RE-AUDIT HOLE (2026-07-14, fresh-eyes pass): this used to treat ANY parseable startTime
+  // as 'exact' — but a new event now arrives with a DERIVED default (startTimeSource:
+  // 'derived', the app's own grounded guess). Counting it as exact meant the Day view printed
+  // unlabeled clock times descending from OUR default, the helper brief shipped those hours
+  // OUTWARD with no strip (the vendor brief strips; the helper brief did not), and the
+  // Day-stage confirm affordance — guarded on rows lacking times — became unreachable. A
+  // derived hour anchors the ORDER (it is the best available anchor) but claims no clock
+  // until the host confirms it. Same rule as the invitation and the vendor brief.
+  const _derived = String(event.startTimeSource || '') === 'derived';
+  const anchorSource = (startMin != null && !_derived) ? 'exact' : (ROS_ANCHOR_HOUR[tod] != null || startMin != null ? 'bucket' : null);
   // The bucket's hour is still used to ORDER and to seed the host's proposal — it is just
   // never printed as if it were a fact.
   const bucketHour = ROS_ANCHOR_HOUR[tod] != null ? ROS_ANCHOR_HOUR[tod] : ROS_ANCHOR_HOUR.afternoon;
   const baseMin = startMin != null ? startMin : bucketHour * 60;
-  const exact = anchorSource === 'exact';
+  const exact = anchorSource === 'exact';   // derived is never exact — see above
 
   // "2h before guests arrive" / "at guests arrive" / "1h30m in" — true regardless of clock.
   const relLabel = (off) => {
@@ -1650,7 +1666,9 @@ function decisionDueDate(eventDate, offset) {
   if (!eventDate || offset === null) return null;
   const d = new Date(eventDate + 'T00:00:00');
   d.setDate(d.getDate() + offset); // offset is negative (T-21d → -21)
-  return d.toISOString().slice(0, 10);
+  // LOCAL date, not toISOString (UTC) — east of Greenwich the UTC slice emitted the
+  // previous day, the same day-shift class the daysUntil convergence killed.
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 function friendlyDate(d) {
   if (!d) return '';
@@ -2198,22 +2216,12 @@ export function playbookFoodPlan(event, opts = {}) {
   // this, a vegetarian was bought their share of the meat protein (full guest count) AND a
   // separate veg main — a real double-buy, safe-direction but real waste.
   const dietCounts = (event.dietCounts && typeof event.dietCounts === 'object') ? event.dietCounts : {};
-  const dietCnt = (k) => Math.max(0, Math.round(Number(dietCounts[k]) || 0));
-  const _manualVegN = dietCnt('Vegetarian') + dietCnt('Vegan');
-  // Roster-derived veg/vegan: a guest whose plate/declared diet is veg or vegan
-  // nets out of the protein and gets the veg main — WITHOUT the host manually
-  // tallying dietCounts, so the redesigned invite's diet picks size the food on
-  // their own. The host's explicit dietCounts still WINS when set (preserves the
-  // manual "pull from RSVPs" path + existing tests); the roster fills in only
-  // when no manual tally exists. Excludes declines; a real roster only.
-  const _rosterVegN = (Array.isArray(event.guests) && event.guests.length > 0 && event.guestMode !== 'count')
-    ? event.guests.filter((g) => {
-        if (!g || /^n/i.test(String(g.rsvp || ''))) return false;
-        const hay = [g.meal, g.needs, ...(Array.isArray(g.diets) ? g.diets : [])].filter(Boolean).join(' ').toLowerCase();
-        return /\bvegan\b|vegetarian|veggie/.test(hay);
-      }).length
-    : 0;
-  const vegN = _manualVegN > 0 ? _manualVegN : _rosterVegN;
+  // RE-AUDIT (fresh-eyes, 2026-07-14): this file carried a full PRIVATE copy of the
+  // veg/vegan detection — its own dietCounts precedence, its own roster regex — while
+  // lib/appetite.js was created as "the one reader" and its header claimed both engines
+  // used it. The copies were value-identical, so no numeric bug yet, but identical-today
+  // is exactly how the crab tables drifted apart. One reader, for real now.
+  const vegN = vegCount(event);
 
   // PORTION SKEW — appetite-driven food (the PROTEINS) is over-bought when the crowd skews to
   // kids / light eaters / vegetarians. event.kidsCount (default 0 → today's flat math, byte-
@@ -2230,10 +2238,10 @@ export function playbookFoodPlan(event, opts = {}) {
   // Reading whichever one actually applies avoids both legacy's roster-mode gap (kidsCount
   // was never set there) and double-counting against a roster that already has real data.
   const _rosterMode = Array.isArray(event.guests) && event.guests.length > 0 && event.guestMode !== 'count';
-  const _kids = _rosterMode
-    ? Math.max(0, Math.round(Number(sizing.band && sizing.band.kids) || 0))
-    : Math.max(0, Math.round(Number(event.kidsCount) || 0));
-  const KID_PROTEIN_FACTOR = 0.4;
+  // Shared reader; the attendance band's already-summed kid count is passed through so
+  // roster mode doesn't re-sum the roster (appetite.kidCount's bandKids parameter exists
+  // for exactly this call site).
+  const _kids = kidCount(event, _rosterMode ? (sizing.band && sizing.band.kids) : undefined);
   const proteinGuests = (_kids > 0 || vegN > 0) ? Math.max(1, guests - _kids * (1 - KID_PROTEIN_FACTOR) - vegN) : guests;
   // The appetite-driven mains a kid/light eater eats less of. Plural-tolerant on purpose
   // (matches "crabs", "ribs", "wings") — broader than the sourcing isProteinItem, whose
@@ -2414,8 +2422,19 @@ export function playbookFoodPlan(event, opts = {}) {
         // than bend the template, the crab line states its own reasoning, in the same
         // words the crab plan uses, so the two screens now read as one number with one
         // explanation. Every other line keeps `basis` untouched.
+        // RE-AUDIT: the note used to print targetCrabsPerPerson × crabEatingHeadcount while
+        // the QUANTITY was computed from effectivePickerCount (kids/vegetarians discounted) —
+        // "4 crabs a picker × 18 pickers" (=72) beside a quantity built from ~15 effective
+        // pickers. Shows-its-work means the stated math REPRODUCES the number next to it.
         basisNote: _crabPlanQty != null
-          ? `${_crabOrder.targetCrabsPerPerson} crabs a picker × ${_crabOrder.crabEatingHeadcount} ${_crabOrder.crabEatingHeadcount === 1 ? 'picker' : 'pickers'} — sized by your crab plan`
+          ? (() => {
+              const eff = Math.round(Number(_crabHeads) * 10) / 10;
+              const raw = Number(_crabOrder.crabEatingHeadcount);
+              const who = eff !== raw
+                ? `${eff} effective ${eff === 1 ? 'picker' : 'pickers'} (kids and non-shellfish eaters counted lighter, of ${raw})`
+                : `${raw} ${raw === 1 ? 'picker' : 'pickers'}`;
+              return `${_crabOrder.targetCrabsPerPerson} crabs a picker × ${who} — sized by your crab plan`;
+            })()
           : null,
         qtyOverridden: qOver != null, baseQty,
         // DENOMINATORS-2 (7× food-cost band): both ends price the SAME ceiling-sized

@@ -299,10 +299,8 @@ export function buildCrabPlan(event) {
 // forced two-size guess would be inventing detail the host hasn't chosen yet;
 // the returned lines are plain editable stubs the host can split further.
 // KID_CRAB_FACTOR removed — it was 0.4, the same number the food engine calls
-// KID_PROTEIN_FACTOR. Two names for one heuristic is how they drift apart.
-// the food engine uses for other appetite-driven mains (KID_PROTEIN_FACTOR in
-// playbooks/index.js); kept as a local constant since this file is a leaf
-// module with no engine imports.
+// KID_PROTEIN_FACTOR. Two names for one heuristic is how they drift apart; both
+// engines now import the ONE constant from lib/appetite.js.
 // The ONE effective picker count — kid-discounted and vegetarian-aware. Exported on the
 // plan (as `effectivePickerCount`) so the food row and the crab sheet cannot disagree
 // about how many mouths the crabs are being sized for. They did: the food row applied

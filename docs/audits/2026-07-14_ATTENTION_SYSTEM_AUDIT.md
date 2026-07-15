@@ -15,7 +15,40 @@ Score = the **lowest** dimension, not the average.
 | Attention over time (decay/escalation) | Things 3, Google Calendar, Linear cycles | **3/10** | **7/10** | No snooze; nudges never expire |
 | How attention looks (visual semantics) | Linear, Slack badges, Apple HIG | **4/10** | **7/10** | Amber still carries several meanings; no dock badges |
 
-Scores recomputed against the code as it now stands, not tagged onto the old numbers. The
+Scores recomputed against the code as it now stands, not tagged onto the old numbers.
+
+## Fresh-eyes re-audit (model change, 2026-07-14 evening)
+
+Four adversarial re-auditors (new model, instructed to REFUTE every claim above) re-derived
+the scores with no anchor: **Ranking 5, Coverage 5, Over-time 5, Visual 6 — the recomputed
+7/6/7/7 above was GENEROUS.** Their confirmed breaks, all since fixed (see commit "Fresh-eyes
+re-audit: fix the confirmed breaks"):
+
+- **The app's worst criticals were the one snoozeable item.** The reactive top action rebuild
+  DROPPED `level`, so "Send payment to X" carried no 'critical' and rendered a "not now"
+  button. Registry criticals were safe; the top of the list was not.
+- **"Criticals lead" was false against calm filler** — registry criticals spliced at index 1
+  behind whatever the ladder returned, including "Event on track. Nothing urgent right now."
+- **One raise per surface**: three high risks collapsed to one card, and snoozing the DJ's
+  arrival ask silently hid the caterer's (shared snooze key). Now per-item.
+- **A derived start time leaked into seven outward drafts** via `timePhrase`, and the run of
+  show treated a derived anchor as exact — unlabeled invented clocks on the Day view, shipped
+  outward in the helper brief. Both gated; the Day view now says "We pencilled in 3:00 PM —
+  not you" with a one-tap confirm.
+- **Two jumbo-bushel counts**: the priceLadder's approxPerBushel (48 — the colossal figure)
+  beat the sourced table (60). The sourced table wins now.
+- **The appetite "one reader" claim was false** — playbooks/index.js kept a full private
+  veg/kid copy (value-identical, drift channel intact). Wired for real.
+- Also: risks now raise at ATTENTION not critical (an authored contingency is not an
+  emergency — it was opening every new outdoor event with "Have a plan for: rain" as #1),
+  the vendor-estimate category match is keyword-normalized ('Catering' finds 'Caterer / BBQ
+  pitmaster'), upNext reads the one lead reader, seed events carry leadDays, "N months out"
+  labels parse, day-of raises route to the Day stage, expired snoozes stop double-listing,
+  and two east-of-UTC date emitters (milestones, decision due dates, Saturday chips) write
+  local dates.
+
+The standing lesson held a fourth time: the prior session's own commit messages were treated
+as claims, and several did not survive contact with the code. The
 remaining caps are all *structural* rather than dishonest — the app no longer says things
 that aren't true; it is now merely less complete than a leader.
 

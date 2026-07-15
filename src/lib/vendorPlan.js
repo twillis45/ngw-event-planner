@@ -17,6 +17,7 @@
 //     always answer "why is this more/less expensive than the base range"
 
 import { getPlaybook, resolveAnsweredCopy, DESTINATION_VENDOR_CATEGORIES } from './playbooks';
+import { normalizeCategory } from './vendorAccountability/playbooks';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const fmt = (n) => '$' + Math.round(Math.abs(n)).toLocaleString();
@@ -53,7 +54,21 @@ export function buildVendorPlan(event, opts = {}) {
   const rushFactor = num(rush.multiplier) > 0 ? num(rush.multiplier) : 1;
 
   const rows = categories.map((cat) => {
-    const match = booked.find(v => v && String(v.category || '').trim().toLowerCase() === String(cat.category || '').trim().toLowerCase());
+    // RE-AUDIT (fresh-eyes, 2026-07-14): this was case-insensitive EQUALITY, which only ever
+    // matched vendors created from the V2 suggestion row itself. A vendor seeded as
+    // 'Catering' never matched a playbook row authored 'Caterer / BBQ pitmaster' — so the
+    // estimate silently hid AND the suggestion never retired: the host was told to hire a
+    // caterer while their caterer sat one row up. normalizeCategory (the accountability
+    // engine's own keyword matcher) maps both to 'catering'. Two categories that both
+    // normalize to 'other' still require literal equality — 'other' ≠ 'other-shaped'.
+    const match = booked.find(v => {
+      if (!v) return false;
+      const a = String(v.category || '').trim().toLowerCase();
+      const b = String(cat.category || '').trim().toLowerCase();
+      if (a === b) return true;
+      const na = normalizeCategory(a), nb = normalizeCategory(b);
+      return na === nb && na !== 'other';
+    });
     const hasRealCost = !!(match && num(match.cost) > 0);
 
     const perGuest = String(cat.costUnit || '').trim().toLowerCase() === 'per guest';

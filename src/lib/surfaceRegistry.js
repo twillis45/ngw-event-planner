@@ -67,8 +67,14 @@ export const SURFACES = [
         // generic fallback "A risk needs a plan". The TRIGGER is the risk in the host's own
         // terms ("Crabs sell out, wrong size, or price spikes"); the MITIGATION is what to do
         // about it. Reading the record instead of assuming its shape.
+        // 'attention', NOT 'critical' (re-audit + host board, 2026-07-14). An authored
+        // playbook risk exists from the moment the event is created — raising it 'critical'
+        // made every brand-new outdoor event OPEN with "Have a plan for: rain" as its #1,
+        // outranking "add your guest list". A worry is not a chore, and a static contingency
+        // is not an emergency. 'critical' is reserved for REACTIVE raises: a payment overdue,
+        // a vendor who hasn't shown, a same-hour conflict.
         .map((r) => ({
-          severity: 'critical',
+          severity: 'attention',
           title: `Have a plan for: ${r.trigger}`,
           why: r.mitigation || null,
           route: { tab: 'Risks', riskId: r.id },
@@ -152,7 +158,10 @@ export const SURFACES = [
         severity: a.tier === 'critical' ? 'critical' : 'attention',
         title: a.headline || 'Something needs you today',
         why: a.move || null,
-        route: { tab: a.navTo === 'Vendors' ? 'Vendors' : 'Event Day Schedule' },
+        // Always the Day stage. The old branch emitted a bare {tab:'Vendors'} with no
+        // vendorId — the tab-top landing the house rule forbids. On the day, the Day stage
+        // IS where these alerts are actionable.
+        route: { tab: 'Event Day Schedule' },
       }));
     },
   },

@@ -142,7 +142,9 @@ const mkTest = (id, name, typeRe, plus, extras) => {
       { id: id + '-g4', name: 'Aunt Cee', rsvp: '' },
     ],
     // Realistic mid-flight: early steps done, day-adjacent steps open.
-    timeline: rows.map((r, i) => ({ id: r.id, week: r.week || '', task: r.task || '', done: i < Math.ceil(rows.length / 2), owner: '', category: r.category || '' })),
+    // leadDays carried (re-audit, 2026-07-14): this was the THIRD checklist writer that
+    // dropped it — seed events fell back to prose-label parsing and could never read overdue.
+    timeline: rows.map((r, i) => ({ id: r.id, week: r.week || '', leadDays: r.leadDays != null ? r.leadDays : null, task: r.task || '', done: i < Math.ceil(rows.length / 2), owner: '', category: r.category || '' })),
     ...extras,
   };
 };

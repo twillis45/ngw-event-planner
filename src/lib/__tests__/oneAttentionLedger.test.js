@@ -78,10 +78,17 @@ describe('one ledger — nextActions cannot be blind to what phaseProgress knows
     expect(titles.join(' | ')).not.toMatch(/rain/i);
   });
 
-  test('no domain is claimed twice — the foundation and the phase ledger dedupe', () => {
+  test('no item is claimed twice — ids are unique across every producer', () => {
+    // UPDATED (re-audit F4): the registry now raises PER ITEM (two overdue arrival asks are
+    // two actions), so two raises legitimately share a 'surface:X' domain. The uniqueness
+    // contract lives on the ID — which is also what snooze keys against, so a collision here
+    // would let snoozing one item silently hide another.
     const actions = eventPlan(feast()).nextActions;
-    const domains = actions.map(a => a.domain).filter(Boolean);
-    expect(domains.length).toBe(new Set(domains).size);
+    const ids = actions.map(a => a.id).filter(Boolean);
+    expect(ids.length).toBe(new Set(ids).size);
+    // Foundation/phase DOMAINS still dedupe among themselves (one row per plan area).
+    const planDomains = actions.map(a => a.domain).filter(d => d && !String(d).startsWith('surface:'));
+    expect(planDomains.length).toBe(new Set(planDomains).size);
   });
 
   test('a past event still says nothing — the wipe survives the merge', () => {

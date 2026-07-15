@@ -48,6 +48,9 @@ describe('surfaces that used to be silent now reach the list', () => {
     const ev = feast();
     const risks = raiseAll(ev).filter(r => r.surface === 'risks');
     if (risks.length) {
+      // Risks raise at ATTENTION now (a worry is not a chore) — still in the list, no
+      // longer allowed to open a brand-new event as its #1.
+      expect(risks[0].severity).toBe('attention');
       const titles = eventPlan(ev).nextActions.map(a => String(a.title || ''));
       expect(titles).toContain(risks[0].title);
     } else {

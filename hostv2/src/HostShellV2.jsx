@@ -37,7 +37,8 @@ import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
-import { applySnooze, canSnooze, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
+import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
+import { applySnooze, canSnooze, isSnoozed, proposedSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -1041,15 +1042,21 @@ export default function HostShellV2() {
     } catch {}
     try {
       (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).forEach(t => {
-        const m = /T-(\d+)\s*d/i.exec(String(t.week || ''));
+        // RE-AUDIT (fresh-eyes, 2026-07-14): this still ran the dead /T-(\d+)d/ regex against
+        // `t.week` — which is PROSE ('Week of'), so it matched nothing and every checklist
+        // step reached "Coming up" with due=null, status 'unknown', sorted last. The one
+        // reader (lib/taskLead) existed, was imported by this very file, and this consumer
+        // was left on the vocabulary the lead-time fix killed. leadDays is negative (T-5d →
+        // -5); taskTimeStatus wants the positive lead.
+        const lead = (() => { try { return taskLeadDays(t); } catch { return null; } })();
         let due = null, dd = null;
-        if (m && event.date) {
-          const d0 = new Date(event.date + 'T12:00:00'); d0.setDate(d0.getDate() - parseInt(m[1], 10));
-          due = d0.toISOString().slice(0, 10);
+        if (lead != null && event.date) {
+          const d0 = new Date(event.date + 'T12:00:00'); d0.setDate(d0.getDate() + lead);
+          due = `${d0.getFullYear()}-${String(d0.getMonth() + 1).padStart(2, '0')}-${String(d0.getDate()).padStart(2, '0')}`;
           try { dd = daysUntil(due); } catch { dd = null; }
         }
         const dte = (() => { try { return daysUntil(event.date); } catch { return null; } })();
-        const status = m ? taskTimeStatus(parseInt(m[1], 10), dte) : 'unknown';
+        const status = lead != null ? taskTimeStatus(-lead, dte) : 'unknown';
         out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step', status });
       });
     } catch {}
@@ -3779,7 +3786,10 @@ export default function HostShellV2() {
                             const sats = [];
                             const d = new Date(year, month, 1);
                             while (d.getMonth() === month) {
-                              if (d.getDay() === 6) sats.push(d.toISOString().slice(0, 10));
+                              // LOCAL format, not toISOString (UTC): east of Greenwich the UTC
+                              // slice shifts a local-midnight Saturday to FRIDAY's date — the
+                              // chip would say Saturday and write the day before.
+                              if (d.getDay() === 6) sats.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
                               d.setDate(d.getDate() + 1);
                             }
                             return (
@@ -4679,7 +4689,7 @@ export default function HostShellV2() {
                   be honest: it means nothing OPEN, and the set-aside pile is shown right below
                   it, not hidden. */}
               {(() => {
-                const sleeping = (plan.nextActions || []).filter(a => a && a.id && snoozedUntil(event, a.id) && String(a.level || '') !== 'critical');
+                const sleeping = (plan.nextActions || []).filter(a => a && a.id && isSnoozed(event, a.id) && String(a.level || '') !== 'critical');
                 if (!sleeping.length) return null;
                 return (
                   <div style={{ marginTop: 'var(--sp-4)' }}>
@@ -5200,27 +5210,41 @@ export default function HostShellV2() {
                     // the host's OWN time-of-day word (their statement, made precise — and we
                     // say so). With neither, we propose NOTHING rather than invent.
                     const prop = (() => { try { return proposeStartTime(event, wx); } catch (_e) { return null; } })();
+                    // RE-AUDIT (fresh-eyes, 2026-07-14): with a DERIVED default start time the
+                    // run of show now honestly shows relative labels — which makes THIS block
+                    // reachable in a third state: a time exists, but it is OURS. proposeStartTime
+                    // returns null then (a time is set), so the old copy fell through to
+                    // "no clock" — wrong. Say what is actually true: we set it, here's why,
+                    // one tap makes it yours and puts the whole day on the clock.
+                    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
                     return (
                       <div className="later-row" style={{ margin: '0 0 var(--sp-3)', background: 'var(--card)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px' }}>
                         <p className="grounding" style={{ margin: 0 }}>
-                          These moments are in order but not on a clock — set a start time and every line below becomes a real one.
+                          {derived
+                            ? <><b>We pencilled in {(() => { const [h, m] = String(event.startTime).split(':').map(Number); const ap = h >= 12 ? 'PM' : 'AM'; return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ap}`; })()} — not you.</b> Confirm it and every line below becomes a real clock time.</>
+                            : <>These moments are in order but not on a clock — set a start time and every line below becomes a real one.</>}
                         </p>
                         <div className="actions-row" style={{ marginTop: 8, alignItems: 'center' }}>
                           <span className="of">guests arrive:</span>
                           <input className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                             value={event.startTime || ''}
-                            onChange={e => patchEvent({ startTime: e.target.value }, 'Start time set — the whole day reads from it now.')}
+                            onChange={e => patchEvent({ startTime: e.target.value, startTimeSource: 'host' }, 'Start time set — the whole day reads from it now.')}
                             aria-label="What time guests arrive" />
-                          {prop && (
-                            <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm },
+                          {derived ? (
+                            <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                              'Start time confirmed — the whole day reads from it now.')}>
+                              that’s right
+                            </button>
+                          ) : prop && (
+                            <button className="mini" onClick={() => patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' },
                               'Start time set — the whole day reads from it now.')}>
                               use {prop.label}
                             </button>
                           )}
                         </div>
-                        {prop && (
-                          <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>
-                        )}
+                        {derived && event.startTimeWhy
+                          ? <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{event.startTimeWhy}</p>
+                          : prop && <p className="grounding" style={{ margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>}
                       </div>
                     );
                   })()}
@@ -8895,7 +8919,16 @@ export default function HostShellV2() {
                                   and says so. */}
                               {!v.cost && (() => {
                                 const row = ((vendorPlan && vendorPlan.categories) || [])
-                                  .find(c => c && String(c.category || '').toLowerCase() === String(v.category || '').toLowerCase());
+                                  // Keyword-normalized (same matcher vendorPlan uses): 'Catering'
+                                  // must find the row authored 'Caterer / BBQ pitmaster', or the
+                                  // estimate silently hides for every legacy-seeded vendor.
+                                  .find(c => {
+                                    if (!c) return false;
+                                    const a = String(c.category || '').toLowerCase(), b = String(v.category || '').toLowerCase();
+                                    if (a === b) return true;
+                                    const na = normalizeCategory(a), nb = normalizeCategory(b);
+                                    return na === nb && na !== 'other';
+                                  });
                                 const copy = row && row.estimateCopy;
                                 if (!copy || /from your quote/i.test(copy)) return null;
                                 return (

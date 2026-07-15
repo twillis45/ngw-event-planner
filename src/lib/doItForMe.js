@@ -27,8 +27,19 @@ export function fmtLongDate(iso) {
 
 // The time the host actually gave us — an explicit start time if present, else the
 // rough part-of-day from create. Never invented.
+//
+// RE-AUDIT HOLE (2026-07-14, fresh-eyes pass): "never invented" was false. Every new event
+// now arrives with a DERIVED default startTime (startTimeSource:'derived' — the app's own
+// grounded guess, not the host's word), and this read it raw. Seven outward drafts —
+// draftInvite, draftGuestBrief, draftRsvpChase, draftDayBeforeDetails, draftVendorReconfirm,
+// draftGuestUpdate, draftGettingHereNote — were naming OUR invented hour to guests and
+// vendors, while the vendor-brief payload and the invitation carefully stripped it. The UI
+// literally promises "your invite and your vendor briefs won't name an hour until you say
+// it's right"; the message drafts said the hour anyway. A derived hour now falls through to
+// the bucket phrase ("in the afternoon") — which IS the host's own word.
 export function timePhrase(event) {
-  const t = (event && (event.startTime || '')).trim && event.startTime ? String(event.startTime).trim() : '';
+  const derived = !!(event && String(event.startTimeSource || '') === 'derived');
+  const t = (!derived && event && event.startTime) ? String(event.startTime).trim() : '';
   if (t) return t;
   const tod = (event && event.timeOfDay ? String(event.timeOfDay) : '').toLowerCase().trim();
   if (['morning', 'afternoon', 'evening', 'night'].includes(tod)) return `in the ${tod}`;

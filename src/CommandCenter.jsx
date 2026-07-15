@@ -187,7 +187,11 @@ function overdueDays(task, eventDate) {
 export function taskTiming(task, eventDate) {
   if (!task || !eventDate) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
   const daysBefore = typeof task.offsetDays === 'number' ? task.offsetDays
-    : (task.week in PHASE_OFFSET ? -PHASE_OFFSET[task.week] : null);
+    // leadDays is the persisted authored lead (negative, T-5d → -5); offsetDays and the
+    // legacy TitleCase week-map are older vocabularies. Without this read, playbook tasks
+    // (prose weeks) got blank timing labels even after the overdue math was fixed.
+    : (Number.isFinite(Number(task.leadDays)) ? -Number(task.leadDays)
+    : (task.week in PHASE_OFFSET ? -PHASE_OFFSET[task.week] : null));
   if (daysBefore == null) return { dueDate: null, daysUntil: null, overdue: false, label: '', badge: '', num: '' };
   const due = new Date(eventDate + 'T00:00:00');
   due.setDate(due.getDate() - daysBefore);
@@ -1624,13 +1628,24 @@ export function eventPlan(event, ctx = null) {
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
+    // RE-AUDIT F1 (fresh-eyes, 2026-07-14): `level` was DROPPED here. The selector stamps
+    // level:'critical' on overdue payments, decisions and COI — and this rebuild threw the
+    // stamp away, so canSnooze() saw no 'critical' and rendered "not now" on "Send payment
+    // to X": the app's single worst item was the one item a host could silence. The doctrine
+    // line — a critical is never a someday — was false exactly at the top of the list.
+    level: top.level || null,
+    category: top.category || null,
     done: false,
   } : null;
 
   // Map the top action's category to a foundational domain so we can dedupe — e.g. the
   // engine's 'readiness' budget step and the foundational 'budget' domino are the same
   // thing and must not both appear.
-  const CATEGORY_TO_DOMAIN = { start: 'guests', readiness: 'budget' };
+  // RE-AUDIT F3: the reactive vendor tier ("Confirm X.", category 'vendor') and the phase
+  // ledger's vendors item ("Follow up with X") are the SAME gap from the same
+  // isVendorConfirmed read — but 'vendor' ≠ 'vendors' so the dedup missed and one vendor got
+  // two cards. Mapped.
+  const CATEGORY_TO_DOMAIN = { start: 'guests', readiness: 'budget', vendor: 'vendors' };
   const topDomain = topAction ? (CATEGORY_TO_DOMAIN[top.category] || top.category) : null;
 
   const seen = new Set(topDomain ? [topDomain] : []);
@@ -1739,13 +1754,25 @@ export function eventPlan(event, ctx = null) {
     const raised = raiseAll(event) || [];
     const criticals = raised.filter(r => r.severity === 'critical');
     const rest = raised.filter(r => r.severity !== 'critical');
-    let insertAt = topAction ? 1 : 0;   // the reactive top action keeps the lead
+    // RE-AUDIT F2: `insertAt = topAction ? 1 : 0` put every registry critical BEHIND the
+    // reactive top — whatever it was. The selector always returns something, including calm
+    // filler ("Event on track. Nothing urgent right now."), so the hero could read "2 things
+    // need you · first: Event on track…" with a CRITICAL parked second. Criticals lead over
+    // ANY non-critical top; a reactive top that is itself critical (a payment) stays first.
+    let insertAt = (topAction && topAction.level === 'critical') ? 1 : 0;
     for (const r of [...criticals, ...rest]) {
-      const domain = 'surface:' + r.surface;
-      if (seen.has(domain)) continue;
-      seen.add(domain);
+      // RE-AUDIT F4: the dedup key was 'surface:' + surface — ONE raise per surface, so two
+      // overdue arrival asks collapsed to one and snoozing the DJ's ask silently hid the
+      // caterer's (both wrote event.snoozed['surface:vendor-arrivals']). The key — and the
+      // action id snooze writes against — is now per ITEM: the row it routes to, or the
+      // normalized title. Registry items also join the title dedup like everything else.
+      const itemKey = 'surface:' + r.surface + ':' + (
+        (r.route && (r.route.vendorId || r.route.riskId)) || titleKey(r.title)
+      );
+      if (seen.has(itemKey) || seenTitles.has(titleKey(r.title))) continue;
+      seen.add(itemKey); seenTitles.add(titleKey(r.title));
       const action = {
-        id: domain, domain,
+        id: itemKey, domain: 'surface:' + r.surface,
         title: r.title,
         consequence: r.why,
         route: r.route, primaryRoute: r.route,
@@ -1753,9 +1780,6 @@ export function eventPlan(event, ctx = null) {
         level: r.severity, category: 'surface',
         done: false, source: 'surfaceRegistry', surface: r.surface,
       };
-      // A CRITICAL raised by a surface (a vendor who hasn't arrived, a high risk with no
-      // plan) belongs above the foundational dominoes — "Set your budget" does not outrank
-      // "Your caterer hasn't shown up".
       if (r.severity === 'critical') { nextActions.splice(insertAt++, 0, action); }
       else nextActions.push(action);
     }

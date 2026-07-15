@@ -139,10 +139,16 @@ describe('eventPlan — ordering, dedup, and the #1 = the hero everywhere', () =
     expect(String(plan.nextActions[0].title).toLowerCase()).toMatch(/budget/);
   });
 
-  test('no domain appears twice in nextActions (deduped by domain)', () => {
+  test('no item appears twice — ids unique; plan domains dedupe among themselves', () => {
+    // UPDATED (re-audit F4, 2026-07-14): the surface registry now raises PER ITEM — three
+    // high playbook risks are three actions sharing the 'surface:risks' domain, by design
+    // (one-per-surface was silently dropping the second and third). Uniqueness lives on the
+    // ID (which snooze also keys against); plan-area domains still dedupe one-per-area.
     const plan = eventPlan(baseBBQ({ guests: [{ rsvp: 'Yes' }] }));
-    const domains = plan.nextActions.map(a => a.domain);
-    expect(new Set(domains).size).toBe(domains.length);
+    const ids = plan.nextActions.map(a => a.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    const planDomains = plan.nextActions.map(a => a.domain).filter(d => d && !String(d).startsWith('surface:'));
+    expect(new Set(planDomains).size).toBe(planDomains.length);
   });
 
   test('selectEventNextAction === eventPlan.nextActions[0] (same #1) — acceptance #4', () => {

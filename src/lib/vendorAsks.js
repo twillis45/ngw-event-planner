@@ -45,6 +45,14 @@ export function arrivalAsk(vendor, event, now) {
   try { pb = getVendorPlaybook(v.category); } catch (_e) { pb = null; }
   const promise = ((pb && pb.commonPromises) || []).find((p) => p && ARRIVAL_KEYS.has(p.key));
   if (!promise) return null;                                 // no authored lead ⇒ no deadline
+  // RE-AUDIT (fresh-eyes, 2026-07-14): getVendorPlaybook falls back to the generic 'other'
+  // playbook for any unrecognized category — and OTHER authors arrival_time at 7 days. So
+  // the "no authored lead ⇒ no deadline" branch above was effectively unreachable, and the
+  // copy attributed the 7-day norm to the CATEGORY: "crab house (steam & season crabs for
+  // pickup) usually locks the arrival time 7 days out" — a norm nobody authored for crab
+  // houses. The deadline is still worth surfacing (a week out is a fair general rule), but
+  // it must OWN being a rule of thumb, not wear the category's name.
+  const generic = (pb && pb.categoryKey === 'other');
 
   const daysBefore = Math.max(0, Number(promise.daysBefore) || 0);
   const toEvent = daysUntil(ev.date, now);
@@ -55,11 +63,12 @@ export function arrivalAsk(vendor, event, now) {
   base.setDate(base.getDate() - daysBefore);
   const dueIso = `${base.getFullYear()}-${String(base.getMonth() + 1).padStart(2, '0')}-${String(base.getDate()).padStart(2, '0')}`;
 
-  // Lowercase a normal word ("Catering" → "catering") but NEVER an acronym: a blanket
-  // toLowerCase turned "DJ" into "dj usually locks it", which reads like a typo in copy the
-  // host is meant to trust.
+  // Casing: lowercase ONLY a single simple word ("Catering" → "catering"). A blanket
+  // toLowerCase turned "DJ" into "dj"; the all-caps guard then still mangled mixed strings
+  // ("AV / Tech" → "av / tech"). Anything that isn't one plain capitalized word keeps the
+  // host's own casing.
   const raw = String(v.category || 'vendor');
-  const kind = /^[A-Z0-9&/ ]+$/.test(raw) ? raw : raw.toLowerCase();
+  const kind = /^[A-Z][a-z]+$/.test(raw) ? raw.toLowerCase() : raw;
   const overdue = dueInDays < 0;
   const late = Math.abs(dueInDays);
 
@@ -68,9 +77,13 @@ export function arrivalAsk(vendor, event, now) {
     label: overdue
       ? `${late} ${late === 1 ? 'day' : 'days'} past when you'd want it`
       : dueInDays === 0 ? 'wanted today' : `wanted in ${dueInDays} ${dueInDays === 1 ? 'day' : 'days'}`,
-    why: overdue
-      ? `${v.name} still hasn't given you an arrival time, and ${kind} usually locks it ${daysBefore} ${daysBefore === 1 ? 'day' : 'days'} out — that was ${late} ${late === 1 ? 'day' : 'days'} ago. Ask them.`
-      : `${kind} usually locks the arrival time ${daysBefore} ${daysBefore === 1 ? 'day' : 'days'} before the event. Only ${v.name} can tell you the hour — here's the ask.`,
+    why: generic
+      ? (overdue
+        ? `${v.name} still hasn't given you an arrival time. Most vendors lock it about a week out — a rule of thumb, not a ${kind} norm — and that was ${late} ${late === 1 ? 'day' : 'days'} ago. Ask them.`
+        : `Most vendors lock their arrival time about a week out — a rule of thumb, not a ${kind} norm. Only ${v.name} can tell you the hour — here's the ask.`)
+      : (overdue
+        ? `${v.name} still hasn't given you an arrival time, and ${kind} usually locks it ${daysBefore} ${daysBefore === 1 ? 'day' : 'days'} out — that was ${late} ${late === 1 ? 'day' : 'days'} ago. Ask them.`
+        : `${kind} usually locks the arrival time ${daysBefore} ${daysBefore === 1 ? 'day' : 'days'} before the event. Only ${v.name} can tell you the hour — here's the ask.`),
   };
 }
 

@@ -58,8 +58,15 @@ export function taskLeadDays(task) {
   if (/^T-?0|^T0/i.test(String(task.when || ''))) return 0;
   // 3. The prose bucket, for tasks written before leadDays existed. Lossy but honest:
   //    it is the label's own bucket, not a guess dressed up as precision.
-  const lead = LABEL_TO_LEAD[String(task.week || '').trim().toLowerCase()];
-  return lead == null ? null : lead;
+  const label = String(task.week || '').trim().toLowerCase();
+  const lead = LABEL_TO_LEAD[label];
+  if (lead != null) return lead;
+  // taskPhaseLabel can emit ANY "N months out" (7, 9, 11…), not just the ones the table
+  // lists — seed events surfaced '7 months out' and got a null lead. Same bucket logic,
+  // generic: a month is ~30 days, lossy but the label's own claim.
+  const mm = /^(\d+)\s*months? out$/.exec(label);
+  if (mm) return -(Number(mm[1]) * 30);
+  return null;
 }
 
 /**
