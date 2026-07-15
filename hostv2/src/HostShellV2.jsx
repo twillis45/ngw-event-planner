@@ -20,6 +20,8 @@ const PRICE_VINTAGE = (() => {
   try { const [y, m] = String(PRICE_TABLE_META.asOf || '').split('-'); if (!y || !m) return ''; return new Date(Number(y), Number(m) - 1, 15).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); } catch { return ''; }
 })();
 import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '@app/lib/vendorEstimator';
+import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
+import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
@@ -109,6 +111,85 @@ import { APP_EVENTS, LS_PATCH, LS_CUSTOMS, LS_LAST_EVENT, mintEventId, b64encode
 const fmt = n => '$' + Math.round(n).toLocaleString('en-US');
 
 const REDUCE_MOTION = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Agent Opportunity Audit P0 — inbound vendor-reply parser, host-shell edition.
+// Paste what the vendor said → the server extracts the stated fields → the host
+// reviews a diff and applies only what they keep, through writeVendor (patch +
+// honest log in one call). Reuses the SAME shared core (@app/lib/vendorReplyParse)
+// and backend endpoint as the planner cockpit; only the chrome is hostv2's.
+// "Apply reviewed extraction" (06_AI_GROUNDING) — it proposes, never auto-writes.
+function VendorReplyParserV2({ vendor, event, writeVendor }) {
+  const [replyText, setReplyText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [result, setResult] = useState(null);
+  if (!isAiProxyConfigured() || typeof writeVendor !== 'function') return null;
+
+  const analyze = async () => {
+    if (busy) return;
+    setBusy(true); setErr(null); setResult(null);
+    try {
+      const data = await parseVendorReply(replyText, { vendorName: vendor.name, vendorCategory: vendor.category, eventName: event?.name });
+      setResult({ rows: buildReplyDiff(data.fields, vendor), confidence: data.confidence, disclaimer: data.disclaimer });
+    } catch (e) { setErr(e.message || 'Could not read that message — try again.'); }
+    finally { setBusy(false); }
+  };
+  const toggleRow = (i) => setResult(r => ({ ...r, rows: r.rows.map((row, j) => j === i ? { ...row, accepted: !row.accepted } : row) }));
+  const acceptedCount = result ? result.rows.filter(r => r.accepted).length : 0;
+  const apply = () => {
+    const patch = buildPatch(result.rows);
+    if (!Object.keys(patch).length) return;
+    writeVendor(vendor.id, patch, replyLogEntry(result.rows));
+    setResult(null); setReplyText('');
+  };
+  const fmtV = (t, v) => (v === null || v === undefined || v === '') ? null : t === 'bool' ? (v === true ? 'yes' : null) : t === 'money' ? ('$' + v) : String(v);
+
+  return (
+    <div style={{ margin: '10px 0', padding: 'var(--sp-2) 12px', borderRadius: 10, background: 'var(--steel-tint)', border: '1px solid var(--steel-soft)' }}>
+      <div className="of" style={{ marginBottom: 6 }}>Log what the vendor said</div>
+      <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginBottom: 8, lineHeight: 1.5 }}>
+        Paste their email or text — we’ll pull out times, contacts, counts and payment status for you to review. Nothing saves until you apply it.
+      </div>
+      <textarea className="field" rows={3}
+        style={{ width: '100%', boxSizing: 'border-box', resize: 'vertical', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px' }}
+        placeholder="e.g. We'll arrive at 2pm, deposit received, final count 85. Day-of contact Dana, 301-555-0134."
+        value={replyText} onChange={e => setReplyText(e.target.value)} aria-label="Paste the vendor's message" />
+      <div className="actions-row" style={{ marginTop: 8, alignItems: 'center', gap: 8 }}>
+        <button className="mini" onClick={analyze} disabled={busy || !replyText.trim()}>{busy ? 'Reading…' : 'Read the message'}</button>
+        {err && <span style={{ fontSize: 12, color: 'var(--warn)' }}>{err}</span>}
+      </div>
+      {result && result.rows.length === 0 && (
+        <div style={{ fontSize: 12, color: 'var(--carbon-muted)', marginTop: 8 }}>Nothing new to apply — this doesn’t change anything already on record.</div>
+      )}
+      {result && result.rows.length > 0 && (
+        <div style={{ marginTop: 10, padding: 10, borderRadius: 8, background: 'var(--carbon-1, rgba(0,0,0,0.16))', border: '1px solid var(--steel-soft)' }}>
+          <div className="of" style={{ marginBottom: 8, letterSpacing: '0.06em' }}>AI-extracted · review against the message{result.confidence ? (' · ' + result.confidence + ' confidence') : ''}</div>
+          {result.rows.map((row, i) => {
+            const cur = fmtV(row.type, row.current), next = fmtV(row.type, row.proposed);
+            return (
+              <label key={row.key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', padding: '5px 0', cursor: 'pointer', borderTop: i === 0 ? 'none' : '1px solid var(--steel-tint)' }}>
+                <input type="checkbox" checked={row.accepted} onChange={() => toggleRow(i)} style={{ marginTop: 3 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--t-input)', color: 'var(--ink)' }}>
+                    <strong>{row.label}</strong>{' '}
+                    <span style={{ color: 'var(--carbon-muted)' }}>{cur ? (cur + ' → ') : 'set to '}</span>
+                    <strong style={{ color: 'var(--steel-soft)' }}>{next}</strong>
+                  </div>
+                  {row.evidence && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 2 }}>“{row.evidence}”</div>}
+                </div>
+              </label>
+            );
+          })}
+          <div className="actions-row" style={{ marginTop: 10, gap: 8 }}>
+            <button className="mini" onClick={apply} disabled={acceptedCount === 0}>{acceptedCount === 0 ? 'Nothing selected' : ('Apply ' + acceptedCount + ' field' + (acceptedCount === 1 ? '' : 's'))}</button>
+            <button className="mini" onClick={() => setResult(null)}>Discard</button>
+          </div>
+          {result.disclaimer && <div style={{ fontSize: 12, color: 'var(--carbon-muted)', fontStyle: 'italic', marginTop: 8 }}>{result.disclaimer}</div>}
+        </div>
+      )}
+    </div>
+  );
+}
 
 // Count-up micro-motion: numbers settle into place (ease-out cubic, no bounce).
 function useCountUp(target, dur = 650, enabled = true) {
@@ -8916,6 +8997,9 @@ export default function HostShellV2() {
                           <textarea className="field" style={{ maxWidth: 'none', width: '100%', boxSizing: 'border-box', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 10px', marginBottom: 'var(--sp-2)', resize: 'vertical' }}
                             placeholder="A note for them — parking, load-in door, anything they should know before they arrive" rows={2}
                             value={v.briefNote || ''} onChange={e => writeVendor(v.id, { briefNote: e.target.value }, null)} aria-label="Note shared with this vendor in their brief" />
+                          {/* Agent Opportunity Audit P0 — paste the vendor's reply, review
+                              the extracted fields, apply through writeVendor. */}
+                          <VendorReplyParserV2 vendor={v} event={event} writeVendor={writeVendor} />
                           {/* WAVE-B write paths (b) + (c): arrival time (the day-of
                               roster, NOW card, and print sheet all read v.arrivalTime;
                               nothing wrote it) and money — the payment-note button

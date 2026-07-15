@@ -52,3 +52,36 @@ export async function callAiFeature(feature, prompt, context = null) {
   if (!data?.ok) throw new Error('AI returned no result.');
   return data; // { ok, feature, text, usage }
 }
+
+// parseVendorReply(reply, vendorCtx?) → { ok, fields, confidence, disclaimer } | throws.
+// Agent Opportunity Audit P0: extracts structured vendor fields from a pasted
+// vendor reply so the planner reviews a diff and applies it (never auto-write).
+// Structured-JSON path (not callAiFeature, which returns text) — same auth,
+// same honest failure surface. `fields` is keyed by src/lib/vendorReplyParse.js.
+export async function parseVendorReply(reply, vendorCtx = {}) {
+  if (!BASE) throw new Error('AI is not configured.');
+  const text = (reply || '').trim();
+  if (!text) throw new Error('Paste the vendor’s message first.');
+  let res;
+  try {
+    res = await fetch(`${BASE}/api/ai/parse-vendor-reply`, {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify({
+        reply_text: text,
+        vendor_name: vendorCtx.vendorName || null,
+        vendor_category: vendorCtx.vendorCategory || null,
+        event_name: vendorCtx.eventName || null,
+      }),
+    });
+  } catch {
+    throw new Error('Could not reach the AI service. Please try again.');
+  }
+  if (res.status === 401) throw new Error('Please sign in to use AI features.');
+  if (res.status === 429) throw new Error('You’re going a bit fast — please wait a moment and try again.');
+  if (res.status === 503) throw new Error('AI is unavailable right now.');
+  if (!res.ok) throw new Error('AI service error — please try again.');
+  const data = await res.json().catch(() => null);
+  if (!data?.ok) throw new Error('AI returned no result.');
+  return data; // { ok, fields, confidence, disclaimer }
+}

@@ -55,6 +55,8 @@ import {
   vendorCoiRequirement,
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
+import { parseVendorReply, isAiProxyConfigured } from '../lib/aiProxy';
+import { buildReplyDiff, buildPatch, replyLogEntry } from '../lib/vendorReplyParse';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
 import { memoryOn, latestRationaleForSubject, decisionPayoffSummary } from '../lib/decisionMemory';
 import { draftVendorPaymentReminder } from '../lib/doItForMe';
@@ -3702,6 +3704,156 @@ function LockInTracker({ rows, vendor, onPatchVendor, onAddLog, onAddressRow, ho
   );
 }
 
+// ── Agent Opportunity Audit P0 — inbound vendor-reply parser ────────────────
+// Paste what the vendor actually said → the server extracts the fields the reply
+// states → the planner reviews a diff and applies only what they keep, through
+// the SAME onPatchVendor/onAddLog paths as a manual edit (so sync, readiness,
+// accountability tiers and Decision Memory all fire identically). The parse only
+// ever PROPOSES; every write is a reviewed click. Sanctioned "Apply reviewed
+// extraction" (06_AI_GROUNDING) — the deterministic diff lives in
+// lib/vendorReplyParse.js and is unit-tested; this component is the thin shell.
+function fmtVal(type, v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (type === 'bool') return v === true ? 'yes' : null;
+  if (type === 'money') return `$${v}`;
+  return String(v);
+}
+
+function VendorReplyParser({ vendor, event, onPatchVendor, onAddLog, isOpen, onToggle }) {
+  const canWrite = Boolean(onPatchVendor && onAddLog);
+  const [replyText, setReplyText] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState(null);
+  const [result, setResult] = useState(null); // { rows, confidence, disclaimer } | null
+
+  // No proxy, or nowhere to write → the feature can't do its job. Render nothing
+  // rather than a dead control (mirrors VendorConfirmationNote / the doc extractor).
+  if (!isAiProxyConfigured() || !canWrite) return null;
+
+  const host = isHostView(event);
+  const analyze = async () => {
+    if (busy) return;
+    setBusy(true); setErr(null); setResult(null);
+    try {
+      const data = await parseVendorReply(replyText, {
+        vendorName: vendor.name,
+        vendorCategory: vendor.category,
+        eventName: event?.name,
+      });
+      const rows = buildReplyDiff(data.fields, vendor);
+      setResult({ rows, confidence: data.confidence, disclaimer: data.disclaimer });
+    } catch (e) {
+      setErr(e.message || 'Could not read that message — try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleRow = (i) => setResult(r => ({
+    ...r, rows: r.rows.map((row, j) => j === i ? { ...row, accepted: !row.accepted } : row),
+  }));
+
+  const acceptedCount = result ? result.rows.filter(r => r.accepted).length : 0;
+  const apply = () => {
+    const patch = buildPatch(result.rows);
+    if (Object.keys(patch).length === 0) return;
+    onPatchVendor(vendor.id, patch);
+    const log = replyLogEntry(result.rows);
+    if (log) onAddLog(vendor.id, log);
+    setResult(null); setReplyText('');
+  };
+
+  const summary = result && result.rows.length > 0
+    ? `${result.rows.length} field${result.rows.length === 1 ? '' : 's'} to review`
+    : 'Turn a reply into updates';
+
+  return (
+    <CollapsibleSection
+      label={host ? 'Log what the vendor said' : 'Parse a vendor reply'}
+      summary={summary}
+      hintColor={result && result.rows.length > 0 ? P.accent : P.textTertiary}
+      isOpen={isOpen}
+      onToggle={onToggle}
+    >
+      <div style={{ background: P.card, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.md, padding: space[5] }}>
+        <div style={{ fontSize: type.size['sm'], color: P.textSecondary, lineHeight: 1.5, marginBottom: space[3] }}>
+          Paste the vendor’s email or text. We’ll pull out times, contacts, counts and payment status for you to review — nothing is saved until you apply it.
+        </div>
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          placeholder="e.g. Hi! We'll arrive at 2:00 PM, deposit is received, and final headcount is 85. Day-of contact is Dana, 301-555-0134."
+          rows={4}
+          style={{
+            width: '100%', boxSizing: 'border-box', resize: 'vertical',
+            fontFamily: FF, fontSize: type.size['base'], lineHeight: 1.5,
+            color: P.textPrimary, background: P.canvas,
+            border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: space[3],
+          }}
+        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: space[3], marginTop: space[3] }}>
+          <button type="button" onClick={analyze} disabled={busy || !replyText.trim()}
+            style={{ ...BTN_PRIMARY, opacity: busy || !replyText.trim() ? 0.55 : 1, cursor: busy || !replyText.trim() ? 'default' : 'pointer' }}>
+            {busy ? 'Reading…' : 'Read the message'}
+          </button>
+          {err && <span style={{ fontSize: type.size['sm'], color: P.red }}>{err}</span>}
+        </div>
+
+        {result && result.rows.length === 0 && (
+          <div style={{ fontSize: type.size['sm'], color: P.textSecondary, marginTop: space[4] }}>
+            Nothing new to apply — this message doesn’t change any field already on record.
+          </div>
+        )}
+
+        {result && result.rows.length > 0 && (
+          <div style={{ marginTop: space[4], background: P.canvas, border: `1px solid ${P.borderSubtle}`, borderRadius: radius.sm, padding: space[4] }}>
+            <div style={{ fontSize: type.size['xs'], fontWeight: type.weight.semibold, letterSpacing: '0.10em', textTransform: 'uppercase', color: P.textTertiary, marginBottom: space[3] }}>
+              AI-extracted · review against the message{result.confidence ? ` · ${result.confidence} confidence` : ''}
+            </div>
+            {result.rows.map((row, i) => {
+              const cur = fmtVal(row.type, row.current);
+              const next = fmtVal(row.type, row.proposed);
+              return (
+                <label key={row.key} style={{ display: 'flex', gap: space[3], alignItems: 'flex-start', padding: `${space[2]}px 0`, borderTop: i === 0 ? 'none' : `1px solid ${P.borderSubtle}`, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={row.accepted} onChange={() => toggleRow(i)} style={{ marginTop: 3, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: type.size['sm'], color: P.textPrimary }}>
+                      <span style={{ fontWeight: type.weight.semibold }}>{row.label}</span>
+                      {'  '}
+                      <span style={{ color: P.textTertiary }}>{cur ? `${cur} → ` : 'set to '}</span>
+                      <span style={{ fontWeight: type.weight.semibold, color: P.accent }}>{next}</span>
+                    </div>
+                    {row.evidence && (
+                      <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: 2, lineHeight: 1.4 }}>
+                        “{row.evidence}”
+                      </div>
+                    )}
+                  </div>
+                </label>
+              );
+            })}
+            <div style={{ display: 'flex', gap: space[3], alignItems: 'center', marginTop: space[4] }}>
+              <button type="button" onClick={apply} disabled={acceptedCount === 0}
+                style={{ ...BTN_PRIMARY, opacity: acceptedCount === 0 ? 0.55 : 1, cursor: acceptedCount === 0 ? 'default' : 'pointer' }}>
+                {acceptedCount === 0 ? 'Nothing selected' : `Apply ${acceptedCount} field${acceptedCount === 1 ? '' : 's'}`}
+              </button>
+              <button type="button" onClick={() => setResult(null)}
+                style={{ fontSize: type.size['sm'], fontWeight: type.weight.semibold, color: P.textSecondary, background: 'none', border: `1px solid ${P.borderDef}`, borderRadius: radius.sm, padding: '6px 14px', cursor: 'pointer', fontFamily: FF }}>
+                Discard
+              </button>
+            </div>
+            {result.disclaimer && (
+              <div style={{ fontSize: type.size['xs'], color: P.textTertiary, fontStyle: 'italic', marginTop: space[3], lineHeight: 1.4 }}>
+                {result.disclaimer}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMarkCatererUpdated, onPatchVendor, aiAvailable, onAskAi, userId, onRouteToLinked, openSection = null, sectionPing = 0 }) {
   const readiness = useMemo(() => getVendorReadiness(vendor, event), [vendor, event]);
   const stage = useMemo(() => getVendorLifecycleStage(vendor, event), [vendor, event]);
@@ -3757,8 +3909,8 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
   // is one tap away). Documents stays open when the contract has an issue —
   // the Trust Officer requirement that a missing contract/COI stays visible.
   const collapseDefaults = isMobile
-    ? { readinessSnapshot: false, promises: false, readinessCopilot: false, documents: false, notes: false, activity: false }
-    : { readinessSnapshot: false, promises: false, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
+    ? { readinessSnapshot: false, promises: false, replyParser: false, readinessCopilot: false, documents: false, notes: false, activity: false }
+    : { readinessSnapshot: false, promises: false, replyParser: false, readinessCopilot: false, documents: contractHasIssue, notes: false, activity: false };
   const [collapse, setCollapse] = useStickyVendorCollapse(vendor.id, collapseDefaults);
   const toggle = (key) => setCollapse(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -3955,6 +4107,14 @@ function VendorDetail({ vendor, event, isMobile = false, onEdit, onAddLog, onMar
         <div ref={questionsRef} style={flashStyle('questions')}>
           <RequiredQuestionsSection vendor={vendor} questions={questions} onAddressRow={addressRow} host={isHostView(event)} />
         </div>
+        <VendorReplyParser
+          vendor={vendor}
+          event={event}
+          onPatchVendor={onPatchVendor}
+          onAddLog={onAddLog}
+          isOpen={collapse.replyParser}
+          onToggle={() => toggle('replyParser')}
+        />
 
         {/* ── Zone 2 · Money & contract ─────────────────────────────── */}
         <div style={ZONE_LABEL}>{isHostView(event) ? 'Paying people' : 'Money & contract'}</div>

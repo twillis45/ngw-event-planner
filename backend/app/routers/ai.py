@@ -403,3 +403,149 @@ Use null for fields that cannot be determined."""
     except Exception as e:
         log.error("document_extract error: %s", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ── Agent Opportunity Audit P0 — inbound vendor-reply parser ─────────────────
+# A vendor replies "we'll arrive at 2pm, deposit received, final count 85" and a
+# human today reads that and hand-types ~15 fields. This endpoint extracts those
+# fields from the reply TEXT so the planner reviews a diff and applies it — the
+# sanctioned "Apply reviewed extraction" (06_AI_GROUNDING), never an auto-write.
+#
+# Same security posture as /feature: signed-in planner only, input-capped,
+# per-user rate-limited, server-owned prompt (no client system-prompt passthrough).
+#
+# (key, hint) — keys MUST stay in sync with src/lib/vendorReplyParse.js FIELDS.
+VENDOR_REPLY_FIELDS = [
+    ("arrival_time",        "when they will arrive on site (e.g. '2:00 PM')"),
+    ("coverage_start",      "when their coverage/service begins"),
+    ("coverage_end",        "when their coverage/service ends"),
+    ("delivery_time",       "when they will deliver"),
+    ("setup_start",         "when setup begins"),
+    ("setup_end",           "when setup ends"),
+    ("day_of_contact_name", "name of the on-site / day-of point of contact"),
+    ("day_of_phone",        "phone number for the day-of contact"),
+    ("email",               "an email address they give"),
+    ("cost",                "total price/cost in dollars (number only)"),
+    ("deposit_amount",      "deposit amount in dollars (number only)"),
+    ("deposit_paid",        "true ONLY if they say the deposit was received/paid"),
+    ("balance_paid",        "true ONLY if they say the balance was paid in full"),
+    ("final_guest_count",   "a final headcount/guest count they confirm"),
+    ("staff_count",         "how many staff they will bring"),
+    ("passenger_count",     "passenger capacity/count (transport)"),
+    ("guard_count",         "number of guards/officers (security)"),
+]
+
+
+class VendorReplyParseRequest(BaseModel):
+    reply_text: str
+    vendor_name: Optional[str] = None
+    vendor_category: Optional[str] = None
+    event_name: Optional[str] = None
+
+
+@router.post("/parse-vendor-reply")
+async def parse_vendor_reply(
+    body: VendorReplyParseRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Extract structured vendor fields from a pasted vendor reply.
+
+    Returns per-field {value, evidence}, an overall confidence, and a disclaimer.
+    value is null for anything the reply does not state — the model must not
+    infer, guess, or carry over context. evidence is a short verbatim quote from
+    the reply. The planner reviews the diff and applies it; nothing here writes.
+    """
+    # 1. Auth — signed-in planner only.
+    principal = await require_planner(authorization, x_planner_token)
+    user_id = principal.get("id") or "unknown"
+
+    # 2. Configured? (graceful 503 → frontend hides/falls back)
+    if not is_ai_configured():
+        raise HTTPException(status_code=503, detail="AI not configured — set OPENAI_API_KEY on the server")
+
+    # 3. Validate + cap input.
+    reply = (body.reply_text or "").strip()
+    if not reply:
+        raise HTTPException(status_code=400, detail="Empty reply")
+    reply = reply[:AI_MAX_INPUT_CHARS]
+
+    # 4. Per-user rate limit.
+    allowed, retry_after = _rate_check(user_id)
+    if not allowed:
+        log.warning("ai.parse_vendor_reply RATE_LIMIT user=%s", user_id)
+        raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",
+                            headers={"Retry-After": str(retry_after)})
+
+    # 5. Server-owned prompt. The reply is the ONLY source; unstated → null.
+    field_lines = "\n".join(f'  "{k}": what to extract — {hint}' for k, hint in VENDOR_REPLY_FIELDS)
+    json_template = ",\n".join(f'  "{k}": {{"value": null, "evidence": null}}' for k, _ in VENDOR_REPLY_FIELDS)
+    ctx = f"Vendor: {body.vendor_name or 'Unknown'}"
+    if body.vendor_category:
+        ctx += f" (category: {body.vendor_category})"
+    if body.event_name:
+        ctx += f", Event: {body.event_name}"
+
+    system = (
+        "You extract structured facts from a single message a vendor sent an event host. "
+        "Use ONLY what the message states. Never infer, assume, or fill from general knowledge. "
+        "If the message does not clearly state a field, its value MUST be null. "
+        "For each field you DO fill, set 'evidence' to a short verbatim quote from the message that "
+        "supports it. Booleans are true only when the message explicitly asserts them; otherwise null "
+        "(never false). Return money and counts as plain numbers. Return ONLY valid JSON, no prose."
+    )
+    user_content = (
+        f"{ctx}\n\n"
+        f"Fields to extract:\n{field_lines}\n\n"
+        f"Vendor message:\n\"\"\"\n{reply}\n\"\"\"\n\n"
+        f"Return ONLY this JSON shape (value null where the message does not state it):\n"
+        f"{{\n{json_template},\n  \"confidence\": \"high|medium|low\"\n}}"
+    )
+
+    payload = {
+        "model":      AI_FEATURE_MODEL,
+        "max_tokens": AI_FEATURE_MAX_TOKENS,
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user",   "content": user_content},
+        ],
+        "response_format": {"type": "json_object"},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=40) as client:
+            resp = await client.post(OPENAI_URL, headers=openai_headers(), json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        raw_text = data["choices"][0]["message"]["content"] or "{}"
+        try:
+            parsed = json.loads(raw_text)
+        except Exception:
+            import re
+            match = re.search(r'\{[\s\S]+\}', raw_text)
+            parsed = json.loads(match.group()) if match else {}
+
+        allowed_keys = {k for k, _ in VENDOR_REPLY_FIELDS}
+        confidence = parsed.get("confidence") if isinstance(parsed, dict) else None
+        fields = {k: v for k, v in (parsed.items() if isinstance(parsed, dict) else [])
+                  if k in allowed_keys}
+
+        usage = data.get("usage", {})
+        filled = sum(1 for v in fields.values()
+                     if isinstance(v, dict) and v.get("value") not in (None, "", False))
+        log.info("parse_vendor_reply user=%s vendor=%s filled=%d confidence=%s out=%d",
+                 user_id, body.vendor_name, filled, confidence, usage.get("completion_tokens", 0))
+
+        return {
+            "ok": True,
+            "fields": fields,
+            "confidence": confidence if confidence in ("high", "medium", "low") else "low",
+            "disclaimer": "AI-extracted from the vendor's message — review each field against the original before applying.",
+        }
+    except httpx.HTTPStatusError as e:
+        log.error("parse_vendor_reply OpenAI error: %s — %s", e.response.status_code, e.response.text)
+        raise HTTPException(status_code=502, detail="AI service error")
+    except Exception as e:
+        log.error("parse_vendor_reply error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))

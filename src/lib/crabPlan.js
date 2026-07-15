@@ -17,14 +17,13 @@
 // This is a thin food-domain helper over host-entered state
 // (event.crabPlan) — Food Intelligence owns it; no separate engine.
 
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
-
-// Crabs per unit. A dozen is definitional. Bushel counts genuinely vary by
-// size — defaults come from the crab-feast playbook's RESEARCHED ladder
-// (Captain White's July 2026: ~72 large / ~84 medium per bushel) and are
-// always labeled "about"; the host's vendor count, when entered, wins.
+// Crabs per unit defaults come from the crab-feast playbook's RESEARCHED ladder
+// (Captain White's July 2026: ~72 large / ~84 medium per bushel) and are always
+// labeled "about"; the host's vendor count, when entered, wins.
 import { crabsPerPicker, crabsPerBushel, DEFAULT_CRAB_SIZE, crabServingProvenance } from './crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from './appetite';
+
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 export const CRAB_UNITS = ['dozen', 'half_bushel', 'bushel'];
 export const CRAB_SIZES = ['medium', 'large', 'extra_large', 'jumbo', 'mixed', 'unknown'];
