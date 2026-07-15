@@ -262,9 +262,17 @@ button{font-family:inherit}
      those numerals, so it floats over the sub-lines it was always meant to cover, not the
      numbers. `justify-content:center` keeps the two short lines centred in the shorter box. */
   min-height:0;
-  padding:var(--pad-card-compact);
+  padding:var(--pad-card-compact) var(--sp-5);
   justify-content:center;
   row-gap:0;
+  /* OWN THE BOTTOM (host directive 2026-07-14): NEXT is the primary action, so it spans the
+     full viewport width at the bottom of the scrollport — a bar, not a floating card. The
+     negative margins cancel .content's side padding (var(--sp-5)); the sticky bottom offset
+     keeps it just above the floating dock pill. Bottom corners squared: it meets the
+     viewport edge, it doesn't hover over it. */
+  margin-left:calc(-1 * var(--sp-5));
+  margin-right:calc(-1 * var(--sp-5));
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
   /* When it IS lifted it sits over the tail of the stat tiles. Give it the dock's
      floating language — a real drop shadow — so it reads as a layer deliberately
      above them, not as a tile that has clipped the ones behind it. When the hero
