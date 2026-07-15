@@ -19,7 +19,7 @@
 // raiser `key`, or the ladder tier's route/`decision`/`decisionId`) so _topActionId
 // and the registry itemKey never fall back to a title slug.
 
-import { eventPlan } from '../../CommandCenter';
+import { eventPlan, _topActionId, _selectEventNextActionInner } from '../../CommandCenter';
 import { raiseAll, SURFACES } from '../surfaceRegistry';
 import { playbookFoodPlan } from '../playbooks';
 
@@ -119,6 +119,25 @@ const snoozedState = () => {
 
 const overdueBundle = () => feast({ id: 'id-late', date: iso(5), foodChoices: { sides: 'Corn' } });
 
+// overdue-payment — a single confirmed vendor whose balance is 4 days past due. The
+// ladder's tier-4 payment top and the registry's vendor-payments raise are the SAME debt
+// (the wave-8 dual-produced critical): with the cross-producer vendor id form they now
+// collapse on identity, and the surviving card must keep the registry twin's real clock.
+const overduePayment = () => feast({
+  id: 'id-overdue-pay',
+  foodChoices: withFood(feast()),
+  vendors: [
+    { id: 'vp1', name: 'Fork & Flower', category: 'Catering', status: 'Confirmed',
+      contractSigned: true, cost: 1200, payDueDate: iso(-4), balancePaid: false },
+  ],
+});
+
+// brand-new — nothing done yet; the ladder's tier-0 simple win ('start' category).
+const brandNewEvent = () => ({
+  id: 'id-new', type: 'Crab Feast', name: 'New', date: iso(20),
+  guests: [], vendors: [], timeline: [], budget: [],
+});
+
 const FIXTURES = {
   'my-crab-feast': myCrabFeast(),
   'test-day-before-vendors': dayBeforeVendors(),
@@ -126,6 +145,7 @@ const FIXTURES = {
   roster: roster(0),
   'snoozed-state': snoozedState(),
   'overdue-bundle': overdueBundle(),
+  'overdue-payment': overduePayment(),
 };
 
 // Every action id eventPlan produces, INCLUDING bundle children and set-aside/worry
@@ -321,5 +341,132 @@ describe('the canonical decision id is not double-billed across producers', () =
       const ids = allProducedActions(eventPlan(ev)).map((a) => a.id).filter(Boolean);
       expect(new Set(ids).size).toBe(ids.length);
     }
+  });
+});
+
+// ── 7. STRUCTURAL SWEEP AT THE PRODUCER BOUNDARY (wave-8) ─────────────────────────
+// The sweep in §2 only exercises the tiers its six fixtures happen to reach — a future
+// ladder tier that slugged a mutable title would slip through until some fixture reached
+// it. This closes that gap STRUCTURALLY by driving the invariant at _topActionId itself
+// (approach b): feed it EVERY category the ladder can stamp × EVERY record field a route
+// can carry, and assert it NEVER returns a title slug while a record is present. This
+// holds regardless of which tiers exist or which fixtures reach them.
+//
+// THE LADDER TIERS (_selectEventNextActionInner, CommandCenter.jsx) and their category:
+//   Tier 0    brand-new → guest list ............... start
+//   Tier 0.5  set the budget ...................... readiness
+//   Tier 1    caterer drift ....................... caterer
+//   Tier 2    urgent / overdue decision ........... decision
+//   Tier 3    drafted / awaiting approval ......... approval
+//   Tier 4    overdue payment ..................... vendor   (route vendorSection 'payment')
+//   Tier 4.2  critical COI ........................ vendor   (route vendorSection 'documents')
+//   Tier 4    unconfirmed vendor .................. vendor   (no section)
+//   Tier 4.5  compressed-timeline first task ...... compression
+//   Tier 5    timeline at risk .................... timeline
+//   Tier 6    inbound message ..................... comm
+//   Tier 6.4  decision-first gate ................. decision
+//   Tier 6.5  operational buy ..................... operational
+//   Tier 7    next milestone ...................... calendar (CALM → null)
+//   Tier 7.5  empty event → guests ............... start
+//   Tier 7.8  overdue board decision ............. decision
+//   Tier 7.8  planning essential ................. readiness
+//   Tier 7.9  protect the heart .................. heart    (CALM → null)
+//   Tier 8    all-clear ........................... neutral  (CALM → null)
+// The vocabulary below is the closed set of categories those tiers emit; the coverage
+// guard drives the ladder and fails if it ever produces a category not in this set — so a
+// new tier forces an update here, which forces the boundary sweep to cover it.
+const LADDER_CATEGORIES = [
+  'start', 'readiness', 'caterer', 'decision', 'approval', 'vendor',
+  'compression', 'timeline', 'comm', 'operational', 'calendar', 'heart', 'neutral',
+];
+// Categories _topActionId returns null for by construction (a lone calm line is a state,
+// not a snoozeable task) — the three CALM_FILLER_CATEGORIES in CommandCenter.
+const CALM = new Set(['neutral', 'calendar', 'heart']);
+// A title engineered to slug LOUDLY if an id ever falls back to prose: it carries a live
+// count tail ('· 2 open'), exactly the mutable text the class forbids keying on.
+const SLUGGY_TITLE = 'Confirm 3 of 7 things · 2 open';
+
+describe('STRUCTURAL — _topActionId never slugs a mutable title when a route names a record', () => {
+  test('every ladder category × every record field keys the RECORD, not the prose', () => {
+    for (const category of LADDER_CATEGORIES) {
+      for (const field of RECORD_ROUTE_FIELDS) {
+        const token = 'REC-' + field;
+        const id = _topActionId({ category, title: SLUGGY_TITLE, primaryRoute: { tab: 'X', [field]: token } });
+        if (CALM.has(category)) { expect(id).toBeNull(); continue; }   // calm → unsnoozeable, no id to slug
+        expect(id).not.toBeNull();
+        const s = String(id);
+        const tail = s.includes(':') ? s.slice(s.lastIndexOf(':') + 1) : s;
+        // The id's tail must never reproduce the title's prose…
+        expect(tail).not.toBe(_slugTitle(SLUGGY_TITLE));
+        expect(tail).not.toBe(titleKey(SLUGGY_TITLE));
+        // …and the record must actually be in the id (not merely a different non-slug).
+        expect(s).toContain(token);
+      }
+    }
+  });
+
+  test('coverage — the vocabulary swept above is a superset of what the ladder emits AND of the branches _topActionId special-cases', () => {
+    // Drive a battery to the reachable tiers; every category the ladder actually
+    // produces must be in the swept vocabulary. A NEW tier's category (once any fixture
+    // reaches it) fails this until it is added above — and thus into the sweep.
+    const battery = [
+      ...Object.values(FIXTURES), brandNewEvent(), overduePayment(),
+    ];
+    const produced = new Set(
+      battery.map((ev) => { try { return _selectEventNextActionInner(ev)?.category; } catch { return null; } })
+        .filter(Boolean),
+    );
+    for (const c of produced) expect(LADDER_CATEGORIES).toContain(c);
+    // Every branch _topActionId itself special-cases (the CALM set + the decision/vendor
+    // canonical forms) is in the swept vocabulary, so no branch is left unexercised.
+    for (const c of ['neutral', 'calendar', 'heart', 'decision', 'vendor']) {
+      expect(LADDER_CATEGORIES).toContain(c);
+    }
+  });
+});
+
+// ── 8. VENDOR DEBT UNIFIED ACROSS PRODUCERS (wave-8) ─────────────────────────────
+// The decision unification (§6, wave-7) gave a decision debt ONE canonical id
+// ('decision:<id>') whether the ladder or the registry raised it. Vendor debts stayed
+// DUAL-keyed — 'top:vendor:<id>' (ladder) vs 'surface:vendor-payments:<id>' (registry) —
+// so the structure that caused the decision detach was still open for vendors. The debt's
+// route SECTION now names its surface, so both producers key the SAME
+// 'surface:<vendor-surface>:<vendorId>' form and a snooze follows the debt across
+// producers, exactly like decisions.
+describe('a vendor debt keys identically across the ladder and the registry', () => {
+  test('the ladder vendor top keys the SAME surface id the registry emits (payment + COI)', () => {
+    const vendorId = 'vp1';
+    // Ladder side — the tier-4 payment action shape. Registry side — the itemKey eventPlan
+    // builds for a vendor-payments raise (key === vendorId): 'surface:vendor-payments:<id>'.
+    expect(_topActionId({
+      category: 'vendor', title: 'Send payment to Fork & Flower.',
+      primaryRoute: { tab: 'Vendors', vendorId, vendorSection: 'payment' },
+    })).toBe('surface:vendor-payments:' + vendorId);
+    // Critical COI mirrors it through the documents section → the vendor-coi surface.
+    expect(_topActionId({
+      category: 'vendor', title: 'Get an updated COI from Fork & Flower.',
+      primaryRoute: { tab: 'Vendors', vendorId, vendorSection: 'documents' },
+    })).toBe('surface:vendor-coi:' + vendorId);
+    // An unconfirmed booking (no section) has NO registry twin → the generic form is
+    // preserved untouched (snoozeIntegrity + wave6IdentityPolicy pin this).
+    expect(_topActionId({
+      category: 'vendor', title: 'Confirm Fork & Flower.',
+      primaryRoute: { tab: 'Vendors', vendorId },
+    })).toBe('top:vendor:' + vendorId);
+  });
+
+  test('the ladder payment top and its registry twin collapse to ONE card that keeps the clock', () => {
+    const plan = eventPlan(overduePayment());
+    const id = 'surface:vendor-payments:vp1';
+    const cards = allProducedActions(plan).filter((a) => a.id === id);
+    // Collapsed on IDENTITY (not merely title-deduped into two half-forms) → exactly one.
+    expect(cards).toHaveLength(1);
+    const card = cards[0];
+    expect(card.source).toBe('ladder');            // the ladder top is the survivor
+    expect(card.level).toBe('critical');
+    // WAVE-8: the survivor keeps the registry twin's real clock — the ladder payment tier
+    // carries no leadDays, so pre-fix its dueInDays was null and the most-overdue critical
+    // sank in the band-1 ordering as if it had no deadline. Threaded through the dedup now.
+    expect(card.dueInDays).toBe(-4);
   });
 });

@@ -1604,6 +1604,13 @@ function deriveRecommendationLifecycle(event, ctx, nextActions, foundation, work
 const CALM_FILLER_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
 const _slugTitle = (t) => String(t || '').toLowerCase()
   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 64);
+// WAVE-8 (2026-07-15): which registry surface owns a vendor debt, keyed by the route
+// SECTION the ladder deep-links to. This lets _topActionId key a ladder vendor top with
+// the SAME 'surface:<surface>:<vendorId>' its registry raiser emits, so the two
+// producers' ids collapse on identity: an overdue payment (vendorSection 'payment') and
+// its vendor-payments raise, a critical COI (vendorSection 'documents') and its
+// vendor-coi raise. A vendor ask with no section has no registry twin (see _topActionId).
+const VENDOR_SECTION_SURFACE = { payment: 'vendor-payments', documents: 'vendor-coi' };
 export function _topActionId(cmd) {
   if (!cmd || !cmd.title) return null;
   if (CALM_FILLER_CATEGORIES.has(cmd.category)) return null; // calm filler → unsnoozeable by construction
@@ -1620,10 +1627,28 @@ export function _topActionId(cmd) {
     const decRec = cmd.decisionId || r.decisionId || cmd.decision || r.foodFocus || null;
     if (decRec != null) return 'decision:' + String(decRec);
   }
+  // WAVE-8 (2026-07-15): ONE canonical id for a vendor debt, whoever produces it —
+  // mirroring the decision unification above. The registry raises a vendor debt as
+  // 'surface:<vendor-surface>:<vendorId>' (vendor-payments / vendor-coi); the ladder
+  // surfaced the SAME debt — the overdue payment (tier 4) and critical COI (tier 4.2) —
+  // as a generic 'top:vendor:<vendorId>'. Two ids for one debt: a snooze written against
+  // one producer detached the moment the other picked the debt up — the exact structure
+  // the decision fix closed, still open for vendors. The debt's SECTION (the route's
+  // vendorSection) names which surface it is, so the ladder top keys the SAME id the
+  // registry emits and the two collapse on identity, not just on title prose. A vendor
+  // ask with no section (an unconfirmed booking, caterer drift) has no registry twin and
+  // keeps the generic 'top:vendor:<vendorId>' form (snoozeIntegrity + wave6 pin this).
+  if (cmd.category === 'vendor' && r.vendorId != null) {
+    const surface = VENDOR_SECTION_SURFACE[r.vendorSection];
+    if (surface) return 'surface:' + surface + ':' + String(r.vendorId);
+  }
   // The row the action routes to IS its identity — same doctrine as the registry
-  // itemKey (RE-AUDIT F4). Only the bare category is forbidden.
+  // itemKey (RE-AUDIT F4). Only the bare category is forbidden. WAVE-8: guestId joins
+  // the precedence — a tier routing purely on a guest row (none live today, but the
+  // seating/travel registry raisers route on guestId) must key the record, not slug a
+  // prose title. The list mirrors the test's RECORD_ROUTE_FIELDS exactly.
   const rec = r.vendorId || r.decisionId || r.taskId || r.commId || r.riskId
-    || r.timelineId || r.foodFocus || null;
+    || r.timelineId || r.guestId || r.foodFocus || null;
   return 'top:' + (cmd.category || 'top') + ':' + (rec != null ? String(rec) : _slugTitle(cmd.title));
 }
 
@@ -1926,7 +1951,25 @@ export function eventPlan(event, ctx = null) {
           ? 'surface:' + r.surface + ':' + titleKey(r.title)
           : 'surface:' + r.surface;
       }
-      if (seen.has(itemKey) || seenTitles.has(titleKey(r.title))) continue;
+      if (seen.has(itemKey) || seenTitles.has(titleKey(r.title))) {
+        // WAVE-8 (2026-07-15): the collapsing registry twin can carry a real clock the
+        // surviving card lacks. A ladder payment/COI top has no leadDays, so its
+        // dueInDays is null — while the registry's vendor-payments/vendor-coi raise for
+        // the SAME debt carries the vendor's actual overdue days. Before wave-8 the
+        // null-clock ladder card simply won the dedup and the most-overdue critical lost
+        // its clock (it sank in the band-1 dueInDays sort as if it had no deadline).
+        // Thread the twin's dueInDays/leadDays onto the survivor so the surviving card
+        // keeps the real deadline. Only fill a gap — never overwrite a clock the
+        // survivor already has.
+        const rtk = titleKey(r.title);
+        const survivor = nextActions.find((a) => a && (a.id === itemKey || titleKey(a.title) === rtk))
+          || registryActions.find((a) => a && (a.id === itemKey || titleKey(a.title) === rtk));
+        if (survivor) {
+          if (survivor.dueInDays == null && r.dueInDays != null) survivor.dueInDays = r.dueInDays;
+          if (survivor.leadDays == null && r.leadDays != null) survivor.leadDays = r.leadDays;
+        }
+        continue;
+      }
       seen.add(itemKey); seenTitles.add(titleKey(r.title));
       registryActions.push({
         // WAVE-5 RANKING (2026-07-15): `domain` is the surface's PLAIN domain
@@ -2306,7 +2349,7 @@ export function nextStepOwner(na) {
   }
 }
 
-function _selectEventNextActionInner(event) {
+export function _selectEventNextActionInner(event) {
   if (!event) return null;
   const d = deriveCommandCenterData(event);
   const days = daysFrom(event.date);

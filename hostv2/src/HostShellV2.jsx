@@ -36,7 +36,7 @@ import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
 import { proposeReplyBy } from '@app/lib/replyBy';
-import { taskLeadDays, taskDueLabel } from '@app/lib/taskLead';
+import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
@@ -1154,8 +1154,17 @@ export default function HostShellV2() {
           try { dd = daysUntil(due); } catch { dd = null; }
         }
         const dte = (() => { try { return daysUntil(event.date); } catch { return null; } })();
-        const status = lead != null ? taskTimeStatus(-lead, dte) : 'unknown';
-        out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step', status });
+        // POLICY-FORK (wave-8, the 7th reader): taskTimeStatus is a DISPLAY bucket only —
+        // its overdue label folds in NEITHER snooze NOR createdAt reachability, so
+        // it read "past due" on the calm hero for a snoozed or unreachable step that the six
+        // sanctioned readers clear. `timeBucket` may still tint 'due'/'due-soon' copy, but the
+        // OVERDUE/past-due STATE now comes from the ONE policy — taskIsOverdue folds the
+        // snooze suppression AND the reachability guard (an event created too late to ever
+        // reach this step's lead was never "late"). That also closes the unguarded-reachability
+        // hole: an unreachable step flowing into upNext no longer shows "· past due".
+        const timeBucket = lead != null ? taskTimeStatus(-lead, dte) : 'unknown';
+        const overdue = (() => { try { return taskIsOverdue(t, event); } catch { return false; } })();
+        out.push({ label: t.task, due, days: dd, taskId: t.id, kind: 'step', timeBucket, overdue });
       });
     } catch {}
     // DESTINATION-2: the group-rate deadline is a real dated obligation while
@@ -4275,9 +4284,14 @@ export default function HostShellV2() {
                         // Calm ≠ blank: name the next DATED thing (human intelligence).
                         if (upNext.length) {
                           const u = upNext[0];
-                          const when = u.status === 'overdue' ? ' · past due'
-                            : u.status === 'due' ? ' · due today'
-                            : u.status === 'due-soon' ? ' · due soon'
+                          // The "past due" STATE routes through the ONE policy (u.overdue =
+                          // taskIsOverdue, snooze + reachability bound), NOT taskTimeStatus's
+                          // 'overdue' bucket. taskTimeStatus stays only as the 'due'/'due-soon'
+                          // DISPLAY tint. A snoozed / unreachable step keeps u.overdue=false, so
+                          // it falls through to its dated "· by <date>" copy, never "· past due".
+                          const when = u.overdue ? ' · past due'
+                            : u.timeBucket === 'due' ? ' · due today'
+                            : u.timeBucket === 'due-soon' ? ' · due soon'
                             : (u.due ? ' · by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
                           return 'next: ' + u.label + when + ' ↓';
                         }

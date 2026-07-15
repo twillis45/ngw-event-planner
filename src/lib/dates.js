@@ -89,7 +89,7 @@ export const taskTimeStatus = (leadDays, daysToEvent) => {
   if (daysToEvent === null || daysToEvent === undefined) return 'unknown';
   if (daysToEvent < 0) return 'past-event';
   const slack = daysToEvent - (Number(leadDays) || 0); // cushion vs the ideal window
-  if (slack < 0) return 'overdue';
+  if (slack < 0) return 'overdue'; // policy-exempt: DISPLAY-bucket producer — this 'overdue' is a LABEL, not an authoritative state. It folds in no snooze and no reachability; the ONE overdue policy is lib/taskLead.taskIsOverdue and no consumer may read THIS bucket to drive a red/past-due state (enforced by policyForkEnforcement idiom B).
   if (slack === 0) return 'due';
   if (slack <= 1) return 'due-soon';
   return 'upcoming';
