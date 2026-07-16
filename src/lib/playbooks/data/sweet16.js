@@ -95,6 +95,7 @@ const sweet16 = {
       options: ['Pizza + sides', 'Slider/burger bar', 'Taco / build-your-own bar', 'Light bites + dessert table only'],
       default: 'Pizza + sides',
       when: 'T-30d',
+      dependsOn: ['food_style'],
       blocks: ['purchases', 'rentals', 'catering_style'],
       weight: 'med',
       reversibility: 'reversible',
