@@ -7,6 +7,9 @@
 // `timingProvenance` OR by the centralized category resolver (real dated sources for
 // venue/invite/rsvp/rentals/catering/entertainment/cake timing). See timingProvenance.js.
 import { resolveTimingProvenance, isGroundedTiming } from './timingProvenance';
+// Wave-2g: a decision may carry a structured cultural/religious axis (faith/tradition that
+// steers the choice). If authored, it must be GROUNDED against a real cited source.
+import { isGroundedCulture } from './culturalContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -24,6 +27,7 @@ export const FIELD_TYPES = {
   DIFM_CAPABILITY: 'difm-capability',      // §4.C — the propose-vs-ask signal (`difmCapable`)
   TIMING_PROVENANCE: 'timing-provenance',  // §4.B — a `when` deadline with no GROUNDED `timingProvenance` source
   BUDGET_LINKAGE: 'budget-linkage',        // §4.D — costFactors that never reach the budget engine (no `affects`)
+  CULTURAL_UNSOURCED: 'cultural-unsourced', // §4.G — a decision that AUTHORS a culturalContext but leaves it ungrounded (no real cited source)
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -102,6 +106,17 @@ export const GAP_CRITERIA = {
   // `{tier:'researched'}` with no sources is hollow and still counts as ungrounded.
   // A decision that DECLARES a `when` but no grounded timingProvenance is a gap
   // (a decision with no `when` at all has no deadline to ground, so it is not).
+  // §4.G — cultural/religious axis. A decision that AUTHORS a `culturalContext` (faith or
+  // tradition that steers the choice) must GROUND it against a real cited source — an
+  // ungrounded/hollow cultural claim is worse than none. Only fires when the field exists,
+  // so non-cultural decisions are never flagged (mirrors PRIORITY_UNSOURCED).
+  CULTURAL_UNSOURCED: {
+    type: FIELD_TYPES.CULTURAL_UNSOURCED,
+    hasData: (decision) => !decision.culturalContext || isGroundedCulture(decision.culturalContext),
+    needsResearch: (decision) => !!decision.culturalContext && !isGroundedCulture(decision.culturalContext),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].culturalContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -137,6 +152,7 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.COST_FACTOR,
   GAP_CRITERIA.PRIORITY_WEIGHT,
   GAP_CRITERIA.PRIORITY_UNSOURCED,
+  GAP_CRITERIA.CULTURAL_UNSOURCED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,

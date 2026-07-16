@@ -62,6 +62,7 @@ import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
+import { isGroundedCulture } from '../knowledge/culturalContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2090,7 +2091,12 @@ export function playbookDecisionBoard(event, asOf) {
     const _dependedOnCount = decisions.filter((o) => o && o.id !== d.id
       && Array.isArray(o.dependsOn) && o.dependsOn.includes(d.id)).length;
     const _affects = Array.isArray(d.affects) ? d.affects : undefined;
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2g: the structured cultural/religious axis — how faith/tradition steers this
+    // decision, grounded against a real cited source. Surfaced on the row so a UI can show
+    // the tradition + why it's the host's/family's call, and never the app's to default.
+    const culturalContext = d.culturalContext || null;
+    const culturalGrounded = isGroundedCulture(culturalContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });

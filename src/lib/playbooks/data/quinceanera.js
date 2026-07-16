@@ -57,6 +57,7 @@ const quinceanera = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The Mass-or-secular choice defines the shape of the whole day and belongs to the family\'s faith and tradition — the first and most defining call.', tier: 'reasoned' },
+      culturalContext: { tradition: 'The quinceañera (a girl\'s 15th-birthday rite of passage into womanhood) is both religious and social; it traditionally opens with a Catholic Mass (misa) attended by family and godparents before the reception — a form thought to blend Spanish Catholicism with Indigenous Mesoamerican coming-of-age custom.', constraint: 'Whether the day includes the Mass defines its whole shape and belongs to the family\'s faith and tradition; Mexican, Central American, Caribbean and South American families handle it differently, so it is confirmed with the family, never assumed.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
       why: 'This is the first and most defining choice, and it belongs to the family. A full Mass means booking the parish and priest early (popular churches book a year out), arranging readings, padrinos, and sometimes pre-Cana-style preparation, and building the day as church-then-reception. A blessing is lighter; a secular quince skips the church entirely. Mexican, Central American, Caribbean and South American families handle this differently — confirm the family\'s tradition rather than assuming.',
     },
     {
@@ -85,6 +86,7 @@ const quinceanera = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The court dances the vals at her side and drives the attire, choreography, and months of rehearsal — a deeply personal choice only the family can make.', tier: 'reasoned' },
+      culturalContext: { tradition: 'The court of honor is the quinceañera\'s damas (maids) and chambelanes (escorts); the traditional court is 14 damas and 14 chambelanes who, with the quinceañera herself, represent the fifteen years of her childhood, and they dance the choreographed vals (waltz) at her side.', constraint: 'The court is a deeply personal, tradition-rooted choice tied to the years-of-childhood symbolism; many families choose a smaller court, but who is in it is the family\'s call, not a sizing default.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
       why: 'The court (corte de honor) walks with the quinceañera and dances the vals. Tradition is 14 damas and 14 chambelanes (with her completing fifteen), but many families choose a smaller court — picking members who will actually commit to months of rehearsals is famously the hardest part of planning. Court size drives attire counts, the choreography, and the rehearsal schedule, so settle it early.',
     },
     {
@@ -128,6 +130,7 @@ const quinceanera = {
       emotionalWeight: 'high',
       difmCapable: 'needs-host',
       priorityBasis: { rationale: 'The vals is the emotional heart of the reception — the song she and her court rehearse for months becomes the one moment everyone remembers.', tier: 'reasoned' },
+      culturalContext: { tradition: 'The vals is the choreographed waltz the quinceañera performs with her court and often her father — a central, emotional moment of the reception marking her step into adulthood; many families add a high-energy surprise dance (baile sorpresa) right after.', constraint: 'The vals is the tradition-bearing heart of the reception the court rehearses for months, so the song is the quinceañera\'s and family\'s own choice — not a default the app should pick.', tier: 'established-consensus', sources: ['britannica-quinceanera'], verificationStatus: 'researched' },
       why: 'The vals song sets the choreography the court rehearses for months, and many quinces add a high-energy surprise dance (baile sorpresa) right after. Choosing the song early gives the choreographer and the court time to learn it. It also shapes the music plan — a DJ spinning cumbia, banda, and reggaetón, a live banda or mariachi for key moments, or both.',
     },
   ],
