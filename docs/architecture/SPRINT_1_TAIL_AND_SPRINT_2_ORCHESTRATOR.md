@@ -75,8 +75,10 @@ The plan carried A2 as "partial — only input guardrails, no general undo." A c
 ### D1 · DECISION — Claude vs the existing OpenAI proxy  ✅ DECIDED 2026-07-16 → Option A
 Owner chose **Claude tool-calling alongside the existing OpenAI proxy** (full memo: [D1_ORCHESTRATOR_PROVIDER_DECISION.md](D1_ORCHESTRATOR_PROVIDER_DECISION.md)). New route `/api/ai/orchestrate` on Claude (Sonnet for the host conversation, Haiku for parse/classify); the 8 working OpenAI feature routes stay untouched (zero regression). No SDK migration — the backend calls providers over raw HTTP, so a second provider is one env key + one call. Soft flag: if the Sprint-61 OpenAI switch turns out to have had a hard cost/reliability reason, revisit before scaling. Everything below proceeds on this path.
 
-### B1 · Wrap the pure `lib/` engines as server-callable tools
-The engines are already pure/deterministic (2264 tests) — the source of every number. Expose a **thin, typed tool layer** over the real functions (no new logic):
+### B1 · Wrap the pure `lib/` engines as tools  ✅ BUILT 2026-07-16
+Shipped `src/lib/orchestratorTools.js` (+ `orchestratorTools.test.js`, 9 tests green). **Client-side, not Python** — the engines are pure JS and the light-and-fast doctrine says run them client-side, so the tool layer is a JS dispatch module: the server orchestrator emits `tool_use` naming a read, the client runs the engine and returns `tool_result` (no round-trip, engines never ported). Exports `TOOLS`, `toolSchemas()` (Claude tool defs, empty `input_schema` — the model names the read, never supplies the data), and `runTool(name, ctx)` (verbatim passthrough; honest `unknown_tool`/`no_event`/`engine_error`, never a guessed value). The load-bearing invariant is **test-locked**: a tool's output deep-equals the direct engine call. Params like `priceFactor`/`profile` ride in via ctx (server-invisible), so the model can't fabricate them.
+
+The nine tools over the real functions (no new logic):
 
 | Tool | Backs onto (real export) | Returns |
 |---|---|---|
