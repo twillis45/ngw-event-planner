@@ -7,7 +7,7 @@
 // situation awareness, adaptive feed structure, simulation independence.
 
 import { ROLES, PHASES, SITUATION_TYPES, createContext, resolvePhase, detectSituations } from './experienceContext';
-import { resolveDecisions, rankDecisions, unresolvedDecisions } from './decisionIntelligence';
+import { resolveDecisions, rankDecisions, unresolvedDecisions, scoreDecision } from './decisionIntelligence';
 import { composeExperience, buildAdaptiveFeed, adaptiveUIRules, explainRecommendation } from './experienceComposer';
 import { experienceView, simulateExperience, diffExperience } from './experienceView';
 import { createExperienceEvent, analyzeExperience, loadExperienceEvents, recordExperienceEvent, clearExperienceEvents, EXPERIENCE_EVENT_TYPES } from './experienceAnalytics';
@@ -137,6 +137,86 @@ describe('decisionIntelligence — resolveDecisions / rankDecisions', () => {
     // Both should return decisions; vendor-late should not reduce the count
     expect(vendorLateDecisions.length).toBeGreaterThan(0);
     expect(normalDecisions.length).toBeGreaterThan(0);
+  });
+});
+
+// ── decisionIntelligence — priority tier (DECISION_SCHEMA_SPEC §4.A / §6) ────────
+// The scorer's four nullable priority fields (weight, reversibility, emotionalWeight)
+// add a bounded, additive importance tie-breaker. Absent fields must be neutral.
+describe('decisionIntelligence — priority-tier scoring', () => {
+  // planner.decisionBlocks === null (+2 for any block) and an undated decision matches
+  // every phase (+3), so any bare decision has a base score of exactly 5. The priority
+  // boost (< 1) then re-ranks decisions that tie on that base.
+  const undated = (extra) => ({ id: extra.id, blocks: ['food'], ...extra });
+
+  test('higher weight outranks lower weight at equal timing/role', () => {
+    const high = undated({ id: 'high', weight: 'high' });
+    const low = undated({ id: 'low', weight: 'low' });
+    expect(scoreDecision(high, 'planner', 'planning', [])).toBeGreaterThan(
+      scoreDecision(low, 'planner', 'planning', [])
+    );
+    // …and the ranker surfaces the higher-weight decision first regardless of input order.
+    const ranked = resolveDecisions({ decisions: [low, high] }, { role: 'planner', phase: 'planning', situations: [] });
+    expect(rankDecisions(ranked, [])).toBe(high);
+  });
+
+  test("reversibility:'locked' outranks 'reversible' at equal weight", () => {
+    const locked = undated({ id: 'locked', weight: 'med', reversibility: 'locked' });
+    const rev = undated({ id: 'rev', weight: 'med', reversibility: 'reversible' });
+    expect(scoreDecision(locked, 'planner', 'planning', [])).toBeGreaterThan(
+      scoreDecision(rev, 'planner', 'planning', [])
+    );
+    const ranked = resolveDecisions({ decisions: [rev, locked] }, { role: 'planner', phase: 'planning', situations: [] });
+    expect(rankDecisions(ranked, [])).toBe(locked);
+  });
+
+  test('higher emotionalWeight outranks lower at equal weight/reversibility', () => {
+    const hot = undated({ id: 'hot', weight: 'med', emotionalWeight: 'high' });
+    const cool = undated({ id: 'cool', weight: 'med', emotionalWeight: 'low' });
+    expect(scoreDecision(hot, 'planner', 'planning', [])).toBeGreaterThan(
+      scoreDecision(cool, 'planner', 'planning', [])
+    );
+  });
+
+  test('REGRESSION PIN: a decision with NO priority fields scores exactly as before', () => {
+    const plain = undated({ id: 'plain' });
+    const base = scoreDecision(plain, 'planner', 'planning', []);
+    // Base = timing (+3) + role-null (+2), with no fractional priority boost applied.
+    expect(base).toBe(5);
+    expect(Number.isInteger(base)).toBe(true);
+    // Explicitly-undefined priority fields behave identically to absent ones.
+    const explicitNull = undated({ id: 'plain2', weight: undefined, reversibility: undefined, emotionalWeight: undefined });
+    expect(scoreDecision(explicitNull, 'planner', 'planning', [])).toBe(base);
+    // The zero-floor tiers ('low'/'reversible') also add nothing — a decision modelled at
+    // the lowest importance scores identically to an unmodelled one (no penalty either way).
+    const allLow = undated({ id: 'allLow', weight: 'low', reversibility: 'reversible', emotionalWeight: 'low' });
+    expect(scoreDecision(allLow, 'planner', 'planning', [])).toBe(base);
+    // A genuinely high-tier authored decision (crab dietary: weight 'high') DOES get a
+    // fractional boost → proves the term fires for modelled importance, not for blanks.
+    const dietary = crab.decisions.find((d) => d.id === 'dietary');
+    expect(dietary.weight).toBe('high');
+    expect(Number.isInteger(scoreDecision(dietary, 'planner', 'planning', []))).toBe(false);
+  });
+
+  test('priority boost is bounded < 1 — it never leapfrogs a stronger timing/role match', () => {
+    // In-phase, no priority fields: base 5 (undated → matches any phase) for planner.
+    const inPhasePlain = undated({ id: 'plain' });
+    // Out-of-phase but maximally important: 100 days out misses the purchasing window
+    // (3–14d) so timing scores +0; still +2 for planner-null → base 2, plus a boost
+    // that maxes below 1. The in-phase plain decision (base 5) must still win.
+    const outOfPhaseMax = { id: 'max', blocks: ['food'], when: 'T-100d', weight: 'high', reversibility: 'locked', emotionalWeight: 'high' };
+    expect(scoreDecision(inPhasePlain, 'planner', 'purchasing', [])).toBeGreaterThan(
+      scoreDecision(outOfPhaseMax, 'planner', 'purchasing', [])
+    );
+  });
+
+  test('priority boost is applied ONLY to already-relevant decisions (set unchanged)', () => {
+    // role 'guest' cares about no blocks ([]); a far-out dated 'food' decision misses the
+    // phase too → base 0 → filtered. A high priority must NOT resurrect it.
+    const irrelevant = { id: 'irrelevant', blocks: ['food'], when: 'T-100d', weight: 'high', reversibility: 'locked', emotionalWeight: 'high' };
+    expect(scoreDecision(irrelevant, 'guest', 'execution', [])).toBe(0);
+    const resolved = resolveDecisions({ decisions: [irrelevant] }, { role: 'guest', phase: 'execution', situations: [] });
+    expect(resolved).toHaveLength(0);
   });
 });
 

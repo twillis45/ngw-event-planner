@@ -39,8 +39,35 @@ function timingMatchesPhase(daysOut, phase) {
   return daysOut >= info.daysOutMin && daysOut <= info.daysOutMax;
 }
 
+// ─── Priority-tier boost (DECISION_SCHEMA_SPEC §4.A / §6) ───────────────────────
+// The decision schema's four nullable priority fields give the scorer an importance
+// axis it never had (weight, reversibility, emotionalWeight). This term is:
+//   • ADDITIVE — layered on top of the role/phase/situation base score, never replacing it.
+//   • BOUNDED (< 1) — a strict TIE-BREAKER. It can re-rank decisions that already tie on
+//     the base signals, but it can NEVER leapfrog a decision with a stronger timing/role/
+//     situation match (whose base is at least 1 point higher). So a low-priority decision
+//     that matches the phase still outranks a high-priority decision that does not.
+//   • NEUTRAL when absent — an unmodelled field maps to 0, so a decision carrying none of
+//     the fields scores EXACTLY as it did before this term existed (regression-safe).
+// It is applied only to already-relevant decisions (base > 0) — see scoreDecision — so the
+// SET of resolved decisions is unchanged; only the ORDER among relevant ties can shift.
+const WEIGHT_SCORE          = { low: 0, med: 1, high: 2 };  // how consequential the pick is
+const EMOTIONAL_WEIGHT_SCORE = { low: 0, med: 1, high: 2 }; // emotional stakes
+const REVERSIBILITY_URGENCY  = { reversible: 0, costly: 1, locked: 2 }; // can't-undo → urgency
+const PRIORITY_RAW_MAX = 6;    // 2 (weight) + 2 (emotional) + 2 (reversibility)
+const PRIORITY_TIEBREAK = 0.9; // < 1 so the whole term can never overtake one base point
+
+function priorityBoost(decision) {
+  const raw =
+    (WEIGHT_SCORE[decision.weight] || 0) +
+    (EMOTIONAL_WEIGHT_SCORE[decision.emotionalWeight] || 0) +
+    (REVERSIBILITY_URGENCY[decision.reversibility] || 0);
+  if (!raw) return 0;  // no priority fields modelled → neutral
+  return PRIORITY_TIEBREAK * (raw / PRIORITY_RAW_MAX);
+}
+
 // Score a single decision for the given role/phase/situations
-function scoreDecision(decision, role, phase, situations) {
+export function scoreDecision(decision, role, phase, situations) {
   let score = 0;
   const blocks = decision.blocks || [];
   const daysOut = parseDaysOut(decision.when);
@@ -68,6 +95,10 @@ function scoreDecision(decision, role, phase, situations) {
     if (sit === 'weather-alert' && blocks.includes('logistics')) score += 3;
     if (sit === 'permit-issue' && blocks.includes('compliance')) score += 4;
   }
+
+  // Priority tier — additive, bounded tie-breaker. Applied ONLY to already-relevant
+  // decisions so the resolved SET (score > 0 filter) is untouched; absent → +0.
+  if (score > 0) score += priorityBoost(decision);
 
   return score;
 }

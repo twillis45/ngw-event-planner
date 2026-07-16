@@ -10,6 +10,14 @@ export const FIELD_TYPES = {
   DECISION: 'decision',
   TASK: 'task',
   MILESTONE: 'milestone',
+  // Decision priority-tier fields (DECISION_SCHEMA_SPEC §4.A–D). Each names a
+  // researchable/authorable dimension the gap-detector now surfaces per decision,
+  // so a maintainer can SEE which decisions are missing an importance axis, a
+  // propose-vs-ask signal, a timing source, or a budget-engine linkage.
+  PRIORITY_WEIGHT: 'priority-weight',      // §4.A — the missing importance axis (`weight`)
+  DIFM_CAPABILITY: 'difm-capability',      // §4.C — the propose-vs-ask signal (`difmCapable`)
+  TIMING_PROVENANCE: 'timing-provenance',  // §4.B — a `when` deadline with no `timingProvenance` source
+  BUDGET_LINKAGE: 'budget-linkage',        // §4.D — costFactors that never reach the budget engine (no `affects`)
 };
 
 // Gap definition: what makes a field "researchable"
@@ -26,25 +34,88 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].costFactors`,
   },
+
+  // §4.A `weight` — how consequential the decision is (venue vs place cards). BLANK
+  // on every decision today, so the scorer has no importance axis. Any decision that
+  // has not declared a weight is a gap (nullable-and-additive: unset = "not modelled").
+  PRIORITY_WEIGHT: {
+    type: FIELD_TYPES.PRIORITY_WEIGHT,
+    hasData: (decision) => decision.weight != null,
+    needsResearch: (decision) => decision.weight == null,
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].weight`,
+  },
+
+  // §4.C `difmCapable` — the do-it-for-me / propose-vs-ask signal ('can-derive' vs
+  // 'needs-host'). Missing → the frictionless doctrine can't tell whether to fill a
+  // grounded default or ask the host, so an unset difmCapable is a gap.
+  DIFM_CAPABILITY: {
+    type: FIELD_TYPES.DIFM_CAPABILITY,
+    hasData: (decision) => decision.difmCapable != null,
+    needsResearch: (decision) => decision.difmCapable == null,
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].difmCapable`,
+  },
+
+  // §4.B `timingProvenance` — a `when` deadline ('T-14d') is a bare guess until it
+  // carries a source. A decision that DECLARES a `when` but no timingProvenance is a
+  // gap (a decision with no `when` at all has no deadline to ground, so it is not).
+  TIMING_PROVENANCE: {
+    type: FIELD_TYPES.TIMING_PROVENANCE,
+    hasData: (decision) => !!decision.timingProvenance,
+    needsResearch: (decision) => !!decision.when && !decision.timingProvenance,
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].timingProvenance`,
+  },
+
+  // §4.D budget linkage — a money-touching decision (costFactors present) must feed
+  // the budget engine through `affects` (the cost-driver purchase ids). costFactors
+  // with no `affects` is a consequence-graph gap: the price signal never reaches a
+  // surface. Complements the contract linter's well-formedness check (which validates
+  // affects → real purchase ids when affects EXISTS); this flags its ABSENCE.
+  BUDGET_LINKAGE: {
+    type: FIELD_TYPES.BUDGET_LINKAGE,
+    hasData: (decision) => Array.isArray(decision.affects) && decision.affects.length > 0,
+    needsResearch: (decision) =>
+      decision.costFactors && Object.keys(decision.costFactors).length > 0 &&
+      !(Array.isArray(decision.affects) && decision.affects.length > 0),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].affects`,
+  },
 };
 
-// Playbook traversal — get all gaps from a playbook
+// The decision-level criteria the traversal runs, in a stable order. COST_FACTOR
+// leads (the original gap type) so existing fieldPath-keyed consumers are unaffected;
+// the priority-tier criteria (DECISION_SCHEMA_SPEC §6) follow.
+const DECISION_GAP_CRITERIA = [
+  GAP_CRITERIA.COST_FACTOR,
+  GAP_CRITERIA.PRIORITY_WEIGHT,
+  GAP_CRITERIA.DIFM_CAPABILITY,
+  GAP_CRITERIA.TIMING_PROVENANCE,
+  GAP_CRITERIA.BUDGET_LINKAGE,
+];
+
+// Playbook traversal — get all gaps from a playbook. Each decision is checked against
+// every decision-level criterion; a single decision can surface MULTIPLE typed gaps
+// (e.g. missing weight AND missing difmCapable). Each gap is keyed by its own
+// fieldPath sub-field, so downstream fieldPath-indexed consumers never collide.
 export function detectGapsInPlaybook(playbook) {
   if (!playbook) return [];
 
   const gaps = [];
 
-  // Check decisions for cost factor gaps
   if (playbook.decisions && Array.isArray(playbook.decisions)) {
     playbook.decisions.forEach((decision) => {
-      if (GAP_CRITERIA.COST_FACTOR.needsResearch(decision)) {
-        gaps.push({
-          id: decision.id,
-          type: FIELD_TYPES.COST_FACTOR,
-          label: decision.label || decision.id,
-          fieldPath: GAP_CRITERIA.COST_FACTOR.fieldPath(decision.id),
-          decision,
-        });
+      for (const criterion of DECISION_GAP_CRITERIA) {
+        if (criterion.needsResearch(decision)) {
+          gaps.push({
+            id: decision.id,
+            type: criterion.type,
+            label: criterion.label(decision),
+            fieldPath: criterion.fieldPath(decision.id),
+            decision,
+          });
+        }
       }
     });
   }

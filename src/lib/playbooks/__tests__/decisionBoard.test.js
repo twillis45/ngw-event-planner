@@ -1,7 +1,7 @@
 // playbookDecisionBoard — the host "Decisions" reader (Figma 1692:3). Pure, derived
 // entirely from existing engine state (guestCountResolved / attendanceBand /
 // dietaryResolved / foundation facts / authored decisions[]). No fabricated counts.
-import { playbookFoodPlan, playbookDecisionOptions, playbookDecisionBoard } from '../index';
+import { playbookFoodPlan, playbookDecisionOptions, playbookDecisionBoard, playbookHostDifficulty } from '../index';
 
 const roster = (yes, no, pending) => ([
   ...Array.from({ length: yes }, (_, i) => ({ name: `Y${i}`, rsvp: 'Yes' })),
@@ -11,7 +11,9 @@ const roster = (yes, no, pending) => ([
 
 describe('playbookDecisionBoard — shape + safety', () => {
   test('null/empty event → empty board', () => {
-    expect(playbookDecisionBoard(null)).toEqual({ open: [], locked: [], headcount: null });
+    // 2026-07-15: the empty shape now also carries the priority-tier board fields
+    // (hostDifficulty, heartAtRisk) so the return is one consistent shape.
+    expect(playbookDecisionBoard(null)).toEqual({ open: [], locked: [], headcount: null, hostDifficulty: null, heartAtRisk: false });
     const b = playbookDecisionBoard({ id: 'e', type: 'Unknown Type' });
     expect(Array.isArray(b.open)).toBe(true);
     expect(Array.isArray(b.locked)).toBe(true);
@@ -163,6 +165,58 @@ describe('decision status derivation', () => {
     const seq = b.open.map((r) => ranks[r.status]);
     const sorted = [...seq].sort((a, b2) => a - b2);
     expect(seq).toEqual(sorted);
+  });
+});
+
+describe('decision priority tier (DECISION_SCHEMA_SPEC §4.A/§6) — fields, ordering, heart, hostDifficulty', () => {
+  // Retirement's `tribute` is the reference heart-moment decision (deliversHeartMoment,
+  // weight:high, emotionalWeight:high, reversibility:costly, difmCapable:needs-host).
+  const retirement = (extra) => ({ id: 'e', type: 'Retirement Party', date: '2026-02-01', guests: roster(30, 4, 6), ...extra });
+
+  test('open rows carry the five priority fields from the source decision', () => {
+    const b = playbookDecisionBoard(retirement(), '2026-01-01');
+    const tribute = [...b.open, ...b.locked].find((r) => r.id === 'tribute');
+    expect(tribute).toMatchObject({
+      deliversHeartMoment: true,
+      weight: 'high',
+      emotionalWeight: 'high',
+      reversibility: 'costly',
+      difmCapable: 'needs-host',
+    });
+    // music is authored low-weight, non-heart — the fields pass through as authored.
+    const music = [...b.open, ...b.locked].find((r) => r.id === 'music');
+    expect(music).toMatchObject({ weight: 'low', deliversHeartMoment: false });
+  });
+
+  test('within a status band, the heart-moment decision floats above lower-weight peers', () => {
+    const b = playbookDecisionBoard(retirement(), '2026-01-01');
+    const ready = b.open.filter((r) => r.status === 'ready');
+    const ti = ready.findIndex((r) => r.id === 'tribute');
+    const mi = ready.findIndex((r) => r.id === 'music');
+    // Both must be in the ready band for this comparison to mean anything.
+    if (ti >= 0 && mi >= 0) expect(ti).toBeLessThan(mi);
+  });
+
+  test('status band is still PRIMARY — overdue → ready → waiting is never broken by weight', () => {
+    const b = playbookDecisionBoard(retirement({ date: '2026-01-05' }), '2026-01-01');
+    const ranks = { overdue: 0, ready: 1, waiting: 2 };
+    const seq = b.open.map((r) => ranks[r.status]);
+    expect(seq).toEqual([...seq].sort((a, b2) => a - b2));
+  });
+
+  test('heartAtRisk is true while the tribute is open, false once it is settled', () => {
+    const open = playbookDecisionBoard(retirement(), '2026-01-01');
+    expect(open.heartAtRisk).toBe(true);
+    const settled = playbookDecisionBoard(retirement({ foodChoices: { tribute: '3-5 pre-assigned speakers' } }), '2026-01-01');
+    expect(settled.heartAtRisk).toBe(false);
+    expect(settled.locked.find((r) => r.id === 'tribute')).toBeTruthy();
+  });
+
+  test('hostDifficulty is exposed on the board and via the helper', () => {
+    const b = playbookDecisionBoard(retirement(), '2026-01-01');
+    expect(b.hostDifficulty).toBe('moderate');
+    expect(playbookHostDifficulty(retirement())).toBe('moderate');
+    expect(playbookHostDifficulty({ id: 'e', type: 'Unknown Type' })).toBeNull();
   });
 });
 

@@ -1697,8 +1697,48 @@ export function isMenuDecision(d) {
   return MENU_DECISION_RE.test(hay);
 }
 
+// ── Decision priority ordering (DECISION_SCHEMA_SPEC §4.A / §6) ────────────────
+// WITHIN a status band, a decision's authored importance floats it toward the top:
+// a decision that DELIVERS a heart moment leads, then higher `weight`, then the
+// existing soonest-due tiebreak. Unset fields sink to the modelled ones (nullable-
+// and-additive — an un-authored decision keeps its old, deadline-only position).
+const DECISION_WEIGHT_RANK = { high: 0, med: 1, low: 2 };
+function heartRank(row) { return row && row.deliversHeartMoment ? 0 : 1; }
+function weightRank(row) {
+  const r = row && DECISION_WEIGHT_RANK[row.weight];
+  return r == null ? 1.5 : r; // unset weight sits between med and low
+}
+
+// The five priority-tier fields a board row carries through from its source
+// decision (all NULLABLE per the spec). Passed onto every decision row so a
+// shell / DIFM surface and the ordering below can read them without re-opening
+// the playbook. A null source field stays null on the row.
+function decisionPriorityFields(d) {
+  return {
+    weight: d.weight != null ? d.weight : null,
+    reversibility: d.reversibility != null ? d.reversibility : null,
+    emotionalWeight: d.emotionalWeight != null ? d.emotionalWeight : null,
+    difmCapable: d.difmCapable != null ? d.difmCapable : null,
+    deliversHeartMoment: d.deliversHeartMoment === true,
+  };
+}
+
+// playbookHostDifficulty(event) → the authored meta.hostDifficulty for the event's
+// playbook, or null. First consumer of a field authored on all 40 playbooks and read
+// by NOTHING until now (DECISION_SCHEMA_SPEC §4.F / §6.3): this closes the
+// authored-but-unread gap so a shell / DIFM surface can finally scale hand-holding
+// to how hard the event is. Fuller DIFM-intensity wiring (host experience × capacity)
+// is a follow-up — this is the minimal read.
+export function playbookHostDifficulty(event) {
+  const pb = getPlaybook(event && event.type);
+  const hd = pb && pb.meta && pb.meta.hostDifficulty;
+  return hd != null ? hd : null;
+}
+
 export function playbookDecisionBoard(event, asOf) {
-  const empty = { open: [], locked: [], headcount: null };
+  // heartAtRisk/hostDifficulty added to the empty shape too so the board's return
+  // is one consistent shape whether or not there's an event (2026-07-15).
+  const empty = { open: [], locked: [], headcount: null, hostDifficulty: null, heartAtRisk: false };
   if (!event) return empty;
 
   const dte = daysToEvent(event.date, asOf); // null when no date
@@ -1718,7 +1758,10 @@ export function playbookDecisionBoard(event, asOf) {
   if (dateSet) {
     locked.push({ id: 'f-date', label: 'Date', status: 'locked', because: friendlyDate(event.date), dueDate: event.date, daysOut: dte, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
   } else {
-    open.push({ id: 'f-date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
+    // Foundation prerequisites carry weight:'high' so the §4.A importance ordering
+    // keeps them near the top of their status band (everything sizes off the date /
+    // count) rather than sinking below authored decisions that DO declare a weight.
+    open.push({ id: 'f-date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, weight: 'high', deliversHeartMoment: false, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
   }
   if (hasVenue) {
     locked.push({ id: 'f-venue', label: 'Venue', status: 'locked', because: String(event.venue).trim(), dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
@@ -1747,7 +1790,7 @@ export function playbookDecisionBoard(event, asOf) {
       route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
     };
   } else {
-    open.push({ id: 'f-headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' } });
+    open.push({ id: 'f-headcount', label: 'Lock your guest count', status: 'ready', because: 'Food, drinks, and seating all size from your headcount.', dueDate: null, daysOut: null, weight: 'high', deliversHeartMoment: false, route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' } });
   }
 
   // ── Playbook decisions ─────────────────────────────────────────────────────
@@ -1828,9 +1871,10 @@ export function playbookDecisionBoard(event, asOf) {
       : /menu|food|dish|course|drink/.test(_hay) ? { eventId: event.id, tab: 'Planning', focusField: 'food-plan' }
       : null;
 
+    const priority = decisionPriorityFields(d);
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, route });
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, route });
       continue;
     }
 
@@ -1872,15 +1916,27 @@ export function playbookDecisionBoard(event, asOf) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, route });
+    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, route });
   }
 
-  // Calmest-first ordering: overdue, then ready (soonest due), then waiting.
+  // Calmest-first ordering: overdue, then ready, then waiting — the status band is
+  // PRIMARY and unchanged (overdue still leads). WITHIN a band (2026-07-15,
+  // DECISION_SCHEMA_SPEC §4.A/§6): a decision that delivers a heart moment floats to
+  // the top, then higher `weight`, then the existing soonest-due tiebreak — so the
+  // Decisions sheet leads with the decisions that actually matter, not just the
+  // nearest deadline. Un-authored decisions (no weight/heart) keep their prior order.
   const STATUS_RANK = { overdue: 0, ready: 1, waiting: 2 };
   open.sort((a, b) => (STATUS_RANK[a.status] - STATUS_RANK[b.status])
+    || (heartRank(a) - heartRank(b))
+    || (weightRank(a) - weightRank(b))
     || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut)));
 
-  return { open, locked, headcount };
+  // heartAtRisk — any OPEN (unsettled) decision that delivers a heart moment. A shell
+  // can use this to protect the moment before the host defaults it away. Board-scoped
+  // by design; CommandCenter's heart nudge is a deliberate follow-up (not wired here).
+  const heartAtRisk = open.some((r) => r.deliversHeartMoment === true);
+
+  return { open, locked, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk };
 }
 
 // Options accessor for a single menu/sourcing decision, so the Decisions board can
