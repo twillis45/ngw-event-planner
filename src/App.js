@@ -42877,7 +42877,7 @@ function hostDiffBand(hostDifficulty) {
   return 'moderate';
 }
 
-function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice, onReorder, onSetHostExperience }) {
+function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice, onReorder, onSetHostExperience, onSetHostCapacity }) {
   // ONE-SOURCE HERO: "Settle it" routes here with focusField 'host-decisions' —
   // the board must OPEN on landing, not just scroll its collapsed header into view.
   const settleFocus = useFocusFieldForceOpen(HOST_DECISIONS_IDS);
@@ -42901,6 +42901,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   // say which they are, so the same event yields a different board per host.
   const hostAdaptation = board.hostAdaptation || null;
   const canSetExperience = typeof onSetHostExperience === 'function';
+  const canSetCapacity = typeof onSetHostCapacity === 'function';
   // Wave-2b: a well-planned far-future event can have EVERY ready decision parked in
   // `deferred` — the panel must still render (never vanish) so the parked calls stay
   // honest and reachable. Null-safe for a board authored before the key existed.
@@ -43142,6 +43143,25 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
             return (
               <button key={val} type="button" aria-pressed={on}
                 onClick={() => onSetHostExperience(on ? null : val)}
+                style={{ cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 10px', borderRadius: 999, border: `1px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent', color: on ? '#fff' : C.muted }}>
+                {lbl}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {/* Wave-2q ADAPTIVITY — capacity is the SECOND host dimension the board reads. A
+          solo host on a hard or large event gets walked through it; a host with help gets
+          a leaner board. Without this control the input was engine-only (unreachable at
+          runtime); the one-tap toggle makes the live board actually respond to capacity. */}
+      {canSetCapacity && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 2px 14px', fontSize: T.caption, color: C.muted }}>
+          <span>Pulling this off:</span>
+          {[['solo', 'On my own'], ['has_help', 'I have help']].map(([val, lbl]) => {
+            const on = (event.hostCapacity || null) === val;
+            return (
+              <button key={val} type="button" aria-pressed={on}
+                onClick={() => onSetHostCapacity(on ? null : val)}
                 style={{ cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 10px', borderRadius: 999, border: `1px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent', color: on ? '#fff' : C.muted }}>
                 {lbl}
               </button>
@@ -43578,7 +43598,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               no task list) — the named task renders as an actionable focus card. */}
           {openTaskId && <HostTaskFocusCard event={event} taskId={openTaskId} setEvent={setEvent} onClear={() => setOpenTaskId(null)} />}
           <div className="planv2-grid">
-            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} /></div>
+            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} onSetHostCapacity={(cap) => { setEvent(e => ({ ...e, hostCapacity: cap })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
               <ContextNudgeCard event={event} surface="food" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} />
               <CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
@@ -43594,7 +43614,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="hp-recede"><CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} /><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
-          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} /></div>
+          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} onSetHostCapacity={(cap) => { setEvent(e => ({ ...e, hostCapacity: cap })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
           <PlanBudgetRollup event={event} profile={profile} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
@@ -44463,7 +44483,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           "What's left to do"; the count-lock reuses the single-source guest-count lock. */}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} />
+          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} onSetHostCapacity={(cap) => { setEvent(e => ({ ...e, hostCapacity: cap })); try { feedbackSelect(); } catch {} }} />
         </div>
       )}
       {tab === 'Planning'       && (

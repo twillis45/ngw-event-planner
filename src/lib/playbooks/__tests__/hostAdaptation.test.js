@@ -31,6 +31,19 @@ describe('per-host adaptivity', () => {
     expect(computeHostAdaptation(null, 'solo', 'hard', 8).handHolding).toBe('high');
   });
 
+  test('capacity ALONE (2nd host dimension) changes the board on a large event', () => {
+    // experience unknown on both — only hostCapacity differs. A solo host on a large
+    // event gets walked through it; a host with help does not. Proves capacity is a live
+    // board input, not just an engine constant (Wave-2q: it now has a runtime control).
+    const base = { id: 'e', type: 'Wedding', date: '2027-06-01', guests: [], guestEstimate: 140 };
+    const solo = playbookDecisionBoard({ ...base, hostCapacity: 'solo' });
+    const helped = playbookDecisionBoard({ ...base, hostCapacity: 'has_help' });
+    expect(solo.hostAdaptation.handHolding).toBe('high');
+    expect(helped.hostAdaptation.handHolding).not.toBe('high');
+    expect(solo.focus.length).toBeLessThan(helped.focus.length);
+    expect(solo.hostCapacity).toBe('solo');
+  });
+
   test('event SIZE scales hand-holding independent of the host', () => {
     // a solo host on a LARGE event gets walked through it even on an easy playbook
     expect(computeHostAdaptation(null, 'solo', 'easy', 8, 120).handHolding).toBe('high');
