@@ -281,8 +281,10 @@ async def orchestrate(
     runs here and no number originates here — grounding is enforced by the tools
     (which run client-side) plus the client's post-check.
 
-    NOTE (follow-up): auth reuses require_planner to match the other secured AI
-    routes; a host-scoped gate is a B3/integration concern, flagged not assumed.
+    AUTH: require_planner verifies a valid Supabase token — ANY signed-in user,
+    not a role gate — so a signed-in host is authorized exactly like a planner.
+    An unauthenticated demo/preview session gets 401 (correct); the client only
+    offers "Ask the Boss" when a session exists, so a host never hits a dead 401.
     """
     # 1. Auth (401 otherwise).
     principal = await require_planner(authorization, x_planner_token)

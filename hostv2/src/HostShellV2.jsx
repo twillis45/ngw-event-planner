@@ -7589,7 +7589,7 @@ export default function HostShellV2() {
                       when a backend is configured (demo build has none → no dead button).
                       Every state here is honest: loading, a grounded AI answer, or an
                       unavailable notice that leaves the plain answer standing. */}
-                  {askResult && !askResult.matched && isOrchestratorApiConfigured() && (
+                  {askResult && !askResult.matched && isOrchestratorApiConfigured() && session && (
                     <div className="brow" style={{ marginTop: 'var(--sp-3)' }}>
                       {!askLLM && (
                         <>
