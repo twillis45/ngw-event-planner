@@ -43194,16 +43194,40 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       )}
       {/* Calm cap: the list is sorted urgent-first (overdue → ready → waiting), so the few
           that matter lead; the rest fold into a quiet "+N more" so the panel never reads as
-          a long backlog (Ruthless Host Lens — a few things, not a worklist). */}
-      {open.length > 0 && (<>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, foldN)).map(openRow)}{open.length > foldN && (
-        // The fold now EXPANDS (task 2): every decision's rank reason must be
-        // reachable, never permanently buried below the "+N more" line. The fold
-        // count `foldN` is host-adaptive (Wave-2m.1): fewer for a first-timer.
-        <button type="button" onClick={() => setShowAllOpen((v) => !v)}
-          style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
-          {showAllOpen ? 'Show fewer' : `+${open.length - foldN} more to settle, in their own time`}
-        </button>
-      )}</>)}
+          a long backlog (Ruthless Host Lens — a few things, not a worklist).
+          Wave-2s PACE: a hand-held host (hostAdaptation.staged) gets the board as PACED
+          SESSIONS — a labeled "Start here" first session sized by focusCount, then the rest
+          surface under "Next, when you're ready" — so a nervous host is never handed one long
+          list. This stays differentiated even on a deadline-heavy board (where the ORDER alone
+          collapses to the same urgent-first sequence for every host). A seasoned/neutral host
+          keeps the flat "Still open / +N more" list. */}
+      {open.length > 0 && (hostAdaptation && hostAdaptation.staged ? (
+        <>
+          {sectionLabel('Start here')}
+          <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5, margin: '0 2px 10px' }}>A few at a time — settle these first, then the next set surfaces. You don&rsquo;t have to do it all today.</div>
+          {open.slice(0, foldN).map(openRow)}
+          {open.length > foldN && (
+            <>
+              {showAllOpen && sectionLabel('Next, when you’re ready')}
+              {showAllOpen && open.slice(foldN).map(openRow)}
+              <button type="button" onClick={() => setShowAllOpen((v) => !v)}
+                style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
+                {showAllOpen ? 'Show fewer' : `Next: ${open.length - foldN} more, when you’re ready`}
+              </button>
+            </>
+          )}
+        </>
+      ) : (
+        <>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, foldN)).map(openRow)}{open.length > foldN && (
+          // The fold now EXPANDS (task 2): every decision's rank reason must be
+          // reachable, never permanently buried below the "+N more" line. The fold
+          // count `foldN` is host-adaptive (Wave-2m.1): fewer for a first-timer.
+          <button type="button" onClick={() => setShowAllOpen((v) => !v)}
+            style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
+            {showAllOpen ? 'Show fewer' : `+${open.length - foldN} more to settle, in their own time`}
+          </button>
+        )}</>
+      ))}
       {/* Wave-2b horizon group — the decisions the engine parked ("comes up closer to the
           date"). Visually SUBORDINATE to the active list: when work is open it folds into a
           quiet toggle (same fold vocabulary as "+N more"); when nothing is open it leads with

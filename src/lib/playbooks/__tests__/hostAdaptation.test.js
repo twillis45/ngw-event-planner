@@ -78,6 +78,18 @@ describe('per-host adaptivity', () => {
     expect(solo.hostCapacity).toBe('solo');
   });
 
+  test('PACE: hand-held host is staged into sessions; seasoned/neutral gets one list', () => {
+    const base = { id: 'e', type: 'Wedding', date: '2027-06-01', guests: [], guestEstimate: 140 };
+    const first = playbookDecisionBoard({ ...base, hostExperience: 'first_time', hostCapacity: 'solo' });
+    const seasoned = playbookDecisionBoard({ ...base, hostExperience: 'experienced', hostCapacity: 'has_help' });
+    const neutral = playbookDecisionBoard(base);
+    expect(first.hostAdaptation.staged).toBe(true);
+    expect(first.hostAdaptation.batchSize).toBe(first.hostAdaptation.focusCount);
+    expect(first.hostAdaptation.batchSize).toBeGreaterThan(0);
+    expect(seasoned.hostAdaptation.staged).toBe(false);
+    expect(neutral.hostAdaptation.staged).toBe(false);
+  });
+
   test('event SIZE scales hand-holding independent of the host', () => {
     // a solo host on a LARGE event gets walked through it even on an easy playbook
     expect(computeHostAdaptation(null, 'solo', 'easy', 8, 120).handHolding).toBe('high');

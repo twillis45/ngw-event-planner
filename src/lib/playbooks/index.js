@@ -2331,6 +2331,14 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     proposeDerivable: handHolding === 'high',
     reassure: handHolding === 'high',
     terse: handHolding === 'light',
+    // Wave-2s PACE — a hand-held host doesn't get the whole list at once; the board is
+    // chunked into paced sessions ("start with these few, the rest surface after") sized by
+    // focusCount. This adapts the PACE across the runway, not just the order — and it stays
+    // differentiated even on a deadline-heavy board (where the order alone collapses to the
+    // same urgent-first sequence for everyone): the hand-held host still gets a small first
+    // session, the seasoned host gets the full list. batchSize is the session size.
+    staged: handHolding === 'high',
+    batchSize: focusCount,
   };
 }
 
