@@ -66,6 +66,8 @@ import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/l
 import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
+import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
+import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
 import { purgeStaleOutbox, fetchEventRsvps, isRsvpApiConfigured } from '@app/lib/api/rsvp';
@@ -5055,10 +5057,13 @@ export default function HostShellV2() {
                             the list actually empties. The grounded proposal (computed above) is
                             still the one-tap default; "pick a day" folds open the clamped date
                             row below. NEVER for a critical ("your caterer hasn't arrived" is
-                            not a someday). The host owns the result and can un-snooze. */}
+                            not a someday). The host owns the result and can un-snooze.
+                            LAYOUT (host report): the two snooze options are ONE grouped cluster,
+                            right of the primary CTA — so on a narrow card they wrap together as a
+                            unit ("not now · pick a day") instead of splitting into a ragged stack. */}
                         {snoozeProposed && (
-                          <>
-                            <button className="mini" style={{ marginLeft: 'auto' }}
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 'auto', flexShrink: 0 }}>
+                            <button className="mini"
                               onClick={() => snoozeTo(snoozeProposed, 'Set aside — it’ll come back ' + fmtBack(snoozeProposed) + ', with time to spare.')}>
                               not now
                             </button>
@@ -5068,7 +5073,7 @@ export default function HostShellV2() {
                                 pick a day
                               </button>
                             )}
-                          </>
+                          </span>
                         )}
                       </div>
                       {/* The day picker — progressive disclosure: this row exists only after
@@ -7273,6 +7278,29 @@ export default function HostShellV2() {
                 <p className="grounding" style={{ margin: '0 0 var(--sp-5)' }}>
                   The day-before brief, the run of show, and the toast all draw from your own words — nothing here is required.
                 </p>
+                {/* MILITARY RETIREMENT intelligence (knowledge/militaryRetirement.js): when the
+                    event is a military retirement, surface the real ceremony protocol — the
+                    sequence + the elements that carry a decision or lead time — grounded to Army
+                    references. Only renders for an authored branch (Army today); a civilian
+                    retirement or an unauthored branch shows nothing here. */}
+                {(() => {
+                  const mil = (() => { try { return militaryRetirementContext(event); } catch { return null; } })();
+                  if (!mil || !mil.authored) return null;
+                  return (
+                    <div style={{ marginBottom: 'var(--sp-5)', padding: 'var(--sp-3) 14px', border: '1px solid var(--line)', borderRadius: 'var(--r-md)', background: 'var(--bg-band)' }}>
+                      <div className="eyebrow" style={{ color: 'var(--steel-soft)', marginBottom: 6 }}>{mil.label} · retirement protocol</div>
+                      <p className="v-meta" style={{ margin: '0 0 8px' }}>This is a military retirement — it carries protocol a civilian party doesn’t. The ceremony runs roughly:</p>
+                      <ol style={{ margin: '0 0 12px', paddingLeft: 18, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                        {mil.ceremonySequence.map((s, i) => <li key={i} style={{ margin: '2px 0' }}>{s}</li>)}
+                      </ol>
+                      <p className="v-meta" style={{ margin: '0 0 6px', fontWeight: 650, color: 'var(--ink)' }}>What carries a decision or real lead time:</p>
+                      <ul style={{ margin: '0 0 10px', paddingLeft: 18, fontSize: 'var(--t-body-s)', color: 'var(--ink-soft)', lineHeight: 1.5 }}>
+                        {mil.protocol.map((p) => <li key={p.id} style={{ margin: '4px 0' }}><b style={{ color: 'var(--ink)' }}>{p.label}.</b> {p.note}</li>)}
+                      </ul>
+                      <p className="grounding" style={{ margin: 0, opacity: .8 }}>Grounded in Army protocol references — AR 600-25, DA PAM 600-60, the U.S. Flag Code, and Army Retirement Services.</p>
+                    </div>
+                  );
+                })()}
                 {[
                   ['honoree', 'Who is it for?', 'Margaret — my mom', false],
                   ['honoree_story', 'Their story, in a line or two', '32 years at the library; she taught half the county to read', true],
@@ -9347,7 +9375,10 @@ export default function HostShellV2() {
                                 the expanded editor, so a host couldn't compare vendor
                                 costs at a glance. Surface them on the collapsed card
                                 face (with status + arrival) so the list scans side-by-side. */}
-                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null, Number(v.cost) > 0 ? '$' + Number(v.cost).toLocaleString() + (v.balancePaid ? ' · paid' : '') : null].filter(Boolean).join(' · ')}</div>
+                            <div className="vc-cat">{[v.category || 'Vendor', v.arrivalTime ? 'arrives ' + v.arrivalTime : null, Number(v.cost) > 0 ? '$' + Number(v.cost).toLocaleString() + (v.balancePaid ? ' · paid' : '') : null,
+                              // How this vendor prices (host report): a per-head figure for a caterer/bar
+                              // ("$20/head"), "flat rate" / "per item" for the rest — from the one pricing-basis source.
+                              Number(v.cost) > 0 ? vendorPricingHint(v, Number(event.guestCount) || Number(event.guestEstimate) || 0) : null].filter(Boolean).join(' · ')}</div>
                           </div>
                           {/* HOST-APPROPRIATE-VENDOR-UI: an informal helper isn't
                               missing paperwork — there's none to have. "no status"
