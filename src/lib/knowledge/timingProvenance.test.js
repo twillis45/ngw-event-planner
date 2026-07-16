@@ -80,11 +80,13 @@ describe('timing category resolver', () => {
         if (isGroundedTiming(effectiveTimingProvenance(d))) grounded++;
       }
     }
-    // Was 0/215 before this wave. After the 2c-2.1 false-positive fix the resolver grounds
-    // ~10 cross-event logistics decisions, every one deadline-consistent with its source;
-    // event-specific choices stay honestly synthesized. Correctness over count.
-    expect(grounded).toBeGreaterThanOrEqual(8);
-    expect(grounded).toBeLessThan(15); // honest: does NOT overclaim (the inflated count was 22)
+    // Was 0/215 before this axis. Wave-2k broadened the resolver (invitation fix, headcount/
+    // guestlist, photography, attire) to ~18 cross-event LOGISTICS decisions, every one
+    // deadline-consistent with its source. It deliberately stays there: the other ~197 are
+    // event-specific CHOICE decisions (what to serve/theme) with no citable external lead
+    // standard, so they remain honestly synthesized. Correctness + honest ceiling over count.
+    expect(grounded).toBeGreaterThanOrEqual(15);
+    expect(grounded).toBeLessThan(30); // still conservative — no over-reach into choice decisions
   });
 });
 

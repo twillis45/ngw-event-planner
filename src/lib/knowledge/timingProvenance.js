@@ -46,6 +46,16 @@ export const TIMING_SOURCES = {
     fetched: '2026-07-15',
     claim: 'Order a custom party/birthday cake ~2–3 weeks ahead (simple designs 3–5 days); a wedding or tiered cake 6–8 weeks, more in busy holiday season.',
   },
+  'theknot-attire': {
+    url: 'https://www.theknot.com/content/wedding-gown-shopping-checklist',
+    fetched: '2026-07-16',
+    claim: 'Order a wedding gown 9–12 months out (start shopping 12–18 months); made-to-order gowns take 4–9 months to arrive plus 2–3 months for alterations. A tux/suit rental needs ~2 months; a custom suit 6–9 months.',
+  },
+  'quince-dress': {
+    url: 'https://www.quinceanerasmagazine.com/post/when-order-your-quinceanera-dress-9-months-before-your-big-day',
+    fetched: '2026-07-16',
+    claim: 'Order the quinceañera ballgown ~9 months ahead so it arrives at least 2 months before the quince for alterations and fittings.',
+  },
   'partyguides-venue': {
     url: 'https://partygeniusai.com/birthday-party-planning-timeline',
     fetched: '2026-07-15',
@@ -71,17 +81,18 @@ const TIMING_CATEGORIES = [
   },
   {
     category: 'invitation',
-    pattern: /\binvit|send.*(card|invite)|\brsvp\b.*send|announce the (date|party)/i,
-    // veto incidental "share on the invite" mentions on registry/gift/menu decisions —
-    // those aren't invitation-SEND timing.
-    antiPattern: /head.?count|final count|dietary|allerg|registr|gift|\bmenu\b/i,
+    pattern: /\binvit|send.*(card|invite)|announce the (date|party)/i,
+    // veto incidental "share on the invite" mentions on registry/gift/menu decisions — those
+    // aren't invitation-SEND timing. (A real "Invite + RSVP + dietary ask" decision keeps its
+    // match — the dietary mention is incidental to an invitation decision, so it is NOT vetoed.)
+    antiPattern: /registr|\bgift\b|lock the menu|catering order|final count|lock.*headcount/i,
     leadDays: [10, 90], // 2–8 weeks (casual → formal/travel)
     sources: ['paperlesspost-invites'],
     claim: 'Invitations go out 2–4 weeks ahead for a casual gathering, 6–8+ weeks when guests travel or the event is formal.',
   },
   {
     category: 'headcount_rsvp',
-    pattern: /head.?count|final count|guest count|lock.*(count|guests)|rsvp deadline|confirm.*(numbers|attendance)/i,
+    pattern: /head.?count|final count|guest ?count|guest ?list|lock.*(count|guests)|rsvp deadline|confirm.*(numbers|attendance|guest)/i,
     leadDays: [2, 35], // final headcount 7–14d; RSVP deadline 3–4 weeks
     sources: ['theknot-headcount'],
     claim: 'Caterers/venues want a final headcount 7–14 days out; set the RSVP deadline ~3–4 weeks before to leave time to chase replies.',
@@ -125,11 +136,27 @@ const TIMING_CATEGORIES = [
   },
   {
     category: 'entertainment',
-    pattern: /\bdj\b|\bband\b|live music|hire.*(music|entertain)|\bflorist\b|the flowers\b/i,
-    antiPattern: /playlist|speaker|spotify|curated/i,
+    pattern: /\bdj\b|\bband\b|live music|hire.*(music|entertain)|\bflorist\b|the flowers\b|book.*(music|band|dj)/i,
+    antiPattern: /playlist|spotify|curated|which songs/i,
     leadDays: [90, 500], // book a band/DJ/florist 9–12 months out
     sources: ['theknot-vendors'],
     claim: 'Book a band/DJ or florist 9–12 months out for a formal event — the good ones take one booking per date.',
+  },
+  {
+    category: 'photography',
+    pattern: /photographer|videographer|photo ?booth|hire.*(photo|video)|book.*(photo|video)/i,
+    leadDays: [60, 600], // photographers book 12–18 months out; solo shooters, one/day
+    sources: ['theknot-vendors'],
+    claim: 'Book a photographer/videographer early — 12–18 months out for a wedding-scale event; most work solo and take one booking per date.',
+  },
+  {
+    category: 'attire',
+    // Ordering formal attire (gown/dress/suit/tux) — long lead for made-to-order.
+    pattern: /\bgown\b|ballgown|wedding dress|the dress\b|\btux(edo)?\b|\bsuit(s)?\b|formalwear|attire order|order.*(dress|gown|suit)/i,
+    antiPattern: /dress code|dress the table|salad dress|dressing|address|suit(s)? (you|the)/i,
+    leadDays: [45, 550], // tux rental ~2 months → gown 9–12 months
+    sources: ['theknot-attire', 'quince-dress'],
+    claim: 'Order formal attire early — a made-to-order gown 9–12 months out (plus alterations), a quinceañera dress ~9 months, a tux/suit rental ~2 months.',
   },
 ];
 
