@@ -3249,6 +3249,14 @@ export default function HostShellV2() {
                     use {prop.label}
                   </button>
                 )}
+                {/* Confirm the proposed time INLINE next to it (host request 2026-07-16) — one tap
+                    right where the time lives, not a separate row below. */}
+                {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
+                  <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
+                    'Start time confirmed — your invite and vendor briefs can name it now.')}>
+                    that’s right
+                  </button>
+                )}
               </div>
               {/* The event ARRIVES with a grounded time, so the usual state here is not an empty
                   field — it is OUR time, awaiting the host's yes. Say so plainly, give the
@@ -3257,14 +3265,8 @@ export default function HostShellV2() {
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
                   <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>
-                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right.
+                    <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
-                  <div className="actions-row" style={{ width: '100%', marginTop: 6 }}>
-                    <button className="mini" onClick={() => patchEvent({ startTimeSource: 'host' },
-                      'Start time confirmed — your invite and vendor briefs can name it now.')}>
-                      that’s right
-                    </button>
-                  </div>
                 </>
               )}
               {prop
