@@ -2267,6 +2267,20 @@ export function playbookDecisionBoard(event, asOf) {
     active.length,
     Number(event.guestCount || event.guestEstimate || (gc && gc.count) || 0) || 0,
   );
+  // Wave-2r ADAPTIVITY DEPTH — a seasoned planner doesn't just show a nervous first-timer
+  // FEWER calls, they SEQUENCE the calls differently. byScore (above) leads with the
+  // highest-leverage call, which is what a seasoned host wants — the big levers first. A
+  // hand-held host (proposeDerivable) is eased in instead: overdue calls stay pinned so a
+  // real deadline is never buried, but among everything else we lead with the lowest-stakes,
+  // most-reversible wins to build momentum before the daunting, high-leverage calls. This
+  // reorders the WHOLE active board (`open`), not just how many rows show — so the same
+  // event genuinely recommends a different ORDER per host. Gated on proposeDerivable, so a
+  // neutral/seasoned board is byte-identical to before (additive).
+  if (hostAdaptation.proposeDerivable) {
+    const easeStakes = (r) => (r.status === 'overdue' ? -1
+      : 1 + (r.weight === 'high' ? 2 : 0) + (r.deliversHeartMoment ? 1 : 0) + (r.reversibility === 'locked' ? 1 : 0));
+    active.sort((a, b) => (easeStakes(a) - easeStakes(b)) || byScore(a, b));
+  }
   // The first-timer's starting set — the few calls to foreground before the rest. A terse
   // board focuses on everything (the whole active list); a hand-held one narrows it.
   const focus = active.slice(0, hostAdaptation.focusCount).map((r) => r.id);
@@ -2310,8 +2324,10 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     size,
     handHolding,
     focusCount,
-    // a first-timer gets every derivable default pre-proposed (less blank-form friction);
-    // an experienced host is left to drive.
+    // proposeDerivable drives the board's SEQUENCE (Wave-2r): a hand-held host's active list
+    // is re-ordered to lead with low-stakes, reversible wins (ease-in / momentum) instead of
+    // the leverage-first order a seasoned host gets. reassure adds the plain-language line;
+    // terse suppresses hand-holding copy for a seasoned host on a light board.
     proposeDerivable: handHolding === 'high',
     reassure: handHolding === 'high',
     terse: handHolding === 'light',

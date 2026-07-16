@@ -43171,7 +43171,15 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       )}
       {hostAdaptation && hostAdaptation.reassure && (
         <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>
-          New to this? We&rsquo;ll take the calls a few at a time — just the {Math.min(hostAdaptation.focusCount, openRaw.length)} at the top for now; the rest are folded below and wait for you. Each one has a recommended pick you can accept or change.
+          New to this? We&rsquo;ll ease in — the calls at the top are the quick, low-stakes wins to get moving; the bigger ones come after, and anything with a real deadline still stays up top. Each one has a recommended pick you can accept or change.
+        </div>
+      )}
+      {/* Wave-2r ADAPTIVITY — the seasoned/terse host gets adaptive copy too (not just a
+          longer list): the full board, highest-leverage first, no hand-holding. Gives the
+          `terse` flag a real runtime consumer. */}
+      {hostAdaptation && hostAdaptation.terse && !hostAdaptation.reassure && (
+        <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>
+          You&rsquo;ve run one of these before — here&rsquo;s the full list, highest-leverage first. No hand-holding.
         </div>
       )}
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
