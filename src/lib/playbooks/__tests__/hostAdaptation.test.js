@@ -78,6 +78,26 @@ describe('per-host adaptivity', () => {
     expect(solo.hostCapacity).toBe('solo');
   });
 
+  test('DEPTH: order differentiates per host even on an OVERDUE-HEAVY board', () => {
+    // The 2r/2s re-scores' named collapse: when overdue rows dominate, a pure urgency sort
+    // gave every host the identical order. Now the hand-held host orders the overdue block
+    // recoverable/low-consequence-first (momentum) while the seasoned host keeps leverage-
+    // first -- so the sequence differs even when the whole board is overdue. Relative date so
+    // it stays deadline-heavy over time.
+    const d = new Date(); d.setDate(d.getDate() + 255);
+    const base = { id: 'e', type: 'Wedding', date: d.toISOString().slice(0, 10), guests: [], guestEstimate: 140 };
+    const first = playbookDecisionBoard({ ...base, hostExperience: 'first_time', hostCapacity: 'solo' });
+    const seasoned = playbookDecisionBoard({ ...base, hostExperience: 'experienced', hostCapacity: 'has_help' });
+    const overdue = first.open.filter((r) => r.status === 'overdue').length;
+    expect(overdue).toBeGreaterThanOrEqual(3);                 // genuinely deadline-heavy
+    expect(first.open.map((r) => r.id).join()).not.toBe(seasoned.open.map((r) => r.id).join());
+    // overdue still pinned above non-overdue on the hand-held board (no buried deadline)
+    const firstNonOverdue = first.open.findIndex((r) => r.status !== 'overdue');
+    if (firstNonOverdue > 0) {
+      expect(first.open.slice(0, firstNonOverdue).every((r) => r.status === 'overdue')).toBe(true);
+    }
+  });
+
   test('PACE: hand-held host is staged into sessions; seasoned/neutral gets one list', () => {
     const base = { id: 'e', type: 'Wedding', date: '2027-06-01', guests: [], guestEstimate: 140 };
     const first = playbookDecisionBoard({ ...base, hostExperience: 'first_time', hostCapacity: 'solo' });

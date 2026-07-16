@@ -2277,9 +2277,15 @@ export function playbookDecisionBoard(event, asOf) {
   // event genuinely recommends a different ORDER per host. Gated on proposeDerivable, so a
   // neutral/seasoned board is byte-identical to before (additive).
   if (hostAdaptation.proposeDerivable) {
-    const easeStakes = (r) => (r.status === 'overdue' ? -1
-      : 1 + (r.weight === 'high' ? 2 : 0) + (r.deliversHeartMoment ? 1 : 0) + (r.reversibility === 'locked' ? 1 : 0));
-    active.sort((a, b) => (easeStakes(a) - easeStakes(b)) || byScore(a, b));
+    // Hand-held ordering: overdue stays a pinned block ABOVE the rest (never bury a deadline),
+    // but WITHIN each block lead with the lowest-consequence, most-recoverable calls first —
+    // for a nervous host, clear the recoverable ones to build momentum and cut panic instead
+    // of opening on the highest-stakes call. A seasoned host keeps the leverage-first byScore
+    // order (above). Crucially this differentiates the ORDER per host even when the WHOLE board
+    // is overdue — where a pure urgency sort collapses to one identical answer for everyone.
+    const consequence = (r) => (r.weight === 'high' ? 2 : 0) + (r.deliversHeartMoment ? 1 : 0) + (r.reversibility === 'locked' ? 1 : 0);
+    const easeRank = (r) => (r.status === 'overdue' ? 0 : 100) + consequence(r);
+    active.sort((a, b) => (easeRank(a) - easeRank(b)) || byScore(a, b));
   }
   // The first-timer's starting set — the few calls to foreground before the rest. A terse
   // board focuses on everything (the whole active list); a hand-held one narrows it.
