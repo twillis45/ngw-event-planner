@@ -96,6 +96,9 @@ const quinceanera = {
       default: 'Off-the-rack ballgown + alterations',
       when: 'T-240d',
       blocks: ['attire', 'fittings'],
+      // Wave-2ac: the gown color follows the color story, and the COURT attire can't be
+      // ordered until the court size is set — both are hard prerequisites of ordering the dress.
+      dependsOn: ['theme_colors', 'court_size'],
       weight: 'high',
       reversibility: 'costly',
       emotionalWeight: 'high',
