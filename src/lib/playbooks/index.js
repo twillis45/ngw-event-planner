@@ -70,6 +70,8 @@ import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
 import { effectiveWeather, isGroundedWeather } from '../knowledge/weatherContext';
 import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
+import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
+import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2128,7 +2130,12 @@ export function playbookDecisionBoard(event, asOf) {
     // Wave-2o: the dietary/allergy safety axis — FDA major-allergen + dietary/religious needs.
     const dietaryContext = effectiveDietary(d);
     const dietaryGrounded = isGroundedDietary(dietaryContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2p: budget-authority (who approves the spend) + kids/childcare supervision safety.
+    const budgetContext = effectiveBudget(d);
+    const budgetGrounded = isGroundedBudget(budgetContext);
+    const childcareContext = effectiveChildcare(d);
+    const childcareGrounded = isGroundedChildcare(childcareContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });

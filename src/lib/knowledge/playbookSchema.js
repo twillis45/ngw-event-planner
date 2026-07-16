@@ -27,6 +27,9 @@ import { detectWeatherCategory, effectiveWeather, isGroundedWeather } from './we
 import { detectHumanCategory, effectiveHuman, isGroundedHuman } from './humanContext';
 // Wave-2o: dietary/allergy safety axis (FDA major allergens) on the decisions that collect it.
 import { detectDietaryCategory, effectiveDietary, isGroundedDietary } from './dietaryContext';
+// Wave-2p: budget-authority + kids/childcare safety axes.
+import { detectBudgetCategory, effectiveBudget, isGroundedBudget } from './budgetContext';
+import { detectChildcareCategory, effectiveChildcare, isGroundedChildcare } from './childcareContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -52,6 +55,8 @@ export const FIELD_TYPES = {
   WEATHER_UNGROUNDED: 'weather-ungrounded', // §4.K — an outdoor/shade/rain decision whose weather-contingency axis isn't grounded
   HUMAN_UNGROUNDED: 'human-ungrounded', // §4.L — a seating/guest-list/honoree decision whose human-relational axis isn't grounded
   DIETARY_UNGROUNDED: 'dietary-ungrounded', // §4.M — a dietary/allergy decision whose safety axis isn't grounded (FDA allergens)
+  BUDGET_UNGROUNDED: 'budget-ungrounded', // §4.N — a budget-authority decision whose spend/approval axis isn't grounded
+  CHILDCARE_UNGROUNDED: 'childcare-ungrounded', // §4.O — a kids/childcare decision whose supervision-safety axis isn't grounded
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -206,6 +211,21 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].dietaryContext`,
   },
+  // §4.N/§4.O — budget-authority + childcare safety axes (fire only on their decisions).
+  BUDGET_UNGROUNDED: {
+    type: FIELD_TYPES.BUDGET_UNGROUNDED,
+    hasData: (decision) => !detectBudgetCategory(decision) || isGroundedBudget(effectiveBudget(decision)),
+    needsResearch: (decision) => !!detectBudgetCategory(decision) && !isGroundedBudget(effectiveBudget(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].budgetContext`,
+  },
+  CHILDCARE_UNGROUNDED: {
+    type: FIELD_TYPES.CHILDCARE_UNGROUNDED,
+    hasData: (decision) => !detectChildcareCategory(decision) || isGroundedChildcare(effectiveChildcare(decision)),
+    needsResearch: (decision) => !!detectChildcareCategory(decision) && !isGroundedChildcare(effectiveChildcare(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].childcareContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -249,6 +269,8 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.WEATHER_UNGROUNDED,
   GAP_CRITERIA.HUMAN_UNGROUNDED,
   GAP_CRITERIA.DIETARY_UNGROUNDED,
+  GAP_CRITERIA.BUDGET_UNGROUNDED,
+  GAP_CRITERIA.CHILDCARE_UNGROUNDED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,
