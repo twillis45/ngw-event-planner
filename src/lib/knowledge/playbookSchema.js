@@ -3,6 +3,11 @@
 // All sections of the app (admin console, campaign research, etc.) reference this
 // rather than hardcoding assumptions about playbook structure.
 
+// Wave-2c-2: a decision's `when` deadline is GROUNDED either by an authored
+// `timingProvenance` OR by the centralized category resolver (real dated sources for
+// venue/invite/rsvp/rentals/catering/entertainment/cake timing). See timingProvenance.js.
+import { resolveTimingProvenance, isGroundedTiming } from './timingProvenance';
+
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
   COST_FACTOR: 'cost-factor',
@@ -99,8 +104,12 @@ export const GAP_CRITERIA = {
   // (a decision with no `when` at all has no deadline to ground, so it is not).
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
-    hasData: (decision) => isGroundedProvenance(decision.timingProvenance),
-    needsResearch: (decision) => !!decision.when && !isGroundedProvenance(decision.timingProvenance),
+    // Grounded by an authored timingProvenance OR the category resolver's real sources.
+    hasData: (decision) => isGroundedProvenance(decision.timingProvenance)
+      || isGroundedTiming(resolveTimingProvenance(decision)),
+    needsResearch: (decision) => !!decision.when
+      && !isGroundedProvenance(decision.timingProvenance)
+      && !isGroundedTiming(resolveTimingProvenance(decision)),
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].timingProvenance`,
   },

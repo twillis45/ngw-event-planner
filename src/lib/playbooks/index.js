@@ -61,6 +61,7 @@ import { isVendorBooked } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
+import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2059,7 +2060,13 @@ export function playbookDecisionBoard(event, asOf) {
       _derivedWeight = dv.score;
       _derivedReason = dv.reason;
     }
-    const derived = { importanceBasis, _derivedWeight, _derivedReason };
+    // Wave-2c-2: the decision's `when` timing provenance — authored if grounded, else the
+    // category resolver's real-sourced provenance (venue/invite/rsvp/rentals/etc.), else
+    // null (honestly ungrounded). Surfaced on the row so the deadline behind sequencing is
+    // sourced where a planning standard applies, and a UI can show WHY / whether it's researched.
+    const timingProvenance = effectiveTimingProvenance(d) || null;
+    const timingGrounded = isGroundedTiming(timingProvenance);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
