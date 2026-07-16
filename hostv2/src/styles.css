@@ -547,6 +547,12 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   min-height:44px;
 }
 .field:focus{outline:2px solid var(--steel); outline-offset:1px}
+/* Status states — make the VISUAL track the aria-invalid the markup already sets
+   (email/validation fields), so a sighted host gets the same signal a screen
+   reader does. Focus + status combine: a red ring when focused-and-invalid.
+   Reuses the semantic --danger token (no new colors). */
+.field[aria-invalid="true"]{border-color:var(--danger)}
+.field[aria-invalid="true"]:focus{outline-color:var(--danger)}
 /* The Reveal is the app's magic moment — let the revealed rows BREATHE (host
    direction). More space above the list, a generous gap between each line
    (--sp-5 → --sp-7), and a taller line-height so each realization lands with air. */

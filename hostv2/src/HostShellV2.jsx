@@ -56,6 +56,8 @@ import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf,
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
+import { runOrchestration } from '@app/lib/orchestrator';
+import { orchestratorTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -1963,6 +1965,10 @@ export default function HostShellV2() {
   // from the plan's own engine outputs, with the assumptions shown — no fake AI.
   const [askQ, setAskQ] = useState('');
   const [askResult, setAskResult] = useState(null);
+  // B3 — the LLM escalation state, layered ON TOP of the deterministic askResult.
+  // null | {loading:true} | {answer, grounded} | {unavailable:true}. Only ever
+  // set when the deterministic path misses AND a backend is configured.
+  const [askLLM, setAskLLM] = useState(null);
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); setPaletteOpen(o => !o); }
@@ -7364,7 +7370,7 @@ export default function HostShellV2() {
               // them, but the CORE eight always have a door, on-track or not — the
               // whole point (before this, checklist/decisions/vendors/etc. had no
               // visible entry when the event was calm).
-              const go = (kind) => { if (kind === 'ask') { setAskQ(''); setAskResult(null); } setSheet({ kind }); };
+              const go = (kind) => { if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); } setSheet({ kind }); };
               const groups = [
                 { title: 'Your plan', rows: [
                   { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
@@ -7510,7 +7516,7 @@ export default function HostShellV2() {
                   )}
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Have a specific question?</div>
                   <button className="cta" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}
-                    onClick={() => { setAskQ(''); setAskResult(null); setSheet({ kind: 'ask' }); }}>
+                    onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
                     Ask the plan — answered from your own numbers
                   </button>
                 </>
@@ -7533,7 +7539,22 @@ export default function HostShellV2() {
                 readiness: (phaseCues && phaseCues.totalCount) ? { done: phaseCues.completedCount, total: phaseCues.totalCount, nextLabel: phaseCues.nextCue && phaseCues.nextCue.label } : null,
                 eventName: event.name,
               };
-              const ask = (text) => { const t = String(text || '').trim(); if (!t) return; setAskQ(t); setAskResult(answerPlanQuestion(t, askCtx)); };
+              const ask = (text) => { const t = String(text || '').trim(); if (!t) return; setAskQ(t); setAskLLM(null); setAskResult(answerPlanQuestion(t, askCtx)); };
+              // B3 escalation: when the deterministic engine can't answer, and a
+              // backend is configured, hand the question to the grounded orchestrator
+              // (engines run locally as tools; every number still traces to one).
+              // Any failure — no key (503), offline, the model never settling —
+              // degrades to an honest "assistant isn't reachable" and the plain
+              // deterministic answer stays put. Never a fabricated reply.
+              const askAssistant = async () => {
+                setAskLLM({ loading: true });
+                try {
+                  const out = await runOrchestration({ question: askQ, ctx: { event }, transport: orchestratorTransport() });
+                  setAskLLM(out.answer ? { answer: out.answer, grounded: out.grounded } : { unavailable: true });
+                } catch {
+                  setAskLLM({ unavailable: true });
+                }
+              };
               const goAnswer = (route) => {
                 if (route === 'plan') { setStage('plan'); setSheet(null); return; }
                 if (['budget', 'food', 'guests', 'rain'].includes(route)) setSheet({ kind: route });
@@ -7559,8 +7580,39 @@ export default function HostShellV2() {
                       {askResult.matched && askResult.route && (
                         <div className="actions-row" style={{ marginTop: 8 }}>
                           <button className="mini" onClick={() => goAnswer(askResult.route)}>Take me there</button>
-                          <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); }}>Ask another</button>
+                          <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
                         </div>
+                      )}
+                    </div>
+                  )}
+                  {/* B3 — escalate a deterministic MISS to the grounded assistant, only
+                      when a backend is configured (demo build has none → no dead button).
+                      Every state here is honest: loading, a grounded AI answer, or an
+                      unavailable notice that leaves the plain answer standing. */}
+                  {askResult && !askResult.matched && isOrchestratorApiConfigured() && (
+                    <div className="brow" style={{ marginTop: 'var(--sp-3)' }}>
+                      {!askLLM && (
+                        <>
+                          <p className="grounding" style={{ margin: '0 0 8px', color: 'var(--faint)' }}>That’s outside what your numbers can answer — but the Boss can take a broader question like this, still grounded in your plan.</p>
+                          <button className="mini" onClick={askAssistant}>Ask the Boss</button>
+                        </>
+                      )}
+                      {askLLM && askLLM.loading && (
+                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Asking the Boss — it reads your numbers, never invents them…</p>
+                      )}
+                      {askLLM && askLLM.answer && (
+                        <>
+                          <p className="f-name" style={{ marginBottom: 4 }}>{askLLM.answer}</p>
+                          <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>
+                            Answered by the Boss, grounded in your plan.{askLLM.grounded && !askLLM.grounded.ok ? ' One figure here isn’t from your numbers — worth a double-check.' : ''}
+                          </p>
+                          <div className="actions-row" style={{ marginTop: 8 }}>
+                            <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
+                          </div>
+                        </>
+                      )}
+                      {askLLM && askLLM.unavailable && (
+                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>The Boss isn’t reachable right now — the answer above is what your plan can tell you directly.</p>
                       )}
                     </div>
                   )}
@@ -10708,7 +10760,7 @@ export default function HostShellV2() {
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
-          { label: 'Ask the plan', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setSheet({ kind: 'ask' }); } },
+          { label: 'Ask the plan', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
           { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
