@@ -25,6 +25,8 @@ import { detectVenueCategory, effectiveVenue, isGroundedVenue } from './venueCon
 // Wave-2n: weather-contingency and human/relational axes on the relevant decisions.
 import { detectWeatherCategory, effectiveWeather, isGroundedWeather } from './weatherContext';
 import { detectHumanCategory, effectiveHuman, isGroundedHuman } from './humanContext';
+// Wave-2o: dietary/allergy safety axis (FDA major allergens) on the decisions that collect it.
+import { detectDietaryCategory, effectiveDietary, isGroundedDietary } from './dietaryContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -49,6 +51,7 @@ export const FIELD_TYPES = {
   VENUE_UNGROUNDED: 'venue-ungrounded', // §4.J — a venue/space decision whose capacity/power constraint axis isn't grounded
   WEATHER_UNGROUNDED: 'weather-ungrounded', // §4.K — an outdoor/shade/rain decision whose weather-contingency axis isn't grounded
   HUMAN_UNGROUNDED: 'human-ungrounded', // §4.L — a seating/guest-list/honoree decision whose human-relational axis isn't grounded
+  DIETARY_UNGROUNDED: 'dietary-ungrounded', // §4.M — a dietary/allergy decision whose safety axis isn't grounded (FDA allergens)
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -194,6 +197,15 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].humanContext`,
   },
+  // §4.M — dietary/allergy safety axis. A decision that collects/accommodates allergies or
+  // dietary needs must carry a grounded (FDA major-allergen) consideration.
+  DIETARY_UNGROUNDED: {
+    type: FIELD_TYPES.DIETARY_UNGROUNDED,
+    hasData: (decision) => !detectDietaryCategory(decision) || isGroundedDietary(effectiveDietary(decision)),
+    needsResearch: (decision) => !!detectDietaryCategory(decision) && !isGroundedDietary(effectiveDietary(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].dietaryContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -236,6 +248,7 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.VENUE_UNGROUNDED,
   GAP_CRITERIA.WEATHER_UNGROUNDED,
   GAP_CRITERIA.HUMAN_UNGROUNDED,
+  GAP_CRITERIA.DIETARY_UNGROUNDED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,

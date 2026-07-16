@@ -14,7 +14,9 @@ describe('weather + human axes', () => {
       if (detectHumanCategory(d)) { expect(isGroundedHuman(effectiveHuman(d))).toBe(true); hm++; }
     }
     expect(wx).toBeGreaterThanOrEqual(4);
-    expect(hm).toBeGreaterThanOrEqual(12);
+    // ~11 after the 2o over-match tightening (shade/screen/bar/costsplit removed) — every
+    // remaining hit is genuinely relational (guest lists, surprise, tribute, court, dress).
+    expect(hm).toBeGreaterThanOrEqual(9);
   });
 
   test('no false positives on food-choice / cooking decisions', () => {

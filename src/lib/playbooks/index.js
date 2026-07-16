@@ -69,6 +69,7 @@ import { effectiveLegal, isGroundedLegal } from '../knowledge/legalContext';
 import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
 import { effectiveWeather, isGroundedWeather } from '../knowledge/weatherContext';
 import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
+import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2124,7 +2125,10 @@ export function playbookDecisionBoard(event, asOf) {
     const weatherGrounded = isGroundedWeather(weatherContext);
     const humanContext = effectiveHuman(d);
     const humanGrounded = isGroundedHuman(humanContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2o: the dietary/allergy safety axis — FDA major-allergen + dietary/religious needs.
+    const dietaryContext = effectiveDietary(d);
+    const dietaryGrounded = isGroundedDietary(dietaryContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });

@@ -26,8 +26,11 @@ export const HUMAN_SOURCES = {
 const HUMAN_CATEGORIES = [
   {
     category: 'honoree',
-    // A call that belongs to the person being celebrated — center it on their wishes.
-    pattern: /honoree|guest of honor|\btribute\b|surprise or|whose (day|night)|the bride('s)?|the couple('s)?|the (birthday|grad|honoree)|vals|the quincea|the retiree|the mom-to-be/i,
+    // A call that BELONGS to the person being celebrated — center it on their wishes. Kept
+    // specific to honoree-defining decisions (tribute/surprise/honor/vals/court) so it does
+    // not swallow a beverage or cost-split call that merely names the honoree in passing.
+    pattern: /honoree|guest of honor|\btribute\b|surprise or announced|surprise vs|honor the (retiree|honoree|couple|grad|mom)|whose (day|night)|\bvals\b|the quincea|bride's wishes|celebrate .*(them|the honoree)/i,
+    antiPattern: /\bbar\b|\bdrink|beverage|cost ?split|budget|who pays/i,
     factor: 'Whose day it is — center it on them',
     guideline: 'This one belongs to the person being celebrated. Confirm their wishes — and their hard nos — and build the moment around them, not the host\'s preference. Protocol seats the guest of honor beside the host and ranks outward from there.',
     tier: 'relational-guidance',
@@ -37,7 +40,9 @@ const HUMAN_CATEGORIES = [
     category: 'guest_dynamics',
     // Seating / guest-list decisions carry family-dynamics weight.
     pattern: /\bseating\b|floor ?plan|who sits|guest ?list|invite list|who('s| is) invited|\bcourt\b|court (size|of)|table plan/i,
-    antiPattern: /seatbelt|seasoning|seated dinner\?/i,
+    // exclude comfort/sightline decisions that merely say "+ seating" (shade, TV screen) —
+    // the family-dynamics guideline doesn't fit an outdoor-comfort or viewing call.
+    antiPattern: /seatbelt|seasoning|seated dinner\?|\bshade\b|\bscreen\b|sightline|\btv\b|viewing/i,
     factor: 'Guest & family dynamics',
     guideline: 'Read the room: seat conflicting people apart with a neutral buffer and brief whoever runs the floor; and remember every invite shapes the day\'s energy — invite for the celebrated person, not obligation, because tension rarely stays contained.',
     tier: 'relational-guidance',
