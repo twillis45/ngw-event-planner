@@ -46,69 +46,102 @@ export const TIMING_SOURCES = {
     fetched: '2026-07-15',
     claim: 'Order a custom party/birthday cake ~2–3 weeks ahead (simple designs 3–5 days); a wedding or tiered cake 6–8 weeks, more in busy holiday season.',
   },
+  'partyguides-venue': {
+    url: 'https://partygeniusai.com/birthday-party-planning-timeline',
+    fetched: '2026-07-15',
+    claim: 'Book a weekend party venue / event space 2–3 months ahead; restaurants and event rooms 6–8 weeks out.',
+  },
 };
 
-// Category → grounding. Each category names the sources whose claim applies and a
-// host-readable lead claim. `pattern` matches the decision's id + label; `antiPattern`
-// (optional) vetoes a match to prevent false positives (e.g. "where to BUY crabs" must
-// not read as booking a venue). Order matters — first confident match wins.
+// Category → grounding. `pattern` matches the decision's id + label; `antiPattern`
+// vetoes a false match; `leadDays: [min, max]` is the lead window the SOURCE actually
+// supports — a decision only grounds if its own `when` deadline falls inside it. This
+// is the Wave-2c-2.1 fix for the false positives the re-score caught: a T-18d
+// "indoor or outdoor" setting call whose id happens to contain "venue" must NOT cite a
+// source about booking a wedding venue 12–18 MONTHS out — the number contradicts the
+// deadline. The window makes the grounding self-consistent: match the category AND the
+// timing, or stay honestly synthesized. Order matters — first confident match wins.
 const TIMING_CATEGORIES = [
   {
     category: 'save_the_date',
     pattern: /save.?the.?date/i,
+    leadDays: [120, 400], // 6–9 months out
     sources: ['paperlesspost-invites'],
     claim: 'Save-the-dates go out 6–9 months ahead so traveling guests can plan.',
   },
   {
     category: 'invitation',
     pattern: /\binvit|send.*(card|invite)|\brsvp\b.*send|announce the (date|party)/i,
-    antiPattern: /head.?count|final count|dietary|allerg/i,
+    // veto incidental "share on the invite" mentions on registry/gift/menu decisions —
+    // those aren't invitation-SEND timing.
+    antiPattern: /head.?count|final count|dietary|allerg|registr|gift|\bmenu\b/i,
+    leadDays: [10, 90], // 2–8 weeks (casual → formal/travel)
     sources: ['paperlesspost-invites'],
     claim: 'Invitations go out 2–4 weeks ahead for a casual gathering, 6–8+ weeks when guests travel or the event is formal.',
   },
   {
     category: 'headcount_rsvp',
     pattern: /head.?count|final count|guest count|lock.*(count|guests)|rsvp deadline|confirm.*(numbers|attendance)/i,
+    leadDays: [2, 35], // final headcount 7–14d; RSVP deadline 3–4 weeks
     sources: ['theknot-headcount'],
     claim: 'Caterers/venues want a final headcount 7–14 days out; set the RSVP deadline ~3–4 weeks before to leave time to chase replies.',
   },
   {
     category: 'venue',
-    pattern: /\bvenue\b|reception (hall|site)|banquet hall|event space|book.*(hall|the room|the space|a venue)|reserve.*(hall|venue|space)/i,
-    antiPattern: /buy|order|steam|cater the food/i,
-    sources: ['theknot-vendors'],
-    claim: 'Book the venue early — 12–18 months for a wedding-scale event, 2–3 months for a weekend party space; it anchors the date and most other vendors.',
+    // A venue-scale noun. The two GUARDS against false positives are the antiPattern
+    // (setting-choice phrases like "indoor or outdoor" whose id merely contains "venue")
+    // and the [60,600] lead window (a real venue booking is ≥2 months out; a T-18/T-35
+    // setting call can't cite a 2–18-month booking source).
+    pattern: /\bvenue\b|reception (hall|site)|banquet hall|event space/i,
+    antiPattern: /buy|steam|cater the food|indoor or outdoor|at home or|home vs|backyard or|which room|inside or out/i,
+    leadDays: [60, 600], // party space 2–3 months → wedding venue 12–18 months
+    sources: ['theknot-vendors', 'partyguides-venue'],
+    claim: 'Book the venue early — 2–3 months for a weekend party space, 12–18 months for a wedding-scale venue; it anchors the date and most other vendors.',
   },
   {
     category: 'catering_vendor',
-    pattern: /book.*cater|hire.*(cater|chef)|catering (company|service|order)|full.?service cater/i,
+    pattern: /book.*cater|hire.*(cater|chef)|catering (company|service)|full.?service cater/i,
+    antiPattern: /menu|dish|what to (serve|order)|potluck/i,
+    leadDays: [60, 600], // book a caterer months out; not a T-3w menu lock
     sources: ['theknot-vendors'],
     claim: 'Book a caterer ~12 months out for a large formal event (menus, tastings); sooner is safer in peak season.',
   },
   {
     category: 'rentals',
     pattern: /\brental|rent (tables|chairs|a tent)|\btent\b|tables? (and|&) chairs|linens?|place setting/i,
+    leadDays: [10, 200], // small party a few weeks → standard items 3–4 months
     sources: ['stuart-rentals'],
     claim: 'Reserve rentals (tables, chairs, tent, linens) ~3–4 months out for standard items; a few weeks is fine for a small backyard party, longer in peak season.',
   },
   {
     category: 'cake',
     pattern: /\bcake\b|custom cake|dessert table|order.*(cake|dessert)|bakery/i,
-    antiPattern: /cupcake mix|box cake|bake it yourself/i,
+    // veto when cake is just one item in a broader menu/catering lock — that decision's
+    // timing is the menu, not the cake order.
+    antiPattern: /cupcake mix|box cake|bake it yourself|\bmenu\b|catering (order|company)/i,
+    leadDays: [3, 90], // party cake 2–3 weeks → wedding/tiered 6–8 weeks
     sources: ['sweetery-cake'],
     claim: 'Order a custom cake ~2–3 weeks ahead for a party (a wedding or tiered cake 6–8 weeks); simple designs need only a few days.',
   },
   {
     category: 'entertainment',
     pattern: /\bdj\b|\bband\b|live music|hire.*(music|entertain)|\bflorist\b|the flowers\b/i,
-    antiPattern: /playlist|speaker|spotify/i,
+    antiPattern: /playlist|speaker|spotify|curated/i,
+    leadDays: [90, 500], // book a band/DJ/florist 9–12 months out
     sources: ['theknot-vendors'],
     claim: 'Book a band/DJ or florist 9–12 months out for a formal event — the good ones take one booking per date.',
   },
 ];
 
-// Detect a decision's timing category from its id + label. Returns the category object
-// or null. Conservative: an antiPattern hit vetoes the match (no false grounding).
+// Parse a decision's `when` ('T-Nd') into a lead in days, or null if unparseable.
+function parseLeadDays(when) {
+  const m = /T-?(\d+)\s*d/i.exec(String(when || ''));
+  return m ? Number(m[1]) : null;
+}
+
+// Detect a decision's timing category from its id + label (text match only). Returns the
+// category object or null. Conservative: an antiPattern hit vetoes the match. This is the
+// TEXT gate; resolveTimingProvenance adds the lead-window consistency gate.
 export function detectTimingCategory(decision) {
   if (!decision) return null;
   const hay = `${decision.id || ''} ${decision.label || ''}`;
@@ -121,12 +154,20 @@ export function detectTimingCategory(decision) {
 }
 
 // resolveTimingProvenance(decision) → a grounded timingProvenance object when the
-// decision's category confidently maps to a real source, else null (caller treats a
-// null as still-ungrounded/synthesized — we never fabricate). An authored
+// decision's category confidently maps to a real source AND the decision's own `when`
+// deadline is consistent with the source's supported lead window, else null (caller
+// treats a null as still-ungrounded/synthesized — we never fabricate). An authored
 // `decision.timingProvenance` always wins (callers check it first).
 export function resolveTimingProvenance(decision) {
   const cat = detectTimingCategory(decision);
   if (!cat) return null;
+  // Lead-window consistency (Wave-2c-2.1): the source's claim only applies if the
+  // decision's deadline is actually in the source's lead range. A T-18d call must not
+  // cite a 12–18-month booking source. An unparseable `when` fails closed (no grounding).
+  const lead = parseLeadDays(decision.when);
+  if (lead === null) return null;
+  const [lo, hi] = cat.leadDays;
+  if (lead < lo || lead > hi) return null;
   return {
     tier: 'researched',
     verificationStatus: 'researched',

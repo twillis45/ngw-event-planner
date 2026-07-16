@@ -38,6 +38,24 @@ describe('timing category resolver', () => {
     }
   });
 
+  test('lead-window veto: a short-deadline setting call does NOT cite a months-out booking source', () => {
+    // Wave-2c-2.1 — the re-score's false positives. A decision whose id contains "venue"
+    // but is really an indoor/outdoor SETTING call at T-18/T-35 must NOT ground to the
+    // 2–18-month venue-BOOKING source (deadline contradicts the source's lead range).
+    const falsePositives = [
+      { id: 'venue-setting', label: 'Indoor or outdoor', when: 'T-18d' },
+      { id: 'venue', label: 'At home or a venue?', when: 'T-35d' },
+      { id: 'registry', label: 'Confirm registry / gift theme to share on the invite', when: 'T-21d' },
+      { id: 'menu', label: 'Lock the menu (or catering order) + cake', when: 'T-28d' },
+    ];
+    for (const d of falsePositives) {
+      expect(isGroundedTiming(resolveTimingProvenance(d))).toBe(false);
+    }
+    // …but the SAME category grounds when the deadline is consistent with the source.
+    expect(isGroundedTiming(resolveTimingProvenance({ id: 'venue', label: 'Venue + date (book FIRST)', when: 'T-365d' }))).toBe(true);
+    expect(isGroundedTiming(resolveTimingProvenance({ id: 'venue', label: 'Book the venue', when: 'T-90d' }))).toBe(true);
+  });
+
   test('isGroundedTiming rejects hollow provenance', () => {
     expect(isGroundedTiming(null)).toBe(false);
     expect(isGroundedTiming({})).toBe(false);
@@ -62,10 +80,11 @@ describe('timing category resolver', () => {
         if (isGroundedTiming(effectiveTimingProvenance(d))) grounded++;
       }
     }
-    // Was 0/215 before this wave. Conservative resolver grounds the cross-event logistics
-    // decisions (~20+); event-specific choices stay honestly synthesized.
-    expect(grounded).toBeGreaterThanOrEqual(20);
-    expect(grounded).toBeLessThan(total); // honest: does NOT claim to ground everything
+    // Was 0/215 before this wave. After the 2c-2.1 false-positive fix the resolver grounds
+    // ~10 cross-event logistics decisions, every one deadline-consistent with its source;
+    // event-specific choices stay honestly synthesized. Correctness over count.
+    expect(grounded).toBeGreaterThanOrEqual(8);
+    expect(grounded).toBeLessThan(15); // honest: does NOT overclaim (the inflated count was 22)
   });
 });
 
