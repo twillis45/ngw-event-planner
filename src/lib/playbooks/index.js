@@ -2317,20 +2317,26 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
   // large event doesn't get the terse treatment. Small <20 / medium 20-75 / large >75.
   const n = typeof guestCount === 'number' && guestCount > 0 ? guestCount : null;
   const size = n == null ? 'unknown' : n > 75 ? 'large' : n < 20 ? 'small' : 'medium';
-  // Wave-2t3 THE CLOCK — the 5th, dominant pacing signal a human planner reads: the RUNWAY
-  // (days to the event). A near deadline compresses the cadence — surface MORE per session and
-  // a slightly larger first foreground, because time is short and dripping the list one tiny
-  // batch at a time would strand a host who has to move now. A long runway keeps the drip
-  // gentle. tight ≤21d / relaxed >120d / standard between. Unknown when the event has no date.
+  // Wave-2t3/2t4 THE CLOCK — the 5th, dominant pacing signal a human planner reads: the RUNWAY
+  // (days to the event). The cadence ramps MONOTONICALLY with the clock rather than flipping
+  // once: rush ≤7d / tight 8–21d / standard 22–120d / relaxed >120d (unknown when no date).
+  // Near the deadline everything compresses — surface more per session + a wider first
+  // foreground, because dripping a tiny batch would strand a host who must move now; a long
+  // runway genuinely relaxes to a gentler drip than the standard middle. Each band differs.
   const runway = typeof runwayDays === 'number' && runwayDays >= 0
-    ? (runwayDays <= 21 ? 'tight' : runwayDays > 120 ? 'relaxed' : 'standard') : 'unknown';
+    ? (runwayDays <= 7 ? 'rush' : runwayDays <= 21 ? 'tight' : runwayDays > 120 ? 'relaxed' : 'standard')
+    : 'unknown';
+  // first-foreground size + follow-on-batch adjustment, graduated across the runway (unknown
+  // behaves as the standard middle, so a dateless board is byte-identical to before — additive).
+  const RUNWAY_FOCUS = { rush: 5, tight: 4, standard: 3, relaxed: 2, unknown: 3 };
+  const RUNWAY_BATCH_ADJ = { rush: 2, tight: 1, standard: 0, relaxed: -1, unknown: 0 };
   // hand-holding level: high (walk them through), standard (neutral), light (get out of the way)
   let handHolding = 'standard';
   if (firstTime || (solo && band === 'hard') || (solo && size === 'large')) handHolding = 'high';
   else if (experienced && band !== 'hard' && size !== 'large') handHolding = 'light';
-  // a tight deadline widens a hand-held host's first foreground (3→4) — the clock overrides
-  // the gentle default, because on a short runway even a nervous host needs the load in view.
-  const focusCount = handHolding === 'high' ? Math.min(runway === 'tight' ? 4 : 3, openCount)
+  // the clock widens/narrows a hand-held host's first foreground; a rush shows the most up
+  // front, a long runway the least — the clock overrides the gentle default when time is short.
+  const focusCount = handHolding === 'high' ? Math.min(RUNWAY_FOCUS[runway], openCount)
     : handHolding === 'light' ? openCount
       : Math.min(5, openCount);
   return {
@@ -2358,10 +2364,10 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     // batchSize sizes the SUBSEQUENT paced sessions, independent of focusCount (the first,
     // gentlest foreground set): a larger event surfaces slightly larger follow-on batches so
     // a big to-do list doesn't take too many taps to walk, while the first session stays small.
-    // A TIGHT runway compresses the cadence further (+1) — near the deadline the host clears
-    // more per session; a long runway keeps it gentle (Wave-2t3: pace by WHEN, not just size).
+    // The runway compresses/relaxes the follow-on batch monotonically (rush +2 … relaxed −1,
+    // floor 2) on top of the size base — pace by WHEN, graduated, not a single cliff (Wave-2t4).
     batchSize: handHolding === 'high'
-      ? (size === 'large' ? 4 : 3) + (runway === 'tight' ? 1 : 0)
+      ? Math.max(2, (size === 'large' ? 4 : 3) + RUNWAY_BATCH_ADJ[runway])
       : focusCount,
   };
 }

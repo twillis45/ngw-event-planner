@@ -99,20 +99,23 @@ describe('per-host adaptivity', () => {
   });
 
   test('PACE: hand-held host is staged into sessions; seasoned/neutral gets one list', () => {
-    const base = { id: 'e', type: 'Wedding', date: '2027-06-01', guests: [], guestEstimate: 140 };
+    // a STANDARD-runway date (~60d out) isolates the SIZE effect on batchSize from the clock.
+    const std = new Date(); std.setDate(std.getDate() + 60);
+    const iso = std.toISOString().slice(0, 10);
+    const base = { id: 'e', type: 'Wedding', date: iso, guests: [], guestEstimate: 140 };
     const first = playbookDecisionBoard({ ...base, hostExperience: 'first_time', hostCapacity: 'solo' });
     const seasoned = playbookDecisionBoard({ ...base, hostExperience: 'experienced', hostCapacity: 'has_help' });
     const neutral = playbookDecisionBoard(base);
     expect(first.hostAdaptation.staged).toBe(true);
-    // batchSize (subsequent session size) is now decoupled from focusCount (first-session size)
-    // via event size — a large event (140 guests here) gets a larger follow-on batch.
-    expect(first.hostAdaptation.batchSize).toBeGreaterThan(0);
-    expect(first.hostAdaptation.batchSize).toBe(4); // large event
+    expect(first.hostAdaptation.runway).toBe('standard');
+    // batchSize (subsequent session size) is decoupled from focusCount (first-session size)
+    // via event size — a large event (140 guests) gets a 4-row follow-on batch at standard runway.
+    expect(first.hostAdaptation.batchSize).toBe(4); // large event, standard runway
     expect(first.hostAdaptation.focusCount).toBe(3);
     expect(seasoned.hostAdaptation.staged).toBe(false);
     expect(neutral.hostAdaptation.staged).toBe(false);
     // a SMALL event's follow-on batch is smaller than a large event's (real size decoupling)
-    const smallFirst = playbookDecisionBoard({ id: 'e2', type: 'Dinner Party', date: '2027-06-01', guests: [], guestEstimate: 12, hostExperience: 'first_time', hostCapacity: 'solo' });
+    const smallFirst = playbookDecisionBoard({ id: 'e2', type: 'Dinner Party', date: iso, guests: [], guestEstimate: 12, hostExperience: 'first_time', hostCapacity: 'solo' });
     if (smallFirst.hostAdaptation.staged) expect(smallFirst.hostAdaptation.batchSize).toBe(3);
   });
 
@@ -135,6 +138,24 @@ describe('per-host adaptivity', () => {
       .toBeGreaterThan(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140, 300).batchSize);
     // no date → runway unknown, no compression (additive)
     expect(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140).runway).toBe('unknown');
+  });
+
+  test('THE CLOCK is MONOTONIC across 4 bands, not a single cliff (Wave-2t4)', () => {
+    // rush ≤7d compresses hardest; relaxed >120d is genuinely gentler than the standard middle;
+    // every band differs — the pace ramps with the clock, not a lone tight/not-tight flip.
+    const A = (days) => computeHostAdaptation('first_time', 'solo', 'hard', 12, 140, days);
+    const rush = A(4); const tight = A(14); const standard = A(60); const relaxed = A(300);
+    expect([rush.runway, tight.runway, standard.runway, relaxed.runway]).toEqual(['rush', 'tight', 'standard', 'relaxed']);
+    // focusCount strictly decreases as the runway lengthens
+    expect(rush.focusCount).toBeGreaterThan(tight.focusCount);
+    expect(tight.focusCount).toBeGreaterThan(standard.focusCount);
+    expect(standard.focusCount).toBeGreaterThan(relaxed.focusCount);
+    // batchSize strictly decreases too (rush 6 > tight 5 > standard 4 > relaxed 3 for a large event)
+    expect(rush.batchSize).toBeGreaterThan(tight.batchSize);
+    expect(tight.batchSize).toBeGreaterThan(standard.batchSize);
+    expect(standard.batchSize).toBeGreaterThan(relaxed.batchSize);
+    // relaxed is NOT identical to standard (the defect the re-score named is fixed)
+    expect(relaxed.batchSize).not.toBe(standard.batchSize);
   });
 
   test('event SIZE scales hand-holding independent of the host', () => {
