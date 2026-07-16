@@ -42877,7 +42877,7 @@ function hostDiffBand(hostDifficulty) {
   return 'moderate';
 }
 
-function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice, onReorder }) {
+function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice, onReorder, onSetHostExperience }) {
   // ONE-SOURCE HERO: "Settle it" routes here with focusField 'host-decisions' —
   // the board must OPEN on landing, not just scroll its collapsed header into view.
   const settleFocus = useFocusFieldForceOpen(HOST_DECISIONS_IDS);
@@ -42895,6 +42895,12 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   const board = useMemo(() => { try { return playbookDecisionBoard(event); } catch { return null; } }, [event]);
   if (!board) return null;
   const { open: openRaw, locked, headcount, hostDifficulty, heartAtRisk } = board;
+  // Wave-2m ADAPTIVITY: the board is now fitted to THIS host (first-time vs experienced),
+  // not just the event type. `hostAdaptation` drives the hand-holding — a first-timer gets
+  // a reassurance line and their derivable defaults pre-proposed; a control lets the host
+  // say which they are, so the same event yields a different board per host.
+  const hostAdaptation = board.hostAdaptation || null;
+  const canSetExperience = typeof onSetHostExperience === 'function';
   // Wave-2b: a well-planned far-future event can have EVERY ready decision parked in
   // `deferred` — the panel must still render (never vanish) so the parked calls stay
   // honest and reachable. Null-safe for a board authored before the key existed.
@@ -43120,6 +43126,29 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       {/* heartAtRisk nudge — protect the moment before it defaults away. */}
       {heartNudge && (
         <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, lineHeight: 1.5, margin: '0 2px 14px', paddingLeft: 11, borderLeft: `3px solid ${steel}` }}>{heartNudge}</div>
+      )}
+      {/* Wave-2m ADAPTIVITY — fit the board to THIS host. A one-tap control (no form) lets
+          the host say whether this is new territory; the board then hand-holds (a reassurance
+          line + derivable defaults pre-proposed) or gets out of the way for a seasoned host. */}
+      {canSetExperience && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 2px 14px', fontSize: T.caption, color: C.muted }}>
+          <span>Hosting this kind of event:</span>
+          {[['first_time', 'First time'], ['experienced', 'Done this before']].map(([val, lbl]) => {
+            const on = (event.hostExperience || null) === val;
+            return (
+              <button key={val} type="button" aria-pressed={on}
+                onClick={() => onSetHostExperience(on ? null : val)}
+                style={{ cursor: 'pointer', fontSize: T.caption, fontWeight: FW.semibold, padding: '3px 10px', borderRadius: 999, border: `1px solid ${on ? steel : C.border}`, background: on ? steel : 'transparent', color: on ? '#fff' : C.muted }}>
+                {lbl}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {hostAdaptation && hostAdaptation.reassure && (
+        <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>
+          New to this? We&rsquo;ll take the calls a few at a time — start with the {hostAdaptation.focusCount} at the top, and where there&rsquo;s a safe default we&rsquo;ve already filled it in. Change anything, anytime.
+        </div>
       )}
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
@@ -43544,7 +43573,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               no task list) — the named task renders as an actionable focus card. */}
           {openTaskId && <HostTaskFocusCard event={event} taskId={openTaskId} setEvent={setEvent} onClear={() => setOpenTaskId(null)} />}
           <div className="planv2-grid">
-            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} /></div>
+            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
               <ContextNudgeCard event={event} surface="food" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} />
               <CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
@@ -43560,7 +43589,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="hp-recede"><CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} /><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
-          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} /></div>
+          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
           <PlanBudgetRollup event={event} profile={profile} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
@@ -44429,7 +44458,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           "What's left to do"; the count-lock reuses the single-source guest-count lock. */}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} />
+          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} onSetHostExperience={(exp) => { setEvent(e => ({ ...e, hostExperience: exp })); try { feedbackSelect(); } catch {} }} />
         </div>
       )}
       {tab === 'Planning'       && (

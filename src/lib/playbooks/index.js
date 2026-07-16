@@ -2233,7 +2233,63 @@ export function playbookDecisionBoard(event, asOf) {
   const leadProvenance = getStandardLeadProvenance(event.type);
   const leadGrounded = isGroundedLead(event.type);
 
-  return { open: active, locked, deferred, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk, leadProvenance, leadGrounded };
+  // Wave-2m ADAPTIVITY: fit the board to THIS host, not just this event type. Reads two
+  // per-host inputs — experience (first-time vs experienced) and capacity (solo vs has-help)
+  // — and composes them with the event's authored difficulty to produce a genuinely
+  // different board: a first-timer (or a solo host on a hard event) gets HIGH hand-holding —
+  // a small starting `focus` set (don't show all N calls at once), every derivable default
+  // pre-proposed, and reassurance on; an experienced host on an easy event gets a TERSE
+  // board — the full list, nothing pre-proposed, no reassurance. Absent inputs default to
+  // the neutral 'standard' (byte-identical to the prior board), so this is additive.
+  const hostAdaptation = computeHostAdaptation(
+    event.hostExperience || null,
+    event.hostCapacity || null,
+    playbookHostDifficulty(event),
+    active.length,
+  );
+  // The first-timer's starting set — the few calls to foreground before the rest. A terse
+  // board focuses on everything (the whole active list); a hand-held one narrows it.
+  const focus = active.slice(0, hostAdaptation.focusCount).map((r) => r.id);
+
+  return {
+    open: active, locked, deferred, headcount,
+    hostDifficulty: playbookHostDifficulty(event),
+    heartAtRisk, leadProvenance, leadGrounded,
+    hostExperience: event.hostExperience || null,
+    hostCapacity: event.hostCapacity || null,
+    hostAdaptation, focus,
+  };
+}
+
+// Wave-2m — compose the per-host inputs with the event's difficulty into a concrete board
+// adaptation. This is the "fits THIS host" lever the adaptivity re-score kept naming: the
+// SAME event yields a different board for a nervous first-timer than for a seasoned host.
+const HOST_DIFF_BAND = (d) => (/(hard|high|intensive|complex)/i.test(String(d)) ? 'hard'
+  : /(easy|low|simple|light)/i.test(String(d)) ? 'easy' : 'moderate');
+export function computeHostAdaptation(experience, capacity, difficulty, openCount) {
+  const band = HOST_DIFF_BAND(difficulty);
+  const firstTime = experience === 'first_time' || experience === 'first-time' || experience === 'novice';
+  const experienced = experience === 'experienced' || experience === 'seasoned';
+  const solo = capacity === 'solo';
+  // hand-holding level: high (walk them through), standard (neutral), light (get out of the way)
+  let handHolding = 'standard';
+  if (firstTime || (solo && band === 'hard')) handHolding = 'high';
+  else if (experienced && band !== 'hard') handHolding = 'light';
+  const focusCount = handHolding === 'high' ? Math.min(3, openCount)
+    : handHolding === 'light' ? openCount
+      : Math.min(5, openCount);
+  return {
+    experience: experience || 'unknown',
+    capacity: capacity || 'unknown',
+    difficultyBand: band,
+    handHolding,
+    focusCount,
+    // a first-timer gets every derivable default pre-proposed (less blank-form friction);
+    // an experienced host is left to drive.
+    proposeDerivable: handHolding === 'high',
+    reassure: handHolding === 'high',
+    terse: handHolding === 'light',
+  };
 }
 
 // Options accessor for a single menu/sourcing decision, so the Decisions board can
