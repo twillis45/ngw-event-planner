@@ -65,6 +65,7 @@ import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timing
 import { isGroundedCulture } from '../knowledge/culturalContext';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
+import { isGroundedItemQty } from '../knowledge/quantityProvenance';
 import { effectiveLegal, isGroundedLegal } from '../knowledge/legalContext';
 import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
 import { effectiveWeather, isGroundedWeather } from '../knowledge/weatherContext';
@@ -866,6 +867,9 @@ export function playbookTasks(event, asOf) {
       eventId: event.id,
       owner: 'host',
       provenance: { source: `${playbook.type} playbook`, buyAt: p.buyAt },
+      // Wave-2w GROUNDING — is this item's per-guest QUANTITY backed by a real portion/drink
+      // source (vs a trade heuristic)? Surfaced so the buy row can show sourced quantities.
+      qtyGrounded: isGroundedItemQty(p.provenance),
     });
   }
 
