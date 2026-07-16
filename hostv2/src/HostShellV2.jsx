@@ -6051,6 +6051,14 @@ export default function HostShellV2() {
                     an easy one with a calm line; moderate stays silent (baseline). */}
                 {(() => {
                   if (!(decisionBoard.open || []).length) return null;
+                  // EMOTION-STATE (roadmap #5): overwhelm is read from BEHAVIOR — a full plate
+                  // AND a short runway — so this speaks to the host's STATE, not just the event's
+                  // difficulty. It wins over the band line when the host is underwater, so the
+                  // read reaches them in words (the board also paces + suppresses terse for them).
+                  const ha = decisionBoard.hostAdaptation || null;
+                  if (ha && ha.overwhelm) {
+                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — just the first few here, the rest comes back when you’re ready. You’ve got this.</p>;
+                  }
                   const band = hostDiffBandV2(decisionBoard.hostDifficulty);
                   const line = band === 'hard'
                     ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'

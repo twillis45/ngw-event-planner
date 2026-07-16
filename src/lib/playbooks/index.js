@@ -64,6 +64,8 @@ import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
 import { isGroundedCulture } from '../knowledge/culturalContext';
+import { militaryDecisionsFor, isGroundedMilitary } from '../knowledge/militaryRetirement';
+import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
 import { isGroundedItemQty } from '../knowledge/quantityProvenance';
@@ -506,7 +508,8 @@ export function choicePickFor(event, id) {
   // authored-default fallback must look there too — otherwise a whenChoice gate
   // on a dest_* decision reads null and shows the item before any answer.
   // Only consulted when the modifier is actually on.
-  const dd = event.isDestination ? DESTINATION_DECISIONS.find((d) => d.id === id) : null;
+  const dd = (event.isDestination ? DESTINATION_DECISIONS.find((d) => d.id === id) : null)
+    || militaryDecisionsFor(event).find((d) => d.id === id) || null;
   return (dd && dd.default) || null;
 }
 export function choiceShown(event, whenChoice) {
@@ -2035,6 +2038,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...(event.isDestination ? DESTINATION_DECISIONS : []),
+    ...militaryDecisionsFor(event),
   ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
   const isDietaryDecision = (d) => d.id === 'dietary' || /dietary|allerg/i.test(d.label || '');
@@ -2163,6 +2167,14 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // the tradition + why it's the host's/family's call, and never the app's to default.
     const culturalContext = d.culturalContext || null;
     const culturalGrounded = isGroundedCulture(culturalContext);
+    // Military-retirement protocol axis (Army): a decision injected for a military retirement
+    // carries a militaryContext grounded to real Army references — a new grounded Coverage axis.
+    const militaryContext = d.militaryContext || null;
+    const militaryGrounded = isGroundedMilitary(militaryContext);
+    // Destination-travel axis: the groundable travel calls (health/altitude, the late-night
+    // ride, a room block's attrition) carry a destinationContext grounded to real references.
+    const destinationContext = destinationContextFor(d.id);
+    const destinationGrounded = isGroundedDestination(destinationContext);
     // Wave-2h: the accessibility axis — venue/seating decisions carry a grounded (ADA /
     // inclusive-seating) consideration, resolved centrally. Surfaced so a UI can show the
     // access guideline that steers the choice.
@@ -2193,7 +2205,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const budgetGrounded = isGroundedBudget(budgetContext);
     const childcareContext = effectiveChildcare(d);
     const childcareGrounded = isGroundedChildcare(childcareContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
@@ -2503,6 +2515,7 @@ export function playbookDecisionOptions(event, id) {
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
     ...(event.isDestination ? DESTINATION_DECISIONS : []),
+    ...militaryDecisionsFor(event),
   ];
   const d = decisions.find((x) => x && x.id === id);
   // HOST-AUDIT-1: ANY playbook decision with authored options settles inline on

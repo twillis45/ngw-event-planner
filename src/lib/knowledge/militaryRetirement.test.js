@@ -1,6 +1,6 @@
 import {
   detectMilitaryBranch, isMilitaryRetirement, militaryRetirementContext,
-  isGroundedMilitary, MILITARY_SOURCES,
+  isGroundedMilitary, MILITARY_SOURCES, militaryDecisionsFor,
 } from './militaryRetirement';
 
 const wanda = { type: 'Retirement Party', secondaryType: 'Birthday', story: '30 years in the Army, turning 50', name: 'Wanda’s Retirement' };
@@ -61,11 +61,38 @@ describe('militaryRetirementContext — Army protocol', () => {
   test('a civilian retirement gets no context', () => {
     expect(militaryRetirementContext(civilianRet)).toBeNull();
   });
-  test('an unauthored branch is an honest partial (not fabricated protocol)', () => {
-    const c = militaryRetirementContext(navyRet);
-    expect(c.branch).toBe('navy');
+  test('all SIX branches are authored + grounded', () => {
+    const events = {
+      army: wanda,
+      navy: navyRet,
+      airforce: { type: 'Retirement Party', story: 'retiring from the Air Force' },
+      marines: { type: 'Retirement Party', story: '20 years a Marine' },
+      coastguard: { type: 'Retirement Party', story: 'Coast Guard retirement' },
+      spaceforce: { type: 'Retirement Party', story: 'a Space Force Guardian retiring' },
+    };
+    for (const [slug, ev] of Object.entries(events)) {
+      const c = militaryRetirementContext(ev);
+      expect(c.branch).toBe(slug);
+      expect(c.authored).toBe(true);
+      expect(isGroundedMilitary(c)).toBe(true);
+      expect(c.protocol.length).toBeGreaterThan(6);
+    }
+  });
+
+  test('an AMBIGUOUS-branch military retirement is an honest partial (not fabricated protocol)', () => {
+    const c = militaryRetirementContext(vfwRet); // VFW named, no service → branch unknown
+    expect(c.branch).toBe('unknown');
     expect(c.authored).toBe(false);
     expect(c.protocol).toBeNull();
     expect(isGroundedMilitary(c)).toBe(false); // no sources → not grounded, honestly
+  });
+
+  test('a distinctive rite loads per branch — Navy piping, Marine sword', () => {
+    const navy = militaryRetirementContext(navyRet);
+    expect(navy.ceremonySequence.join(' ')).toMatch(/piping|pipe/i);
+    const marineDecs = militaryDecisionsFor({ type: 'Retirement Party', story: '20 years a Marine' });
+    expect(marineDecs.find((d) => d.id === 'mil_marine_sword')).toBeTruthy();
+    const navyDecs = militaryDecisionsFor(navyRet);
+    expect(navyDecs.find((d) => d.id === 'mil_navy_piping')).toBeTruthy();
   });
 });

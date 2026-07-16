@@ -90,6 +90,8 @@ import { foodShopItems } from './lib/foodShopItems';
 // reconciled observations to profile.hostIntelligence. NO reads-forward yet (that's P4).
 import { applyReconciliation, summarizeHostIntel, clearDomain, emptyHostIntelligence, attendanceAdjustment, attendanceAnalyticsPayload } from './lib/hostIntel';
 import { intelligenceObservatory } from './lib/analyticsReader';
+import { groundingSourceCatalog, groundingSourceStats } from './lib/knowledge/groundingSources';
+import { groundingLadder } from './lib/knowledge/groundingDoctrine';
 // INTEL-QA-1 Stage 1 — evaluation capture (measure-only; scores nothing).
 import { createEvaluation, appendLifecycle, recordDecision, attachActual, upsertEvaluation, updateEvaluation, hasEvaluation, evalId, DECISION_COST, evaluationStats } from './lib/intelEval';
 import { needsActual, pendingCloseouts } from './lib/closeoutIntel';
@@ -17488,6 +17490,42 @@ function IntelligenceObservatory({ profile, events, onClose }) {
             ))}
           </div>
         </div>
+
+        {/* GROUNDING SOURCES (host directive: "hold on to the provenance" + a sources field in
+            the admin). Every grounded axis and the exact citations its decisions point at —
+            one auditable place for the provenance behind the playbooks. */}
+        {(() => {
+          const cat = groundingSourceCatalog();
+          const st = groundingSourceStats();
+          return (
+            <div style={card}>
+              <div style={eyebrow}>Grounding sources — provenance behind the playbooks</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginBottom: 12 }}>
+                {[['Grounded axes', st.axes], ['Cited sources', st.sources], ...Object.entries(st.byTier).map(([t, n]) => [t, n])].map(([k, v]) => (
+                  <div key={k}><div style={{ fontSize: 22, fontWeight: 800 }}>{v}</div><div style={{ fontSize: 11, color: MUT }}>{k}</div></div>
+                ))}
+              </div>
+              {/* Canonical grounding ladder (RESEARCH_DOCTRINE.md) — one vocabulary every axis maps onto. */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottom: `1px solid ${LINE}` }}>
+                {groundingLadder().map((r) => (
+                  <span key={r.tier} title={r.note} style={{ fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4, color: r.grounded ? OK : MUT, border: `1px solid ${r.grounded ? OK : LINE}` }}>{r.label}{r.grounded ? '' : ' · not grounded'}</span>
+                ))}
+              </div>
+              {cat.map((g) => (
+                <div key={g.axis} style={{ borderTop: `1px solid ${LINE}`, paddingTop: 10, marginTop: 10 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: FG, marginBottom: 6 }}>{g.axis} <span style={{ color: MUT, fontWeight: 500 }}>· {g.sources.length}</span></div>
+                  {g.sources.map((s) => (
+                    <div key={s.id} style={{ marginBottom: 7 }}>
+                      <div style={{ fontSize: 12, color: FG }}>{s.title} {s.tier ? <span title={s.tier !== s.canonTier ? `authored as "${s.tier}"` : undefined} style={{ fontSize: 10, fontWeight: 700, color: s.grounded ? OK : MUT, marginLeft: 6 }}>{s.tierLabel}</span> : null}</div>
+                      <div style={{ fontSize: 11, color: MUT }}>{[s.publisher, s.id].filter(Boolean).join(' · ')}</div>
+                      {s.note ? <div style={{ fontSize: 11, color: MUT, fontStyle: 'italic', marginTop: 2 }}>{s.note}</div> : null}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          );
+        })()}
 
         <div style={card}>
           <div style={eyebrow}>Evaluation capture (INTEL-QA-1 · Stage 1)</div>

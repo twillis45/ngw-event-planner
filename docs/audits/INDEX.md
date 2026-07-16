@@ -37,4 +37,6 @@ Older engine audits live in [`../product-os/engine-audit/`](../product-os/engine
 
 ## Artifacts deliberately NOT ported
 
-Visual prototypes, where markdown would destroy the point: Splash Prototypes (`82ad7302`), Wordmark Options (`86abfe99`, `6aa220ee`), "hello" stroke-draw mockup (`c81d0111`), DIFM Magic motion demos (`adde9658`), Host Shell Concept (`bc64ccb0`). Specs and plans (Graduation Spec `81350b10`, Execution Plan & Cost `6ece90b7`, The Working Doc `4cb20aa9`, First-Timer's North Star `87675bf8`) were left as artifacts — they are living documents, not point-in-time findings.
+Visual prototypes, where markdown would destroy the point: Splash Prototypes (`82ad7302`), Wordmark Options (`86abfe99`, `6aa220ee`), "hello" stroke-draw mockup (`c81d0111`), DIFM Magic motion demos (`adde9658`), Host Shell Concept (`bc64ccb0`). Specs and plans (Graduation Spec `81350b10`, The Working Doc `4cb20aa9`, First-Timer's North Star `87675bf8`) were left as artifacts — they are living documents, not point-in-time findings.
+
+**Exception — ported on request (2026-07-16):** Execution Plan & Cost (`6ece90b7`) → [`../architecture/2026-07-11_EXECUTION_PLAN_AND_COST.md`](../architecture/2026-07-11_EXECUTION_PLAN_AND_COST.md). The genAI/genUI build sequence + cost model; the artifact remains the editable original.
