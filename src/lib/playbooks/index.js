@@ -1825,8 +1825,24 @@ function decisionTier(row) {
   return TIER_WAITING; // waiting / anything else sinks
 }
 // The single ordering key — tier + importance + aging (higher ranks first).
+// Wave-2e — intra-cell tiebreak. The importance score is a coarse integer lattice
+// (weight 1-3 + emo 0-2 + rev 0-2 + heart 0/2), so rows with the SAME profile collapse
+// to one score and previously resolved only by due-date — a calendar sort, not a
+// consequence sort (the re-score's residual-tie cap). This adds a tiny continuous term,
+// bounded WELL below the smallest importance step (0.25), so it can ONLY reorder exact
+// ties, never flip rows that already differ in importance. It ranks a tied row up by real
+// structure: how many purchases it drives (`affects`), how many sibling decisions depend
+// on it, and whether it moves money — so budget-class calls lead co-equal ones by stakes.
+function decisionStructuralTiebreak(row) {
+  if (!row) return 0;
+  const affects = Array.isArray(row.affects) ? row.affects.length : 0;
+  const deps = typeof row._dependedOnCount === 'number' ? row._dependedOnCount : 0;
+  const cost = decisionCarriesCost(row) ? 1 : 0;
+  return Math.min(0.2, 0.03 * affects + 0.05 * deps + 0.03 * cost);
+}
 function decisionPriorityScore(row) {
-  return decisionTier(row) + decisionImportance(row) + decisionAging(row);
+  return decisionTier(row) + decisionImportance(row) + decisionAging(row)
+    + decisionStructuralTiebreak(row);
 }
 
 // rankReason — the host-facing "why is this here?" line (the Honesty "show your
@@ -2069,7 +2085,12 @@ export function playbookDecisionBoard(event, asOf) {
     // sourced where a planning standard applies, and a UI can show WHY / whether it's researched.
     const timingProvenance = effectiveTimingProvenance(d) || null;
     const timingGrounded = isGroundedTiming(timingProvenance);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded };
+    // Wave-2e: how many sibling decisions depend on this one — a real consequence signal
+    // the intra-cell tiebreak reads to break same-profile ties by stakes, not calendar.
+    const _dependedOnCount = decisions.filter((o) => o && o.id !== d.id
+      && Array.isArray(o.dependsOn) && o.dependsOn.includes(d.id)).length;
+    const _affects = Array.isArray(d.affects) ? d.affects : undefined;
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
