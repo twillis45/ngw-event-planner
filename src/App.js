@@ -43175,7 +43175,9 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       )}
       {hostAdaptation && hostAdaptation.reassure && (
         <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>
-          New to this? We&rsquo;ll ease in — the calls at the top are the quick, low-stakes wins to get moving; the bigger ones come after, and anything with a real deadline still stays up top. Each one has a recommended pick you can accept or change.
+          {hostAdaptation.runway === 'tight'
+            ? <>The date&rsquo;s close, so we&rsquo;ve put a few more in front — start at the top and work down; anything with a real deadline stays up top. Each one has a recommended pick you can accept or change.</>
+            : <>New to this? We&rsquo;ll ease in — the calls at the top are the quick, low-stakes wins to get moving; the bigger ones come after, and anything with a real deadline still stays up top. Each one has a recommended pick you can accept or change.</>}
         </div>
       )}
       {/* Wave-2r ADAPTIVITY — the seasoned/terse host gets adaptive copy too (not just a

@@ -116,6 +116,27 @@ describe('per-host adaptivity', () => {
     if (smallFirst.hostAdaptation.staged) expect(smallFirst.hostAdaptation.batchSize).toBe(3);
   });
 
+  test('THE CLOCK: runway (days-to-event) compresses a hand-held board cadence', () => {
+    // The 5th, dominant pacing signal a human planner reads: a near deadline surfaces more per
+    // session + a wider first foreground; a long runway keeps the drip gentle.
+    const near = new Date(); near.setDate(near.getDate() + 14);
+    const far = new Date(); far.setDate(far.getDate() + 300);
+    const base = { type: 'Wedding', guests: [], guestEstimate: 140, hostExperience: 'first_time', hostCapacity: 'solo' };
+    const tight = playbookDecisionBoard({ ...base, id: 't', date: near.toISOString().slice(0, 10) });
+    const relaxed = playbookDecisionBoard({ ...base, id: 'r', date: far.toISOString().slice(0, 10) });
+    expect(tight.hostAdaptation.runway).toBe('tight');
+    expect(relaxed.hostAdaptation.runway).toBe('relaxed');
+    expect(tight.hostAdaptation.batchSize).toBeGreaterThan(relaxed.hostAdaptation.batchSize);
+    expect(tight.hostAdaptation.focusCount).toBeGreaterThanOrEqual(relaxed.hostAdaptation.focusCount);
+    // direct: same host inputs, only the clock differs
+    expect(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140, 14).runway).toBe('tight');
+    expect(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140, 300).runway).toBe('relaxed');
+    expect(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140, 14).batchSize)
+      .toBeGreaterThan(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140, 300).batchSize);
+    // no date → runway unknown, no compression (additive)
+    expect(computeHostAdaptation('first_time', 'solo', 'hard', 10, 140).runway).toBe('unknown');
+  });
+
   test('event SIZE scales hand-holding independent of the host', () => {
     // a solo host on a LARGE event gets walked through it even on an easy playbook
     expect(computeHostAdaptation(null, 'solo', 'easy', 8, 120).handHolding).toBe('high');

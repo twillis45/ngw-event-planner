@@ -2266,6 +2266,7 @@ export function playbookDecisionBoard(event, asOf) {
     playbookHostDifficulty(event),
     active.length,
     Number(event.guestCount || event.guestEstimate || (gc && gc.count) || 0) || 0,
+    dte, // Wave-2t3: the RUNWAY (days to event) — the 5th, dominant pacing signal
   );
   // Wave-2r ADAPTIVITY DEPTH — a seasoned planner doesn't just show a nervous first-timer
   // FEWER calls, they SEQUENCE the calls differently. byScore (above) leads with the
@@ -2306,7 +2307,7 @@ export function playbookDecisionBoard(event, asOf) {
 // SAME event yields a different board for a nervous first-timer than for a seasoned host.
 const HOST_DIFF_BAND = (d) => (/(hard|high|intensive|complex)/i.test(String(d)) ? 'hard'
   : /(easy|low|simple|light)/i.test(String(d)) ? 'easy' : 'moderate');
-export function computeHostAdaptation(experience, capacity, difficulty, openCount, guestCount) {
+export function computeHostAdaptation(experience, capacity, difficulty, openCount, guestCount, runwayDays) {
   const band = HOST_DIFF_BAND(difficulty);
   const firstTime = experience === 'first_time' || experience === 'first-time' || experience === 'novice';
   const experienced = experience === 'experienced' || experience === 'seasoned';
@@ -2316,11 +2317,20 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
   // large event doesn't get the terse treatment. Small <20 / medium 20-75 / large >75.
   const n = typeof guestCount === 'number' && guestCount > 0 ? guestCount : null;
   const size = n == null ? 'unknown' : n > 75 ? 'large' : n < 20 ? 'small' : 'medium';
+  // Wave-2t3 THE CLOCK — the 5th, dominant pacing signal a human planner reads: the RUNWAY
+  // (days to the event). A near deadline compresses the cadence — surface MORE per session and
+  // a slightly larger first foreground, because time is short and dripping the list one tiny
+  // batch at a time would strand a host who has to move now. A long runway keeps the drip
+  // gentle. tight ≤21d / relaxed >120d / standard between. Unknown when the event has no date.
+  const runway = typeof runwayDays === 'number' && runwayDays >= 0
+    ? (runwayDays <= 21 ? 'tight' : runwayDays > 120 ? 'relaxed' : 'standard') : 'unknown';
   // hand-holding level: high (walk them through), standard (neutral), light (get out of the way)
   let handHolding = 'standard';
   if (firstTime || (solo && band === 'hard') || (solo && size === 'large')) handHolding = 'high';
   else if (experienced && band !== 'hard' && size !== 'large') handHolding = 'light';
-  const focusCount = handHolding === 'high' ? Math.min(3, openCount)
+  // a tight deadline widens a hand-held host's first foreground (3→4) — the clock overrides
+  // the gentle default, because on a short runway even a nervous host needs the load in view.
+  const focusCount = handHolding === 'high' ? Math.min(runway === 'tight' ? 4 : 3, openCount)
     : handHolding === 'light' ? openCount
       : Math.min(5, openCount);
   return {
@@ -2328,6 +2338,7 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     capacity: capacity || 'unknown',
     difficultyBand: band,
     size,
+    runway,
     handHolding,
     focusCount,
     // proposeDerivable drives the board's SEQUENCE (Wave-2r): a hand-held host's active list
@@ -2347,7 +2358,11 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     // batchSize sizes the SUBSEQUENT paced sessions, independent of focusCount (the first,
     // gentlest foreground set): a larger event surfaces slightly larger follow-on batches so
     // a big to-do list doesn't take too many taps to walk, while the first session stays small.
-    batchSize: handHolding === 'high' ? (size === 'large' ? 4 : 3) : focusCount,
+    // A TIGHT runway compresses the cadence further (+1) — near the deadline the host clears
+    // more per session; a long runway keeps it gentle (Wave-2t3: pace by WHEN, not just size).
+    batchSize: handHolding === 'high'
+      ? (size === 'large' ? 4 : 3) + (runway === 'tight' ? 1 : 0)
+      : focusCount,
   };
 }
 
