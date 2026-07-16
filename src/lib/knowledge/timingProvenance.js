@@ -24,7 +24,7 @@ export const TIMING_SOURCES = {
   'theknot-vendors': {
     url: 'https://www.theknot.com/content/when-to-book-wedding-vendors',
     fetched: '2026-07-15',
-    claim: 'Venue and caterer book 12–18 months out; band/DJ and florist 9–12 months.',
+    claim: 'Venue and caterer book 12–18 months out; photographers also 12–18 months (most work solo, one booking per date); band/DJ and florist 9–12 months.',
   },
   'theknot-headcount': {
     url: 'https://www.theknot.com/content/when-should-we-give-the-wedding-caterer-our-head-count',
