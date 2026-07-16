@@ -22,6 +22,9 @@ import { detectLegalCategory, effectiveLegal, isGroundedLegal } from './legalCon
 // Wave-2l: a venue/space decision carries a capacity/power constraint; the resolver grounds
 // it against event space-planning + power standards.
 import { detectVenueCategory, effectiveVenue, isGroundedVenue } from './venueContext';
+// Wave-2n: weather-contingency and human/relational axes on the relevant decisions.
+import { detectWeatherCategory, effectiveWeather, isGroundedWeather } from './weatherContext';
+import { detectHumanCategory, effectiveHuman, isGroundedHuman } from './humanContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -44,6 +47,8 @@ export const FIELD_TYPES = {
   COST_UNRESEARCHED: 'cost-unresearched', // §4.D — a costFactorProvenance that is still synthesized, not researched against a real market source
   LEGAL_UNGROUNDED: 'legal-ungrounded', // §4.I — an alcohol/vendor/permit decision whose legal-liability axis isn't grounded
   VENUE_UNGROUNDED: 'venue-ungrounded', // §4.J — a venue/space decision whose capacity/power constraint axis isn't grounded
+  WEATHER_UNGROUNDED: 'weather-ungrounded', // §4.K — an outdoor/shade/rain decision whose weather-contingency axis isn't grounded
+  HUMAN_UNGROUNDED: 'human-ungrounded', // §4.L — a seating/guest-list/honoree decision whose human-relational axis isn't grounded
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -171,6 +176,24 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].venueContext`,
   },
+  // §4.K — weather-contingency axis. An outdoor/shade/rain decision must carry a grounded
+  // weather backup. Fires only on those decisions.
+  WEATHER_UNGROUNDED: {
+    type: FIELD_TYPES.WEATHER_UNGROUNDED,
+    hasData: (decision) => !detectWeatherCategory(decision) || isGroundedWeather(effectiveWeather(decision)),
+    needsResearch: (decision) => !!detectWeatherCategory(decision) && !isGroundedWeather(effectiveWeather(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].weatherContext`,
+  },
+  // §4.L — human/relational axis. A seating/guest-list/honoree decision must carry a grounded
+  // relational consideration. Fires only on those decisions.
+  HUMAN_UNGROUNDED: {
+    type: FIELD_TYPES.HUMAN_UNGROUNDED,
+    hasData: (decision) => !detectHumanCategory(decision) || isGroundedHuman(effectiveHuman(decision)),
+    needsResearch: (decision) => !!detectHumanCategory(decision) && !isGroundedHuman(effectiveHuman(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].humanContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -211,6 +234,8 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.COST_UNRESEARCHED,
   GAP_CRITERIA.LEGAL_UNGROUNDED,
   GAP_CRITERIA.VENUE_UNGROUNDED,
+  GAP_CRITERIA.WEATHER_UNGROUNDED,
+  GAP_CRITERIA.HUMAN_UNGROUNDED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,

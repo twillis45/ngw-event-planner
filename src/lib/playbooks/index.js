@@ -67,6 +67,8 @@ import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/ac
 import { isGroundedCost } from '../knowledge/costProvenance';
 import { effectiveLegal, isGroundedLegal } from '../knowledge/legalContext';
 import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
+import { effectiveWeather, isGroundedWeather } from '../knowledge/weatherContext';
+import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2116,7 +2118,13 @@ export function playbookDecisionBoard(event, asOf) {
     // (capacity vs headcount, power load)? Distinct from accessibility's ADA-access slice.
     const venueContext = effectiveVenue(d);
     const venueGrounded = isGroundedVenue(venueContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2n: two more grounded axes — weather contingency (outdoor exposure) and the
+    // human/relational dimension (whose day it is; guest & family dynamics).
+    const weatherContext = effectiveWeather(d);
+    const weatherGrounded = isGroundedWeather(weatherContext);
+    const humanContext = effectiveHuman(d);
+    const humanGrounded = isGroundedHuman(humanContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
