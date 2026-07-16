@@ -10,6 +10,9 @@ import { resolveTimingProvenance, isGroundedTiming } from './timingProvenance';
 // Wave-2g: a decision may carry a structured cultural/religious axis (faith/tradition that
 // steers the choice). If authored, it must be GROUNDED against a real cited source.
 import { isGroundedCulture } from './culturalContext';
+// Wave-2h: a venue/seating decision has an accessibility dimension (mobility/ADA/sensory);
+// the resolver grounds it against ADA / inclusive-seating guidance. Machine-verify coverage.
+import { detectAccessibilityCategory, effectiveAccessibility, isGroundedAccessibility } from './accessibilityContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -28,6 +31,7 @@ export const FIELD_TYPES = {
   TIMING_PROVENANCE: 'timing-provenance',  // §4.B — a `when` deadline with no GROUNDED `timingProvenance` source
   BUDGET_LINKAGE: 'budget-linkage',        // §4.D — costFactors that never reach the budget engine (no `affects`)
   CULTURAL_UNSOURCED: 'cultural-unsourced', // §4.G — a decision that AUTHORS a culturalContext but leaves it ungrounded (no real cited source)
+  ACCESSIBILITY_UNGROUNDED: 'accessibility-ungrounded', // §4.H — a venue/seating decision whose accessibility axis isn't grounded (ADA / inclusive-seating)
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -117,6 +121,16 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].culturalContext`,
   },
+  // §4.H — accessibility axis. A venue/seating decision (detected by category) must carry a
+  // GROUNDED accessibility consideration (ADA route/restrooms/parking, or inclusive seating).
+  // Only fires on venue/seating decisions, so non-spatial decisions are never flagged.
+  ACCESSIBILITY_UNGROUNDED: {
+    type: FIELD_TYPES.ACCESSIBILITY_UNGROUNDED,
+    hasData: (decision) => !detectAccessibilityCategory(decision) || isGroundedAccessibility(effectiveAccessibility(decision)),
+    needsResearch: (decision) => !!detectAccessibilityCategory(decision) && !isGroundedAccessibility(effectiveAccessibility(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].accessibilityContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -153,6 +167,7 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.PRIORITY_WEIGHT,
   GAP_CRITERIA.PRIORITY_UNSOURCED,
   GAP_CRITERIA.CULTURAL_UNSOURCED,
+  GAP_CRITERIA.ACCESSIBILITY_UNGROUNDED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,

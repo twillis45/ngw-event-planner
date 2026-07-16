@@ -63,6 +63,7 @@ import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
 import { isGroundedCulture } from '../knowledge/culturalContext';
+import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2096,7 +2097,12 @@ export function playbookDecisionBoard(event, asOf) {
     // the tradition + why it's the host's/family's call, and never the app's to default.
     const culturalContext = d.culturalContext || null;
     const culturalGrounded = isGroundedCulture(culturalContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2h: the accessibility axis — venue/seating decisions carry a grounded (ADA /
+    // inclusive-seating) consideration, resolved centrally. Surfaced so a UI can show the
+    // access guideline that steers the choice.
+    const accessibilityContext = effectiveAccessibility(d);
+    const accessibilityGrounded = isGroundedAccessibility(accessibilityContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
