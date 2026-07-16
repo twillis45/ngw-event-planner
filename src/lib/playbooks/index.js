@@ -66,6 +66,7 @@ import { isGroundedCulture } from '../knowledge/culturalContext';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
 import { effectiveLegal, isGroundedLegal } from '../knowledge/legalContext';
+import { effectiveVenue, isGroundedVenue } from '../knowledge/venueContext';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2111,7 +2112,11 @@ export function playbookDecisionBoard(event, asOf) {
     // decision carries a grounded (social-host / dram-shop / COI / permit) consideration.
     const legalContext = effectiveLegal(d);
     const legalGrounded = isGroundedLegal(legalContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2l: the venue-constraint axis — does the SPACE physically fit and power the event
+    // (capacity vs headcount, power load)? Distinct from accessibility's ADA-access slice.
+    const venueContext = effectiveVenue(d);
+    const venueGrounded = isGroundedVenue(venueContext);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });

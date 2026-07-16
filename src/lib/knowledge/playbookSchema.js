@@ -19,6 +19,9 @@ import { isGroundedCost } from './costProvenance';
 // Wave-2j: an alcohol/vendor/permit decision carries a legal-liability dimension; the
 // resolver grounds it against social-host/dram-shop/COI/permit standards.
 import { detectLegalCategory, effectiveLegal, isGroundedLegal } from './legalContext';
+// Wave-2l: a venue/space decision carries a capacity/power constraint; the resolver grounds
+// it against event space-planning + power standards.
+import { detectVenueCategory, effectiveVenue, isGroundedVenue } from './venueContext';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -40,6 +43,7 @@ export const FIELD_TYPES = {
   ACCESSIBILITY_UNGROUNDED: 'accessibility-ungrounded', // §4.H — a venue/seating decision whose accessibility axis isn't grounded (ADA / inclusive-seating)
   COST_UNRESEARCHED: 'cost-unresearched', // §4.D — a costFactorProvenance that is still synthesized, not researched against a real market source
   LEGAL_UNGROUNDED: 'legal-ungrounded', // §4.I — an alcohol/vendor/permit decision whose legal-liability axis isn't grounded
+  VENUE_UNGROUNDED: 'venue-ungrounded', // §4.J — a venue/space decision whose capacity/power constraint axis isn't grounded
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -158,6 +162,15 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].legalContext`,
   },
+  // §4.J — venue-constraint axis. A venue/space decision (detected by category) must carry a
+  // GROUNDED capacity/power constraint. Fires only on venue/power decisions.
+  VENUE_UNGROUNDED: {
+    type: FIELD_TYPES.VENUE_UNGROUNDED,
+    hasData: (decision) => !detectVenueCategory(decision) || isGroundedVenue(effectiveVenue(decision)),
+    needsResearch: (decision) => !!detectVenueCategory(decision) && !isGroundedVenue(effectiveVenue(decision)),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].venueContext`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -197,6 +210,7 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.ACCESSIBILITY_UNGROUNDED,
   GAP_CRITERIA.COST_UNRESEARCHED,
   GAP_CRITERIA.LEGAL_UNGROUNDED,
+  GAP_CRITERIA.VENUE_UNGROUNDED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,
