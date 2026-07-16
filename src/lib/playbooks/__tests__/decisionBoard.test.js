@@ -314,13 +314,15 @@ describe('Wave-2a prioritization recovery (DECISION_SCHEMA_SPEC §4.A/§6)', () 
     expect(typeof tribute.priorityBasis.rationale).toBe('string');
     expect(tribute.rankReason).toBe(tribute.priorityBasis.rationale.trim());
 
-    // A playbook with NO priorityBasis (Dinner Party) falls back to a DERIVED reason:
-    // an overdue row reads "N days past its window", never blank.
+    // Dinner Party's decisions now carry authored priorityBasis too (fleet-wide priority-axis
+    // authoring), so its rows also prefer the authored rationale — the show-your-work path
+    // reaches every event type, not just the 2 flagships. (The DERIVED reason fallback for an
+    // un-authored decision is unit-tested in decisionBoardWave2b.test.js.)
     const dp = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-01-05', guests: roster2(22, 6, 12) }, '2026-01-01');
     const fmt = dp.open.find((r) => r.id === 'format');
     expect(fmt.status).toBe('overdue');
-    expect(fmt.priorityBasis).toBeNull();
-    expect(fmt.rankReason).toMatch(/past its window/);
+    expect(fmt.priorityBasis).toBeTruthy();
+    expect(fmt.rankReason).toBe(fmt.priorityBasis.rationale.trim());
   });
 });
 

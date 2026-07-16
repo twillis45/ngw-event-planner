@@ -1772,7 +1772,10 @@ function decisionCarriesCost(d) {
 //   • purely-aesthetic leaf (theme/vibe/decor/color, no cost) → LOWEST
 //   • otherwise neutral (the prior flat baseline)
 // `reason` tags the dominant axis so the rankReason reads as an HONEST derivation.
-function derivedImportanceOf(d, decisions) {
+// Exported for direct unit testing: after the fleet-wide priority-axis authoring (all 39
+// playbooks carry weight), this fallback is no longer exercised by a real playbook, so it
+// is verified directly with synthetic decisions rather than via a now-authored playbook.
+export function derivedImportanceOf(d, decisions) {
   const hay = `${(d && d.id) || ''} ${(d && d.label) || ''}`;
   const dietarySafety = DIETARY_SAFETY_RE.test(hay);
   if (dietarySafety) return { score: 3.5, reason: 'diet' };

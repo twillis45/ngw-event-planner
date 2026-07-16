@@ -7,7 +7,7 @@
 //       signal derived from its OWN structure (blocks / dependsOn / costFactors / text),
 //       killing the flat tie that ranked "Pick a theme" above "Confirm guest count".
 // Authored playbooks (crabFeast, retirementParty) must be byte-identical to Wave-2a.
-import { playbookDecisionBoard } from '../index';
+import { playbookDecisionBoard, derivedImportanceOf } from '../index';
 
 // A fixed clock so day-math is deterministic regardless of when the suite runs.
 const ASOF = '2026-06-01';
@@ -96,18 +96,33 @@ describe('Wave-2b derived importance — Birthday no longer collapses to a due-d
     expect(bd.open[0].id).toBe('dietary');
   });
 
-  test('derived rows are marked as derived and carry HONEST derived reasons (not authored-sounding)', () => {
+  // NOTE (fleet-wide priority-axis authoring): every one of the 39 playbooks now carries an
+  // authored `weight` + `priorityBasis`, so Birthday's rows are 'authored', not 'derived' —
+  // theme still sinks below dietary/headcount, now via authored weight (asserted above). The
+  // DERIVED fallback heuristic remains as a safety net for any un-authored decision, so it is
+  // verified DIRECTLY here with synthetic decisions, decoupled from any playbook's authoring.
+  test('Birthday rows are now AUTHORED (theme still sinks, via authored weight not derived)', () => {
     const theme = bd.open.find((r) => r.id === 'theme');
-    const headcount = bd.open.find((r) => r.id === 'headcount');
     const dietary = bd.open.find((r) => r.id === 'dietary');
-    expect(theme.importanceBasis).toBe('derived');
-    expect(headcount.importanceBasis).toBe('derived');
-    expect(dietary.importanceBasis).toBe('derived');
-    // Aesthetic leaf → the lowest, honestly derived reason.
-    expect(theme.rankReason).toBe('A finishing touch — settle it when you like.');
-    // Gates downstream / carries safety → derived reasons that read as derived.
-    expect(headcount.rankReason).toBe('This decides other choices.');
-    expect(dietary.rankReason).toMatch(/allergies gate the menu/);
+    expect(theme.importanceBasis).toBe('authored');
+    expect(dietary.importanceBasis).toBe('authored');
+    // authored rationale surfaces as the rankReason (the show-your-work honesty path).
+    expect(theme.rankReason).toBe(theme.priorityBasis.rationale.trim());
+  });
+
+  test('the DERIVED importance fallback still works for an un-authored decision (unit)', () => {
+    // aesthetic leaf → lowest, honestly derived reason
+    const theme = derivedImportanceOf({ id: 'theme', label: 'Pick a theme / vibe' }, []);
+    expect(theme.score).toBeLessThan(1);
+    expect(theme.reason).toBe('aesthetic');
+    // gates downstream → ranks up, derived-sounding reason
+    const gate = derivedImportanceOf({ id: 'x', label: 'Food model', blocks: ['a', 'b'] }, []);
+    expect(gate.reason).toBe('gates');
+    expect(gate.score).toBeGreaterThan(1.5);
+    // allergy/safety text → highest
+    const diet = derivedImportanceOf({ id: 'dietary', label: 'Collect allergies' }, []);
+    expect(diet.score).toBe(3.5);
+    expect(diet.reason).toBe('diet');
   });
 });
 

@@ -45,6 +45,7 @@ const theCookout = {
   decisions: [
     {
       id: 'grill_master',
+      weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'The grill master is a named, trusted person the whole cook runs on — only the host knows who that is, and re-casting the role late is hard.', tier: 'reasoned' },
       label: 'Who is running the grill?',
       options: ['Host grills', 'Designated grill master (uncle / family pitmaster)', 'Hire a pitmaster / caterer'],
       default: 'Designated grill master (uncle / family pitmaster)',
@@ -57,6 +58,7 @@ const theCookout = {
     },
     {
       id: 'cooking_model',
+      weight: 'high', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'The coordinated spread runs on who is trusted with which dish — the single biggest effort lever, and those personal assignments are the host\'s to make and awkward to unwind.', tier: 'reasoned' },
       label: 'Host cooks the spread, or potluck?',
       options: ['Host cooks everything', 'Potluck — assign dishes', 'Host does meat + key sides, family brings the rest'],
       default: 'Host does meat + key sides, family brings the rest',
@@ -69,6 +71,7 @@ const theCookout = {
     },
     {
       id: 'drinks',
+      weight: 'med', reversibility: 'reversible', emotionalWeight: 'low', difmCapable: 'can-derive', priorityBasis: { rationale: 'A red drink for everyone plus a separate grown-folks section is what keeps it family-safe, but it is a cheap store call the app can default.', tier: 'reasoned' },
       label: 'Drinks — family + grown folks',
       options: ['Red drink + soda + water (family-friendly)', 'Add a grown-folks section (brown liquor + mixers, beer)', 'Full bar + punch'],
       default: 'Add a grown-folks section (brown liquor + mixers, beer)',
@@ -81,6 +84,7 @@ const theCookout = {
     },
     {
       id: 'music',
+      weight: 'low', reversibility: 'reversible', emotionalWeight: 'high', difmCapable: 'can-derive', priorityBasis: { rationale: 'Music is half of what makes it a cookout — a curated playlist is a free, swappable default, yet getting it right carries the whole feeling of the day.', tier: 'reasoned' },
       label: 'Music — DJ or playlist',
       options: ['Curated playlist + good speaker', 'Hire a DJ', 'Designate a family DJ on the aux'],
       default: 'Curated playlist + good speaker',
@@ -90,6 +94,7 @@ const theCookout = {
     },
     {
       id: 'shade_seating',
+      weight: 'med', reversibility: 'costly', emotionalWeight: 'med', difmCapable: 'needs-host', priorityBasis: { rationale: 'Shade and comfortable seating for the elders is a point of respect, not an afterthought, and rentals book ahead — the host sizes it to their space.', tier: 'reasoned' },
       label: 'Shade + seating for every age',
       options: ['Existing patio/yard shade', 'Pop-up canopies + chairs', 'Rent tent + tables + chairs', 'Reserve a park shelter'],
       default: 'Pop-up canopies + chairs',
