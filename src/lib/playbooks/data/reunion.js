@@ -71,7 +71,7 @@ const reunion = {
       reversibility: 'locked',
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'The venue makes weather the single biggest risk and drives shade, restrooms, and the rain plan, and popular pavilions book months ahead so a reserved date is effectively locked — securing a real space is something only the host can do.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The venue makes weather the single biggest risk and drives shade, restrooms, and the rain plan, and popular pavilions book well ahead so a reserved date is effectively locked — securing a real space is something only the host can do.', tier: 'reasoned' },
       why:
         'Outdoor is the reunion default and the cheapest, but it makes weather your single biggest risk and forces decisions about shade, restrooms, and trash that an indoor hall solves for you. A reserved park pavilion (often $100-500/day) gives you a roof, tables, and usually grills and parking. If you go outdoor, you need a real rain plan committed by the week before — a backup indoor space or a tent on hold, not a hope.',
     },

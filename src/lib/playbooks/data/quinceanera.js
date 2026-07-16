@@ -70,7 +70,7 @@ const quinceanera = {
       reversibility: 'locked',
       emotionalWeight: 'low',
       difmCapable: 'needs-host',
-      priorityBasis: { rationale: 'The salón sets capacity, catering, and the date, and the best halls book a year out — lock it first because it is the hardest to undo.', tier: 'reasoned' },
+      priorityBasis: { rationale: 'The salón sets capacity, catering, and the date, and the best halls book far in advance — lock it first because it is the hardest to undo.', tier: 'reasoned' },
       why: 'A quince is a large seated event; the venue sets capacity, whether tables, chairs, linens and a dance floor are included, parking, the curfew, and whether you can bring your own caterer or must use theirs. Salones that host quinces book the best Saturdays a year ahead — lock this first, right alongside the church if there is a Mass.',
     },
     {
