@@ -1741,6 +1741,13 @@ const TIER_URGENT_OVERDUE = 300;
 const TIER_CROSS_ZONE = 200; // soft overdue AND floated cross-eligible ready
 const TIER_READY = 100;
 const TIER_WAITING = 0;
+// Wave-2z — a READY gate-holder (a decision ≥1 sibling is currently WAITING on) leads the rows
+// it blocks: settling it unblocks downstream work, so the dependency graph SEQUENCES, not just
+// gates. Sized to clear ONE weight tier (each tier ≈ 1.0 point in this lattice), so a med gate
+// leads a higher-weight non-gate (food_style over alcohol) — but NOT to leap multiple tiers or
+// over a safety row (the gate pass clamps below the ready safety floor, and never demotes a gate
+// below its base). Far under the 100 status-tier gap, so overdue always leads.
+const GATE_HOLDER_BUMP = 1.5;
 const AGING_PER_DAY = 0.25; // effective-rank gained per day past the window…
 const AGING_CAP = 6;        // …bounded so age never overpowers a full status tier
 
@@ -2232,6 +2239,24 @@ export function playbookDecisionBoard(event, asOf) {
       r.horizon = 'later';
     }
     r.rankReason = decisionRankReason(r);
+  }
+  // Wave-2z DEPENDENCY-DRIVEN ORDERING (safety-guarded): a READY, ACTIVE gate-holder — a decision
+  // ≥1 sibling is currently WAITING on (its unmet prerequisite) — leads the rows it blocks, so
+  // settling it unblocks downstream, the way a planner opens with "how's the food handled?" before
+  // "what drinks?". The +GATE_HOLDER_BUMP clears one full weight tier (a med gate leads a HIGHER-
+  // weight non-gate), but is CLAMPED below every ready SAFETY row (allergy/heart/high-stakes) so
+  // safety is never buried by a sequencing lift — and never demotes a gate below its own base.
+  // Bounded far under the 100 status-tier gap, so overdue/cross-zone still lead outright.
+  {
+    const activeReady = open.filter((r) => r.status === 'ready' && r.horizon !== 'later');
+    const isSafety = (r) => r.deliversHeartMoment === true || r._derivedReason === 'diet' || /dietary|allerg/i.test(`${r.id} ${r.label || ''}`);
+    const safetyFloor = Math.min(Infinity, ...activeReady.filter(isSafety).map((r) => r.priorityScore));
+    for (const r of activeReady) {
+      if (!isSafety(r) && typeof r._dependedOnCount === 'number' && r._dependedOnCount > 0) {
+        r.gateHolder = true;
+        r.priorityScore = Math.max(r.priorityScore, Math.min(r.priorityScore + GATE_HOLDER_BUMP, safetyFloor - 0.01));
+      }
+    }
   }
   // HORIZON PARTITION — deferred ("comes up closer") vs the active board. This is the
   // genuine order/partition change vs Wave-2a: at 90 days out a T-5d store-run lands in
