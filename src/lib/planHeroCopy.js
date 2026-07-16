@@ -34,6 +34,14 @@ export function planHeroCopy(event, priceFactor) {
   const list = (plan && Array.isArray(plan.list)) ? plan.list : [];
   if (!open.length && !list.length) return null; // nothing real yet — setup owns the hero
 
+  // The board is priority-ordered (playbookDecisionBoard, Wave-2a), so open[0] of
+  // each band is already the highest-ranked decision. Its `rankReason` — WHY it
+  // leads — rides along on the hero so the lead decision explains itself here too
+  // (prefers an authored priorityBasis.rationale). Additive + nullable: an
+  // un-ranked board simply carries no reason.
+  const leadReason = (r) => (r && typeof r.rankReason === 'string' && r.rankReason.trim())
+    ? r.rankReason.trim() : null;
+
   const overdue = open.filter((r) => r.status === 'overdue');
   if (overdue.length) {
     const first = overdue[0];
@@ -45,6 +53,7 @@ export function planHeroCopy(event, priceFactor) {
         : `${overdue.length} decisions are past their easy window — this one first. The spread and shopping list size from them.`,
       cta: 'Open what to settle',
       route: { tab: 'Planning', focusField: 'host-decisions' },
+      reason: leadReason(first),
       numbers: { overdue: overdue.length, open: open.length },
     };
   }
@@ -59,6 +68,7 @@ export function planHeroCopy(event, priceFactor) {
         : `No rush — ${open.length} open, each in its own time.`,
       cta: 'Open what to settle',
       route: { tab: 'Planning', focusField: 'host-decisions' },
+      reason: leadReason(ready[0]),
       numbers: { overdue: 0, open: open.length },
     };
   }

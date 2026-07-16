@@ -80,7 +80,7 @@ import { setMustHaveOutcome, mustHaveOutcome, MUST_HAVE_SIGNALS, MUST_HAVE_LABEL
 import { rosOverlapCount } from './lib/rosOverlap';
 // "Do it for me" — the app WRITES the host's invite / vendor inquiry / thank-yous
 // from the event facts, then hands them over to send in one tap.
-import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestUpdate, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, draftVendorBriefAsk, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase } from './lib/doItForMe';
+import { draftInvite, draftVendorOutreach, draftThankYou, draftRecap, draftRsvpChase, draftHelperBrief, draftDietaryNote, draftShoppingList, draftDayBeforeDetails, draftGuestUpdate, draftGuestBrief, draftVendorReconfirm, draftToast, hasToastMaterial, draftParkingInstructions, draftVendorBriefAsk, eventCulturalMeta, isAtHome, shareOrCopy, timePhrase, placePhrase, decisionApproach } from './lib/doItForMe';
 import { DAY_COMPLETE_COPY } from './lib/dayOfCopy';
 // FOOD-2B — the shopping list's shopItems now come through the Effective Item seam
 // (got/qty/unit/where read from plan.effectiveItems). Byte-identical to the old list-only
@@ -42843,7 +42843,41 @@ function PlanNowHero({ event, profile, onNav, onSetupStep, scope = 'plan', onSet
 // Tapping an open row routes to where the host acts (the same foundation/decision
 // routes the rest of the app uses). Returns null when there's nothing to settle.
 const HOST_DECISIONS_IDS = ['host-decisions'];
-function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice }) {
+
+// rankReasonFor(row) — "why is this decision ranked where it is." (Wave-2a Honesty:
+// a floated decision must explain itself.) Prefers the board's own authored
+// rankReason (the concurrent decision-engine contract); when the board hasn't
+// authored one yet, DERIVES a host-voiced fallback from the priority fields the row
+// already carries (deliversHeartMoment → weight → reversibility → emotionalWeight).
+// Defensive: only ever speaks to fields that are present, never fabricates a reason.
+function rankReasonFor(row) {
+  if (row && typeof row.rankReason === 'string' && row.rankReason.trim()) return row.rankReason.trim();
+  const b = row && row.priorityBasis;
+  if (b && typeof b.rationale === 'string' && b.rationale.trim()) return b.rationale.trim();
+  if (!row) return '';
+  if (row.deliversHeartMoment) return 'This is the moment your guests will remember — worth deciding yourself.';
+  const hi = row.weight === 'high';
+  const hard = row.reversibility === 'locked' || row.reversibility === 'costly';
+  if (hi && hard) return 'Leads because it’s a big call that’s hard to undo once it’s set.';
+  if (hi) return 'A high-stakes call — settling it moves the most of your plan.';
+  if (hard) return 'Hard to change later, so it’s worth getting right now.';
+  if (row.emotionalWeight === 'high') return 'This one carries a lot of heart — give it your own attention.';
+  return '';
+}
+
+// hostDiffBand(hostDifficulty) — collapse the authored vocabulary (easy / moderate /
+// medium / hard / high / moderate-high) into the three tones the surface adapts to.
+// First runtime CONSUMER of meta.hostDifficulty (authored on all 40 playbooks, read
+// by nothing until now — DECISION_SCHEMA_SPEC §4.F / §6.3). Unknown → 'moderate'
+// (the neutral baseline, so an un-authored event behaves exactly as before).
+function hostDiffBand(hostDifficulty) {
+  const hd = String(hostDifficulty || '').toLowerCase();
+  if (hd === 'easy') return 'easy';
+  if (hd === 'hard' || hd === 'high' || hd === 'moderate-high') return 'hard';
+  return 'moderate';
+}
+
+function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSetChoice, onReorder }) {
   // ONE-SOURCE HERO: "Settle it" routes here with focusField 'host-decisions' —
   // the board must OPEN on landing, not just scroll its collapsed header into view.
   const settleFocus = useFocusFieldForceOpen(HOST_DECISIONS_IDS);
@@ -42851,10 +42885,34 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   const T = useType();
   // Which menu/sourcing row is expanded in place (settle inline, no route-away).
   const [openMenuId, setOpenMenuId] = useState(null);
+  // Host override: which open decisions the host pinned to the top ("Do this
+  // first"). The ranking is a PROPOSAL — persisted via the same event-write path
+  // foodChoices uses (onReorder → setEvent). Reveal-the-rest fold state is local.
+  const [showAllOpen, setShowAllOpen] = useState(false);
   const board = useMemo(() => { try { return playbookDecisionBoard(event); } catch { return null; } }, [event]);
   if (!board) return null;
-  const { open, locked, headcount } = board;
-  if (!open.length && !locked.length && !headcount) return null;
+  const { open: openRaw, locked, headcount, hostDifficulty, heartAtRisk } = board;
+  if (!openRaw.length && !locked.length && !headcount) return null;
+
+  const diffBand = hostDiffBand(hostDifficulty);
+  // Apply the host's pins WITHOUT re-implementing the engine's ranking: pinned ids
+  // float to the very top in the host's chosen order; everything else keeps the
+  // board's own priority order (Array.sort is stable). A quiet correction on top of
+  // the proposal, never a replacement for it.
+  const pins = Array.isArray(event && event.decisionPins) ? event.decisionPins.filter(Boolean) : [];
+  const canReorder = typeof onReorder === 'function';
+  const open = pins.length
+    ? openRaw.map((r, i) => ({ r, i })).sort((a, b) => {
+      const pa = pins.indexOf(a.r.id); const pb = pins.indexOf(b.r.id);
+      const ra = pa === -1 ? Infinity : pa; const rb = pb === -1 ? Infinity : pb;
+      return ra !== rb ? ra - rb : a.i - b.i;
+    }).map((x) => x.r)
+    : openRaw;
+  const togglePin = (id) => {
+    if (!canReorder || !id) return;
+    const next = pins.includes(id) ? pins.filter((p) => p !== id) : [id, ...pins];
+    onReorder(next);
+  };
 
   const steel = C.steel?.blue500 || C.accentTopGrad || C.accent;
   const green = C.success || C.accent;
@@ -42907,6 +42965,21 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     const inlineable = !!(menuOpts && menuOpts.options.length);
     const actionable = !!r.route;
     const expanded = inlineable && openMenuId === r.id;
+    // Wave-2a consumers, per row:
+    //  • rankWhy — WHY this decision sits where it does (the board's own rankReason,
+    //    else a host-voiced fallback derived from the priority fields). Honesty:
+    //    a floated decision explains itself instead of being an unexplained jump.
+    //  • approach — difmCapable → propose ("we'll go with X unless you change it")
+    //    vs ask ("this one's your call"). Only spoken when the decision is actually
+    //    modelled (r.difmCapable set), so unmodelled rows stay quiet.
+    //  • heart — deliversHeartMoment marks the row with a steel accent edge (the
+    //    panel-level heartAtRisk nudge carries the words, so the row stays quiet).
+    //  • pin — the host can float any open decision to the top ("Do this first").
+    const rankWhy = rankReasonFor(r);
+    const approach = r.difmCapable ? decisionApproach(r, menuOpts) : null;
+    const heart = r.deliversHeartMoment === true;
+    const heartEdge = heart ? { borderLeft: `3px solid ${steel}`, paddingLeft: 11 } : null;
+    const pinned = pins.includes(r.id);
     const inner = (
       <>
         <span style={{ flex: 1, minWidth: 0 }}>
@@ -42919,11 +42992,28 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
           : (actionable && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, color: steel, fontSize: T.caption, fontWeight: FW.semibold }}>Set<span aria-hidden style={{ display: 'flex' }}><Icon name="chevronRight" size={15} /></span></span>)}
       </>
     );
+    // The row's "work" + host override — a plain footer of SIBLING elements (never a
+    // button nested inside the tappable row). Renders only when it has something real
+    // to say, so a bare unmodelled row is unchanged.
+    const footer = (rankWhy || approach || canReorder) ? (
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '7px 4px 0' }}>
+        <span style={{ flex: 1, minWidth: 0 }}>
+          {rankWhy && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, lineHeight: 1.45 }}>{rankWhy}</span>}
+          {approach && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, lineHeight: 1.45, marginTop: rankWhy ? 2 : 0 }}>{approach.note}</span>}
+        </span>
+        {canReorder && (
+          <button type="button" onClick={() => togglePin(r.id)} aria-pressed={pinned}
+            style={{ flexShrink: 0, background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer', color: pinned ? steel : C.muted, fontSize: T.caption, fontWeight: FW.semibold }}>
+            {pinned ? 'Pinned first' : 'Do this first'}
+          </button>
+        )}
+      </div>
+    ) : null;
     // Inline menu/sourcing decision: header toggles the expansion; options settle it.
     if (inlineable) {
       return (
         <div key={r.id} style={{ marginBottom: 8 }}>
-          <button type="button" onClick={() => setOpenMenuId(expanded ? null : r.id)} style={{ ...rowBase, marginBottom: expanded ? 0 : 8, borderBottomLeftRadius: expanded ? 0 : 11, borderBottomRightRadius: expanded ? 0 : 11, borderBottom: expanded ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }}>{inner}</button>
+          <button type="button" onClick={() => setOpenMenuId(expanded ? null : r.id)} style={{ ...rowBase, ...heartEdge, marginBottom: 0, borderBottomLeftRadius: expanded ? 0 : 11, borderBottomRightRadius: expanded ? 0 : 11, borderBottom: expanded ? 'none' : `1px solid ${C.border}`, cursor: 'pointer' }}>{inner}</button>
           {expanded && (
             <div style={{ border: `1px solid ${C.border}`, borderTop: 'none', borderBottomLeftRadius: 11, borderBottomRightRadius: 11, background: C.surface || 'transparent', padding: '2px 14px 10px' }}>
               {/* Choice parity — the SAME radio divider-rows as FoodPlan "Your choices" /
@@ -42945,12 +43035,14 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
               {menuOpts.why && <div style={{ fontSize: T.caption, color: C.muted, marginTop: 9, lineHeight: 1.5 }}>{menuOpts.why}</div>}
             </div>
           )}
+          {footer}
         </div>
       );
     }
-    return actionable
-      ? <button key={r.id} type="button" onClick={() => go(r.route)} style={{ ...rowBase, cursor: 'pointer' }}>{inner}</button>
-      : <div key={r.id} style={{ ...rowBase, cursor: 'default' }}>{inner}</div>;
+    const rowEl = actionable
+      ? <button type="button" onClick={() => go(r.route)} style={{ ...rowBase, ...heartEdge, marginBottom: 0, cursor: 'pointer' }}>{inner}</button>
+      : <div style={{ ...rowBase, ...heartEdge, marginBottom: 0, cursor: 'default' }}>{inner}</div>;
+    return <div key={r.id} style={{ marginBottom: 8 }}>{rowEl}{footer}</div>;
   };
 
   const lockedRow = (r) => (
@@ -42962,14 +43054,43 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   );
 
   const settledCount = locked.length;
+  // hostDifficulty consumer (task 1): an 'easy' event reads terser; a 'hard'/'high'
+  // event's subtitle stays plain but gains a reassurance line below (diffLine). The
+  // 'moderate' baseline is unchanged from before this wire.
   const subtitle = open.length
-    ? `${open.length} still to settle${settledCount ? ` · ${settledCount} settled` : ''}`
+    ? (diffBand === 'easy'
+      ? `${open.length} quick ${open.length === 1 ? 'call' : 'calls'}`
+      : `${open.length} still to settle${settledCount ? ` · ${settledCount} settled` : ''}`)
     : 'Everything’s settled.';
+  // The hostDifficulty adapter — a real behavior shift, not a rendered label. Hard
+  // events open with reassurance (you don't have to do it all today); easy events get
+  // a calm one-liner; moderate stays silent (baseline). Host-voiced per UX_06.
+  const diffLine = open.length
+    ? (diffBand === 'hard'
+      ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'
+      : diffBand === 'easy'
+        ? 'This is a light one — a few quick calls and you’re set.'
+        : null)
+    : null;
+  // heartAtRisk consumer (task 5): one gentle, host-voiced nudge at the top when an
+  // OPEN decision delivers a heart moment — decide it yourself before it defaults.
+  const heartNudge = (heartAtRisk && open.length)
+    ? 'One of these is the moment your guests will remember. Give it your own call — don’t let it settle on a default.'
+    : null;
 
   return (
     <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} forceOpen={settleFocus} title="What to settle"
       right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : 'All settled'}</div> : undefined}
       subtitle={!isMobile ? (settledCount ? `${settledCount} settled` : '') : subtitle}>
+      {/* hostDifficulty-adapted intro — reassurance for a hard event, a calm line for
+          an easy one, nothing for a moderate one (baseline). */}
+      {diffLine && (
+        <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>{diffLine}</div>
+      )}
+      {/* heartAtRisk nudge — protect the moment before it defaults away. */}
+      {heartNudge && (
+        <div style={{ fontSize: T.secondary, fontWeight: FW.semibold, color: steel, lineHeight: 1.5, margin: '0 2px 14px', paddingLeft: 11, borderLeft: `3px solid ${steel}` }}>{heartNudge}</div>
+      )}
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
           math, never a fabricated spread). "Lock it" reuses the single-source count lock. */}
       {headcount && (
@@ -42983,8 +43104,13 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       {/* Calm cap: the list is sorted urgent-first (overdue → ready → waiting), so the few
           that matter lead; the rest fold into a quiet "+N more" so the panel never reads as
           a long backlog (Ruthless Host Lens — a few things, not a worklist). */}
-      {open.length > 0 && (<>{sectionLabel('Still open')}{open.slice(0, 4).map(openRow)}{open.length > 4 && (
-        <div style={{ fontSize: T.secondary, color: C.muted, padding: '9px 2px 2px' }}>+{open.length - 4} more to settle, in their own time</div>
+      {open.length > 0 && (<>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, 4)).map(openRow)}{open.length > 4 && (
+        // The fold now EXPANDS (task 2): every decision's rank reason must be
+        // reachable, never permanently buried below the "+N more" line.
+        <button type="button" onClick={() => setShowAllOpen((v) => !v)}
+          style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
+          {showAllOpen ? 'Show fewer' : `+${open.length - 4} more to settle, in their own time`}
+        </button>
       )}</>)}
       {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Settled')}{locked.map(lockedRow)}</div>)}
     </CollapsibleCard>
@@ -43368,7 +43494,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
               no task list) — the named task renders as an actionable focus card. */}
           {openTaskId && <HostTaskFocusCard event={event} taskId={openTaskId} setEvent={setEvent} onClear={() => setOpenTaskId(null)} />}
           <div className="planv2-grid">
-            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
+            <div className="planv2-rail hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} /></div>
             <div className="planv2-main hp-recede-group">
               <ContextNudgeCard event={event} surface="food" onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} onNavTo={(t, opts) => go(t, null, opts)} isMobile={isMobile} />
               <CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} />
@@ -43384,7 +43510,7 @@ function HostEventShell({ event, setEvent, client, setClient, allEvents = [], on
           <PlanNowHero event={event} profile={profile} onNav={(t, id, opts) => go(t, id, opts)} />
           <div className="hp-recede"><CrabPlanCard event={event} onPatchEvent={(patch) => setEvent(e => ({ ...e, ...patch }))} isMobile={isMobile} /><div id="food-plan" style={{ scrollMarginTop: 16 }}><FoodPlan event={event} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} onNav={go} profile={profile} focusId={openFoodId ? { id: openFoodId, nonce: foodFocusNonce } : null} onFocusConsumed={() => setOpenFoodId(null)} ctx={ctx} /></div></div>
           <div className="hp-recede"><CapacityPanel event={event} profile={profile} isMobile={isMobile} onPatch={(patch) => setEvent(e => ({ ...e, ...patch }))} /></div>
-          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} /></div>
+          <div className="hp-recede"><HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => go(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} /></div>
           <div className="hp-recede"><Suspense fallback={<SpecialistFallback />}><EventPlanningTab event={event} setEvent={setEvent} wrap={wrap} isMobile={isMobile} onBack={() => go('Command')} planningView={planningView} setPlanningView={setPlanningView} openTaskId={openTaskId} openTimelineId={openTimelineId} /></Suspense></div>
           <PlanBudgetRollup event={event} profile={profile} isMobile={isMobile} onNav={go} />
         </>}</AccordionProvider>)}
@@ -44253,7 +44379,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
           "What's left to do"; the count-lock reuses the single-source guest-count lock. */}
       {tab === 'Planning' && isHostEvt && (
         <div className="hp-recede">
-          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} />
+          <HostDecisionsPanel event={event} isMobile={isMobile} onNav={(t, id, opts) => handleTabChange(t, id, opts)} onLockCount={(n) => { setEvent(e => ({ ...e, guestMode: 'count', guestCount: Math.max(0, Math.round(Number(n) || 0)), guestEstimate: Math.max(0, Math.round(Number(n) || 0)) })); try { feedbackLock(); } catch {} }} onSetChoice={(id, val) => { setEvent(e => ({ ...e, foodChoices: { ...(e.foodChoices || {}), [id]: val } })); try { feedbackSelect(); } catch {} }} onReorder={(pins) => { setEvent(e => ({ ...e, decisionPins: pins })); try { feedbackSelect(); } catch {} }} />
         </div>
       )}
       {tab === 'Planning'       && (

@@ -220,6 +220,109 @@ describe('decision priority tier (DECISION_SCHEMA_SPEC §4.A/§6) — fields, or
   });
 });
 
+describe('Wave-2a prioritization recovery (DECISION_SCHEMA_SPEC §4.A/§6)', () => {
+  const roster2 = (yes, no, pending) => ([
+    ...Array.from({ length: yes }, (_, i) => ({ name: `Y${i}`, rsvp: 'Yes' })),
+    ...Array.from({ length: no }, (_, i) => ({ name: `N${i}`, rsvp: 'No' })),
+    ...Array.from({ length: pending }, (_, i) => ({ name: `P${i}`, rsvp: '' })),
+  ]);
+  const idx = (rows, id) => rows.findIndex((r) => r.id === id);
+
+  // (1) ALL-AXIS SORT — reversibility/emotionalWeight actually move the order, not
+  // just weight or the deadline. Crab, event today: steam_vs_order is LESS overdue
+  // than where_buy (-7 vs -10) yet ranks ABOVE it, because it's harder to reverse
+  // (reversibility:'costly' vs 'reversible'). A weight+soonest-due sort would rank
+  // the more-overdue where_buy first — proving the reversibility axis participates.
+  test('reversibility + emotionalWeight participate — a less-overdue but harder-to-undo decision outranks a more-overdue reversible peer', () => {
+    const crab = { id: 'e', type: 'Crab Feast', date: '2026-01-15', guestMode: 'count', guestCount: 20 };
+    const b = playbookDecisionBoard(crab, '2026-01-15');
+    const steam = b.open.find((r) => r.id === 'steam_vs_order');
+    const where = b.open.find((r) => r.id === 'where_buy');
+    expect(steam && where).toBeTruthy();
+    // steam is LESS overdue than where_buy…
+    expect(steam.daysOut).toBeGreaterThan(where.daysOut);
+    // …yet ranks higher, because reversibility:'costly' beats 'reversible'.
+    expect(idx(b.open, 'steam_vs_order')).toBeLessThan(idx(b.open, 'where_buy'));
+    // and low-weight sides/drinks sink below the med-weight rows (weight participates).
+    expect(idx(b.open, 'steam_vs_order')).toBeLessThan(idx(b.open, 'sides'));
+    expect(idx(b.open, 'crab_size')).toBeLessThan(idx(b.open, 'drinks'));
+    // high-weight dietary (allergy safety) leads them all.
+    expect(idx(b.open, 'dietary')).toBe(0);
+  });
+
+  // (2) GUARDED CROSS-BAND HEART-FLOAT — retirement mixed band (event 15 days out).
+  // OLD model (status-primary): tribute is READY, so it sank BELOW all seven overdue
+  // rows → rank 8. NEW model: the heart-moment tribute floats above the LOW/MED
+  // overdue admin rows (format/bar/help) to rank ~5, WITHOUT passing any genuinely
+  // urgent high-weight overdue (venue/surprise/invite/food_style).
+  test('a READY heart-moment decision floats above LOW/MED overdue admin, but never above a high-weight overdue', () => {
+    const b = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-02-01', guests: roster2(30, 4, 6) }, '2026-01-17');
+    const tribute = b.open.find((r) => r.id === 'tribute');
+    expect(tribute.status).toBe('ready');
+    expect(tribute.deliversHeartMoment).toBe(true);
+    const ti = idx(b.open, 'tribute');
+    // Floats ABOVE the soft (low/med-weight) overdue admin rows.
+    for (const softId of ['format', 'bar', 'help']) {
+      const row = b.open.find((r) => r.id === softId);
+      expect(row.status).toBe('overdue');
+      expect(['low', 'med']).toContain(row.weight);
+      expect(ti).toBeLessThan(idx(b.open, softId));
+    }
+    // GUARD: every genuinely urgent (high-weight) OVERDUE decision still leads it —
+    // no real high-stakes overdue item is hidden below the floated heart moment.
+    const highOverdue = b.open.filter((r) => r.status === 'overdue' && r.weight === 'high');
+    expect(highOverdue.length).toBeGreaterThan(0);
+    for (const r of highOverdue) expect(idx(b.open, r.id)).toBeLessThan(ti);
+    // Status order is legitimately no longer monotonic here (the float is the point):
+    // a 'ready' tribute sits above three 'overdue' rows — the wave-1 bug, now fixed.
+    const rank = { overdue: 0, ready: 1, waiting: 2 };
+    const seq = b.open.map((r) => rank[r.status]);
+    expect(seq).not.toEqual([...seq].sort((a, c) => a - c));
+  });
+
+  // (3) AGING / DECAY — an overdue decision's effective rank rises the longer it's
+  // ignored, bounded. Retirement 'music' (low-weight) overdue 1 day vs 13 days: the
+  // aged instance scores strictly higher, and the climb is capped (never overpowers
+  // a full status tier).
+  test('an overdue decision climbs as it ages, bounded by the decay cap', () => {
+    const ev = { id: 'e', type: 'Retirement Party', date: '2026-02-01', guests: roster2(30, 4, 6) };
+    const fresh = playbookDecisionBoard(ev, '2026-01-19').open.find((r) => r.id === 'music'); // overdue ~1d
+    const aged = playbookDecisionBoard(ev, '2026-01-31').open.find((r) => r.id === 'music');  // overdue ~13d
+    expect(fresh.status).toBe('overdue');
+    expect(aged.status).toBe('overdue');
+    expect(-aged.daysOut).toBeGreaterThan(-fresh.daysOut); // genuinely more overdue
+    // climbs…
+    expect(aged.priorityScore).toBeGreaterThan(fresh.priorityScore);
+    // …but bounded: the age contribution alone can never exceed the 6-pt decay cap,
+    // so a low-weight item never leaps a full status tier purely on age.
+    expect(aged.priorityScore - fresh.priorityScore).toBeLessThanOrEqual(6);
+  });
+
+  // (4) SHOW THE WORK — every open row carries a host-facing rankReason; when the
+  // source decision declares priorityBasis, the reason PREFERS its authored
+  // rationale; otherwise a derived reason is used.
+  test('rankReason is present on every open row and prefers an authored priorityBasis.rationale', () => {
+    const ret = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: '2026-02-01', guests: roster2(30, 4, 6) }, '2026-01-17');
+    for (const r of ret.open) {
+      expect(typeof r.rankReason).toBe('string');
+      expect(r.rankReason.trim().length).toBeGreaterThan(0);
+    }
+    // tribute's source decision carries priorityBasis → rankReason is its rationale.
+    const tribute = ret.open.find((r) => r.id === 'tribute');
+    expect(tribute.priorityBasis).toBeTruthy();
+    expect(typeof tribute.priorityBasis.rationale).toBe('string');
+    expect(tribute.rankReason).toBe(tribute.priorityBasis.rationale.trim());
+
+    // A playbook with NO priorityBasis (Dinner Party) falls back to a DERIVED reason:
+    // an overdue row reads "N days past its window", never blank.
+    const dp = playbookDecisionBoard({ id: 'e', type: 'Dinner Party', date: '2026-01-05', guests: roster2(22, 6, 12) }, '2026-01-01');
+    const fmt = dp.open.find((r) => r.id === 'format');
+    expect(fmt.status).toBe('overdue');
+    expect(fmt.priorityBasis).toBeNull();
+    expect(fmt.rankReason).toMatch(/past its window/);
+  });
+});
+
 describe('playbookDecisionOptions — inline-settle accessor for the Decisions board', () => {
   const evt = { id: 'e', type: 'Dinner Party', date: '2026-02-01' };
 

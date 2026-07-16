@@ -26,7 +26,32 @@ import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
-import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase } from '@app/lib/doItForMe';
+import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach } from '@app/lib/doItForMe';
+
+// Wave-2a decision-engine consumers (shared shape with App.js HostDecisionsPanel).
+// rankReasonForV2 — the rank's "work": the board's own rankReason, else a host-voiced
+// fallback derived from the priority fields the row carries. Never fabricated.
+function rankReasonForV2(row) {
+  if (row && typeof row.rankReason === 'string' && row.rankReason.trim()) return row.rankReason.trim();
+  const b = row && row.priorityBasis;
+  if (b && typeof b.rationale === 'string' && b.rationale.trim()) return b.rationale.trim();
+  if (!row) return '';
+  if (row.deliversHeartMoment) return 'This is the moment your guests will remember — worth deciding yourself.';
+  const hi = row.weight === 'high';
+  const hard = row.reversibility === 'locked' || row.reversibility === 'costly';
+  if (hi && hard) return 'Leads because it’s a big call that’s hard to undo once it’s set.';
+  if (hi) return 'A high-stakes call — settling it moves the most of your plan.';
+  if (hard) return 'Hard to change later, so it’s worth getting right now.';
+  if (row.emotionalWeight === 'high') return 'This one carries a lot of heart — give it your own attention.';
+  return '';
+}
+// hostDiffBandV2 — collapse authored hostDifficulty into the three tones the surface adapts to.
+function hostDiffBandV2(hostDifficulty) {
+  const hd = String(hostDifficulty || '').toLowerCase();
+  if (hd === 'easy') return 'easy';
+  if (hd === 'hard' || hd === 'high' || hd === 'moderate-high') return 'hard';
+  return 'moderate';
+}
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
@@ -1257,6 +1282,15 @@ export default function HostShellV2() {
     // "Change the call") has done its job once the pick lands — clear it so
     // the now-settled row doesn't re-open its chips as if still asking.
     setSheet(s => (s && s.focus === r.id ? { ...s, focus: null } : s));
+  };
+  // Host override (task 3): the ranking is a PROPOSAL the host can correct. Pinning
+  // floats an open decision to the top; persists via the same patchEvent path every
+  // edit uses. Toggling re-pins/unpins.
+  const toggleDecisionPin = (id) => {
+    if (!id) return;
+    const cur = Array.isArray(event.decisionPins) ? event.decisionPins.filter(Boolean) : [];
+    const next = cur.includes(id) ? cur.filter(p => p !== id) : [id, ...cur];
+    patchEvent({ decisionPins: next }, cur.includes(id) ? 'Unpinned.' : 'Moved to the top.');
   };
   // Auto-hiding dock (real-device fix: the floating dock overlapped bottom
   // CTAs on tall phones) — hides on scroll-down, returns on scroll-up/top.
@@ -5888,7 +5922,36 @@ export default function HostShellV2() {
                     />
                   );
                 })()}
-                {(decisionBoard.open || []).length ? (decisionBoard.open || []).map((r, i) => {
+                {/* hostDifficulty adapter (task 1): a hard event opens with reassurance,
+                    an easy one with a calm line; moderate stays silent (baseline). */}
+                {(() => {
+                  if (!(decisionBoard.open || []).length) return null;
+                  const band = hostDiffBandV2(decisionBoard.hostDifficulty);
+                  const line = band === 'hard'
+                    ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'
+                    : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
+                  return line ? <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p> : null;
+                })()}
+                {/* heartAtRisk nudge (task 5): protect the moment before it defaults. */}
+                {decisionBoard.heartAtRisk && (decisionBoard.open || []).length ? (
+                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)', borderLeft: '3px solid var(--steel-soft)', paddingLeft: 11, fontWeight: 600 }}>
+                    One of these is the moment your guests will remember. Give it your own call — don’t let it settle on a default.
+                  </p>
+                ) : null}
+                {(() => {
+                  // Host override (task 3): float pinned decisions to the top; the board's
+                  // own priority order holds for the rest (stable sort).
+                  const raw = decisionBoard.open || [];
+                  const pins = Array.isArray(event.decisionPins) ? event.decisionPins.filter(Boolean) : [];
+                  const ordered = pins.length
+                    ? raw.map((r, i) => ({ r, i })).sort((a, b) => {
+                      const pa = pins.indexOf(a.r.id); const pb = pins.indexOf(b.r.id);
+                      const ra = pa === -1 ? Infinity : pa; const rb = pb === -1 ? Infinity : pb;
+                      return ra !== rb ? ra - rb : a.i - b.i;
+                    }).map(x => x.r)
+                    : raw;
+                  if (!ordered.length) return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
+                  return ordered.map((r, i) => {
                   // Inline settle — keyed on the DECISION having authored options
                   // (playbookDecisionOptions, same rule as legacy's What-to-settle
                   // board), not on any route. Destination calls (group transport,
@@ -5897,9 +5960,25 @@ export default function HostShellV2() {
                   // and the board re-derives, moving the row to Settled.
                   const opts = (() => { try { return playbookDecisionOptions(event, r.id); } catch { return null; } })();
                   const focused = sheet.focus && sheet.focus === r.id;
+                  // Wave-2a per-row consumers: the rank's work, the difm propose/ask
+                  // note (only when modelled), the heart accent, and the pin control.
+                  const rankWhy = rankReasonForV2(r);
+                  const approach = r.difmCapable ? decisionApproach(r, opts) : null;
+                  const pinned = Array.isArray(event.decisionPins) && event.decisionPins.includes(r.id);
+                  const heartStyle = r.deliversHeartMoment ? { borderLeft: '3px solid var(--steel-soft)', paddingLeft: 11 } : null;
+                  const meta = (rankWhy || approach) ? (
+                    <span style={{ flex: '1 0 100%' }}>
+                      {rankWhy && <span className="v-meta" style={{ display: 'block' }}>{rankWhy}</span>}
+                      {approach && <span className="v-meta" style={{ display: 'block' }}>{approach.note}</span>}
+                    </span>
+                  ) : null;
+                  const pinBtn = (
+                    <button type="button" className="mini" aria-pressed={pinned} onClick={(e) => { e.stopPropagation(); toggleDecisionPin(r.id); }}
+                      style={{ flex: '0 0 auto', alignSelf: 'flex-start' }}>{pinned ? 'Pinned first' : 'Do this first'}</button>
+                  );
                   if (opts && opts.options.length) {
                     return (
-                      <div key={r.id || i} className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default' }}
+                      <div key={r.id || i} className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
@@ -5914,22 +5993,35 @@ export default function HostShellV2() {
                           ))}
                         </div>
                         {opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: 0 }}>{opts.why}</p>}
+                        {meta}
+                        {pinBtn}
                       </div>
                     );
                   }
+                  // Routed / prompt row: the interactive element can't nest the pin
+                  // button, so wrap it and hang meta + pin as siblings.
                   return (
-                    <button key={r.id || i} className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
-                      ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
-                      onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
-                      <span className="f-main">
-                        <span className="f-name">{r.label}
-                          {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                    <div key={r.id || i} style={{ ...heartStyle }}>
+                      <button className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                        ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}
+                        onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
+                        <span className="f-main">
+                          <span className="f-name">{r.label}
+                            {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                          </span>
+                          {r.because && <span className="v-meta">{r.because}</span>}
                         </span>
-                        {r.because && <span className="v-meta">{r.because}</span>}
-                      </span>
-                    </button>
+                      </button>
+                      {(meta || true) && (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '6px 2px 0' }}>
+                          {meta || <span style={{ flex: 1 }} />}
+                          {pinBtn}
+                        </div>
+                      )}
+                    </div>
                   );
-                }) : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>}
+                });
+                })()}
                 {(decisionBoard.locked || []).length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)' }}>Settled</div>

@@ -1697,16 +1697,92 @@ export function isMenuDecision(d) {
   return MENU_DECISION_RE.test(hay);
 }
 
-// ── Decision priority ordering (DECISION_SCHEMA_SPEC §4.A / §6) ────────────────
-// WITHIN a status band, a decision's authored importance floats it toward the top:
-// a decision that DELIVERS a heart moment leads, then higher `weight`, then the
-// existing soonest-due tiebreak. Unset fields sink to the modelled ones (nullable-
-// and-additive — an un-authored decision keeps its old, deadline-only position).
-const DECISION_WEIGHT_RANK = { high: 0, med: 1, low: 2 };
-function heartRank(row) { return row && row.deliversHeartMoment ? 0 : 1; }
-function weightRank(row) {
-  const r = row && DECISION_WEIGHT_RANK[row.weight];
-  return r == null ? 1.5 : r; // unset weight sits between med and low
+// ── Decision priority ordering (DECISION_SCHEMA_SPEC §4.A / §6 · Wave-2a) ──────
+// The open board is scored on ALL FOUR priority axes the schema defines, not just
+// the deadline: how consequential a decision is (`weight`), whether it locks in
+// once committed (`reversibility`), its emotional stakes (`emotionalWeight`), and
+// whether it delivers the event's heart moment (`deliversHeartMoment`). A bounded
+// aging term lets an ignored overdue decision climb the longer it's neglected.
+// Unset axes fall back to a neutral value (nullable-and-additive — an un-authored
+// decision keeps a deadline-only position).
+//
+// KEY PRECEDENCE (documented, highest-ranked first):
+//   1. STATUS TIER — banded, with ONE GUARDED crossing:
+//        urgent overdue (overdue AND weight:'high')       → TIER 300  (always leads)
+//        soft overdue (overdue, weight low/med/unset)      → TIER 200 ┐ these two
+//        cross-eligible READY (deliversHeartMoment OR       → TIER 200 ┘ compete on
+//          reversibility:'locked') floats UP into the zone            importance+aging
+//        ordinary ready                                    → TIER 100
+//        waiting (blocked on an earlier choice)            → TIER   0
+//      GUARD: a heart / irreversible READY decision may out-rank a LOW/MED overdue
+//      decision, but a genuinely urgent (high-weight) overdue ALWAYS wins — the
+//      100-point tier gap between 300 and 200 is far larger than the ~15-point
+//      importance+aging span, so an urgent overdue can never be crossed.
+//   2. IMPORTANCE inside the tier: weight + emotionalWeight + reversibility + heart.
+//   3. AGING: overdue decisions gain min(AGING_CAP, daysOverdue × AGING_PER_DAY).
+//   4. Soonest-due tiebreak (unchanged).
+const TIER_URGENT_OVERDUE = 300;
+const TIER_CROSS_ZONE = 200; // soft overdue AND floated cross-eligible ready
+const TIER_READY = 100;
+const TIER_WAITING = 0;
+const AGING_PER_DAY = 0.25; // effective-rank gained per day past the window…
+const AGING_CAP = 6;        // …bounded so age never overpowers a full status tier
+
+const WEIGHT_SCORE = { high: 3, med: 2, low: 1 };
+const EMO_SCORE = { high: 2, med: 1, low: 0 };
+const REV_SCORE = { locked: 2, costly: 1, reversible: 0 };
+
+// importance — the intra-tier consequence score (higher ranks first). Unset weight
+// sits between med and low; unset emotional/reversibility contribute nothing.
+function decisionImportance(row) {
+  const w = WEIGHT_SCORE[row && row.weight];
+  const weightScore = w == null ? 1.5 : w;
+  const emo = EMO_SCORE[row && row.emotionalWeight] || 0;
+  const rev = REV_SCORE[row && row.reversibility] || 0;
+  const heart = row && row.deliversHeartMoment ? 2 : 0;
+  return weightScore + emo + rev + heart;
+}
+function decisionOverdueDays(row) {
+  return (row && row.status === 'overdue' && typeof row.daysOut === 'number' && row.daysOut < 0)
+    ? -row.daysOut : 0;
+}
+function decisionAging(row) {
+  return Math.min(AGING_CAP, decisionOverdueDays(row) * AGING_PER_DAY);
+}
+// The floated cross: a READY decision that delivers the heart moment OR is
+// irreversible ('locked') rises into the overdue crossing zone (TIER_CROSS_ZONE).
+function decisionCrossEligible(row) {
+  return !!row && row.status === 'ready'
+    && (row.deliversHeartMoment === true || row.reversibility === 'locked');
+}
+function decisionTier(row) {
+  if (!row) return TIER_WAITING;
+  if (row.status === 'overdue') return row.weight === 'high' ? TIER_URGENT_OVERDUE : TIER_CROSS_ZONE;
+  if (row.status === 'ready') return decisionCrossEligible(row) ? TIER_CROSS_ZONE : TIER_READY;
+  return TIER_WAITING; // waiting / anything else sinks
+}
+// The single ordering key — tier + importance + aging (higher ranks first).
+function decisionPriorityScore(row) {
+  return decisionTier(row) + decisionImportance(row) + decisionAging(row);
+}
+
+// rankReason — the host-facing "why is this here?" line (the Honesty "show your
+// work" fix). PREFERS an authored priorityBasis.rationale (the concurrent
+// decision-intelligence contract); else derives a friendly reason from the
+// dominant scoring axis. Host-voiced only — never planner jargon.
+function decisionRankReason(row) {
+  const pb = row && row.priorityBasis;
+  if (pb && typeof pb.rationale === 'string' && pb.rationale.trim()) return pb.rationale.trim();
+  if (!row) return '';
+  const od = decisionOverdueDays(row);
+  if (row.deliversHeartMoment) return 'The moment your guests will remember.';
+  if (od > 0 && row.weight === 'high') return `High-stakes — and ${od} ${od === 1 ? 'day' : 'days'} past its window.`;
+  if (od > 0) return `${od} ${od === 1 ? 'day' : 'days'} past its window.`;
+  if (row.reversibility === 'locked') return 'Hard to change once it’s set — worth settling early.';
+  if (row.weight === 'high') return 'High-stakes — it shapes everything after it.';
+  if (row.status === 'waiting') return 'Waiting on an earlier choice.';
+  if (typeof row.daysOut === 'number' && row.daysOut >= 0 && row.daysOut <= 7) return 'Due soon.';
+  return 'Ready when you are.';
 }
 
 // The five priority-tier fields a board row carries through from its source
@@ -1720,6 +1796,11 @@ function decisionPriorityFields(d) {
     emotionalWeight: d.emotionalWeight != null ? d.emotionalWeight : null,
     difmCapable: d.difmCapable != null ? d.difmCapable : null,
     deliversHeartMoment: d.deliversHeartMoment === true,
+    // priorityBasis — the concurrent decision-intelligence contract
+    // { rationale, tier, sources? }. Passed through so the ordering's rankReason
+    // can PREFER an authored rationale and the UI can render provenance. Null when
+    // the source decision doesn't declare one (most today).
+    priorityBasis: d.priorityBasis != null ? d.priorityBasis : null,
   };
 }
 
@@ -1919,16 +2000,20 @@ export function playbookDecisionBoard(event, asOf) {
     open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, route });
   }
 
-  // Calmest-first ordering: overdue, then ready, then waiting — the status band is
-  // PRIMARY and unchanged (overdue still leads). WITHIN a band (2026-07-15,
-  // DECISION_SCHEMA_SPEC §4.A/§6): a decision that delivers a heart moment floats to
-  // the top, then higher `weight`, then the existing soonest-due tiebreak — so the
-  // Decisions sheet leads with the decisions that actually matter, not just the
-  // nearest deadline. Un-authored decisions (no weight/heart) keep their prior order.
-  const STATUS_RANK = { overdue: 0, ready: 1, waiting: 2 };
-  open.sort((a, b) => (STATUS_RANK[a.status] - STATUS_RANK[b.status])
-    || (heartRank(a) - heartRank(b))
-    || (weightRank(a) - weightRank(b))
+  // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is
+  // scored on ALL FOUR axes + a bounded aging term (see the KEY PRECEDENCE note
+  // above), and each carries a host-facing `rankReason` explaining WHY it sits
+  // where it does (preferring an authored priorityBasis.rationale). The status
+  // band is still the dominant term — but a heart / irreversible READY decision
+  // may now float above a LOW/MED overdue one, while a genuinely urgent
+  // (high-weight) overdue always leads. Sort DESCENDING by score, soonest-due
+  // tiebreak. (Superseded the 2026-07-15 status-primary lexicographic sort, which
+  // buried a ready tribute below any overdue admin row and never aged anything.)
+  for (const r of open) {
+    r.priorityScore = decisionPriorityScore(r);
+    r.rankReason = decisionRankReason(r);
+  }
+  open.sort((a, b) => (b.priorityScore - a.priorityScore)
     || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut)));
 
   // heartAtRisk — any OPEN (unsettled) decision that delivers a heart moment. A shell

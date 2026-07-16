@@ -14,11 +14,30 @@ export const FIELD_TYPES = {
   // researchable/authorable dimension the gap-detector now surfaces per decision,
   // so a maintainer can SEE which decisions are missing an importance axis, a
   // propose-vs-ask signal, a timing source, or a budget-engine linkage.
-  PRIORITY_WEIGHT: 'priority-weight',      // §4.A — the missing importance axis (`weight`)
+  PRIORITY_WEIGHT: 'priority-weight',      // §4.A — the missing importance axis (`weight` unset)
+  PRIORITY_UNSOURCED: 'priority-unsourced', // §4.A — an importance axis AUTHORED but ungrounded (`weight` set, no `priorityBasis.rationale`)
   DIFM_CAPABILITY: 'difm-capability',      // §4.C — the propose-vs-ask signal (`difmCapable`)
-  TIMING_PROVENANCE: 'timing-provenance',  // §4.B — a `when` deadline with no `timingProvenance` source
+  TIMING_PROVENANCE: 'timing-provenance',  // §4.B — a `when` deadline with no GROUNDED `timingProvenance` source
   BUDGET_LINKAGE: 'budget-linkage',        // §4.D — costFactors that never reach the budget engine (no `affects`)
 };
+
+// ─── Provenance grounding predicates ──────────────────────────────────────────
+// A provenance object is only GROUNDED when it carries real evidence, not merely a
+// truthy key. The honest bar (DECISION_SCHEMA_SPEC §2): dated `sources`, OR a stated
+// `tier` PLUS a written basis/rationale. An empty `{}` or a bare `{tier:'researched'}`
+// with no sources and no basis is a hollow marker and does NOT ground anything.
+const isGroundedProvenance = (p) =>
+  !!p && typeof p === 'object' &&
+  ((Array.isArray(p.sources) && p.sources.length > 0) ||
+    (!!p.tier && typeof (p.basis || p.rationale) === 'string' && (p.basis || p.rationale).trim().length > 0));
+
+// The importance axis (§4.A) is an EDITORIAL judgment, not an empirical fact, so its
+// honest grounding is a stated one-line `rationale` (the "show your work" the host sees).
+// A decision declares a priority axis if it authors any of weight/reversibility/emotionalWeight.
+const hasPriorityAxis = (d) =>
+  d.weight != null || d.reversibility != null || d.emotionalWeight != null;
+const hasPriorityRationale = (d) =>
+  !!d.priorityBasis && typeof d.priorityBasis.rationale === 'string' && d.priorityBasis.rationale.trim().length > 0;
 
 // Gap definition: what makes a field "researchable"
 export const GAP_CRITERIA = {
@@ -46,6 +65,21 @@ export const GAP_CRITERIA = {
     fieldPath: (decisionId) => `decisions[${decisionId}].weight`,
   },
 
+  // §4.A `priorityBasis` — the PROVENANCE of the importance axis. A decision that
+  // AUTHORS a weight/reversibility/emotionalWeight steers the host's board (it floats
+  // the tribute above the place cards), so it must state WHY — a one-line, host-readable
+  // rationale. An authored priority axis with no `priorityBasis.rationale` is an
+  // unsourced editorial judgment: it changes what the host sees at a LOWER bar than a
+  // crab price. That is the PRIORITY_UNSOURCED gap (authored-but-ungrounded). Distinct
+  // from PRIORITY_WEIGHT (no weight at all): here the weight exists but is naked.
+  PRIORITY_UNSOURCED: {
+    type: FIELD_TYPES.PRIORITY_UNSOURCED,
+    hasData: (decision) => hasPriorityRationale(decision),
+    needsResearch: (decision) => hasPriorityAxis(decision) && !hasPriorityRationale(decision),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].priorityBasis`,
+  },
+
   // §4.C `difmCapable` — the do-it-for-me / propose-vs-ask signal ('can-derive' vs
   // 'needs-host'). Missing → the frictionless doctrine can't tell whether to fill a
   // grounded default or ask the host, so an unset difmCapable is a gap.
@@ -58,12 +92,15 @@ export const GAP_CRITERIA = {
   },
 
   // §4.B `timingProvenance` — a `when` deadline ('T-14d') is a bare guess until it
-  // carries a source. A decision that DECLARES a `when` but no timingProvenance is a
-  // gap (a decision with no `when` at all has no deadline to ground, so it is not).
+  // carries real grounding. `hasData` now demands a GROUNDED provenance (dated sources,
+  // or a tier + a written basis) — NOT merely a truthy key: an empty `{}` or a bare
+  // `{tier:'researched'}` with no sources is hollow and still counts as ungrounded.
+  // A decision that DECLARES a `when` but no grounded timingProvenance is a gap
+  // (a decision with no `when` at all has no deadline to ground, so it is not).
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
-    hasData: (decision) => !!decision.timingProvenance,
-    needsResearch: (decision) => !!decision.when && !decision.timingProvenance,
+    hasData: (decision) => isGroundedProvenance(decision.timingProvenance),
+    needsResearch: (decision) => !!decision.when && !isGroundedProvenance(decision.timingProvenance),
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].timingProvenance`,
   },
@@ -90,6 +127,7 @@ export const GAP_CRITERIA = {
 const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.COST_FACTOR,
   GAP_CRITERIA.PRIORITY_WEIGHT,
+  GAP_CRITERIA.PRIORITY_UNSOURCED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,

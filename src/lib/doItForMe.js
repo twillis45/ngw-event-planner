@@ -1054,6 +1054,42 @@ export function draftGettingHereNote(event) {
   return { subject: `Getting here${forName}`, body: blocks.join('\n\n').trim() };
 }
 
+// ── DIFM-PROPOSE-1 — difmCapable → propose-vs-ask (DECISION_SCHEMA_SPEC §4.C) ──
+// The propose-don't-ask signal, finally CONSUMED. A decision board row carries
+// difmCapable ('can-derive' | 'needs-host'); until now it was read by nothing.
+// This turns that field into HOW the host meets the decision — a real branch a
+// host sees, not a stored label:
+//   • 'can-derive' → PROPOSE. The app fills a GROUNDED default (the playbook's own
+//     recommendation, the same value the spread/budget engine already uses) and
+//     the host accepts it or changes it. Never a blank ask for something we can
+//     reason out ourselves.
+//   • 'needs-host' → ASK. A taste / relationship / real-quote call the app must
+//     NOT auto-fill; we ask it plainly and leave the answer to the host.
+// Absent/unknown difmCapable degrades to 'needs-host' — we never auto-fill a
+// decision we haven't modelled. `opts` is the playbookDecisionOptions() result
+// for this decision (its grounded `chosen` default); when there's no grounded
+// value to propose, a can-derive decision falls back to a low-pressure ask.
+// Pure, host-voiced (UX_06), invents nothing: the proposed value is only ever
+// the playbook's own default, never a fabricated pick.
+export function decisionApproach(row, opts = null) {
+  const cap = row && row.difmCapable;
+  const grounded = opts && String(opts.chosen || '').trim();
+  if (cap === 'can-derive' && grounded) {
+    return {
+      mode: 'propose',
+      proposed: grounded,
+      note: `We’ll go with ${grounded} unless you’d rather change it.`,
+    };
+  }
+  if (cap === 'can-derive') {
+    // Modelled as derivable, but nothing grounded to stand on yet — ask gently,
+    // no false confidence.
+    return { mode: 'ask', proposed: null, note: 'Pick when you’re ready — no wrong answer here.' };
+  }
+  // needs-host, or unmodelled — this one is the host's to make; we don't fill it.
+  return { mode: 'ask', proposed: null, note: 'This one’s your call to make.' };
+}
+
 export async function shareOrCopy({ title, text }) {
   const body = String(text || '');
   try {
