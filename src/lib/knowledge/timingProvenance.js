@@ -61,6 +61,16 @@ export const TIMING_SOURCES = {
     fetched: '2026-07-15',
     claim: 'Book a weekend party venue / event space 2–3 months ahead; restaurants and event rooms 6–8 weeks out.',
   },
+  'withjoy-dietary': {
+    url: 'https://withjoy.com/blog/how-to-collect-dietary-restrictions-for-your-wedding/',
+    fetched: '2026-07-16',
+    claim: 'Start collecting guests’ dietary restrictions early — when invitations go out, via the RSVP / event website — and give the final consolidated dietary list to the caterer at least ~2 weeks (commonly 7–10 days) before the event.',
+  },
+  'canapes-menu': {
+    url: 'https://canapesusa.com/blogs/blog/how-far-in-advance-should-you-order-catering',
+    fetched: '2026-07-16',
+    claim: 'Finalize/confirm the menu ~2–4 weeks before a small/casual gathering (birthday, get-together) and ~4–8 weeks before a larger event (40+ guests, wedding, holiday party); the date can be booked first and the menu locked later.',
+  },
 };
 
 // Category → grounding. `pattern` matches the decision's id + label; `antiPattern`
@@ -157,6 +167,31 @@ const TIMING_CATEGORIES = [
     leadDays: [45, 550], // tux rental ~2 months → gown 9–12 months
     sources: ['theknot-attire', 'quince-dress'],
     claim: 'Order formal attire early — a made-to-order gown 9–12 months out (plus alterations), a quinceañera dress ~9 months, a tux/suit rental ~2 months.',
+  },
+  {
+    // The ACT of collecting guests' dietary needs (not the menu itself) — a real recurring
+    // action with a sourced cadence: gather with the invitations/RSVPs, hand the caterer the
+    // final list ~1–2 weeks out. Placed after invitation so an "Invite + dietary ask"
+    // decision grounds on invitation-SEND timing; a pure "Collect dietary restrictions" call
+    // falls through to here. antiPattern vetoes the menu-lock and food-style CHOICE calls.
+    category: 'dietary_collection',
+    pattern: /collect.*(dietar|allerg|restriction)|(dietar|allerg|restriction).*(collect|gather|from rsvp)|gather.*(dietar|allerg)/i,
+    antiPattern: /\bmenu\b|food[ _]?style|who (handles|provides)/i,
+    leadDays: [5, 45], // collect over the RSVP window; final list to caterer ~7–14 days out
+    sources: ['withjoy-dietary'],
+    claim: 'Collect dietary restrictions with the invitations/RSVPs and give the caterer the final list ~1–2 weeks before the event.',
+  },
+  {
+    // Finalizing/locking the MENU (the action, not "what food style"). Sourced cadence:
+    // ~2–4 weeks for a small/casual event, 4–8 weeks for a larger one. antiPattern keeps the
+    // "food style / who handles the food / potluck" CHOICE calls out — those are host
+    // decisions, not a caterer-deadline lock.
+    category: 'menu_finalize',
+    pattern: /(lock|finali[sz]e|confirm|nail down).{0,12}menu|menu (lock|finali[sz])/i,
+    antiPattern: /food[ _]?style|how is (the )?food|who (handles|provides)|potluck|buffet or|seated dinner or/i,
+    leadDays: [10, 60], // small/casual 2–4 weeks → larger 4–8 weeks
+    sources: ['canapes-menu'],
+    claim: 'Finalize the menu ~2–4 weeks before a small/casual gathering (4–8 weeks for a larger event); the date can be booked first and the menu locked later.',
   },
 ];
 

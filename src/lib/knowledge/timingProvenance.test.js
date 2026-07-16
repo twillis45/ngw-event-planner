@@ -15,6 +15,8 @@ describe('timing category resolver', () => {
       [{ id: 'headcount', label: 'Lock the final headcount', when: 'T-7d' }, 'headcount_rsvp'],
       [{ id: 'rentals', label: 'Reserve tables and chairs', when: 'T-60d' }, 'rentals'],
       [{ id: 'cake', label: 'Order the cake', when: 'T-14d' }, 'cake'],
+      [{ id: 'dietary', label: 'Collect dietary restrictions from RSVPs', when: 'T-14d' }, 'dietary_collection'],
+      [{ id: 'menu', label: 'Lock the menu', when: 'T-21d' }, 'menu_finalize'],
     ];
     for (const [d, cat] of cases) {
       expect(detectTimingCategory(d)?.category).toBe(cat);
@@ -32,6 +34,10 @@ describe('timing category resolver', () => {
       { id: 'theme', label: 'Pick a theme / vibe', when: 'T-21d' },
       { id: 'tribute', label: 'Speeches / tribute format', when: 'T-31d' },
       { id: 'sides', label: 'The sides', when: 'T-5d' },
+      // the new dietary/menu categories must NOT swallow food-STYLE choice calls
+      { id: 'food_style', label: 'How is the food handled?', when: 'T-21d' },
+      { id: 'food_style2', label: 'Food style — who handles it?', when: 'T-14d' },
+      { id: 'potluck', label: 'Host-provided or potluck sides?', when: 'T-10d' },
     ];
     for (const d of notGrounded) {
       expect(isGroundedTiming(resolveTimingProvenance(d))).toBe(false);
@@ -46,13 +52,16 @@ describe('timing category resolver', () => {
       { id: 'venue-setting', label: 'Indoor or outdoor', when: 'T-18d' },
       { id: 'venue', label: 'At home or a venue?', when: 'T-35d' },
       { id: 'registry', label: 'Confirm registry / gift theme to share on the invite', when: 'T-21d' },
-      { id: 'menu', label: 'Lock the menu (or catering order) + cake', when: 'T-28d' },
     ];
     for (const d of falsePositives) {
       expect(isGroundedTiming(resolveTimingProvenance(d))).toBe(false);
     }
     // …but the SAME category grounds when the deadline is consistent with the source.
     expect(isGroundedTiming(resolveTimingProvenance({ id: 'venue', label: 'Venue + date (book FIRST)', when: 'T-365d' }))).toBe(true);
+    // wave-2u: "Lock the menu" at T-28d IS a true positive now (menu-finalize, 2–4 weeks) — not a false one.
+    expect(isGroundedTiming(resolveTimingProvenance({ id: 'menu', label: 'Lock the menu (or catering order)', when: 'T-28d' }))).toBe(true);
+    // but a food-STYLE choice at the same deadline stays honestly ungrounded
+    expect(isGroundedTiming(resolveTimingProvenance({ id: 'food_style', label: 'How is the food handled?', when: 'T-28d' }))).toBe(false);
     expect(isGroundedTiming(resolveTimingProvenance({ id: 'venue', label: 'Book the venue', when: 'T-90d' }))).toBe(true);
   });
 
@@ -85,8 +94,8 @@ describe('timing category resolver', () => {
     // deadline-consistent with its source. It deliberately stays there: the other ~197 are
     // event-specific CHOICE decisions (what to serve/theme) with no citable external lead
     // standard, so they remain honestly synthesized. Correctness + honest ceiling over count.
-    expect(grounded).toBeGreaterThanOrEqual(15);
-    expect(grounded).toBeLessThan(30); // still conservative — no over-reach into choice decisions
+    expect(grounded).toBeGreaterThanOrEqual(22); // wave-2u added dietary-collection + menu-finalize actions
+    expect(grounded).toBeLessThan(32); // still conservative — no over-reach into choice decisions
   });
 });
 
