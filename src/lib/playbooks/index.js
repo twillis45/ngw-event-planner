@@ -2258,6 +2258,7 @@ export function playbookDecisionBoard(event, asOf) {
     event.hostCapacity || null,
     playbookHostDifficulty(event),
     active.length,
+    Number(event.guestCount || event.guestEstimate || (gc && gc.count) || 0) || 0,
   );
   // The first-timer's starting set — the few calls to foreground before the rest. A terse
   // board focuses on everything (the whole active list); a hand-held one narrows it.
@@ -2278,15 +2279,20 @@ export function playbookDecisionBoard(event, asOf) {
 // SAME event yields a different board for a nervous first-timer than for a seasoned host.
 const HOST_DIFF_BAND = (d) => (/(hard|high|intensive|complex)/i.test(String(d)) ? 'hard'
   : /(easy|low|simple|light)/i.test(String(d)) ? 'easy' : 'moderate');
-export function computeHostAdaptation(experience, capacity, difficulty, openCount) {
+export function computeHostAdaptation(experience, capacity, difficulty, openCount, guestCount) {
   const band = HOST_DIFF_BAND(difficulty);
   const firstTime = experience === 'first_time' || experience === 'first-time' || experience === 'novice';
   const experienced = experience === 'experienced' || experience === 'seasoned';
   const solo = capacity === 'solo';
+  // Event SIZE scales hand-holding independently of the host: a big crowd is more to manage,
+  // so a solo host on a large event gets walked through it, and even a seasoned host on a
+  // large event doesn't get the terse treatment. Small <20 / medium 20-75 / large >75.
+  const n = typeof guestCount === 'number' && guestCount > 0 ? guestCount : null;
+  const size = n == null ? 'unknown' : n > 75 ? 'large' : n < 20 ? 'small' : 'medium';
   // hand-holding level: high (walk them through), standard (neutral), light (get out of the way)
   let handHolding = 'standard';
-  if (firstTime || (solo && band === 'hard')) handHolding = 'high';
-  else if (experienced && band !== 'hard') handHolding = 'light';
+  if (firstTime || (solo && band === 'hard') || (solo && size === 'large')) handHolding = 'high';
+  else if (experienced && band !== 'hard' && size !== 'large') handHolding = 'light';
   const focusCount = handHolding === 'high' ? Math.min(3, openCount)
     : handHolding === 'light' ? openCount
       : Math.min(5, openCount);
@@ -2294,6 +2300,7 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     experience: experience || 'unknown',
     capacity: capacity || 'unknown',
     difficultyBand: band,
+    size,
     handHolding,
     focusCount,
     // a first-timer gets every derivable default pre-proposed (less blank-form friction);

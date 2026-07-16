@@ -30,4 +30,15 @@ describe('per-host adaptivity', () => {
     // a solo host on a hard event gets hand-holding even without stating inexperience
     expect(computeHostAdaptation(null, 'solo', 'hard', 8).handHolding).toBe('high');
   });
+
+  test('event SIZE scales hand-holding independent of the host', () => {
+    // a solo host on a LARGE event gets walked through it even on an easy playbook
+    expect(computeHostAdaptation(null, 'solo', 'easy', 8, 120).handHolding).toBe('high');
+    expect(computeHostAdaptation(null, 'solo', 'easy', 8, 120).size).toBe('large');
+    // a seasoned host on a LARGE event does NOT get the terse treatment
+    expect(computeHostAdaptation('experienced', 'has_help', 'easy', 8, 120).handHolding).not.toBe('light');
+    // small event, seasoned host → terse
+    expect(computeHostAdaptation('experienced', 'has_help', 'easy', 8, 12).size).toBe('small');
+    expect(computeHostAdaptation('experienced', 'has_help', 'easy', 8, 12).terse).toBe(true);
+  });
 });
