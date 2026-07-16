@@ -64,6 +64,7 @@ import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '
 import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
 import { isGroundedCulture } from '../knowledge/culturalContext';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
+import { isGroundedCost } from '../knowledge/costProvenance';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2102,7 +2103,10 @@ export function playbookDecisionBoard(event, asOf) {
     // access guideline that steers the choice.
     const accessibilityContext = effectiveAccessibility(d);
     const accessibilityGrounded = isGroundedAccessibility(accessibilityContext);
-    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, ...(_affects ? { affects: _affects } : {}) };
+    // Wave-2i: whether this decision's cost factors are researched against a real market
+    // source (vs a synthesized heuristic) — surfaced so a UI can show sourced pricing.
+    const costGrounded = isGroundedCost(d.costFactorProvenance);
+    const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, accessibilityContext, accessibilityGrounded, costGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
       locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });

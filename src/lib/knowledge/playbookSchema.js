@@ -13,6 +13,9 @@ import { isGroundedCulture } from './culturalContext';
 // Wave-2h: a venue/seating decision has an accessibility dimension (mobility/ADA/sensory);
 // the resolver grounds it against ADA / inclusive-seating guidance. Machine-verify coverage.
 import { detectAccessibilityCategory, effectiveAccessibility, isGroundedAccessibility } from './accessibilityContext';
+// Wave-2i: a decision's costFactorProvenance is grounded only when researched against a real
+// market source (USDA meat prices, 2026 catering per-person data, the DMV crab survey).
+import { isGroundedCost } from './costProvenance';
 
 // Field metadata: what constitutes a gap, how to access it, metadata rules
 export const FIELD_TYPES = {
@@ -32,6 +35,7 @@ export const FIELD_TYPES = {
   BUDGET_LINKAGE: 'budget-linkage',        // §4.D — costFactors that never reach the budget engine (no `affects`)
   CULTURAL_UNSOURCED: 'cultural-unsourced', // §4.G — a decision that AUTHORS a culturalContext but leaves it ungrounded (no real cited source)
   ACCESSIBILITY_UNGROUNDED: 'accessibility-ungrounded', // §4.H — a venue/seating decision whose accessibility axis isn't grounded (ADA / inclusive-seating)
+  COST_UNRESEARCHED: 'cost-unresearched', // §4.D — a costFactorProvenance that is still synthesized, not researched against a real market source
 };
 
 // ─── Provenance grounding predicates ──────────────────────────────────────────
@@ -131,6 +135,16 @@ export const GAP_CRITERIA = {
     label: (decision) => decision.label || decision.id,
     fieldPath: (decisionId) => `decisions[${decisionId}].accessibilityContext`,
   },
+  // §4.D — cost research. A decision that carries a costFactorProvenance should have it
+  // RESEARCHED against a real market source, not left synthesized. Fires on every decision
+  // with a still-synthesized provenance (a shrinking research backlog: 46 → 36 today).
+  COST_UNRESEARCHED: {
+    type: FIELD_TYPES.COST_UNRESEARCHED,
+    hasData: (decision) => !decision.costFactorProvenance || isGroundedCost(decision.costFactorProvenance),
+    needsResearch: (decision) => !!decision.costFactorProvenance && !isGroundedCost(decision.costFactorProvenance),
+    label: (decision) => decision.label || decision.id,
+    fieldPath: (decisionId) => `decisions[${decisionId}].costFactorProvenance`,
+  },
   TIMING_PROVENANCE: {
     type: FIELD_TYPES.TIMING_PROVENANCE,
     // Grounded by an authored timingProvenance OR the category resolver's real sources.
@@ -168,6 +182,7 @@ const DECISION_GAP_CRITERIA = [
   GAP_CRITERIA.PRIORITY_UNSOURCED,
   GAP_CRITERIA.CULTURAL_UNSOURCED,
   GAP_CRITERIA.ACCESSIBILITY_UNGROUNDED,
+  GAP_CRITERIA.COST_UNRESEARCHED,
   GAP_CRITERIA.DIFM_CAPABILITY,
   GAP_CRITERIA.TIMING_PROVENANCE,
   GAP_CRITERIA.BUDGET_LINKAGE,
