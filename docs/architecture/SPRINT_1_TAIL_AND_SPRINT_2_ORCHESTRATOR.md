@@ -94,11 +94,13 @@ The nine tools over the real functions (no new logic):
 
 **Rule:** a tool is a thin adapter — it calls the engine and returns its output verbatim. No number originates in the tool layer or the model.
 
-### B2 · Orchestrator skeleton
-- [ ] `/api/ai/orchestrate` (Claude tool-calling loop) — streaming, per-user rate limit (reuse `_rate_check` from `routers/ai.py`), server-owned system prompt.
-- [ ] **Grounding guard:** the system prompt forbids stating any figure not returned by a tool; a post-check flags a reply containing a number with no matching tool call (log + soft-fail to the deterministic answer).
-- [ ] **Guardrails carried in:** pickers ≤ guests, sanity caps, never auto-fill `needs-host`/money/headcount (mirror the danger-zone rules from the decision-engine roadmap).
-- [ ] Cost controls from the plan: **prompt-cache** the system prompt + tool defs (~90% cheaper), **route** parse/classify to Haiku, **stream** first tokens (~1s), **gate** the conversation behind a paid event.
+### B2 · Orchestrator skeleton  ✅ BUILT 2026-07-16 (against a mock)
+Two pieces, both testable with no key/backend/network:
+- **Client loop** — `src/lib/orchestrator.js` (+ test, 7 green). Because the engines are client-side JS (B1), the LOOP is client-side: send `{messages, tools}` via an injectable transport → on `tool_use`, run `runTool()` locally and feed the `tool_result` back → repeat until a final answer. **Grounding guard** (`groundingCheck`) is enforced, not just prompted: every number in the answer must trace to a tool result or the host's question; a fabricated `$91,317` is flagged `ungrounded` (test-locked). Honest `max_turns` termination.
+- **Backend relay** — `POST /api/ai/orchestrate` in `backend/app/routers/ai.py` (+ `test_ai_orchestrate.py`, 6 green). A thin, stateless one-turn Claude relay: `require_planner` auth, `is_orchestrator_configured()` → **503 when `ANTHROPIC_API_KEY` unset**, shared `_rate_check`, **server-owned system prompt** (client cannot inject one — test-locked), **prompt-cache** `cache_control` on system + last tool, key stays server-side, returns Claude's `content[]` verbatim. Added to `/status` (`orchestrator`, `orchestrator_model`). Model env-overridable (`ORCHESTRATOR_MODEL`, default `claude-sonnet-4-5`).
+
+**Deferred (real-key work, not mockable):** streaming to the client; Haiku routing for parse/classify; gating behind a paid event. All additive on top of this route.
+**Follow-up flagged:** the route reuses `require_planner`; a host-scoped auth gate is a B3/integration decision.
 
 ### B3 · Ship ONE surface — "ask the plan" (LLM tier)
 `askPlan.js` already answers deterministically. Layer the LLM *on top*, not instead:

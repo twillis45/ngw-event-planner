@@ -38,6 +38,33 @@ OPENAI_URL      = "https://api.openai.com/v1/chat/completions"
 COMPLETIONS_MODEL = "gpt-4o-mini"   # fast + cheap for text completions
 VISION_MODEL      = "gpt-4o"        # vision-capable for document extraction
 
+# ── Sprint 2 · B2: grounded orchestrator (Claude tool-calling) ──────────────
+# D1 decision: add a Claude tool-calling path ALONGSIDE the OpenAI feature proxy
+# above (untouched). This route is a THIN, STATELESS relay for one Claude turn:
+# the CLIENT owns the loop (it runs the pure lib/ engines as tools locally — they
+# can't run here in Python) and posts the running conversation + tool schemas;
+# the server injects the server-owned system prompt (below), keeps the key
+# server-side, and returns Claude's raw content[] (text + tool_use). No engine
+# runs here; no number originates here.
+ANTHROPIC_KEY   = os.environ.get("ANTHROPIC_API_KEY")
+ANTHROPIC_URL   = "https://api.anthropic.com/v1/messages"
+ANTHROPIC_VERSION = "2023-06-01"
+# Overridable per account (the exact valid Sonnet id depends on your Anthropic
+# access). Sonnet for the host conversation; parse/classify would route to Haiku.
+ORCHESTRATOR_MODEL      = os.environ.get("ORCHESTRATOR_MODEL", "claude-sonnet-4-5")
+ORCHESTRATOR_MAX_TOKENS = int(os.environ.get("ORCHESTRATOR_MAX_TOKENS", "1024"))
+ORCH_MAX_INPUT_CHARS    = int(os.environ.get("ORCH_MAX_INPUT_CHARS", "60000"))  # cap the relayed conversation
+# The one server-owned system prompt. The grounding rule is enforced downstream
+# by the client's post-check too, but it starts here.
+ORCHESTRATOR_SYSTEM = (
+    "You are Event Boss, a warm, honest planning copilot for a HOST (not a professional planner). "
+    "Answer the host's question about THEIR event using the tools provided. "
+    "HARD RULE: every figure — price, count, date, quantity — MUST come from a tool result. "
+    "Never state or estimate a number from your own knowledge. If the tools can't answer, say so "
+    "plainly and point the host to the right screen; never guess. Never auto-decide money, headcount, "
+    "or host-only choices — surface them, don't settle them. Keep replies short, warm, and specific."
+)
+
 # ── Sprint 52B: secure server-side AI feature proxy ─────────────────────────
 # Lets signed-in planners use AI features through a locked-down endpoint:
 # auth-gated, feature-restricted (no freeform/system passthrough), input +
@@ -89,10 +116,23 @@ def is_ai_configured() -> bool:
     return bool(OPENAI_KEY)
 
 
+def is_orchestrator_configured() -> bool:
+    """B2 key-presence check — is ANTHROPIC_API_KEY set? Never reads the value."""
+    return bool(ANTHROPIC_KEY)
+
+
 def openai_headers():
     return {
         "Authorization": f"Bearer {OPENAI_KEY}",
         "Content-Type":  "application/json",
+    }
+
+
+def anthropic_headers():
+    return {
+        "x-api-key":         ANTHROPIC_KEY,
+        "anthropic-version": ANTHROPIC_VERSION,
+        "content-type":      "application/json",
     }
 
 
@@ -106,6 +146,9 @@ async def ai_status():
         "feature_proxy": is_ai_configured(),
         "feature_model": AI_FEATURE_MODEL if is_ai_configured() else None,
         "features":      list(FEATURE_SYSTEM_PROMPTS.keys()),
+        # Sprint 2 · B2 — grounded orchestrator (Claude); key-presence only.
+        "orchestrator":       is_orchestrator_configured(),
+        "orchestrator_model": ORCHESTRATOR_MODEL if is_orchestrator_configured() else None,
     }
 
 
@@ -211,6 +254,104 @@ async def ai_feature(
         log.error("ai.feature EXC user=%s feature=%s err=%s", user_id, body.feature, e)
         await record_error("ai_proxy", f"Unexpected AI error on {body.feature}: {e}",
                            context={"feature": body.feature, "user": user_id})
+        raise HTTPException(status_code=500, detail="Unexpected error")
+
+
+class OrchestrateRequest(BaseModel):
+    # The running conversation (user turn, prior assistant tool_use turns, and
+    # tool_result turns the CLIENT produced by running the engines locally).
+    messages: list
+    # The tool schemas the client offers (from orchestratorTools.toolSchemas()).
+    tools: Optional[list] = None
+    max_tokens: Optional[int] = None
+
+
+@router.post("/orchestrate")
+async def orchestrate(
+    body: OrchestrateRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    """Sprint 2 · B2 — grounded orchestrator relay (Claude tool-calling).
+
+    ONE stateless Claude turn. The client owns the loop: it posts the running
+    conversation + tool schemas; we inject the server-owned system prompt, keep
+    the key server-side, prompt-cache the system + tools, and return Claude's
+    raw content[] (text and/or tool_use) for the client to act on. No engine
+    runs here and no number originates here — grounding is enforced by the tools
+    (which run client-side) plus the client's post-check.
+
+    NOTE (follow-up): auth reuses require_planner to match the other secured AI
+    routes; a host-scoped gate is a B3/integration concern, flagged not assumed.
+    """
+    # 1. Auth (401 otherwise).
+    principal = await require_planner(authorization, x_planner_token)
+    user_id = principal.get("id") or "unknown"
+
+    # 2. Configured? (graceful 503 so the client falls back to deterministic askPlan)
+    if not is_orchestrator_configured():
+        raise HTTPException(status_code=503, detail="Orchestrator not configured — set ANTHROPIC_API_KEY on the server")
+
+    # 3. Validate input.
+    if not isinstance(body.messages, list) or not body.messages:
+        raise HTTPException(status_code=400, detail="messages must be a non-empty list")
+    try:
+        conv_len = len(json.dumps(body.messages, ensure_ascii=False))
+    except Exception:
+        raise HTTPException(status_code=400, detail="messages must be JSON-serializable")
+    if conv_len > ORCH_MAX_INPUT_CHARS:
+        raise HTTPException(status_code=413, detail="Conversation too large")
+
+    # 4. Per-user rate limit (shares the feature-proxy limiter).
+    allowed, retry_after = _rate_check(user_id)
+    if not allowed:
+        log.warning("ai.orchestrate RATE_LIMIT user=%s", user_id)
+        raise HTTPException(status_code=429, detail="Rate limit exceeded — try again shortly",
+                            headers={"Retry-After": str(retry_after)})
+
+    # 5. Build the Claude payload. System prompt is SERVER-OWNED (never client-
+    #    supplied); system + tools carry cache_control so repeated turns are ~90%
+    #    cheaper. The client's messages are the ONLY thing passed through.
+    tools = body.tools if isinstance(body.tools, list) else []
+    if tools:
+        tools = [*tools[:-1], {**tools[-1], "cache_control": {"type": "ephemeral"}}]
+    payload = {
+        "model":      ORCHESTRATOR_MODEL,
+        "max_tokens": min(int(body.max_tokens or ORCHESTRATOR_MAX_TOKENS), 4096),
+        "system":     [{"type": "text", "text": ORCHESTRATOR_SYSTEM, "cache_control": {"type": "ephemeral"}}],
+        "messages":   body.messages,
+    }
+    if tools:
+        payload["tools"] = tools
+
+    # 6. Call Claude; return raw content[] + stop_reason for the client's loop.
+    try:
+        async with httpx.AsyncClient(timeout=40) as client:
+            resp = await client.post(ANTHROPIC_URL, headers=anthropic_headers(), json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        usage = data.get("usage", {})
+        log.info("ai.orchestrate OK user=%s stop=%s in=%s out=%s",
+                 user_id, data.get("stop_reason"), usage.get("input_tokens"), usage.get("output_tokens"))
+        return {
+            "ok":          True,
+            "content":     data.get("content", []),
+            "stop_reason": data.get("stop_reason"),
+            "usage":       {"input_tokens": usage.get("input_tokens"), "output_tokens": usage.get("output_tokens")},
+        }
+    except httpx.HTTPStatusError as e:
+        log.error("ai.orchestrate FAIL user=%s status=%s body=%s",
+                  user_id, e.response.status_code, (e.response.text or "")[:300])
+        await record_error("ai_orchestrate", f"Orchestrator error ({e.response.status_code})",
+                           context={"status": e.response.status_code, "user": user_id})
+        raise HTTPException(status_code=502, detail="Orchestrator service error — please try again")
+    except httpx.RequestError as e:
+        log.error("ai.orchestrate UNAVAILABLE user=%s err=%s", user_id, e)
+        await record_error("ai_orchestrate", f"Orchestrator unavailable: {e}", context={"user": user_id})
+        raise HTTPException(status_code=503, detail="Orchestrator service unavailable — please try again")
+    except Exception as e:
+        log.error("ai.orchestrate EXC user=%s err=%s", user_id, e)
+        await record_error("ai_orchestrate", f"Unexpected orchestrator error: {e}", context={"user": user_id})
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
