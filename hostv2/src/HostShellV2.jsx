@@ -109,7 +109,7 @@ import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
 import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
-import { attendanceAdjustment, summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
+import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
@@ -273,6 +273,19 @@ const kidsTotal = (gs) => (gs || []).reduce((t, g) => t + (Number(g && g.kids) |
 const guestNumber = e => Number(e.guestCount) || Number(e.guestEstimate) || (e.guests || []).length || 0;
 
 const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors: 'Vendors', date: 'Plan', start: 'Guests' };
+
+// A DUAL / compound event (type + secondaryType, e.g. a retirement that's ALSO a 50th
+// birthday) reads as BOTH occasions everywhere it's listed — never just the primary type,
+// which silently hid half of what the host is planning (host report 2026-07-16). Single
+// events are unchanged. "Party" is trimmed the same way the create chips trim it.
+const eventTypeLabel = (e) => {
+  const prim = (e && e.type ? String(e.type) : '').trim();
+  const sec = (e && e.secondaryType ? String(e.secondaryType) : '').trim();
+  if (prim && sec && sec.toLowerCase() !== prim.toLowerCase()) {
+    return prim.replace(' Party', '') + ' + ' + sec.replace(' Party', '');
+  }
+  return prim;
+};
 
 function describeRoute(route) {
   if (!route || !route.tab) return null;
@@ -669,6 +682,10 @@ export default function HostShellV2() {
   // single-level snapshot restore of just the fields the write changed. Not a
   // history system; only money-moving writes (the budget number) set it.
   const [toastAction, setToastAction] = useState(null); // { label, fn } | null
+  // Confirmation semantics (CONFIRM-GREEN, 2026-07-16): one tone drives the toast's
+  // color so "you did it" reads green everywhere from ONE place, instead of per-call
+  // styling. 'ok' ⇒ green success; null/undefined ⇒ the neutral pill (errors keep it).
+  const [toastTone, setToastTone] = useState(null);
   const [handledOpen, setHandledOpen] = useState(false);
   const toastTimer = useRef(null);
   const appRef = useRef(null);
@@ -1033,7 +1050,10 @@ export default function HostShellV2() {
         '· blockers:', blockers.length, '· priority:', plan && plan.planningState && plan.planningState.currentPriority, '· compound:', ctx && ctx.compound, '· reasoning:', ctx && ctx.reasoning, '· activeRisks:', ctx && (ctx.activeRisks || []).length);
     } catch {}
   }, [event.id, ctx, blockers, plan]);
-  const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event]);
+  // LEARNING-1 (roadmap #2): hand the board the host PROFILE so it can ground the
+  // headcount row in learned turnout (attendanceAdjustment — the same gated/clamped reader
+  // the food plan already trusts). No profile / cold-start host ⇒ board is byte-identical.
+  const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event, profile]);
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   // deriveHelperResponsibilities returns { helpers, responsibilities } — the
   // rows we render are the responsibilities (helperName/label/status); the
@@ -1630,13 +1650,14 @@ export default function HostShellV2() {
     if (known) { didResume.current = true; switchEvent(id); }
   }, [resumePointer, customs, hydratedEvents, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const toast = (msg, action) => {
+  const toast = (msg, action, tone) => {
     setToastMsg(msg);
     setToastAction(action || null);
+    setToastTone(tone || null);   // 'ok' ⇒ green confirmation; else neutral
     clearTimeout(toastTimer.current);
     // An actionable toast lingers a little longer — the host needs a beat to
     // read it AND decide; a plain notice keeps the original rhythm.
-    toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); }, action ? 6500 : 3400);
+    toastTimer.current = setTimeout(() => { setToastMsg(null); setToastAction(null); setToastTone(null); }, action ? 6500 : 3400);
   };
 
   // ── Real lib functions, one per element ──
@@ -1707,6 +1728,10 @@ export default function HostShellV2() {
   // the budget editor's MONEY-MOVE UNDO pattern — snapshot just the field the
   // write changes, one inline restore on the toast. Single-level, in-memory.
   const [vendorCostDraft, setVendorCostDraft] = useState(null); // string | null — only while the field is being edited
+  // A DATE change moves every countdown, deadline, and shopping window — so it's drafted and
+  // must be CONFIRMED before it cascades (host report 2026-07-16), instead of committing on
+  // the picker's onChange. null = not editing; a string = a picked-but-unconfirmed date.
+  const [dateDraft, setDateDraft] = useState(null);
   const commitVendorCost = (v) => {
     if (vendorCostDraft === null) return;
     const raw = String(vendorCostDraft).trim();
@@ -2976,8 +3001,11 @@ export default function HostShellV2() {
     });
     feedback('act');
     if (msg) {
-      if (undoable) toast(msg, { label: 'Undo', fn: () => patchEvent(undoPrev, 'Undone.', { noUndo: true }) });
-      else toast(msg);
+      // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
+      // through, so its toast is always a confirmation ⇒ green. Errors never come through
+      // here (they call toast() directly with no tone), so they stay neutral.
+      if (undoable) toast(msg, { label: 'Undo', fn: () => patchEvent(undoPrev, 'Undone.', { noUndo: true }) }, 'ok');
+      else toast(msg, null, 'ok');
     }
   };
 
@@ -3207,21 +3235,40 @@ export default function HostShellV2() {
       );
     }
     if (kind === 'budget') return budgetEditorBlock();
-    if (kind === 'date') return (
+    if (kind === 'date') {
+      // The picked date is DRAFTED, not committed — a date change cascades through every
+      // deadline, so it waits for an explicit confirm (host report). null draft ⇒ show the
+      // committed date; a draft that differs ⇒ the confirm button appears below.
+      const dateShown = dateDraft !== null ? dateDraft : (event.date || '');
+      const dateDirty = dateDraft !== null && dateDraft !== (event.date || '');
+      const confirmDate = () => {
+        const v = dateDraft;
+        if (!v) return;
+        // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted paste, a broken
+        // segment in the native picker) can otherwise write straight through to event.date
+        // and render as "739158d ago". eventDateStatus is the one shared verdict.
+        const check = eventDateStatus(v);
+        if (check.blocking) { toast(check.reason || "That date doesn't look right — check it."); return; }
+        // ONE host confirmation, wired to the decision engine: committing event.date re-derives
+        // every countdown, deadline and shopping window (the board/phaseProgress read it), and it
+        // SETTLES the "Date & time" domino so its cue + alerts clear. If a start time is already
+        // set, mark it host-confirmed in the same tap so BOTH halves of "when" clear together
+        // (datetime is handled only when date AND start time are confirmed — phaseProgress.js).
+        const patch = { date: v };
+        if (String(event.startTime || '').trim() && !startTimeIsConfirmed(event)) patch.startTimeSource = 'host';
+        patchEvent(patch, 'Date confirmed — every countdown, deadline, and shopping window just moved to it.');
+        setDateDraft(null);
+      };
+      return (
       <div className="hc-row" style={{ flexWrap: 'wrap' }}>
-        <input className="field" type="date" defaultValue={event.date || ''} aria-label="Event date"
-          onChange={e => {
-            const v = e.target.value;
-            if (!v) return;
-            // DATE-GUARDRAIL: a malformed value (stray keystrokes, a corrupted
-            // paste, a broken segment in the native picker) can otherwise write
-            // straight through to event.date and render as "739158d ago" with
-            // no sanity check. eventDateStatus is the one shared time-intelligence
-            // source — reuse its own blocking verdict instead of a second rule.
-            const check = eventDateStatus(v);
-            if (check.blocking) { toast(check.reason || "That date doesn't look right — check it."); return; }
-            patchEvent({ date: v }, 'Date set — every countdown in the plan just moved.');
-          }} />
+        <input className="field" type="date" value={dateShown} aria-label="Event date"
+          onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
+        {/* CONFIRM (host report): a date change waits for a yes before it moves the plan. */}
+        {dateDirty && (
+          <button className="mini" style={{ color: 'var(--steel)', fontWeight: 700 }} onClick={confirmDate}>
+            Move everything to this date
+          </button>
+        )}
         {/* AN EVENT SHOULD START WITH A GROUNDED TIME (2026-07-14).
             A date without a time is half a decision, and the app was quietly filling the
             other half by inventing one: the run of show anchored the whole day to a bare
@@ -3281,6 +3328,7 @@ export default function HostShellV2() {
         })()}
       </div>
     );
+    }
     if (kind === 'food') {
       const FOOD_SOURCING_OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
       const picked = (event.foodChoices || {}).sourcing;
@@ -3488,10 +3536,16 @@ export default function HostShellV2() {
     // 'count' (a headcount event until a roster starts), budget left to the
     // engine's own domino.
     const short = effType.replace(' Party', '');
-    // A recognized milestone ("80th birthday") rides into the name so it isn't
-    // silently dropped — never a new standalone field, just the same name the
-    // event would otherwise get, made specific.
-    const milestoneName = parsed.milestone ? parsed.milestone[0].toUpperCase() + parsed.milestone.slice(1) + ' ' + short : short;
+    // A recognized milestone ("50th birthday") rides into the name — but it modifies the
+    // OCCASION it belongs to (birthday/anniversary), NOT blindly the primary type (host
+    // report: "50th ... retirement" was naming a "50th Retirement"). A DUAL event names
+    // BOTH occasions ("Retirement & 50th Birthday") instead of dropping half.
+    const secShort = parsed.secondaryType ? parsed.secondaryType.replace(' Party', '') : null;
+    const occasions = [short, secShort].filter(Boolean);
+    const cap = parsed.milestone ? parsed.milestone[0].toUpperCase() + parsed.milestone.slice(1) : null;
+    const milestoneName = (cap
+      ? occasions.map((o) => (/birthday|anniversary/i.test(o) ? cap + ' ' + o : o))
+      : occasions).join(' & ');
     // Every created event gets its own id (and invite code) — creating another
     // one appends to the store, it never overwrites what came before. The one
     // exception: "Change an answer" corrections keep the id they're fixing.
@@ -3519,6 +3573,10 @@ export default function HostShellV2() {
       // grounded start-time default below has a bucket to propose from — without this it was
       // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
       ...(parsed.timeOfDay ? { timeOfDay: parsed.timeOfDay } : {}),
+      // DUAL / compound event + theme (host report — parsed then dropped at build). secondaryType
+      // makes it a real compound event; theme seeds the look. Only ever what the host actually said.
+      ...(parsed.secondaryType ? { secondaryType: parsed.secondaryType } : {}),
+      ...(parsed.theme ? { theme: parsed.theme } : {}),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };
@@ -4075,7 +4133,7 @@ export default function HostShellV2() {
                   shown only when set, no new row added. */}
               <div className="ev-head">
                 <button className="ev-kicker" onClick={() => setSheet({ kind: 'events' })} aria-haspopup="true">
-                  {event.type} <span aria-hidden="true">▾</span>
+                  {eventTypeLabel(event) || event.type} <span aria-hidden="true">▾</span>
                 </button>
                 <div className="ev-title">{event.name}</div>
                 {(event.venue || event.theme) ? <div className="ev-venue">{[event.venue, event.theme].filter(Boolean).join(' · ')}</div> : null}
@@ -6041,6 +6099,19 @@ export default function HostShellV2() {
                     <button type="button" className="mini" aria-pressed={pinned} onClick={(e) => { e.stopPropagation(); toggleDecisionPin(r.id); }}
                       style={{ flex: '0 0 auto', alignSelf: 'flex-start' }}>{pinned ? 'Pinned first' : 'Do this first'}</button>
                   );
+                  // DIFM-PROPOSE-2 — the "accept the proposal" join (mirrors App.js
+                  // HostDecisionsPanel + the start-time "that's right" confirm). The note
+                  // already NARRATES a grounded default ("we'll go with X unless you change
+                  // it"); this makes accepting it one obvious tap instead of hunting for the
+                  // recommended chip. propose mode only fires when opts.chosen exists, and an
+                  // open row's chosen is the authored default (choicePickFor falls back to it),
+                  // so this settles through the SAME single write path (settleDecision →
+                  // event.foodChoices) — invents nothing, and the host can still tap any chip.
+                  const canAccept = !!(approach && approach.mode === 'propose' && approach.proposed && opts && opts.options.length);
+                  const acceptBtn = canAccept ? (
+                    <button type="button" className="mini" onClick={(e) => { e.stopPropagation(); settleDecision(r, approach.proposed); }}
+                      style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--steel)', fontWeight: 700 }}>Sounds good</button>
+                  ) : null;
                   if (opts && opts.options.length) {
                     return (
                       <div key={r.id || i} className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, cursor: 'default', ...heartStyle }}
@@ -6062,6 +6133,7 @@ export default function HostShellV2() {
                         </div>
                         {opts.why && <p className="grounding" style={{ flex: '1 0 100%', margin: 0 }}>{opts.why}</p>}
                         {meta}
+                        {acceptBtn}
                         {pinBtn}
                       </div>
                     );
@@ -7472,7 +7544,7 @@ export default function HostShellV2() {
                           onClick={() => { switchEvent(e.id); setSheet(null); }}>
                           <span className="f-main">
                             <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
-                            <span className="v-meta">{[e.type, e.venue].filter(Boolean).join(' · ')}</span>
+                            <span className="v-meta">{[eventTypeLabel(e), e.venue].filter(Boolean).join(' · ')}</span>
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
@@ -7485,7 +7557,7 @@ export default function HostShellV2() {
                   const isActive = e.id === eventId;
                   const src = e;
                   const d = daysUntil(src.date);
-                  const label = e._custom ? (e.name || 'Yours') : (e === MY_CRAB_FEAST ? 'My Crab Feast' : e.type);
+                  const label = e._custom ? (e.name || 'Yours') : (e === MY_CRAB_FEAST ? 'My Crab Feast' : eventTypeLabel(e));
                   // DISAMBIGUATION-1: a seed/sample event can share a name+venue with the
                   // host's own real event (e.g. both default to "My Crab Feast" / "Backyard"),
                   // reading as an unlabeled duplicate. Every row in this "Samples & tests"
@@ -9427,7 +9499,10 @@ export default function HostShellV2() {
                                 style={{ maxWidth: 104, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
                                 value={vendorCostDraft !== null && isOpen ? vendorCostDraft : (v.cost ?? '')}
                                 onFocus={() => setVendorCostDraft(String(v.cost ?? ''))}
-                                onChange={e => setVendorCostDraft(e.target.value)}
+                                // A payment amount is digits only — strip anything else at the source so
+                                // pasted/typed text (a whole sentence, letters, symbols) can never land a
+                                // garbled number in the field. commitVendorCost still rounds to an integer.
+                                onChange={e => setVendorCostDraft(e.target.value.replace(/[^\d]/g, ''))}
                                 onBlur={() => commitVendorCost(v)}
                                 onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setVendorCostDraft(null); }}
                                 aria-label="What you agreed to pay" />
@@ -9970,20 +10045,36 @@ export default function HostShellV2() {
               // (yes-heads math below, attendanceBand label). No new counting.
               const guestHero = (() => {
                 const roster = (event.guests || []).length > 0;
+                // SINGLE-SOURCE TURNOUT (2026-07-16, host report "how did we get different
+                // numbers"): the count `n` is the FACT; the sub states exactly ONE turnout
+                // expectation, never a stack of estimators. Roster → the reply band owns it.
+                // Estimate → the host's OWN history (attendanceAdjustment, gated+clamped) wins
+                // over the generic band when it applies; otherwise the band. The standalone
+                // memory line below is retired so this is the one place turnout is spoken.
+                const mem = decisionBoard.headcountMemory;
                 let n, sub;
                 if (roster) {
                   const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
                   const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
                   n = heads;
-                  sub = chase
-                    ? (gcr && gcr.pending > 0
-                      ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + (bandLbl ? ' — likely ' + bandLbl + ' on the day' : '')
-                      : 'said yes — the list has settled' + (bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''))
-                    : 'on the list — counted, never chased';
+                  const tail = bandLbl ? ' — likely ' + bandLbl + ' on the day' : '';
+                  sub = !chase
+                    ? 'on the list — counted, never chased'
+                    // FIX (host report): "said yes" must track the uncheck — never claim yeses
+                    // when the count is 0.
+                    : yes.length === 0
+                      ? (gcr && gcr.pending > 0
+                        ? 'no yes replies yet · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered')
+                        : 'no yes replies yet — everyone’s answered')
+                      : (gcr && gcr.pending > 0
+                        ? 'said yes so far · ' + gcr.pending + (gcr.pending === 1 ? ' hasn’t answered' : ' haven’t answered') + tail
+                        : 'said yes — the list has settled' + (bandLbl ? ' · likely ' + bandLbl + ' on the day' : ''));
                 } else {
                   n = Number(guests) || 0;
                   sub = n > 0
-                    ? 'planned around' + (bandLbl ? ' · sized for ' + bandLbl + ' on the day' : '')
+                    ? (mem
+                      ? 'planned around · your last events suggest about ' + mem.suggested + ' show up'
+                      : 'planned around' + (bandLbl ? ' · sized for ' + bandLbl + ' on the day' : ''))
                     : 'no names yet — start with the ones you’d text first';
                 }
                 return (
@@ -10170,14 +10261,9 @@ export default function HostShellV2() {
                   {/* Invite tools + settings relocated BELOW the roster (audit S3:
                       the roster is the reason the sheet exists — it now comes right
                       after the hero, not behind a wall of share/look/rules chips). */}
-                  {(() => { // INTEL R1 — the only hostIntelligence read-forward: gated + clamped by the engine
-                    try {
-                      const adj = attendanceAdjustment(profile, event);
-                      return adj && adj.applied && adj.because
-                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{adj.because}</p>
-                        : null;
-                    } catch { return null; }
-                  })()}
+                  {/* Turnout is now stated ONCE in guestHero (single-source, memory-preferred over
+                      the generic band) — the standalone memory line was the 2nd/3rd competing
+                      number the host flagged. Retired here on purpose. */}
                   {nudgeFor('guests')}
                   {(() => {
                     // Grouped roster: when the host has sorted people into groups,
@@ -10348,6 +10434,10 @@ export default function HostShellV2() {
                   <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
+                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
+                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
+                        they'll see before sharing. Read-only: viewing the page files nothing. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
                     <button className="mini" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Copy the invite</button>
                     {/* WAVE-B: the full guest brief — legacy's draftGuestBrief
                         (when/where/parking/bring/dress/gifts), DRAFT-only per
@@ -10459,20 +10549,18 @@ export default function HostShellV2() {
                   <div className="actions-row" style={{ margin: '0 0 var(--sp-1)' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
+                    {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
+                        exact ?rsvp= URL guests land on, in a new tab, so the host can see what
+                        they'll see before sharing. Read-only: viewing the page files nothing. */}
+                    <button className="mini" onClick={() => { try { window.open(inviteLinkUrl(), '_blank', 'noopener'); } catch {} }}>Preview the RSVP</button>
                   </div>
                   <p className="grounding" style={{ margin: '0 0 6px' }}>Guests who open the link reply themselves — names, meals, kids, plus-ones — and the list builds on its own.</p>
                   {inviteRules}
                   {nudgeFor('guests') || nudgeFor('message')}
                   {countingChips}
-                  {(() => { // INTEL R1 — the only hostIntelligence read-forward: gated + clamped by the engine
-                    try {
-                      const adj = attendanceAdjustment(profile, event);
-                      return adj && adj.applied && adj.because
-                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>{adj.because}</p>
-                        : null;
-                    } catch { return null; }
-                  })()}
-                  {nudgeFor('guests')}
+                  {/* Turnout is now stated ONCE in guestHero (single-source, memory-preferred over
+                      the generic band) — the standalone memory line was the 2nd/3rd competing
+                      number the host flagged. Retired here on purpose. */}
                   {quickAdd}
                   {csvBlock}
                   {pastImports}
@@ -10577,7 +10665,7 @@ export default function HostShellV2() {
         const events = evList.map(e => ({
           kind: 'event', id: e.id,
           label: e.name || e.type || 'Event',
-          sub: [e.type, e.venue].filter(Boolean).join(' · '),
+          sub: [eventTypeLabel(e), e.venue].filter(Boolean).join(' · '),
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
@@ -10624,12 +10712,12 @@ export default function HostShellV2() {
         );
       })()}
       {toastMsg && (
-        <div className="toast on" role="status" aria-live="polite">
+        <div className={'toast on' + (toastTone === 'ok' ? ' ok' : '')} role="status" aria-live="polite">
           {toastMsg}
           {toastAction && (
             <button className="toast-undo" onClick={() => {
               const fn = toastAction.fn;
-              setToastMsg(null); setToastAction(null); clearTimeout(toastTimer.current);
+              setToastMsg(null); setToastAction(null); setToastTone(null); clearTimeout(toastTimer.current);
               if (fn) fn();
             }}>{toastAction.label || 'Undo'}</button>
           )}

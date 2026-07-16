@@ -48,9 +48,17 @@ export function parseSmartEventText(text, opts = {}) {
   // Only ever the first real number found; never averaged from a range, never
   // invented when absent.
   let budget = null;
-  const bm = t.match(/\$\s*([\d,]+)\s*(k)?\b/i)
-    || t.match(/\b([\d,]+)\s*(k)?\s*budget\b/i)
-    || t.match(/budget\s*(?:of|:)?\s*\$?\s*([\d,]+)\s*(k)?\b/i);
+  // Order matters: the EXPLICIT "budget 5000" / "budget of $5k" form is tried BEFORE the loose
+  // "5000 budget" form. Otherwise a date year sitting just before the word budget — "March 20
+  // 2027, budget 5000" — is swallowed by /([\d,]+)\s*budget/ (the comma is inside [\d,]+, the
+  // space is \s*), so the year 2027 became the budget instead of the 5000 that follows. Host
+  // report 2026-07-16: create-flow parsed "$2,027" for "budget 5000".
+  // (\d[\d,]*) — a budget number must START with a digit, never a bare comma; otherwise the
+  // budget-first pattern matched "budget," in "5000 budget, 40 people" (comma-only capture →
+  // NaN) and short-circuited the number-first pattern.
+  const bm = t.match(/\$\s*(\d[\d,]*)\s*(k)?\b/i)
+    || t.match(/budget\s*(?:of|:)?\s*\$?\s*(\d[\d,]*)\s*(k)?\b/i)
+    || t.match(/\b(\d[\d,]*)\s*(k)?\s*budget\b/i);
   if (bm) {
     let n = parseInt(bm[1].replace(/,/g, ''), 10);
     if (bm[2]) n *= 1000;
@@ -176,8 +184,38 @@ export function parseSmartEventText(text, opts = {}) {
     return null;
   })();
 
+  // ── Secondary type — a DUAL / compound event ("retirement AND 50th birthday") ─
+  // The primary `type` is the resolved one; if the text clearly names a SECOND
+  // occasion, carry it so the caller can build a compound event instead of silently
+  // dropping half of it. A "Nth birthday/anniversary" milestone names that type even
+  // on its own. Only ever a type the host actually said — never invented.
+  let secondaryType = null;
+  if (type) {
+    const mentioned = HOST_TYPES.filter((ht) => {
+      const key = ht.toLowerCase().replace(' party', '');
+      return key.length > 3 && t.toLowerCase().includes(key);
+    });
+    const milestoneType = /\d{1,3}(?:st|nd|rd|th)\s+birthday/i.test(t) ? 'Birthday'
+      : /\d{1,3}(?:st|nd|rd|th)\s+anniversary/i.test(t) ? 'Anniversary'
+        : (/\bbirthday\b/i.test(t) ? 'Birthday' : null);
+    const others = [...new Set([...mentioned, ...(milestoneType ? [milestoneType] : [])])]
+      .filter((x) => x && x !== type && HOST_TYPES.includes(x));
+    if (others.length) secondaryType = others[0];
+  }
+
+  // ── Theme ("black and gold theme", "theme is X", "X-themed") ─────────────────
+  // A real signal the host said; carried so the caller can seed the event's theme
+  // instead of dropping it. Captured as the raw phrase, never invented.
+  let theme = null;
+  const thm = t.match(/\b([a-z][a-z\s&/-]{1,28}?)[- ]themed?\b/i)
+    || t.match(/\btheme\s*(?:is|:)?\s*([a-z][a-z\s&/-]{1,28}?)(?:[,.]|$)/i);
+  if (thm && thm[1]) {
+    const raw = thm[1].trim().replace(/\s+/g, ' ');
+    if (raw && !/^the$/i.test(raw)) theme = raw;
+  }
+
   return {
-    type, guests, budget, date, monthYear, milestone, isDestination, timeOfDay,
+    type, secondaryType, theme, guests, budget, date, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
     venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : ''),

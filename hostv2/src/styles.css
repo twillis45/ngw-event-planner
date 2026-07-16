@@ -506,6 +506,10 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   box-shadow:0 12px 40px rgba(0,0,0,.3);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
+/* CONFIRM-GREEN (2026-07-16): a success confirmation reads green from ONE place —
+   the same --ok / --on-ok pair the "all set" tile uses. Driven by toastTone==='ok'
+   (every patchEvent write); error/neutral toasts keep the default --ink pill. */
+.toast.ok{ background:var(--ok); color:var(--on-ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
 @keyframes toastin{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
 /* Money-move undo: the one inline action a toast can carry. Inherits the
    toast's inverted palette — .mini's steel tint vanishes on var(--ink). */

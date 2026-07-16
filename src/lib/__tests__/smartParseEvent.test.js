@@ -28,6 +28,26 @@ describe('type resolution', () => {
   });
 });
 
+describe('secondary type (dual / compound event) + theme', () => {
+  test('a dual event captures BOTH occasions (host report — birthday was dropped)', () => {
+    const p = parseSmartEventText('50th birthday and 30 year Army retirement for Wanda', { now: NOW });
+    const types = [p.type, p.secondaryType].filter(Boolean);
+    expect(types.some((x) => /birthday/i.test(x))).toBe(true);
+    expect(types.some((x) => /retirement/i.test(x))).toBe(true);
+    expect(p.secondaryType).toBeTruthy();
+    expect(p.secondaryType).not.toBe(p.type);
+  });
+  test('a single-occasion event has no secondary type', () => {
+    expect(parseSmartEventText('crab feast for 20 in the backyard', { now: NOW }).secondaryType).toBeNull();
+  });
+  test('a theme phrase is captured, not dropped', () => {
+    expect(parseSmartEventText('birthday, black and gold theme, 40 people', { now: NOW }).theme).toMatch(/black and gold/i);
+  });
+  test('no theme mentioned → null', () => {
+    expect(parseSmartEventText('crab feast for 20', { now: NOW }).theme).toBeNull();
+  });
+});
+
 describe('guests', () => {
   test('"for N" / "about N" / "~N" all capture the count', () => {
     expect(parseSmartEventText('crab feast for 20', { now: NOW }).guests).toBe(20);
@@ -54,6 +74,14 @@ describe('budget', () => {
   });
   test('no budget mentioned → null', () => {
     expect(parseSmartEventText('crab feast for 20 in the backyard', { now: NOW }).budget).toBeNull();
+  });
+  test('a date year just before "budget" is NOT taken as the budget (host report)', () => {
+    // "March 20 2027, budget 5000" used to parse $2,027 (the year swallowed by /N budget/).
+    const p = parseSmartEventText('retirement March 20 2027, budget 5000', { now: NOW });
+    expect(p.budget).toBe(5000);
+  });
+  test('"5000 budget" (number-first) still works after the reorder', () => {
+    expect(parseSmartEventText('birthday, 5000 budget, 40 people', { now: NOW }).budget).toBe(5000);
   });
 });
 

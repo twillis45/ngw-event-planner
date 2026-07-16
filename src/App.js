@@ -43040,12 +43040,31 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     // The row's "work" + host override — a plain footer of SIBLING elements (never a
     // button nested inside the tappable row). Renders only when it has something real
     // to say, so a bare unmodelled row is unchanged.
-    const footer = (rankWhy || approach || canReorder) ? (
+    //
+    // DIFM-PROPOSE-2 — the "accept the proposal" join. decisionApproach() computes a
+    // GROUNDED proposal ("we'll go with X unless you change it") for every can-derive
+    // decision, and onSetChoice() is a live write path — but until now the propose
+    // note only NARRATED: to settle the row the host still had to open Choose and
+    // re-pick the very default we'd proposed. This joins the two. `menuOpts.chosen`
+    // is the playbook's own default (an open row has no explicit pick — choicePickFor
+    // falls back to default), and propose mode only fires when options exist, so one
+    // tap is always a real first commit through the SAME store the menu writes
+    // (event.foodChoices). Invents nothing — it commits the authored default, and the
+    // host can still open Choose to change it. `propose` implies inlineable.
+    const canAccept = !!(approach && approach.mode === 'propose' && approach.proposed
+      && inlineable && typeof onSetChoice === 'function');
+    const footer = (rankWhy || approach || canAccept || canReorder) ? (
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '7px 4px 0' }}>
         <span style={{ flex: 1, minWidth: 0 }}>
           {rankWhy && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, lineHeight: 1.45 }}>{rankWhy}</span>}
           {approach && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, lineHeight: 1.45, marginTop: rankWhy ? 2 : 0 }}>{approach.note}</span>}
         </span>
+        {canAccept && (
+          <button type="button" onClick={() => { onSetChoice(r.id, approach.proposed); setOpenMenuId(null); }}
+            style={{ flexShrink: 0, background: 'none', border: `1px solid ${steel}`, borderRadius: 7, padding: '5px 12px', cursor: 'pointer', color: steel, fontSize: T.caption, fontWeight: FW.bold, whiteSpace: 'nowrap' }}>
+            Sounds good
+          </button>
+        )}
         {canReorder && (
           <button type="button" onClick={() => togglePin(r.id)} aria-pressed={pinned}
             style={{ flexShrink: 0, background: 'none', border: 'none', padding: '0 2px', cursor: 'pointer', color: pinned ? steel : C.muted, fontSize: T.caption, fontWeight: FW.semibold }}>

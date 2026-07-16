@@ -10,6 +10,7 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
+import { attendanceAdjustment } from '../hostIntel';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
 import babyShower from './data/babyShower';
@@ -1931,11 +1932,26 @@ export function playbookHostDifficulty(event) {
   return hd != null ? hd : null;
 }
 
-export function playbookDecisionBoard(event, asOf) {
+export function playbookDecisionBoard(event, asOf, profile) {
   // heartAtRisk/hostDifficulty added to the empty shape too so the board's return
   // is one consistent shape whether or not there's an event (2026-07-15).
   const empty = { open: [], locked: [], deferred: [], headcount: null, hostDifficulty: null, heartAtRisk: false };
   if (!event) return empty;
+
+  // LEARNING-1 (roadmap #2) — the board reads host MEMORY. `profile` is optional and
+  // backward-compatible: every legacy caller passes 2 args ⇒ profile is undefined ⇒
+  // attendanceAdjustment returns applied:false ⇒ the board is byte-identical (same
+  // guarantee the food plan's read-forward already relies on). attAdj is the SAME gated
+  // (Medium+ confidence AND stability), ±25%-clamped, revert-aware reader the food plan
+  // trusts (App.js sizingEvent). Its `because` is attached below as SEPARATE, attributed
+  // provenance on the headcount row — it NEVER overwrites the host's committed count
+  // (the honesty guard a few lines down: the committed number is the plain fact). Cold
+  // start (no profile / <3 reconciled events / unstable host) ⇒ applied:false ⇒ no line.
+  let attAdj = null;
+  try { attAdj = profile ? attendanceAdjustment(profile, event, asOf) : null; } catch { attAdj = null; }
+  const headcountMemory = (attAdj && attAdj.applied)
+    ? { source: 'attendance-memory', note: attAdj.because, planned: attAdj.planned, suggested: attAdj.suggested, confidence: attAdj.confidence }
+    : null;
 
   const dte = daysToEvent(event.date, asOf); // null when no date
   const open = [];
@@ -1992,7 +2008,10 @@ export function playbookDecisionBoard(event, asOf) {
     // The attendance SHIFT is a sizing derivation (food/supplies/budget), not a
     // restatement of the fact the host locked, so it never appears here.
     const n = band.planned || (band.applicable ? band.planning : (Number(event.guestCount) || Number(event.guestEstimate) || 0));
-    locked.push({ id: 'f-headcount', label: 'Headcount', status: 'locked', because: `${n} ${n === 1 ? 'guest' : 'guests'}`, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
+    // `grounded` (LEARNING-1) is SEPARATE attributed provenance, not the fact: `because`
+    // stays the host's committed count; `grounded` (null unless memory applies) carries
+    // "based on your last events, fewer usually came — size for N" for a shell to render.
+    locked.push({ id: 'f-headcount', label: 'Headcount', status: 'locked', because: `${n} ${n === 1 ? 'guest' : 'guests'}`, grounded: headcountMemory, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Guests' } });
   } else if (out > 0) {
     headcount = {
       confirmed: band.confirmed,
@@ -2001,6 +2020,7 @@ export function playbookDecisionBoard(event, asOf) {
       planning: band.planning,
       label: attendanceBandLabel(band),
       because: `${band.confirmed} confirmed · ${out} still out of ${band.invited} invited`,
+      grounded: headcountMemory,
       route: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
     };
   } else {
@@ -2038,6 +2058,33 @@ export function playbookDecisionBoard(event, asOf) {
     try { const fp = playbookFoodPlan(event); return new Set(((fp && fp.choices) || []).map((c) => c && c.id).filter(Boolean)); }
     catch { return new Set(); }
   })();
+  // ── PRIO Slice-A (roadmap #9): TRANSITIVE dependent count ──────────────────
+  // `_dependedOnCount` fed the gate-holder bump + tiebreak with DIRECT dependents only
+  // (siblings whose dependsOn names this id). That undercounts a foundational decision:
+  // `budget` may have 1 direct dependent (`guestcount`) yet gate the whole
+  // guestcount→venue→catering→… chain. Counting the TRANSITIVE closure over the SAME
+  // authored dependsOn graph (no invented edges) makes a true root lead the rows it
+  // ultimately unblocks. Built once per board; the graph is tiny (≤~15 nodes/playbook).
+  const _directDependentsOf = (() => {
+    const m = Object.create(null);
+    for (const o of decisions) {
+      if (o && Array.isArray(o.dependsOn)) {
+        for (const dep of o.dependsOn) { (m[dep] || (m[dep] = new Set())).add(o.id); }
+      }
+    }
+    return m;
+  })();
+  const _transitiveDependentCount = (id) => {
+    const seen = new Set();
+    const stack = [...(_directDependentsOf[id] || [])];
+    while (stack.length) {
+      const cur = stack.pop();
+      if (cur === id || seen.has(cur)) continue;   // cycle/self guard (authored graph is a DAG, but be safe)
+      seen.add(cur);
+      for (const nxt of (_directDependentsOf[cur] || [])) if (!seen.has(nxt)) stack.push(nxt);
+    }
+    return seen.size;
+  };
   for (const d of decisions) {
     if (!d || !d.label) continue;
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
@@ -2106,10 +2153,10 @@ export function playbookDecisionBoard(event, asOf) {
     // sourced where a planning standard applies, and a UI can show WHY / whether it's researched.
     const timingProvenance = effectiveTimingProvenance(d) || null;
     const timingGrounded = isGroundedTiming(timingProvenance);
-    // Wave-2e: how many sibling decisions depend on this one — a real consequence signal
-    // the intra-cell tiebreak reads to break same-profile ties by stakes, not calendar.
-    const _dependedOnCount = decisions.filter((o) => o && o.id !== d.id
-      && Array.isArray(o.dependsOn) && o.dependsOn.includes(d.id)).length;
+    // Wave-2e + PRIO Slice-A: how many decisions depend on this one, TRANSITIVELY — the real
+    // consequence signal the gate-holder bump + intra-cell tiebreak read to sequence by how
+    // much a call unblocks, not just its direct dependents. Authored-edge closure only.
+    const _dependedOnCount = _transitiveDependentCount(d.id);
     const _affects = Array.isArray(d.affects) ? d.affects : undefined;
     // Wave-2g: the structured cultural/religious axis — how faith/tradition steers this
     // decision, grounded against a real cited source. Surfaced on the row so a UI can show
@@ -2333,6 +2380,11 @@ export function playbookDecisionBoard(event, asOf) {
     hostExperience: event.hostExperience || null,
     hostCapacity: event.hostCapacity || null,
     hostAdaptation, focus,
+    // LEARNING-1 (roadmap #2): one top-level accessor for the attendance-memory
+    // provenance (null unless applied), so a shell can render it wherever it shows
+    // the headcount without hunting for the f-headcount row vs the RSVP hero. It's the
+    // same object attached to those rows' `grounded` field. Cold start ⇒ null ⇒ no line.
+    headcountMemory,
   };
 }
 
@@ -2364,13 +2416,34 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
   // behaves as the standard middle, so a dateless board is byte-identical to before — additive).
   const RUNWAY_FOCUS = { rush: 5, tight: 4, standard: 3, relaxed: 2, unknown: 3 };
   const RUNWAY_BATCH_ADJ = { rush: 2, tight: 1, standard: 0, relaxed: -1, unknown: 0 };
-  // hand-holding level: high (walk them through), standard (neutral), light (get out of the way)
+  // EMOTION-STATE (roadmap #5) — OVERWHELM read from BEHAVIOR, not just who the host is. A big
+  // pile of still-open calls AND a short runway means the host is underwater no matter how
+  // seasoned they are — a human planner reads that state and slows down, shrinks the ask, and
+  // reassures. Derived purely from signals already in hand (open count × how close the deadline
+  // is); no new input, no fabrication. Requires BOTH a real pile AND real time pressure, so a
+  // calm board (few open, OR a long runway) never trips it — every existing scenario stays
+  // byte-identical (relaxed/unknown runway can't be overwhelmed here by design).
+  const overwhelm = typeof openCount === 'number' && openCount > 0 && (
+    (runway === 'rush' && openCount >= 5) ||
+    (runway === 'tight' && openCount >= 8) ||
+    (runway === 'standard' && openCount >= 14)
+  );
+  // hand-holding level: high (walk them through), standard (neutral), light (get out of the way).
   let handHolding = 'standard';
   if (firstTime || (solo && band === 'hard') || (solo && size === 'large')) handHolding = 'high';
   else if (experienced && band !== 'hard' && size !== 'large') handHolding = 'light';
+  // OVERWHELM never RE-ORDERS the board — safety (dietary/allergy/heart) and overdue must keep
+  // leading no matter how underwater the host is, so it deliberately does NOT force handHolding
+  // 'high' (which would trigger the ease-in re-sequence). It only (a) stops the terse "get out
+  // of the way" treatment — you don't go quiet on someone who's drowning — and (b) drives
+  // reassurance + paced chunking below, leaving the leverage/safety ORDER byte-identical.
+  if (overwhelm && handHolding === 'light') handHolding = 'standard';
   // the clock widens/narrows a hand-held host's first foreground; a rush shows the most up
   // front, a long runway the least — the clock overrides the gentle default when time is short.
-  const focusCount = handHolding === 'high' ? Math.min(RUNWAY_FOCUS[runway], openCount)
+  // OVERWHELM paces even a non-hand-held host: shrink the first foreground to a runway-sized
+  // few ("just these first"), same as a hand-held board — but the ORDER stays leverage/safety-
+  // first (no ease-in re-sequence, since proposeDerivable below is unchanged).
+  const focusCount = (handHolding === 'high' || overwhelm) ? Math.min(RUNWAY_FOCUS[runway], openCount)
     : handHolding === 'light' ? openCount
       : Math.min(5, openCount);
   return {
@@ -2385,16 +2458,21 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     // is re-ordered to lead with low-stakes, reversible wins (ease-in / momentum) instead of
     // the leverage-first order a seasoned host gets. reassure adds the plain-language line;
     // terse suppresses hand-holding copy for a seasoned host on a light board.
+    // proposeDerivable stays gated on real host input ONLY — overwhelm never re-orders.
     proposeDerivable: handHolding === 'high',
-    reassure: handHolding === 'high',
+    reassure: handHolding === 'high' || overwhelm,
     terse: handHolding === 'light',
+    // EMOTION-STATE: the raw underwater signal, exposed so a shell can speak to the STATE
+    // ("that's a lot with the clock ticking — just these few first") distinctly from the
+    // first-timer's gentler reassurance. False on every calm board ⇒ additive.
+    overwhelm,
     // Wave-2s PACE — a hand-held host doesn't get the whole list at once; the board is
     // chunked into paced sessions ("start with these few, the rest surface after") sized by
     // focusCount. This adapts the PACE across the runway, not just the order — and it stays
     // differentiated even on a deadline-heavy board (where the order alone collapses to the
     // same urgent-first sequence for everyone): the hand-held host still gets a small first
     // session, the seasoned host gets the full list. batchSize is the session size.
-    staged: handHolding === 'high',
+    staged: handHolding === 'high' || overwhelm,
     // batchSize sizes the SUBSEQUENT paced sessions, independent of focusCount (the first,
     // gentlest foreground set): a larger event surfaces slightly larger follow-on batches so
     // a big to-do list doesn't take too many taps to walk, while the first session stays small.
