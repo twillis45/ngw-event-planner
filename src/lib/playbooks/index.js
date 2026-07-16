@@ -2254,7 +2254,12 @@ export function playbookDecisionBoard(event, asOf) {
     for (const r of activeReady) {
       if (!isSafety(r) && typeof r._dependedOnCount === 'number' && r._dependedOnCount > 0) {
         r.gateHolder = true;
-        r.priorityScore = Math.max(r.priorityScore, Math.min(r.priorityScore + GATE_HOLDER_BUMP, safetyFloor - 0.01));
+        // Depth (wave-2ab): a gate that unblocks MORE leads one that unblocks fewer — a planner
+        // sequences by how much a call frees. Base +1.5 (one weight tier) + a small per-extra-
+        // dependent term, capped at +2.5 so a many-dep gate still stays within one tier's reach
+        // and below the safety clamp / the 100 status-tier gap.
+        const bump = GATE_HOLDER_BUMP + Math.min(1.0, 0.4 * (r._dependedOnCount - 1));
+        r.priorityScore = Math.max(r.priorityScore, Math.min(r.priorityScore + bump, safetyFloor - 0.01));
       }
     }
   }
