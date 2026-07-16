@@ -42889,6 +42889,10 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   // first"). The ranking is a PROPOSAL — persisted via the same event-write path
   // foodChoices uses (onReorder → setEvent). Reveal-the-rest fold state is local.
   const [showAllOpen, setShowAllOpen] = useState(false);
+  // Wave-2t2 PACE — for a staged (hand-held) host, how many paced sessions are revealed so
+  // far. 1 = just the "Start here" set; each "reveal next" adds one batchSize session, so the
+  // rest surfaces a session at a time instead of one dump.
+  const [sessionsShown, setSessionsShown] = useState(1);
   // Wave-2b horizon fold: the "comes up closer to the date" (deferred) group is a
   // quiet, subordinate shelf below the active list — a planner PARKS these, never nags.
   const [showDeferred, setShowDeferred] = useState(false);
@@ -43201,23 +43205,43 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
           list. This stays differentiated even on a deadline-heavy board (where the ORDER alone
           collapses to the same urgent-first sequence for every host). A seasoned/neutral host
           keeps the flat "Still open / +N more" list. */}
-      {open.length > 0 && (hostAdaptation && hostAdaptation.staged ? (
-        <>
-          {sectionLabel('Start here')}
-          <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5, margin: '0 2px 10px' }}>A few at a time — settle these first, then the next set surfaces. You don&rsquo;t have to do it all today.</div>
-          {open.slice(0, foldN).map(openRow)}
-          {open.length > foldN && (
-            <>
-              {showAllOpen && sectionLabel('Next, when you’re ready')}
-              {showAllOpen && open.slice(foldN).map(openRow)}
-              <button type="button" onClick={() => setShowAllOpen((v) => !v)}
+      {open.length > 0 && (hostAdaptation && hostAdaptation.staged ? (() => {
+        // Successive paced sessions: session boundaries are [0, foldN, foldN+batch, foldN+2*batch, …].
+        // `sessionsShown` reveals them one at a time (real multi-session pacing, not a single dump),
+        // each with its own calm label. batchSize is engine-set and independent of foldN.
+        const batch = Math.max(1, hostAdaptation.batchSize || foldN);
+        const bounds = [0, Math.min(foldN, open.length)];
+        while (bounds[bounds.length - 1] < open.length) bounds.push(Math.min(bounds[bounds.length - 1] + batch, open.length));
+        const totalSessions = bounds.length - 1; // number of sessions available
+        const shown = Math.min(sessionsShown, totalSessions);
+        const SESSION_LABELS = ['Start here', 'Next, when you’re ready', 'Then these', 'After that'];
+        const revealed = bounds[shown];
+        return (
+          <>
+            {Array.from({ length: shown }).map((_, s) => (
+              <Fragment key={s}>
+                {sectionLabel(SESSION_LABELS[Math.min(s, SESSION_LABELS.length - 1)])}
+                {s === 0 && (
+                  <div style={{ fontSize: T.caption, color: C.muted, lineHeight: 1.5, margin: '0 2px 10px' }}>A few at a time — settle these first, then the next set surfaces. You don&rsquo;t have to do it all today.</div>
+                )}
+                {open.slice(bounds[s], bounds[s + 1]).map(openRow)}
+              </Fragment>
+            ))}
+            {shown < totalSessions && (
+              <button type="button" onClick={() => setSessionsShown((n) => n + 1)}
                 style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
-                {showAllOpen ? 'Show fewer' : `Next: ${open.length - foldN} more, when you’re ready`}
+                {`Next: ${open.length - revealed} more, when you’re ready`}
               </button>
-            </>
-          )}
-        </>
-      ) : (
+            )}
+            {shown > 1 && (
+              <button type="button" onClick={() => setSessionsShown(1)}
+                style={{ background: 'none', border: 'none', padding: '9px 2px 2px 14px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
+                Show fewer
+              </button>
+            )}
+          </>
+        );
+      })() : (
         <>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, foldN)).map(openRow)}{open.length > foldN && (
           // The fold now EXPANDS (task 2): every decision's rank reason must be
           // reachable, never permanently buried below the "+N more" line. The fold

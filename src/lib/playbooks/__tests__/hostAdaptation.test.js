@@ -104,10 +104,16 @@ describe('per-host adaptivity', () => {
     const seasoned = playbookDecisionBoard({ ...base, hostExperience: 'experienced', hostCapacity: 'has_help' });
     const neutral = playbookDecisionBoard(base);
     expect(first.hostAdaptation.staged).toBe(true);
-    expect(first.hostAdaptation.batchSize).toBe(first.hostAdaptation.focusCount);
+    // batchSize (subsequent session size) is now decoupled from focusCount (first-session size)
+    // via event size — a large event (140 guests here) gets a larger follow-on batch.
     expect(first.hostAdaptation.batchSize).toBeGreaterThan(0);
+    expect(first.hostAdaptation.batchSize).toBe(4); // large event
+    expect(first.hostAdaptation.focusCount).toBe(3);
     expect(seasoned.hostAdaptation.staged).toBe(false);
     expect(neutral.hostAdaptation.staged).toBe(false);
+    // a SMALL event's follow-on batch is smaller than a large event's (real size decoupling)
+    const smallFirst = playbookDecisionBoard({ id: 'e2', type: 'Dinner Party', date: '2027-06-01', guests: [], guestEstimate: 12, hostExperience: 'first_time', hostCapacity: 'solo' });
+    if (smallFirst.hostAdaptation.staged) expect(smallFirst.hostAdaptation.batchSize).toBe(3);
   });
 
   test('event SIZE scales hand-holding independent of the host', () => {

@@ -2344,7 +2344,10 @@ export function computeHostAdaptation(experience, capacity, difficulty, openCoun
     // same urgent-first sequence for everyone): the hand-held host still gets a small first
     // session, the seasoned host gets the full list. batchSize is the session size.
     staged: handHolding === 'high',
-    batchSize: focusCount,
+    // batchSize sizes the SUBSEQUENT paced sessions, independent of focusCount (the first,
+    // gentlest foreground set): a larger event surfaces slightly larger follow-on batches so
+    // a big to-do list doesn't take too many taps to walk, while the first session stays small.
+    batchSize: handHolding === 'high' ? (size === 'large' ? 4 : 3) : focusCount,
   };
 }
 
