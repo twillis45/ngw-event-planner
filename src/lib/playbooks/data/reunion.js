@@ -51,6 +51,7 @@ const reunion = {
       options: ['By category (apps/sides/mains/dessert/drinks)', 'By last-name letter', 'Free-for-all'],
       default: 'By category (apps/sides/mains/dessert/drinks)',
       when: 'T-45d',
+      dependsOn: ['food-model'],
       blocks: ['potluck-signup'],
       weight: 'med',
       reversibility: 'reversible',
