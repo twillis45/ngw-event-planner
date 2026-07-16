@@ -1304,11 +1304,11 @@ export default function HostShellV2() {
     const onScroll = () => {
       const y = app.scrollTop;
       const delta = y - lastScrollY.current;
-      // Audit #4: never hide the dock on the PLAN surface — that's where a host
-      // hunts across sections, and hiding it (while the app-bar also scrolls off)
-      // left zero on-screen navigation mid-scroll. Immersive stages (The Day
-      // walkthrough) still auto-hide for reading room.
-      if (y < 40 || stage === 'plan') setDockHidden(false);
+      // Reimagined bottom (host request 2026-07-16): the nav dock is HIDDEN until
+      // viewport movement, revealing on scroll-up (or at the top) and tucking away on
+      // scroll-down — because the persistent primary action now lives in the always-on
+      // NEXT bar pinned at the frame bottom, so navigation no longer has to stay parked.
+      if (y < 40) setDockHidden(false);
       else if (delta > 6) setDockHidden(true);
       else if (delta < -6) setDockHidden(false);
       lastScrollY.current = y;
@@ -4118,18 +4118,10 @@ export default function HostShellV2() {
                 }
                 return <p className="verdict">On track — nothing is slipping.</p>;
               })()}
-              {/* THE ONE NEXT ACTION (host board ruling, wave 6): the post-snooze
-                  #1, right under the status line, tappable — through onCta, the
-                  exact path the named card's own CTA takes. Quiet card row, not a
-                  second accent CTA: the NEXT bar below stays the one primary
-                  (UX_02 — accent marks exactly one target per section). */}
-              {!isPast && days !== null && days > 0 && !listIsCalm && queue.length > 0 && (
-                <button className="hero-next" onClick={() => onCta(queue[0], String(queue[0].id || 0))}>
-                  <span className="hn-label">Start here</span>
-                  <span className="hn-title">{String(queue[0].title || '').replace(/\.+$/, '')}</span>
-                  <span className="chev" aria-hidden="true">›</span>
-                </button>
-              )}
+              {/* START HERE retired (host request 2026-07-16): naming the #1 action MOVED to
+                  the always-on .next-bar pinned at the frame bottom — one persistent, thumb-
+                  reachable primary CTA that names the next thing, instead of a quiet hero row
+                  that scrolls away plus a counting bar. */}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
               {ctx && ctx.compound && ctx.reasoning && (
@@ -4231,7 +4223,16 @@ export default function HostShellV2() {
                             const areaLabel = (id) => ({ datetime: 'Date & time', date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 7 }}>
+                              <>
+                                {/* Say what an AREA is, on the glance (host request 2026-07-16):
+                                    the count "N of M areas" meant nothing to a host who was never
+                                    told an area is a major part of their plan, or that settling all
+                                    of them is what "ready" means. One plain line, always visible —
+                                    the fuller two-number explainer still lives under the caret. */}
+                                <div className="t-sub" style={{ marginTop: 8, opacity: .72, lineHeight: 1.5 }}>
+                                  The main parts of your plan — tap any to open it. Settle all {essTotal} and you&rsquo;re ready for the day.
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 8 }}>
                                 {/* Each area is a real door (host report + audit #7):
                                     tap it to open that surface. stopPropagation so it
                                     routes instead of firing the tile's own handler. */}
@@ -4239,7 +4240,7 @@ export default function HostShellV2() {
                                   const isNext = !c.handled && nextId && c.id === nextId;
                                   return (
                                     <button key={c.id || ix} type="button"
-                                      onClick={e => { e.stopPropagation(); if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
+                                      onClick={e => { e.stopPropagation(); if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; } if (c.id === 'location') { setSheet({ kind: 'venue' }); return; } if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
                                       aria-label={areaLabel(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
                                       style={{ background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 4, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
                                       <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
@@ -4247,7 +4248,8 @@ export default function HostShellV2() {
                                     </button>
                                   );
                                 })}
-                              </div>
+                                </div>
+                              </>
                             );
                           })()}
                         </>
@@ -5898,10 +5900,56 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
+            {/* Date & time area is a real door now (host report 2026-07-16: it was tappable
+                copy with no editor behind it). Reuses the same date+arrival-time editor the
+                action cards use — change the day or the time here. */}
+            {sheet.kind === 'date' && (
+              <div style={{ padding: 'var(--sp-2) 0' }}>
+                <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Change the day or the arrival time — every countdown, deadline, and shopping window in the plan counts back from it.</p>
+                {renderEditor({ domain: 'date' })}
+              </div>
+            )}
+            {/* Venue area is a real door too (host request 2026-07-16, same dead-route class as
+                Date & time): reuses the existing venue input + address suggestions + city field,
+                and — unlike the inline card, which only showed when venue was UNSET — lets a set
+                venue be changed here. */}
+            {sheet.kind === 'venue' && (
+              <div style={{ padding: 'var(--sp-2) 0' }}>
+                <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Where the event happens — invites, maps, weather, and the rain note all read from it.</p>
+                {String(event.venue || '').trim() && (
+                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{event.venue}</b>{event.venueCity ? ` · ${event.venueCity}` : ''}. Enter a new place to change it.</p>
+                )}
+                <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                  <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                    value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
+                  <button className="cta" onClick={saveVenue}>Save</button>
+                </div>
+                {addrSugs.length > 0 && (
+                  <div style={{ marginTop: 6 }}>
+                    {addrSugs.map((sg, si) => (
+                      <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+                        onClick={() => pickAddr(sg)}>
+                        <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                {String(event.venue || '').trim() && needsCity() && (
+                  <div style={{ marginTop: 'var(--sp-3)' }}>
+                    <p className="grounding" style={{ marginBottom: 'var(--sp-2)' }}>Add the town and state (or ZIP) so weather and maps find the right place.</p>
+                    <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
+                      <CityField value={cityDraft} onChange={setCityDraft} onPick={setCityDraft} onEnter={saveCity} placeholder="Annapolis, MD or 21401" ariaLabel="City, state or ZIP" style={{ maxWidth: 220, flex: '0 1 220px' }} />
+                      <button className="cta" onClick={saveCity}>Save</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
             {sheet.kind === 'decisions' && (
               <>
                 {/* Hero copy (host request 2026-07-11): the open count is the star —
@@ -10489,7 +10537,30 @@ export default function HostShellV2() {
         </div>
       )}
 
-      <nav className={'dock' + (dockHidden ? ' dock-hidden' : '')} aria-label="Sections">
+      {/* PERSISTENT NEXT ACTION (host request 2026-07-16): the primary "what needs you"
+          CTA is pinned to the frame bottom at all times on the Plan surface — it no longer
+          scrolls away with the hero. Taps straight through to the first queued action (the
+          same onCta path the named card uses), or scrolls to the full list when calm. */}
+      {stage === 'plan' && (
+        <button
+          className={'next-bar' + ((queue.length === 0 || listIsCalm) ? ' allset' : '')}
+          onClick={() => {
+            if (days === 0) { setStage('day'); return; }
+            if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0)); return; }
+            document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
+          }}
+          aria-label="Next thing that needs you"
+        >
+          <span className="nb-label">Next</span>
+          <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
+          {days !== 0 && !listIsCalm && queue.length > 1 && (
+            <span className="nb-more">+{queue.length - 1}</span>
+          )}
+          <span className="nb-chev" aria-hidden="true">›</span>
+        </button>
+      )}
+
+      <nav className={'dock' + (dockHidden ? ' dock-hidden' : '') + (stage === 'plan' ? ' has-next-bar' : '')} aria-label="Sections">
         {/* No attention badge here by design: the dock is navigation, not an inbox — ledger counts (raiseCounts) surface on the qidx rows instead. */}
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
         <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>

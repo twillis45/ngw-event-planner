@@ -1405,6 +1405,36 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .dock.dock-hidden{transform:translateX(-50%) translateY(150%); opacity:0; pointer-events:none}
 @media(prefers-reduced-motion:reduce){.dock{transition:none}}
 
+/* PERSISTENT NEXT ACTION BAR (host request 2026-07-16) — pinned to the frame bottom on
+   the Plan surface at all times; mirrors the dock's frame-absolute positioning so it stays
+   put while .app scrolls. The dock (nav) floats ABOVE it when revealed, and auto-hides. */
+.next-bar{
+  position:absolute; left:var(--sp-4); right:var(--sp-4);
+  bottom:calc(16px + env(safe-area-inset-bottom,0px)); z-index:22;
+  display:flex; align-items:center; gap:var(--sp-3); text-align:left;
+  padding:15px 18px; border:none; border-radius:var(--r-pill); cursor:pointer;
+  background:var(--cta-grad); color:var(--carbon-text);
+  box-shadow:0 16px 44px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
+  transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
+}
+.next-bar:hover{filter:brightness(1.05)}
+.next-bar:active{transform:scale(.99)}
+.next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--carbon-text); opacity:.72}
+.next-bar .nb-title{flex:1; min-width:0; font-size:var(--t-row-sub); font-weight:700; line-height:1.3;
+  display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; text-overflow:ellipsis}
+.next-bar .nb-more{flex:0 0 auto; font-size:var(--t-overline); font-weight:800; letter-spacing:.02em; color:var(--carbon-text); background:rgba(255,255,255,.16); border-radius:var(--r-pill); padding:2px 8px; opacity:.9}
+.next-bar .nb-chev{flex:0 0 auto; font-size:var(--t-title); color:var(--carbon-text); opacity:.6}
+.next-bar.allset .nb-more{background:rgba(0,0,0,.14)}
+.next-bar.allset{background:var(--ok); color:var(--on-ok)}
+.next-bar.allset .nb-label,.next-bar.allset .nb-title,.next-bar.allset .nb-chev{color:var(--on-ok)}
+/* When the persistent NEXT bar is present, the nav dock rides ABOVE it (its ~54px + a gap)
+   so the two never overlap when the dock is revealed on scroll. */
+.dock.has-next-bar{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+/* The in-hero NEXT tile is retired on the Command Center — its role MOVED to the always-on
+   .next-bar pinned at the frame bottom (host request 2026-07-16). Hidden, not deleted, so the
+   hero's other surfaces (verdict, START HERE, bento stats) are untouched. */
+.hero > .tile-d{display:none}
+
 /* ── DESTINATION-2 · Where everyone stays (lodging sheet) ── existing tokens
    only. The stay form is a two-column labeled grid inside the sheet; booking
    statuses reuse the .tag chip at the app's semantic color budget: quiet for
