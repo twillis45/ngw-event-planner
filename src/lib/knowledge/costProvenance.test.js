@@ -21,8 +21,18 @@ describe('cost provenance grounding', () => {
       }
     }
     // the Grounding lever: "even 10/46 with a costResearched predicate lifts the cap off 2%."
-    expect(grounded).toBeGreaterThanOrEqual(10);
+    expect(grounded).toBeGreaterThanOrEqual(16); // wave-2v grounded 6 more service-tier factors
     expect(grounded).toBeLessThan(withProv); // honest — most are still a research backlog
+  });
+
+  test('wave-2v: host/caterer/potluck service-tier factors ground to catering-perperson', () => {
+    // the labor-driven service-tier ladder the catering source explicitly establishes.
+    const good = { tier: 'researched', sources: ['catering-perperson-2026'] };
+    expect(isGroundedCost(good)).toBe(true);
+    // …but a seafood-boil protein claim must NOT ground to the meat source (no seafood data)
+    // and a drink cost-% claim must NOT ground to a removed/absent bar source — both stay synthesized.
+    expect(isGroundedCost({ tier: 'researched', sources: ['bar-provision-2026'] })).toBe(false);
+    expect(COST_SOURCES['bar-provision-2026']).toBeUndefined();
   });
 
   test('isGroundedCost rejects synthesized / sourceless / bogus-source provenance', () => {
