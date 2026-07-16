@@ -5971,7 +5971,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the plan' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
@@ -7391,7 +7391,7 @@ export default function HostShellV2() {
                 ] },
                 { title: 'More', rows: [
                   { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
-                  { k: 'ask', label: 'Ask the plan', sub: 'A question, answered from your numbers' },
+                  { k: 'ask', label: 'Ask the Boss', sub: 'A question, answered from your numbers' },
                   { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
                   { k: 'settings', label: 'You & your account', sub: 'Your name, area, what it remembers' },
                 ] },
@@ -7517,7 +7517,7 @@ export default function HostShellV2() {
                   <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Have a specific question?</div>
                   <button className="cta" style={{ background: 'var(--surface-2)', color: 'var(--ink)' }}
                     onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
-                    Ask the plan — answered from your own numbers
+                    Ask the Boss — answered from your own numbers
                   </button>
                 </>
               );
@@ -7593,18 +7593,18 @@ export default function HostShellV2() {
                     <div className="brow" style={{ marginTop: 'var(--sp-3)' }}>
                       {!askLLM && (
                         <>
-                          <p className="grounding" style={{ margin: '0 0 8px', color: 'var(--faint)' }}>That’s outside what your numbers can answer — but the Boss can take a broader question like this, still grounded in your plan.</p>
-                          <button className="mini" onClick={askAssistant}>Ask the Boss</button>
+                          <p className="grounding" style={{ margin: '0 0 8px', color: 'var(--faint)' }}>That’s outside what your numbers can answer — but I can take a broader look, still grounded in your plan.</p>
+                          <button className="mini" onClick={askAssistant}>Take a broader look</button>
                         </>
                       )}
                       {askLLM && askLLM.loading && (
-                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Asking the Boss — it reads your numbers, never invents them…</p>
+                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Taking a broader look — I read your numbers, never invent them…</p>
                       )}
                       {askLLM && askLLM.answer && (
                         <>
                           <p className="f-name" style={{ marginBottom: 4 }}>{askLLM.answer}</p>
                           <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>
-                            Answered by the Boss, grounded in your plan.{askLLM.grounded && !askLLM.grounded.ok ? ' One figure here isn’t from your numbers — worth a double-check.' : ''}
+                            A broader look, grounded in your plan.{askLLM.grounded && !askLLM.grounded.ok ? ' One figure here isn’t from your numbers — worth a double-check.' : ''}
                           </p>
                           <div className="actions-row" style={{ marginTop: 8 }}>
                             <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
@@ -7612,7 +7612,7 @@ export default function HostShellV2() {
                         </>
                       )}
                       {askLLM && askLLM.unavailable && (
-                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>The Boss isn’t reachable right now — the answer above is what your plan can tell you directly.</p>
+                        <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>I can’t take a broader look right now — the answer above is what your plan tells you directly.</p>
                       )}
                     </div>
                   )}
@@ -10760,7 +10760,7 @@ export default function HostShellV2() {
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
-          { label: 'Ask the plan', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
+          { label: 'Ask the Boss', sub: 'a question, answered from your plan', go: () => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); } },
           { label: 'Plan', sub: 'the command board', go: () => setStage('plan') },
           { label: 'The Day', sub: 'day-of run of show', go: () => setStage('day') },
           { label: 'After', sub: 'wrap-up & thank-yous', go: () => setStage('after') },
