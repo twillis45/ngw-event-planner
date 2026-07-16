@@ -7540,7 +7540,24 @@ export default function HostShellV2() {
                       )}
                     </div>
                   )}
-                  {crab.coverageCopy && <div className="v-meta" style={{ padding: '0 2px 6px' }}>{crab.coverageCopy}</div>}
+                  {crab.coverageCopy && (() => {
+                    // Per-person coverage vs the suggested target, on the Three-State Model (UX_02):
+                    // under = ATTENTION (amber), on-target = ON_TRACK (green). "Over" is NOT a
+                    // status (over-provisioning isn't a risk, and there's no sanctioned 4th status
+                    // color) so it stays neutral/informational — the OVER label + copy carry it.
+                    const COV = {
+                      under:   { label: 'Under',     color: 'var(--warn)',  tint: 'var(--warn-tint)' },
+                      covered: { label: 'On target', color: 'var(--ok)',    tint: 'var(--ok-tint)' },
+                      extra:   { label: 'Over',      color: 'var(--muted)', tint: 'var(--steel-tint)' },
+                    };
+                    const m = COV[crab.coverageStatus] || null;
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', padding: '0 2px 6px' }}>
+                        {m && <span style={{ flex: '0 0 auto', fontSize: 11, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', color: m.color, background: m.tint, borderRadius: 999, padding: '2px 9px', lineHeight: 1.5 }}>{m.label}</span>}
+                        <span className="v-meta" style={{ margin: 0, color: m ? m.color : undefined }}>{crab.coverageCopy}</span>
+                      </div>
+                    );
+                  })()}
                   {lines.length === 0 && (() => {
                     // RECOMMEND-1: a real starting mix (bushels/dozens, kid-adjusted
                     // pickers) instead of leaving the host to guess bushels-vs-dozens

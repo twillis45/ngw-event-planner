@@ -9456,8 +9456,20 @@ function CrabPlanCard({ event, onPatchEvent, isMobile = false }) {
   const removeLine = (id) => patch({ lines: (cp.lines || []).filter(l => l && l.id !== id) });
   const inp = { background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: T.secondary, fontFamily: 'inherit', padding: '7px 9px', outline: 'none', boxSizing: 'border-box' };
   const sel = { ...inp, minHeight: 38 };
-  const statusColor = plan.coverageStatus === 'covered' ? (C.success || C.accent)
-    : plan.coverageStatus === 'under' ? (C.warn || C.accent) : C.muted;
+  // Per-person coverage vs the suggested target — conditionally formatted so the host sees at a
+  // glance where their order lands: UNDER (<0.9x) an amber shortfall, ON TARGET (0.9–1.5x) green,
+  // OVER (extra, >1.5x) a calm steel tone (over isn't a problem, just more food than suggested).
+  // Setup states (no headcount / no order yet) carry no badge and stay muted.
+  // Three-State Model (UX_02): under = ATTENTION (amber, you may be short), on-target = ON_TRACK
+  // (green), over = INFORMATIONAL (muted) — over isn't a risk, and the skill forbids a 4th
+  // status color, so no invented steel/slate here; the copy ("may be extra") carries the meaning.
+  const COVERAGE_META = {
+    under:   { label: 'Under',      color: C.warn || C.accent },
+    covered: { label: 'On target',  color: C.success || C.accent },
+    extra:   { label: 'Over',       color: C.muted },
+  };
+  const covMeta = COVERAGE_META[plan.coverageStatus] || null;
+  const statusColor = covMeta ? covMeta.color : C.muted;
   return (
     <div id="crab-plan" style={{ scrollMarginTop: 16 }}>
     <CollapsibleCard id={`crab-plan-${event.id}`} isMobile={isMobile} defaultCollapsed={false} title="The crabs"
@@ -9479,7 +9491,12 @@ function CrabPlanCard({ event, onPatchEvent, isMobile = false }) {
         <div style={{ fontSize: T.caption, color: C.muted, paddingBottom: 8 }}>{plan.pickerReconcileNote}</div>
       )}
       {plan.coverageCopy && (
-        <div data-testid="crab-coverage" style={{ fontSize: T.secondary, color: statusColor, fontWeight: FW.semibold, lineHeight: 1.5, paddingBottom: 10 }}>{plan.coverageCopy}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', paddingBottom: 10 }}>
+          {covMeta && (
+            <span style={{ flex: '0 0 auto', fontSize: T.eyebrow, fontWeight: FW.heavy, letterSpacing: '0.08em', textTransform: 'uppercase', color: covMeta.color, background: `${covMeta.color}26`, borderRadius: 999, padding: '3px 10px', lineHeight: 1.4 }}>{covMeta.label}</span>
+          )}
+          <span data-testid="crab-coverage" style={{ fontSize: T.secondary, color: statusColor, fontWeight: FW.semibold, lineHeight: 1.5 }}>{plan.coverageCopy}</span>
+        </div>
       )}
       {plan.mixedSummary && <div style={{ fontSize: T.caption, color: C.muted, paddingBottom: 10 }}>Your order: {plan.mixedSummary}</div>}
       {plan.bushelExplanation && (
