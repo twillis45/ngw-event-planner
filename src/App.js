@@ -42889,10 +42889,17 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
   // first"). The ranking is a PROPOSAL — persisted via the same event-write path
   // foodChoices uses (onReorder → setEvent). Reveal-the-rest fold state is local.
   const [showAllOpen, setShowAllOpen] = useState(false);
+  // Wave-2b horizon fold: the "comes up closer to the date" (deferred) group is a
+  // quiet, subordinate shelf below the active list — a planner PARKS these, never nags.
+  const [showDeferred, setShowDeferred] = useState(false);
   const board = useMemo(() => { try { return playbookDecisionBoard(event); } catch { return null; } }, [event]);
   if (!board) return null;
   const { open: openRaw, locked, headcount, hostDifficulty, heartAtRisk } = board;
-  if (!openRaw.length && !locked.length && !headcount) return null;
+  // Wave-2b: a well-planned far-future event can have EVERY ready decision parked in
+  // `deferred` — the panel must still render (never vanish) so the parked calls stay
+  // honest and reachable. Null-safe for a board authored before the key existed.
+  const deferred = board.deferred || [];
+  if (!openRaw.length && !locked.length && !headcount && !deferred.length) return null;
 
   const diffBand = hostDiffBand(hostDifficulty);
   // Apply the host's pins WITHOUT re-implementing the engine's ranking: pinned ids
@@ -42986,6 +42993,12 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
           <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.bold, color: C.text, lineHeight: 1.3 }}>{r.label}</span>
           {r.because && <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.because}</span>}
         </span>
+        {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in the existing
+            chip vocabulary (warn accent), sitting beside the status chip — not a loud
+            new component. Only on rows the engine flagged timeCritical. */}
+        {r.timeCritical && (
+          <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.5px', textTransform: 'uppercase', color: C.warn, padding: '2px 8px', borderRadius: 5, border: `1px solid ${C.warn}`, background: 'transparent', whiteSpace: 'nowrap' }}>Time-sensitive</span>
+        )}
         {chip(r.status)}
         {inlineable
           ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, color: expanded ? C.muted : steel, fontSize: T.caption, fontWeight: FW.semibold }}>{expanded ? '' : 'Choose'}<span aria-hidden style={{ display: 'flex', transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 140ms ease' }}><Icon name="chevronRight" size={15} /></span></span>
@@ -43053,6 +43066,20 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     </div>
   );
 
+  // Wave-2b deferred row — a QUIET, non-interactive "not yet" prompt. It carries the
+  // engine's own "Comes up closer to the date." rankReason (never invented), reads muted
+  // and subordinate to the active list, and shows a calm "Later" chip in the neutral
+  // border vocabulary (no new color). Informational only: the host parks it, we don't nag.
+  const deferredRow = (r) => (
+    <div key={r.id} style={{ ...rowBase, cursor: 'default', background: 'transparent', borderColor: C.border, opacity: 0.9 }}>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: 'block', fontSize: T.body, fontWeight: FW.semibold, color: C.muted, lineHeight: 1.3 }}>{r.label}</span>
+        <span style={{ display: 'block', fontSize: T.caption, color: C.muted, marginTop: 3, lineHeight: 1.45 }}>{r.rankReason || r.because || 'Comes up closer to the date.'}</span>
+      </span>
+      <span style={{ flexShrink: 0, fontSize: T.micro, fontWeight: FW.semibold, letterSpacing: '0.5px', textTransform: 'uppercase', color: C.muted, padding: '2px 8px', borderRadius: 5, border: `1px solid ${C.border}`, background: 'transparent', whiteSpace: 'nowrap' }}>Later</span>
+    </div>
+  );
+
   const settledCount = locked.length;
   // hostDifficulty consumer (task 1): an 'easy' event reads terser; a 'hard'/'high'
   // event's subtitle stays plain but gains a reassurance line below (diffLine). The
@@ -43061,7 +43088,10 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
     ? (diffBand === 'easy'
       ? `${open.length} quick ${open.length === 1 ? 'call' : 'calls'}`
       : `${open.length} still to settle${settledCount ? ` · ${settledCount} settled` : ''}`)
-    : 'Everything’s settled.';
+    // Wave-2b: open empty but decisions parked for later — honest, calm, not "done".
+    : (deferred.length
+      ? `Nothing needs you yet · ${deferred.length} ${deferred.length === 1 ? 'comes' : 'come'} up closer`
+      : 'Everything’s settled.');
   // The hostDifficulty adapter — a real behavior shift, not a rendered label. Hard
   // events open with reassurance (you don't have to do it all today); easy events get
   // a calm one-liner; moderate stays silent (baseline). Host-voiced per UX_06.
@@ -43080,7 +43110,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
 
   return (
     <CollapsibleCard id="host-decisions" isMobile={isMobile} defaultCollapsed done={!open.length} autoCollapseWhenDone={!open.length} forceOpen={settleFocus} title="What to settle"
-      right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : 'All settled'}</div> : undefined}
+      right={!isMobile ? <div style={{ fontSize: T.title, fontWeight: FW.heavy, color: open.length ? C.text : (C.success || C.text), whiteSpace: 'nowrap' }}>{open.length ? `${open.length} to settle` : (deferred.length ? `${deferred.length} coming up` : 'All settled')}</div> : undefined}
       subtitle={!isMobile ? (settledCount ? `${settledCount} settled` : '') : subtitle}>
       {/* hostDifficulty-adapted intro — reassurance for a hard event, a calm line for
           an easy one, nothing for a moderate one (baseline). */}
@@ -43112,7 +43142,27 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
           {showAllOpen ? 'Show fewer' : `+${open.length - 4} more to settle, in their own time`}
         </button>
       )}</>)}
-      {locked.length > 0 && (<div style={{ marginTop: open.length ? 16 : 0 }}>{sectionLabel('Settled')}{locked.map(lockedRow)}</div>)}
+      {/* Wave-2b horizon group — the decisions the engine parked ("comes up closer to the
+          date"). Visually SUBORDINATE to the active list: when work is open it folds into a
+          quiet toggle (same fold vocabulary as "+N more"); when nothing is open it leads with
+          an honest, calm "nothing needs you yet" line so the surface never reads as a dead
+          end and the parked calls stay reachable. */}
+      {deferred.length > 0 && (
+        <div style={{ marginTop: open.length ? 16 : 0 }}>
+          {open.length === 0 ? (
+            <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 12px' }}>
+              <span style={{ fontWeight: FW.bold, color: C.text }}>Nothing needs you yet.</span> {deferred.length} {deferred.length === 1 ? 'decision comes' : 'decisions come'} up closer to the date — you’ll see {deferred.length === 1 ? 'it' : 'them'} here when the time’s right.
+            </div>
+          ) : (
+            <button type="button" onClick={() => setShowDeferred((v) => !v)}
+              style={{ background: 'none', border: 'none', padding: '9px 2px 8px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
+              {showDeferred ? 'Hide what comes later' : `${deferred.length} ${deferred.length === 1 ? 'decision comes' : 'decisions come'} up closer to the date`}
+            </button>
+          )}
+          {(open.length === 0 || showDeferred) && deferred.map(deferredRow)}
+        </div>
+      )}
+      {locked.length > 0 && (<div style={{ marginTop: (open.length || deferred.length) ? 16 : 0 }}>{sectionLabel('Settled')}{locked.map(lockedRow)}</div>)}
     </CollapsibleCard>
   );
 }

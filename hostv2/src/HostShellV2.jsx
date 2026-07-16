@@ -1256,6 +1256,8 @@ export default function HostShellV2() {
   // the settled row reads it back next time the subject comes up.
   const [whyOpen, setWhyOpen] = useState(null);
   const [whyText, setWhyText] = useState('');
+  // Wave-2b: the quiet "comes up closer to the date" (deferred) fold on the Calls sheet.
+  const [decLaterOpen, setDecLaterOpen] = useState(false);
   const saveWhy = (r) => {
     const text = whyText.trim();
     if (!text) { setWhyOpen(null); return; }
@@ -5907,18 +5909,28 @@ export default function HostShellV2() {
                 {(() => {
                   const openN = (decisionBoard.open || []).length;
                   const lockedN = (decisionBoard.locked || []).length;
-                  if (!openN && !lockedN) return null;
+                  // Wave-2b: parked-for-later decisions keep the sheet honest even with
+                  // zero open work — the hero must still render (not vanish) so the
+                  // deferred shelf below has a calm frame. Null-safe.
+                  const deferredN = (decisionBoard.deferred || []).length;
+                  if (!openN && !lockedN && !deferredN) return null;
                   const overdueN = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
+                  // Empty-open but decisions parked: calm "nothing needs you yet" state,
+                  // never "All settled" (which would read as done and hide the horizon).
+                  const star = openN ? `${openN} to settle` : (deferredN ? 'Nothing needs you yet' : 'All settled');
+                  const sub = openN
+                    ? (overdueN
+                      ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
+                      : 'Each one settles in a tap below — your answer reshapes the plan.')
+                    : (deferredN
+                      ? `${deferredN} ${deferredN === 1 ? 'decision comes' : 'decisions come'} up closer to the date — you’ll see ${deferredN === 1 ? 'it' : 'them'} here when the time’s right.${lockedN ? ` ${lockedN} already settled.` : ''}`
+                      : `All ${lockedN} ${lockedN === 1 ? 'call is' : 'calls are'} made — change any of them below.`);
                   return (
                     <SheetHero
                       eyebrow="Calls to make"
-                      star={openN ? `${openN} to settle` : 'All settled'}
+                      star={star}
                       tone={openN ? undefined : 'ok'}
-                      sub={openN
-                        ? (overdueN
-                          ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
-                          : 'Each one settles in a tap below — your answer reshapes the plan.')
-                        : `All ${lockedN} ${lockedN === 1 ? 'call is' : 'calls are'} made — change any of them below.`}
+                      sub={sub}
                     />
                   );
                 })()}
@@ -5950,7 +5962,10 @@ export default function HostShellV2() {
                       return ra !== rb ? ra - rb : a.i - b.i;
                     }).map(x => x.r)
                     : raw;
-                  if (!ordered.length) return <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
+                  // When nothing's open but decisions are parked, the deferred shelf
+                  // below carries the honest state — don't also print "Nothing waiting
+                  // on you." (that reads as a dead end and buries the horizon).
+                  if (!ordered.length) return (decisionBoard.deferred || []).length ? null : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
                   return ordered.map((r, i) => {
                   // Inline settle — keyed on the DECISION having authored options
                   // (playbookDecisionOptions, same rule as legacy's What-to-settle
@@ -5983,6 +5998,9 @@ export default function HostShellV2() {
                         <span className="f-main">
                           <span className="f-name">{r.label}
                             {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
+                                the existing tag vocabulary (warn), only when not already overdue. */}
+                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {r.because && <span className="v-meta">{r.because}</span>}
                         </span>
@@ -6008,6 +6026,9 @@ export default function HostShellV2() {
                         <span className="f-main">
                           <span className="f-name">{r.label}
                             {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
+                                the existing tag vocabulary (warn), only when not already overdue. */}
+                            {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
                           {r.because && <span className="v-meta">{r.because}</span>}
                         </span>
@@ -6021,6 +6042,36 @@ export default function HostShellV2() {
                     </div>
                   );
                 });
+                })()}
+                {/* Wave-2b horizon shelf — the decisions the engine parked ("comes up
+                    closer to the date"). Subordinate to the active list: when calls are
+                    open it folds into a quiet toggle (matching the app's fold vocabulary);
+                    when nothing's open the hero already framed it, so the list shows plainly.
+                    Informational + muted — a planner parks these, doesn't nag. */}
+                {(decisionBoard.deferred || []).length > 0 && (() => {
+                  const later = decisionBoard.deferred || [];
+                  const openN = (decisionBoard.open || []).length;
+                  const shown = openN === 0 || decLaterOpen;
+                  return (
+                    <div style={{ marginTop: 'var(--sp-3)' }}>
+                      {openN > 0 && (
+                        <button type="button" className="mini" onClick={() => setDecLaterOpen(v => !v)} style={{ marginBottom: 'var(--sp-1)' }}>
+                          {decLaterOpen ? 'Hide what comes later' : `${later.length} ${later.length === 1 ? 'decision comes' : 'decisions come'} up closer to the date`}
+                        </button>
+                      )}
+                      {shown && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '10px 0 var(--sp-1)' }}>Comes up closer to the date</div>
+                          {later.map((r, i) => (
+                            <div key={r.id || i} className="line" style={{ alignItems: 'center', opacity: 0.9 }}>
+                              <span style={{ color: 'var(--muted)' }}>{r.label}</span>
+                              <span className="of">{r.rankReason || r.because || 'Comes up closer to the date.'}</span>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </div>
+                  );
                 })()}
                 {(decisionBoard.locked || []).length > 0 && (
                   <>

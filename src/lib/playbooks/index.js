@@ -60,6 +60,7 @@ import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
+import { getCompressionLevel } from '../workflowCompression';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -1732,11 +1733,69 @@ const WEIGHT_SCORE = { high: 3, med: 2, low: 1 };
 const EMO_SCORE = { high: 2, med: 1, low: 0 };
 const REV_SCORE = { locked: 2, costly: 1, reversible: 0 };
 
-// importance — the intra-tier consequence score (higher ranks first). Unset weight
-// sits between med and low; unset emotional/reversibility contribute nothing.
+// ── Wave-2b · DERIVED importance (kill the flat tie for the 37 un-authored playbooks) ──
+// Only 2 of 39 playbooks (crabFeast, retirementParty) author `weight`. Everywhere else
+// decisionImportance() returned a flat ~1.5, so all rows tied and the board collapsed to
+// a pure due-date sort — ranking "Pick a theme" above "Confirm guest count" and "Collect
+// allergies," which no planner does. When a decision has NO authored weight, we DERIVE an
+// importance signal from the decision's OWN structure. This is honest derivation from data
+// the playbook already carries (blocks / dependsOn / costFactors / its own id+label text),
+// NOT invented per-playbook content. Authored weight ALWAYS overrides the derived value, so
+// the two flagships are byte-identical to Wave-2a.
+const DIETARY_SAFETY_RE = /allerg|dietary|medical|\bsafety\b|epi.?pen|shellfish|\bnut(s|-free|\b)/i;
+// Purely-aesthetic leaf decisions. Deliberately NOT matching bare "style" (would snag
+// "Food style"), and guarded below by !hasCost / !dietarySafety so a decision that spends
+// money or touches safety is never treated as a leaf even if its label mentions a vibe.
+const AESTHETIC_RE = /\btheme\b|\bvibe\b|decor|colou?r|palette|\bmood\b|ambian?ce|aesthetic/i;
+
+// Does any OTHER decision list this decision's id as a prerequisite? A depended-on
+// decision gates downstream work, so it ranks up (same signal as an authored `blocks`).
+function decisionIsDependedOn(id, decisions) {
+  if (!id) return false;
+  return (decisions || []).some((o) => o && o.id !== id
+    && Array.isArray(o.dependsOn) && o.dependsOn.includes(id));
+}
+// Does this decision carry money? A costed choice outranks a costless leaf.
+function decisionCarriesCost(d) {
+  return !!(d && (
+    (d.costFactors && typeof d.costFactors === 'object' && Object.keys(d.costFactors).length > 0)
+    || d.costViaApproach === true
+    || d.costFactorProvenance
+  ));
+}
+// derivedImportanceOf(d, decisions) → { score, reason } for a decision with NO authored
+// weight. Mirrors what a seasoned planner surfaces first, from the decision's real shape:
+//   • dietary / allergy / safety text  → highest (a planner asks these early)
+//   • gates downstream (has blocks[], OR a sibling dependsOn it) → ranks up
+//   • carries money (costFactors)       → ranks above a costless leaf
+//   • purely-aesthetic leaf (theme/vibe/decor/color, no cost) → LOWEST
+//   • otherwise neutral (the prior flat baseline)
+// `reason` tags the dominant axis so the rankReason reads as an HONEST derivation.
+function derivedImportanceOf(d, decisions) {
+  const hay = `${(d && d.id) || ''} ${(d && d.label) || ''}`;
+  const dietarySafety = DIETARY_SAFETY_RE.test(hay);
+  if (dietarySafety) return { score: 3.5, reason: 'diet' };
+  const hasCost = decisionCarriesCost(d);
+  const gates = (Array.isArray(d && d.blocks) && d.blocks.length > 0)
+    || decisionIsDependedOn(d && d.id, decisions);
+  const aesthetic = AESTHETIC_RE.test(hay) && !hasCost;
+  if (aesthetic) return { score: 0.75, reason: 'aesthetic' };
+  let score = 1.5; // the prior neutral baseline
+  let reason = 'neutral';
+  if (gates) { score += 1; reason = 'gates'; }
+  if (hasCost) { score += 0.75; if (reason === 'neutral') reason = 'cost'; }
+  return { score, reason };
+}
+
+// importance — the intra-tier consequence score (higher ranks first). Authored weight
+// wins; an un-authored row uses its board-time DERIVED weight (row._derivedWeight),
+// falling back to the neutral 1.5 only if derivation was never attached. Unset
+// emotional/reversibility contribute nothing (they're only authored on the 2 flagships).
 function decisionImportance(row) {
   const w = WEIGHT_SCORE[row && row.weight];
-  const weightScore = w == null ? 1.5 : w;
+  const weightScore = w == null
+    ? (typeof (row && row._derivedWeight) === 'number' ? row._derivedWeight : 1.5)
+    : w;
   const emo = EMO_SCORE[row && row.emotionalWeight] || 0;
   const rev = REV_SCORE[row && row.reversibility] || 0;
   const heart = row && row.deliversHeartMoment ? 2 : 0;
@@ -1771,16 +1830,31 @@ function decisionPriorityScore(row) {
 // decision-intelligence contract); else derives a friendly reason from the
 // dominant scoring axis. Host-voiced only — never planner jargon.
 function decisionRankReason(row) {
+  if (!row) return '';
+  // Wave-2b horizon: a far-future window parked on a long-runway event reads "not yet" —
+  // this wins even over an authored rationale, because for a PARKED row the honest headline
+  // is its timing, not its stakes (the row still lives in the `deferred` bucket either way).
+  if (row.horizon === 'later') return 'Comes up closer to the date.';
   const pb = row && row.priorityBasis;
   if (pb && typeof pb.rationale === 'string' && pb.rationale.trim()) return pb.rationale.trim();
-  if (!row) return '';
   const od = decisionOverdueDays(row);
   if (row.deliversHeartMoment) return 'The moment your guests will remember.';
   if (od > 0 && row.weight === 'high') return `High-stakes — and ${od} ${od === 1 ? 'day' : 'days'} past its window.`;
   if (od > 0) return `${od} ${od === 1 ? 'day' : 'days'} past its window.`;
   if (row.reversibility === 'locked') return 'Hard to change once it’s set — worth settling early.';
   if (row.weight === 'high') return 'High-stakes — it shapes everything after it.';
+  // Wave-2b DERIVED reasons — machine-derived from the decision's own structure. Phrased so
+  // they read as derived, never as an authored human rationale (Honesty guardrail: a
+  // derived-ranked row must sound derived). Only reached for un-authored rows.
+  if (row.importanceBasis === 'derived') {
+    if (row._derivedReason === 'diet') return 'Worth settling early — allergies gate the menu.';
+    if (row.timeCritical) return 'Its window is open and the runway is short — worth doing now.';
+    if (row._derivedReason === 'gates') return 'This decides other choices.';
+    if (row._derivedReason === 'cost') return 'This one costs real money.';
+    if (row._derivedReason === 'aesthetic') return 'A finishing touch — settle it when you like.';
+  }
   if (row.status === 'waiting') return 'Waiting on an earlier choice.';
+  if (row.timeCritical) return 'Its window is open and the runway is short — worth doing now.';
   if (typeof row.daysOut === 'number' && row.daysOut >= 0 && row.daysOut <= 7) return 'Due soon.';
   return 'Ready when you are.';
 }
@@ -1819,12 +1893,30 @@ export function playbookHostDifficulty(event) {
 export function playbookDecisionBoard(event, asOf) {
   // heartAtRisk/hostDifficulty added to the empty shape too so the board's return
   // is one consistent shape whether or not there's an event (2026-07-15).
-  const empty = { open: [], locked: [], headcount: null, hostDifficulty: null, heartAtRisk: false };
+  const empty = { open: [], locked: [], deferred: [], headcount: null, hostDifficulty: null, heartAtRisk: false };
   if (!event) return empty;
 
   const dte = daysToEvent(event.date, asOf); // null when no date
   const open = [];
   const locked = [];
+
+  // ── Wave-2b · HORIZON AWARENESS (wire workflowCompression into the board) ──────
+  // The board's order/partition must change with the runway, not stay byte-identical at
+  // 3, 30, and 90 days out. Compute the event's compression level ONCE (standard → tight →
+  // compressed → rush; null when there's no date or it's past). It gates two behaviours,
+  // applied after every row is scored, below:
+  //   • LONG runway (standard/tight): a READY decision whose natural window is still far
+  //     out (daysOut > DEFER_WINDOW_DAYS) is not active yet — it moves to a `deferred`
+  //     ("comes up closer to the date") bucket instead of nagging as an open row.
+  //   • SHORT runway (compressed/rush): a READY decision whose window is open/imminent
+  //     (daysOut <= TIME_CRITICAL_DAYS) escalates — marked timeCritical and bumped.
+  // Overdue and waiting rows are NEVER deferred (they always lead / stay blocked).
+  const compressionLevel = (dte !== null && dte >= 0) ? getCompressionLevel(dte, event.type) : null;
+  const defersFarWindows = compressionLevel === 'standard' || compressionLevel === 'tight';
+  const shortRunway = compressionLevel === 'compressed' || compressionLevel === 'rush';
+  const DEFER_WINDOW_DAYS = 30;   // a window opening > 30d out on a long-runway event waits
+  const TIME_CRITICAL_DAYS = 7;   // an open/imminent window on a short-runway event escalates
+  const TIME_CRITICAL_BUMP = 1.5; // bounded — never crosses a status tier (gap is 100)
 
   const dateSet = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
   const hasVenue = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
@@ -1953,9 +2045,24 @@ export function playbookDecisionBoard(event, asOf) {
       : null;
 
     const priority = decisionPriorityFields(d);
+    // Wave-2b: when the source decision authors no `weight`, derive an importance signal
+    // from its own structure (blocks / dependsOn / costFactors / id+label text). Authored
+    // weight always wins — the 2 flagships keep `importanceBasis:'authored'` and are
+    // untouched. Attached to every decision row so decisionImportance() and the rankReason
+    // can read a HONEST derived value instead of collapsing to a flat tie.
+    let importanceBasis = 'authored';
+    let _derivedWeight = null;
+    let _derivedReason = null;
+    if (d.weight == null) {
+      const dv = derivedImportanceOf(d, decisions);
+      importanceBasis = 'derived';
+      _derivedWeight = dv.score;
+      _derivedReason = dv.reason;
+    }
+    const derived = { importanceBasis, _derivedWeight, _derivedReason };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, route });
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 
@@ -1997,7 +2104,7 @@ export function playbookDecisionBoard(event, asOf) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, route });
+    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is
@@ -2011,17 +2118,39 @@ export function playbookDecisionBoard(event, asOf) {
   // buried a ready tribute below any overdue admin row and never aged anything.)
   for (const r of open) {
     r.priorityScore = decisionPriorityScore(r);
+    // Wave-2b SHORT-runway escalation: a READY decision whose window is open/imminent on a
+    // compressed/rush event is time-critical — mark it and bump it (bounded; never crosses a
+    // status tier). Overdue/waiting rows are excluded (they already lead / stay blocked).
+    if (shortRunway && r.status === 'ready' && typeof r.daysOut === 'number' && r.daysOut <= TIME_CRITICAL_DAYS) {
+      r.timeCritical = true;
+      r.priorityScore += TIME_CRITICAL_BUMP;
+    }
+    // Wave-2b LONG-runway deferral: a READY decision whose window is still far out on a
+    // standard/tight event isn't active yet — mark it `horizon:'later'` so it partitions
+    // into the `deferred` bucket below. Set BEFORE rankReason so the "comes up closer"
+    // reason fires. Never defers overdue/waiting, foundation facts (daysOut null), or
+    // rows on a short-runway event.
+    if (defersFarWindows && r.status === 'ready' && typeof r.daysOut === 'number' && r.daysOut > DEFER_WINDOW_DAYS) {
+      r.horizon = 'later';
+    }
     r.rankReason = decisionRankReason(r);
   }
-  open.sort((a, b) => (b.priorityScore - a.priorityScore)
-    || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut)));
+  // HORIZON PARTITION — deferred ("comes up closer") vs the active board. This is the
+  // genuine order/partition change vs Wave-2a: at 90 days out a T-5d store-run lands in
+  // `deferred`; at 3 days out the same decision is overdue and leads `open`.
+  const deferred = open.filter((r) => r.horizon === 'later');
+  const active = open.filter((r) => r.horizon !== 'later');
+  const byScore = (a, b) => (b.priorityScore - a.priorityScore)
+    || ((a.daysOut == null ? 9999 : a.daysOut) - (b.daysOut == null ? 9999 : b.daysOut));
+  active.sort(byScore);
+  deferred.sort(byScore);
 
-  // heartAtRisk — any OPEN (unsettled) decision that delivers a heart moment. A shell
-  // can use this to protect the moment before the host defaults it away. Board-scoped
-  // by design; CommandCenter's heart nudge is a deliberate follow-up (not wired here).
-  const heartAtRisk = open.some((r) => r.deliversHeartMoment === true);
+  // heartAtRisk — any UNSETTLED decision that delivers a heart moment, whether it's active
+  // or merely deferred (a shell protecting the moment cares either way). Board-scoped by
+  // design; CommandCenter's heart nudge is a deliberate follow-up (not wired here).
+  const heartAtRisk = active.concat(deferred).some((r) => r.deliversHeartMoment === true);
 
-  return { open, locked, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk };
+  return { open: active, locked, deferred, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk };
 }
 
 // Options accessor for a single menu/sourcing decision, so the Decisions board can

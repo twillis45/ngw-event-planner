@@ -13,7 +13,8 @@ describe('playbookDecisionBoard — shape + safety', () => {
   test('null/empty event → empty board', () => {
     // 2026-07-15: the empty shape now also carries the priority-tier board fields
     // (hostDifficulty, heartAtRisk) so the return is one consistent shape.
-    expect(playbookDecisionBoard(null)).toEqual({ open: [], locked: [], headcount: null, hostDifficulty: null, heartAtRisk: false });
+    // Wave-2b: `deferred` (the horizon "comes up closer" bucket) joins the shape too.
+    expect(playbookDecisionBoard(null)).toEqual({ open: [], locked: [], deferred: [], headcount: null, hostDifficulty: null, heartAtRisk: false });
     const b = playbookDecisionBoard({ id: 'e', type: 'Unknown Type' });
     expect(Array.isArray(b.open)).toBe(true);
     expect(Array.isArray(b.locked)).toBe(true);

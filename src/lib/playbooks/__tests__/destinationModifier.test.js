@@ -6,19 +6,23 @@
 // research board for the full audit).
 import { playbookDecisionBoard, playbookChecklist, playbookDecisionOptions, eventHasKids } from '../index';
 
+// Wave-2b note: this suite tests destination-decision MEMBERSHIP/routing, not the
+// active/deferred partition. `future` is 300 days out — a long-runway "standard" event,
+// so horizon-awareness now parks these far-future windows in `board.deferred`. Membership
+// checks therefore read open ∪ locked ∪ deferred (the decision still exists on the board).
 const future = (() => { const d = new Date('2026-01-01T00:00:00'); d.setDate(d.getDate() + 300); return d.toISOString().slice(0, 10); })();
 const ev = (extra) => ({ id: 'e', type: 'Birthday', date: future, guestCount: 30, ...extra });
 
 describe('destination decisions are purely additive, gated on isDestination', () => {
   test('no isDestination flag → no destination decisions appear, byte-identical to before', () => {
     const b = playbookDecisionBoard(ev(), '2026-01-01');
-    const ids = [...b.open, ...b.locked].map((r) => r.id);
+    const ids = [...b.open, ...b.locked, ...b.deferred].map((r) => r.id);
     expect(ids).not.toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare']));
   });
 
   test('isDestination: true adds all 5 destination decisions on top of Birthday\'s own', () => {
     const b = playbookDecisionBoard(ev({ isDestination: true }), '2026-01-01');
-    const ids = [...b.open, ...b.locked].map((r) => r.id);
+    const ids = [...b.open, ...b.locked, ...b.deferred].map((r) => r.id);
     expect(ids).toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare', 'dest_health']));
     // Birthday's own decisions are still present — additive, not replaced.
     expect(ids.some((id) => id === 'food_style')).toBe(true);
@@ -26,7 +30,7 @@ describe('destination decisions are purely additive, gated on isDestination', ()
 
   test('destination decisions work identically on any base type — not hardcoded to one', () => {
     const b = playbookDecisionBoard({ id: 'e', type: 'Anniversary', date: future, guestCount: 20, isDestination: true }, '2026-01-01');
-    const ids = [...b.open, ...b.locked].map((r) => r.id);
+    const ids = [...b.open, ...b.locked, ...b.deferred].map((r) => r.id);
     expect(ids).toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare']));
   });
 
@@ -39,7 +43,7 @@ describe('destination decisions are purely additive, gated on isDestination', ()
 
   test('the transport decision routes to Vendors like other vendor-blocked decisions', () => {
     const b = playbookDecisionBoard(ev({ isDestination: true }), '2026-01-01');
-    const row = [...b.open, ...b.locked].find((r) => r.id === 'dest_transport');
+    const row = [...b.open, ...b.locked, ...b.deferred].find((r) => r.id === 'dest_transport');
     expect(row.route.tab).toBe('Vendors');
   });
 });
@@ -82,7 +86,7 @@ describe('destination tasks are purely additive, gated on isDestination', () => 
 describe('the health question asks about heart/lung conditions, never age', () => {
   test('dest_health is on the board and its wording is health-based, with plain answers', () => {
     const b = playbookDecisionBoard(ev({ isDestination: true }), '2026-01-01');
-    expect([...b.open, ...b.locked].some((r) => r.id === 'dest_health')).toBe(true);
+    expect([...b.open, ...b.locked, ...b.deferred].some((r) => r.id === 'dest_health')).toBe(true);
     const opts = playbookDecisionOptions(ev({ isDestination: true }), 'dest_health');
     expect(opts.label).toBe('Any guests with heart or lung conditions?');
     expect(opts.label).not.toMatch(/age|elder|older|senior/i);
