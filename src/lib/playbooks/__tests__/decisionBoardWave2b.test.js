@@ -44,13 +44,15 @@ describe('Wave-2b horizon — same type at 3d vs 90d differs in partition + orde
     );
   });
 
-  test('LONG runway (90d, tight): windows that have not opened defer to `deferred`', () => {
+  test('LONG runway (90d): perishable/low-stakes windows defer; the HIGH-stakes allergy call stays visible', () => {
     const deferredIds = crab90.deferred.map((r) => r.id);
-    // Every crab decision's window (≤ T-10d) is still far out at 90 days → all deferred.
-    expect(deferredIds).toEqual(expect.arrayContaining(['dietary', 'steam_vs_order', 'crab_size', 'where_buy', 'sides', 'drinks']));
-    // …and therefore NOT surfaced as active/urgent open rows (the required behaviour).
-    expect(crab90.open.map((r) => r.id)).not.toContain('dietary');
-    expect(crab90.open.map((r) => r.id)).not.toContain('steam_vs_order');
+    // The med/low perishable logistics (steam/size/where/sides/drinks) park at their far
+    // T-7/T-10 windows — a planner doesn't lock crab size 90 days out (prices move with the catch).
+    expect(deferredIds).toEqual(expect.arrayContaining(['steam_vs_order', 'crab_size', 'where_buy', 'sides', 'drinks']));
+    // Wave-2b.1 ANCHOR: `dietary` is HIGH-weight (an ER-risk allergy gate) — the one call a
+    // planner surfaces EARLY (put it in the invite), so it stays ACTIVE even far out, never parked.
+    expect(crab90.open.map((r) => r.id)).toContain('dietary');
+    expect(deferredIds).not.toContain('dietary');
     // Deferred rows are honestly labelled "comes up closer to the date".
     for (const r of crab90.deferred) {
       expect(r.horizon).toBe('later');
@@ -58,18 +60,21 @@ describe('Wave-2b horizon — same type at 3d vs 90d differs in partition + orde
     }
   });
 
-  test('SHORT-runway escalation marks a ready, imminent decision time-critical; long-runway does not', () => {
+  test('SHORT-runway escalation marks a ready imminent decision time-critical; a HEART moment never parks (Wave-2b.1)', () => {
     // Retirement @ 15 days out (rush): the ready tribute (T-14d, daysOut≈1) escalates.
     const retShort = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: dateNDaysOut(15), guests: roster(30, 4, 6) }, ASOF);
     const tributeShort = retShort.open.find((r) => r.id === 'tribute');
     expect(tributeShort.status).toBe('ready');
     expect(tributeShort.timeCritical).toBe(true);
 
-    // Retirement @ 90 days out (standard): the SAME tribute window is far out → deferred,
-    // never time-critical. Proof the horizon moves authored playbooks too (partition change).
+    // Retirement @ 90 days out (standard): the tribute is a HEART moment, so Wave-2b.1 keeps it
+    // ACTIVE — never buried, matching the Wave-2a float (parking the moment your guests will
+    // remember would contradict it). The horizon partition STILL moves authored playbooks: the
+    // low-stakes far-window rows (bar/help/music) defer while the tribute holds.
     const retLong = playbookDecisionBoard({ id: 'e', type: 'Retirement Party', date: dateNDaysOut(90), guests: roster(30, 4, 6) }, ASOF);
-    expect(retLong.deferred.find((r) => r.id === 'tribute')).toBeTruthy();
-    expect(retLong.open.find((r) => r.id === 'tribute')).toBeUndefined();
+    expect(retLong.open.find((r) => r.id === 'tribute')).toBeTruthy();
+    expect(retLong.deferred.find((r) => r.id === 'tribute')).toBeUndefined();
+    expect(retLong.deferred.length).toBeGreaterThan(0);
   });
 });
 

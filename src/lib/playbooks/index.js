@@ -2130,7 +2130,25 @@ export function playbookDecisionBoard(event, asOf) {
     // into the `deferred` bucket below. Set BEFORE rankReason so the "comes up closer"
     // reason fires. Never defers overdue/waiting, foundation facts (daysOut null), or
     // rows on a short-runway event.
-    if (defersFarWindows && r.status === 'ready' && typeof r.daysOut === 'number' && r.daysOut > DEFER_WINDOW_DAYS) {
+    //
+    // Wave-2b.1 ANCHOR EXEMPTION: never defer a decision the engine itself already
+    // treats as top-tier — the blunt >30d cliff otherwise buries rows a planner keeps
+    // visible from the start. A row anchors (stays ACTIVE even far out) if it is:
+    //   • authored HIGH weight (venue-class — the highest-stakes call); or
+    //   • a heart moment (never buried — matches the Wave-2a float, which floats hearts
+    //     UP; parking one far out would contradict that); or
+    //   • an allergy/safety call (DERIVED 'diet' — a planner asks these early).
+    // Deliberately NARROW: NOT keyed on reversibility (hard-to-undo ≠ decide-early — a
+    // crab order is costly yet placed LATE as prices move with the catch) nor on the
+    // derived 'gates' signal (which fires on any `blocks:['food']` CATEGORY tag, not a
+    // real downstream-decision dependency — anchoring on it would park nothing). So
+    // authored med/low perishable calls (steam, size, where, sides, drinks) still park
+    // correctly at their real T-7/T-10 windows; only genuine top-tier rows stay pinned.
+    const isAnchor = WEIGHT_SCORE[r.weight] >= 3
+      || r.deliversHeartMoment === true
+      || r._derivedReason === 'diet';
+    if (defersFarWindows && r.status === 'ready' && typeof r.daysOut === 'number'
+        && r.daysOut > DEFER_WINDOW_DAYS && !isAnchor) {
       r.horizon = 'later';
     }
     r.rankReason = decisionRankReason(r);
