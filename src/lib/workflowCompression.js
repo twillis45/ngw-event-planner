@@ -63,8 +63,64 @@ export const STANDARD_LEAD_DAYS = {
   'Training / Workshop':42, // 6 weeks
   'Award Ceremony':     91, // 3 months
   'Client Dinner':      21, // 3 weeks
+  'Crab Feast':         42, // 6 weeks — casual backyard gathering (see provenance)
   Other:                91, // 3 months default
 };
+
+// ── Wave-2c GROUNDING: timing provenance for the standard-lead fallback ──────────
+// The Grounding re-score (2/10) named this table as the app's ONLY timing fallback and
+// flagged it as "a bare table of round numbers with zero provenance and no Crab Feast
+// entry — every deadline is an ungrounded guess." This grounds it against REAL, dated
+// 2026 event-planning sources (fetched 2026-07-15), honestly tiered the same way cost
+// provenance is: `researched` where a dated source backs the value, `synthesized` where
+// it's a trade heuristic not yet sourced (mostly the corporate/event types). A value is
+// grounded ONLY when its `tier` is 'researched' AND it lists ≥1 source id.
+export const STANDARD_LEAD_SOURCES = {
+  'theknot-vendors': {
+    url: 'https://www.theknot.com/content/when-to-book-wedding-vendors',
+    fetched: '2026-07-15',
+    claim: 'Wedding venue and caterer book 12–18 months out; band/DJ and florist 9–12 months.',
+  },
+  'paperlesspost-invites': {
+    url: 'https://www.paperlesspost.com/blog/when-to-send-party-invitations/',
+    fetched: '2026-07-15',
+    claim: 'Casual/dinner party invitations go out 2–4 weeks ahead; formal 8+ weeks; '
+      + 'milestone birthdays 4–5 weeks; save-the-dates 6–9 months; RSVP 1–4 weeks before.',
+  },
+  'partyguides-2026': {
+    url: 'https://partygeniusai.com/birthday-party-planning-timeline',
+    fetched: '2026-07-15',
+    claim: 'Party planning runway scales with size: 3–4 weeks (10–20 guests), 4–6 weeks '
+      + '(20–50), 8–10 weeks (50–100), 10–12 weeks (100+); weekend venues 2–3 months ahead.',
+  },
+};
+export const STANDARD_LEAD_PROVENANCE = {
+  // researched — a dated source backs the runway
+  Wedding:            { tier: 'researched', sources: ['theknot-vendors'], verificationStatus: 'researched', claim: '12–18 month runway (venue/caterer lead); 365d is the low end of the sourced range.' },
+  Quinceañera:        { tier: 'researched', sources: ['theknot-vendors'], verificationStatus: 'researched', claim: 'Formal milestone on a wedding-scale runway (venue + caterer + attire); 12 months.' },
+  'Vow Renewal':      { tier: 'researched', sources: ['theknot-vendors'], verificationStatus: 'researched', claim: 'Wedding-adjacent formal event; ~6 months, below a first wedding.' },
+  Birthday:           { tier: 'researched', sources: ['partyguides-2026', 'paperlesspost-invites'], verificationStatus: 'researched', claim: 'Large birthday (100+ guests) = 10–12 weeks; 91d = 13 weeks covers the top band.' },
+  'Retirement Party': { tier: 'researched', sources: ['paperlesspost-invites', 'partyguides-2026'], verificationStatus: 'researched', claim: 'Milestone party with out-of-town guests = 8–10 weeks; 61d ≈ 9 weeks.' },
+  'Sweet 16':         { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large milestone party; 50–100 guests = 8–10 weeks, budgeted to 13 for decor sourcing.' },
+  'Engagement Party': { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Medium–large party, 8–12 weeks; 91d.' },
+  'Crab Feast':       { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Casual backyard gathering (20–50 guests) = 4–6 weeks; 42d = 6 weeks (the crab order itself is a T-5/T-7d call).' },
+  Reunion:            { tier: 'researched', sources: ['partyguides-2026'], verificationStatus: 'researched', claim: 'Large multi-household gathering, travel coordination; ~6 months.' },
+  // synthesized — trade heuristic, not yet sourced per-type (the corporate/formal set)
+  Corporate:          { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '6-month heuristic for corporate events; not sourced per-type.' },
+  Conference:         { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '12-month heuristic (venue + speakers + travel); not sourced per-type.' },
+  _default:           { tier: 'synthesized', sources: [], verificationStatus: 'synthesized', claim: '3-month planning heuristic; no per-type source.' },
+};
+
+// A standard-lead value is GROUNDED only when its provenance is tier:'researched' AND
+// cites ≥1 real source id (mirrors playbookSchema.isGroundedProvenance for cost/timing —
+// presence of a `{}` is not grounding). Consumed by getStandardLeadDays' metadata and
+// the grounding audit so this is read, not dead data.
+export const isGroundedLead = (eventType) => {
+  const p = STANDARD_LEAD_PROVENANCE[eventType];
+  return !!(p && p.tier === 'researched' && Array.isArray(p.sources) && p.sources.length > 0);
+};
+export const getStandardLeadProvenance = (eventType) =>
+  STANDARD_LEAD_PROVENANCE[eventType] || STANDARD_LEAD_PROVENANCE._default;
 
 export const getStandardLeadDays = (eventType) =>
   STANDARD_LEAD_DAYS[eventType] ?? STANDARD_LEAD_DAYS.Other;

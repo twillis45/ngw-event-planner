@@ -60,7 +60,7 @@ import { buildCrabPlan } from '../crabPlan';
 import { isVendorBooked } from '../workstreams';
 import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
-import { getCompressionLevel } from '../workflowCompression';
+import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2168,7 +2168,15 @@ export function playbookDecisionBoard(event, asOf) {
   // design; CommandCenter's heart nudge is a deliberate follow-up (not wired here).
   const heartAtRisk = active.concat(deferred).some((r) => r.deliversHeartMoment === true);
 
-  return { open: active, locked, deferred, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk };
+  // Wave-2c GROUNDING: the horizon partition above is derived from the event's
+  // compression level, which reads STANDARD_LEAD_DAYS. Surface the runway's provenance
+  // so the timing behind the "comes up closer" deferral is sourced, not a bare guess —
+  // a UI can show WHY (and whether it's researched or a heuristic), and the grounding
+  // audit can count it. `leadGrounded` is the honest tier flag for this event type.
+  const leadProvenance = getStandardLeadProvenance(event.type);
+  const leadGrounded = isGroundedLead(event.type);
+
+  return { open: active, locked, deferred, headcount, hostDifficulty: playbookHostDifficulty(event), heartAtRisk, leadProvenance, leadGrounded };
 }
 
 // Options accessor for a single menu/sourcing decision, so the Decisions board can
