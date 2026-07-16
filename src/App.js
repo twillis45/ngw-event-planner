@@ -42921,6 +42921,10 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       return ra !== rb ? ra - rb : a.i - b.i;
     }).map((x) => x.r)
     : openRaw;
+  // Wave-2m.1 ADAPTIVITY — the rendered board itself is now fitted to the host: a first-timer
+  // sees a SHORTER starting set (focusCount 3) with the rest folded under "+N more"; a seasoned
+  // host sees the full list (focusCount = all). Neutral/no-input keeps the prior 4-row fold.
+  const foldN = hostAdaptation ? Math.max(1, hostAdaptation.focusCount) : 4;
   const togglePin = (id) => {
     if (!canReorder || !id) return;
     const next = pins.includes(id) ? pins.filter((p) => p !== id) : [id, ...pins];
@@ -43147,7 +43151,7 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       )}
       {hostAdaptation && hostAdaptation.reassure && (
         <div style={{ fontSize: T.secondary, color: C.muted, lineHeight: 1.5, margin: '0 2px 14px' }}>
-          New to this? We&rsquo;ll take the calls a few at a time — start with the {hostAdaptation.focusCount} at the top, and where there&rsquo;s a safe default we&rsquo;ve already filled it in. Change anything, anytime.
+          New to this? We&rsquo;ll take the calls a few at a time — just the {Math.min(hostAdaptation.focusCount, openRaw.length)} at the top for now; the rest are folded below and wait for you. Each one has a recommended pick you can accept or change.
         </div>
       )}
       {/* Count-lock command card — only when replies are genuinely outstanding (honest
@@ -43163,12 +43167,13 @@ function HostDecisionsPanel({ event, isMobile = false, onNav, onLockCount, onSet
       {/* Calm cap: the list is sorted urgent-first (overdue → ready → waiting), so the few
           that matter lead; the rest fold into a quiet "+N more" so the panel never reads as
           a long backlog (Ruthless Host Lens — a few things, not a worklist). */}
-      {open.length > 0 && (<>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, 4)).map(openRow)}{open.length > 4 && (
+      {open.length > 0 && (<>{sectionLabel('Still open')}{(showAllOpen ? open : open.slice(0, foldN)).map(openRow)}{open.length > foldN && (
         // The fold now EXPANDS (task 2): every decision's rank reason must be
-        // reachable, never permanently buried below the "+N more" line.
+        // reachable, never permanently buried below the "+N more" line. The fold
+        // count `foldN` is host-adaptive (Wave-2m.1): fewer for a first-timer.
         <button type="button" onClick={() => setShowAllOpen((v) => !v)}
           style={{ background: 'none', border: 'none', padding: '9px 2px 2px', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left', fontSize: T.secondary, fontWeight: FW.semibold, color: C.muted }}>
-          {showAllOpen ? 'Show fewer' : `+${open.length - 4} more to settle, in their own time`}
+          {showAllOpen ? 'Show fewer' : `+${open.length - foldN} more to settle, in their own time`}
         </button>
       )}</>)}
       {/* Wave-2b horizon group — the decisions the engine parked ("comes up closer to the
