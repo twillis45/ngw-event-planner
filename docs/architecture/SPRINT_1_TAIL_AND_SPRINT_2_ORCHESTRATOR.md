@@ -32,13 +32,20 @@ The doctrine is "V2 is go-forward; legacy is a donor." Today legacy still receiv
 
 **The migrate/drop audit ran 2026-07-16** (diffed legacy `HostEventShell`/host router in `src/App.js` — 46,972 lines — against the V2 `sheet.kind` render switch in `HostShellV2.jsx:5968` — 28 sheets). Result: **14 host-facing legacy surfaces; 11 already have V2 parity; ONE real gap; 2 to verify; 9 planner-only surfaces drop with legacy.** The sunset is nearly safe — nothing is lost *except one host file hub.*
 
-**MIGRATE (the one real gap):**
-- [ ] **`EventDocumentsTab` — event-wide document hub** (`App.js:40746/40769`): host-owned files — floor plan, menu, mood board, seating chart, final packet. **V2 only has vendor-scoped documents; host-owned files have NO V2 home.** Decide: migrate a lightweight host "Files" surface, or explicitly rule these file kinds out of the host product before sunset. This is the only item where "nothing is lost" is not yet true.
+**MIGRATE decision — RESOLVED 2026-07-16 → mostly DROP, one tiny deferred affordance.**
+A content read of `EventDocumentsTab` (`App.js:40746`) revised the tentative "migrate the hub" verdict. The tab is **substantially a planner surface** — its own language is pro/planner throughout ("Needs client review", DocuSign envelopes, contract-signature tracking, "the planner most likely wants to act on"). Its six kinds resolve:
+- **contract / mood_board** → planner/vendor artifacts; contracts are already **vendor-scoped in V2's vendor sheet**. DROP the planner doc-management (client-review/DocuSign) per the "host isn't a pro" doctrine ([[host-appropriate-vendor-ui]]).
+- **menu / seating_chart / final_packet** → V2 already has the **host-facing equivalents, generated not uploaded**: food plan = menu, seating sheet = seating chart, the day-of run-of-show = final packet. No migration owed — a host builds these, doesn't file them.
+- **floor_plan** → the one genuinely host-owned *file* a host might have been emailed. **Deferred, not built speculatively:** if a host actually asks to stash a floor-plan file, add a small "attach a link/file" affordance on the V2 `venue`/`space` sheet — a one-field add, not a document hub. Do not build ahead of the request (zero-speculation doctrine).
 
-**VERIFY before deleting (NEEDS-REVIEW — likely folded, not line-verified):**
-- [ ] `VendorArrivalView` day-of arrivals tracker (`App.js:38129`) — confirm the V2 day stage reproduces any host-facing arrival controls.
-- [ ] `RSVPFormView` host RSVP preview/editor (`App.js:29992`) — confirm V2 `qr`→RSVP + `InviteV2` fully covers it.
-- [ ] Field-level parity diff on **Event Details** and **Vendors** tabs before physically deleting (spot-checked as parity, not field-diffed).
+  **Net: `EventDocumentsTab` → DROP with legacy.** Nothing host-facing is lost; the only residual is an optional single-field venue attachment, deferred until requested. **The legacy freeze is no longer blocked.**
+
+**VERIFY before deleting — both RESOLVED 2026-07-16 → covered, safe to drop:**
+- [x] `VendorArrivalView` (`App.js:38129`) — legacy = a standalone list of confirmed vendors with an `arrivalTime`. V2 folds arrival into **"The Day" stage vendor cues** (`arrivalAsk` @ `HostShellV2.jsx:66`, `arrivalClusters` from `travelPlan`, day-stage on-site cell + `tel:` link per graduation spec `81350b10`). **Covered — DROP safe.**
+- [x] `RSVPFormView` (`App.js:29992`) — legacy = the guest RSVP form (+ host preview). In V2 that is **`InviteV2.jsx`** (the dedicated public invite/RSVP app, `?rsvp=` routed in `main.jsx`) + the host-side "Preview the RSVP" button. **Covered — DROP safe.**
+- [ ] Field-level parity diff on **Event Details** and **Vendors** tabs remains advisable as a mechanical pre-delete check (spot-checked as parity, not field-diffed) — an execution step, not a blocker.
+
+> **A1 decision status: COMPLETE.** All 14 legacy host surfaces are V2-parity or safely droppable; nothing host-facing is lost. Remaining A1 work is purely mechanical: freeze `src/App.js` (header + CI note), the pre-delete field diff, and the dated CRA-removal note.
 
 **DROP with legacy (9 planner-only surfaces, not host gaps):** `StudioCommandPanel`, `MainDashboard` (planner CRM), Communication (`EventCommTab` — host shell has no comms branch by design), Client Intake, planner Decisions/Seating tabs, `CrewTab`/`CrewManifest`, `ProfileModal`/`MembersModal`, `GlobalCompose`. None belong in `HostShellV2`.
 
@@ -49,13 +56,15 @@ The doctrine is "V2 is go-forward; legacy is a donor." Today legacy still receiv
 
 **Acceptance:** the Documents gap resolved; the 2 review items verified; legacy marked frozen; no host-facing feature lives only in legacy.
 
-### A2 · One general undo pattern  🟠 partial
-Today only input guardrails exist (pickers ≤ guests, date-corruption). Legacy's "Keep 75" revert is the only true undo anywhere.
+### A2 · One general undo pattern  ✅ ALREADY BUILT — universal (stale claim corrected 2026-07-16)
+The plan carried A2 as "partial — only input guardrails, no general undo." A code read found that **stale**: the undo is already implemented, and more thoroughly than the plan assumed — not per-surface, but built into the **single write path** (build-map #8).
 
-- [ ] Generalize the revert pattern into one shared primitive (a last-value stash + "Undo" affordance) reusable by any host mutation via `patchEvent`.
-- [ ] Wire it to the highest-regret mutations first: headcount, budget total, date change, vendor cost.
+- **`patchEvent(obj, msg, opts)` @ `HostShellV2.jsx:2971`, undo at :3009** — every host edit funnels through this one function. On any write with a `msg` (and not `{noUndo:true}`), it snapshots exactly the keys the write touches (`undoPrev`) and surfaces a green **"Undo"** toast that restores them via the same path (`patchEvent(undoPrev, 'Undone.', {noUndo:true})`). `noUndo` opts out writes that shouldn't reverse — e.g. a real guest reply landing (`announceReplies` :3027).
+- **All four highest-regret surfaces covered:** headcount (`:3226/:3231`, generic), date (`confirmDate :3261`, generic), budget total (`setB :3484`, bespoke toast undo), vendor cost (`:1745`, bespoke toast undo). **And beyond the four** — undo is universal for any `patchEvent`-with-message edit, from one consistent control.
 
-**Acceptance:** a host can undo the last consequential change on ≥4 surfaces from one consistent control; live-verified.
+**Acceptance ("undo the last consequential change on ≥4 surfaces from one consistent control"):** met and **LIVE-VERIFIED 2026-07-16** on the local preview (5199, Wanda dual event). A real RSVP mutation via the generic path produced the green **Undo** toast; clicking the real Undo button reverted the exact prior value (`before "Yes" → mid "No" → Undo → after "Yes"`, reverted=true). Demo patch cleared after. A2 is closed.
+
+**Optional consolidation (not needed):** budget + vendor cost use a *bespoke* toast undo (they pass no `msg` to `patchEvent`, then toast manually) — a second implementation of the same idea, kept only for custom restore copy. They could drop it and pass a `msg` to reuse the generic path; low value, cosmetic.
 
 ---
 
