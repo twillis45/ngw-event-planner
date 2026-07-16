@@ -72,12 +72,8 @@ The plan carried A2 as "partial — only input guardrails, no general undo." A c
 
 **Goal:** one genuinely grounded LLM surface where the model *calls the real engines as tools* and narrates only their returned numbers — the hard rule being **every figure in a reply comes from a tool call, never the model's head.** Ship exactly one surface ("ask the plan"), proven, before any fan-out.
 
-### D1 · DECISION — Claude vs the existing OpenAI proxy  ⚠️ decide before coding
-The proxy is OpenAI; the plan + brand want Claude tool-calling. Options:
-- **(Recommended)** Add a **Claude tool-calling path** alongside the existing feature proxy (don't rip out the working OpenAI features). New route `/api/ai/orchestrate`, Claude Sonnet for the host conversation, Haiku for parse/classify.
-- Retrofit tool-calling onto OpenAI. (Works, but off-brand and re-solves what Claude tool-use gives natively.)
-
-**Owner call needed.** Everything below assumes the recommended Claude path.
+### D1 · DECISION — Claude vs the existing OpenAI proxy  ✅ DECIDED 2026-07-16 → Option A
+Owner chose **Claude tool-calling alongside the existing OpenAI proxy** (full memo: [D1_ORCHESTRATOR_PROVIDER_DECISION.md](D1_ORCHESTRATOR_PROVIDER_DECISION.md)). New route `/api/ai/orchestrate` on Claude (Sonnet for the host conversation, Haiku for parse/classify); the 8 working OpenAI feature routes stay untouched (zero regression). No SDK migration — the backend calls providers over raw HTTP, so a second provider is one env key + one call. Soft flag: if the Sprint-61 OpenAI switch turns out to have had a hard cost/reliability reason, revisit before scaling. Everything below proceeds on this path.
 
 ### B1 · Wrap the pure `lib/` engines as server-callable tools
 The engines are already pure/deterministic (2264 tests) — the source of every number. Expose a **thin, typed tool layer** over the real functions (no new logic):

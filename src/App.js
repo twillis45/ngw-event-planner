@@ -1,3 +1,19 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// FROZEN — legacy CRA host shell. DONOR-ONLY. (A1 freeze, 2026-07-16)
+//
+// The go-forward host shell is hostv2/src/HostShellV2.jsx (Vite). This ~47k-line
+// CRA shell is being sunset. Do NOT add new host-facing features here — build them
+// in V2. Freezing the SHELL costs nothing in safety: both shells share the pure
+// lib/ engines, so a real fix still reaches production through the shared code.
+//
+// Allowed here: security / data-loss fixes; shared lib/ engine work (reaches both).
+// Not here: new host UI, feature ports away from V2, cosmetic churn.
+//
+// A1 audit (docs/architecture/SPRINT_1_TAIL_AND_SPRINT_2_ORCHESTRATOR.md): all 14
+// legacy host surfaces are V2-parity or safely droppable. Physical deletion of the
+// CRA build is scheduled POST-SPRINT-2, gated on the Event Details / Vendors
+// field-diff. Until then this stays deployed as a fallback.
+// ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useRef, createContext, useContext, useMemo, Component, Fragment, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { commApi, isCommApiConfigured, canAuthenticatePlanner, getCapabilities, isEmailConfigured } from './lib/commApi';
