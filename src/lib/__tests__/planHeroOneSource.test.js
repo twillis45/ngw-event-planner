@@ -66,6 +66,26 @@ describe('one-source hero — the hero agrees with the board and the readiness b
       expect(String(na.consequence).toLowerCase()).not.toContain('only thing in your way');
     }
   });
+
+  // Host bug (2026-07-16): setting the headcount via "By headcount" (writes guestCount/
+  // guestEstimate, no roster) turned OFF the Tier-0 "Add your guest list." hero but left the
+  // Tier-7.5 "Start here — add who's coming." empty-event card firing — isEmptyEvent only
+  // checked event.guests[], so a headcount host bounced to a card that never cleared. A set
+  // count is a guest signal, so NEITHER guest-add hero should fire once a count exists.
+  test('a set HEADCOUNT (no roster) fires no "add guests / add who\'s coming" empty-event hero', () => {
+    const base = { id: 'eh-1', name: 'Party', type: 'birthday', date: iso(45), guests: [], vendors: [], timeline: [], budget: [] };
+    // guestEstimate set (By headcount), roster still empty — the exact buggy state
+    const withEstimate = selectEventNextAction({ ...base, guestMode: 'count', guestEstimate: 30 });
+    expect(`${withEstimate.title}`.toLowerCase()).not.toContain('add who');
+    expect(`${withEstimate.title}`.toLowerCase()).not.toContain('add your guest list');
+    // a confirmed guestCount is equally a signal
+    const withCount = selectEventNextAction({ ...base, guestMode: 'count', guestCount: 30 });
+    expect(`${withCount.title}`.toLowerCase()).not.toContain('add who');
+    expect(`${withCount.title}`.toLowerCase()).not.toContain('add your guest list');
+    // sanity: a truly empty event (no signal at all) STILL leads with a guest-add prompt
+    const empty = selectEventNextAction(base);
+    expect(`${empty.title}`.toLowerCase()).toMatch(/add who|add your guest/);
+  });
 });
 
 describe('planHeroCopy — BUD-1 grammar for the Plan tab', () => {

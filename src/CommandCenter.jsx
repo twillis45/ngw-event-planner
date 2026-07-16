@@ -1702,6 +1702,19 @@ export function eventPlan(event, ctx = null) {
   const _dte = event.date ? daysFrom(event.date) : null;
   const _dueFromLead = (leadDays) =>
     (Number.isFinite(leadDays) && _dte != null) ? _dte + Number(leadDays) : null;
+  // Phase-id → canonical AREA domain (hoisted: both the hero below and the phase splice use it).
+  const PHASE_TO_DOMAIN = {
+    datetime: 'date', date: 'date', location: 'venue', headcount: 'guests', food: 'food',
+    budget: 'budget', vendors: 'vendors', rain: 'rain', shopping: 'shopping',
+    crabs: 'food', payments: 'vendors', thankyous: 'guests', rentals: 'rentals',
+  };
+  // If the reactive hero shares a row-level route with a phaseProgress item, they are the
+  // SAME concern — captured here so topDomain (below) can adopt that concern's AREA domain
+  // rather than the coarse category map that assumes every 'readiness' hero is the budget step.
+  const _topFocus = top && top.primaryRoute && top.primaryRoute.focusField;
+  const _topPhaseMatch = _topFocus
+    ? ((phaseProgressForPlan && phaseProgressForPlan.items) || []).find((it) => it && it.route && it.route.focusField === _topFocus)
+    : null;
   const topAction = top && top.title ? {
     // WAVE-5 RANKING (2026-07-15): per-ITEM id, not per-category — snooze keys on
     // this, and a category key made "Confirm the caterer" inherit the DJ's snooze
@@ -1712,6 +1725,12 @@ export function eventPlan(event, ctx = null) {
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
+    // The ladder hero must carry primaryRoute too, not only `route` — every OTHER producer
+    // (phaseProgress, surfaceRegistry) sets both, and the shell + the row-level-route contract
+    // read primaryRoute. Without it, when the hero represents a phase concern (e.g. the rain
+    // backup) and dedup keeps the richer ladder row, that row's primaryRoute was undefined —
+    // dropping the row-level deep-link the phase item had.
+    primaryRoute: top.primaryRoute || null,
     // RE-AUDIT F1 (fresh-eyes, 2026-07-14): `level` was DROPPED here. The selector stamps
     // level:'critical' on overdue payments, decisions and COI — and this rebuild threw the
     // stamp away, so canSnooze() saw no 'critical' and rendered "not now" on "Send payment
@@ -1745,7 +1764,16 @@ export function eventPlan(event, ctx = null) {
   // isVendorConfirmed read — but 'vendor' ≠ 'vendors' so the dedup missed and one vendor got
   // two cards. Mapped.
   const CATEGORY_TO_DOMAIN = { start: 'guests', readiness: 'budget', vendor: 'vendors' };
-  const topDomain = topAction ? (CATEGORY_TO_DOMAIN[top.category] || top.category) : null;
+  // The coarse category map assumes every 'readiness' hero is the budget step — false when the
+  // readiness hero is a rain backup (or any other readiness concern). So for a 'readiness' hero
+  // that IS a phase concern (matched by row-level route), take that concern's AREA domain
+  // (rain/budget/…). Narrowed to 'readiness' ONLY: a food DECISION hero shares the food-plan
+  // route with the food SUMMARY but is not it, and must not adopt 'food' and dedupe the summary.
+  const topDomain = topAction
+    ? ((top.category === 'readiness' && _topPhaseMatch)
+        ? (PHASE_TO_DOMAIN[_topPhaseMatch.id] || _topPhaseMatch.id)
+        : (CATEGORY_TO_DOMAIN[top.category] || top.category))
+    : null;
   // WAVE-5 INTEGRATION (2026-07-15): the action carries the MAPPED domain, not the raw
   // category — 'vendor' (singular) is invisible to the shell's DOMAIN_LENS ('vendors'),
   // which filed "Confirm Fired Up BBQ." under Plan while every other vendor ask sat in
@@ -1797,11 +1825,7 @@ export function eventPlan(event, ctx = null) {
   // tile counts, so the two numbers are two views of one truth rather than two opinions.
   // Ordering is the phase engine's own `priority` — the reactive top action still leads,
   // because a vendor who hasn't confirmed outranks a domino by construction.
-  const PHASE_TO_DOMAIN = {
-    datetime: 'date', date: 'date', location: 'venue', headcount: 'guests', food: 'food',
-    budget: 'budget', vendors: 'vendors', rain: 'rain', shopping: 'shopping',
-    crabs: 'food', payments: 'vendors', thankyous: 'guests', rentals: 'rentals',
-  };
+  // (PHASE_TO_DOMAIN is hoisted above topAction so the hero can adopt a phase area domain.)
   // WAVE-6: read the registry ONCE, ahead of the phase splice — the record-level
   // dedup below needs to know which decision RECORDS the registry raises before the
   // phase ledger's summary item gets to claim them.
@@ -2744,9 +2768,15 @@ export function _selectEventNextActionInner(event) {
   // Tier 7.5 (Host Activation v1 · Phase 4): a brand-new event with nothing planned
   // yet gets a START HERE — never a dead "nothing urgent". The guest count is the
   // first domino (it drives the budget, the food, and the timeline).
+  // A set HEADCOUNT counts as a guest signal, not just a roster: a host who chooses
+  // "By headcount" writes guestCount/guestEstimate (no roster rows), so checking only
+  // event.guests[] left this "Start here — add who's coming" card stuck on screen after
+  // the count was set. Mirror _eventFoundationActions' hasGuestSignal so setting the count
+  // (any mode) clears the card and advances to the next domino.
   const isEmptyEvent = (event.timeline || []).length === 0
     && (event.vendors || []).filter(v => v && (v.name || '').trim()).length === 0
     && (event.guests || []).length === 0
+    && !(Number(event.guestCount) > 0) && !(Number(event.guestEstimate) > 0)
     && (event.budget || []).length === 0;
   if (isEmptyEvent) {
     return {
