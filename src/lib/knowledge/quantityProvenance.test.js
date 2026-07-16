@@ -18,7 +18,7 @@ describe('item-quantity provenance grounding', () => {
         }
       }
     }
-    expect(grounded).toBeGreaterThanOrEqual(28); // wave-2w grounded 31 (drink/ice + protein + sides)
+    expect(grounded).toBeGreaterThanOrEqual(35); // wave-2w 31 + wave-2x consistency sweep = 38
     expect(grounded).toBeLessThan(withProv); // honest — many remain a research backlog / are judgment
     expect(bySource['bar-provision-2026']).toBeGreaterThan(0);
     expect(bySource['webstaurant-protein-2026']).toBeGreaterThan(0);
