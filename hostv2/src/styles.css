@@ -905,12 +905,27 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* Welcome layout — vertically centered on any viewport (the old fixed
    118px top padding sat wrong on short/tall phones), one clear decision. */
 .content.welcome{display:flex; flex-direction:column; justify-content:center;
-  min-height:100%; padding-top:var(--sp-7); padding-bottom:56px}
+  min-height:100%; padding-top:var(--sp-7); padding-bottom:56px;
+  /* Dark Carbon atmosphere drawn from the boot splash — the welcome is where the
+     splash settles, so it inherits the same material: the carbon field, the steel
+     glow on the bead's resting spot (78% 62%, same coords as .splash), grain for
+     tooth, and a directional vignette. Fills the front door with depth instead of
+     a flat void, and makes splash → welcome one continuous surface. */
+  position:relative; isolation:isolate; background-color:#0d1014;
+  background-image:radial-gradient(50% 45% at 78% 62%, rgba(78,104,119,.12) 0%, transparent 72%);
+  background-repeat:no-repeat}
+.content.welcome::before{content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  opacity:.07; mix-blend-mode:overlay; filter:contrast(170%) brightness(1000%);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='nw'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23nw)'/%3E%3C/svg%3E")}
+.content.welcome::after{content:""; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background:linear-gradient(200deg, transparent 40%, rgba(0,0,0,.42) 100%),
+             radial-gradient(120% 100% at 46% 42%, transparent 46%, rgba(0,0,0,.36) 100%)}
 /* One centered, capped column — reads the same on a short phone, a tall phone,
    and the desktop mockup (viewport parity), instead of full-width left-hug.
    Center-aligned as a hero landing (was left-justified, which read unfinished). */
 .content.welcome section{width:100%; max-width:30rem; margin-inline:auto;
-  text-align:center; display:flex; flex-direction:column; align-items:center}
+  text-align:center; display:flex; flex-direction:column; align-items:center;
+  position:relative; z-index:1}
 /* SANS to match the operational host shell (the Plan countdown, event names,
    sheet heroes are all --sans). The welcome is the app's front door, not a
    ceremonial/stationery surface, so it uses the app's display face, not serif. */
