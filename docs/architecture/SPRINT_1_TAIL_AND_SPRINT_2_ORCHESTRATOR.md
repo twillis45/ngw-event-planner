@@ -101,6 +101,17 @@ Two pieces, both testable with no key/backend/network:
 
 **Deferred (real-key work, not mockable):** streaming to the client; Haiku routing for parse/classify; gating behind a paid event. All additive on top of this route.
 **Follow-up flagged:** the route reuses `require_planner`; a host-scoped auth gate is a B3/integration decision.
+> **RESOLVED 2026-07-17 — no gate needed; closing the flag.** A code read (not a guess) found `require_planner`
+> **authenticates, it does not authorize a role**: any valid Supabase token passes, so a signed-in host is already
+> authorized exactly like a planner. There is no planner role and nothing checks for one (`require_admin` is the only
+> real role gate). Nor is there anything to scope: `/api/ai/orchestrate` is **stateless** — the engines run
+> client-side (B1), so the route relays the caller's OWN conversation and never fetches stored event data. A host's
+> numbers exist only in their browser, so user A cannot reach user B's plan through it. That's why the data routes
+> (`rsvp.py`, `vendor_brief.py`) pair `require_planner` with their own studio-scoped `_assert_event_access` and this
+> one correctly doesn't — there is no stored record to scope to. Docstrings in `auth.py` corrected, since the *name*
+> was the only thing claiming a role check. **Residual, tracked elsewhere:** any signed-in user can spend orchestrator
+> tokens (per-user rate-limited) — that's a COST concern, and it's the already-deferred "gating behind a paid event",
+> not an access-control hole.
 
 ### B3 · Ship ONE surface — "ask the plan" (LLM tier)
 `askPlan.js` already answers deterministically. Layer the LLM *on top*, not instead:

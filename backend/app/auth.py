@@ -1,4 +1,18 @@
-"""Planner authentication for gated routes.
+"""Authentication for gated routes.
+
+NAMING (read this before trusting `require_planner`): it authenticates — it does
+NOT authorize a role. ANY signed-in Supabase user passes it, host and planner
+alike; there is no planner role and nothing checks for one. `require_admin` below
+is the only real role gate (app_metadata.role).
+
+That split is deliberate, and the two halves are separate concerns:
+  * AUTHENTICATION — "is this a real signed-in user?" → require_planner.
+  * AUTHORIZATION  — "may this user touch THIS event?" → each data route's own
+    `_assert_event_access` (studio-scoped), e.g. rsvp.py / vendor_brief.py.
+A route that reads or writes stored event data needs BOTH. A stateless route that
+only handles data the caller already supplied (e.g. /api/ai/orchestrate, where the
+engines run client-side and nothing is fetched server-side) needs only the first —
+there is no stored record to scope to.
 
 Verifies a Supabase access token by introspecting it against the project's GoTrue
 `/auth/v1/user` endpoint. This works with both legacy HS256 tokens and the newer
@@ -67,7 +81,13 @@ async def require_planner(
     authorization: Optional[str] = None,
     x_planner_token: Optional[str] = None,
 ) -> dict:
-    """Authorize a privileged (planner) action.
+    """Require a SIGNED-IN user. Despite the name, this is not a role gate.
+
+    Any valid Supabase token passes — a host is authorized exactly like a planner.
+    The name is historical (kept to avoid a churny rename across ~34 call sites in
+    security-sensitive routers); prefer reading it as `require_signed_in`. If you
+    need "may this user touch THIS event?", that is the caller's own
+    `_assert_event_access`, not this function.
 
     Order of preference:
       1. A valid Supabase access token (the signed-in planner) — the only path
