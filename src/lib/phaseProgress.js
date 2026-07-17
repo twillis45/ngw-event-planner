@@ -214,7 +214,7 @@ function preProgress(ev, phase, daysOut) {
   // (see lib/exhaleGate) — not to a checklist that cannot.
   const summary = noDate && !String(ev.date || '').trim()
     ? 'Add the event date to time the plan'
-    : left === 0 ? `All ${total} area${total === 1 ? '' : 's'} handled` : `${done} of ${total} areas handled`;
+    : left === 0 ? `All ${total} part${total === 1 ? '' : 's'} of your plan handled` : `${done} of ${total} parts of your plan handled`;
   return {
     phase, label, completedCount: done, totalCount: total,
     progress: total ? done / total : 0,

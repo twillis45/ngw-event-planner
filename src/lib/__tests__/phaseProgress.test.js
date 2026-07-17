@@ -26,7 +26,10 @@ test('1 · pre-event label is Planning readiness with honest counts', () => {
   expect(p.label).toBe('Planning readiness');
   // R4: the summary NAMES ITS SCOPE. It used to say "Ready for event day" — a claim
   // about the whole event — off a ledger that only contains the areas that APPLY.
-  expect(p.summary).toMatch(/\d of \d areas handled|All \d areas? handled/);
+  // "areas" was OUR model's word, never the host's — the noun swap that reached the
+  // shell has to reach the engines that FEED it, or the host reads both nouns.
+  expect(p.summary).toMatch(/\d of \d parts of your plan handled|All \d parts? of your plan handled/);
+  expect(p.summary).not.toMatch(/\bareas?\b/);
   expect(p.summary).not.toMatch(/Ready for event day/);
   expect(JSON.stringify(p)).not.toMatch(/%|percent|score|confidence/i);
 });

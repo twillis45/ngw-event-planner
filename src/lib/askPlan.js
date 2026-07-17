@@ -160,8 +160,8 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
     const { done, total, nextLabel } = readiness;
     const basis = [`Counts the planning essentials your plan tracks — set to ready only when the checklist agrees.`];
     const answer = (done >= total && total > 0)
-      ? `You're set — all ${total} of your planning areas are handled.`
-      : `${done} of ${total} areas handled${nextLabel ? `. Next up: ${nextLabel}.` : '.'}`;
+      ? `You're set — all ${total} parts of your plan are handled.`
+      : `${done} of ${total} parts of your plan handled${nextLabel ? `. Next up: ${nextLabel}.` : '.'}`;
     return { answer, basis, matched: true, route: 'plan' };
   }
 
