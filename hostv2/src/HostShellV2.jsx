@@ -57,7 +57,7 @@ import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup,
 import { costSharingSummary } from '@app/lib/costSharing';
 import { answerPlanQuestion } from '@app/lib/askPlan';
 import { runOrchestration } from '@app/lib/orchestrator';
-import { orchestratorTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
+import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/lib/orchestratorClient';
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
@@ -7597,7 +7597,17 @@ export default function HostShellV2() {
                 if (!session) { setAskLLM({ needsSignin: true }); return; }
                 setAskLLM({ loading: true });
                 try {
-                  const out = await runOrchestration({ question: askQ, ctx: { event }, transport: orchestratorTransport() });
+                  // B3 streaming: the prose lands as it's written instead of after a
+                  // ~15s blank wait. Purely a transport swap — the loop, the tool
+                  // results, and the grounding check are identical either way, and
+                  // the streamed text is a PREVIEW: the authoritative answer (and its
+                  // grounding verdict) still replaces it when the turn completes, so
+                  // a flagged figure can never slip through on the strength of having
+                  // been read early.
+                  const transport = orchestratorStreamTransport({
+                    onDelta: (chunk) => setAskLLM((s) => (s && s.loading ? { ...s, partial: (s.partial || '') + chunk } : s)),
+                  });
+                  const out = await runOrchestration({ question: askQ, ctx: { event }, transport });
                   setAskLLM(out.answer ? { answer: out.answer, grounded: out.grounded } : { unavailable: true });
                 } catch {
                   setAskLLM({ unavailable: true });
@@ -7645,8 +7655,15 @@ export default function HostShellV2() {
                           <button className="mini" onClick={askAssistant}>Take a broader look</button>
                         </>
                       )}
-                      {askLLM && askLLM.loading && (
+                      {askLLM && askLLM.loading && !askLLM.partial && (
                         <p className="grounding" style={{ margin: 0, color: 'var(--faint)' }}>Taking a broader look — I read your numbers, never invent them…</p>
+                      )}
+                      {/* The answer as it's written. Deliberately NOT styled as the
+                          finished answer (f-name): it's still being checked, so it
+                          reads as in-progress until the grounded verdict lands and
+                          replaces it below. */}
+                      {askLLM && askLLM.loading && askLLM.partial && (
+                        <p className="f-name" style={{ marginBottom: 4, color: 'var(--ink-soft)' }}>{askLLM.partial}<span aria-hidden="true" style={{ opacity: .5 }}>▍</span></p>
                       )}
                       {askLLM && askLLM.answer && (
                         <>

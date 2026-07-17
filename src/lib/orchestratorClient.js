@@ -70,3 +70,102 @@ export function orchestratorTransport({ base = BASE, fetchImpl = fetch } = {}) {
     return res.json();
   };
 }
+
+// ─── Streaming (B3) ─────────────────────────────────────────────────────────
+//
+// THE INVARIANT: accumulate Claude's SSE back into the SAME { content, stop_reason }
+// a buffered turn returns. Streaming is a TRANSPORT concern and nothing else — the
+// tool-calling loop, the tool results, and the grounding check downstream are byte-
+// identical either way. That's what keeps this from becoming a second, subtly
+// different code path (and it's test-locked in orchestratorStream.test.js).
+//
+// Wire shapes we accumulate (Anthropic Messages streaming):
+//   content_block_start  → the block's identity ({type:'text'} | {type:'tool_use',id,name})
+//   content_block_delta  → text_delta.text (append) | input_json_delta.partial_json (append)
+//   content_block_stop   → parse a tool_use block's accumulated JSON into .input
+//   message_delta        → delta.stop_reason
+// onDelta(textChunk) fires ONLY for text — the host reads prose, never raw tool JSON.
+export function accumulateSSE(sseText, onDelta) {
+  const blocks = [];
+  const partials = [];        // index → accumulated input_json string (tool_use only)
+  let stopReason = null;
+  for (const raw of String(sseText || '').split('\n')) {
+    const line = raw.trim();
+    if (!line.startsWith('data:')) continue;
+    const payload = line.slice(5).trim();
+    if (!payload || payload === '[DONE]') continue;
+    let ev;
+    try { ev = JSON.parse(payload); } catch { continue; }  // a split frame: skip, never guess
+    if (ev.type === 'error') throw new OrchestratorUnavailable(`stream error: ${ev.error?.type || ev.error || 'unknown'}`);
+    const i = ev.index;
+    if (ev.type === 'content_block_start') {
+      const b = ev.content_block || {};
+      blocks[i] = b.type === 'tool_use'
+        ? { type: 'tool_use', id: b.id, name: b.name, input: {} }
+        : { type: 'text', text: b.text || '' };
+      partials[i] = '';
+    } else if (ev.type === 'content_block_delta') {
+      const d = ev.delta || {};
+      if (d.type === 'text_delta') {
+        if (!blocks[i]) blocks[i] = { type: 'text', text: '' };
+        blocks[i].text += d.text || '';
+        if (typeof onDelta === 'function' && d.text) { try { onDelta(d.text); } catch { /* a render throw must not kill the stream */ } }
+      } else if (d.type === 'input_json_delta') {
+        partials[i] = (partials[i] || '') + (d.partial_json || '');
+      }
+    } else if (ev.type === 'content_block_stop') {
+      if (blocks[i] && blocks[i].type === 'tool_use' && partials[i]) {
+        // Empty-input tools (ours take none) stream '' or '{}' — both mean {}.
+        try { blocks[i].input = JSON.parse(partials[i]); } catch { blocks[i].input = {}; }
+      }
+    } else if (ev.type === 'message_delta') {
+      stopReason = (ev.delta && ev.delta.stop_reason) || stopReason;
+    }
+  }
+  return { ok: true, content: blocks.filter(Boolean), stop_reason: stopReason };
+}
+
+// A streaming transport for runOrchestration. Same contract as the buffered one —
+// returns { content, stop_reason } — so the loop cannot tell the difference; the
+// only addition is onDelta, which fires as the host's prose arrives.
+export function orchestratorStreamTransport({ base = BASE, fetchImpl = fetch, onDelta } = {}) {
+  return async ({ messages, tools }) => {
+    if (!base) throw new OrchestratorUnavailable('orchestrator api not configured');
+    let res;
+    try {
+      res = await fetchImpl(`${base}/api/ai/orchestrate`, {
+        method: 'POST',
+        headers: await authHeaders(),
+        body: JSON.stringify({ messages, tools, stream: true }),
+      });
+    } catch {
+      throw new OrchestratorUnavailable('network error');
+    }
+    if (!res.ok) throw new OrchestratorUnavailable(`orchestrator ${res.status}`);
+    if (!res.body || typeof res.body.getReader !== 'function') {
+      // No streaming body (older browser, a proxy that buffered, a test stub):
+      // fall back to the whole text at once. Same accumulator, same result — the
+      // host loses the typing effect, never the answer.
+      return accumulateSSE(await res.text(), onDelta);
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buf = '';
+    let carry = '';   // frames can split across chunks; only parse whole ones
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      carry += decoder.decode(value, { stream: true });
+      const cut = carry.lastIndexOf('\n\n');
+      if (cut === -1) continue;
+      const whole = carry.slice(0, cut + 2);
+      carry = carry.slice(cut + 2);
+      buf += whole;
+      accumulateSSE(whole, onDelta);   // fire deltas live…
+    }
+    buf += carry;
+    // …then accumulate the FULL stream once for the authoritative shape, so a
+    // frame split across chunk boundaries can never corrupt the final content[].
+    return accumulateSSE(buf, null);
+  };
+}

@@ -23,6 +23,7 @@ import os
 import time
 import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 
@@ -268,6 +269,10 @@ class OrchestrateRequest(BaseModel):
     # The tool schemas the client offers (from orchestratorTools.toolSchemas()).
     tools: Optional[list] = None
     max_tokens: Optional[int] = None
+    # B3 — stream Claude's SSE straight through instead of buffering the turn.
+    # OPT-IN: default False keeps every existing caller byte-identical (same JSON
+    # body, same shape), so shipping this changes nothing until a client asks.
+    stream: Optional[bool] = False
 
 
 @router.post("/orchestrate")
@@ -330,7 +335,43 @@ async def orchestrate(
     if tools:
         payload["tools"] = tools
 
-    # 6. Call Claude; return raw content[] + stop_reason for the client's loop.
+    # 6a. STREAMING (B3, opt-in): forward Claude's SSE verbatim. The relay stays
+    #     thin in exactly the same sense as the buffered path — it re-frames
+    #     nothing and originates no number; the client accumulates the deltas back
+    #     into the identical content[] shape, so the tool-calling loop and the
+    #     grounding check downstream are untouched. Errors are surfaced as an SSE
+    #     `error` event rather than a status code, because by the time Anthropic
+    #     fails we may already have sent 200 + headers.
+    if body.stream:
+        payload["stream"] = True
+
+        async def _sse():
+            try:
+                async with httpx.AsyncClient(timeout=90) as client:
+                    async with client.stream("POST", ANTHROPIC_URL, headers=anthropic_headers(), json=payload) as r:
+                        if r.status_code != 200:
+                            detail = (await r.aread()).decode("utf-8", "replace")[:300]
+                            log.error("ai.orchestrate STREAM FAIL user=%s status=%s body=%s", user_id, r.status_code, detail)
+                            await record_error("ai_orchestrate", f"Orchestrator stream error ({r.status_code})",
+                                               context={"status": r.status_code, "user": user_id})
+                            yield b"event: error\ndata: " + json.dumps({"error": "orchestrator_error", "status": r.status_code}).encode() + b"\n\n"
+                            return
+                        log.info("ai.orchestrate STREAM OPEN user=%s", user_id)
+                        async for chunk in r.aiter_bytes():
+                            yield chunk
+            except httpx.RequestError as e:
+                log.error("ai.orchestrate STREAM UNAVAILABLE user=%s err=%s", user_id, e)
+                yield b"event: error\ndata: " + json.dumps({"error": "unavailable"}).encode() + b"\n\n"
+            except Exception as e:  # noqa: BLE001 — never leak a traceback down the stream
+                log.error("ai.orchestrate STREAM EXC user=%s err=%s", user_id, e)
+                yield b"event: error\ndata: " + json.dumps({"error": "unexpected"}).encode() + b"\n\n"
+
+        return StreamingResponse(_sse(), media_type="text/event-stream", headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # don't let a proxy buffer the stream into one blob
+        })
+
+    # 6b. Buffered: call Claude; return raw content[] + stop_reason for the client's loop.
     try:
         async with httpx.AsyncClient(timeout=40) as client:
             resp = await client.post(ANTHROPIC_URL, headers=anthropic_headers(), json=payload)
