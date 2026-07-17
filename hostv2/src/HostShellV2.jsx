@@ -3805,7 +3805,7 @@ export default function HostShellV2() {
                 The whole event, one&nbsp;plan<span className="welcome-dot" aria-hidden="true" />
               </h1>
               <p className="mega-sub welcome-sub">
-                Tell it what you’re hosting. Get a plan built around you.
+                Tell it what you’re hosting. It builds the rest.
               </p>
               <div className="welcome-ctas">
                 <button className="cta big" onClick={() => dismissWelcome('create')}>Start my event</button>
