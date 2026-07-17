@@ -5,7 +5,7 @@
 :root{
   color-scheme:dark; /* native controls (date picker, scrollbars) render for dark */
   --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* CEREMONIAL/EDITORIAL surfaces ONLY — welcome gate, guest invite, the create Reveal. Operational host-shell heroes (Plan countdown, Guests, sheet heroes, After) use --sans. (Font audit 2026-07-12: the old "hero titles + countdown" note was wrong — the operational heroes are sans; After was the one serif straggler, now fixed.) */
+  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* Reserved for the GUEST-FACING stationery moment only — the create Reveal. The whole HOST APP is --sans, including the welcome gate (its front door), the Plan countdown, event names, and sheet heroes. Doctrine (2026-07-16): the app's type is sans; don't spread the stationery serif into host-shell surfaces. */
 
   /* ── Host-app type scale — the SINGLE source of truth (UX_01 type-scale
      table names these same tokens). Tokens are named by ROLE, not value:
@@ -911,8 +911,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    Center-aligned as a hero landing (was left-justified, which read unfinished). */
 .content.welcome section{width:100%; max-width:30rem; margin-inline:auto;
   text-align:center; display:flex; flex-direction:column; align-items:center}
-.welcome-h1{font-family:var(--serif); font-weight:800; font-size:var(--t-display-xl);
-  line-height:1.08; letter-spacing:-.015em; margin:12px 0 12px; text-wrap:balance}
+/* SANS to match the operational host shell (the Plan countdown, event names,
+   sheet heroes are all --sans). The welcome is the app's front door, not a
+   ceremonial/stationery surface, so it uses the app's display face, not serif. */
+.welcome-h1{font-weight:800; font-size:var(--t-display-xl);
+  line-height:1.02; letter-spacing:-.035em; margin:12px 0 12px; text-wrap:balance}
 /* Sub: one tight line, constrained measure so it never sprawls, clearly readable
    (not the muted link-blue it drifted toward). */
 .welcome-sub{max-width:30ch; font-weight:500; color:var(--ink-soft);
