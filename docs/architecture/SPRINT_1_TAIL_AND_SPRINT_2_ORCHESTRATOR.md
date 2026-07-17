@@ -110,12 +110,13 @@ Two pieces, both testable with no key/backend/network:
 
 **Acceptance:** on the flagship event, "will $2,000 cover crabs for 50?" returns a streamed, warm, **engine-cited** answer; a question with no grounding is honestly declined; no figure appears that isn't traceable to a tool call (verified in logs).
 
-### B4 · Retrofit the two already-shipped real-AI features onto the orchestrator
-They shipped standalone ahead of the orchestrator — re-home them so Sprints 3–4 have one foundation:
-- [ ] **Vendor-reply parser** (`vendorReplyParse.js`) → a tool/route under the orchestrator, keeping null-unless-stated + evidence-quoted + manual apply.
-- [ ] Fold the 8 `aiProxy` feature prompts into orchestrator tools where tool-calling beats a static prompt (proposal/budget/schedule/readiness are prime candidates — they should *read the engines*, not just prompt over context).
+### B4 · Retrofit the vendor-reply parser onto the orchestrator (Claude)  ✅ BUILT 2026-07-16
+The parser splits cleanly: `src/lib/vendorReplyParse.js` is the **pure, provider-agnostic honesty core** (null-unless-stated, no-downgrade, coercion, evidence, allow-list) — the backend route only does the raw LLM extraction. So the retrofit is a **provider swap**, core untouched.
+- **Backend** (`/api/ai/parse-vendor-reply`): added a `provider` field — `'openai'` (default, unchanged) or `'claude'`. The Claude path reuses the orchestrator's Anthropic infra (`anthropic_headers`, `ANTHROPIC_KEY`) on **Haiku** (the plan's "route parse/classify to Haiku"), with the **same server-owned prompt, same JSON parse, same allow-list filter, same response shape** — so `vendorReplyParse.js` is byte-for-byte untouched. Gated: `provider:'claude'` → 503 if `ANTHROPIC_API_KEY` unset; the OpenAI default is fully preserved.
+- **Tests** (`test_ai_parse_vendor_reply_b4.py`, 5): Claude path returns the same filtered shape (off-list field dropped, unstated→null), 503-when-Anthropic-unconfigured, OpenAI default unchanged, auth still required. **22 backend AI-route tests green, no regression.**
+- **Client migration:** the caller opts in by sending `provider:'claude'`; left on the OpenAI default until the key is confirmed live (a one-line flip). This satisfies "old feature routes remain until callers migrate."
 
-**Acceptance:** both run through `/api/ai/orchestrate`; behavior unchanged or better; the old feature routes remain until callers migrate.
+Not done (folding the 8 `aiProxy` feature prompts into orchestrator tools) — a separate, lower-urgency consolidation; the vendor parser was the flagship real-AI feature to re-home.
 
 ---
 

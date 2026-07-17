@@ -52,6 +52,8 @@ ANTHROPIC_VERSION = "2023-06-01"
 # Overridable per account (the exact valid Sonnet id depends on your Anthropic
 # access). Sonnet for the host conversation; parse/classify would route to Haiku.
 ORCHESTRATOR_MODEL      = os.environ.get("ORCHESTRATOR_MODEL", "claude-sonnet-4-5")
+# Cheap/fast model for parse+classify (B4 vendor-reply extraction routes here).
+ORCHESTRATOR_HAIKU      = os.environ.get("ORCHESTRATOR_HAIKU_MODEL", "claude-haiku-4-5-20251001")
 ORCHESTRATOR_MAX_TOKENS = int(os.environ.get("ORCHESTRATOR_MAX_TOKENS", "1024"))
 ORCH_MAX_INPUT_CHARS    = int(os.environ.get("ORCH_MAX_INPUT_CHARS", "60000"))  # cap the relayed conversation
 # The one server-owned system prompt. The grounding rule is enforced downstream
@@ -594,6 +596,11 @@ class VendorReplyParseRequest(BaseModel):
     vendor_name: Optional[str] = None
     vendor_category: Optional[str] = None
     event_name: Optional[str] = None
+    # B4 — 'openai' (default, unchanged) or 'claude' (Haiku via the orchestrator's
+    # Anthropic infra). The prompt, filtering, and response shape are identical;
+    # only the provider call differs, so the client's vendorReplyParse.js core is
+    # untouched. Lets callers migrate to Claude without touching the OpenAI path.
+    provider: Optional[str] = "openai"
 
 
 @router.post("/parse-vendor-reply")
@@ -613,8 +620,11 @@ async def parse_vendor_reply(
     principal = await require_planner(authorization, x_planner_token)
     user_id = principal.get("id") or "unknown"
 
-    # 2. Configured? (graceful 503 → frontend hides/falls back)
-    if not is_ai_configured():
+    # 2. Configured? (graceful 503 → frontend hides/falls back). Per provider.
+    use_claude = (body.provider or "openai").lower() == "claude"
+    if use_claude and not is_orchestrator_configured():
+        raise HTTPException(status_code=503, detail="Claude not configured — set ANTHROPIC_API_KEY on the server")
+    if not use_claude and not is_ai_configured():
         raise HTTPException(status_code=503, detail="AI not configured — set OPENAI_API_KEY on the server")
 
     # 3. Validate + cap input.
@@ -659,23 +669,34 @@ async def parse_vendor_reply(
         f"{{\n{json_template},\n  \"confidence\": \"high|medium|low\"\n}}"
     )
 
-    payload = {
-        "model":      AI_FEATURE_MODEL,
-        "max_tokens": AI_FEATURE_MAX_TOKENS,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user",   "content": user_content},
-        ],
-        "response_format": {"type": "json_object"},
-    }
-
     try:
         async with httpx.AsyncClient(timeout=40) as client:
-            resp = await client.post(OPENAI_URL, headers=openai_headers(), json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-
-        raw_text = data["choices"][0]["message"]["content"] or "{}"
+            if use_claude:
+                # Same server-owned prompt; Claude (Haiku) via the orchestrator's key.
+                payload = {
+                    "model":      ORCHESTRATOR_HAIKU,
+                    "max_tokens": AI_FEATURE_MAX_TOKENS,
+                    "system":     system,
+                    "messages":   [{"role": "user", "content": user_content}],
+                }
+                resp = await client.post(ANTHROPIC_URL, headers=anthropic_headers(), json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                raw_text = "".join(b.get("text", "") for b in data.get("content", []) if b.get("type") == "text") or "{}"
+            else:
+                payload = {
+                    "model":      AI_FEATURE_MODEL,
+                    "max_tokens": AI_FEATURE_MAX_TOKENS,
+                    "messages": [
+                        {"role": "system", "content": system},
+                        {"role": "user",   "content": user_content},
+                    ],
+                    "response_format": {"type": "json_object"},
+                }
+                resp = await client.post(OPENAI_URL, headers=openai_headers(), json=payload)
+                resp.raise_for_status()
+                data = resp.json()
+                raw_text = data["choices"][0]["message"]["content"] or "{}"
         try:
             parsed = json.loads(raw_text)
         except Exception:
@@ -689,10 +710,11 @@ async def parse_vendor_reply(
                   if k in allowed_keys}
 
         usage = data.get("usage", {})
+        out_tok = usage.get("completion_tokens") or usage.get("output_tokens") or 0
         filled = sum(1 for v in fields.values()
                      if isinstance(v, dict) and v.get("value") not in (None, "", False))
-        log.info("parse_vendor_reply user=%s vendor=%s filled=%d confidence=%s out=%d",
-                 user_id, body.vendor_name, filled, confidence, usage.get("completion_tokens", 0))
+        log.info("parse_vendor_reply user=%s provider=%s vendor=%s filled=%d confidence=%s out=%d",
+                 user_id, ("claude" if use_claude else "openai"), body.vendor_name, filled, confidence, out_tok)
 
         return {
             "ok": True,
@@ -704,7 +726,7 @@ async def parse_vendor_reply(
             "disclaimer": "AI-extracted from the vendor's message — review each field against the original before applying.",
         }
     except httpx.HTTPStatusError as e:
-        log.error("parse_vendor_reply OpenAI error: %s — %s", e.response.status_code, e.response.text)
+        log.error("parse_vendor_reply %s error: %s — %s", ("claude" if use_claude else "openai"), e.response.status_code, e.response.text)
         raise HTTPException(status_code=502, detail="AI service error")
     except Exception as e:
         log.error("parse_vendor_reply error: %s", e)
