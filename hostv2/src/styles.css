@@ -907,8 +907,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .content.welcome{display:flex; flex-direction:column; justify-content:center;
   min-height:100%; padding-top:var(--sp-7); padding-bottom:56px}
 /* One centered, capped column — reads the same on a short phone, a tall phone,
-   and the desktop mockup (viewport parity), instead of full-width left-hug. */
-.content.welcome section{width:100%; max-width:30rem; margin-inline:auto}
+   and the desktop mockup (viewport parity), instead of full-width left-hug.
+   Center-aligned as a hero landing (was left-justified, which read unfinished). */
+.content.welcome section{width:100%; max-width:30rem; margin-inline:auto;
+  text-align:center; display:flex; flex-direction:column; align-items:center}
 .welcome-h1{font-family:var(--serif); font-weight:800; font-size:var(--t-display-xl);
   line-height:1.08; letter-spacing:-.015em; margin:12px 0 12px; text-wrap:balance}
 /* Sub: one tight line, constrained measure so it never sprawls, clearly readable

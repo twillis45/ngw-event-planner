@@ -3805,13 +3805,13 @@ export default function HostShellV2() {
                 The whole event, one&nbsp;plan<span className="welcome-dot" aria-hidden="true" />
               </h1>
               <p className="mega-sub welcome-sub">
-                Tell it what you’re hosting. Get the whole plan — guests, food, budget, the day — built around you.
+                Tell it what you’re hosting. Get a plan built around you.
               </p>
               <div className="welcome-ctas">
                 <button className="cta big" onClick={() => dismissWelcome('create')}>Start my event</button>
                 <button className="cta ghost" onClick={() => dismissWelcome()}>Explore a sample first</button>
               </div>
-              <p className="welcome-note">The sample’s just an example — your own event starts fresh.</p>
+              <p className="welcome-note">The sample’s just an example — yours starts fresh.</p>
             </section>
           </div>
         </div>
