@@ -21,13 +21,56 @@
 
 const money$ = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 
-// Pull the first dollar-ish amount from the text ("$2k", "2000", "2,500 dollars").
+// Every number in the text, tagged with what the wording says it IS. A bare
+// number is only money if nothing marks it as a head count — "50 people" and
+// "for 50" are guests, not dollars.
+const HEAD_NOUN = /^\s*(?:more\s+)?(?:people|guests?|heads?|persons?|folks|adults|kids|children|attendees)\b/i;
+
+function scanNumbers(q) {
+  const re = /(\$)?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|grand)?/gi;
+  const out = [];
+  let m;
+  while ((m = re.exec(q))) {
+    const [full, dollar, digits, mult] = m;
+    const n = parseFloat(digits.replace(/,/g, ''));
+    if (!Number.isFinite(n)) continue;
+    const after = q.slice(m.index + full.length);
+    const before = q.slice(0, m.index);
+    out.push({
+      value: /k|thousand|grand/i.test(mult || '') ? n * 1000 : n,
+      isMoney: !!dollar || !!mult || /^\s*(?:dollars?|bucks)\b/i.test(after),
+      isHead: HEAD_NOUN.test(after) || /\bfor\s*$/i.test(before),
+    });
+  }
+  return out;
+}
+
+// The dollar figure the host actually named — never a head count read as money.
 function parseAmount(q) {
-  const m = q.match(/\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k|thousand|grand)?/i);
-  if (!m) return null;
-  const n = parseFloat(m[1].replace(/,/g, ''));
-  if (!Number.isFinite(n)) return null;
-  return /k|thousand|grand/i.test(m[2] || '') ? n * 1000 : n;
+  const nums = scanNumbers(q);
+  const money = nums.find((n) => n.isMoney) || nums.find((n) => !n.isHead);
+  return money ? money.value : null;
+}
+
+// A head count named in the question ("for 50", "50 guests"), if any.
+function parseHeadcount(q) {
+  const head = scanNumbers(q).find((n) => n.isHead && !n.isMoney);
+  return head ? head.value : null;
+}
+
+// Nouns that narrow a question to ONE part of the plan. The budget-fit answer
+// speaks for the WHOLE plan's committed total, so it cannot answer these.
+const SCOPED_TO_PART = /\b(crabs?|food|meat|seafood|shrimp|chicken|beef|sides?|drinks?|booze|alcohol|beer|wine|bar|cake|dessert|catering|caterer|vendors?|music|dj|band|photographer|photos?|video|rentals?|tent|decor|decorations?|flowers?|venue|space|ice|invitations?|favors?)\b/i;
+
+// The honest "I can't answer that from your plan" reply — the one shape used
+// both for a question we don't recognize and for one we recognize but cannot
+// answer truthfully. The caller escalates on `matched: false`.
+function unanswered(eventName) {
+  return {
+    answer: `I can answer questions about your money, food, guests, weather, and what's next — straight from ${eventName ? eventName + "'s" : 'your'} plan. Try “will $2,000 cover it?”, “how much food do I need?”, or “am I ready?”.`,
+    basis: [],
+    matched: false,
+  };
 }
 
 export function answerPlanQuestion(questionRaw, ctx = {}) {
@@ -38,7 +81,22 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
   const has = (re) => re.test(q);
 
   // ── Budget fit: "will $2000 cover it?", "is $5k enough?", "can I afford…"
-  if (amount != null && has(/\b(cover|enough|afford|budget|fit|too much|spend)\b/) && money) {
+  // Only answers the WHOLE plan at its CURRENT size. A question scoped to one
+  // part ("cover the crabs") or to a different head count ("for 50") is a
+  // different question — decline so the caller can escalate to a tool-calling
+  // answer rather than quietly answering the one we can compute.
+  const askedHead = parseHeadcount(q);
+  const partScoped = has(SCOPED_TO_PART);
+  const whatIfSize = askedHead != null && (guests == null || askedHead !== Number(guests));
+  const budgetShaped = amount != null && has(/\b(cover|enough|afford|budget|fit|too much|spend)\b/) && money;
+
+  // A budget question we can't answer honestly is DECLINED outright, not left to
+  // fall through — "is $2,000 enough for 50 guests?" would otherwise be caught by
+  // the guests term below and answered with the head count, which is a different
+  // wrong answer to the same money question.
+  if (budgetShaped && (partScoped || whatIfSize)) return unanswered(eventName);
+
+  if (budgetShaped) {
     const committed = Number(money.committed) || 0;
     const diff = amount - committed;
     const basis = [`Your plan commits about ${money$(committed)} so far — food, supplies, space, and anything you've priced (vendors, crab).`];
@@ -108,11 +166,7 @@ export function answerPlanQuestion(questionRaw, ctx = {}) {
   }
 
   // ── Unrecognized — answer honestly, never guess.
-  return {
-    answer: `I can answer questions about your money, food, guests, weather, and what's next — straight from ${eventName ? eventName + "'s" : 'your'} plan. Try “will $2,000 cover it?”, “how much food do I need?”, or “am I ready?”.`,
-    basis: [],
-    matched: false,
-  };
+  return unanswered(eventName);
 }
 
 export default answerPlanQuestion;

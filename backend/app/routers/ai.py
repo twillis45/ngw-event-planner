@@ -51,7 +51,9 @@ ANTHROPIC_URL   = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 # Overridable per account (the exact valid Sonnet id depends on your Anthropic
 # access). Sonnet for the host conversation; parse/classify would route to Haiku.
-ORCHESTRATOR_MODEL      = os.environ.get("ORCHESTRATOR_MODEL", "claude-sonnet-4-5")
+# Sonnet 5 rejects non-default temperature/top_p/top_k and budget_tokens with a
+# 400 — this relay sends neither, so keep it that way if you extend the payload.
+ORCHESTRATOR_MODEL      = os.environ.get("ORCHESTRATOR_MODEL", "claude-sonnet-5")
 # Cheap/fast model for parse+classify (B4 vendor-reply extraction routes here).
 ORCHESTRATOR_HAIKU      = os.environ.get("ORCHESTRATOR_HAIKU_MODEL", "claude-haiku-4-5-20251001")
 ORCHESTRATOR_MAX_TOKENS = int(os.environ.get("ORCHESTRATOR_MAX_TOKENS", "1024"))

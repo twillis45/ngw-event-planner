@@ -22,10 +22,33 @@ describe('answerPlanQuestion — deterministic, honest, sourced', () => {
   });
 
   test('budget fit: a short amount reports the shortfall against committed', () => {
-    const r = answerPlanQuestion('is $2k enough for crabs for 50?', CTX);
+    const r = answerPlanQuestion('is $2k enough?', CTX);
     expect(r.matched).toBe(true);
     expect(r.answer).toMatch(/short/i);
     expect(r.answer).toMatch(/\$1,250/); // 3250 - 2000
+  });
+
+  // This case previously MATCHED and answered with the whole-plan shortfall —
+  // the host asked about crabs for 50 and got a number about the entire plan at
+  // its current 25. Answering the question we can compute instead of the one
+  // asked is the failure; declining hands it to a tool-calling answer.
+  test('budget fit declines a question scoped to one part of the plan', () => {
+    const r = answerPlanQuestion('will $2,000 cover crabs for 50?', CTX);
+    expect(r.matched).toBe(false);
+    expect(r.answer).not.toMatch(/\$1,250|\$750|covers/i);
+  });
+
+  test('budget fit declines a head count the plan is not sized for', () => {
+    expect(answerPlanQuestion('is $2,000 enough for 50 guests?', CTX).matched).toBe(false);
+    // ...but the plan's OWN size is still answerable.
+    expect(answerPlanQuestion('is $4,000 enough for 25 guests?', CTX).matched).toBe(true);
+  });
+
+  test('a head count is never read as a dollar figure', () => {
+    // Previously "50" became money: "$50 is about $3,200 short".
+    const r = answerPlanQuestion('do I have enough crabs for 50 people?', CTX);
+    expect(r.answer).not.toMatch(/\$50\b/);
+    expect(r.matched).toBe(false);
   });
 
   test('spend so far reads money.spent and flags the estimated part', () => {
