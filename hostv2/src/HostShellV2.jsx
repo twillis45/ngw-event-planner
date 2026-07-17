@@ -7547,6 +7547,7 @@ export default function HostShellV2() {
               // degrades to an honest "assistant isn't reachable" and the plain
               // deterministic answer stays put. Never a fabricated reply.
               const askAssistant = async () => {
+                if (!session) { setAskLLM({ needsSignin: true }); return; }
                 setAskLLM({ loading: true });
                 try {
                   const out = await runOrchestration({ question: askQ, ctx: { event }, transport: orchestratorTransport() });
@@ -7589,7 +7590,7 @@ export default function HostShellV2() {
                       when a backend is configured (demo build has none → no dead button).
                       Every state here is honest: loading, a grounded AI answer, or an
                       unavailable notice that leaves the plain answer standing. */}
-                  {askResult && !askResult.matched && isOrchestratorApiConfigured() && session && (
+                  {askResult && !askResult.matched && isOrchestratorApiConfigured() && (
                     <div className="brow" style={{ marginTop: 'var(--sp-3)' }}>
                       {!askLLM && (
                         <>
@@ -7609,6 +7610,12 @@ export default function HostShellV2() {
                           <div className="actions-row" style={{ marginTop: 8 }}>
                             <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
                           </div>
+                        </>
+                      )}
+                      {askLLM && askLLM.needsSignin && (
+                        <>
+                          <p className="grounding" style={{ margin: '0 0 8px', color: 'var(--faint)' }}>Sign in first — a broader look runs on your account, so your plan stays private to you.</p>
+                          <button className="mini" onClick={() => setSheet({ kind: 'settings' })}>Sign in</button>
                         </>
                       )}
                       {askLLM && askLLM.unavailable && (
