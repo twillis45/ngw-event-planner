@@ -169,6 +169,13 @@ async def ai_status():
         # Sprint 2 · B2 — grounded orchestrator (Claude); key-presence only.
         "orchestrator":       is_orchestrator_configured(),
         "orchestrator_model": ORCHESTRATOR_MODEL if is_orchestrator_configured() else None,
+        # Which model the PARSE routes actually run (2026-07-17: the same one —
+        # the Haiku fork is gone). Reported because it was previously unknowable
+        # from outside: when the two-model fork collapsed, `orchestrator_model`
+        # read "claude-sonnet-5" both before AND after, so /status could not tell
+        # a deployed change from a stale one. A model this app pays for and makes
+        # honesty claims about should be visible without reading the source.
+        "parse_model": ORCHESTRATOR_MODEL if is_orchestrator_configured() else None,
     }
 
 
