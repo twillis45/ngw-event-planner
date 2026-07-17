@@ -935,9 +935,10 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    (not the muted link-blue it drifted toward). */
 .welcome-sub{max-width:30ch; font-weight:500; color:var(--ink-soft);
   font-size:var(--t-sub); line-height:1.5; letter-spacing:-.01em; margin:0}
-/* Footnote: quiet — small, light, never competing with the CTAs. */
-.welcome-note{margin:18px 0 0; font-size:var(--t-caption); font-weight:450;
-  color:var(--faint); line-height:1.5; max-width:34ch}
+/* Footnote: readable (was 11.5px caption — too small), kept secondary to the
+   CTAs by weight + muted color rather than by shrinking it below legible size. */
+.welcome-note{margin:18px 0 0; font-size:var(--t-body); font-weight:500;
+  color:var(--ink-soft); line-height:1.5; max-width:34ch}
 /* the headline's own period is the brand bead — the mark that just dropped
    in on the splash, now landed in the copy. Sized/seated in em so it rides
    the display type at any viewport. */

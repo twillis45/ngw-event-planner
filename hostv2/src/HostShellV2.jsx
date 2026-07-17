@@ -3811,7 +3811,7 @@ export default function HostShellV2() {
                 <button className="cta big" onClick={() => dismissWelcome('create')}>Start my event</button>
                 <button className="cta ghost" onClick={() => dismissWelcome()}>Explore a sample first</button>
               </div>
-              <p className="welcome-note">The sample’s just an example — yours starts fresh.</p>
+              <p className="welcome-note">The sample’s a demo — yours starts fresh.</p>
             </section>
           </div>
         </div>
