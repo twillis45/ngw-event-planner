@@ -906,8 +906,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    118px top padding sat wrong on short/tall phones), one clear decision. */
 .content.welcome{display:flex; flex-direction:column; justify-content:center;
   min-height:100%; padding-top:var(--sp-7); padding-bottom:56px}
+/* One centered, capped column — reads the same on a short phone, a tall phone,
+   and the desktop mockup (viewport parity), instead of full-width left-hug. */
+.content.welcome section{width:100%; max-width:30rem; margin-inline:auto}
 .welcome-h1{font-family:var(--serif); font-weight:800; font-size:var(--t-display-xl);
-  line-height:1.08; letter-spacing:-.015em; margin:14px 0 10px; text-wrap:balance}
+  line-height:1.08; letter-spacing:-.015em; margin:12px 0 12px; text-wrap:balance}
+/* Sub: one tight line, constrained measure so it never sprawls, clearly readable
+   (not the muted link-blue it drifted toward). */
+.welcome-sub{max-width:30ch; font-weight:500; color:var(--ink-soft);
+  font-size:var(--t-sub); line-height:1.5; letter-spacing:-.01em; margin:0}
+/* Footnote: quiet — small, light, never competing with the CTAs. */
+.welcome-note{margin:18px 0 0; font-size:var(--t-caption); font-weight:450;
+  color:var(--faint); line-height:1.5; max-width:34ch}
 /* the headline's own period is the brand bead — the mark that just dropped
    in on the splash, now landed in the copy. Sized/seated in em so it rides
    the display type at any viewport. */

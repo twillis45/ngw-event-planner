@@ -3804,16 +3804,14 @@ export default function HostShellV2() {
               <h1 className="mega welcome-h1">
                 The whole event, one&nbsp;plan<span className="welcome-dot" aria-hidden="true" />
               </h1>
-              <p className="mega-sub" style={{ fontWeight: 550 }}>
-                Tell Event Boss what you’re hosting — a cookout, a shower, a crab feast — and get a plan built around you: guests, food, budget, the whole day.
+              <p className="mega-sub welcome-sub">
+                Tell it what you’re hosting. Get the whole plan — guests, food, budget, the day — built around you.
               </p>
               <div className="welcome-ctas">
                 <button className="cta big" onClick={() => dismissWelcome('create')}>Start my event</button>
-                <button className="cta ghost" onClick={() => dismissWelcome()}>Explore a sample event first</button>
+                <button className="cta ghost" onClick={() => dismissWelcome()}>Explore a sample first</button>
               </div>
-              <p className="grounding" style={{ marginTop: 14 }}>
-                The sample is a fully stocked example — nothing in it is yours. Your own event starts fresh from Create, anytime.
-              </p>
+              <p className="welcome-note">The sample’s just an example — your own event starts fresh.</p>
             </section>
           </div>
         </div>
