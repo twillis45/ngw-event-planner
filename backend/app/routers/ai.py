@@ -51,12 +51,27 @@ ANTHROPIC_KEY   = os.environ.get("ANTHROPIC_API_KEY")
 ANTHROPIC_URL   = "https://api.anthropic.com/v1/messages"
 ANTHROPIC_VERSION = "2023-06-01"
 # Overridable per account (the exact valid Sonnet id depends on your Anthropic
-# access). Sonnet for the host conversation; parse/classify would route to Haiku.
+# access). ONE model for every Claude route — host conversation and parse alike.
 # Sonnet 5 rejects non-default temperature/top_p/top_k and budget_tokens with a
 # 400 — this relay sends neither, so keep it that way if you extend the payload.
+#
+# WAS a two-model fork: this constant plus ORCHESTRATOR_HAIKU, with the vendor
+# parser routed to Haiku per the plan's §02 "route parse/classify to the cheap
+# model" rule. Collapsed 2026-07-17 — the rule is sound in general and wrong at
+# THIS volume. It was never a routing strategy: exactly one call site each. The
+# fork's whole saving is ~$0.005 a parse — call it a nickel across a whole event,
+# on a $39 pass. §02's own line ("a whole event's drafts < $0.20" ON Haiku) caps
+# the maximum conceivable win under twenty cents.
+#
+# What the nickel cost: Haiku is the WEAKER model at exactly what the parser does
+# — verbatim-evidence extraction from messy vendor email, the P0 flagship, where a
+# missed field is a wrong vendor record the host must catch by hand. Plus a second
+# default to keep current as models ship, and a second capability profile to tune
+# prompts against. The prompt is server-owned and identical either way, so there
+# was never a Haiku-specific reason for the split.
+#
+# If parse volume ever makes a nickel matter, route THEN, with real usage numbers.
 ORCHESTRATOR_MODEL      = os.environ.get("ORCHESTRATOR_MODEL", "claude-sonnet-5")
-# Cheap/fast model for parse+classify (B4 vendor-reply extraction routes here).
-ORCHESTRATOR_HAIKU      = os.environ.get("ORCHESTRATOR_HAIKU_MODEL", "claude-haiku-4-5-20251001")
 ORCHESTRATOR_MAX_TOKENS = int(os.environ.get("ORCHESTRATOR_MAX_TOKENS", "1024"))
 ORCH_MAX_INPUT_CHARS    = int(os.environ.get("ORCH_MAX_INPUT_CHARS", "60000"))  # cap the relayed conversation
 # The one server-owned system prompt. The grounding rule is enforced downstream
@@ -715,9 +730,10 @@ async def parse_vendor_reply(
     try:
         async with httpx.AsyncClient(timeout=40) as client:
             if use_claude:
-                # Same server-owned prompt; Claude (Haiku) via the orchestrator's key.
+                # Same server-owned prompt; Claude via the orchestrator's key and
+                # the orchestrator's model — one model for every Claude route.
                 payload = {
-                    "model":      ORCHESTRATOR_HAIKU,
+                    "model":      ORCHESTRATOR_MODEL,
                     "max_tokens": AI_FEATURE_MAX_TOKENS,
                     "system":     system,
                     "messages":   [{"role": "user", "content": user_content}],

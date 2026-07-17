@@ -48,12 +48,12 @@ _You don't merge two apps. You keep the better shell and transplant the good org
 | Cost line | Estimate | Notes & mitigation |
 |---|---|---|
 | LLM per planning event | **~$0.50–$3** | 20–50 grounded turns × ~5–20k tokens. Prompt caching cuts system-prompt/tool cost ~90%, landing most events near the low end. |
-| LLM per draft / parse | **~$0.005–$0.03** | Route to **Haiku** (cheap/fast), not the host-facing model. A whole event's drafts < $0.20. |
+| LLM per draft / parse | **~$0.005–$0.03** | ~~Route to **Haiku**, not the host-facing model.~~ **Reversed 2026-07-17 — one model for every Claude route.** This row's own figure is what kills the rule: a whole event's parses cost **a nickel** either way (Haiku ~$0.06/event vs Sonnet ~$0.11), and the line below caps the whole conceivable win under **$0.20 on a $39 pass**. The fork was never a strategy — one call site each — and Haiku is the *weaker* model at exactly what the parser does (verbatim-evidence extraction from messy vendor email, the P0 flagship, where a missed field becomes a wrong vendor record). **Route when volume makes a nickel matter, with real usage numbers — not before.** |
 | Infra (edge/serverless) | **~$0–$20/mo** | Vercel/Cloudflare free tier covers early scale; grows with usage. |
 | Build cost (dev time) | **~6–10 wks** | The orchestrator is the one big lift. Fixes are days; FE consolidation 2–3 wks. |
 | Margin check | **~85–95%** | At a **$39 one-event pass**, ~$1–5 AI cost = healthy margin. Gate genAI behind paid events; keep the free tier on the deterministic engines only. |
 
-**Cost rule:** deterministic engines are free to run (client-side) — use them for everything they can do. Spend LLM tokens only where warmth or generation adds value, route cheap tasks to Haiku, cache aggressively, gate the expensive conversation behind a paid event.
+**Cost rule:** deterministic engines are free to run (client-side) — use them for everything they can do. Spend LLM tokens only where warmth or generation adds value, cache aggressively, gate the expensive conversation behind a paid event. ~~route cheap tasks to Haiku~~ — **model routing reversed 2026-07-17: one model for every Claude route.** The rule is sound in general and wrong at this volume; see the parse row above. The *engines-are-free* half is the part carrying the margin — and it keeps proving itself (Sprint 3–4's "RSVP predict" turns out to be **already met deterministically** by `attendanceAdjustment`, for zero tokens).
 
 ## 03 · genUI — pros, cons, cost, and the honest recommendation
 
@@ -70,7 +70,7 @@ _You don't merge two apps. You keep the better shell and transplant the good org
 | Run engines client-side | Pure JS, no round-trip — instant UI. Only call the orchestrator when you need genAI. |
 | Optimistic UI (already there) | The patch layer updates before the network — perceived-instant. |
 | Prompt caching | Cache the system prompt + tool defs — ~90% cheaper, lower latency every AI turn. |
-| Model routing | Haiku for parse/classify/draft; Sonnet only for the host conversation. |
+| ~~Model routing~~ **One model** | **Reversed 2026-07-17.** Was "Haiku for parse/classify/draft; Sonnet only for the host conversation" — a nickel an event, bought with a second default to keep current and the weaker model on the flagship. Latency, not cost, is the reason to revisit: if a parse ever feels slow, that's a real argument for a faster model. A nickel isn't. |
 | Stream everything | First words in ~1s; the answer builds as she reads. No spinners. |
 | Code-split the heavy bits | Lazy-load the invite stationery, crab sheet, charts. |
 | Edge functions | Run the orchestrator close to the user; low round-trip latency globally. |
