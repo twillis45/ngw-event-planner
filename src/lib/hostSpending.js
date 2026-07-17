@@ -27,6 +27,13 @@
 //   • committed    = spent + the not-yet-bought portion of foodEstimate + vendorOwed
 //                    (so the budget reflects PLANNED food and OWED vendor money
 //                    before either is paid).
+//   • uncommitted  = total - committed. The headroom, derived here so no reader
+//                    composes it wrongly. READ THIS BEFORE DOING BUDGET MATH:
+//                    foodEstimate / suppliesEstimate / capacityEstimate /
+//                    crabEstimate / vendorOwed are all COMPONENTS OF `committed`,
+//                    not additions to it — subtracting any of them from `total`
+//                    alongside `committed` double-counts. null when no budget is
+//                    set (≠ 0); negative when the plan commits past the budget.
 //
 // Honest bounds: foodBought never exceeds foodEstimate's ceiling concern — it's the
 // real checked-off total; committed never dips below spent (the un-bought remainder
@@ -175,7 +182,24 @@ export function hostSpending(event, priceFactor) {
   // belong in spentEstimated too. (crabBought stays firm — real entered prices.)
   const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated + suppliesBought + capacityBought));
   const spentFirm = Math.max(0, spent - spentEstimated);
-  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, vendorOwed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  // `uncommitted` — the headroom, DERIVED HERE so no reader has to compose it.
+  //
+  // Why this field exists: `committed` ALREADY CONTAINS foodEstimate, suppliesEstimate,
+  // capacityEstimate, crabEstimate and vendorOwed (see the header + line ~167). A reader
+  // holding both `committed` and `foodEstimate` cannot tell that from the shape alone, so
+  // the obvious-looking `total - committed - foodEstimate` double-counts food. That is not
+  // hypothetical: the B3 orchestrator did exactly that on a live run (2200 - 1100 - 853 =
+  // "$247 of headroom" when the true figure was $1,100) — it understated a host's headroom
+  // by the whole food estimate. The component fields are all real and all sourced; the
+  // RELATIONSHIP between them was the trap. Deriving it once, here, removes the trap for
+  // every reader — and for the tool layer specifically, a number the model must COMPUTE is
+  // ungrounded by construction (B1: no number originates in the tool layer or the model).
+  //
+  // Honest null: with no budget set (`total` 0) there is no headroom to state — null, not 0,
+  // because "no budget" and "no room left" are different facts. Can go negative when the
+  // plan commits past the budget; that overage is the truth and is NOT clamped.
+  const uncommitted = total > 0 ? Math.round(total - committed) : null;
+  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, uncommitted, vendorOwed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;

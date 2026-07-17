@@ -25,7 +25,13 @@ import { buildVendorPlan } from './vendorPlan';
 // to one engine — no branching, no math. The description is what Claude reads to
 // choose the tool, so it names the host-facing question the tool answers.
 export const TOOLS = [
-  { name: 'get_money',           description: "The host's spending: planned budget, what's committed, and what's spent. Use for any 'can I afford / how much is left' question.", run: (event, ctx) => hostSpending(event, ctx.priceFactor) },
+  // The description carries the SCHEMA CONTAINMENT on purpose. `committed` already
+  // includes foodEstimate/suppliesEstimate/capacityEstimate/crabEstimate/vendorOwed,
+  // which the flat shape cannot show — on a live B3 run the model composed
+  // `total - committed - foodEstimate` and understated the host's headroom by the
+  // entire food estimate. `uncommitted` is the engine's own derived answer; saying so
+  // here means the model reads a grounded number instead of inventing the arithmetic.
+  { name: 'get_money',           description: "The host's spending: planned budget, what's committed, what's spent, and `uncommitted` — the headroom left. Use for any 'can I afford / how much is left' question. Read `uncommitted` directly; do NOT compute headroom yourself: `committed` ALREADY INCLUDES foodEstimate, suppliesEstimate, capacityEstimate, crabEstimate and vendorOwed, so subtracting any of those from `total` alongside `committed` double-counts them. `uncommitted` is null when no budget is set, and negative when the plan commits past the budget.", run: (event, ctx) => hostSpending(event, ctx.priceFactor) },
   { name: 'get_food_plan',       description: 'The food plan: cost band, per-head range, and the guest count it is sized for.',                                                    run: (event) => playbookFoodPlan(event) },
   { name: 'get_headcount',       description: 'The resolved guest count and the honest attendance band (the likely turnout range on the day).',                                    run: (event) => attendanceBand(event) },
   { name: 'get_decisions',       description: 'The decision board: which decisions are open, which are locked, and what needs the host next.',                                     run: (event, ctx) => playbookDecisionBoard(event, ctx.asOf, ctx.profile) },

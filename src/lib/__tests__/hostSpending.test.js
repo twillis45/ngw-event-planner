@@ -200,3 +200,41 @@ describe('honest bounds', () => {
     expect(sp.total).toBe(0);
   });
 });
+
+// `uncommitted` — the headroom, derived in the engine so no reader composes it.
+// Pins the live B3 failure: the orchestrator read `committed` and `foodEstimate`
+// side by side, couldn't see that food is INSIDE committed, and computed
+// 2200 - 1100 - 853 = "$247 of headroom" when the truth was $1,100 — understating
+// a host's room by the whole food estimate. Every input was real; the relationship
+// was invented. These lock the relationship itself.
+describe('uncommitted — headroom is derived once, in the engine', () => {
+  test('uncommitted = total - committed (NOT total - committed - foodEstimate)', () => {
+    const s = hostSpending(HOST());
+    expect(s.uncommitted).toBe(s.total - s.committed);
+    // The double-count the model actually made must not equal the honest answer,
+    // or this test would pass for the wrong reason.
+    expect(s.foodEstimate).toBeGreaterThan(0);
+    expect(s.uncommitted).not.toBe(s.total - s.committed - s.foodEstimate);
+  });
+
+  test('committed CONTAINS the component estimates — they are not additions to it', () => {
+    const s = hostSpending(HOST());
+    // Every component sits inside committed, so none may be subtracted again.
+    const components = s.foodEstimate + s.suppliesEstimate + s.capacityEstimate + s.crabEstimate + s.vendorOwed;
+    expect(s.committed).toBeLessThanOrEqual(Math.max(s.spent, components) + s.spent);
+    expect(s.committed).toBeGreaterThanOrEqual(s.foodEstimate);
+  });
+
+  test('no budget set → uncommitted is null, never 0 ("no budget" ≠ "no room left")', () => {
+    const s = hostSpending({ id: 'e3', type: 'Dinner Party', date: '2026-08-01', guestCount: 12, guestMode: 'count', budget: [] });
+    expect(s.total).toBe(0);
+    expect(s.uncommitted).toBeNull();
+  });
+
+  test('committed past the budget → uncommitted goes negative; the overage is the truth', () => {
+    const s = hostSpending(HOST({ totalBudget: 50 }));
+    expect(s.committed).toBeGreaterThan(50);
+    expect(s.uncommitted).toBe(50 - s.committed);
+    expect(s.uncommitted).toBeLessThan(0);
+  });
+});
