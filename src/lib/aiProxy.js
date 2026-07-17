@@ -62,6 +62,15 @@ export async function callAiFeature(feature, prompt, context = null) {
 // vendor reply so the planner reviews a diff and applies it (never auto-write).
 // Structured-JSON path (not callAiFeature, which returns text) — same auth,
 // same honest failure surface. `fields` is keyed by src/lib/vendorReplyParse.js.
+//
+// PROVIDER (B4 migration, 2026-07-17): Sprint 2's D1 decision routes parse/classify
+// to Claude Haiku; B4 built that path and left callers on the OpenAI default until
+// the key was confirmed live. It is (GET /api/ai/status → orchestrator: true), so
+// this is that migration. The server keeps the SAME prompt, JSON parse, allow-list
+// filter, and response shape for both providers, and vendorReplyParse.js — the
+// honesty core (null-unless-stated, evidence-quoted, manual apply) — is untouched
+// either way. Overridable per call so the OpenAI path stays one argument away:
+// pass { provider: 'openai' } to roll back without a deploy.
 export async function parseVendorReply(reply, vendorCtx = {}) {
   if (!BASE) throw new Error('AI is not configured.');
   const text = (reply || '').trim();
@@ -76,6 +85,7 @@ export async function parseVendorReply(reply, vendorCtx = {}) {
         vendor_name: vendorCtx.vendorName || null,
         vendor_category: vendorCtx.vendorCategory || null,
         event_name: vendorCtx.eventName || null,
+        provider: vendorCtx.provider || 'claude',
       }),
     });
   } catch {
