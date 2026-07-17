@@ -23,6 +23,34 @@ sit in the **frozen** CRA with **zero** hostv2 consumers — and the scheduled d
 
 ---
 
+## 0 · ⛔ STOP — do not delete the CRA
+
+> **Found 2026-07-17 while starting the harvest. This supersedes every "delete legacy" row in every plan.**
+
+**`src/App.js` is not "the legacy host shell." It is the legacy host shell AND THE ENTIRE PLANNER APP, in one
+47k-line file.** Its own freeze header says *"FROZEN — legacy CRA host shell"* — and that sentence is the trap
+every reasoning step today inherited, including all of mine.
+
+| | |
+|---|---|
+| `/` (CRA) | `index.js` mounts `<App />` → **the planner app**: `CommandCenter` (L3, imported `App.js:137`, 17 refs), `EventCommTab` (L4), `DailyBriefing` (L2) — **plus** the legacy host shell |
+| `/hostv2/` (Vite) | its **own `index.html`** → `HostShellV2` — **host only** |
+| **plannerv2** | **DOES NOT EXIST.** hostv2 is the only v2 shell. |
+
+**Deleting the CRA deletes the planner product.** There is no replacement and no port. The plan schedules this
+deletion "post-Sprint-2 — which is now reachable," and this board called it *"mechanical… slot it anywhere."*
+**Both are wrong and would be destructive.**
+
+**The deletion row has now reversed three times in one day**, each time revealing something worse: ① "unblocked,
+donor role spent" → ② "two live organs still inside" → ③ **"the planner app lives here."** It is the single
+most dangerous row in the plan, and it was the one most confidently marked safe.
+
+**Before anyone touches it, the real question is a product one:** does the planner app live or die? If it lives,
+the CRA cannot be deleted until a plannerv2 exists — which is a **program**, not a chore. If it dies, that is a
+business decision (Planner Pro is already commercially parked), not a cleanup.
+
+---
+
 ## 1 · The order — what to build, in sequence
 
 > ⚠️ **REBUILT 2026-07-17, after the order's own rows were proven false.** The first version of this table was
