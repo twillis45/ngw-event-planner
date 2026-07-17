@@ -1058,6 +1058,35 @@ export default function HostShellV2() {
   // headcount row in learned turnout (attendanceAdjustment — the same gated/clamped reader
   // the food plan already trusts). No profile / cold-start host ⇒ board is byte-identical.
   const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event, profile]);
+  // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
+  const [callsOpen, setCallsOpen] = useState(false);
+  // The open board AS THE HOST SEES IT — their pins floated, then the engine's
+  // order. Hoisted to one place so the reassurance copy and the rows below can't
+  // disagree about what's actually on screen (they did: the copy promised a paced
+  // board while every row rendered).
+  const callsOrdered = useMemo(() => {
+    const raw = decisionBoard.open || [];
+    const pins = Array.isArray(event.decisionPins) ? event.decisionPins.filter(Boolean) : [];
+    if (!pins.length) return raw;
+    return raw.map((r, i) => ({ r, i })).sort((a, b) => {
+      const pa = pins.indexOf(a.r.id); const pb = pins.indexOf(b.r.id);
+      const ra = pa === -1 ? Infinity : pa; const rb = pb === -1 ? Infinity : pb;
+      return ra !== rb ? ra - rb : a.i - b.i;
+    }).map((x) => x.r);
+  }, [decisionBoard, event.decisionPins]);
+  // EMOTION-STATE, honestly rendered. computeHostAdaptation already shrinks an
+  // underwater host's first foreground to a runway-sized few (focusCount, staged)
+  // — "overwhelm paces even a non-hand-held host", per the engine. This shell
+  // ignored it and rendered the whole list under copy that said otherwise. Fold
+  // ONLY when the engine says to AND it actually removes rows, so a calm board
+  // stays byte-identical (additive) and the copy is never an overclaim.
+  const callsFocus = (() => {
+    const ha = decisionBoard.hostAdaptation;
+    if (!ha || !ha.overwhelm || !ha.staged) return null;
+    const n = Number(ha.focusCount);
+    return Number.isFinite(n) && n > 0 && n < callsOrdered.length ? n : null;
+  })();
+  const callsFolded = callsFocus != null && !callsOpen;
   const capacity = useMemo(() => { try { return playbookCapacity(event); } catch { return null; } }, [event]);
   // deriveHelperResponsibilities returns { helpers, responsibilities } — the
   // rows we render are the responsibilities (helperName/label/status); the
@@ -4201,13 +4230,14 @@ export default function HostShellV2() {
                   <span className="t" style={{ display: 'block', color: 'var(--steel-soft)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>{returnLine.line}
                     {returnLine.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                   </span>
-                  {/* Momentum reward: how far the plan moved since the last visit —
-                      "N of M ready" plus the delta when something actually closed.
-                      Shown only on a real return (returnLine is gated on the 30-min
-                      gap), so it never becomes an always-on duplicate of the tile. */}
-                  {returnLine.readyNow && (
+                  {/* Momentum reward: how far the plan moved since the last visit.
+                      The 30-min gate keeps this off most visits, but on the visit it
+                      DOES appear it restated "N of M" — the Where-you-stand tile's one
+                      job, ~120px below. The DELTA is the part the tile can't tell you,
+                      so it earns the line; the bare count doesn't. No delta ⇒ silent. */}
+                  {returnLine.readyNow && returnLine.readyDelta > 0 && (
                     <span className="t" style={{ display: 'block', marginTop: 2, color: 'var(--ink-soft)', fontWeight: 600, fontSize: 'var(--t-row-sub)' }}>
-                      You’re {returnLine.readyNow.done} of {returnLine.readyNow.total} ready{returnLine.readyDelta > 0 ? ` — ${returnLine.readyDelta} more since you were last here` : ''}.
+                      {returnLine.readyDelta} more handled since you were last here — {returnLine.readyNow.done} of {returnLine.readyNow.total} now.
                     </span>
                   )}
                 </button>
@@ -4356,7 +4386,16 @@ export default function HostShellV2() {
                 </button>
               </div>
               {/* NEXT — out of the grid, anchored to the bottom of the hero
-                  viewport (margin-top:auto) so it rides just above the dock. */}
+                  viewport (margin-top:auto) so it rides just above the dock.
+                  DENSITY (2026-07-16): the pinned .next-bar already names the first
+                  action, its "+N" count, and routes through the identical onCta path —
+                  so on an ACTIVE board this tile was the same answer, twice, on one
+                  screen (the bar's own comment says START HERE was retired for exactly
+                  this reason; this tile was left behind). It still earns its place in
+                  the two states the bar can't cover: CALM (it names the next DATED cue
+                  and routes to it — the bar only says "All quiet") and DAY-OF (it counts
+                  the moments/steps left). So: render it only when it adds something. */}
+              {(listIsCalm || days === 0) && (
               <button
                   className={'tile tile-d' + (queue.length === 0 ? ' allset' : '')}
                   onClick={() => {
@@ -4423,6 +4462,7 @@ export default function HostShellV2() {
                     })()}
                   </div>
                 </button>
+              )}
               </div>
 
               {/* ── T-72h reconfirm sweep — a live-moment banner that exists only
@@ -6060,8 +6100,14 @@ export default function HostShellV2() {
                   // difficulty. It wins over the band line when the host is underwater, so the
                   // read reaches them in words (the board also paces + suppresses terse for them).
                   const ha = decisionBoard.hostAdaptation || null;
-                  if (ha && ha.overwhelm) {
+                  // Only claim a paced board when one is ACTUALLY on screen. Folded ⇒
+                  // "just the first few" is true. Expanded (or nothing to fold) ⇒ the
+                  // host is looking at the whole list, so say the honest thing instead.
+                  if (callsFolded) {
                     return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — just the first few here, the rest comes back when you’re ready. You’ve got this.</p>;
+                  }
+                  if (ha && ha.overwhelm) {
+                    return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — take them one at a time, in the order below. You’ve got this.</p>;
                   }
                   const band = hostDiffBandV2(decisionBoard.hostDifficulty);
                   const line = band === 'hard'
@@ -6077,21 +6123,14 @@ export default function HostShellV2() {
                 ) : null}
                 {(() => {
                   // Host override (task 3): float pinned decisions to the top; the board's
-                  // own priority order holds for the rest (stable sort).
-                  const raw = decisionBoard.open || [];
-                  const pins = Array.isArray(event.decisionPins) ? event.decisionPins.filter(Boolean) : [];
-                  const ordered = pins.length
-                    ? raw.map((r, i) => ({ r, i })).sort((a, b) => {
-                      const pa = pins.indexOf(a.r.id); const pb = pins.indexOf(b.r.id);
-                      const ra = pa === -1 ? Infinity : pa; const rb = pb === -1 ? Infinity : pb;
-                      return ra !== rb ? ra - rb : a.i - b.i;
-                    }).map(x => x.r)
-                    : raw;
+                  // own priority order holds for the rest. Order + fold both come from
+                  // callsOrdered/callsFolded above — one source, so the copy can't lie.
+                  const ordered = callsFolded ? callsOrdered.slice(0, callsFocus) : callsOrdered;
                   // When nothing's open but decisions are parked, the deferred shelf
                   // below carries the honest state — don't also print "Nothing waiting
                   // on you." (that reads as a dead end and buries the horizon).
-                  if (!ordered.length) return (decisionBoard.deferred || []).length ? null : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
-                  return ordered.map((r, i) => {
+                  if (!callsOrdered.length) return (decisionBoard.deferred || []).length ? null : <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>Nothing waiting on you.</div>;
+                  return (<>{ordered.map((r, i) => {
                   // Inline settle — keyed on the DECISION having authored options
                   // (playbookDecisionOptions, same rule as legacy's What-to-settle
                   // board), not on any route. Destination calls (group transport,
@@ -6180,7 +6219,17 @@ export default function HostShellV2() {
                       )}
                     </div>
                   );
-                });
+                })}
+                {/* The rest of a paced board — one tap away, never withheld. Mirrors the
+                    home queue's "+N more" vocabulary. */}
+                {callsFolded && (
+                  <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                    onClick={() => setCallsOpen(true)}>
+                    <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {callsOrdered.length - callsFocus} more — show the rest</span>
+                    <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  </button>
+                )}
+                </>);
                 })()}
                 {/* Wave-2b horizon shelf — the decisions the engine parked ("comes up
                     closer to the date"). Subordinate to the active list: when calls are
