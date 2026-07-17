@@ -4998,7 +4998,42 @@ export default function HostShellV2() {
                 // rest sit behind a quiet "+N more" expander at the end. Ranks
                 // number straight through — a bundle is ONE rank.
                 const QUEUE_CAP = 6;
-                const visible = queueOpen ? shown : shown.slice(0, QUEUE_CAP);
+                // OVERWHELM PACES THE HOME QUEUE (review board 2026-07-17 — the ONE
+                // change all three lenses approved, the adversary included). The engine
+                // already sizes an underwater host's first foreground (focusCount, staged);
+                // home was the last surface still overriding it upward to a flat 6.
+                //
+                // This is a PARAMETER CHANGE to a shipped, proven, one-tap expander — not a
+                // new hide. Guardrails, all load-bearing:
+                //  • overwhelm (not runway) is the gate. runway collapses "no date" /
+                //    "event was yesterday" / "event was in October" into one 'unknown' that
+                //    then behaves as 'standard' — reading THAT to hide would be inventing a
+                //    fact ("unknown means unknown"). overwhelm structurally requires a known,
+                //    non-relaxed runway, so gating on it can never fire on a bad date.
+                //  • THE CAP YIELDS TO SAFETY, NEVER THE ROWS. It can never fall below the
+                //    count of critical / past-due cards. The app already refuses to let the
+                //    HOST snooze a critical; the engine gets strictly less authority, never
+                //    more.
+                //  • Deferral, never suppression — the "+N more" expander below already
+                //    states the true number and is one tap.
+                //  • Order is untouched: the cap sits downstream of the sort, so safety and
+                //    overdue keep leading. The engine forbids overwhelm from re-ordering and
+                //    so does this.
+                const queueFocus = (() => {
+                  const ha = decisionBoard.hostAdaptation;
+                  if (!ha || !ha.overwhelm || !ha.staged) return null;
+                  const n = Number(ha.focusCount);
+                  if (!Number.isFinite(n) || n <= 0) return null;
+                  // A bundle carries no dueInDays and folds several real things under one
+                  // rank, so it counts as must-see too rather than risk burying a deadline.
+                  const mustSee = shown.filter(a => a && (a.level === 'critical' || a.kind === 'bundle'
+                    || (a.dueInDays != null && Number(a.dueInDays) < 0))).length;
+                  const cap = Math.max(n, mustSee);
+                  return cap < shown.length ? cap : null;
+                })();
+                const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
+                const queueFolded = queueFocus != null && !queueOpen;
+                const visible = queueOpen ? shown : shown.slice(0, queueCap);
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
@@ -5008,6 +5043,17 @@ export default function HostShellV2() {
                   </span>
                 ) : null;
                 return (<>
+              {/* Name the state — but ONLY when the board on screen IS actually paced.
+                  Gated on queueFolded, which is the same predicate that computed
+                  `visible`, so the words and the list cannot drift apart. (They did
+                  once: a line promised "just the first few" over an unsliced list and
+                  shipped that way.) A shorter list with no reason reads as a bug; a
+                  shorter list with a reason reads as being taken care of. */}
+              {queueFolded && (
+                <p className="grounding" style={{ margin: '0 0 var(--sp-2)', color: 'var(--muted)' }}>
+                  That’s a lot with the clock ticking — just the first few here, the rest is a tap away when you’re ready.
+                </p>
+              )}
               {visible.map((a, i) => {
                 const key = String(a.id || i);
                 // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
