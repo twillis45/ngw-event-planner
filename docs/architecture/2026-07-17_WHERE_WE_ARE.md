@@ -11,50 +11,65 @@ INDEX](../audits/INDEX.md)'s own rule)._
 > reconciles the *plans*. It does not index the 36 docs in `docs/architecture/` + `docs/audits/`; that's what
 > the audit INDEX is for.
 
-**The verdict:** Sprints 0, 1 and 2 are done. The orchestrator exists, streams, enforces grounding, and answers
-live. **The remaining build is Sprint 3–4 — and four of its five payloads don't exist yet.** Everything else in
-flight is either polish on a shell that already works, or a scoreboard measuring the same app on a different axis.
+**The verdict (corrected twice on 2026-07-17):** Sprints 0, 1 and 2 are done — the orchestrator exists, streams,
+enforces grounding, and answers live. **Sprint 3–4 is not a build. It is a PORT.** Four of its five payloads
+already have working capability; the fifth ("order the crabs") **was never buildable honestly**. The real gap is
+that a working communication stack, the AI feature calls, the virality loop, and the attendance-memory apply all
+sit in the **frozen** CRA with **zero** hostv2 consumers — and the scheduled deletion destroys them.
+
+> **This line previously read "four of its five payloads don't exist yet." That was wrong**, and it was published
+> in two docs and two commit messages. It came from grepping two directories for function names I invented, while
+> 16 backend routers sat unexamined. A grep proves a *string* absent, never a *capability*. See §1's reversal note.
 
 ---
 
 ## 1 · The order — what to build, in sequence
 
-Ordered by **what unblocks what**, not by size. The rails are built, so every item is a payload rather than an
-architecture problem — this is the cheapest that work will ever be.
+> ⚠️ **REBUILT 2026-07-17, after the order's own rows were proven false.** The first version of this table was
+> wrong on **four of six rows**. It told you to build three things that were already built or unbuildable, and
+> to delete a shell holding five live capabilities. Details in "How this table reversed" below — it is kept, not
+> quietly fixed, because the failure is the most useful thing on this page.
+
+**Sprint 3–4 is not a build. It is a PORT.** Four of its five payloads already have working capability; the gap
+is that it's stranded in the **frozen** CRA and reaches the host through nothing. The plan said "build the
+surfaces" because it was written before anyone checked what already existed.
 
 | # | Do this | Why it's here | Size |
 |---|---|---|---|
-| **0** | **Decide the parser fork** | A **fork, not a task.** Whether payloads ride the orchestrator changes how all four get built. Answer it and everything below has one shape. | minutes |
-| **1** | **Parser → orchestrator** | The smallest possible test of the rails, on code that **already works**. Proves the pattern before four new things get built on it — migrating known-good beats debugging greenfield. | S |
-| **2** | **Order the crabs** | **Closes the vendor loop**, already half-built: send → reply → *parse (exists)* → apply → order. Highest value per unit of work, and it's the flagship's own moment. | M |
-| **3** | **Invitations generate** | Opens the guest loop, and `InviteV2` already exists as a surface to build on. Must precede RSVP-parse — you can't parse replies to invites you never sent. | M |
-| **4** | **RSVP parse** | Closes the guest loop. Feeds guest count → food, budget, capacity. `attendanceAdjustment` already *predicts* deterministically — this is parsing real replies, not forecasting. | M |
-| **5** | **Comms one-tap** | Last because it's the **biggest greenfield**: `commApi` isn't imported by the host shell at all. It also rides on both loops above, so it's cheapest once they exist. | L |
-| **6** | **Harvest the donor, THEN delete legacy** | ⚠️ **THIS ROW WAS REVERSED WITHIN THE HOUR — see below.** Legacy still holds **two live organs** nothing in V2 replaces. Port or *consciously* drop each, then delete. | M |
-| **7** | **Sprint 5–6** | Not one thing — three payloads, three truths. Commerce is **built and gated off**; social proof is **live**; only collaboration + genUI are genuinely absent. See the corrected row below. | — |
+| **1** | **HARVEST THE DONOR** — the actual remaining work | **Five working capabilities sit in frozen `src/App.js` with ZERO hostv2 consumers**, and the scheduled CRA deletion destroys every one: ① **comms one-tap** — 11 routes, real Resend email, delivery webhooks (`communication.py:188-563`, `emailer.py`), while hostv2 falls back to `mailto:`/`sms:` (`HostShellV2.jsx:2586, 8091`); ② **AI feature calls** — `callAiFeature` (`aiProxy.js:34`) incl. AI invite copy + vendor follow-up, consumers `App.js` only; ③ **the virality loop** — 5-event funnel, `PLAN_YOURS_TAPPED`, "make one free" recruit CTA (`App.js:22982…`); ④ **the attendance-memory *apply* + revert** (`App.js:10399,10426`) — V2 *displays* learned turnout and never applies it; ⑤ the Instacart shopping-list deep link (`instacart.js:9`). **Not a build — a port.** Each needs a port-or-consciously-drop ruling. | **L** |
+| **2** | **THEN delete legacy** | Genuinely mechanical **once row 1 lands** — and catastrophic before it. ~25 MB of CRA still ships and `npm run build` is still `react-scripts`, so this is also the §04 "retire the CRA frame" lever nobody has pulled. | S |
+| **3** | **Defuse the $39 pass** | **Money landmine, one env var from live.** Real Stripe + webhook signature verification ship today, but **nothing reads pass-purchase state** — the perk copy *"Every tab, fully unlocked"* describes a gate that doesn't exist (`require_planner` is auth-only). Either fix the copy or build the entitlement, **before** anything sets `REACT_APP_BILLING_LIVE=1`. | S |
+| **4** | **Delete the prompt-caching claim** | It's a no-op: a ~765-token prefix under Anthropic's 1024 floor, silently doing nothing, invisible because no code reads `usage`. At ~$0.01/ask the win is ~$0.001. **Delete the claim, don't chase the saving.** | XS |
+| **5** | **Sprint 5–6 — collaboration + genUI** | The only genuinely-absent payloads left. Commerce is built-and-gated; social proof is live. | — |
 
-> ### ⚠️ How row 6 reversed — the method failing in real time
->
-> **Written 2026-07-17, reversed the same hour.** I checked whether legacy held prior art for the four Sprint 3–4
-> payloads, found **zero hits**, and generalized to *"its donor role is spent — delete anytime."* The grep was
-> right. **The question was wrong.** Legacy isn't only a donor for *planned* work; it holds organs no plan row
-> ever named:
->
-> - **The entire virality loop.** A 5-event funnel including `PLAN_YOURS_TAPPED` and a real "make one free"
->   recruit CTA — `src/App.js:22982, 30130, 30192, 30769, 31351, 31651`. **hostv2 has zero `track()` calls;
->   `InviteV2.jsx` doesn't even import analytics.** Deleting the CRA deletes the growth loop.
-> - **The attendance-memory *apply* + revert.** Legacy sizes off learned turnout (`App.js:10399` —
->   `attAdj.applied ? { ...event, guestCount: attAdj.suggested } : event`) and therefore *needs* the "Keep 75"
->   revert it offers. **V2 displays the learning and never applies it** — so V2's gap isn't the missing revert
->   the plan names, it's that the learning is inert. Delete the CRA and the only working implementation goes
->   with it.
->
-> **The lesson is the method, not the row.** A prescription is only proven against the question you thought to
-> ask. "Zero prior art for the four payloads" is a *fact*; "the donor role is spent" is a *prescription* — and
-> the gap between them is where all eight of today's reversals live.
+### Rows that were on this list and shouldn't be
 
-**Not on this list:** Tier 2 (parked) and the three score-climbs (demoted to diagnostics). If either earns a
-slot, it earns it by **displacing a numbered row above, in writing**.
+| Was | Verdict |
+|---|---|
+| **0 · Decide the parser fork** | ✅ **DECIDED & SHIPPED** — *one model, two guards, on purpose.* `groundingCheck` is built for answers grounded in **engines**; the parser's truth lives in the **vendor's message**, guarded by `evidenceVerified` (verbatim substring per field, human review, unverified rows default `accepted:false`) — strictly stronger for extraction. The two-**model** fork collapsed (`fa8a360f`, live-verified); the two **paths** stay, deliberately. |
+| **2 · Order the crabs** | ⛔ **UNBUILDABLE — the plan asked for a lie.** Instacart returns a *deep link to a pre-filled list*; the human still checks out (`instacart.py:77,89`). Kroger's own docstring calls cart-add "a future step" and demands *"no fake matches, no broken cart promise"* (`kroger.py:21-30`). **Neither sells crabs by the bushel from a crab house** (`crabPlan.js:1-22`). Under **UX_07** the button is a truthfulness violation. The honest ceiling — *"here's what to order"* — **already ships** (`recommendCrabOrder` → `HostShellV2.jsx:7920`). |
+| **3 · Invitations generate** | ✅ **ALREADY LIVE.** `draftInvite` (`doItForMe.js:147`) → `HostShellV2.jsx:29`, rendering "Use the invite we wrote" (`:3201`) and "Copy the invite" (`:10676`). |
+| **4 · RSVP parse** | ✅ **BUILT, and "parse" was never needed.** Full public stack (`rsvp.py:219,239,374`) reaching the host at `HostShellV2.jsx:3094`. `RsvpSubmit` is a **structured form** (`rsvp.py:152`), not free text — there is no NLP to build. "Predict" is met by `attendanceAdjustment`. |
+| **Tier 2 · call-sheet** | ⚪ Parked. Real diagnosis, self-assigned redesign of a working surface. |
+| The three score-climbs | ⚪ Demoted to **diagnostics** — they generate sprint candidates, never a parallel plan. |
+
+> ### ⚠️ How this table reversed — twice, within two hours, both times mine
+>
+> **Reversal 8 — "delete legacy, the donor role is spent."** I grepped legacy for prior art on the four Sprint
+> 3–4 payloads, found **zero**, and generalized. The grep was right; **the question was wrong.** Legacy holds
+> organs no plan row ever named — the virality loop, the attendance-memory apply. *"Zero prior art for the four
+> payloads"* is a **fact**. *"The donor role is spent"* is a **prescription**. The gap between them is where
+> every reversal lives.
+>
+> **Reversals 9 & 10 — "four of five payloads don't exist."** I searched **two directories** (`src/lib`,
+> `hostv2/src`) for **function names I invented** (`orderCrabs`, `placeCrabOrder`, `parseRsvp`). They weren't
+> there — so I concluded the *features* weren't. Meanwhile **16 backend routers** sat unexamined, including a
+> complete communication stack with real email delivery. **Invitations-generate was live in the shell the whole
+> time.** I published that claim in two docs and two commit messages before checking it.
+>
+> **The method that catches this:** a grep proves a **string** absent, never a **capability**. Reason from
+> capability — "can the app send a message?" — not from a name you guessed. And search the whole repo: the
+> backend was invisible to every check I ran.
 
 ## 2 · The five roadmaps
 
@@ -89,8 +104,8 @@ add a sixth number.
 
 | | | |
 |---|---|---|
-| 🟠 **Sprint 3–4** | **The surfaces — this is the work** | **Four of five payloads return zero hits**: invitations-generate, RSVP-parse, comms one-tap, order-the-crabs. "RSVP predict" is arguably already met *deterministically* by `attendanceAdjustment` — no tokens spent, the cost rule working. |
-| 🟠 **Sprint 3–4** | **The parser rides its own route** | The sprint's clause is *"all on the orchestrator."* The one AI surface that shipped uses `/api/ai/parse-vendor-reply` and never touches `/api/ai/orchestrate` — inheriting neither the tool layer nor the grounding guard. Real AI **beside** the orchestrator, not on it. |
+| 🟠 **Sprint 3–4** | **It's a PORT, not a build** (corrected) | ~~"Four of five payloads return zero hits"~~ — **that claim was FALSE.** Real state: **invitations-generate is LIVE** (`draftInvite` → `HostShellV2.jsx:29`, two buttons). **RSVP is BUILT** (full public stack → `:3094`) and "parse" was never needed — it's a structured form (`rsvp.py:152`), not free text. **Comms one-tap is one of the most complete things in the repo** (11 routes, real Resend email, delivery webhooks) — and **stranded in frozen `App.js`**; hostv2 uses `mailto:`/`sms:`. **Reply-parse is live.** **"Order the crabs" is the only true absence — and it's correctly absent** (see §1: no integration can transact, and none sells bushels; UX_07 forbids the button). The work is a **port across the frozen seam**, not five new builds. |
+| ✅ **Sprint 3–4** | **"All on the orchestrator" — clause retired** | The sprint's defining clause was written before the orchestrator existed and doesn't survive contact: **one guard does not fit every AI job.** `groundingCheck` ("every number traces to a tool result") is right for answers grounded in **engines**; the parser's truth lives in the **vendor's message**, guarded by `evidenceVerified` — verbatim substring per field, human review, unverified rows default `accepted:false` — which is *strictly stronger* for extraction. **Settled: one model, two guards, on purpose.** The two-model fork collapsed (`fa8a360f`, live-verified `parse_model: claude-sonnet-5`). |
 | 🟠 **Sprint 1** | Delete the legacy shell | Frozen 2026-07-16, donor-only, 46,988 lines. Migrate/drop audit complete. What's left is **mechanical**: a pre-delete field diff + a dated note. |
 | ⚪ **Tier 2** | Call-sheet hierarchy — **recommend PARK** | Real diagnosis (weight tracks component type, not rank). But a self-assigned redesign of a working surface while four planned surfaces don't exist. The card wall is ugly and *honest*. |
 | 🟠 **Sprint 5–6** | **"NOT STARTED" was wrong** — proven 2026-07-17 | One red hid **three different truths**. **Commerce: BUILT.** Real Stripe backend (`stripe_payments.py` — checkout, verify, webhook w/ signature verification), client, and the **$39 One-Event Pass live in hostv2** (`:7556`), held off by two deliberate gates that degrade to an honest *"Free while Event Boss is in preview."* Built and consciously switched off ≠ not started. **Social proof: LIVE** — anonymized `goingCount` renders today (`InviteV2.jsx:796`). **Virality loop: STRANDED** in frozen legacy. **Collaboration + genUI: genuinely absent** — the red is right for those two. |
