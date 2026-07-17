@@ -30,8 +30,28 @@ architecture problem — this is the cheapest that work will ever be.
 | **3** | **Invitations generate** | Opens the guest loop, and `InviteV2` already exists as a surface to build on. Must precede RSVP-parse — you can't parse replies to invites you never sent. | M |
 | **4** | **RSVP parse** | Closes the guest loop. Feeds guest count → food, budget, capacity. `attendanceAdjustment` already *predicts* deterministically — this is parsing real replies, not forecasting. | M |
 | **5** | **Comms one-tap** | Last because it's the **biggest greenfield**: `commApi` isn't imported by the host shell at all. It also rides on both loops above, so it's cheapest once they exist. | L |
-| **6** | **Delete legacy** | **Now unblocked** — verified 2026-07-17: legacy holds **zero** prior art for all four payloads, so its donor role is spent. Slot anywhere; earlier means 46,988 fewer lines to search while building. | S |
-| **7** | **Sprint 5–6** | Only after the surfaces exist. Re-verify its status first — the red is inherited. | — |
+| **6** | **Harvest the donor, THEN delete legacy** | ⚠️ **THIS ROW WAS REVERSED WITHIN THE HOUR — see below.** Legacy still holds **two live organs** nothing in V2 replaces. Port or *consciously* drop each, then delete. | M |
+| **7** | **Sprint 5–6** | Not one thing — three payloads, three truths. Commerce is **built and gated off**; social proof is **live**; only collaboration + genUI are genuinely absent. See the corrected row below. | — |
+
+> ### ⚠️ How row 6 reversed — the method failing in real time
+>
+> **Written 2026-07-17, reversed the same hour.** I checked whether legacy held prior art for the four Sprint 3–4
+> payloads, found **zero hits**, and generalized to *"its donor role is spent — delete anytime."* The grep was
+> right. **The question was wrong.** Legacy isn't only a donor for *planned* work; it holds organs no plan row
+> ever named:
+>
+> - **The entire virality loop.** A 5-event funnel including `PLAN_YOURS_TAPPED` and a real "make one free"
+>   recruit CTA — `src/App.js:22982, 30130, 30192, 30769, 31351, 31651`. **hostv2 has zero `track()` calls;
+>   `InviteV2.jsx` doesn't even import analytics.** Deleting the CRA deletes the growth loop.
+> - **The attendance-memory *apply* + revert.** Legacy sizes off learned turnout (`App.js:10399` —
+>   `attAdj.applied ? { ...event, guestCount: attAdj.suggested } : event`) and therefore *needs* the "Keep 75"
+>   revert it offers. **V2 displays the learning and never applies it** — so V2's gap isn't the missing revert
+>   the plan names, it's that the learning is inert. Delete the CRA and the only working implementation goes
+>   with it.
+>
+> **The lesson is the method, not the row.** A prescription is only proven against the question you thought to
+> ask. "Zero prior art for the four payloads" is a *fact*; "the donor role is spent" is a *prescription* — and
+> the gap between them is where all eight of today's reversals live.
 
 **Not on this list:** Tier 2 (parked) and the three score-climbs (demoted to diagnostics). If either earns a
 slot, it earns it by **displacing a numbered row above, in writing**.
@@ -73,7 +93,9 @@ add a sixth number.
 | 🟠 **Sprint 3–4** | **The parser rides its own route** | The sprint's clause is *"all on the orchestrator."* The one AI surface that shipped uses `/api/ai/parse-vendor-reply` and never touches `/api/ai/orchestrate` — inheriting neither the tool layer nor the grounding guard. Real AI **beside** the orchestrator, not on it. |
 | 🟠 **Sprint 1** | Delete the legacy shell | Frozen 2026-07-16, donor-only, 46,988 lines. Migrate/drop audit complete. What's left is **mechanical**: a pre-delete field diff + a dated note. |
 | ⚪ **Tier 2** | Call-sheet hierarchy — **recommend PARK** | Real diagnosis (weight tracks component type, not rank). But a self-assigned redesign of a working surface while four planned surfaces don't exist. The card wall is ugly and *honest*. |
-| 🔴 **Sprint 5–6** | Collaboration, genUI, commerce | Untouched. Its red is **inherited, not verified** — out of scope for the 2026-07-17 pass. |
+| 🟠 **Sprint 5–6** | **"NOT STARTED" was wrong** — proven 2026-07-17 | One red hid **three different truths**. **Commerce: BUILT.** Real Stripe backend (`stripe_payments.py` — checkout, verify, webhook w/ signature verification), client, and the **$39 One-Event Pass live in hostv2** (`:7556`), held off by two deliberate gates that degrade to an honest *"Free while Event Boss is in preview."* Built and consciously switched off ≠ not started. **Social proof: LIVE** — anonymized `goingCount` renders today (`InviteV2.jsx:796`). **Virality loop: STRANDED** in frozen legacy. **Collaboration + genUI: genuinely absent** — the red is right for those two. |
+| 🔴 **MONEY** | **The $39 pass takes payment and unlocks nothing** | **Nothing reads pass-purchase state.** The only repo references to the pass are the sheet that *sells* it. Its own perk copy — *"Every tab, fully unlocked"* — describes **a gate that does not exist**; `require_planner` is auth-only (its docstring: *"this is not a role gate"*). Not an incident: it's gated off. It is a **landmine one env var from live** (`REACT_APP_BILLING_LIVE=1`). Fix the copy or build the entitlement **before** anything flips that flag. |
+| 🔴 **Caching** | **Implemented, tested, and doing nothing** | `cache_control: ephemeral` is set correctly (`ai.py:350,354`) and asserted in tests — but the cached prefix is **~765 tokens**, under Anthropic's **1024 minimum**, so it **silently no-ops** (no error, `cache_creation_input_tokens: 0`). Invisible because **no code reads `usage`**. §04 sells it as "~90% cheaper." At ~$0.01/ask the saving is ~$0.001 — **delete the claim, don't chase it.** |
 
 ## 4 · Blocked on a ruling
 
@@ -87,7 +109,36 @@ add a sixth number.
    **Rec:** the Execution Plan is the build plan; the rest are **diagnostics** — they generate sprint
    candidates, never a parallel plan.
 
-## 5 · The pattern
+## 5 · Proving the plan — the method
+
+> **The host's diagnosis, 2026-07-17:** *"we keep getting to steps in plan that are reversed after investigated."*
+> Eight reversals in one day. That's not bad luck; it's the plan's construction.
+
+**The plan has two kinds of rows, and only one kind reverses.**
+
+- **FACTS** (status, architecture, counts) — these go **stale**. They were true once. Cheap to refresh.
+- **PRESCRIPTIONS** (route to Haiku · all on the orchestrator · delete legacy after Sprint 2 · edge functions ·
+  gate genAI behind paid events) — these **reverse on contact**, because they were **reasoned in advance**,
+  before the code they describe existed. A plan is a set of predictions written in the indicative mood.
+
+**Every prescription carries a hidden premise. The premise is the thing to test — not the prescription.**
+
+| Prescription | Hidden premise | Premise proved? |
+|---|---|---|
+| "Route parse to Haiku" | Per-parse cost matters | ❌ It's a nickel an event |
+| "All on the orchestrator" | One guard fits every AI job | ❌ Extraction ≠ answering |
+| "Delete legacy post-Sprint-2" | Its donor value is spent | ❌ Two live organs still inside |
+| "Edge functions — low latency globally" | We deploy to an edge runtime | ❌ Render free, single region, cold starts |
+| "Prompt caching — ~90% cheaper" | The prefix is cacheable | ❌ ~765 tok, under the 1024 floor |
+| "Gate genAI behind paid events" | An entitlement boundary exists | ❌ Auth ≠ payment; no gate exists |
+| "Margin 85–95% at $39" | The pass gates something | ❌ It unlocks nothing |
+
+**The standard, going forward:** before sequencing work on any plan row, **extract its premise and test it** —
+at planning time, not at the moment of action, which is the most expensive place to find out. A row that cannot
+name a testable premise isn't a plan row; it's an intention. **The eighth reversal was this document's own row 6,
+written an hour before it fell** — the method catches its author too, which is the only real evidence it works.
+
+## 6 · The other pattern
 
 Three times on 2026-07-17 alone, the same shape: **built, then one wire short of the host.** The paced board
 that didn't pace. The orchestrator marked "doesn't exist" after it existed. A noun swap that reached the shell
