@@ -97,6 +97,64 @@ describe('accumulateSSE — streamed reassembles to the buffered shape', () => {
   });
 });
 
+// These frames are TRANSCRIBED FROM A REAL claude-sonnet-5 STREAM, not imagined.
+// The scripted streams above all passed while the live path was broken: Sonnet 5 runs
+// adaptive thinking BY DEFAULT (silent change from 4.6), so a real turn opens with a
+// thinking block. The accumulator coerced it to {type:'text',text:''}, and replaying an
+// empty text block is a 400 — the turn died and the host saw "I can't take a broader
+// look". Note thinking arrives with an EMPTY body and a signature (display defaults to
+// "omitted"); the signature is what makes the block legal to replay.
+describe('real Sonnet 5 shapes — thinking blocks must survive the round trip', () => {
+  const REAL_THINKING_TOOL_STREAM = sse([
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } },
+    { type: 'content_block_delta', index: 0, delta: { type: 'signature_delta', signature: 'Eo8CCokBCA8YAipAC1rG3USqrTxWgfqq' } },
+    { type: 'content_block_stop', index: 0 },
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 'toolu_01Y6', name: 'get_money', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '' } },
+    { type: 'content_block_stop', index: 1 },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+  ]);
+
+  test('a thinking block is preserved verbatim — never coerced into text', () => {
+    const out = accumulateSSE(REAL_THINKING_TOOL_STREAM);
+    expect(out.content[0]).toEqual({ type: 'thinking', thinking: '', signature: 'Eo8CCokBCA8YAipAC1rG3USqrTxWgfqq' });
+    expect(out.content[0].type).not.toBe('text');
+  });
+
+  test('the signature survives — it is what makes the block legal to replay', () => {
+    const out = accumulateSSE(REAL_THINKING_TOOL_STREAM);
+    expect(out.content[0].signature).toBe('Eo8CCokBCA8YAipAC1rG3USqrTxWgfqq');
+  });
+
+  test('NO empty text block is ever emitted (replaying one is a 400 — this was the bug)', () => {
+    const out = accumulateSSE(REAL_THINKING_TOOL_STREAM);
+    expect(out.content.filter((b) => b.type === 'text' && !b.text)).toHaveLength(0);
+    expect(out.content.map((b) => b.type)).toEqual(['thinking', 'tool_use']);
+  });
+
+  test('thinking text accumulates when display is summarized', () => {
+    const out = accumulateSSE(sse([
+      { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: '', signature: '' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'Checking the ' } },
+      { type: 'content_block_delta', index: 0, delta: { type: 'thinking_delta', thinking: 'budget.' } },
+    ]));
+    expect(out.content[0].thinking).toBe('Checking the budget.');
+  });
+
+  test('onDelta never leaks the reasoning or the signature to the host', () => {
+    const seen = [];
+    accumulateSSE(REAL_THINKING_TOOL_STREAM, (t) => seen.push(t));
+    expect(seen).toEqual([]);
+  });
+
+  test('an unknown future block type round-trips instead of being mangled', () => {
+    const out = accumulateSSE(sse([
+      { type: 'content_block_start', index: 0, content_block: { type: 'redacted_thinking', data: 'abc' } },
+    ]));
+    expect(out.content[0]).toEqual({ type: 'redacted_thinking', data: 'abc' });
+  });
+});
+
 describe('orchestratorStreamTransport — same contract as the buffered transport', () => {
   const streamRes = (text) => ({
     ok: true,

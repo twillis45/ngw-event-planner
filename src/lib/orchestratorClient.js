@@ -80,11 +80,27 @@ export function orchestratorTransport({ base = BASE, fetchImpl = fetch } = {}) {
 // different code path (and it's test-locked in orchestratorStream.test.js).
 //
 // Wire shapes we accumulate (Anthropic Messages streaming):
-//   content_block_start  → the block's identity ({type:'text'} | {type:'tool_use',id,name})
-//   content_block_delta  → text_delta.text (append) | input_json_delta.partial_json (append)
+//   content_block_start  → the block's identity (text | tool_use | thinking | anything new)
+//   content_block_delta  → text_delta | input_json_delta | thinking_delta | signature_delta
 //   content_block_stop   → parse a tool_use block's accumulated JSON into .input
 //   message_delta        → delta.stop_reason
-// onDelta(textChunk) fires ONLY for text — the host reads prose, never raw tool JSON.
+// onDelta(textChunk) fires ONLY for text — the host reads prose, never raw tool JSON
+// and never the model's reasoning.
+//
+// THINKING BLOCKS (found live, not in review): Sonnet 5 runs ADAPTIVE THINKING BY
+// DEFAULT when the request omits `thinking` — a silent change from Sonnet 4.6 — so
+// a real turn opens with {type:'thinking', thinking:'', signature:'…'} (the text is
+// empty because `display` defaults to "omitted"; the SIGNATURE is the load-bearing
+// part). Anthropic requires thinking blocks be replayed UNCHANGED on the same model.
+// This originally coerced every non-tool_use block into {type:'text'}, which turned a
+// thinking block into an EMPTY text block — and replaying an empty text block is a
+// 400, so the whole turn died and the host got "I can't take a broader look". The
+// buffered path never hit it because it forwards content[] verbatim.
+//
+// So: only `text` and `tool_use` are re-built here; every other block is preserved
+// VERBATIM from content_block_start. That's the same passthrough contract the
+// buffered path has, and it means a block type Anthropic adds later round-trips
+// instead of being mangled into something invalid.
 export function accumulateSSE(sseText, onDelta) {
   const blocks = [];
   const partials = [];        // index → accumulated input_json string (tool_use only)
@@ -100,9 +116,9 @@ export function accumulateSSE(sseText, onDelta) {
     const i = ev.index;
     if (ev.type === 'content_block_start') {
       const b = ev.content_block || {};
-      blocks[i] = b.type === 'tool_use'
-        ? { type: 'tool_use', id: b.id, name: b.name, input: {} }
-        : { type: 'text', text: b.text || '' };
+      blocks[i] = b.type === 'tool_use' ? { type: 'tool_use', id: b.id, name: b.name, input: {} }
+        : b.type === 'text' ? { type: 'text', text: b.text || '' }
+          : { ...b };   // thinking / redacted_thinking / future: verbatim, replayable
       partials[i] = '';
     } else if (ev.type === 'content_block_delta') {
       const d = ev.delta || {};
@@ -112,6 +128,12 @@ export function accumulateSSE(sseText, onDelta) {
         if (typeof onDelta === 'function' && d.text) { try { onDelta(d.text); } catch { /* a render throw must not kill the stream */ } }
       } else if (d.type === 'input_json_delta') {
         partials[i] = (partials[i] || '') + (d.partial_json || '');
+      } else if (d.type === 'thinking_delta') {
+        if (blocks[i]) blocks[i].thinking = (blocks[i].thinking || '') + (d.thinking || '');
+      } else if (d.type === 'signature_delta') {
+        // The signature is what makes a thinking block valid on replay — lose it and
+        // the next turn 400s.
+        if (blocks[i]) blocks[i].signature = (blocks[i].signature || '') + (d.signature || '');
       }
     } else if (ev.type === 'content_block_stop') {
       if (blocks[i] && blocks[i].type === 'tool_use' && partials[i]) {
@@ -122,7 +144,10 @@ export function accumulateSSE(sseText, onDelta) {
       stopReason = (ev.delta && ev.delta.stop_reason) || stopReason;
     }
   }
-  return { ok: true, content: blocks.filter(Boolean), stop_reason: stopReason };
+  // An empty text block is never valid to replay (400). Buffered responses don't
+  // contain them either, so dropping them keeps the two paths identical.
+  const content = blocks.filter((b) => b && !(b.type === 'text' && !b.text));
+  return { ok: true, content, stop_reason: stopReason };
 }
 
 // A streaming transport for runOrchestration. Same contract as the buffered one —
