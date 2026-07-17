@@ -4298,10 +4298,10 @@ export default function HostShellV2() {
                         // tail left with it — the hero now has ONE next action
                         // (the Start-here row above), and a second naming here
                         // would be the double-telling this screen keeps killing.
-                        sub = <>areas handled{setupLine}</>;
+                        sub = <>parts of your plan handled{setupLine}</>;
                       }
-                      else if (openTasks > 0) sub = <>areas handled — but <b>{openTasks}</b> checklist step{openTasks === 1 ? '' : 's'} still on the list. Not done yet.</>;
-                      else sub = 'areas handled and the checklist is clear — ready for the day.';
+                      else if (openTasks > 0) sub = <>parts of your plan handled — but <b>{openTasks}</b> checklist step{openTasks === 1 ? '' : 's'} still on the list. Not done yet.</>;
+                      else sub = 'parts of your plan handled and the checklist is clear — ready for the day.';
                       return (
                         <>
                           <div className="t-num" style={{ fontSize: 'clamp(26px,8cqw,34px)' }}>
@@ -4320,25 +4320,45 @@ export default function HostShellV2() {
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
                               <>
-                                {/* Say what an AREA is, on the glance (host request 2026-07-16):
-                                    the count "N of M areas" meant nothing to a host who was never
-                                    told an area is a major part of their plan, or that settling all
-                                    of them is what "ready" means. One plain line, always visible —
-                                    the fuller two-number explainer still lives under the caret. */}
-                                <div className="t-sub" style={{ marginTop: 8, opacity: .72, lineHeight: 1.5 }}>
-                                  The main parts of your plan — tap any to open it. Settle all {essTotal} and you&rsquo;re ready for the day.
-                                </div>
+                                {/* REVIEW-BOARD RULING (2026-07-17, unanimous — host referred the
+                                    call to the board). An always-on line here used to read "The main
+                                    parts of your plan — tap any to open it. Settle all N and you're
+                                    ready for the day." It was added on a real host report (the count
+                                    "N of M areas" meant nothing), but it was a footnote defending a
+                                    bad noun: "areas" is OUR model's word, never the host's. The line
+                                    contained its own fix — "the main parts of your plan" — so that
+                                    phrase IS the sub-label now, and the gloss has nothing left to
+                                    teach. Its other two jobs were already covered: "settle all N and
+                                    you're ready" is stated by the done-branch sub at the moment it's
+                                    TRUE (not pre-announced over a progress bar the host can read),
+                                    and "tap any to open it" was never copy — it was an affordance bug,
+                                    now fixed on the chips themselves. This also restores the wave-6
+                                    board ruling ~30 lines up, which this line had quietly reversed:
+                                    the tile names the unit and stops talking.
+                                    FALSIFIABLE: if a host reads "6 of 7 parts of your plan handled"
+                                    over the named chips and still asks "handled for WHAT?", then the
+                                    gap was the goal-state, not the vocabulary — put a line back, but
+                                    gated to the first visit, never always-on. */}
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 10px', marginTop: 8 }}>
-                                {/* Each area is a real door (host report + audit #7):
+                                {/* Each part is a real door (host report + audit #7):
                                     tap it to open that surface. stopPropagation so it
-                                    routes instead of firing the tile's own handler. */}
+                                    routes instead of firing the tile's own handler.
+                                    AFFORDANCE (board ruling 2026-07-17): these were
+                                    background:none / border:none — invisible as buttons,
+                                    and the ONLY thing saying "tap any to open it" was the
+                                    prose line above (sighted hosts never get the aria-label).
+                                    Deleting that sentence without this would trade a copy
+                                    problem for a discoverability regression, so they now
+                                    wear the app's own .chip vocabulary: hairline --line
+                                    border, pill radius, steel on hover. A door that LOOKS
+                                    like a door needs no sentence explaining it. */}
                                 {phaseCues.items.map((c, ix) => {
                                   const isNext = !c.handled && nextId && c.id === nextId;
                                   return (
-                                    <button key={c.id || ix} type="button"
+                                    <button key={c.id || ix} type="button" className="chip"
                                       onClick={e => { e.stopPropagation(); if (c.id === 'datetime' || c.id === 'date') { setSheet({ kind: 'date' }); return; } if (c.id === 'location') { setSheet({ kind: 'venue' }); return; } if (c.route && routeSheet(c.route)) return; if (c.cueLabel) toast(c.cueLabel); }}
                                       aria-label={areaLabel(c.id) + (c.handled ? ' — handled' : ' — still open') + '. Open it.'}
-                                      style={{ background: 'none', border: 'none', padding: '2px 0', cursor: 'pointer', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 4, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
+                                      style={{ padding: '5px 11px', fontSize: 'var(--t-pill)', fontWeight: c.handled ? 550 : 700, letterSpacing: '.02em', display: 'inline-flex', alignItems: 'center', gap: 5, color: c.handled ? 'var(--faint)' : isNext ? 'var(--steel-soft)' : 'var(--ink-soft)' }}>
                                       <span aria-hidden="true" style={{ width: 5, height: 5, borderRadius: '50%', display: 'inline-block', background: c.handled ? 'var(--ok)' : 'var(--faint)', opacity: c.handled ? 0.9 : 0.55 }} />
                                       {areaLabel(c.id)}
                                     </button>
@@ -4394,8 +4414,14 @@ export default function HostShellV2() {
                   this reason; this tile was left behind). It still earns its place in
                   the two states the bar can't cover: CALM (it names the next DATED cue
                   and routes to it — the bar only says "All quiet") and DAY-OF (it counts
-                  the moments/steps left). So: render it only when it adds something. */}
-              {(listIsCalm || days === 0) && (
+                  the moments/steps left). So: render it only when it adds something.
+                  HOST RULING (2026-07-17): "All quiet" was ALSO the verdict line's job
+                  ~200px up, off the same listIsCalm flag — the verdict keeps it, and this
+                  tile leads with the dated cue only it knows. Which means a calm board
+                  with NO dated cue leaves this tile nothing the verdict hasn't already
+                  said, so it stands down entirely rather than say "All quiet" twice under
+                  a heading that promises a next step. */}
+              {(days === 0 || (listIsCalm && upNext.length > 0)) && (
               <button
                   className={'tile tile-d' + (queue.length === 0 ? ' allset' : '')}
                   onClick={() => {
@@ -4417,9 +4443,12 @@ export default function HostShellV2() {
                   <div className="t-label">Next</div>
                   <div className="t-big">{(() => {
                     if (days === 0) return 'Run the day';
-                    // Counts the QUEUE as it actually renders — post-snooze,
-                    // post-bundling (a bundle is ONE thing), worries excluded.
-                    return listIsCalm ? 'All quiet' : queue.length === 1 ? '1 thing needs you' : queue.length + ' things need you';
+                    // HOST RULING (2026-07-17): the verdict line owns "All quiet" — this
+                    // leads with the thing only it knows, the next DATED cue. (The tile
+                    // doesn't render at all without one, so upNext[0] is always here.)
+                    const u = upNext[0];
+                    const label = String(u.label || '').replace(/\.+$/, '');
+                    return label.length > 42 ? label.slice(0, 42) + '…' : label;
                   })()}</div>
                   <div className="t-sub">
                     {(() => {
@@ -4437,21 +4466,18 @@ export default function HostShellV2() {
                         return (bits.length ? bits.join(' · ') + ' — ' : '') + 'The Day has the wheel ↓';
                       }
                       if (listIsCalm) {
-                        // Calm ≠ blank: name the next DATED thing (human intelligence).
-                        if (upNext.length) {
-                          const u = upNext[0];
-                          // The "past due" STATE routes through the ONE policy (u.overdue =
-                          // taskIsOverdue, snooze + reachability bound), NOT taskTimeStatus's
-                          // 'overdue' bucket. taskTimeStatus stays only as the 'due'/'due-soon'
-                          // DISPLAY tint. A snoozed / unreachable step keeps u.overdue=false, so
-                          // it falls through to its dated "· by <date>" copy, never "· past due".
-                          const when = u.overdue ? ' · past due'
-                            : u.timeBucket === 'due' ? ' · due today'
-                            : u.timeBucket === 'due-soon' ? ' · due soon'
-                            : (u.due ? ' · by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '');
-                          return 'next: ' + u.label + when + ' ↓';
-                        }
-                        return 'Nothing waiting on you right now.';
+                        // The t-big now NAMES the cue (host ruling), so the sub carries
+                        // only its timing — the part the name can't say.
+                        const u = upNext[0];
+                        // The "past due" STATE routes through the ONE policy (u.overdue =
+                        // taskIsOverdue, snooze + reachability bound), NOT taskTimeStatus's
+                        // 'overdue' bucket. taskTimeStatus stays only as the 'due'/'due-soon'
+                        // DISPLAY tint. A snoozed / unreachable step keeps u.overdue=false, so
+                        // it falls through to its dated "by <date>" copy, never "past due".
+                        return (u.overdue ? 'past due'
+                          : u.timeBucket === 'due' ? 'due today'
+                            : u.timeBucket === 'due-soon' ? 'due soon'
+                              : (u.due ? 'by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'when you get to it')) + ' ↓';
                       }
                       // ORDER-OF-INFORMATION (host, 2026-07-09): the essentials
                       // count is the Where-you-stand tile's one job, directly
@@ -4497,14 +4523,14 @@ export default function HostShellV2() {
                       two engines, two answers. That is fixed — they now read the same list —
                       but agreeing is not the same as EXPLAINING.) */}
                   <p className="grounding" style={{ margin: '0 0 10px' }}>
-                    <b>Areas</b> are the parts of a plan — the date, the venue, the guest count, the food, the rest.
+                    The <b>parts of your plan</b> are the date, the venue, the guest count, the food, the rest.
                     This says how many are settled. <b>Next</b> is the shorter thing: what actually needs you today,
                     in order, starting with the one at the top.
                   </p>
                   <p className="grounding" style={{ margin: '0 0 12px' }}>
                     They read from the same list, so they can’t contradict each other — but they won’t match, and
-                    they shouldn’t. An area can be settled and still have one loose end, and a single job can close
-                    two areas at once.
+                    they shouldn’t. A part can be settled and still have one loose end, and a single job can close
+                    two parts at once.
                   </p>
                   {/* POP-1C consumer: the recommendation lifecycle is the one
                       source that classifies EVERY recommendation (foundation,
@@ -4546,11 +4572,11 @@ export default function HostShellV2() {
                   )}
                   {phaseCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (
                     <>
-                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>The {phaseCues.totalCount} areas the count reads</div>
+                      <div className="shelf-label" style={{ margin: '6px 0 var(--sp-1)' }}>The {phaseCues.totalCount} parts of your plan this count reads</div>
                       {/* RECON MODEL grounding: why this number and the inventories
                           below it can never be compared one-to-one. */}
                       <p className="grounding" style={{ margin: '0 0 6px' }}>
-                        Each area counts once here. The items inside an area — shopping items, people, steps — keep their own counts further down the page.
+                        Each part counts once here. The items inside a part — shopping items, people, steps — keep their own counts further down the page.
                       </p>
                       {phaseCues.items.map((c, i) => c.handled ? (
                         <div key={c.id || i} className="line" style={{ padding: '5px 0' }}>
@@ -7525,7 +7551,7 @@ export default function HostShellV2() {
               // ask a specific question, and the foundations people get stuck on.
               const nc = phaseCues && phaseCues.nextCue;
               const ready = (phaseCues && phaseCues.totalCount)
-                ? `${phaseCues.completedCount} of ${phaseCues.totalCount} areas handled` : null;
+                ? `${phaseCues.completedCount} of ${phaseCues.totalCount} parts of your plan handled` : null;
               // Foundations — only the ones NOT yet done, so the list shrinks as
               // the host makes progress (real state, never a static checklist).
               const foundations = [

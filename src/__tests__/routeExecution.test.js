@@ -21,7 +21,17 @@
 import { raiseAll, SURFACES } from '../lib/surfaceRegistry';
 import { resolveRoute, ROUTESHEET_TABS } from '../lib/routeResolver';
 
-const NOW = new Date('2026-07-15T12:00:00');
+// NOW tracks the REAL clock on purpose — do not freeze it again.
+// raiseAll(event) takes no asOf: every surface reads today itself, deep in the
+// engine. So a frozen NOW here doesn't freeze the engine — it only decouples the
+// fixtures from it, and the offsets rot as the wall clock walks away from the
+// frozen date. This was pinned to 2026-07-15 and passed until 2026-07-17, when
+// fixtures built as "1 day out" had quietly become 2 days PAST and their surfaces
+// (day-of, vendor-reconfirm) stopped raising — a green suite turning red overnight
+// with zero code change. Anchored to real today, `iso(+1)` is always really
+// tomorrow, so the battery stays honest on any date. If raiseAll ever accepts an
+// asOf, inject it and freeze BOTH together — never one without the other.
+const NOW = (() => { const d = new Date(); d.setHours(12, 0, 0, 0); return d; })();
 const iso = (d) => { const x = new Date(NOW); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
 
 // ── The fixture battery: one event per shape the brief named, tuned so its
