@@ -169,3 +169,37 @@ describe('per-host adaptivity', () => {
     expect(computeHostAdaptation('experienced', 'has_help', 'easy', 8, 12).terse).toBe(true);
   });
 });
+
+// difficultyBand — the ONE classifier. hostv2 hand-rolled a third copy of this
+// (hostDiffBandV2) and src/App.js has hostDiffBand; nothing bound them together, so
+// they could drift silently. They agreed on every value the playbooks author today
+// but NOT in general. hostv2 now reads hostAdaptation.difficultyBand; this pins the
+// vocabulary so a future playbook word can't quietly mean two things.
+describe('difficultyBand — one classifier, pinned to the authored vocabulary', () => {
+  const band = (hostDifficulty) => computeHostAdaptation(null, null, hostDifficulty, 3, 20, 30).difficultyBand;
+
+  test('every hostDifficulty the playbooks actually author bands as expected', () => {
+    // Values grepped from src/lib/playbooks/: moderate(26) easy(4) high(3) hard(3) medium(2) moderate-high(1)
+    expect(band('easy')).toBe('easy');
+    expect(band('moderate')).toBe('moderate');
+    expect(band('medium')).toBe('moderate');
+    expect(band('hard')).toBe('hard');
+    expect(band('high')).toBe('hard');
+    expect(band('moderate-high')).toBe('hard');
+  });
+
+  test('the words the deleted shell copy got WRONG now band correctly', () => {
+    // hostDiffBandV2 called all of these 'moderate' — the engine does not.
+    expect(band('intensive')).toBe('hard');
+    expect(band('complex')).toBe('hard');
+    expect(band('low')).toBe('easy');
+    expect(band('simple')).toBe('easy');
+    expect(band('light')).toBe('easy');
+  });
+
+  test('unknown / absent difficulty is moderate — never guessed as hard or easy', () => {
+    expect(band(null)).toBe('moderate');
+    expect(band(undefined)).toBe('moderate');
+    expect(band('')).toBe('moderate');
+  });
+});

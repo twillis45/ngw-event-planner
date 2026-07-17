@@ -45,13 +45,13 @@ function rankReasonForV2(row) {
   if (row.emotionalWeight === 'high') return 'This one carries a lot of heart — give it your own attention.';
   return '';
 }
-// hostDiffBandV2 — collapse authored hostDifficulty into the three tones the surface adapts to.
-function hostDiffBandV2(hostDifficulty) {
-  const hd = String(hostDifficulty || '').toLowerCase();
-  if (hd === 'easy') return 'easy';
-  if (hd === 'hard' || hd === 'high' || hd === 'moderate-high') return 'hard';
-  return 'moderate';
-}
+// hostDiffBandV2 deleted 2026-07-17 — it was a THIRD copy of a classifier the engine
+// already computes and exposes as hostAdaptation.difficultyBand (playbooks/index.js:2406,
+// :2464), read by nobody. Three regexes over the same input, kept in sync by nothing.
+// They agreed on all six values the playbooks actually author (moderate/easy/high/hard/
+// medium/moderate-high) but NOT in general: the engine bands intensive|complex as hard and
+// low|simple|light as easy, where this copy called all five moderate — a divergence waiting
+// for the first playbook to use one of those words. The surface now reads the engine.
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL, rideStatusOf, nextRideStatus, rideFieldsFor, RIDE_STATUS_LABEL, arrivalClusters } from '@app/lib/travelPlan';
 import { buildSeatingPlan, assignGuestToTable, unassignGuest, autoAssignByGroup, renameTable, clampTableCount, tableCountBasis, MEAL_SHORT } from '@app/lib/seatingPlan';
 import { costSharingSummary } from '@app/lib/costSharing';
@@ -6135,7 +6135,8 @@ export default function HostShellV2() {
                   if (ha && ha.overwhelm) {
                     return <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>That’s a lot with the clock ticking — take them one at a time, in the order below. You’ve got this.</p>;
                   }
-                  const band = hostDiffBandV2(decisionBoard.hostDifficulty);
+                  // The engine's own band — one classifier, not a shell copy of it.
+                  const band = ha && ha.difficultyBand;
                   const line = band === 'hard'
                     ? 'This is a lot to pull off — take the calls one at a time. You don’t have to settle everything today; start at the top and work down.'
                     : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
