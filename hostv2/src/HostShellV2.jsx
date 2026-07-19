@@ -2123,7 +2123,16 @@ export default function HostShellV2() {
   const _vRollup = plan.vendorReadinessRollup;
   const confirmGating = !!(_vRollup && _vRollup.counts && _vRollup.counts.toConfirm === 1);
   const isVendorConfirmAction = (a) => !!(a && a.route && a.route.vendorId && !a.route.vendorSection);
-  const queue = (elegantMode && !confirmGating) ? actions.filter(a => !isVendorConfirmAction(a)) : actions;
+  // ROLL-TO-NEXT (host 2026-07-18): a hero decision the host just settled is dropped from the
+  // queue so the hero advances — even when its underlying PHASE lingers (e.g. phase:food still
+  // has 3 open items after the sourcing pick). Without this the host re-sees the same hero after
+  // deciding. Accumulates (not one id) so satisfying the next doesn't un-filter the last; cleared
+  // on event switch. Elegant loop only.
+  const [satisfiedIds, setSatisfiedIds] = useState([]);
+  useEffect(() => { setSatisfiedIds([]); }, [eventId]);
+  const queue = elegantMode
+    ? actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating))
+    : actions;
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -4791,6 +4800,9 @@ export default function HostShellV2() {
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
                 if (elegantMode && decisionFor(firstCard)) return null;
+                // Calm state has no "first" to reason about — a leftover reasoning line
+                // (often vendor copy like "Currently quoted…") contradicts "nothing needs you".
+                if (elegantMode && (listIsCalm || !firstCard)) return null;
                 return (
                   <p className="grounding" style={{ margin: '-8px 0 14px' }}>{reasoning}</p>
                 );
@@ -5113,7 +5125,13 @@ export default function HostShellV2() {
                 // UNIFIED: every decision-like hero action (playbook decision:* OR a phase
                 // decision like phase:food) resolves through the one dispatcher + renderer,
                 // so all of them get the decopt / "our pick" treatment — no more chip-vs-row split.
-                const decHeroActions = (elegantMode && isHero) ? renderDecision(decisionFor(a)) : null;
+                const decHeroActions = (elegantMode && isHero) ? (() => {
+                  const nd = decisionFor(a);
+                  if (!nd) return null;
+                  // Roll to next when satisfied: settling drops this action from the hero queue,
+                  // so the hero advances even if its phase (food, etc.) still has other parts.
+                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
                 // from coiNextAction — its consequence + a route to that exact vendor — so the
@@ -6079,11 +6097,20 @@ export default function HostShellV2() {
                           options — resolves right here instead of leaving
                           nextDecision's text with nowhere to act on it. */}
                       {!isVenueBlock && !b.route && b.fieldKey && Array.isArray(b.options) && (
+                        // UNIFIED SURFACE: below-fold decision blockers (e.g. Ceremony Timing)
+                        // render the same decopt rows as the hero, not chips — one decision path.
+                        elegantMode ? renderDecision({
+                          id: 'blocker:' + b.fieldKey,
+                          options: b.options.map(o => ({ value: o.value, label: o.label, note: o.note || null })),
+                          proposed: null,
+                          settle: (v) => patchEvent({ [b.fieldKey]: v }, (b.title || 'Decided') + ' — set.'),
+                        }) : (
                         <div className="actions-row" style={{ flexWrap: 'wrap' }}>
                           {b.options.map(opt => (
                             <button key={opt.value} className="chip" onClick={() => patchEvent({ [b.fieldKey]: opt.value })}>{opt.label}</button>
                           ))}
                         </div>
+                        )
                       )}
                     </div>
                   </article>

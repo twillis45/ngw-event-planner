@@ -443,27 +443,27 @@ button{font-family:inherit}
 .hero.elegant .ef-row:hover{ opacity:.82; }
 /* COMBINED DECISION OPTIONS (host 2026-07-18): the pick shown once (emphasized, badged, with
    its real tradeoff note), the rest behind a disclosure. Ask-mode = equal rows, no badge. */
-.hero.elegant .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
-.hero.elegant .decopt{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:#20242a; border:none; border-radius:12px; padding:13px 15px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:background .14s var(--ease-out), transform .1s var(--ease-out); }
-.hero.elegant .decopt:hover{ background:#262b31; }
-.hero.elegant .decopt:active{ transform:translateY(1px); }
-.hero.elegant .decopt.pick{ background:#282d33; border:1px solid var(--steel); box-shadow:0 3px 0 #06080b, 0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
-.hero.elegant .decopt.pick:hover{ background:#2c3138; }
-.hero.elegant .decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
-.hero.elegant .decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.app-elegant .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+.app-elegant .decopt{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:#20242a; border:none; border-radius:12px; padding:13px 15px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:background .14s var(--ease-out), transform .1s var(--ease-out); }
+.app-elegant .decopt:hover{ background:#262b31; }
+.app-elegant .decopt:active{ transform:translateY(1px); }
+.app-elegant .decopt.pick{ background:#282d33; border:1px solid var(--steel); box-shadow:0 3px 0 #06080b, 0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
+.app-elegant .decopt.pick:hover{ background:#2c3138; }
+.app-elegant .decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+.app-elegant .decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 /* decopt option name matches the Figma node (14px Semi Bold), pick included — was 15/16. */
-.hero.elegant .decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
-.hero.elegant .decopt.pick .decopt-name{ font-size:14px; }
-.hero.elegant .decopt-badge{ background:#28343c; color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
-.hero.elegant .decopt-note{ font-size:13px; color:#96a0a9; font-weight:400; }
-.hero.elegant .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.app-elegant .decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
+.app-elegant .decopt.pick .decopt-name{ font-size:14px; }
+.app-elegant .decopt-badge{ background:#28343c; color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
+.app-elegant .decopt-note{ font-size:13px; color:#96a0a9; font-weight:400; }
+.app-elegant .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 /* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
-.hero.elegant .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
-.hero.elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:#96a0a9; line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
-.hero.elegant .decopt-badge-wrap:hover .decopt-why, .hero.elegant .decopt-badge-wrap:focus-visible .decopt-why, .hero.elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
-.hero.elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
-.hero.elegant .decopt-disc{ align-self:flex-start; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
-.hero.elegant .decopt-disc:hover{ color:var(--ink); }
+.app-elegant .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
+.app-elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:#96a0a9; line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
+.app-elegant .decopt-badge-wrap:hover .decopt-why, .app-elegant .decopt-badge-wrap:focus-visible .decopt-why, .app-elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
+.app-elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
+.app-elegant .decopt-disc{ align-self:flex-start; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
+.app-elegant .decopt-disc:hover{ color:var(--ink); }
 /* WATCH zone (Figma parity 2026-07-18): worries as steel-dot rows — distinct from the
    action rows above, muted, no arrows (a heads-up, not a thing to go do). */
 .hero.elegant .ef-watch{ margin-top:24px; }
