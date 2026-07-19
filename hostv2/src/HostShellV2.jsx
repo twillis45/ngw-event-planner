@@ -1136,7 +1136,20 @@ export default function HostShellV2() {
   // LEARNING-1 (roadmap #2): hand the board the host PROFILE so it can ground the
   // headcount row in learned turnout (attendanceAdjustment — the same gated/clamped reader
   // the food plan already trusts). No profile / cold-start host ⇒ board is byte-identical.
-  const decisionBoard = useMemo(() => { try { return playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] }; } catch { return { open: [], locked: [] }; } }, [event, profile]);
+  const decisionBoard = useMemo(() => {
+    try {
+      const b = playbookDecisionBoard(event, undefined, profile) || { open: [], locked: [] };
+      // GROUNDED (dogfood 2026-07-19): once the host has SET a venue, the "at home / restaurant /
+      // hall" venue-KIND decision is already answered by the real venue — surfacing it (with a
+      // static playbook default that can CONTRADICT the set venue, e.g. proposing "Restaurant
+      // private room" over a booked banquet hall) violates the grounding doctrine. Drop it from
+      // the open board when a venue is on file; the venue is the source of truth.
+      if (b && Array.isArray(b.open) && String((event && event.venue) || '').trim()) {
+        return { ...b, open: b.open.filter(d => !(d && (d.id === 'venue' || /at home.*(restaurant|venue|workplace)/i.test(String(d.label || '')))) ) };
+      }
+      return b;
+    } catch { return { open: [], locked: [] }; }
+  }, [event, profile]);
   // "show the rest" for a paced calls board — mirrors queueOpen's expander pattern.
   const [callsOpen, setCallsOpen] = useState(false);
   // The open board AS THE HOST SEES IT — their pins floated, then the engine's
@@ -4609,13 +4622,13 @@ export default function HostShellV2() {
               {/* First-screen bound (F13 foot-pin): a display:contents wrapper — invisible in
                   every mode EXCEPT elegant-ask, where it becomes a 100dvh flex column so the
                   progress hairline pins to the true foot and the see-all sits below it. */}
-              <div className={elegantMode && askMode ? 'escreen on' : 'escreen'}>
+              <div className={(elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0))) ? 'escreen on' : 'escreen'}>
               {/* ELEGANT-MINIMAL PORT (F13 fidelity, host ruling "match Figma exactly"
                   2026-07-17): the ask screen's masthead collapses to ONE tiny eyebrow
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && (askMode || justCleared) ? (
+              {elegantMode && (askMode || justCleared || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
                   <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
@@ -4752,6 +4765,26 @@ export default function HostShellV2() {
                     {!statusOnTrack && statusNode}
                   </>);
                 }
+                // MINIMAL CALM POLE (Figma "14 · ELEGANT — the calm pole", host 2026-07-19): the
+                // earned quiet is ONE loud line + one guide sentence + a disclosure, not a wall of
+                // masthead + mega + verdict + heads-ups. The heads-ups / coming-up live below the
+                // fold behind "Look around anyway". Grounded: the on-track count is the real phase
+                // ledger; "next check" is the nearest dated thing. Elegant + genuinely-calm only.
+                if (elegantMode && listIsCalm && !isPast && days !== null && days > 0) {
+                  const cpDone = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : (plan.progress && plan.progress.done);
+                  const cpTotal = phaseCues && Number(phaseCues.totalCount) ? Number(phaseCues.totalCount) : (plan.progress && plan.progress.total);
+                  const nextUp = (upNext && upNext.find(u => u && u.due)) || null;
+                  const nextCheck = nextUp ? (() => { try { return new Date(nextUp.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; } })() : null;
+                  return (<>
+                    <p className="cp-label">ALL QUIET</p>
+                    <h2 className="cp-head">You’re ahead.</h2>
+                    {statusNode || <p className="verdict">Nothing needs you today. Everything’s in motion.</p>}
+                    <button className="cp-look" onClick={() => { try { const el = document.querySelector('.efold, .then-fold') || [...document.querySelectorAll('.sect,.eyebrow')].find(n => /worth keeping|coming up/i.test(n.textContent || '')); el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no target */ } }}>Look around anyway  ›</button>
+                    {Number.isFinite(cpDone) && Number.isFinite(cpTotal) && cpTotal > 0 && (
+                      <p className="cp-prog">{cpDone} of {cpTotal} on track{nextCheck ? ' · next check ' + nextCheck : ''}</p>
+                    )}
+                  </>);
+                }
                 return (<>
                   <div className="mega">
                     {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
@@ -4770,7 +4803,7 @@ export default function HostShellV2() {
                   that scrolls away plus a counting bar. */}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
-              {!askMode && ctx && ctx.compound && ctx.reasoning && (
+              {!askMode && ctx && ctx.compound && ctx.reasoning && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && (
                 <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--steel-soft)' }}>
                   Planning this as {String(ctx.reasoning).toLowerCase().replace(/\.$/, '')}.
                 </p>
@@ -4809,7 +4842,7 @@ export default function HostShellV2() {
 
               {/* Rebalance: in askMode the hero display IS the section voice — the
                   header would be a second telling. The anchor stays for the bar. */}
-              {askMode
+              {(askMode || (elegantMode && listIsCalm && !isPast && days !== null && days > 0))
                 ? <div id="actionsAnchor" aria-hidden="true" />
                 : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
@@ -4837,7 +4870,7 @@ export default function HostShellV2() {
                 );
               })()}
 
-              {queue.length === 0 && (
+              {queue.length === 0 && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && (
                 <div className="empty">{worries.length
                   ? 'Nothing needs you right now — just the heads-ups below.'
                   : 'Nothing needs you right now — the basics are all settled.'}</div>
