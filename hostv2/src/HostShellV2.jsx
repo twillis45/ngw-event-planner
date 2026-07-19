@@ -3321,21 +3321,28 @@ export default function HostShellV2() {
   // a first read or an EVENT SWITCH never fires (only a real N→0 the host drove on THIS event).
   // Elegant loop only, so production default is unchanged.
   const prevBundleClear = useRef(null);
+  // Peak size each bundle reached while open, so the payoff shows the TOTAL that cleared —
+  // not the final N→0 step. Decisions settle one-by-one, so prev would read "1 of 1"; the
+  // peak reads the real "6 of 6". Reset per-bundle on clear and on event switch.
+  const bundlePeak = useRef({ conflicts: 0, decisions: 0, coi: 0 });
   useEffect(() => {
-    if (!elegantMode) { prevBundleClear.current = null; return; }
+    if (!elegantMode) { prevBundleClear.current = null; bundlePeak.current = { conflicts: 0, decisions: 0, coi: 0 }; return; }
     const now = { eventId, conflicts: conflictItems.length, decisions: callsOrdered.length, coi: coiCounts.open };
     const prev = prevBundleClear.current;
     prevBundleClear.current = now;
-    if (!prev || prev.eventId !== eventId) { setJustCleared(null); return; } // first read / event switch — never a payoff
+    const pk = bundlePeak.current;
+    ['conflicts', 'decisions', 'coi'].forEach(k => { if (now[k] > 0) pk[k] = Math.max(pk[k], now[k]); });
+    if (!prev || prev.eventId !== eventId) { setJustCleared(null); bundlePeak.current = { conflicts: 0, decisions: 0, coi: 0 }; return; } // first read / event switch — never a payoff
     const clearedConflicts = prev.conflicts > 0 && now.conflicts === 0;
     const clearedDecisions = prev.decisions > 0 && now.decisions === 0;
     const clearedCoi = prev.coi > 0 && now.coi === 0;
     if (clearedConflicts || clearedDecisions || clearedCoi) {
       try { feedback('magic'); } catch { /* no fx */ }
       // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
-      if (clearedConflicts) setJustCleared({ kind: 'conflict', count: prev.conflicts });
-      else if (clearedDecisions) setJustCleared({ kind: 'decision', count: prev.decisions });
-      else setJustCleared({ kind: 'coi', count: coiCounts.total || prev.coi });
+      // count = the peak the bundle reached (fallback to prev), so "6 of 6", not "1 of 1".
+      if (clearedConflicts) { setJustCleared({ kind: 'conflict', count: Math.max(pk.conflicts, prev.conflicts) }); pk.conflicts = 0; }
+      else if (clearedDecisions) { setJustCleared({ kind: 'decision', count: Math.max(pk.decisions, prev.decisions) }); pk.decisions = 0; }
+      else { setJustCleared({ kind: 'coi', count: Math.max(pk.coi, coiCounts.total || prev.coi) }); pk.coi = 0; }
     }
   }, [elegantMode, eventId, conflictItems.length, callsOrdered.length, coiCounts.open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -4858,7 +4865,9 @@ export default function HostShellV2() {
                   That’s a lot with the clock ticking — just the first few here, the rest is a tap away when you’re ready.
                 </p>
               )}
-              {visible.map((a, i) => {
+              {/* When a bundle just cleared, the payoff OWNS the hero — suppress the queue
+                  cards so the next bundle's card doesn't stack under the "All …" moment. */}
+              {!(elegantMode && justCleared) && visible.map((a, i) => {
                 const key = String(a.id || i);
                 // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
                 // items, route}): ONE card, one rank. Expands in place to child
