@@ -337,6 +337,9 @@ button{font-family:inherit}
 /* SEVERITY COLOR PRESERVED (regression fix 2026-07-17): the calm voice is warm steel, but a
    slipping/critical verdict keeps its warning color and the beat stays green — the wave-6
    honesty rule (non-calm verdicts keep their color) survives the serif restyle. */
+/* AMBER RESTRAINT (host 2026-07-18): in the ELEGANT loop amber is the ONE urgency accent, spent
+   once on the genuinely can't-wait / overdue verdict — the words carry the caution, and red is not
+   part of this minimal palette. The reassuring nudge stays the calm serif voice (no .slipping). */
 .hero.elegant .verdict.slipping{ color:var(--warn); }
 .hero.elegant .verdict.beat{ color:var(--ok); }
 .hero.elegant.voice-sans .verdict{ font-family:var(--sans); font-style:normal; font-weight:600; font-size:19px; letter-spacing:-.01em; color:var(--steel-soft); }

@@ -3581,8 +3581,17 @@ export default function HostShellV2() {
       setEditor(key); spotlight(key); return;
     }
     if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
+    // ELEGANT (host "no take-me-to on the hero"): an overdue-payment task RESOLVES IN PLACE —
+    // "Mark as paid" writes vendor.balancePaid (the exact field surfaceRegistry reads to clear
+    // it) and fires the receipt, instead of routing away with "Take me to it".
+    if (elegantMode && /^send payment to/i.test(String(a.title || ''))) {
+      const vid = a.route && a.route.vendorId;
+      const nm = String(a.title).replace(/^send payment to\s*/i, '').replace(/\.$/, '').trim();
+      const v = (event.vendors || []).find(x => x && (vid ? x.id === vid : String(x.name || '').trim() === nm));
+      if (v) { writeVendor(v.id, { balancePaid: true }, (v.name || 'This vendor') + ' — balance marked paid.'); return; }
+    }
     // ELEGANT (host "pull action into confirm vendor"): a plain vendor-confirm resolves IN PLACE
-    // — tapping "Confirm vendor" locks the vendor in and fires the hero receipt (via
+    // — tapping "Mark as locked in" locks the vendor in and fires the hero receipt (via
     // writeVendor→patchEvent), instead of routing to the cockpit. Payment/COI (vendorSection)
     // and already-confirmed vendors still route as before.
     if (elegantMode && a.route && a.route.vendorId && !a.route.vendorSection) {
@@ -4922,6 +4931,8 @@ export default function HostShellV2() {
                 const hiddenCount = shown.length - visible.length;
                 // Time-to-window, worn quietly on the card (engine contract:
                 // actions MAY carry dueInDays; absent = say nothing).
+                // AMBER RESTRAINT (host 2026-07-18): in the elegant loop the due chip — including
+                // "past its window" (overdue) — is amber, the single urgency accent (.of default).
                 const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
                   <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                     {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
@@ -5294,7 +5305,14 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
-                        {a.cta && !(isHero && wired) && !decHeroActions && !coiHero && !coiTaskDone && <button className="cta" onClick={() => onCta(a, key)}>{isVendorConfirmAction(a) ? 'Mark as locked in' : (a.cta === 'Go' ? 'Take me to it' : a.cta)}</button>}
+                        {a.cta && !(isHero && wired) && !decHeroActions && !coiHero && !coiTaskDone && <button className="cta" onClick={() => onCta(a, key)}>{
+                          isVendorConfirmAction(a) ? 'Mark as locked in'
+                          : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
+                          /* NO generic "Take me to it" on the hero (host standing rule): name the real
+                             destination when a route is genuinely all we have, so the CTA still says
+                             where it goes. */
+                          : (a.cta === 'Go' ? ('Open ' + String(describeRoute(a.route) || 'the plan').replace(/^the\s+/i, '').toLowerCase()) : a.cta)
+                        }</button>}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
                             the list actually empties. The grounded proposal (computed above) is
