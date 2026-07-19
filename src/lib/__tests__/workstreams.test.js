@@ -371,7 +371,7 @@ describe('POP-1 Phase 1 (exact first slice): buildVendorReadinessRollup / eventP
     expect(rollup.status).toBe('to_confirm');
     expect(rollup.label).toBe('All booked · 1 to confirm');
     expect(rollup.nextAction).toBe('Confirm Fired Up BBQ for your date.');
-    expect(rollup.ctaLabel).toBe('Confirm vendor');
+    expect(rollup.ctaLabel).toBe('Mark as locked in');
     // routes to the vendor who owes the confirm, not to the container or to v1
     expect(rollup.target).toEqual({ tab: 'Vendors', vendorId: 'v2' });
     expect(rollup.counts).toEqual({ total: 2, ready: 2, confirmed: 1, toConfirm: 1, needsAttention: 0, missing: 0 });

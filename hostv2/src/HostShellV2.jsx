@@ -102,6 +102,7 @@ import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcom
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
+import { conflictsToActionItems } from '@app/lib/vendorAccountability/actionItems';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
@@ -277,6 +278,61 @@ const kidsTotal = (gs) => (gs || []).reduce((t, g) => t + (Number(g && g.kids) |
 const guestNumber = e => Number(e.guestCount) || Number(e.guestEstimate) || (e.guests || []).length || 0;
 
 const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors: 'Vendors', date: 'Plan', start: 'Guests' };
+
+// REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
+// action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
+// panel beneath carries the specifics. Raw queue titles are card copy and can
+// be proper nouns ("Confirm Semper Catering Co") — never display material.
+const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
+function heroAskFor(a, event) {
+  try {
+    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
+    const d = String((a && a.domain) || '').toLowerCase();
+    if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
+    if (d === 'food' || /serving|menu|food/i.test(t)) return 'Decide the menu.';
+    if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
+    if (/start time/i.test(t)) return 'Confirm the start time.';
+    if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
+    if (/location|venue|where/i.test(t)) return 'Add the location.';
+    if (/conflict/i.test(t)) return 'Untangle your vendors.';
+    const am = t.match(/^ask\s+.+?\s+about\s+(.{3,24})$/i);
+    if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
+    if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
+    if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
+    const vm = t.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
+    if (vm) {
+      const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
+      const rest = vm[2].toLowerCase();
+      const v = ((event && event.vendors) || []).find(x => x && x.name && rest.includes(String(x.name).toLowerCase().slice(0, 6)));
+      const catKey = v ? String(v.category || v.type || '').toLowerCase() : '';
+      const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
+      return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
+    }
+    return t.length <= 26 ? t + '.' : 'Your next step.';
+  } catch { return 'Your next step.'; }
+}
+// The record the panel names — only when it adds info beyond the ask (dedup:
+// the ask owns the VERB, the panel owns the NOUN).
+function heroRecord(a, ask) {
+  try {
+    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
+    // Strip the leading verb AND the surrounding quotes: a decision-board "call" arrives
+    // titled Resolve "the label", and dropping only the verb left the bare "quoted" name
+    // showing in the hero (host "why is this in quotes" 2026-07-18).
+    const record = t.replace(/^(confirm|book|call|pay|chase|set|plan|add|decide|pick|reconfirm|nudge|ask|fix|buy|resolve|settle)\s+/i, '').replace(/^["“”"']+|["“”"']+$/g, '').trim();
+    const askTok = new Set(String(ask || '').toLowerCase().replace(/[^a-z\s’']/g, '').split(/\s+/));
+    const adds = record.split(/\s+/).some(w => w.length > 2 && !askTok.has(w.toLowerCase()));
+    return adds ? record.charAt(0).toUpperCase() + record.slice(1) : null;
+  } catch { return null; }
+}
+// Path whisper labels for the panel's horizon footer.
+function horizonLabel(a) {
+  const d = String((a && a.domain) || '').toLowerCase();
+  const map = { budget: 'the budget', food: 'the menu', guests: 'the guest list', date: 'the day', vendors: 'vendors', start: 'who’s coming' };
+  if (map[d]) return map[d];
+  const t = String((a && a.title) || '').replace(/\.+$/, '');
+  return t.length <= 22 ? t.toLowerCase() : t.split(' ').slice(0, 3).join(' ').toLowerCase() + '…';
+}
 
 // A DUAL / compound event (type + secondaryType, e.g. a retirement that's ALSO a 50th
 // birthday) reads as BOTH occasions everywhere it's listed — never just the primary type,
@@ -576,10 +632,24 @@ export default function HostShellV2() {
   // need, opposite direction from splashhold). Read once at component scope
   // so both the dismiss timer and the render's CSS class agree.
   let splashHold = false, splashForceFull = false;
+  // ELEGANT-MINIMAL PORT (2026-07-17, host "start the port" + "test both live"):
+  // ?elegant=1 opts the PLAN hero into the elegant-minimal composition (more air,
+  // the guide-voice sentence, a continuous hairline progress rule). ?voice=serif|sans
+  // flips the guide-voice treatment so the host can drive both against the same real
+  // board and rule on the serif doctrine (styles.css:8) from the live render, not a
+  // Figma comp. Production is untouched unless the flag is present.
+  // HUMAN VOICE = UNIFIED NEWSREADER (host ruling 2026-07-17, from the live comparison):
+  // one optical serif superfamily carries the whole human voice — the event NAME (identity)
+  // and the GUIDE voice (reassurance) — while sans keeps the instruction ASK and the facts.
+  // Newsreader chosen over Fraunces for the Apple-register calm (warmth from the italic, not
+  // the letterform). ?voice=sans stays an escape hatch for A/B.
+  let elegantMode = false, elegantVoice = 'newsreader';
   try {
     const q = new URLSearchParams(window.location.search);
     splashHold = q.has('splashhold');
     splashForceFull = q.has('splashfull');
+    elegantMode = q.has('elegant') && q.get('elegant') !== '0';
+    if (q.get('voice') === 'sans') elegantVoice = 'sans';
   } catch { /* leave both false */ }
   const splashSeenRecently = (() => {
     const now = Date.now();
@@ -1338,6 +1408,132 @@ export default function HostShellV2() {
     // the now-settled row doesn't re-open its chips as if still asking.
     setSheet(s => (s && s.focus === r.id ? { ...s, focus: null } : s));
   };
+  // Shared grounded-decision resolution (elegant loop): the why + the fix, resolved
+  // IN PLACE via settleDecision — a proposed default with one-tap "Go with X" +
+  // "or" alternatives (propose-don't-ask), or the real options when there's no
+  // defensible default. Used by BOTH the decisions BUNDLE hero and a SINGLE decision
+  // hero card, so a lone decision stops falling back to a routing "Take me to it".
+  // Returns null when the decision has no authored options (caller keeps its route).
+  // Combined B+C+D display (host 2026-07-18) — every field REAL, from playbookDecisionOptions
+  // (options/why/default) + the playbook's authored optionNotes/defaultWhy. Propose-mode: the
+  // pick shown once (name · "our pick" · its tradeoff note), the real defaultWhy as a line under
+  // it, and the alternatives behind a "See N other ways" disclosure (each a row with its own
+  // note). Ask-mode (no defensible default): every option as an equal row + note, no badge.
+  // Nothing invented at render — a missing note simply doesn't show.
+  // ── UNIFIED DECISION SURFACE (host "this feels piecemeal", 2026-07-18) ──────────────
+  // Every host PICK-style decision — playbook `decision:*` board items AND phase/editor
+  // decisions (food handling, …) — normalizes to a NormalizedDecision and renders through
+  // ONE renderer. Kills the two-path split (decopt rows vs. chip pills) that left phase
+  // decisions off Figma parity. A NEW decision reaches parity by adding an adapter to
+  // decisionFor(); the renderer never changes and no one hand-draws chips again.
+  //   NormalizedDecision = { id, options:[{value,label,note?}], proposed:{value,why}|null,
+  //                          why?:string, settle:(value)=>void }
+  // Grounding: `proposed` (the "our pick") is emitted ONLY when defensible — otherwise
+  // honest ask-mode (equal rows). Nothing invented at render; a missing note just doesn't show.
+  const renderDecision = (nd) => {
+    if (!nd || !Array.isArray(nd.options) || !nd.options.length) return null;
+    const proposedOpt = nd.proposed ? nd.options.find(o => o.value === nd.proposed.value) : null;
+    const alts = proposedOpt ? nd.options.filter(o => o !== proposedOpt) : nd.options;
+    const open = decDiscloseId === nd.id;
+    const optRow = (o, isPick) => (
+      <button key={o.value} className={'decopt' + (isPick ? ' pick' : '')} onClick={() => nd.settle(o.value)}>
+        <span className="decopt-main">
+          <span className="decopt-name">{o.label}</span>
+          {o.note && <span className="decopt-note">{o.note}</span>}
+        </span>
+        {/* "our pick" sits on the RIGHT, by the arrow; hovering it reveals the real
+            "why this pick" as a tooltip — no standalone line (host 2026-07-18). */}
+        <span className="decopt-right">
+          {isPick && (
+            <span className="decopt-badge-wrap" tabIndex={0}>
+              <span className="decopt-badge">our pick</span>
+              {nd.proposed.why && <span className="decopt-why" role="tooltip">{nd.proposed.why}</span>}
+            </span>
+          )}
+          <span className="decopt-arrow" aria-hidden="true">→</span>
+        </span>
+      </button>
+    );
+    return (
+      <div className="decopts">
+        {proposedOpt ? (
+          <>
+            {optRow(proposedOpt, true)}
+            {alts.length > 0 && (open ? (
+              <>
+                <button className="decopt-disc" onClick={() => setDecDiscloseId(null)}>Other ways  ▾</button>
+                {alts.map(o => optRow(o, false))}
+              </>
+            ) : (
+              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>{'See ' + alts.length + ' other way' + (alts.length > 1 ? 's' : '') + '  ›'}</button>
+            ))}
+          </>
+        ) : (
+          // Ask-mode: a genuine either/or — every option an equal row, no faked pick.
+          <>
+            {nd.why && <p className="grounding" style={{ margin: '0 0 10px', opacity: .82 }}>{nd.why}</p>}
+            {nd.options.map(o => optRow(o, false))}
+          </>
+        )}
+      </div>
+    );
+  };
+  // ADAPTER — a playbook `decision:*` board row → NormalizedDecision (its authored
+  // options/optionNotes/defaultWhy, and the difm propose/ask approach as the pick).
+  const playbookDecisionND = (dec) => {
+    const dopts = (() => { try { return playbookDecisionOptions(event, dec.id); } catch { return null; } })();
+    if (!dopts || !Array.isArray(dopts.options) || !dopts.options.length) return null;
+    const notes = (dopts.optionNotes && typeof dopts.optionNotes === 'object') ? dopts.optionNotes : {};
+    const dapproach = dec.difmCapable ? (() => { try { return decisionApproach(dec, dopts); } catch { return null; } })() : null;
+    const proposed = (dapproach && dapproach.mode === 'propose' && dapproach.proposed) ? dapproach.proposed : null;
+    return {
+      id: dec.id,
+      options: dopts.options.map(o => ({ value: o, label: o, note: notes[o] || null })),
+      proposed: proposed ? { value: proposed, why: dopts.defaultWhy || null } : null,
+      why: dopts.why || null,
+      settle: (v) => settleDecision(dec, v),
+    };
+  };
+  // ADAPTER — the phase:food "how is the food handled" decision → NormalizedDecision.
+  // Propose-don't-ask ONLY when grounded: at a real headcount, cooking for that many is a
+  // lot to own on the day, so most hosts hand it to a caterer. Below that, honest ask-mode.
+  const foodDecisionND = () => {
+    const OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
+    const NOTES = {
+      'host cooks': 'Most control, most work on the day — best when the count is small.',
+      'caterer': 'Hands-off on the day; the biggest line in the food budget.',
+      'potluck': 'Low cost and communal — but you can’t plan the exact spread.',
+    };
+    const gn = Number(guests) || 0;
+    const proposed = gn >= 40
+      ? { value: 'caterer', why: `At about ${gn} guests, most hosts hand the food to a caterer — cooking for that many is a lot to own on the day.` }
+      : null;
+    return {
+      id: 'phase:food',
+      options: OPTS.map(([label, value]) => ({ value, label, note: NOTES[value] || null })),
+      proposed,
+      why: proposed ? null : 'How you handle the food shapes both the budget and your day-of workload.',
+      settle: (v) => {
+        const label = (OPTS.find(([, val]) => val === v) || ['it'])[0];
+        patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
+          'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
+      },
+    };
+  };
+  // DISPATCHER — any decision-like hero action → its NormalizedDecision (or null when the
+  // action isn't a pick-style decision, e.g. a free-entry editor). Add a source here once.
+  const decisionFor = (a) => {
+    if (!a) return null;
+    const id = String(a.id || '');
+    if (/^decision:/.test(id)) {
+      const dec = (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === id);
+      return dec ? playbookDecisionND(dec) : null;
+    }
+    if (id === 'phase:food') return foodDecisionND();
+    return null;
+  };
+  // Back-compat: the decisions BUNDLE + single-decision hero still call this with a board row.
+  const renderDecisionActions = (dec) => renderDecision(playbookDecisionND(dec));
   // Host override (task 3): the ranking is a PROPOSAL the host can correct. Pinning
   // floats an open decision to the top; persists via the same patchEvent path every
   // edit uses. Toggling re-pins/unpins.
@@ -1703,6 +1899,36 @@ export default function HostShellV2() {
   // same host-appropriate rule the registry raiser applies (surfaceRegistry
   // vendor-reconfirm); the banner counting them was the last divergence.
   const reconfirmables = useMemo(() => (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal), [event]);
+  // GROUNDED ACTION LOOP (the conflict mapper): the SAME cross-vendor conflicts
+  // the engine only ever counted, turned into per-item ActionItems the elegant
+  // hero renders as the grounded action itself (ask · detail · why · the two
+  // real choices) instead of a "See all N" gate. items[0] is the first one to
+  // face; severity-sorted, never re-ordered. (Spec: GROUNDED_ACTION_ENGINE_CONTRACT.)
+  const conflictItems = useMemo(() => {
+    try { return conflictsToActionItems(deriveVendorPromiseConflicts(event)); } catch { return []; }
+  }, [event]);
+  // GROUNDED COI STEP (host "pull the grounded action into 'Collect all vendor COIs'"): the
+  // solver task is a generic bundle; the COI engine (coiNextAction) knows the REAL next step
+  // per vendor. Surface the FIRST vendor that owes one — its true action + why + which vendor —
+  // so the hero says "Ask X for proof of insurance" and routes to X, not a blank "Decide".
+  const coiFirst = useMemo(() => {
+    try {
+      const vends = (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal);
+      for (const v of vends) { const act = coiNextAction(v, event, String(v.name).trim()); if (act) return { vendor: v, ...act }; }
+    } catch { /* no coi engine */ }
+    return null;
+  }, [event]);
+  // COI bundle counts for the all-clear payoff (parity with conflicts/decisions): how many
+  // REQUIRED-COI vendors still owe a step, and the total required (the "N of N · on file"
+  // denominator once cleared). Waived / not-required vendors never count toward the bundle.
+  const coiCounts = useMemo(() => {
+    try {
+      const vends = (event.vendors || []).filter(v => v && String(v.name || '').trim() && !v.isInformal);
+      const required = vends.filter(v => { try { const st = getVendorCOIState(v, event); return !!(st && st.required); } catch { return false; } });
+      const open = required.filter(v => { try { return !!coiNextAction(v, event, String(v.name).trim()); } catch { return false; } }).length;
+      return { open, total: required.length };
+    } catch { return { open: 0, total: 0 }; }
+  }, [event]);
   const sweepWindow = days != null && days >= 0 && days <= 3 && reconfirmables.length > 0 && !isPastEvent(event);
   const reconfirmedN = reconfirmables.filter(v => v.reconfirmed72 === true).length;
   const writeVendor = (id, patch, msg) => {
@@ -1886,7 +2112,18 @@ export default function HostShellV2() {
   // the same numbers. The wave-6 seam audit caught the shell-only split
   // making V1 say "Have a plan for 4 things…" over V2's "All quiet".
   const worries = Array.isArray(plan.worries) ? plan.worries : [];
-  const queue = actions;
+  // BOARD RULING (2026-07-18): a vendor-confirm is a RECORD-ONLY self-report ("Mark as
+  // locked in"), not a grounded next-step — it earns the command hero's one loud slot
+  // ONLY when it's the single vendor gating readiness (rollup.counts.toConfirm === 1: the
+  // last booked-but-unconfirmed vendor, computed off the booking axis, not status alone).
+  // Every other confirm is demoted OUT of the hero and the below-fold queue — it lives in
+  // the vendor cockpit as a status control; the "all booked · N to confirm" rollup line
+  // still carries the count so nothing is hidden. Elegant loop only — production queue
+  // (App.js) is untouched.
+  const _vRollup = plan.vendorReadinessRollup;
+  const confirmGating = !!(_vRollup && _vRollup.counts && _vRollup.counts.toConfirm === 1);
+  const isVendorConfirmAction = (a) => !!(a && a.route && a.route.vendorId && !a.route.vendorSection);
+  const queue = (elegantMode && !confirmGating) ? actions.filter(a => !isVendorConfirmAction(a)) : actions;
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -1894,6 +2131,85 @@ export default function HostShellV2() {
   // quiet. Reads the QUEUE (post-worry-split): heads-ups never break the calm.
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
+  // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
+  // engine has an ask, the display slot speaks it (the ASK) and queue[0]
+  // renders as the one hero panel; when there is nothing to ask (calm, day-of,
+  // past, no date) the countdown keeps the display — the date IS the story then.
+  const askMode = days !== null && days > 0 && !listIsCalm && queue.length > 0;
+  // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
+  // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
+  // bar fades in as the echo. (The dock already auto-hides on scroll — the two
+  // swap, never stack.)
+  // COMPLETION BEAT (host request 2026-07-17): when a part of the plan flips
+  // to handled, say so once, in the confirmation-green voice, with the REAL
+  // count — then get out of the way. Deferrals do NOT beat (a snooze is not
+  // progress; its own toast already reassures with the comeback date).
+  const [beat, setBeat] = useState(null);
+  const partsPrevRef = useRef(null);
+  useEffect(() => { partsPrevRef.current = null; setBeat(null); }, [event.id]);
+  useEffect(() => {
+    const done = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : null;
+    const total = phaseCues && Number(phaseCues.totalCount);
+    if (done == null) return;
+    if (partsPrevRef.current != null && done > partsPrevRef.current && total) {
+      setBeat(done >= total
+        ? 'That was the last one — all ' + total + ' handled. The plan is quiet.'
+        : 'Handled — ' + done + ' of ' + total + '. The plan just got quieter.');
+      const t = setTimeout(() => setBeat(null), 6000);
+      partsPrevRef.current = done;
+      return () => clearTimeout(t);
+    }
+    partsPrevRef.current = done;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phaseCues && phaseCues.completedCount]);
+  // HERO RECEIPT (host ruling 2026-07-17): completion satisfaction lives IN the
+  // panel, not a toast at the fold. Muted sentence; the STATE is the green
+  // done-dot (Confirmations-Green, footprint shrunk per UX_02). The advancing
+  // panel wears a brief ok-ring pulse — the beat, never blocking.
+  const [heroReceipt, setHeroReceipt] = useState(null);
+  const receiptTimerRef = useRef(null);
+  const askModeRef = useRef(false);
+  // ALL-CLEAR PAYOFF (host 2026-07-18): when a whole bundle goes N→0 on THIS event,
+  // the hero shows the earned moment before advancing — {kind, count}. Conflicts get
+  // the timeline proof (the synced morning IS the proof a clash is gone); every other
+  // bundle gets the clean type reward. Set by the prevBundleClear transition, dismissed
+  // by the host's handoff tap (calm — no auto-timer to yank it away). Elegant loop only.
+  const [justCleared, setJustCleared] = useState(null);
+  // Decluttered conflict hero (host 2026-07-18): the impact ("why") is tucked behind a
+  // tap, and a "Set a different time" row opens an inline picker (custom arrival time).
+  const [conflictWhyOpen, setConflictWhyOpen] = useState(false);
+  const [conflictTime, setConflictTime] = useState(null); // null=closed, 'HH:MM'=picking
+  const [decDiscloseId, setDecDiscloseId] = useState(null); // which decision's "other ways" are open
+  askModeRef.current = askMode;
+  // AMBIENT ATTENTION (modern channels, host direction 2026-07-17): the ask
+  // reaches the host through surfaces they already glance at — the browser tab
+  // and the OS badge — never more chrome on the board. Tab = the one ask (or
+  // the earned quiet). Badge = CRITICALS ONLY; a calm plan clears it, so the
+  // badge's absence is itself the calm signal.
+  useEffect(() => {
+    try {
+      const base = 'Event Boss';
+      if (stage === 'plan' && askMode && queue[0]) document.title = heroAskFor(queue[0], event) + ' — ' + base;
+      else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
+      else document.title = base;
+    } catch { /* title is cosmetic */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, askMode, listIsCalm, queue.length && queue[0] && queue[0].id, event.id]);
+  useEffect(() => {
+    try {
+      const crit = queue.filter(a => a && a.level === 'critical').length;
+      if (navigator.setAppBadge) { if (crit) navigator.setAppBadge(crit); else if (navigator.clearAppBadge) navigator.clearAppBadge(); }
+    } catch { /* badging unsupported */ }
+  }, [queue]);
+  const heroZoneRef = useRef(null);
+  const [heroInView, setHeroInView] = useState(true);
+  useEffect(() => {
+    const el = heroZoneRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') { setHeroInView(false); return; }
+    const io = new IntersectionObserver((es) => { es.forEach(e => setHeroInView(e.isIntersecting)); }, { threshold: 0.05 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [stage, event.id]);
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -2997,6 +3313,42 @@ export default function HostShellV2() {
     if (kind === 'magic' && !muted) { try { playMessageChime(); } catch { /* no audio */ } }
   };
 
+  // COMPLETION CHIME — the grounded loop's payoff (host request 2026-07-18). Per-resolve
+  // stays haptic-only (a chime on every tap would chirp through a 9-item pile); the EARNED
+  // moment is a whole bundle going quiet — every vendor conflict resolved, or every open
+  // decision settled. That fires feedback('magic') once: the soft chime (if sound's on) +
+  // celebration haptic. Guarded like the inbound-chime — a ref carries the prior counts, and
+  // a first read or an EVENT SWITCH never fires (only a real N→0 the host drove on THIS event).
+  // Elegant loop only, so production default is unchanged.
+  const prevBundleClear = useRef(null);
+  useEffect(() => {
+    if (!elegantMode) { prevBundleClear.current = null; return; }
+    const now = { eventId, conflicts: conflictItems.length, decisions: callsOrdered.length, coi: coiCounts.open };
+    const prev = prevBundleClear.current;
+    prevBundleClear.current = now;
+    if (!prev || prev.eventId !== eventId) { setJustCleared(null); return; } // first read / event switch — never a payoff
+    const clearedConflicts = prev.conflicts > 0 && now.conflicts === 0;
+    const clearedDecisions = prev.decisions > 0 && now.decisions === 0;
+    const clearedCoi = prev.coi > 0 && now.coi === 0;
+    if (clearedConflicts || clearedDecisions || clearedCoi) {
+      try { feedback('magic'); } catch { /* no fx */ }
+      // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
+      if (clearedConflicts) setJustCleared({ kind: 'conflict', count: prev.conflicts });
+      else if (clearedDecisions) setJustCleared({ kind: 'decision', count: prev.decisions });
+      else setJustCleared({ kind: 'coi', count: coiCounts.total || prev.coi });
+    }
+  }, [elegantMode, eventId, conflictItems.length, callsOrdered.length, coiCounts.open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // SAFETY: if the underlying bundle is no longer empty (host hit Undo, or a new
+  // conflict surfaced), retire the stale payoff so it can't claim "all clear" over
+  // live work. A real re-clear will fire the transition above again.
+  useEffect(() => {
+    if (!justCleared) return;
+    if (justCleared.kind === 'conflict' && conflictItems.length > 0) setJustCleared(null);
+    if (justCleared.kind === 'decision' && callsOrdered.length > 0) setJustCleared(null);
+    if (justCleared.kind === 'coi' && coiCounts.open > 0) setJustCleared(null);
+  }, [justCleared, conflictItems.length, callsOrdered.length, coiCounts.open]);
+
   // SYNC-HONESTY-1: the exact test patchEvent itself uses to decide whether an
   // edit reaches the cloud — a created (custom) event, or a real/hydrated event
   // this device knows about. A pure curated sample (ALL_SAMPLES that isn't also
@@ -3041,7 +3393,17 @@ export default function HostShellV2() {
       // CONFIRM-GREEN: patchEvent is the ONE write path every successful edit funnels
       // through, so its toast is always a confirmation ⇒ green. Errors never come through
       // here (they call toast() directly with no tone), so they stay neutral.
-      if (undoable) toast(msg, { label: 'Undo', fn: () => patchEvent(undoPrev, 'Undone.', { noUndo: true }) }, 'ok');
+      if (undoable) {
+        const undoFn = () => patchEvent(undoPrev, 'Undone.', { noUndo: true });
+        if (askModeRef.current && stage === 'plan' && !sheet) {
+          setHeroReceipt({ msg, fn: undoFn });
+          try { if (navigator.vibrate) navigator.vibrate(8); } catch { /* no haptics */ }
+          if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
+          receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
+        } else {
+          toast(msg, { label: 'Undo', fn: undoFn }, 'ok');
+        }
+      }
       else toast(msg, null, 'ok');
     }
   };
@@ -3140,6 +3502,7 @@ export default function HostShellV2() {
     // category to budget put the budget editor on the rain card.)
     const f = (a.route && a.route.focusField) || '';
     if (f === 'rain-plan' || /rain backup/i.test(a.title || '')) return 'rain';
+    if (f === 'venue' || f === 'event-venue' || /\b(location|venue)\b/i.test(a.title || '')) return 'venue';
     if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
     if (f === 'guests-entry') return 'guests';
     if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
@@ -3153,8 +3516,24 @@ export default function HostShellV2() {
 
   const onCta = (a, key) => {
     const kind = wiredKind(a);
-    if (kind) { setEditor(key); spotlight(key); return; }
+    if (kind) {
+      // Propose-don't-ask: the venue editor opens pre-filled with the host's
+      // own prior answer (existing venue, or the town they named at create) —
+      // grounded data only, never an invented guess.
+      if (kind === 'venue' && !String(venueDraft || '').trim()) {
+        try { const seed = String(event.venue || event.venueCity || '').trim(); if (seed) setVenueDraft(seed); } catch { /* blank is fine */ }
+      }
+      setEditor(key); spotlight(key); return;
+    }
     if (/chase|rsvp/i.test(String(a.cta || '') + ' ' + String(a.title || ''))) { setSheet({ kind: 'guests' }); return; }
+    // ELEGANT (host "pull action into confirm vendor"): a plain vendor-confirm resolves IN PLACE
+    // — tapping "Confirm vendor" locks the vendor in and fires the hero receipt (via
+    // writeVendor→patchEvent), instead of routing to the cockpit. Payment/COI (vendorSection)
+    // and already-confirmed vendors still route as before.
+    if (elegantMode && a.route && a.route.vendorId && !a.route.vendorSection) {
+      const v = (event.vendors || []).find(x => x && x.id === a.route.vendorId);
+      if (v && !v.isInformal && !vendorStatusIsCurrent(v, 'Confirmed')) { setVendorStatus(v, 'Confirmed'); return; }
+    }
     if (routeSheet(a.route)) return;
     const dest = describeRoute(a.route);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
@@ -3166,6 +3545,18 @@ export default function HostShellV2() {
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
   const renderEditor = (a) => {
     const kind = wiredKind(a);
+    if (kind === 'venue') {
+      return (
+        <>
+          <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
+            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
+              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus />
+            <button className="mini" onClick={saveVenue}>Save</button>
+          </div>
+          {venueErr && <p className="because" style={{ color: 'var(--warn)', marginTop: 6 }}>{venueErr}</p>}
+        </>
+      );
+    }
     if (kind === 'guests') {
       const counted = event.guestMode === 'count';
       const guestN = Number(guests) || 0;
@@ -3415,7 +3806,10 @@ export default function HostShellV2() {
       // there looking unclicked.
       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
       const held = event.catererCount;
-      if ((held || held === 0) && choiceOpen !== 'catererCount') {
+      // ELEGANT (host "make count change one less tap"): the hero is the action that needs
+      // fixing, so skip the "Held at N · change" collapse — show the resolution chips directly
+      // (one tap to fix, no "change" step). The current count is already in the card's detail line.
+      if ((held || held === 0) && choiceOpen !== 'catererCount' && !elegantMode) {
         const matches = held === yes;
         return (
           <div className="chips hc-row">
@@ -3428,20 +3822,27 @@ export default function HostShellV2() {
           </div>
         );
       }
+      const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); };
+      const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.'); setChoiceOpen(null); };
+      // ELEGANT PARITY (host 2026-07-18): the two count resolutions render as the same
+      // tactile .decopt rows the decision/conflict heroes use — a genuine either/or, no
+      // faked pick — instead of the old small .chip pills.
+      if (elegantMode) {
+        return (
+          <div className="decopts">
+            {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
+              <button key={i} className="decopt" onClick={fn}>
+                <span className="decopt-main"><span className="decopt-name">{label}</span></span>
+                <span className="decopt-right"><span className="decopt-arrow" aria-hidden="true">→</span></span>
+              </button>
+            ))}
+          </div>
+        );
+      }
       return (
         <div className="chips hc-row">
-          <button className="chip" onClick={() => {
-            patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.');
-            setChoiceOpen(null);
-          }}>
-            Match confirmed yeses ({yes})
-          </button>
-          <button className="chip" onClick={() => {
-            patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.');
-            setChoiceOpen(null);
-          }}>
-            Hold {guests} plates anyway
-          </button>
+          <button className="chip" onClick={matchYes}>Match confirmed yeses ({yes})</button>
+          <button className="chip" onClick={holdGuests}>Hold {guests} plates anyway</button>
         </div>
       );
     }
@@ -3695,6 +4096,8 @@ export default function HostShellV2() {
     const next = ros.map(r => (r && r.id === cueId) ? { ...r, ...patch } : r);
     patchEvent({ ros: next, rosEdited: true }, msg);
   };
+  // T-2d: inside the day-before window the board simplifies, not busies.
+  const nearDayPlan = !!(dayBefore && dayBefore.applicable && askMode);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   // DAY-OF resume: entering The Day on the day itself picks up at the first
   // cue not already done (event.rosDone persists across reloads — the same
@@ -3851,13 +4254,13 @@ export default function HostShellV2() {
 
   return (
     <div className="stagewrap">
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
             starts fading, instead of completing invisibly underneath it. */}
         <div className={'content' + (splash === 'up' ? ' dash-hold' : '')}>
-          <header className="appbar">
+          <header className={'appbar' + (elegantMode ? ' appbar-elegant' : '')}>
             <div>
               <div className="wordmark">Event Boss<span className="wm-dot" aria-hidden="true" /></div>
               <div className="appbar-note">V2 preview</div>
@@ -4160,12 +4563,28 @@ export default function HostShellV2() {
                   up top, the summary tiles mid, and the NEXT tile anchored just
                   above the floating dock so the primary action sits at thumb
                   reach with no dead space below it. */}
-              <div className="hero">
-              {/* Event masthead — kicker / readable title / quiet venue.
+              <div className={'hero' + (elegantMode ? ' elegant voice-' + elegantVoice : '')}>
+              {/* First-screen bound (F13 foot-pin): a display:contents wrapper — invisible in
+                  every mode EXCEPT elegant-ask, where it becomes a 100dvh flex column so the
+                  progress hairline pins to the true foot and the see-all sits below it. */}
+              <div className={elegantMode && askMode ? 'escreen on' : 'escreen'}>
+              {/* ELEGANT-MINIMAL PORT (F13 fidelity, host ruling "match Figma exactly"
+                  2026-07-17): the ask screen's masthead collapses to ONE tiny eyebrow
+                  (countdown · event name, uppercase) — the big serif name + venue + kicker
+                  move OFF the ask screen (the serif name belongs on the pull-down Overview).
+                  Everything below composes with generous negative space. */}
+              {elegantMode && (askMode || justCleared) ? (
+                <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
+                  <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
+                  <span className="eb-caret" aria-hidden="true">▾</span>
+                </button>
+              ) : (
+              /* Event masthead — kicker / readable title / quiet venue.
                   (The old all-caps eyebrow crushed long names into three
                   unreadable letterspaced lines.) Theme/colors (event.theme)
                   rides the same quiet line as venue — real host-entered data,
-                  shown only when set, no new row added. */}
+                  shown only when set, no new row added. */
               <div className="ev-head">
                 <button className="ev-kicker" onClick={() => setSheet({ kind: 'events' })} aria-haspopup="true">
                   {eventTypeLabel(event) || event.type} <span aria-hidden="true">▾</span>
@@ -4173,74 +4592,969 @@ export default function HostShellV2() {
                 <div className="ev-title">{event.name}</div>
                 {(event.venue || event.theme) ? <div className="ev-venue">{[event.venue, event.theme].filter(Boolean).join(' · ')}</div> : null}
               </div>
-              <div className="mega">
-                {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
-              </div>
-              <p className="mega-sub">
-                {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
-                {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
-                {!isPast && days !== null && days > 1 && `until ${new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
-              </p>
-              {/* THE STATUS LINE (host board ruling, wave 6 — hero prescription):
-                  ONE honest sentence of where they stand. Calm when calm, direct
-                  when not, and NO ARITHMETIC — no counts, no dollar deltas, no
-                  reconciliation. The tiles below are the evidence; the queue is
-                  the work. Grounded ONLY in already-computed engine state:
-                  a critical in the queue, overdue board decisions, timeline
-                  compression, budget overage — never invented cheer. */}
-              {!isPast && days !== null && days > 0 && (() => {
-                if (queue.some(a => a && a.level === 'critical')) {
-                  return <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
-                }
-                const slips = [];
-                try {
-                  const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
-                  if (od) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
-                } catch { /* board unavailable */ }
-                if (compression && compression.headline) slips.push('time got tight');
-                if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
-                if (slips.length) {
+              )}
+              {/* ecenter — DOCTRINE (host "make sure hero doctrine keeps in middle"): the
+                  ask+action cluster is vertically CENTERED between the eyebrow and the foot
+                  progress, robustly at ANY content length (flex:1 + justify-center). Invisible
+                  (display:contents) outside elegant so the normal board is untouched. */}
+              <div className="ecenter">
+              {/* REBALANCE (host-approved 2026-07-17): instruction-first display.
+                  askMode → the display slot speaks the ASK in plain words and the
+                  countdown folds into the TRUTH line; otherwise the countdown
+                  keeps the display (calm/day-of/past — the date IS the story).
+                  THE STATUS LINE (wave-6 ruling) is computed ONCE for both
+                  branches: one honest sentence, no arithmetic. In askMode the
+                  calm "On track" folds into the truth line; a non-calm verdict
+                  keeps its full sentence and its color. */}
+              <div ref={heroZoneRef} className="hzone">{(() => {
+                // ALL-CLEAR PAYOFF — a whole bundle just went quiet on this event.
+                // Owns the hero until the host taps the handoff. Conflicts show the
+                // grounded run-of-show (the proof the clash is gone); other bundles
+                // get the clean type reward. Grounded: the count is the real N that
+                // cleared, the timeline is the event's own ROS (fmt12h), never faked.
+                if (elegantMode && justCleared) {
+                  const jc = justCleared;
+                  const isConf = jc.kind === 'conflict';
+                  const isCoi = jc.kind === 'coi';
+                  const cues = isConf ? ros.filter(r => r && r.time && r.label).slice(0, 5) : [];
+                  const next = (queue && queue.length && !listIsCalm) ? queue[0] : null;
+                  const nextLabel = next
+                    ? 'Next: ' + String(next.title || 'your next step').replace(/\.+$/, '')
+                    : 'Nothing else needs you right now';
                   return (
-                    <p className="verdict slipping">
-                      Mostly on course — {slips.slice(0, 2).join(', and ')}. Worth a look today.
-                    </p>
+                    <div className="allclear" role="status">
+                      <h2 className="ac-head">{isConf ? 'All untangled.' : isCoi ? 'All covered.' : 'All decided.'}</h2>
+                      <p className="ac-voice">{isConf
+                        ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
+                                       : 'Every vendor has its own hour now — nothing’s fighting for setup.')
+                        : isCoi ? 'Every vendor’s proof is on file — you’re clear to let them on-site.'
+                        : 'Every open call is made — each one has an answer now.'}</p>
+                      {isConf && cues.length > 0 && (
+                        <ul className="ac-tl">
+                          {cues.map((c, i) => (
+                            <li key={c.id || i} className={i === 0 ? 'lead' : ''}>
+                              <span className="ac-t">{fmt12h(c.time)}</span>
+                              <span className="ac-l">{c.label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <div className="ac-bar" aria-hidden="true"><span /></div>
+                      <div className="ac-meta">
+                        <span className="ac-count">{jc.count} of {jc.count} · {isConf ? 'in sync' : isCoi ? 'on file' : 'decided'}</span>
+                        <span className="ac-clear">{isConf ? 'nothing clashing' : isCoi ? 'nothing missing' : 'nothing pending'}</span>
+                      </div>
+                      <button className="ac-next" onClick={() => setJustCleared(null)}>{nextLabel}<span aria-hidden="true"> ›</span></button>
+                    </div>
                   );
                 }
-                if (listIsCalm) {
-                  return <p className="verdict">{worries.length
-                    ? 'All quiet — just the heads-ups below, when you have a minute.'
-                    : 'All quiet — you’re genuinely set for now.'}</p>;
+                let statusNode = null; let statusOnTrack = false;
+                if (!isPast && days !== null && days > 0) {
+                  if (queue.some(a => a && a.level === 'critical')) {
+                    statusNode = <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
+                  } else {
+                    const slips = [];
+                    try {
+                      const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
+                      if (od) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
+                    } catch { /* board unavailable */ }
+                    if (compression && compression.headline) slips.push('time got tight');
+                    if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
+                    if (slips.length) {
+                      statusNode = (
+                        // AMBER RESTRAINT (host 2026-07-18): a "mostly on course · worth a look"
+                        // NUDGE is not a warning — painting the whole reassuring line amber
+                        // over-signals and cries wolf. In elegant, keep it the calm serif guide
+                        // voice (the WORDS carry the caution); amber stays reserved for the
+                        // genuinely can't-wait (critical) verdict above. Non-elegant unchanged.
+                        <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
+                          Mostly on course — {slips.slice(0, 2).join(', and ')}. Worth a look today.
+                        </p>
+                      );
+                    } else if (listIsCalm) {
+                      statusNode = <p className="verdict">{worries.length
+                        ? 'All quiet — just the heads-ups below, when you have a minute.'
+                        : 'All quiet — you’re genuinely set for now.'}</p>;
+                    } else {
+                      statusNode = <p className="verdict">On track — nothing is slipping.</p>;
+                      statusOnTrack = true;
+                    }
+                  }
                 }
-                return <p className="verdict">On track — nothing is slipping.</p>;
-              })()}
+                const dateLong = event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
+                if (askMode) {
+                  return (<>
+                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{
+                      /* The loud line is the FIRST real ITEM, not the generic bundle verb —
+                         the per-item intelligence surfacing where the host looks first.
+                         Conflicts → the clash; decisions (bundle OR a lone card) → the actual
+                         call to make, framed as a question (parenthetical meta + quotes stripped). */
+                      (() => {
+                        const q0 = queue[0];
+                        if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
+                        // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
+                        if (elegantMode && /collect.*coi|vendor coi|proof of insurance/i.test(String(q0.title || ''))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+                        if (elegantMode) {
+                          const decRow = /^decision:/.test(String(q0.id || ''))
+                            ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
+                            : (/decision/i.test(String(q0.title || '')) ? callsOrdered[0] : null);
+                          if (decRow) return String(decRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
+                        }
+                        return heroAskFor(q0, event);
+                      })()
+                    }</h2>
+                    <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>
+                    {!statusOnTrack && statusNode}
+                  </>);
+                }
+                return (<>
+                  <div className="mega">
+                    {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
+                  </div>
+                  <p className="mega-sub">
+                    {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
+                    {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
+                    {!isPast && days !== null && days > 1 && `until ${dateLong}`}
+                  </p>
+                  {statusNode}
+                </>);
+              })()}{beat && <p className="verdict beat">{beat}</p>}</div>
               {/* START HERE retired (host request 2026-07-16): naming the #1 action MOVED to
                   the always-on .next-bar pinned at the frame bottom — one persistent, thumb-
                   reachable primary CTA that names the next thing, instead of a quiet hero row
                   that scrolls away plus a counting bar. */}
               {/* ctx continuity (PC-1): what the plan RECOGNIZED — shown only
                   for compound events where the understanding isn't obvious. */}
-              {ctx && ctx.compound && ctx.reasoning && (
+              {!askMode && ctx && ctx.compound && ctx.reasoning && (
                 <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--steel-soft)' }}>
                   Planning this as {String(ctx.reasoning).toLowerCase().replace(/\.$/, '')}.
                 </p>
               )}
-              {returnLine && (
+              {returnLine && (elegantMode ? (() => {
+                // A · QUIET "SINCE LAST LOGIN" LINE (host "build A", 2026-07-18): ONE muted
+                // line with a breathing done-dot — the momentum reward ("N moved forward"),
+                // the part no always-on tile can tell you. Falls back to the narration when
+                // there's no delta yet. Stays quiet: never a second loud thing, gone next
+                // render. Real returnLine data (deriveReturnNarration), invents nothing.
+                const hasDelta = returnLine.readyNow && returnLine.readyDelta > 0;
+                const text = hasDelta
+                  ? `${returnLine.readyDelta} more handled since you were here · ${returnLine.readyNow.done} of ${returnLine.readyNow.total} now`
+                  : returnLine.line;
+                if (!text) return null;
+                return (
+                  <button className="returnbeat" onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
+                    <span className="rb-dot" aria-hidden="true" />
+                    <span className="rb-t">{text}</span>
+                    {returnLine.route ? <span className="rb-chev" aria-hidden="true">›</span> : null}
+                  </button>
+                );
+              })() : (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: returnLine.route ? 'pointer' : 'default', padding: '2px 0 0', font: 'inherit', display: 'block' }}
                   onClick={() => { if (returnLine.route) routeSheet(returnLine.route); setReturnLine(null); }}>
                   <span className="t" style={{ display: 'block', color: 'var(--steel-soft)', fontWeight: 550, fontSize: 'var(--t-row-sub)' }}>{returnLine.line}
                     {returnLine.route ? <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span> : null}
                   </span>
-                  {/* Momentum reward: how far the plan moved since the last visit.
-                      The 30-min gate keeps this off most visits, but on the visit it
-                      DOES appear it restated "N of M" — the Where-you-stand tile's one
-                      job, ~120px below. The DELTA is the part the tile can't tell you,
-                      so it earns the line; the bare count doesn't. No delta ⇒ silent. */}
                   {returnLine.readyNow && returnLine.readyDelta > 0 && (
                     <span className="t" style={{ display: 'block', marginTop: 2, color: 'var(--ink-soft)', fontWeight: 600, fontSize: 'var(--t-row-sub)' }}>
                       {returnLine.readyDelta} more handled since you were last here — {returnLine.readyNow.done} of {returnLine.readyNow.total} now.
                     </span>
                   )}
                 </button>
+              ))}
+
+              {/* Rebalance: in askMode the hero display IS the section voice — the
+                  header would be a second telling. The anchor stays for the bar. */}
+              {askMode
+                ? <div id="actionsAnchor" aria-hidden="true" />
+                : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
+              {plan && plan.planningState && plan.planningState.reasoning && (() => {
+                // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
+                // sentence ("Milestone: X — then Y.") was a THIRD "what's next" voice
+                // above the ordered queue cards (which already number the sequence) and
+                // could even name a different item than queue[0]. Dropped. Only the
+                // non-redundant reasoning ("why now") stays.
+                const firstCard = queue[0];
+                const reasoning = plan.planningState.reasoning || '';
+                const redundant = firstCard && reasoning && (
+                  (firstCard.consequence && firstCard.consequence.slice(0, 24) === reasoning.slice(0, 24)) ||
+                  (firstCard.title && reasoning.toLowerCase().includes(String(firstCard.title).toLowerCase().replace(/\.$/, '')))
+                );
+                if (redundant) return null;
+                // When the lead is a decision, its decopt options + "our pick" why carry the
+                // reasoning — the generic planningState.reasoning (often vendor-status copy like
+                // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
+                if (elegantMode && decisionFor(firstCard)) return null;
+                return (
+                  <p className="grounding" style={{ margin: '-8px 0 14px' }}>{reasoning}</p>
+                );
+              })()}
+
+              {queue.length === 0 && (
+                <div className="empty">{worries.length
+                  ? 'Nothing needs you right now — just the heads-ups below.'
+                  : 'Nothing needs you right now — the basics are all settled.'}</div>
+              )}
+
+
+              {(() => {
+                const shown = queue.filter(show);
+                // BOARD RULING (wave 6): cap the visible queue at 6 cards; the
+                // rest sit behind a quiet "+N more" expander at the end. Ranks
+                // number straight through — a bundle is ONE rank.
+                const QUEUE_CAP = 6;
+                // OVERWHELM PACES THE HOME QUEUE (review board 2026-07-17 — the ONE
+                // change all three lenses approved, the adversary included). The engine
+                // already sizes an underwater host's first foreground (focusCount, staged);
+                // home was the last surface still overriding it upward to a flat 6.
+                //
+                // This is a PARAMETER CHANGE to a shipped, proven, one-tap expander — not a
+                // new hide. Guardrails, all load-bearing:
+                //  • overwhelm (not runway) is the gate. runway collapses "no date" /
+                //    "event was yesterday" / "event was in October" into one 'unknown' that
+                //    then behaves as 'standard' — reading THAT to hide would be inventing a
+                //    fact ("unknown means unknown"). overwhelm structurally requires a known,
+                //    non-relaxed runway, so gating on it can never fire on a bad date.
+                //  • THE CAP YIELDS TO SAFETY, NEVER THE ROWS. It can never fall below the
+                //    count of critical / past-due cards. The app already refuses to let the
+                //    HOST snooze a critical; the engine gets strictly less authority, never
+                //    more.
+                //  • Deferral, never suppression — the "+N more" expander below already
+                //    states the true number and is one tap.
+                //  • Order is untouched: the cap sits downstream of the sort, so safety and
+                //    overdue keep leading. The engine forbids overwhelm from re-ordering and
+                //    so does this.
+                const queueFocus = (() => {
+                  const ha = decisionBoard.hostAdaptation;
+                  if (!ha || !ha.overwhelm || !ha.staged) return null;
+                  const n = Number(ha.focusCount);
+                  if (!Number.isFinite(n) || n <= 0) return null;
+                  // A bundle carries no dueInDays and folds several real things under one
+                  // rank, so it counts as must-see too rather than risk burying a deadline.
+                  const mustSee = shown.filter(a => a && (a.level === 'critical' || a.kind === 'bundle'
+                    || (a.dueInDays != null && Number(a.dueInDays) < 0))).length;
+                  const cap = Math.max(n, mustSee);
+                  return cap < shown.length ? cap : null;
+                })();
+                const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
+                const queueFolded = queueFocus != null && !queueOpen;
+                const visible = queueOpen ? shown : shown.slice(0, queueCap);
+                const hiddenCount = shown.length - visible.length;
+                // Time-to-window, worn quietly on the card (engine contract:
+                // actions MAY carry dueInDays; absent = say nothing).
+                const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
+                  <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                    {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
+                  </span>
+                ) : null;
+                return (<>
+              {/* Name the state — but ONLY when the board on screen IS actually paced.
+                  Gated on queueFolded, which is the same predicate that computed
+                  `visible`, so the words and the list cannot drift apart. (They did
+                  once: a line promised "just the first few" over an unsliced list and
+                  shipped that way.) A shorter list with no reason reads as a bug; a
+                  shorter list with a reason reads as being taken care of. */}
+              {queueFolded && !askMode && (
+                <p className="grounding" style={{ margin: '0 0 var(--sp-2)', color: 'var(--muted)' }}>
+                  That’s a lot with the clock ticking — just the first few here, the rest is a tap away when you’re ready.
+                </p>
+              )}
+              {visible.map((a, i) => {
+                const key = String(a.id || i);
+                // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
+                // items, route}): ONE card, one rank. Expands in place to child
+                // rows, each with its own Go — the same card anatomy as every
+                // other queue card (UX_05), no new component vocabulary.
+                if (a.kind === 'bundle') {
+                  // A SECOND bundle behind the hero (e.g. "Resolve 9 decisions" under the
+                  // conflict hero) is a position-2 item — it drops BELOW THE FOLD (host
+                  // 2026-07-18) so the first screen holds ONE thing. Skipped here, rendered
+                  // as a path-row in the then-fold. (This must sit ABOVE the bundle render,
+                  // which otherwise returns the compact card in the first screen.)
+                  if (elegantMode && askMode && i > 0 && a.level !== 'critical') return null;
+                  const kids = Array.isArray(a.items) ? a.items : [];
+                  const count = a.count != null ? a.count : kids.length;
+                  const open = !!bundleOpen[key];
+                  // ── GROUNDED CONFLICT LOOP (the mapper wired in) ──────────────
+                  // A vendor-conflict bundle as the elegant hero does NOT gate behind
+                  // "See all N". It surfaces the FIRST real conflict itself: the loud
+                  // ask (hzone above), the specific situation, the two real ways to
+                  // clear it, and the grounded why. The intelligence the engine used
+                  // to only COUNT, now faced one at a time. Slice 1 hands the host to
+                  // the affected vendor to apply the fix — an in-place one-tap resolve
+                  // waits on conflicts.js emitting a structured proposedFix (phase 2).
+                  if (elegantMode && askMode && i === 0 && /conflict/i.test(String(a.title || '')) && conflictItems[0]) {
+                    const it = conflictItems[0];
+                    const res = it.resolution || {};
+                    // DECLUTTERED (host 2026-07-18): tight one-line situation (detailShort),
+                    // the impact tucked behind a "why?" tap, the fixes as COMPACT ROWS (no
+                    // faked "our fix" — the recommendedAction is a genuine either/or), and a
+                    // "Set a different time" row that opens an inline picker for ANY arrival
+                    // time (res.custom). All resolve in place → writeVendor → receipt → next.
+                    const inPlace = res.inPlace && Array.isArray(res.options) && res.options.length === 2 && res.options.every(o => o && o.apply);
+                    const custom = inPlace && res.custom && res.custom.kind === 'time' ? res.custom : null;
+                    const vend = (event.vendors || []).find(v => v && v.id === it.affectedVendorId);
+                    const vendName = vend ? (vend.name || '').trim() : '';
+                    const goFix = () => { setBundleOpen(m => ({ ...m, [key]: false })); routeSheet({ tab: 'Vendors', vendorId: it.affectedVendorId }); };
+                    const applyFix = (o) => { if (it.affectedVendorId && o && o.apply) writeVendor(it.affectedVendorId, o.apply, o.receipt || 'Done — the clash is cleared.'); };
+                    // minimal 12h/24h converters (input type=time is 24h; the seed stores "10:00 AM")
+                    const cParse = (s) => { const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || '')); if (!m) return null; let h = +m[1]; const mm = +m[2]; const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + mm; };
+                    const to24 = (s) => { const t = cParse(s); return t == null ? '' : String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
+                    const to12 = (s) => { const t = cParse(s); if (t == null) return s; let h = Math.floor(t / 60); const mm = t % 60; const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + String(mm).padStart(2, '0') + ' ' + ap; };
+                    const applyCustomTime = (val) => { if (!val || !custom || !it.affectedVendorId) return; const disp = to12(val); writeVendor(it.affectedVendorId, { [custom.field]: disp }, `${vendName || 'They'} now arrive at ${disp}.`); setConflictTime(null); };
+                    return (
+                      <article className={'card hero-card bundle-hero conflict-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                        style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
+                        <div className="card-head">
+                          {(it.detailShort || it.detail) && <p className="because">{it.detailShort || it.detail}</p>}
+                          {/* why back to a visible line under the situation (host 2026-07-18) */}
+                          {it.why && <p className="grounding" style={{ margin: '6px 0 0', opacity: .8 }}>{it.why}</p>}
+                          {inPlace ? (
+                            <div className="conf-fixes">
+                              {res.options.map((o, oi) => (
+                                <button key={oi} className="confrow" onClick={() => applyFix(o)}><span className="t">{o.label}</span><span className="g" aria-hidden="true">→</span></button>
+                              ))}
+                              {custom && (conflictTime == null ? (
+                                <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">›</span></button>
+                              ) : (
+                                <div className="confrow confrow-open">
+                                  <span className="t" style={{ flex: '1 0 100%' }}>{custom.label || 'Set a different time'}</span>
+                                  <div className="actions-row" style={{ width: '100%', alignItems: 'center', gap: 9, marginTop: 8 }}>
+                                    <span className="of">arrives</span>
+                                    <input className="field" type="time" value={conflictTime} onChange={e => setConflictTime(e.target.value)} style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} aria-label="Arrival time" />
+                                    <button className="mini" disabled={!conflictTime} style={!conflictTime ? { opacity: .45 } : undefined} onClick={() => applyCustomTime(conflictTime)}>Set it</button>
+                                    <button className="mini" onClick={() => setConflictTime(null)}>never mind</button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                          <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
+                            <button className="cta" onClick={goFix}>{vendName ? ('Take me to ' + vendName) : 'Take me to the fix'}</button>
+                          </div>
+                          )}
+                          {heroReceipt && (
+                            <div className="receipt">
+                              <span className="rdot" aria-hidden="true" />
+                              <span className="rmsg">{heroReceipt.msg}</span>
+                              <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                            </div>
+                          )}
+                          {conflictItems.length > 1 && (
+                            /* The escape hatch is SECONDARY to the fix — it recedes (more air
+                               above, faint + light + small) so it doesn't compete with the
+                               actions for attention (host 2026-07-18). */
+                            <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
+                              onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ›')}</span>
+                            </button>
+                          )}
+                          {open && kids.map((c, ci) => (
+                            <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+                              <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
+                              <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  }
+                  // ── GROUNDED DECISION LOOP (the mapper's generalizer) ─────────
+                  // A decisions bundle as the elegant hero surfaces the FIRST real
+                  // call to make — the situation, the engine's PROPOSED answer with a
+                  // one-tap "sounds good" (propose-don't-ask), or the real options when
+                  // there's no defensible default — resolved in place (settleDecision →
+                  // receipt → the board re-derives → the next decision rises). The
+                  // proposal + why + accept path already exist in the decisions sheet;
+                  // this brings them to the hero instead of gating behind "See all N".
+                  if (elegantMode && askMode && i === 0 && /decision/i.test(String(a.title || '')) && callsOrdered[0]) {
+                    const dec = callsOrdered[0];
+                    return (
+                      <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
+                        style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
+                        <div className="card-head">
+                          {dec.because && <p className="because">{dec.because}</p>}
+                          {renderDecisionActions(dec) || (
+                            <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
+                              <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>Take me to it</button>
+                            </div>
+                          )}
+                          {heroReceipt && (
+                            <div className="receipt">
+                              <span className="rdot" aria-hidden="true" />
+                              <span className="rmsg">{heroReceipt.msg}</span>
+                              <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                            </div>
+                          )}
+                          {(a.count != null ? a.count : kids.length) > 1 && (
+                            <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
+                              onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + (a.count != null ? a.count : kids.length) + '  ›')}</span>
+                            </button>
+                          )}
+                          {open && kids.map((c, ci) => (
+                            <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+                              <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
+                              <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
+                            </div>
+                          ))}
+                        </div>
+                      </article>
+                    );
+                  }
+                  return (
+                    <article className={'card' + (spot === key ? ' spot' : '') + (askMode && i === 0 ? ' hero-card bundle-hero' : '')} id={'card-' + key} key={key}
+                      style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                      {!(askMode && i === 0) && <span className="idx">{i + 1}</span>}
+                      <div className="card-head">
+                        <div className="card-top">
+                          <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
+                          {dueChip(a)}
+                        </div>
+                        <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>
+                        {a.consequence && <p className="because">{isHero ? (String(a.consequence).replace(/\s*—\s*\d+ of \d+ are already handled\./, '.').match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence}</p>}
+                        <div className="actions-row" style={{ alignItems: 'center' }}>
+                          <button className="cta" onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
+                            {open ? 'Fold them away' : (
+                              /* Elegant hero (F13): the CTA names the ACTION, not "See all N".
+                                 Use the bundle's own authored action phrase — verb + count +
+                                 noun, e.g. "Untangle 7 conflicts" / "Resolve 3 decisions" —
+                                 falling back to the count when the title doesn't parse. */
+                              (elegantMode && askMode && i === 0)
+                                ? ((String(a.title || '').match(/^(\S+\s+\d+\s+\S+)/) || [null, 'See all ' + count])[1])
+                                : 'See all ' + count
+                            )}
+                          </button>
+
+                        </div>
+                        {open && kids.map((c, ci) => (
+                          <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+                            <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
+                            <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                }
+                // REBALANCE: in askMode, positions 2+ render as THEN-ROWS — the
+                // path whispers: one line each, truncated, tap to route. Criticals
+                // and bundles keep full card form (never whisper a critical), and
+                // "+N — show the rest" expands to full cards for managing (snooze
+                // and pick-a-day live there).
+                if (nearDayPlan && i > 0 && !queueOpen && a.kind !== 'bundle' && a.level !== 'critical') return null;
+                // ELEGANT (host "push THEN rows below fold"): positions 2+ are the PATH, not
+                // the one thing — they fold into the see-all so the wired hero stays as short
+                // as the bundle hero and the ask centers. Rendered below the escreen instead.
+                // A SECOND bundle (e.g. "Resolve 9 decisions" behind the conflict hero) is a
+                // position-2 item too — it also drops below the fold (host 2026-07-18), so the
+                // first screen holds ONE thing, not two stacked bundles.
+                if (elegantMode && askMode && i > 0 && a.level !== 'critical') return null;
+                if (askMode && i > 0 && !queueOpen && a.kind !== 'bundle' && a.level !== 'critical') {
+                  return (
+                    <button key={key} id={'card-' + key} className="path-row" onClick={() => onCta(a, key)}>
+                      <span className="then">then</span>
+                      <span className="t">{String(a.title || '').replace(/\.+$/, '')}</span>
+                      {dueChip(a)}
+                    </button>
+                  );
+                }
+                const wired = wiredKind(a);
+                // SNOOZE — set it down without losing it. The grounded proposal
+                // (lib/snooze.js: half the remaining runway, never past the item's
+                // own lead window) stays the one-tap DEFAULT. "pick a day" is the
+                // quiet second path (host-approved 2026-07-15): a raw date input
+                // whose bounds AND write both run through clampSnoozeUntil, so a
+                // picked day can never land past the window — the clock still owns
+                // the bounds, the host owns the day. NEVER for a critical.
+                const snoozeProposed = canSnooze(a)
+                  ? (() => { try { return proposedSnoozeUntil(event, { leadDays: a.leadDays }); } catch (_e) { return null; } })()
+                  : null;
+                const fmtBack = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                const snoozeTo = (iso, msg) => { setSnoozePick(null); patchEvent({ snoozed: { ...(event.snoozed || {}), [a.id]: iso } }, msg); };
+                // The honest picking window, asked of the SAME clamp that writes:
+                // clamp(tomorrow) is the earliest allowed day, clamp(far future) is
+                // the latest. If either comes back null there is no valid custom
+                // day at all and the affordance simply doesn't render.
+                let snoozePickMin = null, snoozePickMax = null;
+                if (snoozeProposed) {
+                  const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + 1);
+                  const tomorrowIso = `${t0.getFullYear()}-${String(t0.getMonth() + 1).padStart(2, '0')}-${String(t0.getDate()).padStart(2, '0')}`;
+                  try {
+                    snoozePickMin = clampSnoozeUntil(event, tomorrowIso, { leadDays: a.leadDays });
+                    snoozePickMax = clampSnoozeUntil(event, '9999-12-31', { leadDays: a.leadDays });
+                  } catch (_e) { snoozePickMin = null; snoozePickMax = null; }
+                }
+                const pickingDay = !!(snoozePickMin && snoozePickMax && snoozePick && snoozePick.key === key);
+                // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
+                // they must stop wearing the honest "in the app" tag — the tag exists to warn
+                // a host that a CTA does not land HERE, and these now do. ('Communication'
+                // stays off the list: V2 has no messages surface, so its tag is still true.)
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks'].includes(a.route.tab));
+                // REBALANCE (dedup): the hero panel — the ask above owns the VERB;
+                // the panel names the NOUN (record) only when it adds information.
+                const isHero = askMode && i === 0;
+                const heroAsk0 = isHero ? heroAskFor(a, event) : null;
+                const rec = isHero ? heroRecord(a, heroAsk0) : null;
+                // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
+                // 2026-07-18): once decisions thin out they stop bundling and a lone one
+                // becomes its own hero card — which used to route ("Take me to it"). Resolve
+                // it RIGHT HERE via the same shared renderDecisionActions (options / proposed
+                // default → settleDecision → receipt → next). Only in the elegant hero, only
+                // when the decision actually has authored options (else keep its route).
+                // UNIFIED: every decision-like hero action (playbook decision:* OR a phase
+                // decision like phase:food) resolves through the one dispatcher + renderer,
+                // so all of them get the decopt / "our pick" treatment — no more chip-vs-row split.
+                const decHeroActions = (elegantMode && isHero) ? renderDecision(decisionFor(a)) : null;
+                // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
+                // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
+                // from coiNextAction — its consequence + a route to that exact vendor — so the
+                // hero stops saying a redundant "past its window / overdue" over a blank "Decide".
+                const isCoiTask = elegantMode && isHero && !decHeroActions && /collect.*coi|vendor coi|proof of insurance/i.test(String(a.title || ''));
+                const coiHero = (isCoiTask && coiFirst) ? coiFirst : null;
+                // Every vendor's COI is handled but the solver task still lingers open — don't
+                // fall back to the ugly generic "Overdue · Decide". Show the calm done state.
+                const coiTaskDone = isCoiTask && !coiFirst;
+                return (
+                  <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                    style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
+                    {!isHero && <span className="idx">{i + 1}</span>}
+                    <div className="card-head">
+                      <div className="card-top">
+                        {!isHero && <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>}
+                        {!lands && !coiHero && !coiTaskDone && <span className="tag plan">in the full app</span>}
+                        {!coiHero && !coiTaskDone && dueChip(a)}
+                      </div>
+                      {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
+                      {coiTaskDone
+                        ? <p className="because">Every vendor's proof is on file — you're clear here.</p>
+                        /* When the hero renders a decision (decopt), suppress the action's own
+                           consequence line — otherwise vendor-status copy ("Currently quoted…")
+                           bleeds onto a menu decision. The decision's options carry the meaning. */
+                        : (!decHeroActions && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
+                      {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
+                          been for a while, and it never once said WHY — the host was handed a
+                          ranking and asked to trust it. Every line below is true of the item's
+                          own data (its severity, or the domain everything else sizes off), not
+                          a flourish: if we cannot say something true about why it leads, we say
+                          nothing. Only ever on the first card. */}
+                      {i === 0 && !askMode && (() => {
+                        // Recognize the item by WHAT IT IS, not which engine labeled it. Keying
+                        // purely on `a.domain` meant the common case — the reactive top action,
+                        // whose domain is its CATEGORY ('operational'), not 'food' — never
+                        // matched, so the line that explains the ranking almost never showed. The
+                        // title says what it is ("Decide what you're serving" is food) as
+                        // reliably as any domain, and the same normalization the dedup uses reads
+                        // it. Still only ever a TRUE sentence: no match, no line.
+                        const title = String(a.title || '').toLowerCase();
+                        const is = (dom, re) => a.domain === dom || re.test(title);
+                        const why = a.level === 'critical'
+                          ? 'This is first because it can’t wait — everything else can.'
+                          : is('date', /set the date|the event date/) ? 'This is first because every deadline in the plan counts back from it.'
+                          : is('guests', /guest (list|count)|add your guests|headcount/) ? 'This is first because the food, the seats and the budget all size off the headcount.'
+                          : is('budget', /budget|spending plan/) ? 'This is first because every estimate below is guessing until it has a number to work against.'
+                          : is('food', /serving|the food|menu|the spread/) ? 'This is first because the shopping list and the crab order both wait on it.'
+                          : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
+                          : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
+                          : null;
+                        return why ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{why}</p> : null;
+                      })()}
+                      {(editor === key || (isHero && !!wired && !decHeroActions)) && <div className="editor-slot">{renderEditor(a)}</div>}
+                      {decHeroActions}
+                      <div className="actions-row" style={{ alignItems: 'center' }}>
+                        {/* COI: the hero IS the action — RESOLVE IN PLACE, no "Take me to" (host
+                            2026-07-18). MORE than one option (host "more options than mark checked"):
+                            the real branches for the vendor's actual COI state — the recommended
+                            resolve (emphasized) + the honest alternatives (missing/fix, chase, waive,
+                            skip). In-place branches → writeVendor → receipt → next COI step rises;
+                            the inherently-look/ask ones route. Grounded in getVendorCOIState. */}
+                        {coiHero && (() => {
+                          const v = coiHero.vendor;
+                          const vn = String(v.name || '').trim() || 'the vendor';
+                          const status = (() => { try { const s = getVendorCOIState(v, event); return s ? s.status : 'required'; } catch { return 'required'; } })();
+                          const ip = (label, patch, receipt) => ({ label, patch, receipt });
+                          const rt = (label, glyph) => ({ label, glyph, route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' } });
+                          const branches = status === 'received' ? [
+                            ip('It names the venue & covers the date — cleared', { coiVerified: true }, `${vn}'s insurance checks out — they're cleared.`),
+                            ip("It's missing the venue or dates — ask for a fix", { coiStatus: 'requested', coiVerified: false }, `Asked ${vn} for a corrected certificate.`),
+                            rt('Open the certificate they sent', '↗'),
+                          ] : status === 'requested' ? [
+                            ip('Their proof just came in — mark it received', { coiStatus: 'received' }, `${vn}'s proof is in — next, check it names your venue.`),
+                            rt('Chase them again — open the vendor', '→'),
+                            ip("They can't provide one — note it & move on", { coiWaived: true }, `Noted — ${vn} isn't providing a COI. It'll stop nagging you.`),
+                          ] : status === 'expired' ? [
+                            ip('Ask for current proof — mark requested', { coiStatus: 'requested', coiVerified: false }, `Asked ${vn} for current proof.`),
+                            ip("It's actually current — mark valid", { coiVerified: true }, `${vn}'s coverage marked valid.`),
+                          ] : [
+                            ip('Send the ask — mark it requested', { coiStatus: 'requested' }, `Asked ${vn} for proof of insurance — noted.`),
+                            ip('Not needed for this vendor — skip it', { coiWaived: true }, `Noted — ${vn} doesn't need a COI.`),
+                            rt('Ask the venue if they require it', '→'),
+                          ];
+                          const doB = (b) => { if (b.route) routeSheet(b.route); else if (b.patch) writeVendor(v.id, b.patch, b.receipt); };
+                          return (
+                            <div className="decopts">
+                              {branches.map((b, bi) => (
+                                <button key={bi} className={'decopt' + (bi === 0 ? ' pick' : '')} onClick={() => doB(b)}>
+                                  <span className="decopt-main"><span className="decopt-name">{b.label}</span></span>
+                                  <span className="decopt-right"><span className="decopt-arrow" aria-hidden="true">{b.glyph || '→'}</span></span>
+                                </button>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                        {a.cta && !(isHero && wired) && !decHeroActions && !coiHero && !coiTaskDone && <button className="cta" onClick={() => onCta(a, key)}>{isVendorConfirmAction(a) ? 'Mark as locked in' : (a.cta === 'Go' ? 'Take me to it' : a.cta)}</button>}
+                        {/* SNOOZE — set it down without losing it. The reason a zero state can
+                            be believed: a host who has decided to leave a thing can SAY so, and
+                            the list actually empties. The grounded proposal (computed above) is
+                            still the one-tap default; "pick a day" folds open the clamped date
+                            row below. NEVER for a critical ("your caterer hasn't arrived" is
+                            not a someday). The host owns the result and can un-snooze.
+                            LAYOUT (host report): the two snooze options are ONE grouped cluster,
+                            right of the primary CTA — so on a narrow card they wrap together as a
+                            unit ("not now · pick a day") instead of splitting into a ragged stack. */}
+                        {snoozeProposed && !elegantMode && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 'auto', flexShrink: 0 }}>
+                            <button className="mini"
+                              onClick={() => snoozeTo(snoozeProposed, 'Set aside — it’ll come back ' + fmtBack(snoozeProposed) + ', with time to spare.')}>
+                              not now
+                            </button>
+                            {snoozePickMin && snoozePickMax && !pickingDay && (
+                              <button className="mini" aria-expanded={false} aria-controls={'snooze-pick-' + key}
+                                onClick={() => setSnoozePick({ key, val: snoozeProposed })}>
+                                pick a day
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </div>
+                      {/* The day picker — progressive disclosure: this row exists only after
+                          "pick a day", so cards never carry it by default. Bounds come from
+                          clampSnoozeUntil and the confirm re-clamps, so a typed date past the
+                          window writes the last honest day — and the toast says so plainly. */}
+                      {pickingDay && (
+                        <div id={'snooze-pick-' + key} className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
+                          <span className="of">back on:</span>
+                          <input className="field" type="date" style={{ maxWidth: 160, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                            value={snoozePick.val || ''} min={snoozePickMin} max={snoozePickMax}
+                            onChange={e => setSnoozePick({ key, val: e.target.value })}
+                            aria-label="Day this comes back" />
+                          <button className="mini" disabled={!snoozePick.val} style={!snoozePick.val ? { opacity: .45 } : undefined}
+                            onClick={() => {
+                              const chosen = String(snoozePick.val || '');
+                              let clamped = null;
+                              try { clamped = clampSnoozeUntil(event, chosen, { leadDays: a.leadDays }); } catch (_e) { clamped = null; }
+                              if (!clamped) { setSnoozePick(null); return; } // window closed since render — refuse quietly, the card stays
+                              const backOn = fmtBack(clamped);
+                              snoozeTo(clamped, clamped === chosen
+                                ? 'Set aside — it’ll come back ' + backOn + ', the day you picked.'
+                                : chosen > clamped
+                                  ? 'That’s past the window for this one — it’ll come back ' + backOn + ' instead.'
+                                  : 'That day’s already here — it’ll come back ' + backOn + ' instead.');
+                            }}>
+                            set it aside
+                          </button>
+                          <button className="mini" onClick={() => setSnoozePick(null)}>never mind</button>
+                        </div>
+                      )}
+                      {isHero && heroReceipt && (
+                        <div className="receipt">
+                          <span className="rdot" aria-hidden="true" />
+                          <span className="rmsg">{heroReceipt.msg}</span>
+                          <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
+                        </div>
+                      )}
+                      {/* The horizon whisper — only when the path rows do NOT
+                          follow directly (expanded list); otherwise the rows below
+                          speak for themselves and the footer is a double-telling. */}
+                      {isHero && queueOpen && queue.length > 1 && (
+                        <div className="horizon">then — {queue.slice(1, 3).map(horizonLabel).join(' · ')}{queue.length > 3 ? ' · ' + (queue.length - 3) + ' more' : ''}</div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && (
+                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
+                  onClick={() => setQueueOpen(true)}>
+                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                </button>
+              )}
+                </>);
+              })()}
+
+              {/* ELEGANT-MINIMAL PORT — SCROLL-TO-SEE-ALL FOLD (2026-07-17): the framing +
+                  action cards own the first screen; the reference lane below (heads-up rows +
+                  Where-you-stand / Guests / Budget tiles) folds under a grabber. .efold's
+                  margin-top:auto pins the boundary to the viewport bottom when the action
+                  content is short (calm boards), so "the rest" genuinely sits below the fold;
+                  on a busy board it sits right after the cards and you scroll. askMode only —
+                  the .mega (day-of / past / calm-nonask) branches are a later slice. */}
+              </div>{/* /ecenter — the centered ask+action region */}
+              {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
+                  one action, above the fold. Real engine numbers. */}
+              {elegantMode && askMode && phaseCues && phaseCues.totalCount > 0 && (() => {
+                const done = Number(phaseCues.completedCount) || 0;
+                const total = Number(phaseCues.totalCount) || 0;
+                const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
+                return (
+                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')} aria-hidden="true">
+                    <div className="eprog-rule"><span style={{ width: pct + '%' }} /></div>
+                    <div className="eprog-labels">
+                      <span>{done} of {total} settled</span>
+                      {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
+                          it literally can't wait (host 2026-07-18). Say so instead. */}
+                      <span>{done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait')}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+              </div>{/* /escreen — first-screen bound ends; the see-all follows below the fold */}
+              {/* Fold boundary below the first screen (grabbable — taps scroll to the see-all). */}
+              {elegantMode && askMode && (
+                <button type="button" className="efold" aria-label="Show the rest of your plan"
+                  onClick={(e) => { const app = e.currentTarget.closest('.app') || document.scrollingElement; if (app) app.scrollBy({ top: Math.round(app.clientHeight * 0.72), behavior: 'smooth' }); }}>
+                  <div className="efold-grab" aria-hidden="true" />
+                  <span className="efold-label">The rest of your plan</span>
+                </button>
+              )}
+              {/* THEN — the wired hero's path (queue positions 2+), folded below the first
+                  screen (host "push THEN rows below fold"). Same rows, same routes — just not
+                  competing with the one thing. */}
+              {elegantMode && askMode && (() => {
+                // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
+                // the conflict hero drops below the fold as a path-row, so the first screen isn't
+                // two stacked bundles. A bundle routes to its own sheet on tap.
+                const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+                if (!thenItems.length) return null;
+                const openThen = (a, key) => {
+                  if (a.kind === 'bundle') {
+                    if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
+                    if (/conflict/i.test(String(a.title || ''))) { setSheet({ kind: 'vendors' }); return; }
+                  }
+                  onCta(a, key);
+                };
+                // DO zone (host redesign 2026-07-18): the "then" per-row eyebrow was
+                // repetitive with the header, and a bundle read as a lone line. Now: a
+                // single header, hairline-ruled rows (order by position), and a bundle
+                // keeps its COUNT as a chip. Em-dash "why it's here" suffix trimmed for
+                // a calm compact row.
+                return (
+                  <div className="then-fold ef-do">
+                    <div className="ef-sect">Then, in order</div>
+                    <div className="ef-list">
+                      {thenItems.map((a, i) => {
+                        const cnt = a.kind === 'bundle' ? (a.count != null ? a.count : (Array.isArray(a.items) ? a.items.length : null)) : null;
+                        const t = String(a.title || '').replace(/\s+—\s.*$/, '').replace(/\.+$/, '');
+                        return (
+                          <button key={String(a.id || i)} className="ef-row" onClick={() => openThen(a, String(a.id || (i + 1)))}>
+                            <span className="t">{t}</span>
+                            <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}<span className="ef-g" aria-hidden="true">→</span></span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* HEADS-UP — the worries lane (host board ruling, wave 6): risk
+                  raises leave the counted queue and sit here, quiet and steel,
+                  never numbered, never in "N things need you" — but still real
+                  rows that land on the exact risk (routeSheet's Risks branch).
+                  The lane label carries the ask once, so each row reads as the
+                  risk itself, in the registry's own words. */}
+              {/* Day-before plan — lib/dayBefore, appears only inside the real 0–2 day window */}
+              {dayBefore && dayBefore.applicable && (
+                <div className="day-node" style={{ marginTop: 26 }}>
+                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your day-before plan' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
+                  <h3>{(() => {
+                    // RECON MODEL (2026-07-11): the engine's "7 things still
+                    // matter" summed unlike units. Composed HERE (V2-side; the
+                    // engine's own headline string is contract-locked) from the
+                    // sections' own opens, each part named with its unit noun.
+                    // Zero clauses drop; 3+ nonzero keeps the first two + "and more".
+                    if (dayBefore.daysOut === 0 || !dayBefore.openCount) return dayBefore.headline;
+                    const sx = dayBefore.sections || [];
+                    const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
+                    const steps = openOf('tasks');
+                    const items = openOf('shopping');
+                    const people = openOf('vendors') + openOf('helpers');
+                    const parts = [
+                      steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
+                      items ? `${items} item${items === 1 ? '' : 's'} to get` : null,
+                      people ? `${people} ${people === 1 ? 'person' : 'people'} to confirm` : null,
+                    ].filter(Boolean);
+                    if (!parts.length) return dayBefore.headline; // rain-only etc. — the engine line stays honest
+                    const when = dayBefore.daysOut === 1 ? 'tomorrow' : 'the day';
+                    const named = parts.length > 2 ? `${parts[0]}, ${parts[1]}, and more` : parts.join(' and ');
+                    const cap = named.charAt(0).toUpperCase() + named.slice(1);
+                    return `${cap} before ${when}.`;
+                  })()}</h3>
+                  {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
+                  <div className="db-rows">
+                  {(dayBefore.sections || []).slice(0, 5).map(sec => {
+                    // Modernized rows (2026-07-11): each engine section reads as a
+                    // full-width stacked row — a bold plain-language lead carrying
+                    // the COUNT, the engine's own honest sentence beneath. The lead
+                    // is composed ONLY from the section's open count + the engine's
+                    // own vocabulary ("locked in", "still to get") — no new claims.
+                    const n = Number(sec.open) || 0;
+                    const lead = (() => {
+                      switch (sec.key) {
+                        case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
+                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
+                        case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
+                        case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
+                        case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
+                        case 'cues': return 'How tomorrow starts';
+                        case 'guests': return 'Tell your guests';
+                        default: return sec.label + (n ? ` — ${n} open` : '');
+                      }
+                    })();
+                    // BUG FIX (raw 24h leak): the engine's cues detail prints the
+                    // ros's internal "23:40" clock strings verbatim. Re-derive the
+                    // row from the SAME source (effectiveRos, already memoized as
+                    // `ros`), host-formatted — first cue + "and N more" instead of
+                    // three full cue sentences.
+                    const sub = (() => {
+                      // RECON-I5 consumer: the shopping row names its parts using
+                      // the engine's own openFood/openSupplies split — the food
+                      // part now matches the food sheet's remainder exactly.
+                      if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
+                        const f = Number(sec.openFood) || 0;
+                        const s = Number(sec.openSupplies) || 0;
+                        const bits = [
+                          f ? `${f} on the food list` : null,
+                          s ? `${s} supplies & gear` : null,
+                        ].filter(Boolean);
+                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
+                      }
+                      if (sec.key !== 'cues') return sec.detail;
+                      const cueList = ros.filter(r => r && r.segment);
+                      if (!cueList.length) return sec.detail;
+                      const first = cueList[0];
+                      return `${first.time ? fmt12h(first.time) + ' — ' : ''}${first.segment}`
+                        + (cueList.length > 1 ? ` · and ${cueList.length - 1} more` : '');
+                    })();
+                    return (
+                    <button className={'db-row' + (n === 0 ? ' calm' : '')} key={sec.key}
+                      onClick={() => {
+                        // The ENGINE authored each row's landing (route carries the
+                        // first-unbought foodFocus, the vendorId, the taskId) — use
+                        // it first; the keyword fallback only catches route-less rows.
+                        if (sec.route && routeSheet(sec.route)) return;
+                        const k = String(sec.key || sec.label || '').toLowerCase();
+                        if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
+                        else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
+                        else if (/weather|rain/.test(k)) setSheet({ kind: 'rain' });
+                        else if (/tomorrow|start|schedule/.test(k)) setStage('day');
+                        else setSheet({ kind: 'tasks', focus: null });
+                      }}>
+                      <span className="db-main">
+                        <span className="db-lead">{lead}</span>
+                        <span className="db-sub">{sub}</span>
+                      </span>
+                      <span className="chev" aria-hidden="true">›</span>
+                    </button>
+                    );
+                  })}
+                  </div>
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
+                    <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, profile, {})); } catch { toast('Couldn’t draft it.'); } }}>Draft the details</button>
+                  </div>
+                </div>
+              )}
+              {/* RUNWAY-ADAPTIVE QUIET (T-2d, host evidence 2026-07-17): inside the
+                  day-before window the plan above IS the path — the ranked rows fold
+                  to one line (never hidden: one tap opens the full list as cards). */}
+              {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (
+                <button className="path-row" onClick={() => setQueueOpen(true)}>
+                  <span className="then">then</span>
+                  <span className="t">the rest of your list · {queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length} more</span>
+                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                </button>
+              )}
+
+              {worries.length > 0 && (() => {
+                const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);
+                // Same real worry titles (risk engine) — just the label shaping. Nothing invented.
+                const wlabel = (w) => {
+                  const full = String((w && w.title) || '').replace(/^have a plan for:\s*/i, '').replace(/\bby T-(\d+)d\b/i, 'by $1 days out');
+                  const parts = full.split(/\s*\/\s*|,\s+(?:or\s+)?/);
+                  return parts.length > 1 ? parts[0] + ' — and more…' : full;
+                };
+                const goWorry = (w) => { if (w && w.route && routeSheet(w.route)) return; setSheet({ kind: 'risks' }); };
+                // WATCH zone (Figma parity 2026-07-18): distinct from actions — steel dots,
+                // muted, no arrows (a heads-up, not a thing to go do). Non-elegant unchanged.
+                if (elegantMode) return (
+                  <div className="ef-watch">
+                    <div className="ef-sect">Worth keeping an eye on</div>
+                    {rows.map((w, i) => (
+                      <button key={String((w && w.id) || 'worry-' + i)} className="watch-row" onClick={() => goWorry(w)}>
+                        <span className="watch-dot" aria-hidden="true" />
+                        <span className="t">{wlabel(w)}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+                return (
+                  <div style={{ marginTop: 'var(--sp-5)' }}>
+                    <div className="horizon" style={{ borderTop: 'none', paddingTop: 0, marginTop: 18 }}>Worth keeping an eye on</div>
+                    {rows.map((w, i) => (
+                      <button key={String((w && w.id) || 'worry-' + i)} className="path-row" onClick={() => goWorry(w)}>
+                        <span className="then" style={{ color: 'var(--steel-soft)' }}>mind</span>
+                        <span className="t" style={{ color: 'var(--steel-soft)' }}>{wlabel(w)}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+
+              {/* SET ASIDE — a snooze the host cannot SEE and UNDO is a trapdoor, not a
+                  feature. Whatever they set down is listed here, with when it comes back and a
+                  one-tap way to bring it back now. This is also what lets "Nothing needs you"
+                  be honest: it means nothing OPEN, and the set-aside pile is shown right below
+                  it, not hidden. WAVE-6: the pile is the ENGINE's plan.setAside (it owns
+                  snooze now); the comeback date rides the item, with the event map as the
+                  fallback read while the contract field name settles. */}
+              {(() => {
+                const sleeping = setAsideItems || [];
+                if (!sleeping.length) return null;
+                return (
+                  <div style={{ marginTop: 'var(--sp-4)' }}>
+                    <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--muted)' }}>
+                      Set aside for now — {sleeping.length === 1 ? 'it comes back on its own' : 'they come back on their own'}.
+                    </p>
+                    {sleeping.map(a => {
+                      const until = a.until || a.snoozedUntil || a.comebackDate || snoozedUntil(event, a.id);
+                      const when = until ? new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon';
+                      return (
+                        <div key={a.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', opacity: .75 }}>
+                          <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String(a.title || '').replace(/\.+$/, '')} · back {when}</span>
+                          <button className="mini" onClick={() => {
+                            const next = { ...(event.snoozed || {}) }; delete next[a.id];
+                            patchEvent({ snoozed: next }, 'Back on your list.');
+                          }}>bring it back</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {queue.length <= 1 && upNext.length > 0 && (
+                <>
+                  <div className="sect" style={{ marginTop: 26 }}><h2 style={{ fontSize: 'var(--t-card-title)' }}>Coming up</h2><div className="rule" /><span className="when">dated, not urgent</span></div>
+                  {upNext.map((u, i) => (
+                    <button key={i} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0' }}
+                      onClick={() => routeUpNext(u)}>
+                      <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{u.label}</span>
+                      <span className="of" style={{ whiteSpace: 'nowrap' }}>
+                        {u.due ? 'by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (u.days != null ? ' · ' + (u.days === 0 ? 'today' : 'in ' + u.days + 'd') : '') : 'no date'}
+                      </span>
+                    </button>
+                  ))}
+                </>
               )}
 
               <div className="bento">
@@ -4285,8 +5599,10 @@ export default function HostShellV2() {
                       // (the four foundational dominoes) shows only while it's
                       // incomplete, then drops entirely; every other number on
                       // the page is an inventory with its own unit noun.
-                      const setupLine = plan.progress.total && plan.progress.done < plan.progress.total
-                        ? <> · setup <b>{plan.progress.done} of {plan.progress.total}</b></> : null;
+                      // Re-audit 2026-07-17 (P1, "retire the second fraction"): the
+                      // "· setup X of Y" foundational-dominoes count sat as a SECOND
+                      // fraction on this card next to the big "N of M parts" — a novice
+                      // couldn't tell "handled" from "setup". One number, one meaning.
                       let sub;
                       if (!essTotal) sub = 'Nothing to read for this event yet.';
                       else if (essDone < essTotal) {
@@ -4298,7 +5614,7 @@ export default function HostShellV2() {
                         // tail left with it — the hero now has ONE next action
                         // (the Start-here row above), and a second naming here
                         // would be the double-telling this screen keeps killing.
-                        sub = <>parts of your plan handled{setupLine}</>;
+                        sub = 'parts of your plan handled';
                       }
                       else if (openTasks > 0) sub = <>parts of your plan handled — but <b>{openTasks}</b> checklist step{openTasks === 1 ? '' : 's'} still on the list. Not done yet.</>;
                       else sub = 'parts of your plan handled and the checklist is clear — ready for the day.';
@@ -4679,7 +5995,11 @@ export default function HostShellV2() {
                 </div>
               </div>
 
-              {lensSet.length > 1 && (
+              {/* Re-audit 2026-07-17 (P2, "hide filters until there's volume"): a
+                  domain filter over a near-empty plan is filter-heavy / content-light
+                  (UX_04 anti-pattern #4). The lens earns its place once the list is long
+                  enough to be worth narrowing — 5+ things needing the host. */}
+              {!elegantMode && lensSet.length > 1 && queue.length >= 5 && !nearDayPlan && (
                 <div className="lenses">
                   <button className="lens" aria-pressed={lens === 'all'} onClick={() => setLens('all')}>Everything</button>
                   {lensSet.map(l => (
@@ -4688,107 +6008,6 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              {/* Day-before plan — lib/dayBefore, appears only inside the real 0–2 day window */}
-              {dayBefore && dayBefore.applicable && (
-                <div className="day-node" style={{ marginTop: 26 }}>
-                  <div className="eyebrow">{dayBefore.daysOut === 0 ? 'Today · your day-before plan' : dayBefore.daysOut === 1 ? 'Tomorrow · your day-before plan' : 'Two days out · your day-before plan'}</div>
-                  <h3>{(() => {
-                    // RECON MODEL (2026-07-11): the engine's "7 things still
-                    // matter" summed unlike units. Composed HERE (V2-side; the
-                    // engine's own headline string is contract-locked) from the
-                    // sections' own opens, each part named with its unit noun.
-                    // Zero clauses drop; 3+ nonzero keeps the first two + "and more".
-                    if (dayBefore.daysOut === 0 || !dayBefore.openCount) return dayBefore.headline;
-                    const sx = dayBefore.sections || [];
-                    const openOf = (k) => { const s = sx.find(x => x.key === k); return s ? (Number(s.open) || 0) : 0; };
-                    const steps = openOf('tasks');
-                    const items = openOf('shopping');
-                    const people = openOf('vendors') + openOf('helpers');
-                    const parts = [
-                      steps ? `${steps} plan step${steps === 1 ? '' : 's'}` : null,
-                      items ? `${items} item${items === 1 ? '' : 's'} to get` : null,
-                      people ? `${people} ${people === 1 ? 'person' : 'people'} to confirm` : null,
-                    ].filter(Boolean);
-                    if (!parts.length) return dayBefore.headline; // rain-only etc. — the engine line stays honest
-                    const when = dayBefore.daysOut === 1 ? 'tomorrow' : 'the day';
-                    const named = parts.length > 2 ? `${parts[0]}, ${parts[1]}, and more` : parts.join(' and ');
-                    const cap = named.charAt(0).toUpperCase() + named.slice(1);
-                    return `${cap} before ${when}.`;
-                  })()}</h3>
-                  {dayBefore.moment && <p><strong style={{ color: 'var(--carbon-text)' }}>Protect the moment:</strong> {dayBefore.moment.text}</p>}
-                  <div className="db-rows">
-                  {(dayBefore.sections || []).slice(0, 5).map(sec => {
-                    // Modernized rows (2026-07-11): each engine section reads as a
-                    // full-width stacked row — a bold plain-language lead carrying
-                    // the COUNT, the engine's own honest sentence beneath. The lead
-                    // is composed ONLY from the section's open count + the engine's
-                    // own vocabulary ("locked in", "still to get") — no new claims.
-                    const n = Number(sec.open) || 0;
-                    const lead = (() => {
-                      switch (sec.key) {
-                        case 'tasks': return n ? `${n} plan step${n === 1 ? '' : 's'} still open` : 'Plan steps — nothing open';
-                        case 'shopping': return n ? `${n} item${n === 1 ? '' : 's'} still to get` : 'Shopping — all in hand';
-                        case 'vendors': return n ? `${n} ${n === 1 ? 'person' : 'people'} to lock in` : 'Everyone you hired is locked in';
-                        case 'rain': return n ? 'No rain backup yet' : 'Rain backup saved';
-                        case 'helpers': return n ? `${n} ${n === 1 ? 'helper' : 'helpers'} to confirm` : 'Helpers all confirmed';
-                        case 'cues': return 'How tomorrow starts';
-                        case 'guests': return 'Tell your guests';
-                        default: return sec.label + (n ? ` — ${n} open` : '');
-                      }
-                    })();
-                    // BUG FIX (raw 24h leak): the engine's cues detail prints the
-                    // ros's internal "23:40" clock strings verbatim. Re-derive the
-                    // row from the SAME source (effectiveRos, already memoized as
-                    // `ros`), host-formatted — first cue + "and N more" instead of
-                    // three full cue sentences.
-                    const sub = (() => {
-                      // RECON-I5 consumer: the shopping row names its parts using
-                      // the engine's own openFood/openSupplies split — the food
-                      // part now matches the food sheet's remainder exactly.
-                      if (sec.key === 'shopping' && n > 0 && (sec.openFood != null || sec.openSupplies != null)) {
-                        const f = Number(sec.openFood) || 0;
-                        const s = Number(sec.openSupplies) || 0;
-                        const bits = [
-                          f ? `${f} on the food list` : null,
-                          s ? `${s} supplies & gear` : null,
-                        ].filter(Boolean);
-                        if (bits.length) return `${bits.join(' · ')} — one store run covers it.`;
-                      }
-                      if (sec.key !== 'cues') return sec.detail;
-                      const cueList = ros.filter(r => r && r.segment);
-                      if (!cueList.length) return sec.detail;
-                      const first = cueList[0];
-                      return `${first.time ? fmt12h(first.time) + ' — ' : ''}${first.segment}`
-                        + (cueList.length > 1 ? ` · and ${cueList.length - 1} more` : '');
-                    })();
-                    return (
-                    <button className={'db-row' + (n === 0 ? ' calm' : '')} key={sec.key}
-                      onClick={() => {
-                        // The ENGINE authored each row's landing (route carries the
-                        // first-unbought foodFocus, the vendorId, the taskId) — use
-                        // it first; the keyword fallback only catches route-less rows.
-                        if (sec.route && routeSheet(sec.route)) return;
-                        const k = String(sec.key || sec.label || '').toLowerCase();
-                        if (/task|step|plan/.test(k)) setSheet({ kind: 'tasks', focus: null });
-                        else if (/get|shop|food|buy/.test(k)) setSheet({ kind: 'food', focus: null });
-                        else if (/weather|rain/.test(k)) setSheet({ kind: 'rain' });
-                        else if (/tomorrow|start|schedule/.test(k)) setStage('day');
-                        else setSheet({ kind: 'tasks', focus: null });
-                      }}>
-                      <span className="db-main">
-                        <span className="db-lead">{lead}</span>
-                        <span className="db-sub">{sub}</span>
-                      </span>
-                      <span className="chev" aria-hidden="true">›</span>
-                    </button>
-                    );
-                  })}
-                  </div>
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
-                    <button className="mini" onClick={() => { try { openDraft('Day-before details', draftDayBeforeDetails(event, profile, {})); } catch { toast('Couldn’t draft it.'); } }}>Draft the details</button>
-                  </div>
-                </div>
-              )}
 
               {blockers.map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
@@ -4796,7 +6015,12 @@ export default function HostShellV2() {
                 return (
                   <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
                     <div className="card-head">
-                      <div className="card-top"><span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>Blocked</span></div>
+                      {/* Re-audit 2026-07-17 (P1, "soften empty-field states"): an
+                          un-entered foundational field (venue with no value on a fresh
+                          event) was rendered red "Blocked" — a scold, not a guide. These
+                          are unresolved prerequisites, not crises: show a calm, muted
+                          "Not set yet". Genuine at-risk states escalate via the queue. */}
+                      <div className="card-top"><span className="tag plan">Not set yet</span></div>
                       <h3>{b.title}</h3>
                       {b.what && <p className="because">{b.what}</p>}
                       {/* The blocker resolves RIGHT HERE — never a passive note.
@@ -4805,7 +6029,7 @@ export default function HostShellV2() {
                       {isVenueBlock && !venueSet && (
                         <>
                           <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
-                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
                               value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                             <button className="cta" onClick={saveVenue}>Save</button>
                           </div>
@@ -4887,7 +6111,7 @@ export default function HostShellV2() {
                 </div>
               )}
 
-              {compression && compression.headline && (
+              {!elegantMode && compression && compression.headline && (
                 <button className="later-row" style={{ marginTop: 'var(--sp-5)', width: '100%', textAlign: 'left', background: 'var(--warn-tint)', border: 'none', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', cursor: 'pointer' }}
                   onClick={() => {
                     // land on the engine's FIRST do-now task, not the sheet top
@@ -4912,7 +6136,7 @@ export default function HostShellV2() {
                       ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
                       : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
-                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
                         value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                       <button className="cta" onClick={saveVenue}>Save</button>
                     </div>
@@ -4934,347 +6158,6 @@ export default function HostShellV2() {
                 </article>
               )}
 
-              <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>
-              {plan && plan.planningState && (plan.planningState.reasoning || plan.planningState.currentMilestone) && (() => {
-                // QUIET: don't restate the first card's own title/consequence a
-                // few lines above it — only show the reasoning when it says
-                // something the card itself doesn't already carry.
-                const firstCard = queue[0];
-                const reasoning = plan.planningState.reasoning || '';
-                const redundant = firstCard && reasoning && (
-                  (firstCard.consequence && firstCard.consequence.slice(0, 24) === reasoning.slice(0, 24)) ||
-                  (firstCard.title && reasoning.toLowerCase().includes(String(firstCard.title).toLowerCase().replace(/\.$/, '')))
-                );
-                if (redundant && !plan.planningState.currentMilestone) return null;
-                return (
-                  <p className="grounding" style={{ margin: '-8px 0 14px' }}>
-                    {redundant ? '' : reasoning}
-                    {plan.planningState.currentMilestone ? (redundant ? '' : reasoning ? ' ' : '') + 'Milestone: ' + plan.planningState.currentMilestone + (plan.planningState.nextMilestone ? ' — then ' + plan.planningState.nextMilestone + '.' : '.') : ''}
-                  </p>
-                );
-              })()}
-
-              {queue.length === 0 && (
-                <div className="empty">{worries.length
-                  ? 'Nothing needs you right now — just the heads-ups below.'
-                  : 'Nothing needs you right now — the basics are all settled.'}</div>
-              )}
-
-              {/* SET ASIDE — a snooze the host cannot SEE and UNDO is a trapdoor, not a
-                  feature. Whatever they set down is listed here, with when it comes back and a
-                  one-tap way to bring it back now. This is also what lets "Nothing needs you"
-                  be honest: it means nothing OPEN, and the set-aside pile is shown right below
-                  it, not hidden. WAVE-6: the pile is the ENGINE's plan.setAside (it owns
-                  snooze now); the comeback date rides the item, with the event map as the
-                  fallback read while the contract field name settles. */}
-              {(() => {
-                const sleeping = setAsideItems || [];
-                if (!sleeping.length) return null;
-                return (
-                  <div style={{ marginTop: 'var(--sp-4)' }}>
-                    <p className="grounding" style={{ margin: '0 0 6px', color: 'var(--muted)' }}>
-                      Set aside for now — {sleeping.length === 1 ? 'it comes back on its own' : 'they come back on their own'}.
-                    </p>
-                    {sleeping.map(a => {
-                      const until = a.until || a.snoozedUntil || a.comebackDate || snoozedUntil(event, a.id);
-                      const when = until ? new Date(until + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'soon';
-                      return (
-                        <div key={a.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', opacity: .75 }}>
-                          <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String(a.title || '').replace(/\.+$/, '')} · back {when}</span>
-                          <button className="mini" onClick={() => {
-                            const next = { ...(event.snoozed || {}) }; delete next[a.id];
-                            patchEvent({ snoozed: next }, 'Back on your list.');
-                          }}>bring it back</button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {(() => {
-                const shown = queue.filter(show);
-                // BOARD RULING (wave 6): cap the visible queue at 6 cards; the
-                // rest sit behind a quiet "+N more" expander at the end. Ranks
-                // number straight through — a bundle is ONE rank.
-                const QUEUE_CAP = 6;
-                // OVERWHELM PACES THE HOME QUEUE (review board 2026-07-17 — the ONE
-                // change all three lenses approved, the adversary included). The engine
-                // already sizes an underwater host's first foreground (focusCount, staged);
-                // home was the last surface still overriding it upward to a flat 6.
-                //
-                // This is a PARAMETER CHANGE to a shipped, proven, one-tap expander — not a
-                // new hide. Guardrails, all load-bearing:
-                //  • overwhelm (not runway) is the gate. runway collapses "no date" /
-                //    "event was yesterday" / "event was in October" into one 'unknown' that
-                //    then behaves as 'standard' — reading THAT to hide would be inventing a
-                //    fact ("unknown means unknown"). overwhelm structurally requires a known,
-                //    non-relaxed runway, so gating on it can never fire on a bad date.
-                //  • THE CAP YIELDS TO SAFETY, NEVER THE ROWS. It can never fall below the
-                //    count of critical / past-due cards. The app already refuses to let the
-                //    HOST snooze a critical; the engine gets strictly less authority, never
-                //    more.
-                //  • Deferral, never suppression — the "+N more" expander below already
-                //    states the true number and is one tap.
-                //  • Order is untouched: the cap sits downstream of the sort, so safety and
-                //    overdue keep leading. The engine forbids overwhelm from re-ordering and
-                //    so does this.
-                const queueFocus = (() => {
-                  const ha = decisionBoard.hostAdaptation;
-                  if (!ha || !ha.overwhelm || !ha.staged) return null;
-                  const n = Number(ha.focusCount);
-                  if (!Number.isFinite(n) || n <= 0) return null;
-                  // A bundle carries no dueInDays and folds several real things under one
-                  // rank, so it counts as must-see too rather than risk burying a deadline.
-                  const mustSee = shown.filter(a => a && (a.level === 'critical' || a.kind === 'bundle'
-                    || (a.dueInDays != null && Number(a.dueInDays) < 0))).length;
-                  const cap = Math.max(n, mustSee);
-                  return cap < shown.length ? cap : null;
-                })();
-                const queueCap = queueFocus != null ? queueFocus : QUEUE_CAP;
-                const queueFolded = queueFocus != null && !queueOpen;
-                const visible = queueOpen ? shown : shown.slice(0, queueCap);
-                const hiddenCount = shown.length - visible.length;
-                // Time-to-window, worn quietly on the card (engine contract:
-                // actions MAY carry dueInDays; absent = say nothing).
-                const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
-                  <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                    {a.dueInDays < 0 ? 'past due' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + 'd'}
-                  </span>
-                ) : null;
-                return (<>
-              {/* Name the state — but ONLY when the board on screen IS actually paced.
-                  Gated on queueFolded, which is the same predicate that computed
-                  `visible`, so the words and the list cannot drift apart. (They did
-                  once: a line promised "just the first few" over an unsliced list and
-                  shipped that way.) A shorter list with no reason reads as a bug; a
-                  shorter list with a reason reads as being taken care of. */}
-              {queueFolded && (
-                <p className="grounding" style={{ margin: '0 0 var(--sp-2)', color: 'var(--muted)' }}>
-                  That’s a lot with the clock ticking — just the first few here, the rest is a tap away when you’re ready.
-                </p>
-              )}
-              {visible.map((a, i) => {
-                const key = String(a.id || i);
-                // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
-                // items, route}): ONE card, one rank. Expands in place to child
-                // rows, each with its own Go — the same card anatomy as every
-                // other queue card (UX_05), no new component vocabulary.
-                if (a.kind === 'bundle') {
-                  const kids = Array.isArray(a.items) ? a.items : [];
-                  const count = a.count != null ? a.count : kids.length;
-                  const open = !!bundleOpen[key];
-                  return (
-                    <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
-                      style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
-                      <span className="idx">{i + 1}</span>
-                      <div className="card-head">
-                        <div className="card-top">
-                          <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                          {dueChip(a)}
-                        </div>
-                        <h3>{a.title}</h3>
-                        {a.consequence && <p className="because">{a.consequence}</p>}
-                        <div className="actions-row" style={{ alignItems: 'center' }}>
-                          <button className="cta" onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
-                            {open ? 'Fold them away' : 'See all ' + count}
-                          </button>
-                          {a.route && (
-                            <button className="mini" onClick={() => { if (!routeSheet(a.route)) toast('In the app this opens: ' + (describeRoute(a.route) || 'the right spot')); }}>
-                              Open the section
-                            </button>
-                          )}
-                        </div>
-                        {open && kids.map((c, ci) => (
-                          <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-                            <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
-                            <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(c && c.cta) || 'Go'}</button>
-                          </div>
-                        ))}
-                      </div>
-                    </article>
-                  );
-                }
-                const wired = wiredKind(a);
-                // SNOOZE — set it down without losing it. The grounded proposal
-                // (lib/snooze.js: half the remaining runway, never past the item's
-                // own lead window) stays the one-tap DEFAULT. "pick a day" is the
-                // quiet second path (host-approved 2026-07-15): a raw date input
-                // whose bounds AND write both run through clampSnoozeUntil, so a
-                // picked day can never land past the window — the clock still owns
-                // the bounds, the host owns the day. NEVER for a critical.
-                const snoozeProposed = canSnooze(a)
-                  ? (() => { try { return proposedSnoozeUntil(event, { leadDays: a.leadDays }); } catch (_e) { return null; } })()
-                  : null;
-                const fmtBack = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const snoozeTo = (iso, msg) => { setSnoozePick(null); patchEvent({ snoozed: { ...(event.snoozed || {}), [a.id]: iso } }, msg); };
-                // The honest picking window, asked of the SAME clamp that writes:
-                // clamp(tomorrow) is the earliest allowed day, clamp(far future) is
-                // the latest. If either comes back null there is no valid custom
-                // day at all and the affordance simply doesn't render.
-                let snoozePickMin = null, snoozePickMax = null;
-                if (snoozeProposed) {
-                  const t0 = new Date(); t0.setHours(0, 0, 0, 0); t0.setDate(t0.getDate() + 1);
-                  const tomorrowIso = `${t0.getFullYear()}-${String(t0.getMonth() + 1).padStart(2, '0')}-${String(t0.getDate()).padStart(2, '0')}`;
-                  try {
-                    snoozePickMin = clampSnoozeUntil(event, tomorrowIso, { leadDays: a.leadDays });
-                    snoozePickMax = clampSnoozeUntil(event, '9999-12-31', { leadDays: a.leadDays });
-                  } catch (_e) { snoozePickMin = null; snoozePickMax = null; }
-                }
-                const pickingDay = !!(snoozePickMin && snoozePickMax && snoozePick && snoozePick.key === key);
-                // 'Decisions' and 'Event Day Schedule' now have real routeSheet branches, so
-                // they must stop wearing the honest "in the app" tag — the tag exists to warn
-                // a host that a CTA does not land HERE, and these now do. ('Communication'
-                // stays off the list: V2 has no messages surface, so its tag is still true.)
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks'].includes(a.route.tab));
-                return (
-                  <article className={'card' + (spot === key ? ' spot' : '')} id={'card-' + key} key={key}
-                    style={spot === key ? undefined : { animation: `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
-                    <span className="idx">{i + 1}</span>
-                    <div className="card-head">
-                      <div className="card-top">
-                        <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>
-                        {!lands && <span className="tag plan">in the app</span>}
-                        {dueChip(a)}
-                      </div>
-                      <h3>{a.title}</h3>
-                      {a.consequence && <p className="because">{a.consequence}</p>}
-                      {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
-                          been for a while, and it never once said WHY — the host was handed a
-                          ranking and asked to trust it. Every line below is true of the item's
-                          own data (its severity, or the domain everything else sizes off), not
-                          a flourish: if we cannot say something true about why it leads, we say
-                          nothing. Only ever on the first card. */}
-                      {i === 0 && (() => {
-                        // Recognize the item by WHAT IT IS, not which engine labeled it. Keying
-                        // purely on `a.domain` meant the common case — the reactive top action,
-                        // whose domain is its CATEGORY ('operational'), not 'food' — never
-                        // matched, so the line that explains the ranking almost never showed. The
-                        // title says what it is ("Decide what you're serving" is food) as
-                        // reliably as any domain, and the same normalization the dedup uses reads
-                        // it. Still only ever a TRUE sentence: no match, no line.
-                        const title = String(a.title || '').toLowerCase();
-                        const is = (dom, re) => a.domain === dom || re.test(title);
-                        const why = a.level === 'critical'
-                          ? 'This is first because it can’t wait — everything else can.'
-                          : is('date', /set the date|the event date/) ? 'This is first because every deadline in the plan counts back from it.'
-                          : is('guests', /guest (list|count)|add your guests|headcount/) ? 'This is first because the food, the seats and the budget all size off the headcount.'
-                          : is('budget', /budget|spending plan/) ? 'This is first because every estimate below is guessing until it has a number to work against.'
-                          : is('food', /serving|the food|menu|the spread/) ? 'This is first because the shopping list and the crab order both wait on it.'
-                          : is('starttime', /start time/) ? 'This is first because the day has an order but no clock until you set it.'
-                          : is('venue', /the location|the venue|where is the event/) ? 'This is first because vendors, weather and the timeline all hang off where it is.'
-                          : null;
-                        return why ? <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .85 }}>{why}</p> : null;
-                      })()}
-                      <div className="actions-row" style={{ alignItems: 'center' }}>
-                        {a.cta && <button className="cta" onClick={() => onCta(a, key)}>{a.cta}</button>}
-                        {/* SNOOZE — set it down without losing it. The reason a zero state can
-                            be believed: a host who has decided to leave a thing can SAY so, and
-                            the list actually empties. The grounded proposal (computed above) is
-                            still the one-tap default; "pick a day" folds open the clamped date
-                            row below. NEVER for a critical ("your caterer hasn't arrived" is
-                            not a someday). The host owns the result and can un-snooze.
-                            LAYOUT (host report): the two snooze options are ONE grouped cluster,
-                            right of the primary CTA — so on a narrow card they wrap together as a
-                            unit ("not now · pick a day") instead of splitting into a ragged stack. */}
-                        {snoozeProposed && (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 9, marginLeft: 'auto', flexShrink: 0 }}>
-                            <button className="mini"
-                              onClick={() => snoozeTo(snoozeProposed, 'Set aside — it’ll come back ' + fmtBack(snoozeProposed) + ', with time to spare.')}>
-                              not now
-                            </button>
-                            {snoozePickMin && snoozePickMax && !pickingDay && (
-                              <button className="mini" aria-expanded={false} aria-controls={'snooze-pick-' + key}
-                                onClick={() => setSnoozePick({ key, val: snoozeProposed })}>
-                                pick a day
-                              </button>
-                            )}
-                          </span>
-                        )}
-                      </div>
-                      {/* The day picker — progressive disclosure: this row exists only after
-                          "pick a day", so cards never carry it by default. Bounds come from
-                          clampSnoozeUntil and the confirm re-clamps, so a typed date past the
-                          window writes the last honest day — and the toast says so plainly. */}
-                      {pickingDay && (
-                        <div id={'snooze-pick-' + key} className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-                          <span className="of">back on:</span>
-                          <input className="field" type="date" style={{ maxWidth: 160, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                            value={snoozePick.val || ''} min={snoozePickMin} max={snoozePickMax}
-                            onChange={e => setSnoozePick({ key, val: e.target.value })}
-                            aria-label="Day this comes back" />
-                          <button className="mini" disabled={!snoozePick.val} style={!snoozePick.val ? { opacity: .45 } : undefined}
-                            onClick={() => {
-                              const chosen = String(snoozePick.val || '');
-                              let clamped = null;
-                              try { clamped = clampSnoozeUntil(event, chosen, { leadDays: a.leadDays }); } catch (_e) { clamped = null; }
-                              if (!clamped) { setSnoozePick(null); return; } // window closed since render — refuse quietly, the card stays
-                              const backOn = fmtBack(clamped);
-                              snoozeTo(clamped, clamped === chosen
-                                ? 'Set aside — it’ll come back ' + backOn + ', the day you picked.'
-                                : chosen > clamped
-                                  ? 'That’s past the window for this one — it’ll come back ' + backOn + ' instead.'
-                                  : 'That day’s already here — it’ll come back ' + backOn + ' instead.');
-                            }}>
-                            set it aside
-                          </button>
-                          <button className="mini" onClick={() => setSnoozePick(null)}>never mind</button>
-                        </div>
-                      )}
-                      {editor === key && renderEditor(a)}
-                    </div>
-                  </article>
-                );
-              })}
-              {hiddenCount > 0 && (
-                <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
-                  onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
-                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
-                </button>
-              )}
-                </>);
-              })()}
-
-              {/* HEADS-UP — the worries lane (host board ruling, wave 6): risk
-                  raises leave the counted queue and sit here, quiet and steel,
-                  never numbered, never in "N things need you" — but still real
-                  rows that land on the exact risk (routeSheet's Risks branch).
-                  The lane label carries the ask once, so each row reads as the
-                  risk itself, in the registry's own words. */}
-              {worries.length > 0 && (() => {
-                const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);
-                return (
-                  <div style={{ marginTop: 'var(--sp-5)' }}>
-                    <div className="shelf-label">Heads-up — have a plan for these</div>
-                    {rows.map((w, i) => (
-                      <button key={String((w && w.id) || 'worry-' + i)} className="later-row"
-                        style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
-                        onClick={() => { if (w && w.route && routeSheet(w.route)) return; setSheet({ kind: 'risks' }); }}>
-                        <span className="t" style={{ color: 'var(--steel-soft)', fontWeight: 550 }}>
-                          {String((w && w.title) || '').replace(/^have a plan for:\s*/i, '')}
-                        </span>
-                        <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
-                      </button>
-                    ))}
-                  </div>
-                );
-              })()}
-
-              {queue.length <= 1 && upNext.length > 0 && (
-                <>
-                  <div className="sect" style={{ marginTop: 26 }}><h2 style={{ fontSize: 'var(--t-card-title)' }}>Coming up</h2><div className="rule" /><span className="when">dated, not urgent</span></div>
-                  {upNext.map((u, i) => (
-                    <button key={i} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0' }}
-                      onClick={() => routeUpNext(u)}>
-                      <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{u.label}</span>
-                      <span className="of" style={{ whiteSpace: 'nowrap' }}>
-                        {u.due ? 'by ' + new Date(u.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (u.days != null ? ' · ' + (u.days === 0 ? 'today' : 'in ' + u.days + 'd') : '') : 'no date'}
-                      </span>
-                    </button>
-                  ))}
-                </>
-              )}
 
               {/* QUIET INDEX (Fable redo): the first pass hid these rows in a
                   "More" junk drawer — but they're the ONLY route to their
@@ -5284,6 +6167,10 @@ export default function HostShellV2() {
                   surface, uniform metrics, importance-ordered: attention
                   first, meaning last. */}
               {(() => {
+                // ELEGANT below-fold ends clean at DO/WATCH/STAND (host "this needs attention"
+                // 2026-07-18): this section navigator duplicates the eyebrow nav's "Jump to a
+                // section", so it's dropped here to keep the below-fold calm. Non-elegant keeps it.
+                if (elegantMode) return null;
                 const trunc = (s, n) => { const t = String(s || ''); return t.length > n ? t.slice(0, n) + '…' : t; };
                 const meaningText = String(event.must_have_moment || event.meaning_why || event.honoree_story || '');
                 const rows = [
@@ -6081,7 +6968,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
               </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
@@ -6105,7 +6992,7 @@ export default function HostShellV2() {
                   <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{event.venue}</b>{event.venueCity ? ` · ${event.venueCity}` : ''}. Enter a new place to change it.</p>
                 )}
                 <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                  <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address — “My brother’s backyard”, “1100 Maine Ave SW”…"
+                  <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
                     value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
                   <button className="cta" onClick={saveVenue}>Save</button>
                 </div>
@@ -6190,7 +7077,7 @@ export default function HostShellV2() {
                 })()}
                 {/* heartAtRisk nudge (task 5): protect the moment before it defaults. */}
                 {decisionBoard.heartAtRisk && (decisionBoard.open || []).length ? (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)', borderLeft: '3px solid var(--steel-soft)', paddingLeft: 11, fontWeight: 600 }}>
+                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)', background: 'color-mix(in srgb, var(--steel-soft) 10%, transparent)', borderRadius: '8px', paddingLeft: 11, fontWeight: 600 }}>
                     One of these is the moment your guests will remember. Give it your own call — don’t let it settle on a default.
                   </p>
                 ) : null}
@@ -6217,7 +7104,7 @@ export default function HostShellV2() {
                   const rankWhy = rankReasonForV2(r);
                   const approach = r.difmCapable ? decisionApproach(r, opts) : null;
                   const pinned = Array.isArray(event.decisionPins) && event.decisionPins.includes(r.id);
-                  const heartStyle = r.deliversHeartMoment ? { borderLeft: '3px solid var(--steel-soft)', paddingLeft: 11 } : null;
+                  const heartStyle = r.deliversHeartMoment ? { background: 'color-mix(in srgb, var(--steel-soft) 10%, transparent)', borderRadius: '8px', paddingLeft: 11 } : null;
                   const meta = (rankWhy || approach) ? (
                     <span style={{ flex: '1 0 100%' }}>
                       {rankWhy && <span className="v-meta" style={{ display: 'block' }}>{rankWhy}</span>}
@@ -7763,6 +8650,44 @@ export default function HostShellV2() {
                 </>
               );
             })()}
+            {/* NAV SHEET (Figma Nav B) — summoned from the eyebrow ▾; replaces the floating
+                dock in elegant mode. Phase segmented control + the quiet rows. */}
+            {sheet.kind === 'nav' && (
+              <>
+                <div className="shelf-label" style={{ margin: '0 0 9px' }}>Where in the event</div>
+                <div className="navseg">
+                  {[['create', 'Create'], ['plan', 'Plan'], ['day', 'The Day'], ['after', 'After']].map(([s, label]) => (
+                    <button key={s} className={'navseg-b' + (stage === s ? ' on' : '')} onClick={() => { setStage(s); setSheet(null); }}>{label}</button>
+                  ))}
+                </div>
+                <div className="navrows">
+                  <button className="navrow" onClick={() => setSheet({ kind: 'events' })}>
+                    <span className="nr-l">This event</span>
+                    <span className="nr-r">{event.name}<span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                  <button className="navrow" onClick={() => setSheet({ kind: 'sections' })}>
+                    <span className="nr-l">Jump to a section</span>
+                    <span className="nr-r">vendors · food · guests…<span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                  <button className="navrow" onClick={() => { setSheet(null); setPaletteOpen(true); }}>
+                    <span className="nr-l">Search</span>
+                    <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                  <button className="navrow" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); setSheet({ kind: 'ask' }); }}>
+                    <span className="nr-l">Ask the Boss</span>
+                    <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                  <button className="navrow" onClick={() => setSheet({ kind: 'help' })}>
+                    <span className="nr-l">Feeling stuck?</span>
+                    <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                  <button className="navrow" onClick={() => setSheet({ kind: 'settings' })}>
+                    <span className="nr-l">You &amp; settings</span>
+                    <span className="nr-r"><span className="chev" aria-hidden="true">›</span></span>
+                  </button>
+                </div>
+              </>
+            )}
             {sheet.kind === 'events' && (
               <>
                 {(REAL_EVENTS.length > 0 || hydratedEvents.length > 0) && (
@@ -10866,12 +11791,12 @@ export default function HostShellV2() {
           CTA is pinned to the frame bottom at all times on the Plan surface — it no longer
           scrolls away with the hero. Taps straight through to the first queued action (the
           same onCta path the named card uses), or scrolls to the full list when calm. */}
-      {stage === 'plan' && (
+      {stage === 'plan' && !heroInView && (
         <button
           className={'next-bar' + ((queue.length === 0 || listIsCalm) ? ' allset' : '')}
           onClick={() => {
             if (days === 0) { setStage('day'); return; }
-            if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0)); return; }
+            if (queue.length && !listIsCalm) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }
             document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
           }}
           aria-label="Next thing that needs you"
@@ -10879,13 +11804,13 @@ export default function HostShellV2() {
           <span className="nb-label">Next</span>
           <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
           {days !== 0 && !listIsCalm && queue.length > 1 && (
-            <span className="nb-more">+{queue.length - 1}</span>
+            <span className="nb-more" title={(queue.length - 1) + ' more after this'}>+{queue.length - 1}</span>
           )}
           <span className="nb-chev" aria-hidden="true">›</span>
         </button>
       )}
 
-      <nav className={'dock' + (dockHidden ? ' dock-hidden' : '') + (stage === 'plan' ? ' has-next-bar' : '')} aria-label="Sections">
+      <nav className={'dock' + (dockHidden ? ' dock-hidden' : '') + (stage === 'plan' && !heroInView ? ' has-next-bar' : '') + (elegantMode ? ' dock-retired' : '')} aria-label="Sections">
         {/* No attention badge here by design: the dock is navigation, not an inbox — ledger counts (raiseCounts) surface on the qidx rows instead. */}
         <button aria-current={stage === 'create'} onClick={() => setStage('create')}>Create</button>
         <button aria-current={stage === 'plan'} onClick={() => setStage('plan')}>Plan</button>

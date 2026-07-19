@@ -261,9 +261,12 @@ export function buildVendorReadinessRollup(event, ctx = null, vendors = null, pl
         nextAction: firstToConfirm && firstToConfirm.name
           ? `Confirm ${firstToConfirm.name} for your date.`
           : 'Confirm your booked vendors for the date.',
-        ctaLabel: 'Confirm vendor',
+        // RECORD-ONLY truthfulness (review-board ruling 2026-07-18): this CTA writes a
+        // LOCAL self-report status flip — nothing reaches the vendor — so the verb must
+        // be "Mark", not "Confirm" (which implies the vendor's own word). See UX_07.
+        ctaLabel: 'Mark as locked in',
         target: firstToConfirm ? { tab: 'Vendors', vendorId: firstToConfirm.id } : { tab: 'Vendors', focusField: 'vendor-list' },
-        reason: 'Booked holds the date; a confirm is what locks it in.',
+        reason: 'Booked holds the date; marking it locked in is your own tracking.',
         counts,
       };
     }

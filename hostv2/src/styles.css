@@ -5,7 +5,7 @@
 :root{
   color-scheme:dark; /* native controls (date picker, scrollbars) render for dark */
   --sans:-apple-system,BlinkMacSystemFont,'SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
-  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* Reserved for the GUEST-FACING stationery moment only — the create Reveal. The whole HOST APP is --sans, including the welcome gate (its front door), the Plan countdown, event names, and sheet heroes. Doctrine (2026-07-16): the app's type is sans; don't spread the stationery serif into host-shell surfaces. */
+  --serif:'Playfair Display',Georgia,'Times New Roman',serif; /* PLAYFAIR = the GUEST-FACING stationery display serif — the create Reveal, the "thing people screenshot." Stays reserved for that moment; the instruction voice of the host app (welcome gate, Plan countdown, event names, sheet heroes, the elegant ASK) is --sans. Doctrine (2026-07-16): don't spread the STATIONERY serif into host-shell surfaces. AMENDED (2026-07-17, host ruling from the live serif-vs-sans test): the host GUIDE VOICE — the elegant-minimal reassurance/status sentence — uses --serif-read (Newsreader), a SEPARATE reading serif, NOT Playfair. So Playfair stays stationery-only; a distinct text serif carries the guide voice. The boss (sans instruction) / guide (serif reassurance) split is now typographic. */
 
   /* ── Host-app type scale — the SINGLE source of truth (UX_01 type-scale
      table names these same tokens). Tokens are named by ROLE, not value:
@@ -150,6 +150,30 @@ button{font-family:inherit}
   -webkit-backdrop-filter:blur(20px) saturate(1.2); backdrop-filter:blur(20px) saturate(1.2);
   border-bottom:1px solid var(--line-soft);
 }
+/* NAV PARITY (host 2026-07-18): elegant top matches Figma — no brand block, no bar chrome.
+   The eyebrow leads; section/search/profile stay as quiet top-right controls (Figma's full
+   Nav B moves these into the eyebrow-summoned sheet — the remaining nav-parity build). */
+/* FULL parity (host "finish initial parity"): the app bar is HIDDEN in elegant — a clean
+   Figma top with only the eyebrow. Everything the bar carried (sections/search/help/profile)
+   now lives in the eyebrow-summoned nav sheet. */
+.appbar.appbar-elegant{ display:none; }
+/* The floating dock is RETIRED in elegant mode — replaced by the eyebrow-summoned nav sheet. */
+.dock.dock-retired{ display:none; }
+/* NAV SHEET (Figma Nav B) — phase segmented control + quiet rows. */
+/* Figma Nav B parity: a recessed dark-inset track with the current phase raised + lit. */
+.navseg{ display:flex; gap:2px; background:#17181b; border-radius:12px; padding:4px;
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.4); }
+.navseg-b{ flex:1; border:none; background:none; cursor:pointer; font:inherit; font-size:12.5px; font-weight:600;
+  color:var(--faint); padding:11px 0; border-radius:9px; transition:background .14s var(--ease-out), color .14s var(--ease-out); }
+.navseg-b.on{ background:#33363b; color:var(--ink); font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
+.navrows{ margin-top:14px; }
+.navrow{ display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; text-align:left;
+  background:none; border:none; border-top:1px solid var(--line-soft); cursor:pointer; font:inherit; padding:16px 2px; }
+.navrow:first-child{ border-top:none; }
+.navrow .nr-l{ font-size:15.5px; font-weight:600; color:var(--ink); }
+.navrow .nr-r{ display:flex; align-items:center; gap:8px; font-size:13px; font-weight:500; color:var(--faint);
+  min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.navrow .chev{ color:var(--muted); font-weight:500; }
 .wordmark{font-size:15px/*brand-locked, not the type scale*/; font-weight:800; letter-spacing:-.02em; display:inline-flex; align-items:baseline}
 .wm-you{display:inline-flex; align-items:center; justify-content:center; padding:7px !important; line-height:0}/* small visual circle; the 44px tap area is the ::after below, so the header stays uncrowded */
 /* The brand period — circular machined steel, seated on the baseline, low
@@ -212,6 +236,298 @@ button{font-family:inherit}
 .eyebrow{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-6); text-transform:uppercase; color:var(--muted); line-height:var(--lh-body)}
 .mega{font-size:clamp(52px,17cqw,68px); font-weight:800; letter-spacing:-.045em; line-height:.95; margin:var(--sp-3) 0 6px; font-variant-numeric:tabular-nums}
 .mega-sub{font-size:var(--t-sub); font-weight:650; letter-spacing:-.02em; color:var(--ink-soft); margin:0 0 6px; line-height:1.45; min-height:1.3em}
+
+/* ── REBALANCE 2026-07-17 — instruction-first Command ─────────────────────
+   The display slot speaks the ASK when the engine has one; the countdown
+   folds into the TRUTH line. One panel above the fold (the hero card); the
+   path whispers as then-rows. Type ramp: ask 40 → headings 19 → body 16 →
+   controls 14–15 → whispers 13–14.5. */
+.ask{font-size:clamp(34px,11cqw,40px); font-weight:800; letter-spacing:-.02em; line-height:1.06; margin:var(--sp-3) 0 8px; text-wrap:balance; animation:askin 240ms var(--ease-out) both}
+@keyframes askin{from{opacity:0; transform:translateY(6px)}to{opacity:1; transform:none}}
+@keyframes rowin{from{opacity:0}to{opacity:1}}
+.truth{font-size:16px; font-weight:600; letter-spacing:-.02em; color:var(--steel-soft); margin:0 0 6px; line-height:1.45}
+.card.hero-card{margin-top:14px}
+.horizon{margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); font-size:13px; color:var(--faint)}
+.path-row{animation:rowin 200ms var(--ease-out) 100ms both; display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 2px; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); cursor:pointer; font:inherit; -webkit-appearance:none; appearance:none}
+.path-row .then{font-size:11px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; color:var(--faint); flex:0 0 auto}
+.path-row .t{font-size:14.5px; font-weight:550; color:var(--faint); letter-spacing:-.01em; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* C2 — progressive ink, AA-safe (critique 2026-07-17): recession comes from
+   pre-blended tokens (--faint: 5.13:1 card / 4.72:1 band), never opacity
+   stacking — the .55 multiplier version measured 2.55:1 and failed WCAG. */
+.verdict.beat{color:var(--ok); animation:askin 240ms var(--ease-out) both}
+/* Ranked cards: the top row yields room to the corner rank badge so a
+   long due-chip ("past due") never collides with it. */
+.card .idx + .card-head .card-top{padding-right:26px}
+/* MODERN MOTION (2026-07-17): the editor unfolds — height:auto is animatable
+   now (interpolate-size); browsers without it simply show instantly. */
+:root{interpolate-size: allow-keywords}
+.editor-slot{height:auto; overflow:clip; transition:height 240ms var(--ease-out), opacity 240ms var(--ease-out)}
+@starting-style{ .editor-slot{height:0; opacity:0} }
+/* Perf-as-calm: below-fold weight isn't rendered until approached */
+.day-node{content-visibility:auto; contain-intrinsic-size:auto 420px}
+/* Prose never orphans */
+.because, .truth{text-wrap:pretty}
+/* Hero receipt — muted sentence, green done-dot; ring pulse = the beat */
+.card.hero-card.receipted{animation:okring 700ms var(--ease-out) both}
+@keyframes okring{0%{box-shadow:0 0 0 2px color-mix(in srgb, var(--ok) 55%, transparent)}100%{box-shadow:0 0 0 2px transparent}}
+.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); transition:opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
+@starting-style{ .receipt{opacity:0; translate:0 5px} }
+.receipt .rdot{width:7px; height:7px; border-radius:999px; background:var(--ok); flex:0 0 auto}
+.receipt .rmsg{flex:1; min-width:0; font-size:13.5px; line-height:1.4; color:var(--muted)}
+@media (prefers-reduced-motion: reduce){ .card.hero-card.receipted{animation:none} }
+/* BREATH (host direction 2026-07-17: "the app should breathe and live") —
+   ambient life, asleep-calm: opacity-only, slow, barely perceptible. Never
+   layout, never color, never faster than a resting breath. */
+@keyframes breathe{0%,100%{opacity:1}50%{opacity:.82}}
+.truth, .mega-sub{animation:breathe 7s ease-in-out infinite}
+.receipt .rdot{animation:breathe 3.2s ease-in-out infinite}
+.dock::before{animation:breathe 5s ease-in-out infinite}
+
+/* ══════════ ELEGANT-MINIMAL PORT (2026-07-17, ?elegant=1) ══════════
+   Flag-gated test of the elegant-minimal language in the REAL shell so the
+   host can rule on the serif doctrine (--serif is Playfair, locked to guest
+   stationery — styles.css:8) from the LIVE render, not a Figma comp. The
+   reading serif is Newsreader (Playfair is display-only, spindly at 20px);
+   scoped here so nothing bleeds into the doctrine-locked --serif. Production
+   is untouched unless the flag is on. ?voice=serif|sans flips the guide voice. */
+:root{ --serif-read:'Newsreader',Georgia,'Times New Roman',serif; } /* Newsreader — the host human-voice optical superfamily */
+/* F13 MASTHEAD → EYEBROW: one tiny uppercase line (countdown · event name), the only thing
+   up top. The big serif name + venue + kicker leave the ask screen entirely. */
+/* The eyebrow IS the menu (host "menu is not accessible yet"): a clear hamburger + caret so it
+   reads unmistakably as tappable — the only nav entry now that the bar + dock are gone. */
+.ev-eyebrow{ display:inline-flex; align-items:center; gap:10px; background:none; border:none; padding:8px 0; cursor:pointer;
+  font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); line-height:1.4; }
+.eb-menu{ display:inline-flex; flex-direction:column; justify-content:center; gap:3.5px; width:16px; flex:0 0 auto; }
+.eb-menu > span{ display:block; height:1.5px; border-radius:1px; background:var(--muted); transition:background .16s var(--ease-out); }
+.eb-menu > span:nth-child(2){ width:11px; }
+.eb-caret{ font-size:9px; color:var(--faint); margin-left:-2px; }
+.ev-eyebrow:hover{ color:var(--steel-soft); }
+.ev-eyebrow:hover .eb-menu > span{ background:var(--steel-soft); }
+.ev-eyebrow:active{ opacity:.7; }
+/* FLOAT THE HERO (F13, host 2026-07-18 "the hero doesn't float in middle"): the ask/voice/
+   action cluster is vertically CENTERED between the eyebrow and the foot progress. The
+   heroZone gets margin-top:auto and the eprog gets margin-top:auto — two auto margins split
+   the free space, so the cluster floats mid-screen and progress pins to the foot. */
+.hero.elegant .escreen.on > .hzone{ margin-top:auto; }
+.hero.elegant .ask{ font-size:clamp(38px,12.5cqw,46px); letter-spacing:-.028em; line-height:1.02; margin:0 0 16px; }
+/* The countdown moved into the eyebrow — no separate fact line on the ask screen. */
+.hero.elegant .truth{ display:none; }
+/* FIRST-SCREEN BOUND (#3, F13 foot-pin): invisible wrapper everywhere except elegant-ask,
+   where it's a 100dvh flex column. The progress (margin-top:auto inside) pins to its foot;
+   the see-all is a sibling AFTER it, so it can't eat the free space (the old soft-fold bug). */
+.escreen{ display:contents; }
+/* Fills the viewport: the app bar + dock are HIDDEN in elegant, so the first screen no longer
+   subtracts their 64px+88px — otherwise the box is short and the cluster floats high. */
+.escreen.on{ display:flex; flex-direction:column; min-height:calc(100dvh - 40px - env(safe-area-inset-bottom,0px)); }
+/* HERO CENTERING DOCTRINE: the ask+action cluster centers in the space between the eyebrow and
+   the foot progress, at ANY content length. .ecenter is invisible (display:contents) outside
+   elegant; inside, it's a flex:1 column that justify-centers its content. */
+.ecenter{ display:contents; }
+.hero.elegant .escreen.on > .ecenter{ display:flex; flex-direction:column; justify-content:center; flex:1 1 auto; min-height:0; }
+/* BUNDLE HERO → pure button (#2): a bundle's h3 just restates the ask (the count lives in the
+   CTA), so drop it — leaving the one action, like F13. Wired cards keep h3 (the vendor NAME). */
+.hero.elegant .hero-card.bundle-hero > .card-head > h3{ display:none; }
+/* THE GUIDE VOICE — the verdict/status sentence, in Newsreader italic (host human voice).
+   font-optical-sizing:auto so the family reads right at text size; .voice-sans is the A/B
+   escape hatch. */
+.hero.elegant .verdict{ font-size:20px; font-weight:500; font-style:italic; font-family:var(--serif-read); font-optical-sizing:auto; line-height:1.4; letter-spacing:0; color:#b9c2c9; margin:14px 0 0; max-width:24em; }
+/* SEVERITY COLOR PRESERVED (regression fix 2026-07-17): the calm voice is warm steel, but a
+   slipping/critical verdict keeps its warning color and the beat stays green — the wave-6
+   honesty rule (non-calm verdicts keep their color) survives the serif restyle. */
+.hero.elegant .verdict.slipping{ color:var(--warn); }
+.hero.elegant .verdict.beat{ color:var(--ok); }
+.hero.elegant.voice-sans .verdict{ font-family:var(--sans); font-style:normal; font-weight:600; font-size:19px; letter-spacing:-.01em; color:var(--steel-soft); }
+.hero.elegant.voice-sans .verdict.slipping{ color:var(--warn); }
+/* UNIFIED: the serif is the whole HUMAN voice — the event NAME (identity) joins the guide
+   voice in one optical superfamily, while sans keeps the instruction ASK and the facts.
+   The "one serif, two optical sizes" leader move (Apple New York register). */
+.hero.elegant .ev-title{ font-family:var(--serif-read); font-optical-sizing:auto; font-weight:500; font-size:24px; line-height:1.12; letter-spacing:0; }
+.hero.elegant.voice-sans .ev-title{ font-family:var(--sans); font-weight:800; font-size:19px; letter-spacing:-.01em; }
+/* SCROLL-TO-SEE-ALL FOLD: the elegant hero fills the viewport; the fold boundary uses
+   margin-top:auto to pin below the action content, pushing the reference lane below the
+   fold on calm boards. The grabber invites the pull; nothing is hidden, just folded. */
+/* (Removed the leftover .hero.elegant min-height — it capped the escreen at ~615px and broke
+   centering. The escreen's own min-height governs the first-screen height now.) */
+/* Top gradient — more dramatic AND FULL-VIEWPORT (host: "gradient is not using all viewport").
+   Moved off the padded .hero onto the full-bleed .app scroll container so the steel crown glow
+   spans edge to edge. Overrides the app's subtler base radial in elegant only. */
+.app.app-elegant{ background-image:radial-gradient(150% 500px at 50% -70px, rgba(86,116,140,.30) 0%, rgba(86,116,140,.09) 40%, transparent 74%); }
+/* GRABBABLE fold cue (host "make grabber grabable"): a real button — cursor grab, the handle
+   brightens on hover/active; tap scrolls to the see-all. */
+.efold{ margin-top:16px; display:flex; flex-direction:column; align-items:center; gap:9px; padding:22px 0 10px;
+  width:100%; background:none; border:none; font:inherit; cursor:grab; -webkit-tap-highlight-color:transparent; }
+.efold:active{ cursor:grabbing; }
+.efold-grab{ width:40px; height:5px; border-radius:3px; background:var(--faint); opacity:.55; transition:opacity .16s var(--ease-out), width .16s var(--ease-out); }
+.efold:hover .efold-grab, .efold:active .efold-grab{ opacity:.85; width:52px; }
+.efold-label{ font-size:13px; font-weight:550; color:var(--faint); letter-spacing:.01em; }
+.efold:hover .efold-label{ color:var(--muted); }
+/* SEE-ALL RESTYLE (host ruling #2, 2026-07-17): keep every wiring, flatten the below-fold
+   tiles toward the grouped-list look. DROP the Where-you-stand tile (the hairline already
+   carries "N of M settled" — kills the duplication); flatten Guests/Budget from filled tiles
+   into quiet hairline rows (label left · value right). The MIND lane, "Coming up", and the
+   set-aside pile are already rows, so the whole see-all now reads as one calm list. */
+.hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:22px; }
+.hero.elegant .bento .tile-a{ display:none; }
+.hero.elegant .bento .tile-b,
+.hero.elegant .bento .tile-c{ min-height:0; padding:16px 0; background:none; border:none; border-radius:0; border-top:1px solid rgba(255,255,255,.08); flex-direction:row; align-items:center; justify-content:space-between; gap:18px; }
+.hero.elegant .bento .tile-b:hover,
+.hero.elegant .bento .tile-c:hover{ background:none; transform:none; filter:none; }
+.hero.elegant .bento .tile-b .t-label,
+.hero.elegant .bento .tile-c .t-label{ margin:0; flex:0 0 auto; }
+.hero.elegant .bento .tile-b > div:last-child,
+.hero.elegant .bento .tile-c > div:last-child{ display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:0; }
+.hero.elegant .bento .tile-b .t-num,
+.hero.elegant .bento .tile-c .t-num{ font-size:18px; line-height:1.1; }
+.hero.elegant .bento .tile-b .t-sub,
+.hero.elegant .bento .tile-c .t-sub{ text-align:right; }
+/* HERO ACTION CARD → the prototype's one-line action (host ruling #1, 2026-07-17): drop the
+   card BOX so the one thing flows in the hero instead of floating in a filled box, and hide
+   the redundant lens chip (the ev-head kicker + the ask already name the domain). The h3
+   stays — it's the vendor NAME on wired cards — and the CTA + urgency chip stay. */
+.hero.elegant .hero-card{ background:none; border:none; box-shadow:none; border-radius:0; padding:0; margin-top:20px; }
+.hero.elegant .hero-card > .card-head{ padding:0; }
+.hero.elegant .hero-card .tag-lens{ display:none; }
+.hero.elegant .hero-card .card-top{ min-height:0; }
+/* with the lens chip hidden, the due-chip was left floating alone on the right; pull it
+   left so it reads as a small urgency eyebrow above the title. */
+.hero.elegant .hero-card .card-top .of{ margin-left:0 !important; font-size:12px; color:var(--warn); font-weight:650; letter-spacing:.02em; }
+.hero.elegant .hero-card h3{ margin-top:4px; }
+.hero.elegant .hero-card .actions-row{ margin-top:14px; }
+/* CTA PARITY WITH FIGMA (host 2026-07-18): the elegant hero CTA is a DARK RAISED TACTILE key
+   (not the gradient .cta, not white) — a solid bottom edge + soft cast + inset top highlight,
+   depressing on press. Scoped to the elegant hero; the rest of the app's .cta is untouched. */
+.hero.elegant .cta{ background:#282d33; color:var(--ink); border-radius:14px; padding:15px 20px; min-height:54px;
+  width:100%; justify-content:space-between; text-align:left; font-size:16px;
+  box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
+  transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
+/* the → arrow (Figma parity) — added via ::after so no markup change; muted like the comps */
+.hero.elegant .cta::after{ content:'→'; color:var(--faint); font-weight:800; margin-left:14px; flex:0 0 auto; transition:transform .14s var(--ease-out), color .14s var(--ease-out); }
+/* primary takes the full row; any secondary actions wrap quietly beneath it */
+.hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
+.hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
+/* MINI MOTION (host 2026-07-18): HOVER lifts the raised key a hair toward the finger —
+   taller bottom edge, deeper cast, and the arrow leans in; PRESS collapses it into the
+   surface (the depress). Two clear states, both subtle. */
+.hero.elegant .cta:hover:not(:disabled){ transform:translateY(-1px);
+  box-shadow:0 4px 0 #06080b, 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
+.hero.elegant .cta:hover:not(:disabled)::after{ transform:translateX(3px); color:var(--muted); }
+.hero.elegant .cta:active{ transform:translateY(3px);
+  box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+.hero.elegant .cta:active::after{ transform:translateX(1px); }
+/* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
+   the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
+.hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
+.hero.elegant .conf-sit .because{ flex:1; margin:0; }
+.hero.elegant .whytog{ flex:0 0 auto; background:#20242a; color:var(--steel-soft); border:none; border-radius:999px; padding:3px 10px; font-size:11px; font-weight:650; cursor:pointer; transition:background .14s var(--ease-out); }
+.hero.elegant .whytog:hover{ background:#262b31; }
+.hero.elegant .conf-fixes{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+.hero.elegant .confrow{ display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; background:#20242a; border:none; border-radius:12px; padding:13px 15px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; flex-wrap:wrap; transition:background .14s var(--ease-out), transform .1s var(--ease-out); }
+.hero.elegant .confrow:hover{ background:#262b31; }
+.hero.elegant .confrow:active{ transform:translateY(1px); }
+.hero.elegant .confrow .t{ font-size:15px; font-weight:600; }
+.hero.elegant .confrow .g{ color:var(--faint); font-weight:800; flex:0 0 auto; }
+.hero.elegant .confrow.confrow-open{ cursor:default; flex-direction:column; align-items:stretch; }
+.hero.elegant .confrow.confrow-open:hover{ background:#20242a; }
+/* BELOW-FOLD "Then, in order" (host redesign 2026-07-18): one section header, hairline-
+   ruled rows (order by position, no repeated "then" eyebrow), a bundle keeps its count. */
+.hero.elegant .then-fold.ef-do{ margin-top:22px; }
+.hero.elegant .ef-sect{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin:0 0 2px; }
+.hero.elegant .ef-list{ display:flex; flex-direction:column; }
+.hero.elegant .ef-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); padding:14px 0; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:opacity .14s var(--ease-out); }
+.hero.elegant .ef-list .ef-row:first-child{ border-top:none; }
+.hero.elegant .ef-row .t{ font-size:15px; font-weight:600; }
+.hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
+.hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
+.hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }
+.hero.elegant .ef-row:hover{ opacity:.82; }
+/* COMBINED DECISION OPTIONS (host 2026-07-18): the pick shown once (emphasized, badged, with
+   its real tradeoff note), the rest behind a disclosure. Ask-mode = equal rows, no badge. */
+.hero.elegant .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+.hero.elegant .decopt{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:#20242a; border:none; border-radius:12px; padding:13px 15px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:background .14s var(--ease-out), transform .1s var(--ease-out); }
+.hero.elegant .decopt:hover{ background:#262b31; }
+.hero.elegant .decopt:active{ transform:translateY(1px); }
+.hero.elegant .decopt.pick{ background:#282d33; border:1px solid var(--steel); box-shadow:0 3px 0 #06080b, 0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
+.hero.elegant .decopt.pick:hover{ background:#2c3138; }
+.hero.elegant .decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+.hero.elegant .decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.hero.elegant .decopt-name{ display:flex; align-items:center; gap:9px; font-size:15px; font-weight:650; }
+.hero.elegant .decopt.pick .decopt-name{ font-size:16px; }
+.hero.elegant .decopt-badge{ background:#28343c; color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
+.hero.elegant .decopt-note{ font-size:12.5px; color:#96a0a9; font-weight:400; }
+.hero.elegant .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+/* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
+.hero.elegant .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
+.hero.elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:#96a0a9; line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
+.hero.elegant .decopt-badge-wrap:hover .decopt-why, .hero.elegant .decopt-badge-wrap:focus-visible .decopt-why, .hero.elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
+.hero.elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
+.hero.elegant .decopt-disc{ align-self:flex-start; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
+.hero.elegant .decopt-disc:hover{ color:var(--ink); }
+/* WATCH zone (Figma parity 2026-07-18): worries as steel-dot rows — distinct from the
+   action rows above, muted, no arrows (a heads-up, not a thing to go do). */
+.hero.elegant .ef-watch{ margin-top:24px; }
+.hero.elegant .watch-row{ display:flex; align-items:flex-start; gap:11px; width:100%; background:none; border:none; padding:9px 0; cursor:pointer; text-align:left; font:inherit; }
+.hero.elegant .watch-dot{ width:5px; height:5px; border-radius:999px; background:var(--steel); flex:0 0 auto; margin-top:7px; }
+.hero.elegant .watch-row .t{ font-size:13.5px; font-weight:400; color:#96a0a9; line-height:1.42; }
+.hero.elegant .watch-row:hover .t{ color:#c7ced4; }
+/* A · "since last login" quiet momentum line — a breathing done-dot + one muted line. */
+.hero.elegant .returnbeat{ display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; text-align:left; cursor:pointer; padding:6px 0 0; font:inherit; }
+.hero.elegant .rb-dot{ width:5px; height:5px; border-radius:999px; background:var(--ok); flex:0 0 auto; animation:breathe 3.2s ease-in-out infinite; }
+.hero.elegant .rb-t{ color:var(--steel-soft); font-weight:550; font-size:var(--t-row-sub); }
+.hero.elegant .rb-chev{ color:var(--faint); font-weight:700; }
+.hero.elegant .returnbeat:hover .rb-t{ color:var(--ink-soft); }
+@media (prefers-reduced-motion: reduce){ .hero.elegant .rb-dot{ animation:none } }
+/* ALL-CLEAR PAYOFF (host 2026-07-18): the earned moment a bundle goes quiet. Same
+   two type voices as the ask — sans boss headline, Newsreader-italic green guide —
+   plus a full green hairline (green is earned: only completion paints it). Conflicts
+   add the grounded run-of-show as proof; other bundles rest on the type alone. */
+.hero.elegant .allclear{ display:flex; flex-direction:column; align-items:flex-start; animation:askin 320ms var(--ease-out) both; }
+.hero.elegant .ac-head{ font-family:var(--sans); font-size:clamp(34px,11cqw,42px); font-weight:700; letter-spacing:-.03em; line-height:1.02; margin:0 0 12px; color:var(--ink); }
+.hero.elegant .ac-voice{ font-family:var(--serif-read); font-style:italic; font-size:18px; line-height:1.4; color:var(--ok); margin:0 0 4px; max-width:30ch; }
+.hero.elegant .ac-tl{ list-style:none; margin:18px 0 0; padding:0; width:100%; }
+.hero.elegant .ac-tl li{ display:flex; align-items:baseline; gap:14px; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); }
+.hero.elegant .ac-tl li:first-child{ border-top:none; }
+.hero.elegant .ac-tl .ac-t{ flex:0 0 auto; min-width:64px; font-size:13px; font-weight:650; color:var(--steel-soft); font-variant-numeric:tabular-nums; }
+.hero.elegant .ac-tl li.lead .ac-t{ color:var(--ok); }
+.hero.elegant .ac-tl .ac-l{ font-size:14px; font-weight:550; color:var(--ink-soft); }
+.hero.elegant .ac-bar{ width:100%; height:4px; border-radius:999px; background:var(--ok); margin:22px 0 8px; }
+.hero.elegant .ac-meta{ display:flex; justify-content:space-between; width:100%; font-size:12px; }
+.hero.elegant .ac-meta .ac-count{ color:var(--ok); font-weight:550; }
+.hero.elegant .ac-meta .ac-clear{ color:var(--muted); }
+.hero.elegant .ac-next{ margin-top:28px; background:none; border:none; padding:0; font-family:var(--sans); font-size:15px; font-weight:650; color:var(--steel-soft); cursor:pointer; text-align:left; transition:color .14s var(--ease-out); }
+.hero.elegant .ac-next:hover{ color:var(--ink-soft); }
+@media (prefers-reduced-motion: reduce){ .hero.elegant .allclear{ animation:none } }
+/* STAND zone (Figma parity 2026-07-18): the Guests + Budget tiles become clean stat rows
+   (label left · real value+sub right, hairline), under a WHERE YOU STAND header. The phase
+   "Where you stand" tile + the NEXT tile aren't part of this zone — the foot progress bar
+   already carries phase. Elegant-only override; non-elegant bento is untouched. */
+.hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:24px; }
+.hero.elegant .bento::before{ content:"Where you stand"; font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+.hero.elegant .bento .tile{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); border-radius:0; padding:14px 0; text-align:left; box-shadow:none; min-height:0; }
+.hero.elegant .bento .tile-a, .hero.elegant .bento .tile-d{ display:none !important; }
+.hero.elegant .bento .tile-b{ border-top:none; }
+.hero.elegant .bento .tile .t-label{ font-size:13px; font-weight:650; color:var(--muted); margin:0; }
+.hero.elegant .bento .tile > div:last-child{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+.hero.elegant .bento .tile .t-num{ font-size:18px; font-weight:700; line-height:1.05; }
+.hero.elegant .bento .tile .t-sub{ font-size:12px; text-align:right; margin:0; max-width:none; }
+@media (prefers-reduced-motion: reduce){ .hero.elegant .cta{ transition:none } }
+/* Continuous hairline progress (replaces counted dots). Sits as a calm
+   "settled" band under the guide voice, dividing the framing from the work. */
+.eprog{ margin-top:auto; padding-top:24px; display:flex; flex-direction:column; gap:11px; }
+.eprog-rule{ height:3px; border-radius:2px; background:rgba(255,255,255,.09); overflow:hidden; }
+/* GREEN IS EARNED (host 2026-07-18): steel while filling, green only at completion. */
+.eprog-rule span{ display:block; height:100%; border-radius:2px; background:var(--steel-soft); transition:width 420ms var(--ease-out), background 420ms var(--ease-out); }
+.eprog.is-done .eprog-rule span{ background:var(--ok); }
+.eprog-labels{ display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--faint); }
+@media (prefers-reduced-motion: reduce){ .eprog-rule span{ transition:none } }
+/* Scroll-driven stratum focus (progressive enhancement): below-fold blocks
+   brighten as they enter the reading zone — attention follows the eye. */
+@supports (animation-timeline: view()){
+  @media (prefers-reduced-motion: no-preference){
+    .day-node, .tile{ animation: strataFocus linear both; animation-timeline: view(); animation-range: entry 0% entry 45%; }
+  }
+}
+@keyframes strataFocus{ from{opacity:.5} to{opacity:1} }
+@media (prefers-reduced-motion: reduce){ .editor-slot,.receipt{transition:none} .ask,.path-row,.card.hero-card,.truth,.mega-sub,.receipt .rdot,.dock::before{animation:none !important} }
 
 /* ── Hero viewport: first screen fills the visible frame; the NEXT tile is
    anchored to its bottom so the primary CTA rides just above the floating
@@ -492,6 +808,14 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
   background:linear-gradient(180deg, rgba(255,255,255,.05) 0%, rgba(255,255,255,0) 40%);
 }
+/* Bottom scrim (2026-07-17): content FADES beneath the floating nav instead of
+   being sliced by it — no half-visible numerals under glass, at any scroll
+   position. Sits behind the dock, never intercepts taps. */
+.dock::after{
+  content:''; position:absolute; left:50%; transform:translateX(-50%); bottom:-16px;
+  width:440px; max-width:96vw; height:calc(100% + 72px); z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg, transparent 0%, var(--bg, #0e1013) 78%);
+}
 .dock button{
   font-size:var(--t-btn); font-weight:700; color:var(--ink-soft); background:none; border:none;/* brighter than --muted for the translucent dock (host request) */
   border-radius:var(--r-pill); padding:10px var(--sp-4); cursor:pointer; white-space:nowrap;
@@ -685,7 +1009,7 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 
 /* ── Micro-motion: press feedback + entrance settles (choreography timings, no bounce) ── */
 @keyframes cardin{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
-.chip:active, .cta:active, .lens:active, .dock button:active, .tile-d:active{transform:scale(.965)}
+.chip:active, .cta:active, .lens:active, .dock button:active, .tile-d:active, .path-row:active{transform:scale(.985)}
 /* Press feedback on the LARGE tap targets too (motion re-audit: the primary
    checklist/row/chip-row surfaces had only :hover, so on touch — where there's
    no hover — the biggest targets gave zero press response). */
@@ -718,8 +1042,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* button.tag = an INTERACTIVE status pill (lodging/rides/vendor pickers). Spans
    with .tag are display-only labels and stay out of this — scoping to button.tag
    floors just the tappable ones (audit S1: picker pills were ~24px). */
-.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill{ position:relative; }
-.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after{
+.chip, .lens, .mini, .dock button, .sheet-x, .toast-undo, .vc-pill, .ev-kicker, button.tag, button.pill, .path-row{ position:relative; }
+.chip::after, .lens::after, .mini::after, .dock button::after, .sheet-x::after, .toast-undo::after, .vc-pill::after, .ev-kicker::after, button.tag::after, button.pill::after, .path-row::after{
   content:''; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
   height:100%; min-height:44px;
 }
@@ -1257,7 +1581,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* ── The verdict — the landing's one sentence in the app's voice. Sits
    between the countdown (feeling) and the tiles (evidence); the only
    running prose on the hero, so it gets a real text size and no chrome. ── */
-.verdict{font-size:var(--t-row); font-weight:600; letter-spacing:-.01em; line-height:1.45;
+.verdict{font-size:var(--t-row); font-weight:650;/*rebalance: outranks the truth line when present*/ letter-spacing:-.01em; line-height:1.45;
   color:var(--ink-soft); margin:10px 0 0; max-width:34ch}
 .verdict.slipping{color:var(--warn)}
 
@@ -1412,7 +1736,7 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .ev-kicker:hover, .ev-kicker:active{background:var(--steel); color:var(--ink)}
 .ev-kicker span{font-size:var(--t-caption-min); opacity:.85}
 .ev-title{
-  font-size:21px/*masthead tier, deliberate between card-title and section*/; font-weight:700; letter-spacing:-.015em; line-height:1.28;
+  font-size:19px/*rebalance 2026-07-17: identity recedes under the ask (ramp: 40/19/16/14)*/; font-weight:700; letter-spacing:-.015em; line-height:1.28;
   color:var(--ink); margin-top:var(--sp-2);
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
 }

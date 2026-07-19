@@ -145,6 +145,11 @@ export function vendorCoiRequirement(vendor, event) {
 
 export function getVendorCOIState(vendor, event) {
   if (!vendor) return null;
+  // WAIVED (host 2026-07-18): the host decided this vendor doesn't need a COI (or
+  // genuinely can't provide one). Honor it — stop surfacing the ask/verify steps.
+  if (vendor.coiWaived === true) {
+    return { required: false, status: 'waived', label: 'Not needed — you waived it', level: 'safe', dueInDays: null, verified: false, expiry: null, need: 'not_needed' };
+  }
   const explicit = vendor.coiStatus;
   // COI-LOGIC-1: requirement comes from the service-mode classifier, not the
   // old blunt category list. Explicit host tracking still always wins.

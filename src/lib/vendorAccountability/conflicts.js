@@ -4,13 +4,15 @@
 // list — UI groups + ranks them.
 
 import { getVendorPlaybook } from './playbooks.js';
+import { parseStartMinutes } from '../eventWhen.js';
 
-function parseHHMM(t) {
-  if (!t || typeof t !== 'string') return null;
-  const [h, m] = t.split(':').map(n => parseInt(n, 10));
-  if (Number.isNaN(h) || Number.isNaN(m)) return null;
-  return h * 60 + m;
-}
+// Times in the seed + host input are 12-hour strings ("1:00 PM", "10:00 AM"),
+// but the old local parser split on ":" and dropped the meridiem — so "1:00 PM"
+// read as 60 minutes and looked EARLIER than a "10:00 AM" (600) venue access,
+// firing a false "arrives before venue access" conflict for every afternoon
+// vendor (a whole wedding's PM roster). Route through the shared AM/PM-aware
+// parser (eventWhen.parseStartMinutes) instead, which also reads 24-hour.
+function parseHHMM(t) { return parseStartMinutes(t); }
 
 let conflictCounter = 0;
 function nextId() { conflictCounter += 1; return `cf-${Date.now().toString(36)}-${conflictCounter}`; }
@@ -51,6 +53,9 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
 
   vendors.forEach(v => {
     if (!v.arrivalTime) return;
+    // The host has already told us this vendor is cleared to be there early —
+    // the "confirm early access" resolution set this flag. Stop flagging it.
+    if (v.earlyAccessConfirmed) return;
     const arrMin = parseHHMM(v.arrivalTime);
     if (venueAccessMin !== null && arrMin !== null && arrMin < venueAccessMin) {
       conflicts.push({
@@ -59,7 +64,22 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
         kind: 'arrival_before_access',
         title: `${v.name} arrives before venue access`,
         explanation: `${v.name} arrival is set for ${v.arrivalTime}, but venue access starts at ${venueAccess}.`,
+        // Tight one-line situation for the decluttered hero (grounded — same two real times).
+        detailShort: `Arrives ${v.arrivalTime} · doors open ${venueAccess}`,
         recommendedAction: 'Confirm early access or adjust arrival time.',
+        // STRUCTURED FIX (phase 2): the two real ways to clear it are both concrete
+        // vendor patches, so the hero can resolve in place (one tap) instead of only
+        // routing. `set` = "adjust arrival time" to when access opens; `confirm` =
+        // "confirm early access" (flag it cleared, which the guard above then honors).
+        // `custom` = the host can pick ANY arrival time (not just the two canned fixes) —
+        // names the vendor field the inline time picker writes to.
+        proposedFix: {
+          confirm: { patch: { earlyAccessConfirmed: true }, label: 'Confirm early access',
+            receipt: `${v.name} is cleared for early access — the clash is gone.` },
+          set: { patch: { arrivalTime: venueAccess }, label: `Move arrival to ${venueAccess}`,
+            receipt: `${v.name} now arrives at ${venueAccess}, when the doors open.` },
+          custom: { field: 'arrivalTime', kind: 'time', label: 'Set a different time', suggest: venueAccess },
+        },
         sourceRefs: [{ type: 'vendor', id: v.id }, { type: 'vendor', id: venueVendor?.id }].filter(s => s.id),
         affectedVendorId: v.id,
         affectedEventId: event.id,
@@ -117,8 +137,14 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
 
   // ── 4. Catering count mismatch ───────────────────────────────────────
   const caterer = vendors.find(v => /cater/i.test(v.category || ''));
-  if (caterer && (caterer.guestCount !== undefined && caterer.guestCount !== null)) {
-    const trackerCount = guests.length || (event.guestEstimate ? Number(event.guestEstimate) : null);
+  if (caterer && (caterer.guestCount !== undefined && caterer.guestCount !== null) && !caterer.guestCountConfirmed) {
+    // The tracker is the host's INTENDED headcount, which is at least the
+    // planned estimate — a PARTIAL entered roster must not shadow it. `guests.length
+    // || guestEstimate` did exactly that: a 7-of-75 roster read as "7", so a caterer
+    // set to the real 75 looked "off by 68" (a false positive — the count matches the
+    // plan, only the RSVPs are still coming in). Take the larger of entered-vs-estimate.
+    const est = event.guestEstimate != null && String(event.guestEstimate).trim() !== '' ? Number(event.guestEstimate) : 0;
+    const trackerCount = Math.max(guests.length, Number.isFinite(est) ? est : 0) || null;
     if (trackerCount !== null && Math.abs(Number(caterer.guestCount) - trackerCount) > 0) {
       conflicts.push({
         id: nextId(),
@@ -127,6 +153,15 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
         title: 'Catering guest count does not match guest tracker',
         explanation: `Caterer expects ${caterer.guestCount}; guest tracker shows ${trackerCount}.`,
         recommendedAction: 'Reconcile final count with caterer before final-count cutoff.',
+        // STRUCTURED FIX: one clean vendor-field patch either way. `set` = match the
+        // caterer's number to the tracker (a number fix); `confirm` = the caterer's
+        // count is right on purpose, flag it so this stops firing (the guard above).
+        proposedFix: {
+          set: { patch: { guestCount: trackerCount }, label: `Match the guest tracker (${trackerCount})`,
+            receipt: `Caterer set to ${trackerCount} — it matches your guest tracker now.` },
+          confirm: { patch: { guestCountConfirmed: true }, label: `Keep the caterer’s count (${caterer.guestCount})`,
+            receipt: `Kept the caterer’s ${caterer.guestCount} — the tracker difference is acknowledged.` },
+        },
         sourceRefs: [{ type: 'vendor', id: caterer.id }],
         affectedVendorId: caterer.id,
         affectedEventId: event.id,
@@ -246,6 +281,42 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
       });
     }
   });
+
+  // GROUNDED PUNCHY HEADLINES (regrounded from the old UI-side ASK_BY_KIND, host
+  // request 2026-07-18: "i like the punchier copy — update the decision engine to
+  // update the per-conflict fields"). The loud host-plain line now lives HERE in the
+  // engine, built PER-INSTANCE from the real affected vendor's name + the real kind —
+  // so it's accurate (the old "Two vendors want the same hour" misread a single
+  // vendor-vs-venue clash as two vendors) and never a generic render-time map. Falls
+  // back to the real `title` when there's no grounded name. `impact` = what resolving
+  // it unlocks — authored engine knowledge, keyed on the real kind (like a playbook's why).
+  const IMPACT = {
+    arrival_before_access: 'the setup window clears',
+    setup_after_guest_arrival: 'guests walk into a finished room',
+    coverage_gap: 'the moment gets captured',
+    count_mismatch: 'the food count locks',
+    timeline_clash: 'the DJ can build the cue sheet',
+    delivery_window_conflict: 'the delivery lands with someone there',
+    payment_vs_budget: 'the budget reads true',
+    contract_vs_documents: 'the paper trail is clean',
+  };
+  const nameOf = (id) => { const vv = vendors.find(x => x && x.id === id); return (vv && String(vv.name || '').trim()) || null; };
+  const headlineFor = (c) => {
+    const n = nameOf(c.affectedVendorId);
+    if (!n) return c.title; // no grounded name → the real title stands
+    switch (c.kind) {
+      case 'arrival_before_access': return `${n} beats the doors open.`;
+      case 'setup_after_guest_arrival': return `${n}’s setup runs into your guests.`;
+      case 'coverage_gap': return `${n} clocks out too early.`;
+      case 'count_mismatch': return 'The catering count is off.';
+      case 'timeline_clash': return `${n} still needs a time.`;
+      case 'delivery_window_conflict': return `${n} delivers before the doors open.`;
+      case 'payment_vs_budget': return `${n}’s payment doesn’t match the budget.`;
+      case 'contract_vs_documents': return `${n}’s contract says signed — no file.`;
+      default: return c.title;
+    }
+  };
+  conflicts.forEach(c => { c.headline = headlineFor(c); c.impact = IMPACT[c.kind] || null; });
 
   // Sort by severity (critical > high > attention > watch)
   return conflicts.sort((a, b) => (SEV[b.severity] || 0) - (SEV[a.severity] || 0));

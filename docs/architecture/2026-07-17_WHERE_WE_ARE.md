@@ -1,3 +1,8 @@
+> ⚠️ **SUPERSEDED 2026-07-17 by [`2026-07-17_THE_PLAN.md`](2026-07-17_THE_PLAN.md)** — the single consolidated
+> source. This file is kept as history (it holds the reversal notes and the fuller narrative), but for current
+> status read THE_PLAN. The deletion row here is now **CLOSED** by host ruling; the grounding row was corrected
+> from "enforces" to "warns."
+
 # Where We Actually Are
 
 _Status board · **2026-07-17** · Twin of artifact `58b1193b-88b8-40ef-a3d9-99d9bbee0f2c`
@@ -12,7 +17,7 @@ INDEX](../audits/INDEX.md)'s own rule)._
 > the audit INDEX is for.
 
 **The verdict (corrected twice on 2026-07-17):** Sprints 0, 1 and 2 are done — the orchestrator exists, streams,
-enforces grounding, and answers live. **Sprint 3–4 is not a build. It is a PORT.** Four of its five payloads
+**checks** grounding (it warns with a soft caveat; it does **not** block — corrected 2026-07-17, see §3), and answers live. **Sprint 3–4 is not a build. It is a PORT.** Four of its five payloads
 already have working capability; the fifth ("order the crabs") **was never buildable honestly**. The real gap is narrower than
 this board first claimed: **two** host capabilities are stranded in the frozen CRA (the attendance-memory *apply*,
 and the virality loop). The communication stack and the AI features are the **planner's**, not the host's.
@@ -49,6 +54,13 @@ most dangerous row in the plan, and it was the one most confidently marked safe.
 the CRA cannot be deleted until a plannerv2 exists — which is a **program**, not a chore. If it dies, that is a
 business decision (Planner Pro is already commercially parked), not a cleanup.
 
+> **✅ HOST RULING 2026-07-17: "legacy is not going to be deleted any time soon."** The deletion row is **closed
+> as not-scheduled**. Remove it from every plan's active queue; it returns only if a `plannerv2` program is
+> chartered. **A second, independent reason it was never safe (found 2026-07-17):** `hostv2/vite.config.js`
+> aliases `@app` → `../src` and the go-forward host shell imports **103 modules** from that tree — including
+> `CommandCenter` itself and ~90 `lib/` engines. So deleting the CRA source doesn't just delete the planner; it
+> **breaks hostv2 too.** hostv2 is a Vite front end riding on the CRA's source, not a standalone app.
+
 ---
 
 ## 1 · The order — what to build, in sequence
@@ -65,7 +77,7 @@ surfaces" because it was written before anyone checked what already existed.
 | # | Do this | Why it's here | Size |
 |---|---|---|---|
 | **1** | **HARVEST — but only TWO items, not five** | ⚠️ **This row said five. Three of them were the PLANNER's, not the host's** (found while starting it — see §0). **Genuinely host, genuinely stranded:** ① **the attendance-memory *apply* + revert** (`App.js:10399,10426`) — legacy sizes food off learned turnout; **V2 displays the learning and never applies it**, so V2's gap isn't the missing revert, it's that the learning is **inert**; ② **the virality loop** — 5-event funnel, `PLAN_YOURS_TAPPED`, "make one free" recruit CTA (`App.js:22982…`), zero `track()` calls in hostv2. **NOT harvest — the planner's, and correctly absent from the host:** ~~comms one-tap~~ (`communication.py` channels are **CLIENT / INTERNAL_TEAM**, `author_role: planner|client|system`, message type `approval_request`, a `portal-respond` route; `EventCommTab` is the **L4 planner specialist**. A DIY host has no client — **they ARE the client**); ~~AI feature calls~~ (every `callAiFeature` consumer is a planner surface: `event_brief` in `DailyBriefing` — L2 portfolio, takes events **plural** — and `vendor_followup` in `EventCommTab`); ~~Instacart deep link~~ (a `window.open` search URL in legacy `FoodPlan`, not a capability). **hostv2's `mailto:`/`sms:`/share is very likely CORRECT for a DIY host** — their own address book, their own outbox, no deliverability or "who is events@example.com" problem. Prove that before "fixing" it. | **M** |
-| **2** | **THEN delete legacy** | Genuinely mechanical **once row 1 lands** — and catastrophic before it. ~25 MB of CRA still ships and `npm run build` is still `react-scripts`, so this is also the §04 "retire the CRA frame" lever nobody has pulled. | S |
+| ~~**2**~~ | ~~**THEN delete legacy**~~ **CLOSED — not scheduled** | **Host ruling 2026-07-17: "legacy is not going to be deleted any time soon."** Not mechanical and not catastrophic-if-deferred: it holds the planner app, and hostv2 imports 103 modules from the same `../src` tree (`@app` alias) — deletion breaks both products. The `~25 MB CRA still ships` / `react-scripts` build cost is real but is a **bundle-weight** concern, not a deletion one; it returns only with a `plannerv2` program. | — |
 | **3** | **Defuse the $39 pass** | **Money landmine, one env var from live.** Real Stripe + webhook signature verification ship today, but **nothing reads pass-purchase state** — the perk copy *"Every tab, fully unlocked"* describes a gate that doesn't exist (`require_planner` is auth-only). Either fix the copy or build the entitlement, **before** anything sets `REACT_APP_BILLING_LIVE=1`. | S |
 | **4** | **Delete the prompt-caching claim** | It's a no-op: a ~765-token prefix under Anthropic's 1024 floor, silently doing nothing, invisible because no code reads `usage`. At ~$0.01/ask the win is ~$0.001. **Delete the claim, don't chase the saving.** | XS |
 | **5** | **Sprint 5–6 — collaboration + genUI** | The only genuinely-absent payloads left. Commerce is built-and-gated; social proof is live. | — |
@@ -124,7 +136,7 @@ add a sixth number.
 |---|---|---|
 | ✅ **Sprint 0** | Stop the lies | Overdue-on-creation, contradictions, input guardrails. Shipped 2026-07-10. |
 | ✅ **Sprint 1** | One app | Legacy honesty transplanted into V2. Undo is universal via the single `patchEvent` path — **it was already done when the ledger called it partial**. |
-| ✅ **Sprint 2** | The orchestrator | 9-tool typed layer, tool-calling loop, SSE streaming, "ask the plan" live. `groundingCheck` **enforces** every-number-from-a-tool. Passed live against a real key. Deviation: tools run **client-side** (§04 — engines are pure JS already in the browser). |
+| ✅ **Sprint 2** | The orchestrator | 9-tool typed layer, tool-calling loop, SSE streaming, "ask the plan" live. `groundingCheck` **checks** every-number-from-a-tool and appends a soft caveat when one doesn't trace — but it **warns, it does not block** (corrected 2026-07-17: `orchestrator.js:28` returns a flag; `HostShellV2.jsx:7743` renders the answer regardless). Passed live against a real key. Deviation: tools run **client-side** (§04 — engines are pure JS already in the browser). |
 | ✅ **Tier 0** | Paced-board honesty | The board that promised pacing now paces. Tile D de-dupe. (`88d064ae`) |
 | ✅ **Tier 1** | The invented noun | "areas" → "parts of your plan". **Only actually finished 2026-07-17** — the swap had reached the shell but not the two engines feeding it. Queue cap + `difficultyBand` also live. (`8bdce6fa`, `4ba76799`, `b2f46a9b`) |
 
@@ -134,7 +146,7 @@ add a sixth number.
 |---|---|---|
 | 🟠 **Sprint 3–4** | **It's a PORT, not a build** (corrected) | ~~"Four of five payloads return zero hits"~~ — **that claim was FALSE.** Real state: **invitations-generate is LIVE** (`draftInvite` → `HostShellV2.jsx:29`, two buttons). **RSVP is BUILT** (full public stack → `:3094`) and "parse" was never needed — it's a structured form (`rsvp.py:152`), not free text. **Comms one-tap is one of the most complete things in the repo** (11 routes, real Resend email, delivery webhooks) — and **stranded in frozen `App.js`**; hostv2 uses `mailto:`/`sms:`. **Reply-parse is live.** **"Order the crabs" is the only true absence — and it's correctly absent** (see §1: no integration can transact, and none sells bushels; UX_07 forbids the button). The work is a **port across the frozen seam**, not five new builds. |
 | ✅ **Sprint 3–4** | **"All on the orchestrator" — clause retired** | The sprint's defining clause was written before the orchestrator existed and doesn't survive contact: **one guard does not fit every AI job.** `groundingCheck` ("every number traces to a tool result") is right for answers grounded in **engines**; the parser's truth lives in the **vendor's message**, guarded by `evidenceVerified` — verbatim substring per field, human review, unverified rows default `accepted:false` — which is *strictly stronger* for extraction. **Settled: one model, two guards, on purpose.** The two-model fork collapsed (`fa8a360f`, live-verified `parse_model: claude-sonnet-5`). |
-| 🟠 **Sprint 1** | Delete the legacy shell | Frozen 2026-07-16, donor-only, 46,988 lines. Migrate/drop audit complete. What's left is **mechanical**: a pre-delete field diff + a dated note. |
+| ⚪ **Sprint 1** | Delete the legacy shell — **CLOSED, not scheduled** | Frozen 2026-07-16, donor-only, 46,988 lines. ~~What's left is **mechanical**: a pre-delete field diff + a dated note.~~ **Host ruling 2026-07-17: not deleting legacy any time soon.** It is the planner app, and hostv2 rides on its `../src` tree (103 `@app` imports). Returns only with a `plannerv2` program. |
 | ⚪ **Tier 2** | Call-sheet hierarchy — **recommend PARK** | Real diagnosis (weight tracks component type, not rank). But a self-assigned redesign of a working surface while four planned surfaces don't exist. The card wall is ugly and *honest*. |
 | 🟠 **Sprint 5–6** | **"NOT STARTED" was wrong** — proven 2026-07-17 | One red hid **three different truths**. **Commerce: BUILT.** Real Stripe backend (`stripe_payments.py` — checkout, verify, webhook w/ signature verification), client, and the **$39 One-Event Pass live in hostv2** (`:7556`), held off by two deliberate gates that degrade to an honest *"Free while Event Boss is in preview."* Built and consciously switched off ≠ not started. **Social proof: LIVE** — anonymized `goingCount` renders today (`InviteV2.jsx:796`). **Virality loop: STRANDED** in frozen legacy. **Collaboration + genUI: genuinely absent** — the red is right for those two. |
 | 🔴 **MONEY** | **The $39 pass takes payment and unlocks nothing** | **Nothing reads pass-purchase state.** The only repo references to the pass are the sheet that *sells* it. Its own perk copy — *"Every tab, fully unlocked"* — describes **a gate that does not exist**; `require_planner` is auth-only (its docstring: *"this is not a role gate"*). Not an incident: it's gated off. It is a **landmine one env var from live** (`REACT_APP_BILLING_LIVE=1`). Fix the copy or build the entitlement **before** anything flips that flag. |

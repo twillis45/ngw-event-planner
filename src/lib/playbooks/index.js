@@ -2528,6 +2528,13 @@ export function playbookDecisionOptions(event, id) {
     options: Array.isArray(d.options) ? d.options : [],
     why: d.why || '',
     chosen: choicePickFor(event, d.id),
+    // AUTHORED per-option intelligence (optional, playbook-by-playbook): the
+    // distinguishing tradeoff per option, the engine's default pick, and WHY that
+    // default is the safe call. Surfaced so the hero can show grounded option notes
+    // + a real "why this pick" — never invented at render time. Absent ⇒ names only.
+    optionNotes: (d.optionNotes && typeof d.optionNotes === 'object') ? d.optionNotes : null,
+    default: d.default || null,
+    defaultWhy: d.defaultWhy || d.why || '',
   };
 }
 
