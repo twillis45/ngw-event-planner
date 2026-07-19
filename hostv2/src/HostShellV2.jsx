@@ -1118,6 +1118,15 @@ export default function HostShellV2() {
   // capacity, helpers, risks, and the wins — all production functions.
   const blockers = useMemo(() => { try { return unresolvedBlockerStages(ctx) || []; } catch { return []; } }, [ctx]);
   const venueBlockerShown = blockers.some(b => /venue/i.test(String(b && b.title || '')));
+  // A foundational blocker that is a real PICK (fieldKey + options, e.g. Ceremony Timing) is a
+  // decision — it belongs in the grounded loop as a hero DESTINATION, not stranded as a trailing
+  // below-fold card that leaves the hero falsely claiming "nothing needs you". Surface each as a
+  // pseudo-action so it flows through the queue → hero decopt → roll-to-next. Venue-type blockers
+  // (free-entry inputs, no options) stay in the below-fold blockers.map. Elegant loop reads these.
+  const blockerDecisions = useMemo(() => (blockers || [])
+    .filter(b => b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))
+    .map(b => ({ id: 'blocker:' + b.fieldKey, title: b.title, ask: b.nextDecision || ('Decide the ' + String(b.title || '').toLowerCase() + '.'), consequence: b.what || null, kind: 'decision', domain: 'decision', level: 'attention' })),
+    [blockers]);
   useEffect(() => {
     try {
       console.debug('[v2ctx]', event.id, 'ctx:', !!ctx, '· identity:', ctx && ctx.eventIdentity && ctx.eventIdentity.primaryEventType,
@@ -1530,6 +1539,17 @@ export default function HostShellV2() {
       return dec ? playbookDecisionND(dec) : null;
     }
     if (id === 'phase:food') return foodDecisionND();
+    if (/^blocker:/.test(id)) {
+      const b = (blockers || []).find(x => x && ('blocker:' + x.fieldKey) === id);
+      if (!b) return null;
+      return {
+        id,
+        options: (b.options || []).map(o => ({ value: o.value, label: o.label, note: o.note || null })),
+        proposed: null,
+        why: b.what || null,
+        settle: (v) => patchEvent({ [b.fieldKey]: v }, (b.title || 'Decided') + ' — set.'),
+      };
+    }
     return null;
   };
   // Back-compat: the decisions BUNDLE + single-decision hero still call this with a board row.
@@ -2131,7 +2151,13 @@ export default function HostShellV2() {
   const [satisfiedIds, setSatisfiedIds] = useState([]);
   useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queue = elegantMode
-    ? actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating))
+    ? [
+        ...actions.filter(a => a && !satisfiedIds.includes(a.id) && !(isVendorConfirmAction(a) && !confirmGating)),
+        // Foundational pick-decisions (Ceremony Timing, …) join the queue AFTER the ranked
+        // actions — so after the last real action is settled the hero rolls to them (staying in
+        // the ask flow), instead of jumping to the calm "all quiet" screen with a decision still open.
+        ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
+      ]
     : actions;
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
@@ -4707,6 +4733,9 @@ export default function HostShellV2() {
                          call to make, framed as a question (parenthetical meta + quotes stripped). */
                       (() => {
                         const q0 = queue[0];
+                        // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its
+                        // own ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
+                        if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
                         if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
                         // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
                         if (elegantMode && /collect.*coi|vendor coi|proof of insurance/i.test(String(q0.title || ''))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
@@ -4881,6 +4910,10 @@ export default function HostShellV2() {
                   cards so the next bundle's card doesn't stack under the "All …" moment. */}
               {!(elegantMode && justCleared) && visible.map((a, i) => {
                 const key = String(a.id || i);
+                // A foundational pick-decision only ever renders as the HERO destination (i===0,
+                // via decHeroActions). Below the fold it would be a dead card (no inline options),
+                // so skip it there — it surfaces as the hero once the items ahead of it clear.
+                if (elegantMode && i > 0 && /^blocker:/.test(String(a.id || ''))) return null;
                 // BUNDLE (wave-6 engine contract: {kind:'bundle', title, count,
                 // items, route}): ONE card, one rank. Expands in place to child
                 // rows, each with its own Go — the same card anatomy as every
@@ -5148,7 +5181,7 @@ export default function HostShellV2() {
                     <div className="card-head">
                       <div className="card-top">
                         {!isHero && <span className={'tag-lens ' + (DOMAIN_LENS[a.domain] || 'Plan').toLowerCase()}>{DOMAIN_LENS[a.domain] || 'Plan'}</span>}
-                        {!lands && !coiHero && !coiTaskDone && <span className="tag plan">in the full app</span>}
+                        {!lands && !coiHero && !coiTaskDone && !decHeroActions && <span className="tag plan">in the full app</span>}
                         {!coiHero && !coiTaskDone && dueChip(a)}
                       </div>
                       {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
@@ -6036,7 +6069,9 @@ export default function HostShellV2() {
               )}
 
 
-              {blockers.map((b, i) => {
+              {/* Decision-blockers (fieldKey + options) are now hero DESTINATIONS via the queue
+                  (blockerDecisions) in elegant mode — don't also draw them here, or they'd double. */}
+              {blockers.filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
                 const venueSet = !!String(event.venue || '').trim();
                 return (

@@ -319,7 +319,9 @@ button{font-family:inherit}
 .escreen{ display:contents; }
 /* Fills the viewport: the app bar + dock are HIDDEN in elegant, so the first screen no longer
    subtracts their 64px+88px — otherwise the box is short and the cluster floats high. */
-.escreen.on{ display:flex; flex-direction:column; min-height:calc(100dvh - 40px - env(safe-area-inset-bottom,0px)); }
+/* flex-shrink:0 — as a flex child of .hero.elegant, the ask screen must NOT shrink below its
+   100dvh floor when the column is height-constrained, or the below-fold creeps into view. */
+.escreen.on{ display:flex; flex-direction:column; flex-shrink:0; min-height:calc(100dvh - 40px - env(safe-area-inset-bottom,0px)); }
 /* HERO CENTERING DOCTRINE: the ask+action cluster centers in the space between the eyebrow and
    the foot progress, at ANY content length. .ecenter is invisible (display:contents) outside
    elegant; inside, it's a flex:1 column that justify-centers its content. */
