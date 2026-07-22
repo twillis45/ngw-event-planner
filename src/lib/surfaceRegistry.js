@@ -598,6 +598,10 @@ export const SURFACES = [
         try { cna = coiNextAction(v, event, v.name); } catch (_e) { cna = null; }
         out.push({
           severity: coi.level === 'critical' ? 'critical' : 'attention',
+          // The classification RIDES the action (doctrine: the shell must never
+          // re-sniff a category out of title prose — that regex broke on the
+          // fifth title shape, 2026-07-22). coiNextAction declares it.
+          sourceCategory: (cna && cna.sourceCategory) || 'coi',
           // The ladder's exact title source: cna.title, with the ladder's own fallback.
           title: (cna && cna.title) || `Get an updated COI from ${v.name}.`,
           why: (cna && cna.consequence) || null,
@@ -633,6 +637,10 @@ export function raiseAll(event) {
       out.push({
         surface: s.id, label: s.label, domain: s.domain,
         severity: i.severity === 'critical' ? 'critical' : 'attention',
+        // DOCTRINE (2026-07-22): the raiser's declared classification rides the
+        // raise — this normalizer's explicit field list was the fourth and last
+        // place it silently died (raiser → HERE → registry mapping → topAction).
+        sourceCategory: i.sourceCategory != null ? i.sourceCategory : null,
         title: i.title, why: i.why || null,
         route: i.route || s.route,
         key: i.key != null ? String(i.key) : null,

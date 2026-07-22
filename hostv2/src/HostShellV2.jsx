@@ -5139,7 +5139,7 @@ export default function HostShellV2() {
                         if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
                         if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
                         // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-                        if (elegantMode && /collect.*coi|vendor coi|proof of insurance|insurance proof|about insurance|is insured/i.test(String(q0.title || ''))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+                        if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
                         if (elegantMode) {
                           const decRow = /^decision:/.test(String(q0.id || ''))
                             ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
@@ -5617,10 +5617,12 @@ export default function HostShellV2() {
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
                 // from coiNextAction — its consequence + a route to that exact vendor — so the
                 // hero stops saying a redundant "past its window / overdue" over a blank "Decide".
-                // Matches ALL of coiNextAction's title shapes (the host hit "Check TSW
-                // Catering's insurance proof" falling through to a route CTA while the
-                // full in-place branch machinery below sat unused — 2026-07-22).
-                const isCoiTask = elegantMode && isHero && !decHeroActions && /collect.*coi|vendor coi|proof of insurance|insurance proof|about insurance|is insured/i.test(String(a.title || ''));
+                // DOCTRINE (host, 2026-07-22): classification rides the ACTION —
+                // a.sourceCategory === 'coi', declared by coiNextAction and carried by
+                // every COI emitter. Title-prose sniffing broke on the fifth title
+                // shape; the narrow regex stays ONLY for legacy checklist-task rows
+                // ("Collect COIs…") which carry no sourceCategory.
+                const isCoiTask = elegantMode && isHero && !decHeroActions && (a.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(a.title || '')));
                 const coiHero = (isCoiTask && coiFirst) ? coiFirst : null;
                 // Every vendor's COI is handled but the solver task still lingers open — don't
                 // fall back to the ugly generic "Overdue · Decide". Show the calm done state.
@@ -5727,7 +5729,12 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
-                        {a.cta && !(isHero && wired) && !decHeroActions && !coiHero && !coiTaskDone && <button className="cta" onClick={() => onCta(a, key)}>{
+                        {a.cta && !(isHero && wired) && !decHeroActions && !coiHero && !coiTaskDone && (() => {
+                          // In-place settles wear `.stay` (glyph doctrine: no arrow on a
+                          // non-navigating CTA) — which also makes them visible to the
+                          // Layer-2 loop-advance probe (2026-07-22).
+                          const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
+                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key)}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
@@ -5736,7 +5743,7 @@ export default function HostShellV2() {
                           /* Lowercase ONLY the leading tab word — a vendor's proper name must
                              keep its case ("Open vendors → Fired Up BBQ", audit 2026-07-22 W5). */
                           : (a.cta === 'Go' ? ('Open ' + String(describeRoute(a.route, event) || 'the plan').replace(/^the\s+/i, '').replace(/^[A-Z][a-z]*/, (m) => m.toLowerCase())) : a.cta)
-                        }</button>}
+                        }</button>; })()}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
                             the list actually empties. The grounded proposal (computed above) is

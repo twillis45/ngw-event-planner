@@ -1726,6 +1726,11 @@ export function eventPlan(event, ctx = null) {
     id: _topActionId(top),
     domain: top.category || 'top',
     title: top.title,
+    // DOCTRINE (2026-07-22): the producer's declared classification rides the
+    // action — this rebuild has a history of dropping fields (F1 level, F7
+    // leadDays); sourceCategory joined the list and the shell fell back to
+    // title-prose sniffing. Carried explicitly now.
+    sourceCategory: top.sourceCategory || null,
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
@@ -2006,6 +2011,10 @@ export function eventPlan(event, ctx = null) {
         // word. The snooze/dedup key (itemKey/id) is separate.
         id: itemKey, domain: r.domain,
         title: r.title,
+        // DOCTRINE (2026-07-22): the raiser's declared classification rides the
+        // action to the shell — the shell must never re-sniff it from title
+        // prose (the Layer-2 harness caught this exact field dropping here).
+        sourceCategory: r.sourceCategory != null ? r.sourceCategory : null,
         consequence: r.why,
         route: r.route, primaryRoute: r.route,
         cta: 'Go', ctaLabel: 'Go',
@@ -2543,6 +2552,7 @@ export function _selectEventNextActionInner(event) {
     return {
       level: 'critical',
       category: 'vendor',
+      sourceCategory: cna.sourceCategory || 'coi', // classification rides the action
       title: cna.title || `Get an updated COI from ${v.name}.`,
       consequence: cna.consequence || 'A current certificate of insurance naming the venue is required to clear load-in.',
       primaryCta: 'Get COI',
