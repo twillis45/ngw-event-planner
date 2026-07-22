@@ -21,6 +21,7 @@
 // playbookCapacity + guestCountResolved — not a new engine.
 
 import { hostSpending } from './hostSpending';
+import { isVendorBooked } from './workstreams';
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan, UNIT_LABEL, SIZE_LABEL } from './crabPlan';
 
@@ -32,7 +33,14 @@ const mid = (lo, hi) => {
 };
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
 
-const COMMITTED_VENDOR = (v) => /confirmed|booked|contracted|deposit/i.test(String(v.status || ''))
+// Committed = the ONE canonical booked-status reader (isVendorBooked — the SAME predicate
+// hostSpending's committed-DOLLAR math counts through vendorMoney), WIDENED by any paid /
+// signed flag so a vendor whose money is already out can never land in the "cut this"
+// bucket ("we never assume paid money comes back"). The old private regex omitted the
+// 'Paid' and 'Deposit Paid' statuses isVendorBooked counts, so a vendor inside the
+// over-budget dollar figure could still be suggested for cutting — the two disagreed
+// about the same vendor (audit 2026-07-22, kills the drift workstreams.js warns of).
+const COMMITTED_VENDOR = (v) => isVendorBooked(v)
   || v.contractSigned === true || v.contract_signed === true
   || v.depositPaid === true || v.balancePaid === true;
 

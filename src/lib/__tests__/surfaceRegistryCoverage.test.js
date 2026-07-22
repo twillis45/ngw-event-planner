@@ -221,7 +221,8 @@ describe('decisions — every overdue board decision raises, not just the ladder
     const raised = bySurface(late(), 'decisions');
     expect(raised.length).toBeGreaterThan(1);   // the re-score's exact finding: beyond one
     const titles = raised.map((r) => r.title);
-    expect(titles).toContain('Resolve "Steam them yourself or order them steamed (pickup)".');
+    // decisionShortLabel strips trailing guide-voice parentheticals (W1, 2026-07-22).
+    expect(titles).toContain('Resolve "Steam them yourself or order them steamed".');
     expect(titles).toContain('Resolve "Where to buy".');
     for (const r of raised) {
       expect(r.severity).toBe('attention');     // a late chore, not an emergency
@@ -318,7 +319,9 @@ describe('vendor-coi — overdue asks only, severity is the classifier’s own',
     expect(raised.length).toBe(1);
     expect(raised[0].severity).toBe('critical');
     expect(raised[0].title).toBe('Get proof Bay Catering is insured.');  // coiNextAction's copy, same as the ladder
-    expect(raised[0].route).toEqual({ tab: 'Vendors', vendorId: 'v1', vendorSection: 'documents' });
+    // COI-intent routes land on the COI row itself, not the documents section top
+    // (coarse-landing fix — route audit).
+    expect(raised[0].route).toEqual({ tab: 'Vendors', vendorId: 'v1', vendorSection: 'coi' });
   });
 
   test('received-but-unverified past the line → attention, NOT critical — the ladder never called it critical', () => {

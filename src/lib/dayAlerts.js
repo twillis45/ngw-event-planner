@@ -13,6 +13,7 @@
 // checklist's "T-N d" week labels and otherwise never invents an overdue.
 import { effectiveRos } from './playbooks';
 import { isVendorBooked } from './workstreams';
+import { effectiveDone } from './taskEngine';
 import { showsReplyTracking } from './guestMode';
 import { isEventDay } from './dates';
 import { taskIsOverdue } from './taskLead';
@@ -114,7 +115,11 @@ export function computeDayAlerts(event, opts = {}) {
   if (isToday(event.date) && pendingRsvp > 0 && showsReplyTracking(event))
     push({ id: 'rsvp-pending', tier: 'warning', headline: `${pendingRsvp} haven't RSVP'd`, move: yesCount > 0 ? `Headcount may shift — text them, or plan for ${yesCount} to be safe.` : `Headcount may shift — text them so you can plan portions.`, navTo: 'Guests' });
 
-  const overdueCount = (event.timeline || []).filter(t => t && !t.done && overdue(t)).length;
+  // "Still open" must read the SAME done-truth every other what's-left surface uses:
+  // a task the host never ticked but that real event state proves handled (effectiveDone)
+  // is NOT open. Raw !t.done counted those as open, so the day-of banner nagged about
+  // work already done elsewhere (audit 2026-07-22).
+  const overdueCount = (event.timeline || []).filter(t => t && !effectiveDone(event, t) && overdue(t)).length;
   if (overdueCount)
     push({ id: 'overdue-tasks', tier: 'warning', headline: `${overdueCount} thing${overdueCount > 1 ? 's' : ''} still open`, move: `Knock them out or let them go — the day's already here.`, navTo: 'Planning Tasks' });
 

@@ -23,11 +23,14 @@ describe('getPlaybook registry', () => {
 });
 
 describe('quantity-resolved operational candidate (the success condition)', () => {
-  test('on event day, ice resolves to "Buy ice — 18 lbs today"', () => {
+  test('on event day, ice resolves to "Buy ice — 19.5 lbs today"', () => {
+    // 19.5 = 1.5 lb/guest × sizingGuests(13) — buy tasks size off the SAME
+    // sizingGuests the food line uses (the RSVP-blind-qty fix, 2026-07-21),
+    // not the raw typed count of 12. Expectation updated 2026-07-22.
     const t = topPlaybookTask(DP({ date: '2026-06-20' }), '2026-06-20');
     expect(t).toBeTruthy();
-    expect(t.title).toBe('Buy ice — 18 lbs today');
-    expect(t.quantity).toBe(18);
+    expect(t.title).toBe('Buy ice — 19.5 lbs today');
+    expect(t.quantity).toBe(19.5);
     expect(t.category).toBe('operational');
     expect(t.level).toBe('attention');
     // #12 deep-link: lands on the food plan AND targets the exact line (foodFocus).

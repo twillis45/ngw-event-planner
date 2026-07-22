@@ -93,6 +93,10 @@ export function resolveRoute(route) {
   // branch before tab:'Planning' below (the wave-6 helpers 'space' bug: it fell
   // through to the Planning checklist catch-all — the wrong sheet entirely).
   if (/^caprow-/.test(ff)) return { kind: 'space', focus: null };
+  // cap-hero-<id> (day-before "still to get / supplies", "return the rentals") is
+  // the capacity/supplies surface = the space sheet. Without this it fell through
+  // to the tab:'Planning' tasks catch below — the wrong sheet (audit 2026-07-21).
+  if (/^cap-hero/.test(ff)) return { kind: 'space', focus: null };
   if (/^space/.test(ff)) return { kind: 'space', focus: null };
   // Set-the-date foundation MUST branch before the tab:'Event Details' venue
   // catch-all below, else the #1 onboarding foundation scrolls to Venue instead
@@ -105,6 +109,10 @@ export function resolveRoute(route) {
   if (ff === 'event-venue' || route.tab === 'Event Details') {
     return { kind: 'stage:plan', focus: null, anchor: 'Venue' };
   }
+  // "Open what to settle" (planHeroCopy) means the decisions surface, not the
+  // checklist. Without this, host-decisions rides tab:'Planning' into the tasks
+  // catch below — the wrong sheet (audit 2026-07-21).
+  if (ff === 'host-decisions') return { kind: 'decisions', focus: null };
   if (route.tab === 'Planning Tasks' || route.tab === 'Timeline' || route.tab === 'Planning') {
     return { kind: 'tasks', focus: route.taskId || null };
   }

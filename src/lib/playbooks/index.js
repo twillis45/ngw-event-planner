@@ -549,22 +549,54 @@ export function resolveAnsweredCopy(base, copyByAnswer, event) {
 // if it actually offers a caterer-ish option, then the host "uses a caterer" only when the
 // chosen option names one. Returns nulls when the playbook has no such decision (callers
 // must NOT gate on a null — never hide a caterer reference on missing data).
-const FOOD_APPROACH_DECISIONS = ['sourcing', 'help', 'food_style', 'menu'];
-const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed|-in)?\b|pizza|tray|takeout|take-?out|restaurant/i;
+// The registry of decision ids that pose the WHOLE-MEAL "who carries the food?"
+// question. The wire-proof (decisionWireProof.test.js) enumerates every playbook
+// against this list: a new playbook authoring its lever under an unregistered id
+// fails the suite with instructions to add it here. Component-level source picks
+// (which fish, where to buy crabs, where the injera comes from) deliberately do
+// NOT belong here — they choose an ingredient's source, not the meal's owner.
+// Order = priority when several coexist: dedicated food decisions outrank
+// format/venue framings.
+export const FOOD_APPROACH_DECISIONS = [
+  'sourcing', 'help', 'food_style', 'menu',
+  'food_source', 'food_menu', 'food_format', 'food', 'food-model', 'food_model',
+  'grill_master', 'cook', 'format', 'venue',
+];
+// "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
+// bare "Order from a market" (buying raw ingredients) must NOT match.
+export const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|tray|takeout|take-?out|restaurant/i;
+// The community carries the meal (repast committee, potluck sign-ups) — a third
+// state beside caterer/host-cooks: the HOST is not buying the food either way.
+const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up|potluck/i;
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
-  if (!pb || !Array.isArray(pb.decisions)) return { decisionId: null, pick: null, usesCaterer: null, cooking: null };
-  for (const id of FOOD_APPROACH_DECISIONS) {
-    const dec = pb.decisions.find((d) => d.id === id);
-    if (!dec) continue;
-    // Only the lever if this decision actually offers a caterer-ish path.
-    if (!(Array.isArray(dec.options) && dec.options.some((o) => CATERER_OPTION_RE.test(String(o))))) continue;
-    const pick = choicePickFor(event, id);
-    if (pick == null) continue;
+  const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
+  const picks = (event && event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
+  const nulls = { decisionId: null, pick: null, usesCaterer: null, communityBrings: null, cooking: null };
+  const result = (decisionId, pick) => {
     const usesCaterer = CATERER_OPTION_RE.test(String(pick));
-    return { decisionId: id, pick, usesCaterer, cooking: !usesCaterer };
+    const communityBrings = !usesCaterer && COMMUNITY_OPTION_RE.test(String(pick));
+    return { decisionId, pick, usesCaterer, communityBrings, cooking: !usesCaterer && !communityBrings };
+  };
+  const candidates = FOOD_APPROACH_DECISIONS
+    .map((id) => decisions.find((d) => d && d.id === id))
+    .filter((d) => d && Array.isArray(d.options) && d.options.some((o) => CATERER_OPTION_RE.test(String(o))));
+  // An EXPLICIT host pick on any candidate outranks another candidate's authored
+  // default — otherwise a defaulted decision earlier in the list silently vetoes
+  // the one the host actually answered.
+  for (const dec of candidates) {
+    if (picks[dec.id] != null) return result(dec.id, picks[dec.id]);
   }
-  return { decisionId: null, pick: null, usesCaterer: null, cooking: null };
+  for (const dec of candidates) {
+    const pick = choicePickFor(event, dec.id);
+    if (pick != null) return result(dec.id, pick);
+  }
+  // No authored lever — honor the shell's generic food answer (foodChoices.sourcing:
+  // 'host cooks' | 'caterer' | 'potluck') so the host's food-source choice is never
+  // inert on any type (wire-proof contract 2).
+  const generic = String(picks.sourcing || '').trim();
+  if (generic) return result(null, generic);
+  return nulls;
 }
 // Host has explicitly chosen NOT to use a caterer (cooks/DIY). True only when we can tell.
 export const hostIsCooking = (event) => foodApproach(event).usesCaterer === false;
@@ -606,7 +638,7 @@ function taskPhaseLabel(offset) {
 const DESTINATION_DECISIONS = [
   { id: 'dest_lodging', label: 'How are guests staying?', options: ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'], default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors'], why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
   { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
-  { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
+  { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
   { id: 'dest_childcare', label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
   // DESTINATION-4: deliberately asks about HEALTH, not age — the research this
   // came from (a meta-analysis on altitude sickness) found no age link at all;
@@ -815,17 +847,28 @@ export function playbookTasks(event, asOf) {
   const dte = daysToEvent(event.date, asOf);
   if (dte === null) return [];
 
-  const guests = guestCountOf(event, playbook);
+  // Size purchases off sizingGuests (the plan-to ceiling the FOOD PLAN uses), not
+  // guestCountOf (RSVP-blind, counts declined). A buy-task deep-links to its food row,
+  // so both must show the same quantity — "Buy ice 18 lbs" over a 12-lb line was the bug
+  // (audit 2026-07-22).
+  const guests = sizingGuests(event, playbook);
   const gc = guestCountResolved(event);
   const di = dietaryResolved(event);
   // Already bought (checked off) or swapped out → no longer a task, so clearing the
   // CTA (buying the item) advances the next-step to the next thing.
   const got  = (event.foodGot  && typeof event.foodGot  === 'object') ? event.foodGot  : {};
   const skip = (event.foodSkip && typeof event.foodSkip === 'object') ? event.foodSkip : {};
+  // SAME stand-down gate as playbookFoodPlan's list: when someone else carries the
+  // meal (caterer or community/committee), food lines are not the host's buys — the
+  // task generator was still emitting "Buy 28.5 lbs of chicken" on a repast whose
+  // food list had stood down (audit 2026-07-22, W8 follow-through).
+  const _tfa = foodApproach(event);
+  const _tFoodOffPlate = _tfa.usesCaterer === true || _tfa.communityBrings === true;
   const tasks = [];
 
   for (const p of playbook.purchases) {
     if (got[p.id] || skip[p.id]) continue; // done / swapped out → advance past it
+    if (_tFoodOffPlate && p.category === 'food') continue; // the community/caterer carries it
     const offset = buyOffsetDays(p.buyAt);
     if (offset === null) continue;
     const dueInDays = dte + offset;
@@ -904,7 +947,11 @@ export function nextUpcomingTask(event, asOf) {
   if (!playbook || !Array.isArray(playbook.purchases)) return null;
   const dte = daysToEvent(event.date, asOf);
   if (dte === null) return null;
-  const guests = guestCountOf(event, playbook);
+  // Size purchases off sizingGuests (the plan-to ceiling the FOOD PLAN uses), not
+  // guestCountOf (RSVP-blind, counts declined). A buy-task deep-links to its food row,
+  // so both must show the same quantity — "Buy ice 18 lbs" over a 12-lb line was the bug
+  // (audit 2026-07-22).
+  const guests = sizingGuests(event, playbook);
   const gc = guestCountResolved(event);
   const di = dietaryResolved(event);
   const got  = (event.foodGot  && typeof event.foodGot  === 'object') ? event.foodGot  : {};
@@ -1331,7 +1378,12 @@ export function playbookCapacity(event) {
   // attendance-shift band — you seat real people, and renting "extra just in case" wastes
   // money. The food plan's own Supplies group (ice/charcoal/plates/cups) is the consumable
   // side and DOES ride the shift (it's sized via sizingGuests in playbookFoodPlan).
-  const guests = guestCountOf(event, playbook);
+  // Durables seat REAL people — a guest who said "No" doesn't need a chair. When there's
+  // a roster, count everyone who hasn't declined; else the host's number; else the
+  // playbook typical. guestCountOf alone counted declined rows too (audit 2026-07-22).
+  const rosterAttending = (Array.isArray(event.guests) && event.guests.length)
+    ? event.guests.filter(g => g && g.rsvp !== 'No').length : 0;
+  const guests = (Number(event.guestCount) || Number(event.guestEstimate) || 0) || rosterAttending || guestCountOf(event, playbook);
   // Single source of truth (food-engine pattern): the engine merges the host's qty
   // OVERRIDES (event.capacityQty), ADDED items (event.capacityAdd), and OWNED flags
   // (event.capacityOwned, keyed by item key), and attaches per-item cost from the ONE
@@ -1678,6 +1730,11 @@ function decisionDepNoun(id, decisions) {
 // "Seated dinner or buffet / family-style?" → trimmed, no trailing '?', capped.
 function decisionShortLabel(label) {
   let s = String(label || '').trim().replace(/\?+\s*$/, '');
+  // A trailing parenthetical is guide voice ("game night skews light — people
+  // need to think"), never label material — and truncating THROUGH it left an
+  // unbalanced "(game night skews ligh…" no display transform could strip
+  // (audit 2026-07-22). The rationale still reaches the host via `why`.
+  s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
   if (s.length > 52) s = s.slice(0, 50).trim() + '…';
   return s;
 }
@@ -1768,7 +1825,7 @@ const REV_SCORE = { locked: 2, costly: 1, reversible: 0 };
 // the playbook already carries (blocks / dependsOn / costFactors / its own id+label text),
 // NOT invented per-playbook content. Authored weight ALWAYS overrides the derived value, so
 // the two flagships are byte-identical to Wave-2a.
-const DIETARY_SAFETY_RE = /allerg|dietary|medical|\bsafety\b|epi.?pen|shellfish|\bnut(s|-free|\b)/i;
+const DIETARY_SAFETY_RE = /allerg|dietary|medical|\bsafety\b|epi.?pen|shellfish|\bnut(s|-free|\b)|heart|lung|\bcondition|mobility|\bhealth/i;
 // Purely-aesthetic leaf decisions. Deliberately NOT matching bare "style" (would snag
 // "Food style"), and guarded below by !hasCost / !dietarySafety so a decision that spends
 // money or touches safety is never treated as a leaf even if its label mentions a vibe.
@@ -2719,8 +2776,14 @@ export function playbookFoodPlan(event, opts = {}) {
   // homemade FOOD lines — the caterer brings them — so those drop here (mirrors the BYOB rule
   // above), and the food cost becomes a per-guest catering line injected below. Beverages +
   // supplies stay (the host still handles drinks/ice). Cooking/undecided ⇒ no change (byte-identical).
-  const _usesCaterer = foodApproach(event).usesCaterer === true;
-  const hostCooksIt = (p) => !(_usesCaterer && p.category === 'food');
+  const _fa = foodApproach(event);
+  const _usesCaterer = _fa.usesCaterer === true;
+  // The host's food buys stand down when someone ELSE carries the meal — a hired
+  // caterer OR the community (repast committee, potluck sign-ups). W8 fix
+  // (2026-07-22): a repast family was told to buy 28.5 lbs of chicken the
+  // playbook's own note says the committee brings.
+  const _foodOffPlate = _usesCaterer || _fa.communityBrings === true;
+  const hostCooksIt = (p) => !(_foodOffPlate && p.category === 'food');
   const _catVendor = _usesCaterer ? (playbook.vendors || []).find((v) => v && /cater/i.test(String(v.category)) && /guest/i.test(String(v.costUnit || ''))) : null;
   const _cateringRate = _catVendor && Array.isArray(_catVendor.costRange) ? _catVendor.costRange : (_usesCaterer ? [15, 35] : null);
 

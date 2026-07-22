@@ -11,7 +11,7 @@
 // sections with nothing open say so calmly (stop worrying about it); every
 // row's route obeys the deep-link doctrine (first-undone anchors); the guest
 // final-details message is LINKED, never embedded (host plan ≠ guest copy).
-import { playbookFoodPlan, playbookCapacity, effectiveRos } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, effectiveRos, guestCountResolved } from './playbooks';
 import { rainPlanStatus, RAIN_PLAN_TARGET } from './weather';
 import { deriveHelperResponsibilities } from './helperResponsibility';
 import { isVendorConfirmed } from './workstreams';
@@ -111,6 +111,26 @@ export function buildDayBeforePlan(event, now = new Date()) {
       route: openTasks.length ? { tab: 'Planning Tasks', taskId: '__compressed__' } : null,
       cta: openTasks.length ? 'See what to do now' : null,
     },
+    // 1.5 · Final guest count — the number every quantity below scales from.
+    // Decision-first ("count before quantity", the engine's own rule): pending
+    // RSVPs or no count at all stay OPEN ahead of the store run — the day-before
+    // plan was showing "Buy the remaining items" while the count that sizes those
+    // buys hid in the folded queue (audit 2026-07-22, W4). A resolved count
+    // renders nothing — no "stop worrying" filler for a number that's simply set.
+    ...((() => {
+      let gcnt = null;
+      try { gcnt = guestCountResolved(ev); } catch { gcnt = null; }
+      if (!gcnt || gcnt.resolved) return [];
+      const pending = gcnt.reason === 'pending-rsvps';
+      return [{
+        key: 'count', label: 'Final guest count', open: pending ? gcnt.pending : 1,
+        detail: pending
+          ? `${gcnt.pending} still ${gcnt.pending === 1 ? 'hasn’t' : 'haven’t'} said — chase the maybes, then buy to the confirmed count.`
+          : 'No count yet — food, drinks, ice, and rentals all scale from headcount.',
+        route: { tab: 'Guests', focusField: 'guests-entry' },
+        cta: pending ? 'Settle the count' : 'Add who’s coming',
+      }];
+    })()),
     {
       key: 'shopping', label: 'Still to get', open: stillToGet,
       // RECON-I5 split: openFood matches playbookFoodPlan's itemCount − boughtCount

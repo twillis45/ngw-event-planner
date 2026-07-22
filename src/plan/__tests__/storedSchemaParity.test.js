@@ -90,8 +90,10 @@ describe('parity: every overdue read agrees on the stored schema', () => {
     const open = alerts.find((a) => a.id === 'overdue-tasks');
     expect(open).toBeTruthy();
     // The alert's count is the same expression the lib runs — assert it matches the
-    // one policy, not a private variant.
-    const expected = (ev.timeline || []).filter((t) => t && !t.done && taskIsOverdue(t, ev)).length;
+    // one policy, not a private variant. "Open" reads the canonical done-truth
+    // (effectiveDone: ticked OR proven handled by real event state — 2026-07-22),
+    // not raw !t.done.
+    const expected = (ev.timeline || []).filter((t) => t && !effectiveDone(ev, t) && taskIsOverdue(t, ev)).length;
     expect(expected).toBeGreaterThanOrEqual(1);
     expect(open.headline).toContain(String(expected));
   });
@@ -102,15 +104,20 @@ describe('parity: every overdue read agrees on the stored schema', () => {
     // post wave-6 it delegates to lib/taskLead.taskIsOverdue like everyone else,
     // and this pins that the counts can never drift apart again.
     const ev = storedEvent();
+    // TWO COUNTS, ONE BOUNDARY (2026-07-22): what's-left surfaces (dayAlerts,
+    // CommandCenter decisions) read the canonical OPEN-set — a task proven
+    // handled by real event state (effectiveDone) is not open even if unticked.
+    // The checklist SURFACE shows tick-state (raw !t.done) by design — its raw
+    // count is asserted as the tick-view, not the open-set.
     const checklistCount = ev.timeline.filter((t) => !t.done && isOverdue(t, ev)).length;
-    const libCount = (ev.timeline || []).filter((t) => t && !t.done && taskIsOverdue(t, ev)).length;
+    const openCount = (ev.timeline || []).filter((t) => t && !effectiveDone(ev, t) && taskIsOverdue(t, ev)).length;
     const alerts = computeDayAlerts(ev) || [];
     const alertRow = alerts.find((a) => a.id === 'overdue-tasks');
     const ccCount = (deriveCommandCenterData(ev).decisions || []).length;
 
-    expect(checklistCount).toBeGreaterThanOrEqual(1);        // non-vacuous
-    expect(ccCount).toBe(checklistCount);                    // CommandCenter = Checklist
-    expect(ccCount).toBe(libCount);                          // CommandCenter = lib policy
+    expect(checklistCount).toBeGreaterThanOrEqual(1);        // non-vacuous (tick-view)
+    expect(openCount).toBeGreaterThanOrEqual(1);             // non-vacuous (open-set)
+    expect(ccCount).toBe(openCount);                         // CommandCenter = canonical open-set
     expect(alertRow).toBeTruthy();
     expect(alertRow.headline).toContain(String(ccCount));    // CommandCenter = dayAlerts
     // The pre-order row specifically is billed by the fourth leg too.

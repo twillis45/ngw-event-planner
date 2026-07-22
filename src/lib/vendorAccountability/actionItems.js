@@ -91,8 +91,11 @@ export function deriveResolution(conflict) {
       kind: 'choice',
       inPlace: true,
       options: [
-        { label: pf.confirm.label, apply: pf.confirm.patch, receipt: pf.confirm.receipt },
-        { label: pf.set.label,     apply: pf.set.patch,     receipt: pf.set.receipt },
+        // `patch` → a vendor write (writeVendor); `event` → an event/budget write
+        // (patchEvent); `route` → navigate (for a fix that genuinely can't be a tap,
+        // e.g. attaching a contract file). The hero/folded-row consumer handles each.
+        { label: pf.confirm.label, apply: pf.confirm.patch, event: pf.confirm.event, route: pf.confirm.route, receipt: pf.confirm.receipt },
+        { label: pf.set.label,     apply: pf.set.patch,     event: pf.set.event,     route: pf.set.route,     receipt: pf.set.receipt },
       ],
       // Host can pick any value (e.g. a custom arrival time), not just the two canned fixes.
       custom: pf.custom || null,

@@ -1,5 +1,7 @@
 // INTEL-QA-1 Stage 1 — Intelligence Evaluation (capture only).
 //
+import { isPastEvent } from './dates';
+//
 // Every recommendation any reader makes becomes ONE evaluation record. This module is the pure,
 // append-only, immutable-history store for those records. It CAPTURES what was recommended, what the
 // default was, what the host decided, and (later) what actually happened — so a FUTURE stage can
@@ -160,7 +162,10 @@ export function evaluationAudit(events, asOf) {
     const list = Array.isArray(e.intelEvaluations) ? e.intelEvaluations : [];
     if (!list.length) continue;
     eventsWithEvaluations += 1;
-    const eventPassed = (() => { try { const d = new Date(String(e.date).slice(0, 10)); return !isNaN(d) && d < now; } catch { return false; } })();
+    // Calendar-day question — route through THE canonical reader, never a private
+    // new Date(slice) which parses as UTC midnight and reads "passed" a day early east
+    // of Greenwich (the exact bug dates.js's daysUntil doc warns about; audit 2026-07-22).
+    const eventPassed = (() => { try { return isPastEvent(e.date, now); } catch { return false; } })();
     const label = `${(e.type || 'Event')} · ${String(e.id || '?').slice(0, 6)}`;
     const seen = new Set();
 

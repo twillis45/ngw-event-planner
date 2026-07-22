@@ -17,6 +17,11 @@
 //   const pending = pendingCloseouts(myEvents);
 // ─────────────────────────────────────────────────────────────────────────────
 
+// THE calendar-day authority — never a private copy (see dates.js header). A
+// wall-clock `eventMidnight < now` made the event's OWN day read as "past" from
+// 00:00, so the shell showed past tense + prompted closeout mid-event.
+import { isPastEvent as isPastCalendarDay } from './dates';
+
 // R1 id prefix — matches evalId('R1', eventId) = 'R1:<eventId>'
 const R1_PREFIX = 'R1:';
 
@@ -63,13 +68,10 @@ export function needsActual(event) {
 export function isPastEvent(event, asOf) {
   const dateStr = event?.date;
   if (!dateStr) return false;
-  try {
-    const ref = asOf ? new Date(asOf) : new Date();
-    const d = new Date(String(dateStr).slice(0, 10) + 'T00:00:00');
-    return !isNaN(d.getTime()) && d < ref;
-  } catch {
-    return false;
-  }
+  // Calendar-day past: strictly BEFORE today. The event's own day is NOT past
+  // (that's day-of), so the shell shows day-of tense and doesn't prompt closeout
+  // until the event has actually happened.
+  return isPastCalendarDay(dateStr, asOf ? new Date(asOf) : undefined);
 }
 
 // Returns true when all three conditions for a closeout prompt are met:

@@ -259,6 +259,23 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
         sourceRefs: [{ type: 'vendor', id: v.id }, { type: 'budget', id: bLine.id }],
         affectedVendorId: v.id,
         affectedEventId: event.id,
+        // Resolve IN PLACE (no "Take me to" route-away): a structured proposedFix
+        // the mapper (deriveResolution) turns into two one-tap options. A genuine
+        // either/or — trust the vendor and make the budget reflect the payment (a
+        // budget `event` write), or trust the budget and reopen the balance (a
+        // vendor `patch`). Resolving either clears the conflict.
+        proposedFix: {
+          confirm: {
+            label: `Paid in full — show $${committed.toLocaleString()} spent`,
+            event: { budget: (event.budget || []).map(b => (b === bLine ? { ...b, actual: committed } : b)) },
+            receipt: `Budget updated — $${committed.toLocaleString()} now reads paid. The budget reads true.`,
+          },
+          set: {
+            label: `Not yet — $${(committed - actual).toLocaleString()} still owed`,
+            patch: { balancePaid: false },
+            receipt: `${v.name} — balance reopened; $${(committed - actual).toLocaleString()} still to pay.`,
+          },
+        },
       });
     }
   });
@@ -278,6 +295,20 @@ export function deriveVendorPromiseConflicts(event, promises = []) {
         sourceRefs: [{ type: 'vendor', id: v.id }],
         affectedVendorId: v.id,
         affectedEventId: event.id,
+        // In place: reopen the "signed" flag (a vendor patch that clears the clash),
+        // or — if it really is signed — route to the vendor to attach the file (a
+        // genuine upload can't be a one-tap patch).
+        proposedFix: {
+          confirm: {
+            label: 'Not signed yet — reopen it',
+            patch: { contractSigned: false, contract_signed: false },
+            receipt: `${v.name} — contract reopened; mark it signed once the paperwork's on file.`,
+          },
+          set: {
+            label: 'Signed — attach the file',
+            route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' },
+          },
+        },
       });
     }
   });

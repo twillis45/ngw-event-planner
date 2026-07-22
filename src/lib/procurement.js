@@ -67,6 +67,7 @@ const DOZEN_BAND = {
   unknown:     [40, 95],
 };
 const PER_UNIT_MULT = { dozen: 1, half_bushel: 3.5, bushel: 7 }; // ~ crabs per unit vs a dozen
+const CRABS_PER_BUSHEL = PER_UNIT_MULT.bushel * 12; // ~84 (7 dozen) — ONE source for pricing AND staging
 
 // ── The crab-feast provider ──────────────────────────────────────────────────
 // Consumes buildCrabPlan's coverage (single source, no re-derivation) and adds
@@ -152,7 +153,7 @@ function crabProvider(event, opts = {}) {
   };
 
   // ── Logistics — the operational reality a coverage number can't carry ──────
-  const bushels = totalCrabs ? Math.ceil(totalCrabs / 72) : 0;
+  const bushels = totalCrabs ? Math.ceil(totalCrabs / CRABS_PER_BUSHEL) : 0;
   const logistics = {
     pickupWindow: totalCrabs ? {
       whenBeforeEvent: 'same day, 2–4 hours ahead',

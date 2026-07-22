@@ -221,8 +221,12 @@ export function deriveCommandCenterData(event, foodPP = null) {
 
   // Open Decisions = overdue uncompleted tasks — WAVE-6: the ONE overdue policy
   // (lib/taskLead), handed the real event so the reachability guard can bind.
+  // "Uncompleted" reads the SAME done-truth every what's-left surface uses
+  // (effectiveDone — ticked OR proven handled by real event state); raw !t.done
+  // kept raising work the event's own facts had already closed (2026-07-22,
+  // completes the dayAlerts.js alignment).
   const decisions = timeline
-    .filter(t => !t.done && taskIsOverdue(t, event))
+    .filter(t => !effectiveDone(event, t) && taskIsOverdue(t, event))
     .map(t => {
       const od = overdueDays(t, event.date);
       const timing = taskTiming(t, event.date); // real-date-derived, single source
@@ -423,7 +427,7 @@ export function deriveCommandCenterData(event, foodPP = null) {
   // Planning Health (operational readiness, not financial)
   const tasksDone   = timeline.filter(t => t.done).length;
   const tasksTotal  = timeline.length;
-  const overdueCount = timeline.filter(t => !t.done && taskIsOverdue(t, event)).length;
+  const overdueCount = timeline.filter(t => !effectiveDone(event, t) && taskIsOverdue(t, event)).length; // same open-set as `decisions` above
   const yesGuests = guests.filter(g => g.rsvp === 'Yes').length;
   const totalBudgeted = budget.reduce((s, r) => s + (r.budgeted || 0), 0);
   const totalActual   = budget.reduce((s, r) => s + (r.actual   || 0), 0);

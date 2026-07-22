@@ -370,7 +370,10 @@ export const SURFACES = [
     id: 'travel-air',
     label: 'Getting here',
     domain: 'travel',
-    route: { tab: 'Travel' },
+    // focusField:'air-board' is load-bearing — bare {tab:'Travel'} resolves to the
+    // LODGING sheet (resolver's Travel catch fires before any air branch). The
+    // air discriminator lands the flights bundle on the arrivals board.
+    route: { tab: 'Travel', focusField: 'air-board' },
     bundleTitle: (n) => `${n} guests' flights don't line up with the event`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
@@ -441,7 +444,10 @@ export const SURFACES = [
     id: 'helpers',
     label: 'People bringing things',
     domain: 'day',
-    route: { tab: 'Planning' },
+    // focusField:'space' is load-bearing — bare {tab:'Planning'} resolves to the
+    // TASKS checklist (resolver's Planning catch). Helpers live on the "Space,
+    // seats & helpers" sheet, so the space discriminator lands the bundle there.
+    route: { tab: 'Planning', focusField: 'space' },
     bundleTitle: (n) => `Confirm ${n} helpers are still bringing what they offered`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
@@ -595,7 +601,8 @@ export const SURFACES = [
           // The ladder's exact title source: cna.title, with the ladder's own fallback.
           title: (cna && cna.title) || `Get an updated COI from ${v.name}.`,
           why: (cna && cna.consequence) || null,
-          route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' },
+          // 'coi' (not 'documents') so it lands on the COI row, not the contract row (audit 2026-07-21).
+          route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'coi' },
           key: v.id,                    // WAVE-6: the vendor record
           // WAVE-6: the classifier's own "due 30 days out" clock, passed through.
           dueInDays: coi.dueInDays != null ? coi.dueInDays : null,
