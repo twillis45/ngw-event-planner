@@ -3841,6 +3841,24 @@ export default function HostShellV2() {
   };
 
   const setGuests = (n) => patchEvent({ guestEstimate: n }, 'Planning around ' + n + ' now — the plan just recomputed.');
+  // The count RESOLUTION rows — shared by the 'count' editor and the guests
+  // editor's drift bridge (W14): when the caterer's number and the confirmed
+  // yeses disagree, the fix is one of these two taps, wherever the host is.
+  const countResolutionRows = () => {
+    const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+    const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); };
+    const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.'); setChoiceOpen(null); };
+    return (
+      <div className="decopts">
+        {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
+          <button key={i} className="decopt" onClick={fn}>
+            <span className="decopt-main"><span className="decopt-name">{label}</span></span>
+            {/* No "→": both rows settle the count in place, they don't navigate. */}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   // Inline editors, one per wired kind. Each writes the SAME fields the engine's
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
@@ -3893,6 +3911,34 @@ export default function HostShellV2() {
               count-entry, mode, and actions. A number is enough for a headcount event;
               the ONE real branch is "do you want to track names?" — a single quiet link,
               not four chips. Invite drafting lives on the guest list, not here. */}
+          {/* THE WAY FORWARD (W14 "user has nowhere to go", 2026-07-22): the stepper
+              writes guestEstimate, but count-mode "resolved" reads guestCount — so no
+              amount of stepping could ever close the ask. This commit writes the field
+              the engine's done-condition actually reads; the ask dissolves and the
+              next thing rises (the F27 loop). Count-mode only — a roster's final
+              number comes from replies, not a typed lock. */}
+          {event.guestMode !== 'list' && guestN > 0 && (
+            <CtaRow>
+              <button className="cta stay" onClick={() => {
+                patchEvent({ guestCount: guestN, guestEstimate: guestN },
+                  guestN + ' locked in — food, seats, and buys now size from it.');
+              }}>Lock {guestN} in</button>
+            </CtaRow>
+          )}
+          {/* DRIFT BRIDGE (W14): when the caterer's number disagrees with the confirmed
+              yeses, the real fix is the count resolution — offer it right here instead
+              of dead-ending on a stepper about a different number. */}
+          {(() => {
+            const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+            const drift = event.catererCount != null && event.catererCount !== yes;
+            if (!drift) return null;
+            return (
+              <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
+                <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
+                {countResolutionRows()}
+              </div>
+            );
+          })()}
           {event.guestMode !== 'list' && (
             // Quiet text link (same idiom as "Open the spread") — the .mini pill
             // overflowed the column and read as a competing CTA.
@@ -4114,25 +4160,10 @@ export default function HostShellV2() {
           </div>
         );
       }
-      const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); };
-      const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.'); setChoiceOpen(null); };
-      // ELEGANT PARITY (host 2026-07-18): the two count resolutions render as the same
-      // tactile .decopt rows the decision/conflict heroes use — a genuine either/or, no
-      // faked pick — instead of the old small .chip pills.
-      // The two count resolutions render as tactile .decopt rows — a genuine
-      // either/or, no faked pick — in BOTH v2 and elegant, so a mismatched count
-      // is fixed in place (not the old bordered .chip pills).
-      return (
-        <div className="decopts">
-          {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
-            <button key={i} className="decopt" onClick={fn}>
-              <span className="decopt-main"><span className="decopt-name">{label}</span></span>
-              {/* No "→": both rows settle the count in place (matchYes/holdGuests),
-                  they don't navigate — an arrow here reads as false navigation. */}
-            </button>
-          ))}
-        </div>
-      );
+      // The two count resolutions render as tactile .decopt rows — ONE shared
+      // definition (countResolutionRows) also composed by the guests editor's
+      // drift bridge (W14), so a mismatched count is fixable wherever it shows.
+      return countResolutionRows();
     }
     return null;
   };
@@ -4830,14 +4861,44 @@ export default function HostShellV2() {
                           <p className="grounding" style={{ margin: 0 }}>The town is how weather and maps find a backyard — it rides into the plan from day one.</p>
                         </div>
                       )}
-                      {createEdit === 'budget' && (
-                        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                          <input className="field" type="number" min="0" placeholder="Total budget"
-                            value={fBudget ?? (parsed.budget ?? '')}
-                            onChange={e => setFBudget(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0))}
-                            aria-label="Total budget" />
-                        </div>
-                      )}
+                      {createEdit === 'budget' && (() => {
+                        // PROPOSE-DON'T-ASK (open item, shipped 2026-07-22): the create flow was
+                        // the ONE budget surface still opening a blank form while lean/typical/
+                        // all-out is proposed everywhere else. Same estimator, same TierRow atoms,
+                        // grounded in the type + count already on this screen. No estimate (no
+                        // type yet) → the honest custom field alone.
+                        const estC = (() => {
+                          try {
+                            return effType ? estimateTotalRange({ type: effType, guestCount: effGuests, date: effDate || undefined, isDestination: effIsDestination }) : null;
+                          } catch { return null; }
+                        })();
+                        const midC = estC ? Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100 : 0;
+                        const optsC = estC ? [...new Set([estC.lowTotal, midC, estC.highTotal])] : [];
+                        const LABELS_C = ['Lean', 'Typical', 'All-out'];
+                        const fmtC = (n) => '$' + Number(n).toLocaleString();
+                        return (
+                          <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                            {optsC.length > 0 && optsC.map((n, idx) => (
+                              <TierRow key={n}
+                                label={optsC.length === 3 ? LABELS_C[idx] : fmtC(n)}
+                                amount={optsC.length === 3 ? fmtC(n) : null}
+                                selected={effBudget === n}
+                                pick={optsC.length === 3 && idx === 1}
+                                onClick={() => { setFBudget(n); setCreateEdit(null); }}
+                                ariaLabel={(optsC.length === 3 ? LABELS_C[idx] + ' ' : '') + fmtC(n)} />
+                            ))}
+                            <input className="field" type="number" min="0" placeholder="Your own number"
+                              value={fBudget ?? (parsed.budget ?? '')}
+                              onChange={e => setFBudget(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0))}
+                              aria-label="Total budget" />
+                            {estC && (
+                              <p className="grounding" style={{ margin: 0 }}>
+                                For {effGuests} at a {String(effType).toLowerCase()}: lean runs about {fmtC(estC.lowTotal)}, all-out about {fmtC(estC.highTotal)}.{estC.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {effType && (
                         <div style={{ marginTop: 26 }}>
                           <button className="cta big" onClick={assemble}
@@ -4932,10 +4993,10 @@ export default function HostShellV2() {
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
                   move OFF the ask screen (the serif name belongs on the pull-down Overview).
                   Everything below composes with generous negative space. */}
-              {elegantMode && (askMode || justCleared || (listIsCalm && !isPast && days !== null && days > 0)) ? (
+              {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
                   <span className="eb-caret" aria-hidden="true">▾</span>
                 </button>
               ) : (
@@ -5106,6 +5167,16 @@ export default function HostShellV2() {
                     )}
                   </>);
                 }
+                // ELEGANT PAST (host "still not correct parity", 2026-07-22): the finished
+                // event reads in the same language as the ask screen — eyebrow (when · type)
+                // → one boss statement → the serif human line carrying the NAME — not the
+                // old masthead + giant "25d ago" + tiles stack. The recap rows follow.
+                if (elegantMode && isPast && days !== null) {
+                  return (<>
+                    <h2 className="ask">How it landed.</h2>
+                    <GuideLine>{(event.name || 'This one')} — behind you now.</GuideLine>
+                  </>);
+                }
                 return (<>
                   <div className="mega">
                     {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
@@ -5167,7 +5238,9 @@ export default function HostShellV2() {
               {(askMode || (elegantMode && listIsCalm && !isPast && days !== null && days > 0))
                 ? <div id="actionsAnchor" aria-hidden="true" />
                 : isPast
-                  ? <div className="sect" id="actionsAnchor"><h2>How it landed</h2><div className="rule" /><span className="when">behind you</span></div>
+                  ? (elegantMode
+                      ? <div id="actionsAnchor" aria-hidden="true" />
+                      : <div className="sect" id="actionsAnchor"><h2>How it landed</h2><div className="rule" /><span className="when">behind you</span></div>)
                   : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
@@ -5194,7 +5267,7 @@ export default function HostShellV2() {
                 );
               })()}
 
-              {queue.length === 0 && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && (
+              {queue.length === 0 && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && !(elegantMode && isPast) && (
                 <div className="empty">{isPast
                   ? 'The recap is below.'
                   : worries.length

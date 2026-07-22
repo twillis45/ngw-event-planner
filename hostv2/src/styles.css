@@ -452,6 +452,10 @@ button{font-family:inherit}
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
 /* the → arrow (Figma parity) — added via ::after so no markup change; muted like the comps */
 .hero.elegant .cta::after{ content:'→'; color:var(--faint); font-weight:800; margin-left:14px; flex:0 0 auto; transition:transform var(--ms-fast) var(--ease-out), color var(--ms-fast) var(--ease-out); }
+/* `.stay` = an in-place settle CTA (Lock N in, Mark as paid): the glyph doctrine —
+   render the arrow ONLY when the handler routes; a settle wearing one reads as
+   false navigation (audit 2026-07-22, W14 follow-through). */
+.hero.elegant .cta.stay::after{ content:none; }
 /* primary takes the full row; any secondary actions wrap quietly beneath it */
 .hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
 .hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
