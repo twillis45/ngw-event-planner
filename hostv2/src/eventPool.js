@@ -17,6 +17,7 @@ import { isRealHostEvent } from '@app/lib/welcomeGate';
 import { SAMPLE_EVENTS_EXTRA } from '@app/data/sampleEventsExtra';
 import { SAMPLE_EVENTS_DMV } from '@app/data/sampleEventsDMV';
 import { WANDA_GOLD_EVENT } from '@app/data/wandaGoldEvent';
+import { REPAST_SAMPLE_EVENT } from '@app/data/repastSampleEvent';
 
 // My Crab Feast: prefer the user's REAL event from the app's own storage
 // (same-origin on the deployed site — the production app writes 'ngw-events');
@@ -114,7 +115,7 @@ export const MY_CRAB_FEAST = appCrab || {
   budget: [], guests: [], vendors: [],
 };
 
-export const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-wanda', 'ev-x-birthday', 'ev-x-graduation', 'ev-dmv-wedding'];
+export const ROSTER_IDS = ['ev-x-retirement-party', 'ev-x-wanda', 'ev-x-birthday', 'ev-x-graduation', 'ev-dmv-wedding', 'ev-x-repast'];
 // ── Intelligence/attention test events (host request, 2026-07-08): one on the
 // day itself and one two days out — the windows where dayBefore, live-day ros,
 // weather phase impact, shopping urgency, and compression all fire. Built from
@@ -221,7 +222,7 @@ export const TEST_ROSTER_RSVP = mkTest('test-roster-rsvp', 'Test — Reunion (ro
 // against the SAME pool + patch layers the host shell reads (one truth).
 // Includes the created-event store (load-time read — fresh on every invite
 // page load) so every created event's invite link resolves, not just one.
-export const ALL_SAMPLES = [WANDA_GOLD_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
+export const ALL_SAMPLES = [WANDA_GOLD_EVENT, REPAST_SAMPLE_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
 
 export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP];
 export const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
