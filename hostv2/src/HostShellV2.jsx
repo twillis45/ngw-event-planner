@@ -12684,6 +12684,19 @@ export default function HostShellV2() {
                     {wxImpact.shouldPromptGuestUpdate ? 'Draft guest note' : 'Guest note'}
                   </button>
                 )}
+                {/* The engine's parking phase carries its own CTA + route — render it
+                    (the panel used to NAME "Parking & arrival" with no way to act;
+                    audit 2026-07-22 residual). Lands on the Space sheet's parking row
+                    with the note editor open, via the resolver's place-note branch. */}
+                {(() => {
+                  const pk = (wxImpact.affectedPhases || []).find(ph => ph && ph.route && ph.route.focusField === 'parking-notes');
+                  if (!pk) return null;
+                  return (
+                    <button className="mini" onClick={() => { setWxOpen(false); if (!routeSheet(pk.route)) setSheet({ kind: 'space', focus: 'parking' }); }}>
+                      {String(event.parkingNotes || '').trim() ? 'Parking note' : 'Add a parking note'}
+                    </button>
+                  );
+                })()}
               </div>
               {wx._sample
                 ? <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>

@@ -101,7 +101,10 @@ describe('2 · universal sourcing — the generic food answer is never inert', (
 // buildCrabPlan, which reads its own store — the decision's costFactors never
 // touch them. Fixing one of these? DELETE its entry or this test flags it stale.
 const KNOWN_DEAD_EFFECTS = new Set([
-  'Kwanzaa Gathering · occasion',
+  // (empty — the Kwanzaa `occasion` entry was an artifact of COMMUNITY_OPTION_RE
+  // matching bare "potluck": the playbook's potluck DEFAULT stood its own food
+  // lines down, so occasion's factors had nothing to price. Regex narrowed
+  // 2026-07-22; the ratchet stays for the next genuinely dead wire.)
 ]);
 
 describe('3 · declared effect is real — costFactors/affects must move the plan', () => {

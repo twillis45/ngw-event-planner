@@ -565,9 +565,13 @@ export const FOOD_APPROACH_DECISIONS = [
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
 // bare "Order from a market" (buying raw ingredients) must NOT match.
 export const CATERER_OPTION_RE = /cater|private chef|\bchef\b|drop-?off|order(ed)?[- ]?in\b|pizza|tray|takeout|take-?out|restaurant/i;
-// The community carries the meal (repast committee, potluck sign-ups) — a third
-// state beside caterer/host-cooks: the HOST is not buying the food either way.
-const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up|potluck/i;
+// The community carries the meal (a repast committee, neighbors signing up) — a
+// third state beside caterer/host-cooks: the HOST is not buying the food.
+// Deliberately NOT bare "potluck": a potluck host still plans and part-buys the
+// spread (guest dishes fold in via foodAdd owners), and playbooks that default
+// to potluck (Kwanzaa Karamu) author their food lines expecting to exist under
+// it — matching it here killed those lists by default (wire-proof, 2026-07-22).
+const COMMUNITY_OPTION_RE = /brought by|committee|church|neighbors?|sign.?up/i;
 export function foodApproach(event) {
   const pb = getPlaybook(event && event.type);
   const decisions = pb && Array.isArray(pb.decisions) ? pb.decisions : [];
