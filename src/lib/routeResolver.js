@@ -106,6 +106,14 @@ export function resolveRoute(route) {
     // date editor holds the start time too (parity with wiredHostv2's wiredKind).
     return { kind: 'stage:plan', focus: null, anchor: 'Event date' };
   }
+  // Place-note fields (parking / load-in / venue contact / house rules) live on
+  // the SPACE sheet's place rows, each with its own inline note editor — not the
+  // Venue anchor the Event-Details catch below would hit. Without this branch the
+  // weather / placeIntelligence / returnNarration routes promised the parking
+  // note and landed at the venue top with the field dropped (audit 2026-07-22;
+  // same PLACE_TARGETS vocabulary as lib/placeIntelligence.js).
+  const PLACE_NOTE_FOCUS = { 'parking-notes': 'parking', 'loadin-notes': 'loadIn', 'venue-contact': 'contact', 'house-rules': 'rules' };
+  if (PLACE_NOTE_FOCUS[ff]) return { kind: 'space', focus: PLACE_NOTE_FOCUS[ff] };
   if (ff === 'event-venue' || route.tab === 'Event Details') {
     return { kind: 'stage:plan', focus: null, anchor: 'Venue' };
   }

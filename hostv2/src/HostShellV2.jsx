@@ -2406,6 +2406,15 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  // Row-level landing (audit 2026-07-22): a route resolved to {kind:'space',
+  // focus:'parking'|…} opens THAT row's inline note editor — the last leg of the
+  // parking/load-in deep links (resolver branch in lib/routeResolver.js).
+  useEffect(() => {
+    if (sheet && sheet.kind === 'space' && sheet.focus && PLACE_NOTE_FIELD[sheet.focus]) {
+      setPlaceNoteOpen(sheet.focus);
+      setPlaceNoteDraft(String(event[PLACE_NOTE_FIELD[sheet.focus]] || ''));
+    }
+  }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
   // The meaning sheet can be opened generically (Sections directory) which
   // doesn't call openMeaning — seed the draft here so the sheet is never blank
@@ -12691,6 +12700,9 @@ export default function HostShellV2() {
       {stage === 'plan' && !heroInView && (
         <button
           className={'next-bar' + ((queue.length === 0 || listIsCalm) ? ' allset' : '')}
+          /* The bar's title ellipsizes on long asks — the full text must survive
+             somewhere reachable (audit cleanup 2026-07-22: truncation-without-title). */
+          title={days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || ''))}
           onClick={() => {
             if (days === 0) { setStage('day'); return; }
             if (queue.length && !listIsCalm) { try { heroZoneRef.current && heroZoneRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no hero zone */ } return; }

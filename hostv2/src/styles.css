@@ -639,59 +639,10 @@ button{font-family:inherit}
    hero past the fold, so the tile cluster gives slack back through padding
    and gaps — the countdown itself is untouched. */
 .bento{display:grid; gap:var(--sp-2); margin-top:var(--sp-3); flex:1; align-content:stretch; grid-template-columns:1fr 1fr; grid-template-areas:"a a" "b c"}
-/* NEXT is STICKY to the bottom of the app scrollport, not merely last-in-hero.
-   The bug (host-reported, 2026-07-14): the hero is a fixed budget — min-height
-   calc(852 - 64 - 88) = 700px — but its contents are COPY, and copy grows. On a
-   day-before event the verdict line wraps to two lines, "Where you stand" wraps its
-   area chips to a second row, and the Guests tile carries a long no-show
-   parenthetical: the hero needed 823px, overflowed by 123, and pushed the NEXT tile
-   to y=812 with the dock starting at y=810. The single most important control on the
-   Command Center — "1 thing needs you first: Confirm Fired Up BBQ" — rendered
-   underneath the dock, below the fold, on first paint.
-
-   margin-top:auto could never have held that line: it distributes SLACK, and there
-   was no slack. Trimming padding would fix this one event's copy, not the class —
-   the next long verdict line puts it right back under the dock.
-
-   Sticky is the structural guarantee. While the hero is on screen the tile pins just
-   above the dock; once you scroll down into the detail sections it releases and
-   scrolls away with the hero, exactly as before. When the hero DOES fit, nothing
-   moves — sticky only lifts the tile when it would otherwise be out of reach, and it
-   is opaque (--cta-grad), so in that case it covers the tail of a stat readout rather
-   than hiding the only action on the screen. That trade is not close. */
-.hero > .tile-d{
-  margin-top:10px;
-  position:sticky;
-  /* clear the dock: its own 16px inset + ~46px of pill + a 10px breath */
-  bottom:calc(72px + env(safe-area-inset-bottom, 0px));
-  z-index:20; /* under the dock (30), over the bento */
-  /* COMPACT WHEN IT FLOATS (2026-07-14, host-reported twice: "spacing off" + "numbers not
-     readable on card"). On a tall-content event — a two-line name, a two-line verdict — the
-     hero overflows its 700px budget by ~100px, so this sticky tile pinned to the bottom of
-     the scrollport and clipped the BOTTOM of the Guests/Budget numerals right behind it.
-     Trimming its own height (compact padding + no min-height floor) drops its top edge below
-     those numerals, so it floats over the sub-lines it was always meant to cover, not the
-     numbers. `justify-content:center` keeps the two short lines centred in the shorter box. */
-  min-height:0;
-  /* NB: --pad-card-compact is itself a two-value token — appending a third value expanded
-     to a 3-value shorthand (12/16/20, asymmetric bottom) by accident. Spell the axes. */
-  padding:var(--sp-3) var(--sp-5);
-  justify-content:center;
-  row-gap:0;
-  /* OWN THE BOTTOM (host directive 2026-07-14): NEXT is the primary action, so it spans the
-     full viewport width at the bottom of the scrollport — a bar, not a floating card. The
-     negative margins cancel .content's side padding (var(--sp-5)); the sticky bottom offset
-     keeps it just above the floating dock pill. Bottom corners squared: it meets the
-     viewport edge, it doesn't hover over it. */
-  margin-left:calc(-1 * var(--sp-5));
-  margin-right:calc(-1 * var(--sp-5));
-  border-radius:var(--r-lg) var(--r-lg) 0 0;
-  /* When it IS lifted it sits over the tail of the stat tiles. Give it the dock's
-     floating language — a real drop shadow — so it reads as a layer deliberately
-     above them, not as a tile that has clipped the ones behind it. When the hero
-     fits, the tile is in flow, nothing is behind it, and the shadow is invisible. */
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.14), 0 14px 34px -12px rgba(0,0,0,.55);
-}
+/* The sticky in-hero NEXT tile rules were removed 2026-07-22 (audit cleanup):
+   `.hero > .tile-d` has been display:none since the 2026-07-16 retirement (the
+   pinned .next-bar owns the role), so its sticky/compact styling was unreachable.
+   The retirement rule itself lives below, per the "hidden, not deleted" ruling. */
 .tile{border-radius:var(--r-xl); padding:var(--pad-card); display:flex; flex-direction:column; justify-content:space-between; min-height:100px; border:none; text-align:left; color:var(--ink); font-family:inherit}
 .tile .t-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--muted)}
 .tile .t-num{font-size:var(--t-stat); font-weight:800; letter-spacing:-.04em; line-height:1; margin:var(--sp-2) 0 6px; font-variant-numeric:tabular-nums}

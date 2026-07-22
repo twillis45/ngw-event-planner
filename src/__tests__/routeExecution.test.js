@@ -230,3 +230,25 @@ describe('ROUTESHEET_TABS is bound to the resolver, not hand-mirrored', () => {
     });
   });
 });
+
+// ── Place-note deep links land on the SPACE sheet's own rows (audit 2026-07-22) ──
+// The weather / placeIntelligence / returnNarration routes promise the parking /
+// load-in / contact / rules NOTE — before this branch they fell into the
+// Event-Details→Venue catch (right neighborhood, field dropped). The focus value
+// is the place-row key the shell's inline note editor opens on.
+describe('place-note focusFields land on the space sheet row', () => {
+  const CASES = [
+    ['parking-notes', 'parking'],
+    ['loadin-notes', 'loadIn'],
+    ['venue-contact', 'contact'],
+    ['house-rules', 'rules'],
+  ];
+  CASES.forEach(([ff, focus]) => {
+    test(`${ff} → space · ${focus}`, () => {
+      expect(resolveRoute({ tab: 'Event Details', focusField: ff })).toEqual({ kind: 'space', focus });
+    });
+  });
+  test('a bare Event Details route still lands on the Venue anchor', () => {
+    expect(resolveRoute({ tab: 'Event Details' })).toEqual({ kind: 'stage:plan', focus: null, anchor: 'Venue' });
+  });
+});
