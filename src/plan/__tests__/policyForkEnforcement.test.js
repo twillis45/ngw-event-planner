@@ -339,11 +339,12 @@ const READERS = [
 ];
 
 // Count-level readers: surfaces that emit a COUNT, not a per-task boolean.
-// TWO COUNTS, ONE BOUNDARY (2026-07-22): what's-left surfaces (dayAlerts,
-// CommandCenter) count the canonical OPEN-set — a task proven handled by real
-// event state (effectiveDone) is not open even if unticked. The planner calendar
-// views still count raw (App.js is frozen; logged in the hunt tracker) — they
-// compare against the raw count until that port happens.
+// ONE COUNT, NO BOUNDARY (W12 CLOSED 2026-07-22): the done-truth moved INTO
+// taskIsOverdue itself — an effectively-done task cannot be overdue — so every
+// reader converges, INCLUDING the frozen planner calendars (they delegate to
+// this policy through App.js's isTaskOverdue wrapper). The explicit
+// effectiveDone filter below is redundant by construction; it stays so this
+// suite still fails if the policy ever loses the clause.
 const policyOverdueCount = (ev) => ev.timeline.filter((t) => !effectiveDone(ev, t) && taskIsOverdue(t, ev)).length;
 const rawPolicyOverdueCount = (ev) => ev.timeline.filter((t) => taskIsOverdue(t, ev)).length;
 const dayAlertsOverdueCount = (ev) => {
@@ -408,11 +409,14 @@ describe('PART B — runtime parity sweep: every overdue reader agrees', () => {
     for (const c of cases) {
       const ev = c.ev();
       const policy = policyOverdueCount(ev);
-      const rawPolicy = rawPolicyOverdueCount(ev);
       const calendar = ev.timeline.filter((t) => calendarOverdue(t, ev)).length;
+      // The policy IS the open-set now — raw and filtered counts must agree
+      // (this equality is the W12-closed proof; a policy losing the
+      // effectiveDone clause splits them again).
+      expect(rawPolicyOverdueCount(ev)).toBe(policy);
       expect({ case: c.label, dayAlerts: dayAlertsOverdueCount(ev) }).toEqual({ case: c.label, dayAlerts: policy });
       expect({ case: c.label, commandCenter: commandCenterOverdueCount(ev) }).toEqual({ case: c.label, commandCenter: policy });
-      expect({ case: c.label, calendar }).toEqual({ case: c.label, calendar: rawPolicy });
+      expect({ case: c.label, calendar }).toEqual({ case: c.label, calendar: policy });
     }
   });
 
