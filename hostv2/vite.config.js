@@ -14,7 +14,11 @@ export default defineConfig(({ command, mode }) => {
   const appEnv = loadEnv(mode, path.resolve(__dirname, '..'), 'REACT_APP_');
   return {
     // Production build ships as a static bundle under the Pages site.
-    base: command === 'build' ? '/ngw-event-planner/hostv2/' : '/',
+    // E2E_BASE: `vite preview` runs as command==='serve', so without this the
+    // preview served dist at '/' while the BUILT index references the deep
+    // base — every asset 404'd and the harness saw a blank mount (Layer-2
+    // debugging, 2026-07-22). Set by playwright.config's webServer only.
+    base: command === 'build' || process.env.E2E_BASE ? '/ngw-event-planner/hostv2/' : '/',
     plugins: [react()],
     resolve: {
       alias: { '@app': path.resolve(__dirname, '../src') },

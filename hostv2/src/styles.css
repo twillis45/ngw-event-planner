@@ -619,10 +619,14 @@ button{font-family:inherit}
    dock (host request, 2026-07-08). Frame math: appbar ~48 + content pad 16
    above; dock 16 offset + ~50 pill + 12 breathing room below. min-height
    (not height) so long copy simply grows past the fold instead of clipping. */
-/* Scroll-end clearance (audit 2026-07-22, W3): the NEXT bar + dock are frame-pinned
-   overlays that consume no layout space — without this padding the board's last
-   rows ("Draft the details") sit permanently underneath them at full scroll. */
-.hero{display:flex; flex-direction:column; min-height:calc(852px - 64px - 88px); padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.hero{display:flex; flex-direction:column; min-height:calc(852px - 64px - 88px)}
+/* Scroll-end clearance (W3, container-level 2026-07-22): the NEXT bar / dock /
+   weather pill are frame-pinned overlays that consume no layout space — without
+   this spacer the scroller's LAST rows sit permanently underneath them at full
+   scroll. On the scroll container itself (not .hero) so below-fold sections and
+   any future structure clear too — the Layer-2 harness caught below-fold rows
+   ("Decide what you're serving") occluded at real mobile scroll-end. */
+.app::after{content:''; display:block; height:calc(104px + env(safe-area-inset-bottom,0px)); flex-shrink:0}
 /* Wide-but-short viewports (landscape phone, short/split desktop window): the fixed
    852px-derived min-heights below would force the hero to ~1.8× a short viewport,
    pushing content off-frame. When the frame is short, let content set the height
@@ -2308,3 +2312,6 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .bigval-input::-webkit-outer-spin-button, .bigval-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0 }
 .bigval-input{ -moz-appearance:textfield; appearance:textfield }
 .bigval-input:focus{ outline:none; border-bottom:1px solid var(--steel-soft) }
+
+/* Scroll-end clearance grows by the pinned weather pill's band (Layer-2, 2026-07-22). */
+.app.has-wxpill::after{height:calc(160px + env(safe-area-inset-bottom,0px))}

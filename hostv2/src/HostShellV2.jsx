@@ -3853,10 +3853,13 @@ export default function HostShellV2() {
   // The count RESOLUTION rows — shared by the 'count' editor and the guests
   // editor's drift bridge (W14): when the caterer's number and the confirmed
   // yeses disagree, the fix is one of these two taps, wherever the host is.
-  const countResolutionRows = () => {
+  // onSettled: the tap that ANSWERS the ask must also MOVE the loop — the host
+  // report behind W14b ("doesn't have a next step after selection", 2026-07-22):
+  // both resolutions fired their receipt and left the same hero standing.
+  const countResolutionRows = (onSettled) => {
     const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
-    const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); };
-    const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — the engine keeps flagging this until RSVPs catch up.'); setChoiceOpen(null); };
+    const matchYes = () => { patchEvent({ catererCount: yes }, 'Caterer set to the ' + yes + ' confirmed yeses — the mismatch is closed.'); setChoiceOpen(null); if (onSettled) onSettled(); };
+    const holdGuests = () => { patchEvent({ catererCount: guests }, 'Caterer told ' + guests + ' — noted as your call; it won’t re-ask today.'); setChoiceOpen(null); if (onSettled) onSettled(); };
     return (
       <div className="decopts">
         {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
@@ -3931,6 +3934,10 @@ export default function HostShellV2() {
               <button className="cta stay" onClick={() => {
                 patchEvent({ guestCount: guestN, guestEstimate: guestN },
                   guestN + ' locked in — food, seats, and buys now size from it.');
+                // Answering the ask advances the loop (W14b): the engine stops
+                // generating this action once guestCount is set, but the session
+                // mark makes the roll immediate, same as every decision settle.
+                if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
               }}>Lock {guestN} in</button>
             </CtaRow>
           )}
@@ -3944,7 +3951,7 @@ export default function HostShellV2() {
             return (
               <div style={{ marginTop: ASK_RHYTHM.whyToCta }}>
                 <span className="of">Your caterer is set for {event.catererCount} · {yes} confirmed</span>
-                {countResolutionRows()}
+                {countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); })}
               </div>
             );
           })()}
@@ -4172,7 +4179,7 @@ export default function HostShellV2() {
       // The two count resolutions render as tactile .decopt rows — ONE shared
       // definition (countResolutionRows) also composed by the guests editor's
       // drift bridge (W14), so a mismatched count is fixable wherever it shows.
-      return countResolutionRows();
+      return countResolutionRows(() => { if (a && a.id) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); });
     }
     return null;
   };
@@ -4653,7 +4660,10 @@ export default function HostShellV2() {
 
   return (
     <div className="stagewrap">
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
+      {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
+          when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
+          pill at true scroll-end, 2026-07-22). */}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
