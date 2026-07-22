@@ -1,0 +1,53 @@
+# The safety net, automated (Up-Next #1, 2026-07-22). Two jobs:
+#
+#   jest — the Layer-1 engine proofs + the whole unit suite (decision-wire,
+#          host-string lint, day-before coverage, one-overdue-policy equality,
+#          path/lifecycle proofs — ~3,700 tests).
+#   e2e  — the parity gate (inside `npm run build`) + the Layer-2 Playwright
+#          board matrix on the BUILT bundle (loop-advance, rendered-copy lint,
+#          pinned geometry + scroll-end reachability, fold peek).
+#
+# Runs on every push/PR to working branches. Node 20 satisfies the e2e's ≥18
+# requirement (locally the shell defaults to 16 — the harness docs cover it).
+name: Checks
+
+on:
+  push:
+    branches-ignore: [gh-pages]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  jest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: CI=true npx react-scripts test --watchAll=false
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: hostv2/package-lock.json
+      - run: npm ci
+        working-directory: hostv2
+      - run: npx playwright install --with-deps chromium
+        working-directory: hostv2
+      # The parity drift gate runs inside `npm run build` (check-parity.mjs).
+      - run: npm run build
+        working-directory: hostv2
+      - run: npm run test:e2e
+        working-directory: hostv2
