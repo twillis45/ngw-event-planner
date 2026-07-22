@@ -5139,7 +5139,7 @@ export default function HostShellV2() {
                         if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
                         if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
                         // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-                        if (elegantMode && /collect.*coi|vendor coi|proof of insurance/i.test(String(q0.title || ''))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+                        if (elegantMode && /collect.*coi|vendor coi|proof of insurance|insurance proof|about insurance|is insured/i.test(String(q0.title || ''))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
                         if (elegantMode) {
                           const decRow = /^decision:/.test(String(q0.id || ''))
                             ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
@@ -5617,7 +5617,10 @@ export default function HostShellV2() {
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
                 // from coiNextAction — its consequence + a route to that exact vendor — so the
                 // hero stops saying a redundant "past its window / overdue" over a blank "Decide".
-                const isCoiTask = elegantMode && isHero && !decHeroActions && /collect.*coi|vendor coi|proof of insurance/i.test(String(a.title || ''));
+                // Matches ALL of coiNextAction's title shapes (the host hit "Check TSW
+                // Catering's insurance proof" falling through to a route CTA while the
+                // full in-place branch machinery below sat unused — 2026-07-22).
+                const isCoiTask = elegantMode && isHero && !decHeroActions && /collect.*coi|vendor coi|proof of insurance|insurance proof|about insurance|is insured/i.test(String(a.title || ''));
                 const coiHero = (isCoiTask && coiFirst) ? coiFirst : null;
                 // Every vendor's COI is handled but the solver task still lingers open — don't
                 // fall back to the ugly generic "Overdue · Decide". Show the calm done state.

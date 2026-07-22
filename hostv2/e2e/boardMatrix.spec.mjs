@@ -16,18 +16,25 @@
 //      handle intersects the first viewport.
 import { test, expect } from '@playwright/test';
 
+const COI_PATCH = {
+  vendors: [
+    { id: 'tdv-v1', name: 'Ironwood Room', category: 'Venue', status: 'Confirmed', cost: 2200, depositAmt: 600, depositPaid: true, balancePaid: true, contractSigned: true, arrivalTime: '3:00 PM', coiStatus: 'received', coiVerified: true },
+    { id: 'tdv-v2', name: 'TSW Catering', category: 'Catering', status: 'Deposit Paid', cost: 4200, depositAmt: 800, depositPaid: true, balancePaid: false, contractSigned: true, arrivalTime: '4:00 PM', coiStatus: 'received', coiVerified: false },
+  ],
+};
+
 // The seeded states — the same roster the live drives used. Weather is staged
 // deterministically for the outdoor T-2 event via route interception.
 const STATES = [
   { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true },
-  { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors)',              weather: false, future: true },
+  { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true },
   { id: 'ev-x-graduation',         label: 'Graduation (past)',                 weather: false, future: false },
   { id: 'ev-x-wanda',              label: 'Wanda far-out',                     weather: false, future: true },
 ];
 
 const LINT = [
-  { name: 'internal-id',   re: /\b(?:ev|tdv|trr|pbt?)-[a-z0-9][a-z0-9-]*\b/i },
+  { name: 'internal-id',   re: /\b(?:ev|tdv|trr|pbt?)-[a-z0-9][a-z0-9-]*\b|\bv-[a-z0-9]{6,}\b/i },
   { name: 'undefined-leak', re: /\bundefined\b|\bNaN\b|\[object Object\]/ },
 ];
 const unbalanced = (s) => {
@@ -55,14 +62,15 @@ const stageWeather = async (page) => {
 
 const boot = async (page, state) => {
   if (state.weather) await stageWeather(page);
-  await page.addInitScript(([id]) => {
+  await page.addInitScript(([id, patch]) => {
     localStorage.setItem('ngw-hostv2-last-event', id);
+    if (patch) localStorage.setItem('ngw-hostv2-patch-' + id, JSON.stringify(patch));
     // The gate Date.parse()s this — an epoch-millis string parses NaN and the
     // FULL splash plays over every probe (found by elementFromPoint debugging).
     localStorage.setItem('ngw-v2-splash-seen', new Date().toISOString());
     localStorage.setItem('ngw-welcomed', '1');
     localStorage.setItem('ngw-v2-welcomed', '1');
-  }, [state.id]);
+  }, [state.id, state.patch || null]);
   await page.goto('?elegant=1');
   await page.waitForTimeout(1600); // quick-splash + settle beat
   await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});

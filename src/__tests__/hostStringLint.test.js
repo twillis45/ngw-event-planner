@@ -22,7 +22,7 @@ import { buildDayBeforePlan } from '../lib/dayBefore';
 const RULES = [
   // W5 class: internal record ids (event/vendor/task/purchase prefixes) are
   // machinery, never copy. Matches the id shapes the fixtures + engines mint.
-  { name: 'internal-id', re: /\b(?:ev|tdv|trr|pbt?|lint)-[a-z0-9][a-z0-9-]*\b/i },
+  { name: 'internal-id', re: /\b(?:ev|tdv|trr|pbt?|lint)-[a-z0-9][a-z0-9-]*\b|\bv-[a-z0-9]{6,}\b/i },
   // Interpolation leaks — a template that met an undefined value.
   { name: 'undefined-leak', re: /\b(?:undefined|NaN)\b|\[object Object\]|\bnull\b(?!ify)/ },
   // W1 class: an unbalanced parenthesis = a label truncated through its
@@ -97,6 +97,7 @@ describe('the lint itself catches the incident classes', () => {
   const PLANTED = [
     ['Open vendors → vendor tdv-v2', 'internal-id'],
     ['What is the drink spread? (game night skews ligh…', 'unbalanced-paren'],
+    ['Open vendors → vendor v-mrfbwrcvaxrv', 'internal-id'],
     ['Buy undefined — 18 lbs today', 'undefined-leak'],
     ['Sized for NaN guests', 'undefined-leak'],
   ];
