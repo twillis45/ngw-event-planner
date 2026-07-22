@@ -134,4 +134,13 @@ export function applyStudioMatte() {
   set('--ms-ambient', (durations.ambient || 220) + 'ms');
   set('--ms-sheet', (durations.sheetRise || 260) + 'ms');
   set('--ms-escalation', (durations.escalation || 230) + 'ms');
+  // Interaction-duration scale (audit 2026-07-22): styles.css hardcoded 100/140/200/
+  // 240/420ms across ~40 sites while only press/ambient/sheet/escalation were tokenized —
+  // two scales drifting apart. These name the actual common values (value-preserving), so
+  // styles.css can consume the scale instead of literals. Same numbers, one source now.
+  set('--ms-micro', (durations.micro || 100) + 'ms');   // fastest micro-feedback
+  set('--ms-fast', (durations.fast || 140) + 'ms');     // hover / tint / press transitions
+  set('--ms-base', (durations.base || 200) + 'ms');     // standard row/state transition
+  set('--ms-enter', (durations.enter || 240) + 'ms');   // panel / ask enter (askin)
+  set('--ms-reveal', (durations.reveal || 420) + 'ms'); // moderate reveal / receipt
 }

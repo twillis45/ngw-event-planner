@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "parity": "node src/parity/check-parity.mjs",
+    "build": "node src/parity/check-parity.mjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
