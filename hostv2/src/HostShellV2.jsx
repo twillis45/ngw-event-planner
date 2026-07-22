@@ -4,6 +4,8 @@
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
@@ -86,7 +88,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -102,7 +104,8 @@ import { shouldShowWelcome, isRealHostEvent, LS_WELCOMED } from '@app/lib/welcom
 import { isFoodPricesConfigured, getFoodPriceFactor } from '@app/lib/foodPrices';
 import { quickAccountabilityForVendor, inferPromisesFromVendor, promiseNeedsHost } from '@app/lib/vendorAccountability/derive';
 import { deriveVendorPromiseConflicts } from '@app/lib/vendorAccountability/conflicts';
-import { conflictsToActionItems } from '@app/lib/vendorAccountability/actionItems';
+import { conflictsToActionItems, deriveResolution } from '@app/lib/vendorAccountability/actionItems';
+import { isStorageConfigured, uploadFile, validateFile, inferCategory } from '@app/lib/storage';
 import { buildBudgetRecoveryPlan } from '@app/lib/budgetRecovery';
 import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
@@ -279,6 +282,17 @@ const guestNumber = e => Number(e.guestCount) || Number(e.guestEstimate) || (e.g
 
 const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors: 'Vendors', date: 'Plan', start: 'Guests' };
 
+// The day-of ruling 331:61 STATE 3 — a solemn gathering (repast / memorial / homegoing)
+// must not wear celebratory chrome: drop the count, soften the verbs ("You lead this" /
+// "Continue when ready"), lean the calm serif, more void. Grounded in the event TYPE:
+// Repast is a real, fully-authored somber playbook (repast.js), not a guess. Feeds the
+// parity kit's `tone="solemn"`. See parity/MANIFEST.md fast-follow #1.
+const SOLEMN_RE = /repast|memorial|funeral|celebration of life|homegoing|in memoriam/i;
+function isSolemnEvent(event) {
+  try { return SOLEMN_RE.test(String((event && event.type) || '') + ' ' + String((event && event.name) || '')); }
+  catch { return false; }
+}
+
 // REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
 // action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
 // panel beneath carries the specifics. Raw queue titles are card copy and can
@@ -308,6 +322,11 @@ function heroAskFor(a, event) {
       const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
       return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
     }
+    // A food-line buy ("Fried or baked chicken & baked ham — 28.5 lbs in 2 days")
+    // carries an item title, never an instruction — the fallback rendered the dead
+    // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
+    // the real job in plain words.
+    if (a && a.route && a.route.foodFocus) return 'Get the food.';
     return t.length <= 26 ? t + '.' : 'Your next step.';
   } catch { return 'Your next step.'; }
 }
@@ -347,14 +366,19 @@ const eventTypeLabel = (e) => {
   return prim;
 };
 
-function describeRoute(route) {
+// Host-facing destination description. NEVER an internal id: the CTA fallback
+// renders this verbatim ("Open vendors → vendor tdv-v2" reached a live hero —
+// audit 2026-07-22, W5). Resolve the vendor's NAME; internal keys (focusField,
+// foodFocus ids, taskId) say what KIND of spot they land on, or nothing.
+function describeRoute(route, event) {
   if (!route || !route.tab) return null;
   const bits = [route.tab];
   if (route.planningView) bits.push(route.planningView);
-  if (route.foodFocus) bits.push('food line “' + route.foodFocus + '”');
-  if (route.focusField) bits.push('field “' + route.focusField + '”');
-  if (route.vendorId) bits.push('vendor ' + route.vendorId);
-  if (route.taskId) bits.push('task ' + route.taskId);
+  if (route.foodFocus) bits.push('the food list');
+  if (route.vendorId) {
+    const v = (((event && event.vendors) || []).find(x => x && x.id === route.vendorId)) || null;
+    bits.push(v && v.name ? v.name : 'your vendor');
+  }
   return bits.join(' → ');
 }
 
@@ -413,13 +437,15 @@ const fmt12h = (t) => {
 // from the caller's real engine reads — this renders, it never derives.
 function SheetHero({ eyebrow, star, tone, sub, grounding }) {
   const color = tone === 'ok' ? 'var(--ok)' : tone === 'warn' ? 'var(--warn)' : tone === 'danger' ? 'var(--danger)' : 'var(--ink)';
+  // Composes the parity kit (Eyebrow → BigValue → Newsreader GuideLine) so every
+  // sheet that uses SheetHero — space, seating, lodging, air, ground, and the rest —
+  // shares the same calm Studio-Matte hero as food/budget/vendors. Anti-drift; the
+  // tone still colors the value (ok/warn/danger). See parity/MANIFEST.
   return (
     <div style={{ padding: '2px 0 14px' }}>
-      <div className="eyebrow">{eyebrow}</div>
-      <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color }}>
-        {star}
-      </div>
-      {sub ? <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: grounding ? '0 0 8px' : 0, minHeight: 0 }}>{sub}</p> : null}
+      <Eyebrow>{eyebrow}</Eyebrow>
+      <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(color !== 'var(--ink)' ? { color } : null) }}>{star}</BigValue>
+      {sub ? <GuideLine style={grounding ? { marginBottom: 8 } : null}>{sub}</GuideLine> : null}
       {grounding ? <p className="grounding" style={{ margin: 0 }}>{grounding}</p> : null}
     </div>
   );
@@ -648,7 +674,10 @@ export default function HostShellV2() {
     const q = new URLSearchParams(window.location.search);
     splashHold = q.has('splashhold');
     splashForceFull = q.has('splashfull');
-    elegantMode = q.has('elegant') && q.get('elegant') !== '0';
+    // Elegant is THE chosen hero direction (grounded-action loop) and is now the
+    // DEFAULT — the v2 → v3 cut (host approved 2026-07-21). `?elegant=0` is the
+    // v2 fallback / escape hatch; reverting this one line makes v2 default again.
+    elegantMode = q.get('elegant') !== '0';
     if (q.get('voice') === 'sans') elegantVoice = 'sans';
   } catch { /* leave both false */ }
   const splashSeenRecently = (() => {
@@ -1465,6 +1494,9 @@ export default function HostShellV2() {
         </span>
         {/* "our pick" sits on the RIGHT, by the arrow; hovering it reveals the real
             "why this pick" as a tooltip — no standalone line (host 2026-07-18). */}
+        {/* No "→": tapping a row SETTLES the choice in place (nd.settle → patchEvent),
+            it does not navigate. An arrow here reads as false navigation — the badge
+            carries state and the whole row is the tappable affordance (host 2026-07-21). */}
         <span className="decopt-right">
           {isPick && (
             <span className="decopt-badge-wrap" tabIndex={0}>
@@ -1472,10 +1504,32 @@ export default function HostShellV2() {
               {nd.proposed.why && <span className="decopt-why" role="tooltip">{nd.proposed.why}</span>}
             </span>
           )}
-          <span className="decopt-arrow" aria-hidden="true">→</span>
         </span>
       </button>
     );
+    // SETTLED — the host already picked (nd.selected). Show EVERY option (Figma 7:38 / 369:60
+    // + the CTA-consistency fix): the chosen row highlighted with a "chosen" badge, all still
+    // tappable to switch. No disclosure, no collapse — one consistent row treatment.
+    if (nd.selected != null && nd.options.some(o => o.value === nd.selected)) {
+      return (
+        <div className="decopts">
+          {nd.options.map(o => {
+            const isChosen = o.value === nd.selected;
+            return (
+              <button key={o.value} className={'decopt' + (isChosen ? ' pick' : '')} aria-pressed={isChosen} onClick={() => nd.settle(o.value)}>
+                <span className="decopt-main">
+                  <span className="decopt-name">{o.label}</span>
+                  {o.note && <span className="decopt-note">{o.note}</span>}
+                </span>
+                <span className="decopt-right">
+                  {isChosen && <span className="decopt-badge">chosen</span>}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
     return (
       <div className="decopts">
         {proposedOpt ? (
@@ -1493,7 +1547,7 @@ export default function HostShellV2() {
         ) : (
           // Ask-mode: a genuine either/or — every option an equal row, no faked pick.
           <>
-            {nd.why && <p className="grounding" style={{ margin: '0 0 10px', opacity: .82 }}>{nd.why}</p>}
+            {nd.why && <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>{nd.why}</p>}
             {nd.options.map(o => optRow(o, false))}
           </>
         )}
@@ -1507,11 +1561,16 @@ export default function HostShellV2() {
     if (!dopts || !Array.isArray(dopts.options) || !dopts.options.length) return null;
     const notes = (dopts.optionNotes && typeof dopts.optionNotes === 'object') ? dopts.optionNotes : {};
     const dapproach = dec.difmCapable ? (() => { try { return decisionApproach(dec, dopts); } catch { return null; } })() : null;
-    const proposed = (dapproach && dapproach.mode === 'propose' && dapproach.proposed) ? dapproach.proposed : null;
+    // Propose-don't-ask: prefer the DIFM-derived pick, but when a decision carries no
+    // difmCapable (injected military/destination sets) fall back to its AUTHORED grounded
+    // default — those rows have default+why+src, so a blank ask over a real default is wrong.
+    const proposed = (dapproach && dapproach.mode === 'propose' && dapproach.proposed)
+      ? dapproach.proposed
+      : (dopts.default || null);
     return {
       id: dec.id,
       options: dopts.options.map(o => ({ value: o, label: o, note: notes[o] || null })),
-      proposed: proposed ? { value: proposed, why: dopts.defaultWhy || null } : null,
+      proposed: proposed ? { value: proposed, why: dopts.defaultWhy || dopts.why || null } : null,
       why: dopts.why || null,
       settle: (v) => settleDecision(dec, v),
     };
@@ -1520,6 +1579,22 @@ export default function HostShellV2() {
   // Propose-don't-ask ONLY when grounded: at a real headcount, cooking for that many is a
   // lot to own on the day, so most hosts hand it to a caterer. Below that, honest ask-mode.
   const foodDecisionND = () => {
+    // WIRE (audit 2026-07-22, W8 "doesn't continue"): when the playbook authors its
+    // own food-approach decision (repast `food_source` — culturally specific options,
+    // committee-brings default), THAT decision IS the food decision. The generic
+    // cook/cater/potluck trio both contradicted its doctrine and wrote a key the
+    // engine ignores whenever an authored lever exists — settling changed nothing.
+    // settleDecision writes foodChoices[<lever id>], the exact store foodApproach
+    // reads, so the pick now reshapes buys/tasks/costs. Trio = lever-less types only.
+    try {
+      const fa = foodApproach(event);
+      if (fa && fa.decisionId) {
+        const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]
+          .find(x => x && x.id === fa.decisionId);
+        const nd = row ? playbookDecisionND(row) : null;
+        if (nd) return { ...nd, selected: (event.foodChoices || {})[fa.decisionId] || null };
+      }
+    } catch { /* fall through to the generic trio */ }
     const OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
     const NOTES = {
       'host cooks': 'Most control, most work on the day — best when the count is small.',
@@ -1534,6 +1609,7 @@ export default function HostShellV2() {
       id: 'phase:food',
       options: OPTS.map(([label, value]) => ({ value, label, note: NOTES[value] || null })),
       proposed,
+      selected: (event.foodChoices || {}).sourcing || null,
       why: proposed ? null : 'How you handle the food shapes both the budget and your day-of workload.',
       settle: (v) => {
         const label = (OPTS.find(([, val]) => val === v) || ['it'])[0];
@@ -1618,6 +1694,11 @@ export default function HostShellV2() {
   const [foodAddName, setFoodAddName] = useState('');
   const [foodAddOwner, setFoodAddOwner] = useState('');
   const [foodAddCost, setFoodAddCost] = useState('');
+  // Fold-behind-Change (parity/MANIFEST) — which settled single-value controls are
+  // expanded to their picker; collapsed by default to a SettledRow. Keyed 'rain'
+  // /'inviteStyle'/'gifts'.
+  const [settledOpen, setSettledOpen] = useState({});
+  const [contractUploading, setContractUploading] = useState({}); // per-vendor contract-file upload state
   const [foodAddGroup, setFoodAddGroup] = useState(null); // Food/Drinks/Supplies override; null = auto-guess
   const [foodGroupsOpen, setFoodGroupsOpen] = useState({}); // spread accordion
   // Place-intelligence rows (Space sheet) — which one has its inline note
@@ -1718,6 +1799,12 @@ export default function HostShellV2() {
     // Buying / groceries / supplies → the shopping list
     if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
       return { label: 'Open the list', go: () => setSheet({ kind: 'food' }) };
+    // Tribute speakers / speeches / slideshow → the tribute decision, NOT a vendor.
+    // "Line them up for the speakers" is arranging who speaks, not hiring anyone —
+    // it was falling into the hire match below on the bare word "speaker" (host
+    // 2026-07-22). An audio "speaker" with no tribute cue still routes to Vendors.
+    if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t))
+      return { label: 'Plan the tribute', go: () => setSheet({ kind: 'decisions', focus: 'tribute' }) };
     // Hired help — DJ, band, photographer, caterer, rentals → people you're hiring
     if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
       return { label: 'Line them up', go: () => setSheet({ kind: 'vendors' }) };
@@ -2009,6 +2096,7 @@ export default function HostShellV2() {
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
   const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
+  const [rsvpPickFor, setRsvpPickFor] = useState(null); // guest index whose RSVP picker is open (audit 2026-07-22)
   const setVendorStatus = (v, status) => {
     writeVendor(v.id, { status },
       (v.name || v.category || 'This vendor') + ' → ' + vendorStatusLabel(status) + ' — ' + VENDOR_STATUS_MEANING[status] + '.');
@@ -2144,7 +2232,17 @@ export default function HostShellV2() {
   // so every consumer — V1 heroes, exhale, auto-route, this queue — speaks
   // the same numbers. The wave-6 seam audit caught the shell-only split
   // making V1 say "Have a plan for 4 things…" over V2's "All quiet".
-  const worries = Array.isArray(plan.worries) ? plan.worries : [];
+  const _baseWorries = Array.isArray(plan.worries) ? plan.worries : [];
+  // BUDGET HONESTY (audit 2026-07-22): eventPlan carries no budget-over term, so the
+  // command surface could read calm while the Budget sheet + "Where you stand" both said
+  // "over". Surface it here as a heads-up (a watch, not a blocking action — it opens the
+  // Budget sheet). Uses the EXACT field the budget readout uses: money.committed > money.planned.
+  // Not on a PAST event — then the overage is a final fact (shown in the recap), not a
+  // live "worth keeping an eye on" heads-up (post-event wire 2026-07-22).
+  const _overBudget = (!isPastEvent(event) && money.planned && money.committed > money.planned) ? Math.round(money.committed - money.planned) : 0;
+  const worries = _overBudget > 0
+    ? [..._baseWorries, { id: 'budget-over', category: 'money', title: `Known costs are $${_overBudget.toLocaleString()} over your budget`, route: { tab: 'Budget' } }]
+    : _baseWorries;
   // BOARD RULING (2026-07-18): a vendor-confirm is a RECORD-ONLY self-report ("Mark as
   // locked in"), not a grounded next-step — it earns the command hero's one loud slot
   // ONLY when it's the single vendor gating readiness (rollup.counts.toConfirm === 1: the
@@ -2337,8 +2435,12 @@ export default function HostShellV2() {
       const id = String(sheet.focus);
       const targets = sheet.vendorSection === 'payment'
         ? ['v-paydue-' + id, 'v-cost-' + id]
+        // COI-intent routes land on the COI row first; contract-intent (documents)
+        // land on the contract row first. Same section, right sub-row (audit 2026-07-21).
+        : sheet.vendorSection === 'coi'
+        ? ['v-coi-' + id, 'v-contract-' + id]
         : sheet.vendorSection === 'documents'
-        ? ['v-coi-' + id]
+        ? ['v-contract-' + id, 'v-coi-' + id]
         : [];
       setTimeout(() => {
         try {
@@ -2464,14 +2566,26 @@ export default function HostShellV2() {
   const [seatView, setSeatView] = useState('list');   // 'list' | 'plan' (floor plan)
   const [dayView, setDayView] = useState('walk');     // 'walk' (one moment at a time) | 'list' (whole agenda)
   const [seatDrag, setSeatDrag] = useState(null);      // { number, x, y } during an active puck drag
+  const [guestDrag, setGuestDrag] = useState(null);    // { id, name, x, y } dragging a PERSON onto a table
+  const guestDraggedRef = useRef(false);               // suppress the tap-to-pick click after a drag
+  const [seatSelTable, setSeatSelTable] = useState(null); // v5 progressive disclosure: the floor table opened inline
+  const [doorDrag, setDoorDrag] = useState(null);         // { x, y } while dragging the host-placed door
   const floorRef = useRef(null);                       // the floor-plan canvas element
   const justDraggedRef = useRef(false);                // suppress the tap-to-seat click that follows a drag
   const seatingSheetOpen = !!(sheet && sheet.kind === 'seating');
   // Default puck layout when a table has no saved position — a tidy grid in
   // canvas fractions (0..1), so it's responsive to whatever width the sheet is.
+  // Grid columns/rows for the default puck layout — shared by the position
+  // helper and the container-height calc so they never disagree. Columns cap at
+  // 5 (was 3, which forced 6+ rows for a big reunion and stacked the 52px pucks
+  // on top of each other in a fixed-height box); the floorplan height then grows
+  // with the row count so pucks never collide before the host arranges them.
+  const tableGrid = (n) => {
+    const cols = Math.min(5, Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n)))));
+    return { cols, rows: Math.max(1, Math.ceil(Math.max(1, n) / cols)) };
+  };
   const defaultTablePos = (i, n) => {
-    const cols = Math.min(3, Math.max(1, Math.ceil(Math.sqrt(Math.max(1, n)))));
-    const rows = Math.max(1, Math.ceil(n / cols));
+    const { cols, rows } = tableGrid(n);
     const col = i % cols, r = Math.floor(i / cols);
     return { x: (col + 0.5) / cols, y: (r + 0.5) / rows };
   };
@@ -2502,8 +2616,62 @@ export default function HostShellV2() {
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
   };
+  // Drag a PERSON onto a table (or to the tray to remove). Threshold-gated so a
+  // small movement is still a tap-to-pick; a real drag hit-tests the table pucks
+  // under the drop point via elementsFromPoint and seats/unseats through the same
+  // pure helpers as tap-to-seat (host 2026-07-22).
+  const startGuestDrag = (g) => (e) => {
+    if (e.button != null && e.button !== 0) return;
+    guestDraggedRef.current = false;
+    const start = { x: e.clientX, y: e.clientY };
+    let moved = false;
+    const move = (ev) => {
+      if (!moved && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+      moved = true; guestDraggedRef.current = true;
+      setGuestDrag({ id: g.id, name: g.name, x: ev.clientX, y: ev.clientY });
+    };
+    const up = (ev) => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (moved) {
+        const els = document.elementsFromPoint(ev.clientX, ev.clientY) || [];
+        const puck = els.find(el => el.classList && el.classList.contains('tpuck'));
+        if (puck) {
+          const t = (seating.tables || []).find(x => x.number === Number(puck.getAttribute('data-tnum')));
+          if (t) seatGuestAt(g, t);
+        } else if (g.table && els.some(el => el.classList && el.classList.contains('seat-tray'))) {
+          unseatGuest(g);
+        }
+      }
+      setGuestDrag(null);
+      setTimeout(() => { guestDraggedRef.current = false; }, 0);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  // Host-placed DOOR: the app has no room geometry, so the host drops the door
+  // where it really is. Dragging updates event.doorPos (fractions) — this is what
+  // grounds "seat near the door" instead of the app inventing a wall (v5).
+  const startDoorDrag = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    let last = null;
+    const move = (ev) => {
+      const el = floorRef.current; if (!el) return;
+      const r = el.getBoundingClientRect();
+      last = { x: Math.min(1, Math.max(0, (ev.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (ev.clientY - r.top) / r.height)) };
+      setDoorDrag(last);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      if (last) patchEvent({ doorPos: last }, null);
+      setDoorDrag(null);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
   useEffect(() => {
-    if (!seatingSheetOpen) { setSeatPick(null); setSeatOpenTable(null); setTableNameDraft(null); return; }
+    if (!seatingSheetOpen) { setSeatPick(null); setSeatOpenTable(null); setTableNameDraft(null); setSeatSelTable(null); return; }
     const focusG = sheet && sheet.focus != null
       ? (event.guests || []).find(g => g && String(g.id) === String(sheet.focus)) : null;
     setSeatOpenTable(focusG && focusG.table ? Number(focusG.table) : null);
@@ -2809,6 +2977,12 @@ export default function HostShellV2() {
     });
   };
   const [dayIdx, setDayIdx] = useState(0);    // The Day: position in the run of show
+  // HONEST-TIME (the day-of ruling): which unset cues the host has opened to add a clock.
+  // Default = none; an unset moment reads "Set a time", never a bare native "--:-- --".
+  const [timeEditIds, setTimeEditIds] = useState(() => new Set());
+  // BUDGET PROPOSE-DON'T-ASK: the editor leads with ONE grounded number (Typical) + agree/change;
+  // "Change" opens the tiers+custom drawer. This flag = the host asked to change the number.
+  const [budgetChanging, setBudgetChanging] = useState(false);
 
   // Row-level landings inside the prototype — a route with a real destination
   // here opens the sheet on the exact row, instead of toasting.
@@ -3269,6 +3443,14 @@ export default function HostShellV2() {
     const now = gs[i].rsvp || 'no reply yet';
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + now + ' — ' + yes + ' confirmed. Maybes stay pending until they land.');
   };
+  // Direct RSVP set (audit 2026-07-22) — replaces the blind tap-to-cycle with an inline
+  // picker (mirrors the meal picker): tap a name's reply → pick Yes/No/Maybe/no reply.
+  const setRsvpValue = (i, value) => {
+    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: value } : g);
+    const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
+    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
+    setRsvpPickFor(null);
+  };
 
   // ── Feedback layer: haptic tick on real state changes, the original app's
   // synthesized chime reserved for magic moments. Muted preference persists.
@@ -3385,7 +3567,8 @@ export default function HostShellV2() {
     const clearedDecisions = prev.decisions > 0 && now.decisions === 0;
     const clearedCoi = prev.coi > 0 && now.coi === 0;
     if (clearedConflicts || clearedDecisions || clearedCoi) {
-      try { feedback('magic'); } catch { /* no fx */ }
+      // Solemn (state 3): the reassurance card still shows, but no triumphant chime.
+      try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no fx */ }
       // Surface the earned moment (conflict > decision > coi if several cleared at once — rare).
       // count = the peak the bundle reached (fallback to prev), so "6 of 6", not "1 of 1".
       if (clearedConflicts) { setJustCleared({ kind: 'conflict', count: Math.max(pk.conflicts, prev.conflicts) }); pk.conflicts = 0; }
@@ -3452,7 +3635,10 @@ export default function HostShellV2() {
         const undoFn = () => patchEvent(undoPrev, 'Undone.', { noUndo: true });
         if (askModeRef.current && stage === 'plan' && !sheet) {
           setHeroReceipt({ msg, fn: undoFn });
-          try { if (navigator.vibrate) navigator.vibrate(8); } catch { /* no haptics */ }
+          // Route through the ONE haptic vocabulary (feedback) instead of a bespoke
+          // vibrate(8) — a receipt lands with the same 10ms tick as every other state
+          // change, and respects the silent-haptics layer (audit 2026-07-22).
+          try { feedback('tick'); } catch { /* no haptics */ }
           if (receiptTimerRef.current) clearTimeout(receiptTimerRef.current);
           receiptTimerRef.current = setTimeout(() => setHeroReceipt(null), 7000);
         } else {
@@ -3599,8 +3785,59 @@ export default function HostShellV2() {
       if (v && !v.isInformal && !vendorStatusIsCurrent(v, 'Confirmed')) { setVendorStatus(v, 'Confirmed'); return; }
     }
     if (routeSheet(a.route)) return;
-    const dest = describeRoute(a.route);
+    const dest = describeRoute(a.route, event);
     toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
+  };
+
+  // A folded bundle row (the "See all N" children under a conflict/decision hero).
+  // If the item can resolve IN PLACE (a proposedFix-derived resolution whose two
+  // options each carry an `apply` vendor patch or an `event` patch), render the
+  // options as tactile confrows — one tap → writeVendor/patchEvent → receipt → the
+  // conflict clears. No "Take me to it". Items without an in-place fix still route
+  // via onCta. Shared by all three folded-row sites so the behavior is consistent.
+  const renderBundleKid = (c, rowKey) => {
+    // The folded rows are SURFACE items — they carry route.vendorId and an id that
+    // encodes the conflict kind, but not the resolution. Recover the in-place
+    // resolution from conflictItems (which hold the mapped proposedFix→resolution)
+    // by matching the affected vendor + kind — so a folded conflict row resolves in
+    // place too, not just the hero. (Also handles raw conflicts / mapped items.)
+    const vId = c && c.route && c.route.vendorId;
+    const kindHint = (c && typeof c.id === 'string' && (c.id.match(/vendor-conflicts:([a-z_]+)/) || [])[1]) || null;
+    const matched = (c && c.resolution) ? c
+      : (vId ? conflictItems.find(ci => ci && ci.affectedVendorId === vId && (!kindHint || ci.kind === kindHint)) : null);
+    const res = (matched && matched.resolution) || (c && c.proposedFix ? deriveResolution(c) : null);
+    const affectedVendorId = vId || (matched && matched.affectedVendorId);
+    const inPlace = res && res.inPlace && Array.isArray(res.options) && res.options.length >= 1
+      && res.options.every(o => o && (o.apply || o.event || o.route));
+    const title = String((c && c.title) || '').replace(/\.+$/, '');
+    if (inPlace) {
+      const applyKid = (o) => {
+        if (o.route) { routeSheet(o.route); return; }
+        const msg = o.receipt || 'Done — the clash is cleared.';
+        if (o.apply && affectedVendorId) writeVendor(affectedVendorId, o.apply, msg);
+        else if (o.event) patchEvent(o.event, msg);
+      };
+      return (
+        <div key={rowKey} className="line" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 7, padding: 'var(--sp-2) 0' }}>
+          <span className="vc-detail" style={{ margin: 0 }}>{title}</span>
+          <div className="conf-fixes">
+            {res.options.map((o, oi) => (
+              <button key={oi} className="confrow" onClick={() => applyKid(o)}>
+                {/* → only when the option actually navigates (o.route); in-place
+                    apply/event settles the clash right here, no arrow. */}
+                <span className="t">{o.label}</span>{o.route ? <span className="g" aria-hidden="true">→</span> : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      );
+    }
+    return (
+      <div key={rowKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+        <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{title}</span>
+        <button className="mini" onClick={() => onCta(c, rowKey)}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
+      </div>
+    );
   };
 
   const setGuests = (n) => patchEvent({ guestEstimate: n }, 'Planning around ' + n + ' now — the plan just recomputed.');
@@ -3622,7 +3859,6 @@ export default function HostShellV2() {
       );
     }
     if (kind === 'guests') {
-      const counted = event.guestMode === 'count';
       const guestN = Number(guests) || 0;
       const commitDraft = () => {
         const n = parseInt(guestDraft, 10);
@@ -3630,39 +3866,42 @@ export default function HostShellV2() {
         setGuestDraft('');
       };
       const bump = (delta) => { setGuestDraft(''); setGuests(Math.max(1, guestN + delta)); };
+      // PARITY RECOMPOSE (host "feels unbalanced", 2026-07-22 W6): the number at
+      // BigValue scale flanked by the stepper → quick chips → ONE quiet roster
+      // link — kit atoms, ASK_RHYTHM gaps. The ask FRAMING (record line + guide
+      // sentence) is the hero card's own title/consequence — repeating it here
+      // doubled the telling.
       return (
-        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-          {/* exact-number entry: a +/- stepper plus a typed field, for hosts
-              who already know their count instead of picking a nearby preset */}
-          <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+        <AskColumn>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-3)', marginTop: ASK_RHYTHM.eyebrowToValue }}>
             <button className="mini" onClick={() => bump(-1)} aria-label="Fewer guests">−</button>
-            <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: '10px 6px' }}
-              type="number" inputMode="numeric" min="1"
+            <BigValueInput ariaLabel="Exact guest count"
               value={guestDraft !== '' ? guestDraft : (guestN || '')}
               onFocus={() => setGuestDraft(String(guestN || ''))}
               onChange={e => setGuestDraft(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') commitDraft(); else if (e.key === 'Escape') setGuestDraft(''); }}
-              onBlur={commitDraft}
-              aria-label="Exact guest count" />
+              onCommit={commitDraft} />
             <button className="mini" onClick={() => bump(1)} aria-label="More guests">+</button>
             <span className="of">guests</span>
           </div>
-          <div className="chips hc-row" style={{ margin: 0 }}>
-            {[30, 50, 60, 75, 90, 120].map(n => (
+          {/* quick-pick a rough count (the stepper/field handles exact) */}
+          <div className="chips hc-row" style={{ margin: `${ASK_RHYTHM.whyToCta}px 0 0` }}>
+            {[50, 75, 100].map(n => (
               <button key={n} className="chip" aria-pressed={guests === n} onClick={() => { setGuestDraft(''); setGuests(n); }}>{n}</button>
             ))}
           </div>
-          <div className="chips hc-row" style={{ margin: 0 }}>
-            <button className="chip" onClick={() => openDraft('Your invite', draftInvite(event, profile, { rsvpUrl: inviteLinkUrl() }))}>Use the invite we wrote</button>
-            {/* a confirmed-headcount event doesn't get pushed toward a roster —
-                the mode chips below make the choice explicit instead */}
-            {!counted && <button className="chip" onClick={() => setSheet({ kind: 'guests' })}>Start a real list</button>}
-            <button className="chip" aria-pressed={counted}
-              onClick={() => patchEvent({ guestMode: 'count' }, 'Headcount event — food and seats size to the number; replies optional.')}>By headcount</button>
-            <button className="chip" aria-pressed={!counted && event.guestMode === 'list'}
-              onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>By guest list</button>
-          </div>
-        </div>
+          {/* SIMPLIFIED (host 2026-07-22): the editor was a wall of 13 controls mixing
+              count-entry, mode, and actions. A number is enough for a headcount event;
+              the ONE real branch is "do you want to track names?" — a single quiet link,
+              not four chips. Invite drafting lives on the guest list, not here. */}
+          {event.guestMode !== 'list' && (
+            // Quiet text link (same idiom as "Open the spread") — the .mini pill
+            // overflowed the column and read as a competing CTA.
+            <button style={{ alignSelf: 'flex-start', marginTop: ASK_RHYTHM.ctaToFoot, background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, color: 'var(--steel-soft)', cursor: 'pointer', textAlign: 'left' }}
+              onClick={() => { patchEvent({ guestMode: 'list' }, 'Guest-list event — the roster drives the count.'); setSheet({ kind: 'guests' }); }}>
+              Rather track who’s coming by name? Start a guest list ›
+            </button>
+          )}
+        </AskColumn>
       );
     }
     if (kind === 'rain') return rainEditorBlock();
@@ -3683,7 +3922,7 @@ export default function HostShellV2() {
               <span>{k}</span>
               <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className="mini" onClick={() => setD(k, -1)} aria-label={'Fewer ' + k}>−</button>
-                <span className="of" style={{ minWidth: 18, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(dc[k]) || 0}</span>
+                <span className="step-val" style={{ minWidth: 18 }}>{Number(dc[k]) || 0}</span>
                 <button className="mini" onClick={() => setD(k, 1)} aria-label={'More ' + k}>+</button>
               </span>
             </div>
@@ -3803,15 +4042,15 @@ export default function HostShellV2() {
                   is told the hour. */}
               {!startTimeIsConfirmed(event) && String(event.startTime || '').trim() && (
                 <>
-                  <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>
+                  <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
                     <b>We set this one, not you.</b> {event.startTimeWhy || ''} Your invite and your vendor briefs won’t name an hour until you say it’s right (tap “that’s right” by the time above).
                   </p>
                 </>
               )}
               {prop
-                ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>{prop.why}</p>
+                ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>{prop.why}</p>
                 : !String(event.startTime || '').trim()
-                  ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0', opacity: .85 }}>
+                  ? <p className="grounding" style={{ width: '100%', margin: '6px 0 0' }}>
                       Without this the day has an order but no clock, and nothing we send a vendor can name an hour.
                     </p>
                   : null}
@@ -3822,37 +4061,24 @@ export default function HostShellV2() {
     );
     }
     if (kind === 'food') {
-      const FOOD_SOURCING_OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
-      const picked = (event.foodChoices || {}).sourcing;
-      // AUTO-COLLAPSE, same doctrine as the food sheet's "Your choices" list
-      // (choiceOpen, keyed 'sourcing' here): a made choice folds to its settled
-      // line instead of leaving all 3 options sitting there looking unanswered.
-      if (picked && choiceOpen !== 'sourcing') {
-        const pickedLabel = (FOOD_SOURCING_OPTS.find(([, v]) => v === picked) || [])[0] || picked;
-        return (
-          <div className="chips hc-row">
-            <div className="line" style={{ flex: '1 0 100%', alignItems: 'center' }}>
-              <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{pickedLabel}</span>
-              <button className="mini" onClick={() => setChoiceOpen('sourcing')}>change</button>
-            </div>
-            {foodPlan && (
-              <button className="chip" onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items)</button>
-            )}
-          </div>
-        );
-      }
+      // PARITY + UNIFY (Figma 7:38 / 369:60, 2026-07-20): render the SAME decopt the hero uses —
+      // renderDecision(foodDecisionND()) — full-width option rows with our-pick (unsettled) or the
+      // chosen row highlighted (settled) + notes, NOT a parallel inline-chip render. One source of
+      // truth for the food decision; the "Open the spread" detail link stays as a subtle secondary.
+      const fnd = foodDecisionND();
+      // PARITY (Figma 369:60): the decision leads with the guide-voice grounding (Newsreader
+      // italic) — the proposed "why" when we have a pick, else the ask-mode why. Was missing on
+      // :5129 after the #1 subhead suppression; this restores it via the kit GuideLine atom.
+      const foodGuide = fnd.proposed ? fnd.proposed.why : fnd.why;
       return (
-        <div className="chips hc-row">
-          {FOOD_SOURCING_OPTS.map(([label, val]) => (
-            <button key={val} className="chip" aria-pressed={picked === val}
-              onClick={() => {
-                patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: val } },
-                  'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
-                setChoiceOpen(null);
-              }}>{label}</button>
-          ))}
+        <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 'var(--sp-3)' }}>
+          {foodGuide && <GuideLine gap={0}>{foodGuide}</GuideLine>}
+          {renderDecision(fnd)}
           {foodPlan && (
-            <button className="chip" onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items)</button>
+            // PARITY (Figma 369:60): a subtle steel-soft TEXT LINK, not a .chip pill — the options
+            // are the CTAs; opening the detail is secondary.
+            <button style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
+              onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items) ›</button>
           )}
         </div>
       );
@@ -3870,10 +4096,12 @@ export default function HostShellV2() {
       // there looking unclicked.
       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
       const held = event.catererCount;
-      // ELEGANT (host "make count change one less tap"): the hero is the action that needs
-      // fixing, so skip the "Held at N · change" collapse — show the resolution chips directly
-      // (one tap to fix, no "change" step). The current count is already in the card's detail line.
-      if ((held || held === 0) && choiceOpen !== 'catererCount' && !elegantMode) {
+      // BRING THE ACTION IN PLACE (host "fix this", 2026-07-21): only collapse to
+      // the settled line when the count MATCHES the confirmed yeses (the resolved
+      // state). When it's MISMATCHED — the actionable state this card exists to
+      // fix — fall through to the two resolution rows directly, one tap, no
+      // "change" detour. (Elegant already skips the collapse entirely.)
+      if ((held || held === 0) && choiceOpen !== 'catererCount' && !elegantMode && held === yes) {
         const matches = held === yes;
         return (
           <div className="chips hc-row">
@@ -3891,22 +4119,18 @@ export default function HostShellV2() {
       // ELEGANT PARITY (host 2026-07-18): the two count resolutions render as the same
       // tactile .decopt rows the decision/conflict heroes use — a genuine either/or, no
       // faked pick — instead of the old small .chip pills.
-      if (elegantMode) {
-        return (
-          <div className="decopts">
-            {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
-              <button key={i} className="decopt" onClick={fn}>
-                <span className="decopt-main"><span className="decopt-name">{label}</span></span>
-                <span className="decopt-right"><span className="decopt-arrow" aria-hidden="true">→</span></span>
-              </button>
-            ))}
-          </div>
-        );
-      }
+      // The two count resolutions render as tactile .decopt rows — a genuine
+      // either/or, no faked pick — in BOTH v2 and elegant, so a mismatched count
+      // is fixed in place (not the old bordered .chip pills).
       return (
-        <div className="chips hc-row">
-          <button className="chip" onClick={matchYes}>Match confirmed yeses ({yes})</button>
-          <button className="chip" onClick={holdGuests}>Hold {guests} plates anyway</button>
+        <div className="decopts">
+          {[['Match confirmed yeses (' + yes + ')', matchYes], ['Hold ' + guests + ' plates anyway', holdGuests]].map(([label, fn], i) => (
+            <button key={i} className="decopt" onClick={fn}>
+              <span className="decopt-main"><span className="decopt-name">{label}</span></span>
+              {/* No "→": both rows settle the count in place (matchYes/holdGuests),
+                  they don't navigate — an arrow here reads as false navigation. */}
+            </button>
+          ))}
         </div>
       );
     }
@@ -3953,12 +4177,19 @@ export default function HostShellV2() {
               </button>
             )}
           </div>
-          <div className="chips">
-            {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
-              <button key={p} className="chip" aria-pressed={event.rainPlan === p}
-                onClick={() => { patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.'); showGuestNote(p); }}>{p}</button>
-            ))}
-          </div>
+          {/* Fold-behind-Change (parity/MANIFEST) — once a backup is set, the four
+              presets collapse to one hairline row; tap to change. */}
+          {event.rainPlan && !settledOpen.rain ? (
+            <SettledRow label="Rain backup" value={event.rainPlan} tone="ok" style={{ margin: '0 0 var(--sp-2)' }}
+              onOpen={() => setSettledOpen(m => ({ ...m, rain: true }))} />
+          ) : (
+            <div className="chips">
+              {['Tent on standby', 'Carport / garage', 'Move it indoors', 'Rain or shine'].map(p => (
+                <button key={p} className="chip" aria-pressed={event.rainPlan === p}
+                  onClick={() => { patchEvent({ rainPlan: p }, 'Rain backup set: ' + p + ' — the day-of view knows.'); showGuestNote(p); setSettledOpen(m => ({ ...m, rain: false })); }}>{p}</button>
+              ))}
+            </div>
+          )}
           {suggested && <p className="grounding" style={{ margin: 0 }}>“Do it for me”: “{suggested.slice(0, 110)}…”</p>}
         </div>
       );
@@ -3967,7 +4198,9 @@ export default function HostShellV2() {
   // Budget editor — shared by the action-card editor AND the Budget sheet, so a
   // set budget stays changeable forever (three options = the estimator's real
   // low / mid / high; custom numbers split across the same real shares).
-  const budgetEditorBlock = () => {
+  // forceChange: open straight into the CHANGE drawer (skip the AGREED read-only display and
+  // the PROPOSED lead) — used by the money-sheet fold, whose whole intent is "change the number".
+  const budgetEditorBlock = (forceChange = false) => {
     const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
@@ -3976,8 +4209,15 @@ export default function HostShellV2() {
       ? [...new Set([est.lowTotal, Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100, est.highTotal])]
       : [];
     const OPT_LABELS = ['Lean', 'Typical', 'All-out'];
+    const low = est ? est.lowTotal : 0;
+    const high = est ? est.highTotal : 0;
+    const typical = est ? Math.round(((low + high) / 2) / 100) * 100 : 0;
+    // "Budget is set" = the host gave us a NUMBER (event.totalBudget), NOT money.planned
+    // (which is spend.total — non-zero from line items even when the host set no budget).
+    const isSet = Number(event.totalBudget) > 0;
     const setB = (n) => {
       setCustomBudget('');
+      setBudgetChanging(false);
       // MONEY-MOVE UNDO: snapshot just the field this write changes, offer one
       // inline restore on the toast. Single-level, in-memory — not a history.
       const prev = event.totalBudget;
@@ -3989,38 +4229,91 @@ export default function HostShellV2() {
       });
     };
     const customN = parseInt(customBudget, 10) || 0;
+    const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' };
+
+    // PROPOSE-DON'T-ASK (matches the day-of times): a budget is ONE grounded number
+    // (Typical = the estimator's mid), not a 3-way menu. Lead with it + Use/Change;
+    // the old tiers+custom become the Change drawer. The copy already conceded the
+    // answer ("typical lands near … · one number is all you need") — now the UI leads with it.
+
+    // AGREED — a budget is set: show it + change, not the chips. Same deliberate 6 / 14 / 20
+    // rhythm as PROPOSED (Figma 344:61) so the two states share one skeleton.
+    if (isSet && !budgetChanging && !forceChange) {
+      return (
+        <AskColumn>
+          <Eyebrow tone="ok">Your budget</Eyebrow>
+          <BigValue>{fmt(Number(event.totalBudget))}</BigValue>
+          <Grounding>The plan sizes food, vendors and shopping from here — change it anytime.</Grounding>
+          <CtaRow><button className="mini" onClick={() => setBudgetChanging(true)}>Change the number</button></CtaRow>
+        </AskColumn>
+      );
+    }
+    // PROPOSED — no budget yet and we can ground one: lead with Typical + Use/Change.
+    if (!budgetChanging && !forceChange && typical > 0) {
+      // Composed from the parity kit (./parity/askKit) — the locked 6/14/20/16 rhythm + 44/750
+      // type live in the atoms now, not inline here. Matches Figma 344:61 B1.
+      return (
+        <AskColumn>
+          <Eyebrow>A number to plan around</Eyebrow>
+          <BigValue suffix="Typical">{fmt(typical)}</BigValue>
+          <Grounding>
+            {`For ${guests} at a ${String(event.type).toLowerCase()}, typical lands near ${fmt(typical)}. `}The plan sizes food, vendors and shopping from here — change it anytime.
+          </Grounding>
+          {est && est.destinationAdjusted && (
+            <Grounding gap={8}>These ranges run wider because guests are traveling in — travel-scale costs are part of the numbers.</Grounding>
+          )}
+          <CtaRow>
+            <button className="cta" onClick={() => setB(typical)}>Use {fmt(typical)}</button>
+            <button className="mini" onClick={() => setBudgetChanging(true)}>Change</button>
+          </CtaRow>
+          {(low || high) ? (
+            <Grounding gap={16}>
+              or {low ? <button style={linkBtn} onClick={() => setB(low)}>Lean {fmt(low)}</button> : null}
+              {low && high ? ' · ' : ''}
+              {high ? <button style={linkBtn} onClick={() => setB(high)}>All-out {fmt(high)}</button> : null}
+            </Grounding>
+          ) : null}
+        </AskColumn>
+      );
+    }
+    // CHANGE drawer (or no estimate to ground a proposal) — the tiers + custom. A form, so
+    // it leads with a header and steps deliberately (chips → own number → why), consistent
+    // with the display states above. Pressed state reads event.totalBudget (the real budget),
+    // NOT money.planned (= spend.total) — same fix as `isSet`.
     return (
-      <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
+      // Composed from the parity kit — TierRow is the shared full-width tier (Figma 344:61 B3).
+      <AskColumn>
+        <Eyebrow>Change your budget</Eyebrow>
+        {/* Guide voice (Newsreader italic). Honest: the engine sizes food/vendors/shopping off
+            the number but does NOT re-split into named categories — so no "I'll re-split the
+            plan" promise (the estimator returns only low/high). */}
+        <GuideLine>Pick a size, or type your own.</GuideLine>
         {opts.length > 0 && (
-          <div className="chips">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             {opts.map((n, idx) => (
-              <button key={n} className="chip" aria-pressed={money.planned === n} onClick={() => setB(n)}>
-                {opts.length === 3 ? OPT_LABELS[idx] + ' · ' : ''}{fmt(n)}
-              </button>
+              <TierRow key={n}
+                label={opts.length === 3 ? OPT_LABELS[idx] : fmt(n)}
+                amount={opts.length === 3 ? fmt(n) : null}
+                selected={Number(event.totalBudget) === n}
+                pick={opts.length === 3 && idx === 1}
+                onClick={() => setB(n)}
+                ariaLabel={(opts.length === 3 ? OPT_LABELS[idx] + ' ' : '') + fmt(n)} />
             ))}
           </div>
         )}
-        {/* Honest disclosure (engine-gap NEW-2): the estimator says when the
-            destination blend actually MOVED the band (destinationAdjusted) —
-            same signal production's BudgetEstimateHint discloses. Shown only
-            when true; never a guess. */}
-        {est && est.destinationAdjusted && (
-          <p className="grounding" style={{ margin: 0 }}>
-            These ranges run wider because guests are traveling in — travel-scale costs are part of the numbers.
-          </p>
-        )}
-        <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: '10px 14px' }}
+        <CtaRow gap={ASK_COMPACT.whyToCta}>
+          <input className="field" style={{ maxWidth: 170, fontSize: 'var(--t-input)', padding: 'var(--field)' }}
             type="number" inputMode="numeric" min="0" placeholder="Your own number"
             value={customBudget} onChange={e => setCustomBudget(e.target.value)}
             aria-label="Custom budget amount" />
           <button className="cta" disabled={customN <= 0} style={customN <= 0 ? { opacity: .45 } : undefined}
             onClick={() => setB(customN)}>Use it</button>
-        </div>
-        <p className="grounding" style={{ margin: 0 }}>
-          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)} — typical lands near ${fmt(Math.round(((est.lowTotal + est.highTotal) / 2) / 100) * 100)}.` : ''} One number is all you need — the plan works out the rest, and you can change it anytime.
-        </p>
-      </div>
+        </CtaRow>
+        <Grounding gap={ASK_COMPACT.ctaToFoot}>
+          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.` : ''}
+          {est && est.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
+        </Grounding>
+      </AskColumn>
     );
   };
 
@@ -4114,7 +4407,7 @@ export default function HostShellV2() {
       revealTimers.current.push(setTimeout(() => setRevealStep(i + 1), 550 + 650 * i));
     }
     revealTimers.current.push(setTimeout(() => setRevealStep(lineCount + 1), 550 + 650 * lineCount + 350));
-    revealTimers.current.push(setTimeout(() => { setRevealStep(lineCount + 2); feedback('magic'); }, 550 + 650 * lineCount + 950));
+    revealTimers.current.push(setTimeout(() => { setRevealStep(lineCount + 2); if (!isSolemnEvent(event)) feedback('magic'); }, 550 + 650 * lineCount + 950));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -4149,6 +4442,8 @@ export default function HostShellV2() {
   // Run of show — the app's single source: playbook-derived (tracks the event's
   // time of day), a stored ros only when the host has taken ownership.
   const ros = useMemo(() => { try { return effectiveRos(event) || []; } catch { return Array.isArray(event.ros) ? event.ros : []; } }, [event]);
+  // Day-of ruling state 3: solemn events drop the count, soften verbs, lean the serif.
+  const solemn = useMemo(() => isSolemnEvent(event), [event]);
   // WAVE-B: the ONE ros writer — legacy's exact shape (App.js:43393 setRos):
   // snapshot effectiveRos with the edit applied, and set rosEdited: true so
   // the stored schedule wins from now on (effectiveRos only honors event.ros
@@ -4574,7 +4869,7 @@ export default function HostShellV2() {
                         choreography every time. Only while it's still animating. */}
                     {revealStep <= revealLineCount && (
                       <div style={{ textAlign: 'right', marginBottom: 2 }}>
-                        <button className="mini" onClick={() => { clearRevealTimers(); setRevealStep(revealLineCount + 2); try { feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
+                        <button className="mini" onClick={() => { clearRevealTimers(); setRevealStep(revealLineCount + 2); try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
                       </div>
                     )}
                     <div className="eyebrow" aria-live="polite">{revealEyebrow}</div>
@@ -4686,8 +4981,10 @@ export default function HostShellV2() {
                     ? 'Next: ' + String(next.title || 'your next step').replace(/\.+$/, '')
                     : 'Nothing else needs you right now';
                   return (
-                    <div className="allclear" role="status">
-                      <h2 className="ac-head">{isConf ? 'All untangled.' : isCoi ? 'All covered.' : 'All decided.'}</h2>
+                    <div className={'allclear' + (solemn ? ' solemn' : '')} role="status">
+                      <h2 className="ac-head">{solemn
+                        ? (isConf ? 'The day’s in order.' : isCoi ? 'Everyone’s cleared to help.' : 'It’s all settled.')
+                        : (isConf ? 'All untangled.' : isCoi ? 'All covered.' : 'All decided.')}</h2>
                       <p className="ac-voice">{isConf
                         ? (cues.length ? 'Every vendor has its own hour now — here’s the day, in order.'
                                        : 'Every vendor has its own hour now — nothing’s fighting for setup.')
@@ -4736,11 +5033,13 @@ export default function HostShellV2() {
                         </p>
                       );
                     } else if (listIsCalm) {
-                      statusNode = <p className="verdict">{worries.length
-                        ? 'All quiet — just the heads-ups below, when you have a minute.'
-                        : 'All quiet — you’re genuinely set for now.'}</p>;
+                      statusNode = <p className="verdict">{solemn
+                        ? 'Everything’s ready — nothing needs you today.'
+                        : (worries.length
+                          ? 'All quiet — just the heads-ups below, when you have a minute.'
+                          : 'All quiet — you’re genuinely set for now.')}</p>;
                     } else {
-                      statusNode = <p className="verdict">On track — nothing is slipping.</p>;
+                      statusNode = <p className="verdict">{solemn ? 'You’re ready — take it gently.' : 'On track — nothing is slipping.'}</p>;
                       statusOnTrack = true;
                     }
                   }
@@ -4788,7 +5087,20 @@ export default function HostShellV2() {
                     <p className="cp-label">ALL QUIET</p>
                     <h2 className="cp-head">You’re ahead.</h2>
                     {statusNode || <p className="verdict">Nothing needs you today. Everything’s in motion.</p>}
-                    <button className="cp-look" onClick={() => { try { const el = document.querySelector('.efold, .then-fold') || [...document.querySelectorAll('.sect,.eyebrow')].find(n => /worth keeping|coming up/i.test(n.textContent || '')); el && el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch { /* no target */ } }}>Look around anyway  ›</button>
+                    <button className="cp-look" onClick={() => { try {
+                      // The below-fold scrolls the .app container, which silently ignores
+                      // scrollTo({behavior:'smooth'}) here — only a direct scrollTop assignment
+                      // actually moves it. Try smooth first (harmless where honored), then set
+                      // scrollTop directly so the reveal always lands (audit 2026-07-21).
+                      const anchor = document.querySelector('.efold, .then-fold') || [...document.querySelectorAll('.sect,.eyebrow,.shelf-label')].find(n => /worth keeping|coming up|where you stand|the rest/i.test(n.textContent || ''));
+                      const sc = (anchor && anchor.closest('.app')) || document.querySelector('.app') || document.scrollingElement;
+                      if (!sc) return;
+                      const target = anchor
+                        ? Math.max(0, anchor.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 12)
+                        : sc.scrollTop + Math.round((sc.clientHeight || 700) * 0.82);
+                      try { sc.scrollTo({ top: target, behavior: 'smooth' }); } catch {}
+                      sc.scrollTop = target;
+                    } catch { /* no target */ } }}>Look around anyway  ›</button>
                     {Number.isFinite(cpDone) && Number.isFinite(cpTotal) && cpTotal > 0 && (
                       <p className="cp-prog">{cpDone} of {cpTotal} on track{nextCheck ? ' · next check ' + nextCheck : ''}</p>
                     )}
@@ -4800,7 +5112,8 @@ export default function HostShellV2() {
                   </div>
                   <p className="mega-sub">
                     {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
-                    {isPast && dstat.status !== 'today' && dstat.status !== 'tomorrow' && 'this one is behind you.'}
+                    {/* Past says it ONCE — the "How it landed · behind you" header carries it;
+                        this sub and the empty-state used to re-say it (audit 2026-07-22, W7). */}
                     {!isPast && days !== null && days > 1 && `until ${dateLong}`}
                   </p>
                   {statusNode}
@@ -4853,7 +5166,9 @@ export default function HostShellV2() {
                   header would be a second telling. The anchor stays for the bar. */}
               {(askMode || (elegantMode && listIsCalm && !isPast && days !== null && days > 0))
                 ? <div id="actionsAnchor" aria-hidden="true" />
-                : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
+                : isPast
+                  ? <div className="sect" id="actionsAnchor"><h2>How it landed</h2><div className="rule" /><span className="when">behind you</span></div>
+                  : <div className="sect" id="actionsAnchor"><h2>What needs you</h2><div className="rule" /><span className="when">in order</span></div>}
               {plan && plan.planningState && plan.planningState.reasoning && (() => {
                 // Re-audit 2026-07-17 (P0, "one hero instruction"): the milestone
                 // sentence ("Milestone: X — then Y.") was a THIRD "what's next" voice
@@ -4880,7 +5195,9 @@ export default function HostShellV2() {
               })()}
 
               {queue.length === 0 && !(elegantMode && listIsCalm && !isPast && days !== null && days > 0) && (
-                <div className="empty">{worries.length
+                <div className="empty">{isPast
+                  ? 'The recap is below.'
+                  : worries.length
                   ? 'Nothing needs you right now — just the heads-ups below.'
                   : 'Nothing needs you right now — the basics are all settled.'}</div>
               )}
@@ -4988,12 +5305,22 @@ export default function HostShellV2() {
                     // faked "our fix" — the recommendedAction is a genuine either/or), and a
                     // "Set a different time" row that opens an inline picker for ANY arrival
                     // time (res.custom). All resolve in place → writeVendor → receipt → next.
-                    const inPlace = res.inPlace && Array.isArray(res.options) && res.options.length === 2 && res.options.every(o => o && o.apply);
+                    const inPlace = res.inPlace && Array.isArray(res.options) && res.options.length === 2 && res.options.every(o => o && (o.apply || o.event || o.route));
                     const custom = inPlace && res.custom && res.custom.kind === 'time' ? res.custom : null;
                     const vend = (event.vendors || []).find(v => v && v.id === it.affectedVendorId);
                     const vendName = vend ? (vend.name || '').trim() : '';
                     const goFix = () => { setBundleOpen(m => ({ ...m, [key]: false })); routeSheet({ tab: 'Vendors', vendorId: it.affectedVendorId }); };
-                    const applyFix = (o) => { if (it.affectedVendorId && o && o.apply) writeVendor(it.affectedVendorId, o.apply, o.receipt || 'Done — the clash is cleared.'); };
+                    const applyFix = (o) => {
+                      if (!o) return;
+                      const msg = o.receipt || 'Done — the clash is cleared.';
+                      // A vendor-field fix writes through writeVendor; a budget (or other
+                      // event) fix writes through patchEvent — both funnel to the same
+                      // in-place receipt + undo. A `route` option (a genuine upload/nav)
+                      // routes to the right row — the only non-in-place branch.
+                      if (o.route) { routeSheet(o.route); return; }
+                      if (o.apply && it.affectedVendorId) writeVendor(it.affectedVendorId, o.apply, msg);
+                      else if (o.event) patchEvent(o.event, msg);
+                    };
                     // minimal 12h/24h converters (input type=time is 24h; the seed stores "10:00 AM")
                     const cParse = (s) => { const m = /^\s*(\d{1,2}):(\d{2})\s*(am|pm)?/i.exec(String(s || '')); if (!m) return null; let h = +m[1]; const mm = +m[2]; const ap = (m[3] || '').toLowerCase(); if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0; return h * 60 + mm; };
                     const to24 = (s) => { const t = cParse(s); return t == null ? '' : String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); };
@@ -5009,7 +5336,7 @@ export default function HostShellV2() {
                           {inPlace ? (
                             <div className="conf-fixes">
                               {res.options.map((o, oi) => (
-                                <button key={oi} className="confrow" onClick={() => applyFix(o)}><span className="t">{o.label}</span><span className="g" aria-hidden="true">→</span></button>
+                                <button key={oi} className="confrow" onClick={() => applyFix(o)}><span className="t">{o.label}</span>{o.route ? <span className="g" aria-hidden="true">→</span> : null}</button>
                               ))}
                               {custom && (conflictTime == null ? (
                                 <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">›</span></button>
@@ -5046,12 +5373,7 @@ export default function HostShellV2() {
                               <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ›')}</span>
                             </button>
                           )}
-                          {open && kids.map((c, ci) => (
-                            <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-                              <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
-                              <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
-                            </div>
-                          ))}
+                          {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
                         </div>
                       </article>
                     );
@@ -5089,12 +5411,7 @@ export default function HostShellV2() {
                               <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + (a.count != null ? a.count : kids.length) + '  ›')}</span>
                             </button>
                           )}
-                          {open && kids.map((c, ci) => (
-                            <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-                              <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
-                              <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
-                            </div>
-                          ))}
+                          {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
                         </div>
                       </article>
                     );
@@ -5124,12 +5441,7 @@ export default function HostShellV2() {
                           </button>
 
                         </div>
-                        {open && kids.map((c, ci) => (
-                          <div key={String((c && c.id) || key + ':' + ci)} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-                            <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{String((c && c.title) || '').replace(/\.+$/, '')}</span>
-                            <button className="mini" onClick={() => onCta(c, String((c && c.id) || key + ':' + ci))}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
-                          </div>
-                        ))}
+                        {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
                       </div>
                     </article>
                   );
@@ -5218,6 +5530,16 @@ export default function HostShellV2() {
                 // Every vendor's COI is handled but the solver task still lingers open — don't
                 // fall back to the ugly generic "Overdue · Decide". Show the calm done state.
                 const coiTaskDone = isCoiTask && !coiFirst;
+                // Budget hero: the action panel (budgetEditorBlock) always carries its own
+                // grounded reasoning in every state, so the ask's `consequence` subhead just
+                // repeats it. Suppress the subhead here so the hero reads like Figma 344:61's
+                // single-explanation card (host 2026-07-19). Hero only — below-fold unaffected.
+                const heroBudgetAsk = isHero && (String(a.domain || '').toLowerCase() === 'budget' || /^set your budget/i.test(String(a.title || '').trim()));
+                // Food/menu decision (editor path): the decopt rows below carry per-option notes +
+                // our-pick, so the generic "N of M already handled" consequence AND the redundant
+                // "What you're serving · N open" record both just compete. Suppress them so the ask
+                // reads like Figma 369:60 (title → rows). Hero only (2026-07-20).
+                const heroDecisionAsk = isHero && (String(a.domain || '').toLowerCase() === 'food' || /serving|decide the menu|the menu\b|the spread/i.test(String(a.title || '')));
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
                     style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
@@ -5228,13 +5550,13 @@ export default function HostShellV2() {
                         {!lands && !coiHero && !coiTaskDone && !decHeroActions && <span className="tag plan">in the full app</span>}
                         {!coiHero && !coiTaskDone && dueChip(a)}
                       </div>
-                      {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
+                      {isHero ? ((rec && !coiHero && !coiTaskDone && !heroDecisionAsk) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
                       {coiTaskDone
                         ? <p className="because">Every vendor's proof is on file — you're clear here.</p>
                         /* When the hero renders a decision (decopt), suppress the action's own
                            consequence line — otherwise vendor-status copy ("Currently quoted…")
                            bleeds onto a menu decision. The decision's options carry the meaning. */
-                        : (!decHeroActions && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
+                        : (!decHeroActions && !heroBudgetAsk && !heroDecisionAsk && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
                       {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
                           been for a while, and it never once said WHY — the host was handed a
                           ranking and asked to trust it. Every line below is true of the item's
@@ -5276,7 +5598,7 @@ export default function HostShellV2() {
                           const vn = String(v.name || '').trim() || 'the vendor';
                           const status = (() => { try { const s = getVendorCOIState(v, event); return s ? s.status : 'required'; } catch { return 'required'; } })();
                           const ip = (label, patch, receipt) => ({ label, patch, receipt });
-                          const rt = (label, glyph) => ({ label, glyph, route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'documents' } });
+                          const rt = (label, glyph) => ({ label, glyph, route: { tab: 'Vendors', vendorId: v.id, vendorSection: 'coi' } });
                           const branches = status === 'received' ? [
                             ip('It names the venue & covers the date — cleared', { coiVerified: true }, `${vn}'s insurance checks out — they're cleared.`),
                             ip("It's missing the venue or dates — ask for a fix", { coiStatus: 'requested', coiVerified: false }, `Asked ${vn} for a corrected certificate.`),
@@ -5284,14 +5606,17 @@ export default function HostShellV2() {
                           ] : status === 'requested' ? [
                             ip('Their proof just came in — mark it received', { coiStatus: 'received' }, `${vn}'s proof is in — next, check it names your venue.`),
                             rt('Chase them again — open the vendor', '→'),
-                            ip("They can't provide one — note it & move on", { coiWaived: true }, `Noted — ${vn} isn't providing a COI. It'll stop nagging you.`),
+                            ip("They can't provide one — note it & move on", { coiWaived: true }, `Noted — ${vn} isn't sending proof of insurance. It'll stop nagging you.`),
                           ] : status === 'expired' ? [
                             ip('Ask for current proof — mark requested', { coiStatus: 'requested', coiVerified: false }, `Asked ${vn} for current proof.`),
                             ip("It's actually current — mark valid", { coiVerified: true }, `${vn}'s coverage marked valid.`),
                           ] : [
                             ip('Send the ask — mark it requested', { coiStatus: 'requested' }, `Asked ${vn} for proof of insurance — noted.`),
-                            ip('Not needed for this vendor — skip it', { coiWaived: true }, `Noted — ${vn} doesn't need a COI.`),
-                            rt('Ask the venue if they require it', '→'),
+                            ip('Not needed for this vendor — skip it', { coiWaived: true }, `Noted — ${vn} doesn't need proof of insurance.`),
+                            // Was a route to THIS vendor's documents — a label/target mismatch
+                            // (copy names the venue; there's no venue surface). Now in place:
+                            // hold it undecided + carry the guidance in the receipt (audit 2026-07-21).
+                            ip("Not sure it's needed — I'll check with the venue", { coiStatus: 'required' }, `Noted — check whether your venue requires proof of insurance from ${vn}. It'll wait.`),
                           ];
                           const doB = (b) => { if (b.route) routeSheet(b.route); else if (b.patch) writeVendor(v.id, b.patch, b.receipt); };
                           return (
@@ -5299,7 +5624,9 @@ export default function HostShellV2() {
                               {branches.map((b, bi) => (
                                 <button key={bi} className={'decopt' + (bi === 0 ? ' pick' : '')} onClick={() => doB(b)}>
                                   <span className="decopt-main"><span className="decopt-name">{b.label}</span></span>
-                                  <span className="decopt-right"><span className="decopt-arrow" aria-hidden="true">{b.glyph || '→'}</span></span>
+                                  {/* Arrow only on the rt() branches that open the vendor's documents;
+                                      ip() branches settle the COI step in place — no false nav. */}
+                                  <span className="decopt-right">{b.route ? <span className="decopt-arrow" aria-hidden="true">{b.glyph || '→'}</span> : null}</span>
                                 </button>
                               ))}
                             </div>
@@ -5311,7 +5638,9 @@ export default function HostShellV2() {
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
                              destination when a route is genuinely all we have, so the CTA still says
                              where it goes. */
-                          : (a.cta === 'Go' ? ('Open ' + String(describeRoute(a.route) || 'the plan').replace(/^the\s+/i, '').toLowerCase()) : a.cta)
+                          /* Lowercase ONLY the leading tab word — a vendor's proper name must
+                             keep its case ("Open vendors → Fired Up BBQ", audit 2026-07-22 W5). */
+                          : (a.cta === 'Go' ? ('Open ' + String(describeRoute(a.route, event) || 'the plan').replace(/^the\s+/i, '').replace(/^[A-Z][a-z]*/, (m) => m.toLowerCase())) : a.cta)
                         }</button>}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
@@ -5815,7 +6144,11 @@ export default function HostShellV2() {
                         roster QA seed — the surface QA could not previously reach. */}
                     <div className="t-sub">{guests
                       ? (gBand && gBand.basis === 'rsvp' && gBand.band && gBand.because
-                          ? <>{gBand.because}</>
+                          ? (isPast
+                              /* Past recap: "replies still out" is a dead ask on a finished
+                                 event (audit 2026-07-22, W7) — state what the roster was. */
+                              ? <>{(event.guests || []).filter(g => g && g.rsvp === 'Yes').length} confirmed · {(event.guests || []).length} invited</>
+                              : <>{gBand.because}</>)
                           : expect ? <>planned around · likely <b>{expect.low}–{expect.high}</b> on the day{expect.note ? ` (${expect.note})` : ''}</> : 'planned around')
                       : 'no count yet — the plan can’t size food or seats'}</div>
                   </div>
@@ -5826,7 +6159,7 @@ export default function HostShellV2() {
                     <div className="t-num">{money.planned ? fmt(bAnim) : '—'}</div>
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
-                    <div className={'t-sub' + (money.planned && money.committed > money.planned ? ' over' : '')}>
+                    <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
                       {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? ` · ${fmt(money.committed - money.planned)} over` : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
@@ -5884,6 +6217,8 @@ export default function HostShellV2() {
                       // checklist ledger; open to-dos aren't "needs you" unless
                       // overdue, and then the engine makes catch-up the top card.
                       if (days === 0) {
+                        // Solemn (state 3): no count, no "wheel" — a gentle lead only.
+                        if (solemn) return 'You lead this — the day is below.';
                         // Day-of truth: count what's actually left today, not "1 thing".
                         const moments = ros.filter(r => r && !r.done).length;
                         const openTasks = (event.timeline || []).filter(t => t && !t.done && !isTimelineStepResolved(t)).length;
@@ -6176,7 +6511,7 @@ export default function HostShellV2() {
                           resolves (b.route) — land there, never a passive note. */}
                       {!isVenueBlock && b.route && (
                         <div className="actions-row">
-                          <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route) || 'the right spot')); }}>Sort it out</button>
+                          <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route, event) || 'the right spot')); }}>Sort it out</button>
                         </div>
                       )}
                       {/* No tab/field to route to, but a real fixed set of
@@ -6203,7 +6538,7 @@ export default function HostShellV2() {
                 );
               })}
 
-              {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
+              {!isPast && event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
                     {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + String(event.venue).toLowerCase()}
@@ -6211,7 +6546,7 @@ export default function HostShellV2() {
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
+              {!isPast && event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
@@ -6596,10 +6931,10 @@ export default function HostShellV2() {
                     // NOW cue re-derives, so this IS the advance.
                     if (nowCue.id) {
                       patchEvent({ rosDone: { ...(event.rosDone || {}), [nowCue.id]: true } }, null);
-                      if (openCues.length === 1) feedback('magic');
+                      if (!solemn && openCues.length === 1) feedback('magic');
                     }
                   }}>
-                    {openCues.length === 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
+                    {solemn ? 'Continue when ready' : (openCues.length === 1 ? 'Done — that’s the last one' : 'Done — what’s next')}
                   </button>
                 </div>
               )}
@@ -6610,7 +6945,7 @@ export default function HostShellV2() {
                       live thread — legacy runs the rail green for the whole
                       day-of, not just behind the NOW box (App.js ~34635). */}
                   <div className="then-spine-link" aria-hidden="true" />
-                  <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</div>
+                  <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>{solemn ? 'The rest, in their time' : <>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</>}</div>
                   <div className="then-spine">
                   {cuesAfterNow.slice(0, 7).map((r, i) => {
                     const m = cueMins(r.time);
@@ -6804,89 +7139,125 @@ export default function HostShellV2() {
                 </>
               ) : dayIdx >= ros.length ? (
                 <>
-                  <div className="clock" style={{ fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>That’s the whole day.</div>
+                  <div className="clock" style={solemn ? { fontSize: 'clamp(30px,10cqw,40px)', fontFamily: 'var(--serif-read)', fontWeight: 500, letterSpacing: '-.01em' } : { fontSize: 'clamp(34px,11cqw,44px)', fontWeight: 700, letterSpacing: '-.03em' }}>{solemn ? 'That’s all of it. Thank you for carrying today.' : 'That’s the whole day.'}</div>
                   <p className="day-empty">All {ros.length} moments walked through, in order, from the real run of show.</p>
                   <button className="cta" style={{ marginTop: 18 }} onClick={() => setDayIdx(0)}>Walk it again</button>
                 </>
               ) : (
                 <>
-                  <div className="clock">{ros[dayIdx].time}</div>
-                  <div className="now-card">
-                    <div className="now-label">{dayIdx === 0 ? (isPast ? 'How it started' : 'First thing that day') : 'Now'}</div>
-                    <h2>{ros[dayIdx].segment}</h2>
-                    <p className="meta">
-                      {[ros[dayIdx].location, ros[dayIdx].owner && ('owner: ' + ros[dayIdx].owner), ros[dayIdx].vendorName].filter(Boolean).join(' · ')}
-                    </p>
-                    {ros[dayIdx].notes && <p className="meta">{ros[dayIdx].notes}</p>}
-                    {/* WAVE-B: minimal per-cue editor — "give it a time when you
-                        know it" finally has a control. Time + who runs it, written
-                        through writeRosCue (legacy's ros/rosEdited shape). Preview
-                        only, never on the live day, and only for upcoming events. */}
-                    {!isPast && ros[dayIdx].id && (
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
-                        <label className="of" htmlFor="ros-cue-time">time</label>
-                        <input id="ros-cue-time" className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
-                          value={ros[dayIdx].time || ''}
-                          onChange={e => { const cue = ros[dayIdx]; writeRosCue(cue.id, { time: e.target.value }, e.target.value ? (cue.segment || 'This moment') + ' — ' + e.target.value + ' on the schedule.' : (cue.segment || 'This moment') + ' — time cleared.'); }}
-                          aria-label={'Time for ' + (ros[dayIdx].segment || 'this moment')} />
-                        <label className="of" htmlFor="ros-cue-owner">who runs it</label>
-                        <input id="ros-cue-owner" className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="you? a helper?"
-                          value={ros[dayIdx].owner || ''}
-                          onChange={e => writeRosCue(ros[dayIdx].id, { owner: e.target.value }, null)}
-                          aria-label={'Who runs ' + (ros[dayIdx].segment || 'this moment')} />
+                  {/* Figma 331:61: NO giant clock — the time rides in the eyebrow ("10:30 · NOW"),
+                      the MOMENT NAME is the hero. "Walk it" shows ONE calm moment; the full editable
+                      list lives in "Full agenda". */}
+                  {/* PROPOSE-DON'T-ASK (the day-of ruling) — the SAME three-state proposal the Full-agenda
+                      renderer uses above (6740), surfaced in the Walk-it view so both modes offer it
+                      consistently: an untimed day pencils the WHOLE run of show from one grounded start
+                      (not nine taps). Accepting writes event.startTime; playbookRunOfShow reflows every
+                      moment to a real clock. Handles: OUR derived guess awaiting a yes · a fresh proposal. */}
+                  {!isPast && !ros.some(r => r && r.time) && (() => {
+                    let prop = null; try { prop = proposeStartTime(event, wx); } catch (_e) { prop = null; }
+                    const derived = String(event.startTimeSource || '') === 'derived' && String(event.startTime || '').trim();
+                    if (!prop && !derived) return null;
+                    // Composed from the parity kit at COMPACT density — same propose atoms as
+                    // budget B1, tighter card rhythm. The eyebrow/why/accept shape is the
+                    // shared Propose-Don't-Ask primitive (day-of 331:61 + budget 344:61).
+                    return (
+                      <div className="now-card" style={{ marginBottom: 'var(--sp-3)', borderColor: 'var(--steel-muted)' }}>
+                        <Eyebrow tone="steel">{derived ? 'We pencilled the times — not you' : 'Want me to pencil in times?'}</Eyebrow>
+                        <Grounding gap={ASK_COMPACT.eyebrowToValue}>
+                          {derived
+                            ? <>Confirm and every moment becomes a real clock. {event.startTimeWhy || ''}</>
+                            : <>I’ll work back from a {prop.label} start so the whole day has a clock — nothing’s locked, nudge anything. {prop.why}</>}
+                        </Grounding>
+                        <CtaRow gap={ASK_COMPACT.whyToCta}>
+                          <button className="cta"
+                            onClick={() => derived
+                              ? patchEvent({ startTimeSource: 'host' }, 'Start time confirmed — the whole day reads from it now.')
+                              : patchEvent({ startTime: prop.hhmm, startTimeSource: 'host' }, 'Penciled the day from your ' + prop.label + ' start — nudge any time you like.')}>
+                            {derived ? 'That’s right — pencil them in' : 'Yes, pencil them in'}
+                          </button>
+                        </CtaRow>
                       </div>
-                    )}
-                    <button className="cta" style={{ marginTop: 6 }} onClick={() => {
-                      const cue = ros[dayIdx];
-                      // DAY-OF ONLY: write the per-cue done flag the production app
-                      // persists (event.rosDone; single-truth — effectiveRos overlays
-                      // it, so "N moments queued" and reloads all agree). A preview
-                      // walk on any other day stays session-only: nothing happened.
-                      if (days === 0 && cue && cue.id) {
-                        patchEvent({ rosDone: { ...(event.rosDone || {}), [cue.id]: true } }, null);
-                        if (dayIdx === ros.length - 1) feedback('magic');
-                      } else {
-                        feedback(dayIdx === ros.length - 1 ? 'magic' : 'act');
-                      }
-                      setDayIdx(i => i + 1);
-                    }}>
-                      {dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — what’s next'}
-                    </button>
-                  </div>
-                  <div className="actions-row" style={{ marginTop: 'var(--sp-3)' }}>
+                    );
+                  })()}
+                  {(() => {
+                    const cur = ros[dayIdx];
+                    // Split the one long ROS segment into a short NAME + a guide sentence, the way
+                    // Figma 331:61 does ("Final plating." + "Fill the chafing dishes…"). Runtime
+                    // moments carry a single string; the first clause before a colon/semicolon is
+                    // the name, the rest is the guide. No delimiter → the whole thing is the name.
+                    const seg = String(cur.segment || 'This moment').trim();
+                    const sm = seg.match(/^(.{3,42}?)\s*[:;]\s+(.+)$/);
+                    let name = sm ? sm[1].trim() : seg;
+                    if (!/[.!?]$/.test(name)) name += '.';           // Figma names close with a period
+                    const guide = (sm ? sm[2] : (cur.notes || '')).replace(/\s*;\s*/g, ', ').trim();
+                    const timeSet = !!cur.time;
+                    const editing = cur.id && timeEditIds.has(cur.id);
+                    const ownerNamed = cur.owner && !/^(you|host|me)$/i.test(String(cur.owner).trim());
+                    const ownerPhrase = solemn ? 'You lead this' : (ownerNamed ? cur.owner + ' runs this' : 'You run this');
+                    return (
+                      <div style={{ marginTop: 'var(--sp-2)' }}>
+                        {/* Eyebrow: time-set promotes to a live "10:30 · NOW" (state 2); otherwise the calm sequence label (state 1). */}
+                        <div className="now-label" style={timeSet ? { color: 'var(--warn)' } : undefined}>
+                          {timeSet ? fmt12h(cur.time) + ' · NOW · you run this' : (dayIdx === 0 ? (isPast ? 'How it started' : 'Today · you run it') : 'Now')}
+                        </div>
+                        {dayIdx === 0 && !timeSet && !solemn && <div className="of" style={{ marginTop: 6, color: 'var(--muted)' }}>First thing</div>}
+                        {/* The moment NAME is the hero (Figma). Solemn → the calm serif leads. */}
+                        <h2 style={solemn
+                          ? { fontFamily: 'var(--serif-read)', fontWeight: 500, fontSize: 'var(--t-display-l)', letterSpacing: '-.01em', lineHeight: 1.12, margin: 'var(--sp-3) 0 0' }
+                          : { fontFamily: 'var(--sans)', fontWeight: 750, fontSize: 'var(--t-display-l)', letterSpacing: '-.02em', lineHeight: 1.1, margin: 'var(--sp-3) 0 0' }}>{name}</h2>
+                        {/* The guide sentence — the host GUIDE VOICE (Newsreader italic). */}
+                        {guide && <p style={{ fontFamily: 'var(--serif-read)', fontStyle: 'italic', color: 'var(--sec)', fontSize: 'var(--t-input)', lineHeight: 1.45, margin: 'var(--sp-2) 0 0' }}>{guide}</p>}
+                        {/* ONE honest line — owner · time. Set → the clock; unset → "Set a time ›" (no fake clock).
+                            The full time+owner editor lives in Full agenda; Walk it stays calm. */}
+                        <p className="meta" style={{ margin: 'var(--sp-4) 0 0', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                          <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: timeSet ? 'var(--warn)' : 'var(--steel-soft)', display: 'inline-block', flexShrink: 0 }} />
+                          <span>{ownerPhrase}</span>
+                          {!isPast && cur.id ? ((timeSet || editing) ? (
+                            <input id="ros-cue-time" className="field" type="time" style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                              value={cur.time || ''} autoFocus={!cur.time}
+                              onChange={e => { writeRosCue(cur.id, { time: e.target.value }, e.target.value ? (cur.segment || 'This moment') + ' — ' + e.target.value + ' on the schedule.' : (cur.segment || 'This moment') + ' — time cleared.'); }}
+                              aria-label={'Time for ' + (cur.segment || 'this moment')} />
+                          ) : (<>
+                            <span aria-hidden="true" style={{ color: 'var(--faint)' }}>·</span>
+                            {cur.rel && <span style={{ color: 'var(--steel-soft)' }}>~ {cur.rel}</span>}
+                            <button onClick={() => setTimeEditIds(s => { const n = new Set(s); n.add(cur.id); return n; })}
+                              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--steel-soft)', fontWeight: 600, cursor: 'pointer' }}>Set a time ›</button>
+                          </>)) : null}
+                        </p>
+                        <button className="cta" style={{ marginTop: 'var(--sp-4)' }} onClick={() => {
+                          const cue = cur;
+                          // DAY-OF ONLY: write the per-cue done flag (event.rosDone; effectiveRos overlays it).
+                          if (days === 0 && cue && cue.id) {
+                            patchEvent({ rosDone: { ...(event.rosDone || {}), [cue.id]: true } }, null);
+                            if (!solemn && dayIdx === ros.length - 1) feedback('magic');
+                          } else {
+                            feedback(!solemn && dayIdx === ros.length - 1 ? 'magic' : 'act');
+                          }
+                          setDayIdx(i => i + 1);
+                        }}>
+                          {solemn ? 'Continue when ready' : (dayIdx === ros.length - 1 ? 'Done — that’s the last one' : 'Done — next')}
+                        </button>
+                      </div>
+                    );
+                  })()}
+                  {/* UP NEXT — just the SINGLE next moment, condensed (Figma 331:61). The whole
+                      editable agenda lives in "Full agenda"; Walk it never dumps the list. */}
+                  {dayIdx < ros.length - 1 && (() => {
+                    const nx = ros[dayIdx + 1];
+                    const nseg = String(nx.segment || '').replace(/\s*[:;]\s*/g, ' · ').replace(/,\s+/g, ' · ');
+                    return (
+                      <div className="then" style={{ marginTop: 'var(--sp-5)' }}>
+                        <div className="eyebrow">{(solemn ? 'Then' : 'Up next') + (nx.time ? ' · ' + fmt12h(nx.time) : '')}</div>
+                        <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--steel-soft)', fontSize: 'var(--t-input)', lineHeight: 1.4 }}>{nseg}{nx.vendorName ? ' · ' + nx.vendorName : ''}</p>
+                      </div>
+                    );
+                  })()}
+                  {/* Quiet count + print (Figma: "4 of 9 done · Print the day sheet"). */}
+                  <div className="actions-row" style={{ marginTop: 'var(--sp-5)', alignItems: 'center', gap: 'var(--sp-3)' }}>
+                    <span className="of">{ros.filter(r => r && r.done).length} of {ros.length} done</span>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
                     {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                   </div>
-                  {dayIdx < ros.length - 1 && (
-                    <div className="then">
-                      <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>Then · {ros.length - 1 - dayIdx} more moments</div>
-                      {ros.slice(dayIdx + 1, dayIdx + 8).map((r, i) => (
-                        // WAVE-B: each upcoming row carries its own minimal
-                        // time + owner editor (same writeRosCue path as the
-                        // Now card above). Rows without an id — hand-authored
-                        // legacy imports — stay read-only rather than risking
-                        // a write that can't target one cue.
-                        !isPast && r.id ? (
-                          <div className="then-row" key={r.id} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-                            <input className="field" type="time" style={{ width: 112, flexShrink: 0, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }}
-                              value={r.time || ''}
-                              onChange={e => writeRosCue(r.id, { time: e.target.value }, e.target.value ? (r.segment || 'This moment') + ' — ' + e.target.value + ' on the schedule.' : (r.segment || 'This moment') + ' — time cleared.')}
-                              aria-label={'Time for ' + (r.segment || 'this moment')} />
-                            <span style={{ flex: '1 1 auto', minWidth: 120 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
-                            <input className="field" style={{ width: 130, flexShrink: 0, fontSize: 'var(--t-input)', padding: 'var(--sp-1) var(--sp-2)' }} placeholder="who runs it"
-                              value={r.owner || ''} onChange={e => writeRosCue(r.id, { owner: e.target.value }, null)}
-                              aria-label={'Who runs ' + (r.segment || 'this moment')} />
-                          </div>
-                        ) : (
-                          <div className="then-row" key={r.id || i}>
-                            <span className="d">{r.time}</span>
-                            <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}</span>
-                          </div>
-                        )
-                      ))}
-                      {ros.length - 1 - dayIdx > 7 && <div className="then-row"><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {ros.length - 1 - dayIdx - 7} more, through the last item</span></div>}
-                    </div>
-                  )}
                 </>
               )}
             </section>
@@ -7502,7 +7873,16 @@ export default function HostShellV2() {
             })()}
             {sheet.kind === 'space' && (
               <>
-                {capacity && (capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
+                {/* WHAT TO BRING (Figma 433): each item folds to one settled
+                    hairline row — label · need N on the left, its status/cost on
+                    the right. The dense have/helper inputs + retail links reveal
+                    on tap. At 12 items this stays a calm column instead of 12
+                    stacked 3-line input+chip clusters. */}
+                {capacity && (capacity.items || []).filter(it => it && !it.skipped).length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>What to bring</div>
+                    <div className="fstat-list">
+                {(capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
                   const links = it.owned ? null : (() => { try { return supplyRetailLinks(it.short || it.item, event.venue); } catch { return null; } })();
                   // Whole units only — nobody rents 3.2 canopies. The engine's
                   // scaled qty rounds UP for the host (short beats stranded).
@@ -7516,6 +7896,8 @@ export default function HostShellV2() {
                   const have = Math.min(baseNeed, (event.capacityHave && event.capacityHave[it.key]) || 0);
                   const remaining = Math.max(0, baseNeed - have);
                   const helperName = (event.capacityHelpers && event.capacityHelpers[it.key]) || '';
+                  const capKey = 'cap_' + (it.key || i);
+                  const open = !!settledOpen[capKey];
                   // Writes go through the ENGINE's own knobs: capacityQty holds
                   // the REMAINING count (so cost prices only what's left) and
                   // capacityOwned flips when the host is fully covered.
@@ -7528,37 +7910,46 @@ export default function HostShellV2() {
                     }, h >= baseNeed ? ((it.short || it.item) + ' fully covered — the plan stops pricing it.') : h > 0 ? ('Counting your ' + h + ' — the plan now prices the remaining ' + (baseNeed - h) + '.') : 'Back to the full count.');
                   };
                   return (
-                    <div key={it.key || i} className="brow" style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
-                      <div className="line" style={{ padding: '0 0 var(--sp-1)' }}>
-                        <span>{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
-                        <span className="amt">
-                          {remaining === 0 ? 'covered' : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'no price read'}
+                    <div key={it.key || i}>
+                      <button className="fstat" onClick={() => setSettledOpen(m => ({ ...m, [capKey]: !open }))} aria-expanded={open}
+                        aria-label={(it.short || it.item) + ' — ' + (remaining === 0 ? 'covered' : 'still need ' + remaining) + '. Tap to set what you have.'}>
+                        <span className="fstat-l">{it.verb ? it.verb + ' ' : ''}{it.short || it.item} <span className="of">need {baseNeed}</span></span>
+                        <span className="fstat-v" style={remaining === 0 ? { color: 'var(--ok)' } : null}>
+                          {remaining === 0 ? (helperName ? helperName + ' brings ' + baseNeed : 'covered') : (it.costLow || it.costHigh) ? fmt(it.costLow) + '–' + fmt(it.costHigh) : 'still need ' + remaining}
+                          <span className="fstat-chev" aria-hidden="true">›</span>
                         </span>
-                      </div>
-                      <div className="actions-row" style={{ marginTop: 'var(--sp-1)', alignItems: 'center' }}>
-                        <span className="of">you have</span>
-                        <input className="field" style={{ maxWidth: 66, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="number" min="0" max={baseNeed}
-                          value={have || ''} placeholder="0" aria-label={'How many ' + (it.short || it.item) + ' you have'}
-                          onChange={e => setHave(parseInt(e.target.value, 10) || 0)} />
-                        <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="text"
-                          value={helperName} placeholder="helper brings?" aria-label="Helper supplying this"
-                          onChange={e => patchEvent({ capacityHelpers: { ...(event.capacityHelpers || {}), [it.key]: e.target.value } }, null)} />
-                        {remaining > 0 && <span className="of">still need {remaining}{helperName ? ' — ask ' + helperName : ''}</span>}
-                        {remaining === 0 && helperName && <span className="of" style={{ color: 'var(--ok)' }}>{helperName} has it covered</span>}
-                      </div>
-                      {links && remaining > 0 && (
-                        <div className="actions-row" style={{ marginTop: 'var(--sp-1)' }}>
-                          {links.kind === 'rent' && links.rentUrl && (
-                            <a className="mini" style={{ textDecoration: 'none' }} href={links.rentUrl} target="_blank" rel="noreferrer">Find rentals nearby</a>
+                      </button>
+                      {open && (
+                        <div style={{ padding: '2px 2px 12px' }}>
+                          <div className="actions-row" style={{ marginTop: 'var(--sp-1)', alignItems: 'center' }}>
+                            <span className="of">you have</span>
+                            <input className="field" style={{ maxWidth: 66, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="number" min="0" max={baseNeed}
+                              value={have || ''} placeholder="0" aria-label={'How many ' + (it.short || it.item) + ' you have'}
+                              onChange={e => setHave(parseInt(e.target.value, 10) || 0)} />
+                            <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} type="text"
+                              value={helperName} placeholder="helper brings?" aria-label="Helper supplying this"
+                              onChange={e => patchEvent({ capacityHelpers: { ...(event.capacityHelpers || {}), [it.key]: e.target.value } }, null)} />
+                            {remaining > 0 && <span className="of">still need {remaining}{helperName ? ' — ask ' + helperName : ''}</span>}
+                            {remaining === 0 && helperName && <span className="of" style={{ color: 'var(--ok)' }}>{helperName} has it covered</span>}
+                          </div>
+                          {links && remaining > 0 && (
+                            <div className="actions-row" style={{ marginTop: 'var(--sp-1)' }}>
+                              {links.kind === 'rent' && links.rentUrl && (
+                                <a className="mini" style={{ textDecoration: 'none' }} href={links.rentUrl} target="_blank" rel="noreferrer">Find rentals nearby</a>
+                              )}
+                              {(links.buy || []).slice(0, links.kind === 'rent' ? 1 : 3).map(l => (
+                                <a key={l.label} className="mini" style={{ textDecoration: 'none' }} href={l.url} target="_blank" rel="noreferrer">{l.label}</a>
+                              ))}
+                            </div>
                           )}
-                          {(links.buy || []).slice(0, links.kind === 'rent' ? 1 : 3).map(l => (
-                            <a key={l.label} className="mini" style={{ textDecoration: 'none' }} href={l.url} target="_blank" rel="noreferrer">{l.label}</a>
-                          ))}
                         </div>
                       )}
                     </div>
                   );
                 })}
+                    </div>
+                  </>
+                )}
                 {helpers.length > 0 && (
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -7626,10 +8017,9 @@ export default function HostShellV2() {
                     </p>
                   )}
                   <div className="shelf-label">How the money works</div>
-                  <div className="picker" style={{ marginBottom: 'var(--sp-2)' }}>
-                    <button className="chip" aria-pressed={!cs.pooled} onClick={() => setMode('self-pay')}>Everyone covers their own</button>
-                    <button className="chip" aria-pressed={cs.pooled} onClick={() => setMode('pooled-dues')}>Ongoing pool</button>
-                  </div>
+                  <OptionList ariaLabel="How the money works" style={{ marginBottom: 'var(--sp-2)' }}
+                    options={[{ label: 'Everyone covers their own', value: 'self-pay' }, { label: 'Ongoing pool', value: 'pooled-dues' }]}
+                    value={cs.pooled ? 'pooled-dues' : 'self-pay'} onPick={setMode} />
                   {cs.pooled && (
                     <>
                       <div className="lodge-form">
@@ -7714,6 +8104,19 @@ export default function HostShellV2() {
                       </p>
                     );
                   })()}
+                  {/* The stay form folds to a summary card once a place is
+                      named (Figma 428) — tap to edit; the roster stays open. */}
+                  {lg.hotelName && !settledOpen.lodgeStay ? (
+                    <SettledCard
+                      title={lg.hotelName}
+                      tone="ok"
+                      sub={[f.rate ? '$' + f.rate + ' a night' : null, f.code ? 'code ' + f.code : null,
+                        lg.deadline ? 'rate ends ' + new Date(lg.deadline + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : null]
+                        .filter(Boolean).join(' · ') || 'Tap to add the rate, code, and dates'}
+                      onOpen={() => setSettledOpen(m => ({ ...m, lodgeStay: true }))}
+                    />
+                  ) : (
+                  <>
                   <div className="shelf-label">The stay</div>
                   <div className="lodge-form">
                     {/* A hotel/rental IS an address — same lookup the venue field
@@ -7747,16 +8150,10 @@ export default function HostShellV2() {
                     </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="mini" onClick={saveLodging}>Save the stay details</button>
-                    {/* DRAFT-ONLY (UX_07): the note is written from the SAVED
-                        details, reviewed by the host, sent from their own
-                        messages — the label says Draft, never Send. */}
-                    {lg.hotelName && (
-                      <button className="cta soft" onClick={() => { try { openDraft('The where-to-stay note', draftLodgingNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
-                        Draft the where-to-stay note
-                      </button>
-                    )}
+                    <button className="mini" onClick={() => { saveLodging(); setSettledOpen(m => ({ ...m, lodgeStay: false })); }}>Save the stay details</button>
                   </div>
+                  </>
+                  )}
                   {travel.rosterMode ? (
                     lg.roster.length > 0 ? (
                       <>
@@ -7804,6 +8201,16 @@ export default function HostShellV2() {
                     // Headcount mode: the engine returns no roster and a null
                     // count — show the stay card only, never invented rows.
                     <p className="grounding" style={{ marginTop: 14 }}>You’re planning by headcount, so there’s no name-by-name booking list here. Switch to a guest list when you want to track who’s booked a room.</p>
+                  )}
+                  {/* DRAFT-ONLY (UX_07): written from the SAVED details, reviewed
+                      by the host, sent from their own messages — the label says
+                      Draft, never Send. Sits at the foot of the sheet (Figma 428). */}
+                  {lg.hotelName && (
+                    <div className="actions-row" style={{ marginTop: 14 }}>
+                      <button className="cta soft" onClick={() => { try { openDraft('The where-to-stay note', draftLodgingNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
+                        Draft the where-to-stay note
+                      </button>
+                    </div>
                   )}
                 </>
               );
@@ -7860,12 +8267,26 @@ export default function HostShellV2() {
                         : 'One tap below settles it — your answer feeds the getting-around note.'}
                     />
                   )}
-                  <div className="line" style={{ padding: '2px 0 10px', alignItems: 'center' }}>
-                    <span>Group transport <span className="of">— {gr.transportPick || (gr.transportProvided === true ? 'yes, a shuttle or van' : gr.transportProvided === false ? 'guests get themselves around' : 'not decided yet')}</span></span>
-                    <button className="mini" onClick={() => setSheet({ kind: 'decisions', focus: 'dest_transport' })}>
-                      {gr.transportProvided == null ? 'Decide it' : 'Change the call'}
-                    </button>
-                  </div>
+                  {/* The transport call folds to a settled card (Figma 430); the
+                      chevron routes to the decision — the single source of truth. */}
+                  <SettledCard
+                    title="Group transport"
+                    tone={gr.transportProvided === true ? 'ok' : 'default'}
+                    sub={(gr.transportPick || (gr.transportProvided === true ? 'A shuttle or van' : gr.transportProvided === false ? 'Guests get themselves around' : 'Not decided yet')) + (gr.transportProvided != null ? ' — decided' : '')}
+                    action={gr.transportProvided == null ? 'Decide it' : 'Change the call'}
+                    onOpen={() => setSheet({ kind: 'decisions', focus: 'dest_transport' })}
+                  />
+                  {/* The note form folds once it has content (Figma 430) — tap
+                      to edit; the ride board stays open below. */}
+                  {(() => {
+                    const hasNote = !!(gr.lastReturnNote || (gr.pickupPoints || []).length);
+                    if (hasNote && !settledOpen.groundNote) {
+                      return <SettledCard title="Worth telling everyone"
+                        sub={[gr.lastReturnNote ? 'a note on getting back' : null, (gr.pickupPoints || []).length ? (gr.pickupPoints.length + ' pickup spot' + (gr.pickupPoints.length === 1 ? '' : 's')) : null].filter(Boolean).join(' · ') || 'Tap to edit'}
+                        onOpen={() => setSettledOpen(m => ({ ...m, groundNote: true }))} />;
+                    }
+                    return (
+                    <>
                   <div className="shelf-label">Worth telling everyone</div>
                   <div className="lodge-form">
                     <label className="lodge-f full"><span className="of">Getting back at night</span>
@@ -7885,16 +8306,11 @@ export default function HostShellV2() {
                     </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="mini" onClick={saveGround}>Save the getting-around details</button>
-                    {/* DRAFT-ONLY (UX_07): written from the SAVED details plus
-                        the decision's real answer, reviewed by the host, sent
-                        from their own messages — Draft, never Send. */}
-                    {hasNoteMaterial && (
-                      <button className="cta soft" onClick={() => { try { openDraft('The getting-around note', draftRidesNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
-                        Draft the getting-around note
-                      </button>
-                    )}
+                    <button className="mini" onClick={() => { saveGround(); setSettledOpen(m => ({ ...m, groundNote: false })); }}>Save the getting-around details</button>
                   </div>
+                    </>
+                    );
+                  })()}
                   {travel.rosterMode ? (
                     gr.roster.length > 0 ? (
                       <>
@@ -7936,7 +8352,7 @@ export default function HostShellV2() {
                               {r.status === 'offers_ride' && (
                                 <div className="actions-row" style={{ padding: '0 var(--sp-2) var(--sp-2)', alignItems: 'center' }}>
                                   <button className="mini" onClick={() => setRideSeats(r, -1)} aria-label={'Fewer seats from ' + r.name}>−</button>
-                                  <span className="of" style={{ minWidth: 52, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{r.seats} seat{r.seats === 1 ? '' : 's'}</span>
+                                  <span className="step-val" style={{ minWidth: 52 }}>{r.seats} seat{r.seats === 1 ? '' : 's'}</span>
                                   <button className="mini" onClick={() => setRideSeats(r, +1)} aria-label={'More seats from ' + r.name}>+</button>
                                   {r.seats === 0 && <span className="of">how many can they take?</span>}
                                 </div>
@@ -7952,6 +8368,15 @@ export default function HostShellV2() {
                     // Headcount mode: the engine returns no roster — the host
                     // info card above stands alone, never invented rows.
                     <p className="grounding" style={{ marginTop: 14 }}>You’re planning by headcount, so there’s no name-by-name ride board here. Switch to a guest list when you want to track who needs a ride.</p>
+                  )}
+                  {/* DRAFT-ONLY (UX_07): written from SAVED details + the decision's
+                      real answer. Sits at the foot of the sheet (Figma 430). */}
+                  {hasNoteMaterial && (
+                    <div className="actions-row" style={{ marginTop: 14 }}>
+                      <button className="cta soft" onClick={() => { try { openDraft('The getting-around note', draftRidesNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
+                        Draft the getting-around note
+                      </button>
+                    </div>
                   )}
                 </>
               );
@@ -8024,6 +8449,18 @@ export default function HostShellV2() {
                       </p>
                     );
                   })()}
+                  {/* The airports form folds to a summary card once options are
+                      listed (Figma 429) — tap to edit; the arrivals board stays. */}
+                  {(() => {
+                    const ap0 = (f.airports || [])[0] || {};
+                    const named = (f.airports || []).filter(a => a && (a.name || a.code));
+                    const apTitle = [ap0.code, ap0.name].filter(Boolean).join(' · ') || 'Airports';
+                    const apSub = [ap0.note || null, named.length > 1 ? '+' + (named.length - 1) + ' more option' + (named.length - 1 === 1 ? '' : 's') : null].filter(Boolean).join(' · ') || 'Tap to add codes and tradeoffs';
+                    if (ar.airportOptions.length > 0 && !settledOpen.airAirports) {
+                      return <SettledCard title={apTitle} sub={apSub} tone="ok" onOpen={() => setSettledOpen(m => ({ ...m, airAirports: true }))} />;
+                    }
+                    return (
+                    <>
                   <div className="shelf-label">Airports worth flying into</div>
                   <div className="lodge-form">
                     {(f.airports || []).flatMap((ap, ai) => [
@@ -8045,17 +8482,11 @@ export default function HostShellV2() {
                     </label>
                   </div>
                   <div className="actions-row" style={{ marginTop: 10 }}>
-                    <button className="mini" onClick={saveAirports}>Save the airport options</button>
-                    {/* DRAFT-ONLY (UX_07): written from the SAVED options plus
-                        the event's real dates and the decision's real answer,
-                        reviewed by the host, sent from their own messages —
-                        the label says Draft, never Send. */}
-                    {ar.airportOptions.length > 0 && (
-                      <button className="cta soft" onClick={() => { try { openDraft('The getting-here note', draftGettingHereNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
-                        Draft the getting-here note
-                      </button>
-                    )}
+                    <button className="mini" onClick={() => { saveAirports(); setSettledOpen(m => ({ ...m, airAirports: false })); }}>Save the airport options</button>
                   </div>
+                    </>
+                    );
+                  })()}
                   {travel.rosterMode ? (
                     ar.roster.length > 0 ? (
                       <>
@@ -8136,6 +8567,15 @@ export default function HostShellV2() {
                     // airports card above stands alone, never invented rows.
                     <p className="grounding" style={{ marginTop: 14 }}>You’re planning by headcount, so there’s no name-by-name arrivals board here. Switch to a guest list when you want to track who lands when.</p>
                   )}
+                  {/* DRAFT-ONLY (UX_07): written from SAVED options + the event's
+                      real dates. Sits at the foot of the sheet (Figma 429). */}
+                  {ar.airportOptions.length > 0 && (
+                    <div className="actions-row" style={{ marginTop: 14 }}>
+                      <button className="cta soft" onClick={() => { try { openDraft('The getting-here note', draftGettingHereNote(event)); } catch { toast('Couldn’t draft it.'); } }}>
+                        Draft the getting-here note
+                      </button>
+                    </div>
+                  )}
                 </>
               );
             })()}
@@ -8166,10 +8606,11 @@ export default function HostShellV2() {
                 const isFocus = focusId != null && String(g.id) === focusId;
                 const isPicked = seatPick != null && String(g.id) === String(seatPick);
                 return (
-                  <div key={g.id} className={'frow' + (isFocus || isPicked ? ' rowfocus' : '')}
+                  <div key={g.id} className={'frow' + (isFocus || isPicked ? ' rowfocus' : '') + (guestDrag && guestDrag.id === g.id ? ' dragging' : '')}
                     ref={el => { if (el && isFocus) el.scrollIntoView({ block: 'center' }); }}
-                    style={{ cursor: 'pointer' }} role="button" tabIndex={0}
-                    onClick={() => setSeatPick(isPicked ? null : g.id)}
+                    style={{ cursor: 'grab', touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }} role="button" tabIndex={0}
+                    onPointerDown={startGuestDrag(g)}
+                    onClick={() => { if (guestDraggedRef.current) return; setSeatPick(isPicked ? null : g.id); }}
                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSeatPick(isPicked ? null : g.id); } }}
                     aria-label={g.name + (seated ? ' — seated. Tap to move them.' : ' — needs a seat. Tap, then tap a table.')}>
                     <span className="f-main">
@@ -8198,6 +8639,13 @@ export default function HostShellV2() {
               ].filter(Boolean).join(' · ');
               return (
                 <>
+                  {guestDrag && createPortal(
+                    // Portal to <body> so the fixed-position ghost is viewport-relative and
+                    // tracks the pointer — a fixed element inside the phone-frame's CSS
+                    // transform is positioned against that frame, not the screen (host 2026-07-22).
+                    <div className="seat-ghost" style={{ left: guestDrag.x, top: guestDrag.y }} aria-hidden="true">{guestDrag.name}</div>,
+                    document.body
+                  )}
                   <SheetHero
                     eyebrow="Seated so far"
                     star={`${sp.totals.seated} of ${sp.totals.confirmed}`}
@@ -8223,10 +8671,23 @@ export default function HostShellV2() {
                     <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                       <button className="mini" onClick={() => stepTableCount(-1)} disabled={sp.tableCount <= 1}
                         style={sp.tableCount <= 1 ? { opacity: .45 } : undefined} aria-label="One table fewer">−</button>
-                      <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{sp.tableCount}</span>
+                      <span className="step-val" style={{ minWidth: 20 }}>{sp.tableCount}</span>
                       <button className="mini" onClick={() => stepTableCount(+1)} aria-label="One table more">+</button>
                     </span>
                   </div>
+                  {/* Optional host-set seats-per-table — the model never fabricates a
+                      capacity, so open chairs only appear once the host says how many
+                      seats a table has (v5). '—' = unknown, no capacity claimed. */}
+                  {seatView === 'plan' && (
+                    <div className="line" style={{ alignItems: 'center', padding: '0 0 10px' }}>
+                      <span>Seats per table <span className="of">optional</span></span>
+                      <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: (Math.max(0, (Number(event.seatsPerTable) || 0) - 1)) || null }, null)} aria-label="Fewer seats per table">−</button>
+                        <span className="step-val" style={{ minWidth: 20 }}>{Number(event.seatsPerTable) || '—'}</span>
+                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: (Number(event.seatsPerTable) || 0) + 1 }, null)} aria-label="More seats per table">+</button>
+                      </span>
+                    </div>
+                  )}
                   {picked && (
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
                       Seating {picked.name} — tap a table below.{' '}
@@ -8234,8 +8695,8 @@ export default function HostShellV2() {
                     </p>
                   )}
                   {sp.unassigned.length > 0 && (
-                    <>
-                      <div className="shelf-label" style={{ margin: 'var(--sp-2) 0 2px' }}>Still need a seat — tap a name, then a table</div>
+                    <div className={'seat-tray' + (guestDrag ? ' droptarget' : '')}>
+                      <div className="shelf-label" style={{ margin: 'var(--sp-2) 0 2px' }}>Still need a seat — drag a name onto a table (or tap it, then a table)</div>
                       {sp.unassigned.map(g => guestRow(g, false))}
                       {sp.unassigned.some(g => g.group) && (
                         <div className="actions-row" style={{ margin: 'var(--sp-2) 0 2px', alignItems: 'center' }}>
@@ -8243,7 +8704,7 @@ export default function HostShellV2() {
                           <span className="of">balances the room evenly — it won’t keep groups together; adjust any seat after</span>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
                   <div className="actions-row" style={{ margin: '14px 0 2px', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span className="shelf-label">The tables{picked ? ' — tap one to seat ' + picked.name : ''}</span>
@@ -8274,26 +8735,101 @@ export default function HostShellV2() {
                       canvas (positions saved as fractions in event.tablePos); tap-to-seat
                       the picked guest still works, and tapping with no pick opens the table
                       back in the list. No room shape/obstacles yet. */}
-                  {seatView === 'plan' && (
-                    <div className="floorplan" ref={floorRef}>
+                  {seatView === 'plan' && (() => {
+                    // Height grows with the grid's row count (min 220) so a
+                    // 24-table reunion lays out ~76px per row — never the
+                    // overlapping stack the fixed 4/3 box produced.
+                    const fpRows = tableGrid(sp.tables.length).rows;
+                    const fpH = Math.max(220, fpRows * 76);
+                    // Real per-table cautions: guests who asked for step-free access.
+                    const accessSet = new Set(sp.accessibleSeats || []);
+                    // GROUNDED enrichments (v5): group color from g.group, honoree star from
+                    // event.honoree, table shape from event type — never invented.
+                    const groupList = [...new Set(sp.confirmed.map(g => g.group).filter(Boolean))];
+                    const GROUP_COLORS = ['#6b99c7', '#66b88f', '#b89966', '#a985c2', '#c78a6b'];
+                    const groupColor = g => (g ? GROUP_COLORS[groupList.indexOf(g) % GROUP_COLORS.length] : null);
+                    const honoreeName = String(event.honoree || '').trim().toLowerCase();
+                    const longTables = /crab|cookout|\bbbq\b|barbecue|feast|reunion|potluck/i.test(String(event.type || '') + ' ' + String(event.name || ''));
+                    const cap = Number(event.seatsPerTable) || 0; // host-set capacity; 0 = unknown, never fabricated
+                    return (
+                    <>
+                    <div className="floorplan" ref={floorRef} style={{ aspectRatio: 'auto', height: fpH }}>
                       {sp.tables.map((t, ti) => {
                         const saved = (event.tablePos || {})[t.number];
                         const dp = (seatDrag && seatDrag.number === t.number) ? seatDrag : (saved || defaultTablePos(ti, sp.tables.length));
+                        // caution: someone here needs step-free access, else fuller than the room's average.
+                        const tAccess = t.guests.some(g => accessSet.has(g.name));
+                        // over-capacity when the host has set seats-per-table; otherwise fall
+                        // back to "fuller than the room's average" (no fabricated capacity).
+                        const tOver = cap ? t.count > cap : (sp.totals.avgPerTable && t.count > sp.totals.avgPerTable + 1);
+                        const caution = tAccess ? 'access' : (tOver ? 'full' : null);
+                        // guest first-names on the table (the categories/roster from code, not a bare count).
+                        const names = t.guests.slice(0, 4).map(g => String(g.name || '').split(' ')[0]).join(' · ')
+                          + (t.guests.length > 4 ? ' +' + (t.guests.length - 4) : '');
+                        // dominant group → its color (a ring); honoree → a star. Both grounded.
+                        const domGroup = (() => { const c = {}; t.guests.forEach(g => { if (g.group) c[g.group] = (c[g.group] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || null; })();
+                        const gc = groupColor(domGroup);
+                        const tHonoree = !!honoreeName && t.guests.some(g => String(g.name || '').trim().toLowerCase() === honoreeName);
                         return (
-                          <button key={t.number} type="button"
-                            className={'tpuck' + (t.count ? ' seated' : '') + (picked ? ' seatable' : '')}
-                            style={{ left: (dp.x * 100) + '%', top: (dp.y * 100) + '%' }}
+                          <button key={t.number} type="button" data-tnum={t.number}
+                            className={'tpuck' + (t.count ? ' seated' : '') + (picked || guestDrag ? ' seatable' : '') + (caution ? ' caution' : '') + (longTables ? ' long' : '') + (tHonoree ? ' honoree' : '') + (seatSelTable === t.number ? ' sel' : '')}
+                            style={{ left: (dp.x * 100) + '%', top: (dp.y * 100) + '%', ...(gc && !t.count ? { borderColor: gc } : {}), ...(gc && t.count ? { boxShadow: '0 0 0 2px ' + gc + ', 0 2px 8px -3px rgba(0,0,0,.5)' } : {}) }}
                             onPointerDown={startPuckDrag(t.number)}
-                            onClick={() => { if (justDraggedRef.current) return; if (picked) { seatGuestAt(picked, t); } else { setSeatView('list'); setSeatOpenTable(t.number); } }}
-                            aria-label={t.label + ' — ' + (t.count || 0) + ' seated. Drag to move' + (picked ? ', or tap to seat ' + picked.name : '') + '.'}>
+                            onClick={() => { if (justDraggedRef.current) return; if (picked) { seatGuestAt(picked, t); } else { setSeatSelTable(seatSelTable === t.number ? null : t.number); } }}
+                            aria-label={t.label + ' — ' + (t.count || 0) + ' seated'
+                              + (caution === 'access' ? ', someone here needs step-free access' : caution === 'full' ? ', fuller than the rest' : '')
+                              + '. Drag to move' + (picked ? ', or tap to seat ' + picked.name : ', or tap to see who’s here') + '.'}>
+                            {caution && <span className={'tp-caution ' + caution} aria-hidden="true" />}
+                            {tHonoree && <span className="tp-star" aria-hidden="true">★</span>}
                             <span className="tp-label">{t.label}</span>
-                            <span className="tp-count">{t.count || 0}</span>
+                            <span className="tp-count">{(t.count || 0) + (cap ? '/' + cap : '')}</span>
                           </button>
                         );
                       })}
-                      <span className="floorplan-hint">Drag to arrange · tap to {picked ? 'seat ' + picked.name : 'open'}</span>
+                      {/* Host-placed door — the app never invents the room; the host marks
+                          where their real door is, and drags it. Tap to remove. */}
+                      {(() => {
+                        const ddp = doorDrag || event.doorPos;
+                        if (!ddp) return (
+                          <button type="button" className="floor-addland" onClick={() => patchEvent({ doorPos: { x: 0.05, y: 0.5 } }, 'Door placed — drag it to where your real door is.')}>+ mark the door</button>
+                        );
+                        return (
+                          <button type="button" className="floor-door" style={{ left: (ddp.x * 100) + '%', top: (ddp.y * 100) + '%' }}
+                            onPointerDown={startDoorDrag}
+                            onClick={() => { if (!doorDrag) patchEvent({ doorPos: null }, 'Door marker removed.'); }}
+                            aria-label="Door — drag to move it; tap to remove it.">DOOR</button>
+                        );
+                      })()}
+                      <span className="floorplan-hint">Drag to arrange · tap to {picked ? 'seat ' + picked.name : 'see who’s here'}</span>
                     </div>
-                  )}
+                    {/* v5 progressive disclosure: the tapped table opens inline here — its
+                        guests, meals, and any need — instead of bouncing to the List view. */}
+                    {(() => {
+                      const st = seatSelTable != null ? sp.tables.find(x => x.number === seatSelTable) : null;
+                      if (!st) return null;
+                      return (
+                        <div className="tsel-panel">
+                          <div className="tsel-head">
+                            <span className="tsel-title">{st.label} — {cap
+                              ? st.count + ' of ' + cap + (st.count < cap ? ' · ' + (cap - st.count) + ' open' : st.count > cap ? ' · over capacity' : ' · full')
+                              : st.count + ' seated'}</span>
+                            <button className="mini" onClick={() => setSeatSelTable(null)}>close</button>
+                          </div>
+                          {st.count === 0
+                            ? <p className="v-meta" style={{ margin: '4px 0 0' }}>Empty — tap a name above, then this table, or drag someone here.</p>
+                            : st.guests.map(g => (
+                              <div key={g.id} className="tsel-row">
+                                <span className="tsel-name">{g.name}</span>
+                                {guestSub(g) && <span className="v-meta" style={{ flex: 1 }}>{guestSub(g)}</span>}
+                                <button className="mini" onClick={() => unseatGuest(g)}>unseat</button>
+                              </div>
+                            ))}
+                        </div>
+                      );
+                    })()}
+                    </>
+                    );
+                  })()}
                   {seatView === 'list' && sp.tables.map(t => {
                     const isOpen = seatOpenTable === t.number;
                     const renaming = tableNameDraft && tableNameDraft.num === t.number;
@@ -8709,8 +9245,14 @@ export default function HostShellV2() {
                     <button className="cta" onClick={() => ask(askQ)} disabled={!askQ.trim()}>Ask</button>
                   </div>
                   {!askResult && (
-                    <div className="pill-grid" style={{ marginTop: 'var(--sp-2)' }}>
-                      {examples.map(ex => <button key={ex} className="mini" onClick={() => ask(ex)}>{ex}</button>)}
+                    <div style={{ marginTop: 'var(--sp-3)' }}>
+                      <div className="of" style={{ marginBottom: 2 }}>Try one of these</div>
+                      {examples.map(ex => (
+                        <button key={ex} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }} onClick={() => ask(ex)}>
+                          <span style={{ flex: 1 }}>{ex}</span>
+                          <span aria-hidden="true" style={{ color: 'var(--muted)' }}>›</span>
+                        </button>
+                      ))}
                     </div>
                   )}
                   {askResult && (
@@ -9026,16 +9568,19 @@ export default function HostShellV2() {
                   {(crab.issues || []).map((iss, i) => (
                     <div key={i} style={{ margin: '6px 0 0' }}>
                       <p className="grounding" style={{ margin: 0, color: 'var(--warn)' }}>{iss.copy || iss.message || String(iss)}</p>
-                      {/* the ENGINE's own route — lands on the exact field */}
+                      {/* The sheet is already open, so setting sheet.focus did nothing —
+                          these ids (crab-headcount / crabline-<id>-count|price) aren't
+                          consumed by any highlight branch. Scroll the real input into
+                          view and focus it, so the button actually lands somewhere. */}
                       {iss.actionLabel && iss.route && iss.route.focusField && (
                         <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
-                          onClick={() => setSheet(s => ({ ...s, focus: iss.route.focusField }))}>{iss.actionLabel}</button>
+                          onClick={() => { const el = document.getElementById(iss.route.focusField); if (el) { try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch { el.scrollIntoView(); } setTimeout(() => { try { el.focus(); } catch {} }, 60); } }}>{iss.actionLabel}</button>
                       )}
                     </div>
                   ))}
                   <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 6px' }}>Who’s actually picking?</div>
                   <div className={sheet.focus === 'pickers' ? 'rowfocus' : ''} style={{ display: 'flex', gap: 10, alignItems: 'center', borderRadius: 'var(--r-md)', padding: '6px var(--sp-1)' }}>
-                    <input className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0"
+                    <input id="crab-headcount" className="field" style={{ maxWidth: 80, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="0"
                       placeholder={String(guests || '')} aria-label="Serious crab pickers"
                       value={cp.crabEatingHeadcount || ''}
                       onChange={e => { const n = parseInt(e.target.value, 10) || 0; writeCp({ crabEatingHeadcount: n || undefined }, n ? 'Sizing crabs to ' + n + ' pickers — kids and light eaters don’t drive the count.' : 'Back to the full headcount.'); }} />
@@ -9044,16 +9589,15 @@ export default function HostShellV2() {
                   {crab.pickerNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--warn)' }}>{crab.pickerNote}</p>}
                   {crab.pickerReconcileNote && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>{crab.pickerReconcileNote}</p>}
                   <div className={'shelf-label' + (sheet.focus === 'order' ? ' rowfocus' : '')} style={{ margin: 'var(--sp-4) 0 6px', borderRadius: 'var(--r-sm)' }}>Add to the order</div>
-                  <div className="chips">
-                    {['medium', 'large', 'extra_large', 'jumbo'].map(sz => (
-                      <button key={sz} className="chip" aria-pressed={crabAdd.size === sz} onClick={() => setCrabAdd(a => ({ ...a, size: sz }))}>{SIZE_LABEL[sz]}</button>
-                    ))}
-                  </div>
-                  <div className="chips" style={{ marginTop: 'var(--sp-2)' }}>
-                    {['dozen', 'half_bushel', 'bushel'].map(u => (
-                      <button key={u} className="chip" aria-pressed={crabAdd.unit === u} onClick={() => setCrabAdd(a => ({ ...a, unit: u }))}>{UNIT_LABEL[u]}</button>
-                    ))}
-                  </div>
+                  {/* Calm open pickers (radio-lists, not chip clusters) — size then unit. */}
+                  <div className="of" style={{ marginBottom: 2 }}>Size</div>
+                  <OptionList ariaLabel="Crab size"
+                    options={['medium', 'large', 'extra_large', 'jumbo'].map(sz => ({ label: SIZE_LABEL[sz], value: sz }))}
+                    value={crabAdd.size} onPick={sz => setCrabAdd(a => ({ ...a, size: sz }))} />
+                  <div className="of" style={{ margin: '10px 0 2px' }}>By the</div>
+                  <OptionList ariaLabel="Crab unit"
+                    options={['dozen', 'half_bushel', 'bushel'].map(u => ({ label: UNIT_LABEL[u], value: u }))}
+                    value={crabAdd.unit} onPick={u => setCrabAdd(a => ({ ...a, unit: u }))} />
                   <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10, alignItems: 'center' }}>
                     <input className="field" style={{ maxWidth: 70, fontSize: 'var(--t-input)', padding: 'var(--field)' }} type="number" min="1" aria-label="How many"
                       value={crabAdd.qty} onChange={e => setCrabAdd(a => ({ ...a, qty: Math.max(1, parseInt(e.target.value, 10) || 1) }))} />
@@ -9435,14 +9979,15 @@ export default function HostShellV2() {
             )}
             {sheet.kind === 'draft' && (
               <>
-                <div className="chips" style={{ marginBottom: 'var(--sp-3)' }}>
-                  {[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => (
-                    <button key={k} className="chip" aria-pressed={draftBody == null && draftTone === k} onClick={() => { setDraftTone(k); setDraftBody(null); }}>{label}</button>
-                  ))}
-                  {/* Non-interactive "current" indicator — aria-pressed is invalid on a
-                      span (it belongs on a button/toggle); show the selected look via
-                      style instead, per-screen audit. */}
-                  {draftBody != null && <span className="chip" style={{ pointerEvents: 'none', background: 'var(--steel)', borderColor: 'var(--steel)', color: 'var(--ink)' }}>Your words</span>}
+                {/* Voice as a quiet radio-list (was a bordered .chip cluster). When the
+                    host edits the text, none is selected and an "your words" note shows. */}
+                <div style={{ marginBottom: 'var(--sp-3)' }}>
+                  <div className="of" style={{ marginBottom: 4 }}>Voice</div>
+                  <OptionList ariaLabel="Voice"
+                    options={[['as-written', 'As written'], ['tighter', 'Tighter'], ['warmer', 'Warmer'], ['playful', 'Playful'], ['formal', 'Formal']].map(([k, label]) => ({ label, value: k }))}
+                    value={draftBody == null ? draftTone : ''}
+                    onPick={(k) => { setDraftTone(k); setDraftBody(null); }} />
+                  {draftBody != null && <div className="of" style={{ marginTop: 6, color: 'var(--steel-soft)' }}>Your words — showing your edits</div>}
                 </div>
                 <textarea className="draft-body draft-edit" value={shownDraft()} aria-label="Edit the draft"
                   onChange={e => setDraftBody(e.target.value)}
@@ -9613,14 +10158,15 @@ export default function HostShellV2() {
                   const done = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
                   return (
                   <div style={{ padding: '2px 0 14px' }}>
-                    {/* Hero copy (host request 2026-07-11): the count is the star,
-                        a warm honest line under it — same treatment the guest
-                        list hero got. All figures from the real plan. */}
-                    <div className="eyebrow">Bought so far</div>
-                    <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color: done ? 'var(--ok)' : 'var(--ink)' }}>
+                    {/* Figma 378:60 parity — the hero composes the parity kit
+                        (Eyebrow → BigValue → GuideLine serif → two-line Grounding),
+                        so a Figma move lands in one place (anti-drift, parity/MANIFEST).
+                        The count is the star; the guide voice is the human line. */}
+                    <Eyebrow>Bought so far</Eyebrow>
+                    <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(done ? { color: 'var(--ok)' } : null) }}>
                       {foodPlan.boughtCount} of {foodPlan.itemCount}
-                    </div>
-                    <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: '0 0 var(--sp-2)', minHeight: 0 }}>
+                    </BigValue>
+                    <GuideLine>
                       {done
                         ? 'Everything’s bought — the spread is covered.'
                         : foodPlan.boughtCount === 0
@@ -9628,11 +10174,14 @@ export default function HostShellV2() {
                           : left <= 2
                             ? `${left} to go — nearly there.`
                             : `${left} still to grab — check things off as you shop.`}
-                    </p>
-                    <p className="grounding" style={{ margin: 0 }}>
-                      Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)} · {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head, sized for {fGuestPhrase} guests.
-                      {PRICE_VINTAGE ? <span className="tag plan" style={{ marginLeft: 6 }}>est. prices · {PRICE_VINTAGE}</span> : null}
-                    </p>
+                    </GuideLine>
+                    <Grounding gap={ASK_RHYTHM.valueToWhy}>
+                      Food {fmt(foodPlan.foodLow)}–{fmt(foodPlan.foodHigh)} · supplies {fmt(foodPlan.suppliesLow)}–{fmt(foodPlan.suppliesHigh)}
+                    </Grounding>
+                    <Grounding gap={3}>
+                      {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · sized for {fGuestPhrase} guests
+                    </Grounding>
+                    {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
                   </div>
                   );
                 })() : (
@@ -9775,7 +10324,7 @@ export default function HostShellV2() {
                           onClick={pullFromGuests}>
                           <span className="t" style={{ color: 'var(--ink)' }}>From your RSVPs</span>
                           <span className="v-meta" style={{ flex: 1 }}>{pending.map(([d, n]) => d + ' ×' + n).join(' · ')}</span>
-                          <span style={{ color: 'var(--steel-soft)', fontWeight: 700, flexShrink: 0 }}>Add →</span>
+                          <span style={{ color: 'var(--steel-soft)', fontWeight: 700, flexShrink: 0 }}>Add</span>
                         </button>
                       )}
                       {event.dietMergeUndo && (
@@ -9790,6 +10339,9 @@ export default function HostShellV2() {
                           <button className="mini" onClick={() => { patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.'); closeDiet(); }}>That’s everyone — noted</button>
                         )}
                       </p>
+                      {/* The dietary-note drafter lives here now (port of 391:60 —
+                          it belongs with dietary needs, not on the calm summary). */}
+                      <button className="mini" style={{ marginTop: 'var(--sp-2)' }} onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Draft a dietary note</button>
                     </div>
                   );
                 })()}
@@ -9808,21 +10360,48 @@ export default function HostShellV2() {
                   const openN = (foodPlan.choices || []).filter(c => !((event.foodChoices || {})[c.id])).length;
                   const choicesOpen = !!foodSect.choices;
                   const hasChoices = (foodPlan.choices || []).length > 0;
-                  if (dietOpen || choicesOpen) return null; // the expanded panel above already shows it
+                  const hasSourcing = (foodPlan.sourcingTiers || []).length > 0;
+                  const curTier = (foodPlan.sourcingTiers || []).find(t => t && (t.id || t.key) === foodPlan.sourcing);
+                  const sourcingLabel = (curTier && (curTier.label || curTier.id)) || 'choose one';
+                  const listDone = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
+                  if (dietOpen || choicesOpen || foodSect.sourced || foodSect.list) return null; // a drill-in panel is open below
+                  // Progressive disclosure (port of Figma 391:60) — the heavy sections
+                  // (sourcing, the shopping list) fold to summary rows; each drills in
+                  // on tap. Hairline rows, value neutral until resolved (378:72 treatment).
                   return (
-                    <div className="fstatus-row">
-                      <button className="fstatus" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
-                        <div className="fs-l">Dietary needs</div>
-                        <div className="fs-v" style={{ color: anyDiet || event.dietaryNoted ? 'var(--ok)' : 'var(--muted)' }}>
-                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet ›'}
-                        </div>
+                    <div className="fstat-list">
+                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, diet: true }))}>
+                        <span className="fstat-l">Dietary needs</span>
+                        <span className="fstat-v" style={anyDiet || event.dietaryNoted ? { color: 'var(--ok)' } : null}>
+                          {anyDiet ? 'noted · ' + DIET_TAGS.filter(k => Number(dc[k]) > 0).length + ' flagged' : event.dietaryNoted ? 'noted' : 'none yet'}
+                          <span className="fstat-chev" aria-hidden="true">›</span>
+                        </span>
                       </button>
                       {hasChoices && (
-                        <button className="fstatus" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
-                          <div className="fs-l">Your choices</div>
-                          <div className="fs-v" style={{ color: openN > 0 ? 'var(--warn)' : 'var(--ok)' }}>{openN > 0 ? openN + ' open ›' : 'all set'}</div>
+                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, choices: true }))}>
+                          <span className="fstat-l">Your choices</span>
+                          <span className="fstat-v" style={openN > 0 ? null : { color: 'var(--ok)' }}>
+                            {openN > 0 ? openN + ' open' : 'all set'}
+                            <span className="fstat-chev" aria-hidden="true">›</span>
+                          </span>
                         </button>
                       )}
+                      {hasSourcing && (
+                        <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, sourced: true }))}>
+                          <span className="fstat-l">How it’s sourced</span>
+                          <span className="fstat-v">
+                            {sourcingLabel}
+                            <span className="fstat-chev" aria-hidden="true">›</span>
+                          </span>
+                        </button>
+                      )}
+                      <button className="fstat" onClick={() => setFoodSect(m => ({ ...m, list: true }))}>
+                        <span className="fstat-l">The list</span>
+                        <span className="fstat-v" style={listDone ? { color: 'var(--ok)' } : null}>
+                          {foodPlan.boughtCount} of {foodPlan.itemCount} bought
+                          <span className="fstat-chev" aria-hidden="true">›</span>
+                        </span>
+                      </button>
                     </div>
                   );
                 })()}
@@ -9872,25 +10451,36 @@ export default function HostShellV2() {
                     })}
                   </>
                 )}
-                <div className="actions-row" style={{ margin: '0 0 6px' }}>
-                  <button className="mini" onClick={() => {
-                    // Was called with no items/anchor at all — the store-locator
-                    // map links and every line's qty/store came back empty (found
-                    // in the 2026-07-11 food-plan audit). foodShopItems/eventGeoQuery
-                    // are the same shared engines legacy's "Copy the shopping list"
-                    // reads (App.js:10614-10615), so both apps build the identical list.
-                    let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
-                    let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
-                    openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
-                  }}>Copy the shopping list</button>
-                  <button className="mini" onClick={() => { try { openDraft('Dietary note', draftDietaryNote(event, profile)); } catch { toast('Couldn’t draft it.'); } }}>Dietary note</button>
-                </div>
-                {nudgeFor('food')}
-                {/* Sourcing tier — the plan's real cook/order axis; switching
-                    re-prices proteins and changes where each line says to buy. */}
-                {(foodPlan.sourcingTiers || []).length > 0 && (
+                {/* Port of Figma 391:60 — ONE primary action on the calm summary
+                    (full-width), plus the contextual tip. Both hidden while a
+                    drill-in panel is open. The "Dietary note" drafter now lives
+                    inside the Dietary-needs drill-in where it belongs. */}
+                {!(foodSect.diet || sheet.focus === 'diet' || foodSect.choices || foodSect.sourced || foodSect.list) && (
                   <>
-                    <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>How it’s sourced</div>
+                    <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-2)' }} onClick={() => {
+                      // foodShopItems/eventGeoQuery are the same shared engines legacy's
+                      // "Copy the shopping list" reads (App.js:10614-10615), so both apps
+                      // build the identical list.
+                      let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                      let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                      openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
+                    }}>Copy the shopping list</button>
+                    {nudgeFor('food')}
+                  </>
+                )}
+                {/* Sourcing tier — the plan's real cook/order axis; switching
+                    re-prices proteins and changes where each line says to buy.
+                    Drill-in (port of 391:60): gated behind the "How it's sourced" row. */}
+                {foodSect.sourced && (foodPlan.sourcingTiers || []).length > 0 && (
+                  <>
+                    <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>How it’s sourced</span>
+                      <button className="mini" onClick={() => setFoodSect(m => ({ ...m, sourced: false }))}>done</button>
+                    </div>
+                    {/* Figma 378:94 parity — each sourcing tier is a full-width
+                        bordered CARD (name + current/switch badge + a grounded sub),
+                        the active one tinted; not a borderless list row. */}
+                    <div className="srctier-list">
                     {(() => {
                       const key = foodPlan.sourcingKey;
                       const byTier = (key && key.byTier) || {};
@@ -9907,31 +10497,37 @@ export default function HostShellV2() {
                           ? (delta < 0 ? ' · saves ~' + fmt(Math.abs(delta)) : ' · ~' + fmt(Math.abs(delta)) + ' more')
                           : '';
                         return (
-                          <button key={id} className="line" aria-pressed={on}
-                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '9px 0', alignItems: 'flex-start' }}
+                          <button key={id} className={'srctier' + (on ? ' on' : '')} aria-pressed={on}
                             onClick={() => patchEvent({ sourcing: id }, 'Sourcing: ' + (t.label || id) + ' — proteins re-priced, stores updated.')}>
-                            <span style={{ flex: 1, minWidth: 0 }}>
-                              <span className="vc-name" style={{ display: 'block' }}>{t.label || id}</span>
-                              {(t.note || cost > 0) && (
-                                <span className="grounding" style={{ display: 'block', margin: '2px 0 0' }}>
-                                  {t.note}{t.note && cost > 0 ? ' · ' : ''}
-                                  {cost > 0 ? '~' + fmt(cost) + ' ' + String((key && key.item) || '').toLowerCase() : ''}
-                                  {deltaLabel}
-                                </span>
-                              )}
+                            <span className="srctier-top">
+                              <span className="srctier-name">{t.label || id}</span>
+                              {/* --ok is the app's "active/confirmed" signal everywhere
+                                  (RSVP Yes, vendor Confirmed); reused for the current tier. */}
+                              <span className="srctier-badge">{on ? 'current' : 'switch'}</span>
                             </span>
-                            {/* "current" used steel-soft vs muted's near-identical blue-gray
-                                (both from the same hue family) — nearly invisible distinction.
-                                --ok is already the app's "this is the active/confirmed one"
-                                signal everywhere else (RSVP Yes, vendor Confirmed); reusing it
-                                here instead of a second steel tone (found 2026-07-11). */}
-                            <span className="of" style={{ flexShrink: 0, marginLeft: 'var(--sp-2)', fontWeight: on ? 700 : 550, color: on ? 'var(--ok)' : 'var(--muted)' }}>{on ? 'current' : 'switch'}</span>
+                            {(t.note || cost > 0) && (
+                              <span className="srctier-sub">
+                                {t.note}{t.note && cost > 0 ? ' · ' : ''}
+                                {cost > 0 ? '~' + fmt(cost) + ' ' + String((key && key.item) || '').toLowerCase() : ''}
+                                {deltaLabel}
+                              </span>
+                            )}
                           </button>
                         );
                       });
                     })()}
-                    <p className="grounding" style={{ marginBottom: 10 }}>The tier re-prices the proteins and changes where each line says to buy.</p>
+                    </div>
+                    <GuideLine gap={0} style={{ margin: '8px 0 10px' }}>The tier re-prices the proteins and changes where each line says to buy.</GuideLine>
                   </>
+                )}
+                {/* The list drill-in (port of Figma 391:60) — the shopping list, the
+                    store filter, per-item pricing, and add-item all live here, gated
+                    behind the "The list" summary row so the calm screen stays calm. */}
+                {foodSect.list && (
+                  <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>The list</span>
+                    <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>done</button>
+                  </div>
                 )}
                 {/* Bulk price-lock — parity with legacy's "Use typical prices for
                     the other N items →" (App.js ~11040-11060). Locks every still-
@@ -9940,7 +10536,7 @@ export default function HostShellV2() {
                     (added) items, skipped lines, and anything already locked or
                     unpriced (no low/high at all) — same gate as legacy, so both
                     apps agree on which lines qualify. */}
-                {(() => {
+                {foodSect.list && (() => {
                   const supplGroup = ((foodPlan && foodPlan.groups) || []).find(g => /suppl|paper|setup|gear/i.test(String(g)));
                   const unpriced = (foodPlan.list || []).filter(it => it && !it.skipped && it.group !== supplGroup && it.locked == null && !it.added && (Number(it.low) || Number(it.high)));
                   if (bulkPriced && bulkPriced.length > 0) {
@@ -9970,11 +10566,11 @@ export default function HostShellV2() {
                   };
                   return (
                     <button className="mini" style={{ marginBottom: 10 }} onClick={priceAll}>
-                      Lock the rest to typical prices ({unpriced.length}) →
+                      Lock the rest to typical prices ({unpriced.length})
                     </button>
                   );
                 })()}
-                {(() => {
+                {foodSect.list && (() => {
                   // Skipped lines stay IN the list (parity with legacy's toggleSkip —
                   // App.js:11145 — which keeps a skipped line visible with strikethrough
                   // and a single toggle back). V2 used to filter them out entirely, so a
@@ -10500,55 +11096,69 @@ export default function HostShellV2() {
                   Counts come straight from the vendor readiness rollup. */}
               {rc && (
                 <div style={{ padding: '2px 0 14px' }}>
-                  <div className="eyebrow">Ready for the day</div>
-                  <div style={{ fontSize: 'var(--t-hero-star)', fontWeight: 800, letterSpacing: '-.03em', lineHeight: 1.05, margin: '6px 0 6px', fontVariantNumeric: 'tabular-nums', color: (rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? 'var(--ok)' : 'var(--ink)' }}>
+                  {/* Port of Figma 416:60 — hero composes the parity kit
+                      (Eyebrow → BigValue → Newsreader GuideLine), same as the
+                      food/budget heroes. Anti-drift; see parity/MANIFEST. */}
+                  <Eyebrow>Ready for the day</Eyebrow>
+                  <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? { color: 'var(--ok)' } : null) }}>
                     {rc.ready} of {rc.total}
-                  </div>
-                  <p className="mega-sub" style={{ fontSize: 'var(--t-body-s)', margin: 0, minHeight: 0 }}>
-                    {/* RECON (2026-07-11): the star is the ROLLUP's booked bar —
-                        the sub speaks the same vocabulary. The stricter confirm/
-                        arrival/paperwork bar belongs to the day-before row, which
-                        names it; borrowing its language here retyped the number. */}
+                  </BigValue>
+                  <GuideLine>
+                    {/* RECON (2026-07-11): the star is the ROLLUP's booked bar — the
+                        guide speaks the same vocabulary. The stricter confirm bar
+                        belongs to the day-before row; borrowing its words here retyped
+                        the number. "locked in" stays reserved for isVendorConfirmed. */}
                     {(() => {
                       if (rc.ready < rc.total) return `${rc.total - rc.ready} not booked yet — their cards below say which.`;
-                      // All booked — but "locked in / paperwork all set" is reserved
-                      // for fully-confirmed vendors (isVendorConfirmed). Disclose any
-                      // confirm residual instead of over-claiming, so this hero agrees
-                      // with the "Confirm vendor" action + the readiness dot (SSOT #1).
                       const confirmed = (event.vendors || []).filter(isVendorConfirmed).length;
                       const toConfirm = Math.max(0, rc.ready - confirmed);
                       return toConfirm > 0
                         ? `All booked — ${toConfirm} still to confirm before the day.`
                         : 'Everyone’s locked in — confirms, times, and paperwork all set.';
                     })()}
-                  </p>
+                  </GuideLine>
                 </div>
               )}
               {vendorPlan.relevant && (
-                <div style={{ marginBottom: 'var(--sp-3)' }}>
-                  <label className="shelf-label" style={{ display: 'block', margin: '0 0 var(--sp-1)' }} htmlFor="metro-market-pick">Which market are you in?</label>
-                  <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
-                    onChange={e => {
-                      const id = e.target.value;
-                      const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
-                      patchEvent({ metroMarket: id || null },
-                        m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
-                    }}>
-                    <option value="">National baseline — no market set</option>
-                    {[1, 2, 3, 4].map(tier => (
-                      <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
-                        {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
-                          <option key={m.id} value={m.id}>{m.label}</option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
-                  {metroMkt && (
-                    <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
-                      {metroMkt.label} typically runs {metroMkt.factor > 1 ? 'above' : metroMkt.factor < 1 ? 'below' : 'at'} the national baseline{metroMkt.factor !== 1 ? ` (${metroMkt.factor > 1 ? '+' : ''}${Math.round((metroMkt.factor - 1) * 100)}%)` : ''} used for the ranges below.
-                    </p>
-                  )}
-                </div>
+                // Port of Figma 416:60 — the market picker folds to a hairline
+                // disclosure row ("Which market · <label> ›"); tapping opens the
+                // full picker. Keeps the calm summary calm (was an always-open select).
+                !sheet.marketOpen ? (
+                  <div className="fstat-list" style={{ margin: '0 0 var(--sp-3)' }}>
+                    <button className="fstat" style={{ borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }} onClick={() => setSheet(s => ({ ...s, marketOpen: true }))}>
+                      <span className="fstat-l">Which market</span>
+                      <span className="fstat-v">{metroMkt ? metroMkt.label : 'National baseline'}<span className="fstat-chev" aria-hidden="true">›</span></span>
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: 'var(--sp-3)' }}>
+                    <label className="shelf-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 var(--sp-1)' }} htmlFor="metro-market-pick">
+                      <span>Which market are you in?</span>
+                      <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>done</button>
+                    </label>
+                    <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
+                      onChange={e => {
+                        const id = e.target.value;
+                        const m = id ? METRO_MARKETS.find(x => x.id === id) : null;
+                        patchEvent({ metroMarket: id || null },
+                          m ? `Estimates now use ${m.label} typical rates.` : 'Back to a national baseline — no market set.');
+                      }}>
+                      <option value="">National baseline — no market set</option>
+                      {[1, 2, 3, 4].map(tier => (
+                        <optgroup key={tier} label={`Tier ${tier} — ${METRO_TIER_LABEL[tier].label}`}>
+                          {METRO_MARKETS.filter(m => m.tier === tier).map(m => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                    {metroMkt && (
+                      <p className="grounding" style={{ margin: 'var(--sp-1) 0 0' }}>
+                        {metroMkt.label} typically runs {metroMkt.factor > 1 ? 'above' : metroMkt.factor < 1 ? 'below' : 'at'} the national baseline{metroMkt.factor !== 1 ? ` (${metroMkt.factor > 1 ? '+' : ''}${Math.round((metroMkt.factor - 1) * 100)}%)` : ''} used for the ranges below.
+                      </p>
+                    )}
+                  </div>
+                )
               )}
               {hasVendors ? (
                 <>
@@ -10910,6 +11520,49 @@ export default function HostShellV2() {
                               <p key="more" className="vc-detail" style={{ opacity: .7 }}>+{more} more open — the vendor's own brief covers the rest.</p>
                             ) : null];
                           })()}
+                          {/* Contract file — the destination for the "attach the file"
+                              conflict fix. A host keeps the signed contract in their own
+                              drive; this holds a LINK to it (not an upload), which is what
+                              clears the "signed but no file on record" clash. Anchored so
+                              the conflict CTA lands right on it (row-level-CTA rule). */}
+                          {(v.contractSigned === true || v.contract_signed === true || v.contractUrl || v.contractFileName || v.contractStoragePath) && (
+                            <div id={'v-contract-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6 }}>
+                              <span className="of" style={{ flexShrink: 0 }}>signed contract</span>
+                              {(v.contractStoragePath || v.contractFileName || v.contractUrl) ? (
+                                // Already on file — the real stored file (or a link), with View / Remove.
+                                <>
+                                  <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>{v.contractFileName || 'On file'}</span>
+                                  {v.contractUrl && <a className="mini" style={{ textDecoration: 'none' }} href={v.contractUrl} target="_blank" rel="noreferrer">View</a>}
+                                  <button className="mini" onClick={() => writeVendor(v.id, { contractStoragePath: null, contractFileName: null, contractUrl: null }, 'Contract file removed.')}>Remove</button>
+                                </>
+                              ) : isStorageConfigured() ? (
+                                // Real upload — same storage.js the app uses (Supabase). Stores the
+                                // file + records contractStoragePath/FileName, which clears the clash.
+                                <label className="mini" style={{ cursor: contractUploading[v.id] ? 'wait' : 'pointer', marginLeft: 'auto' }}>
+                                  {contractUploading[v.id] ? 'Uploading…' : 'Attach file'}
+                                  <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.doc,.docx" style={{ display: 'none' }} disabled={!!contractUploading[v.id]}
+                                    onChange={async (e) => {
+                                      const file = e.target.files && e.target.files[0]; if (!file) return;
+                                      const val = validateFile(file); if (!val.ok) { toast(val.error || 'That file won’t work.'); e.target.value = ''; return; }
+                                      setContractUploading(m => ({ ...m, [v.id]: true }));
+                                      try {
+                                        const r = await uploadFile({ file, eventId: event.id || 'unknown', category: inferCategory(file), userId: (profile && profile.id) || 'anon' });
+                                        if (r && r.ok) writeVendor(v.id, { contractStoragePath: r.path, contractFileName: file.name, contractUrl: r.url }, file.name + ' attached — the paper trail’s clean.');
+                                        else toast((r && r.error) || 'Upload failed — try again.');
+                                      } catch { toast('Upload failed — try again.'); }
+                                      finally { setContractUploading(m => ({ ...m, [v.id]: false })); e.target.value = ''; }
+                                    }} />
+                                </label>
+                              ) : (
+                                // Fallback when storage isn't configured: a link to where it lives.
+                                <input className="field" style={{ flex: 1, minWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
+                                  placeholder="paste a link to the signed contract"
+                                  value={v.contractUrl || ''}
+                                  onChange={e => writeVendor(v.id, { contractUrl: e.target.value || null }, e.target.value ? null : undefined)}
+                                  aria-label={'Link to ' + (v.name || 'the vendor') + '’s signed contract'} />
+                              )}
+                            </div>
+                          )}
                           {coiAct && (() => {
                             let coi = null; try { coi = getVendorCOIState(v, event); } catch { coi = null; }
                             return (
@@ -11177,7 +11830,7 @@ export default function HostShellV2() {
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             {(s.estimatedSavings || s.amount) ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.estimatedSavings || s.amount)}</span> : null}
-                            {s.route && <button className="mini" onClick={() => { if (!routeSheet(s.route)) toast('In the app this opens: ' + (describeRoute(s.route) || 'the right spot')); }}>{s.actionLabel || 'Open'}</button>}
+                            {s.route && <button className="mini" onClick={() => { if (!routeSheet(s.route)) toast('In the app this opens: ' + (describeRoute(s.route, event) || 'the right spot')); }}>{s.actionLabel || 'Open'}</button>}
                           </span>
                         </div>
                       ))}
@@ -11193,20 +11846,24 @@ export default function HostShellV2() {
                   )}
                   {/* the editor is settled work once a number exists — it folds;
                       no number yet → it IS the ask, so it stays open */}
-                  {money.planned ? (
+                  {Number(event.totalBudget) > 0 ? (
                     budgetFoldOpen ? (
+                      // Fold-open = intent to change → open straight into the CHANGE drawer (its
+                      // own "Pick a number, or set your own" header carries it, so no shelf-label
+                      // to repeat "Change the number"); just a right-aligned done to collapse.
                       <div style={{ marginTop: 14 }}>
-                        <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>Change the number <button className="mini" style={{ marginLeft: 6 }} onClick={() => setBudgetFoldOpen(false)}>done</button></div>
-                        {budgetEditorBlock()}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 var(--sp-2)' }}><button className="mini" onClick={() => { setBudgetFoldOpen(false); setBudgetChanging(false); }}>done</button></div>
+                        {budgetEditorBlock(true)}
                       </div>
                     ) : (
                       <button className="fold-btn" style={{ marginTop: 14 }} onClick={() => setBudgetFoldOpen(true)}>
-                        Your budget — {fmt(money.planned)}<span className="chev" aria-hidden="true">›</span>
+                        Your budget — {fmt(Number(event.totalBudget))}<span className="chev" aria-hidden="true">›</span>
                       </button>
                     )
                   ) : (
+                    /* No host number yet → the editor's PROPOSED state (lead with the grounded
+                       number + Use/Change) IS the ask; its own header carries it, no shelf-label. */
                     <div style={{ marginTop: 14 }}>
-                      <div className="shelf-label" style={{ margin: '0 0 var(--sp-2)' }}>Set the number</div>
                       {budgetEditorBlock()}
                     </div>
                   )}
@@ -11257,12 +11914,9 @@ export default function HostShellV2() {
                     Where is the list from?
                     <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>close</button>
                   </div>
-                  <div className="chips">
-                    {Object.entries(PLATFORMS).map(([key, p]) => (
-                      <button key={key} className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={csvPlatform === key}
-                        onClick={() => { setCsvPlatform(key); setCsvPreview(null); }}>{p.label || key}</button>
-                    ))}
-                  </div>
+                  <OptionList ariaLabel="Where the list is from"
+                    options={Object.entries(PLATFORMS).map(([key, p]) => ({ label: p.label || key, value: key }))}
+                    value={csvPlatform} onPick={(key) => { setCsvPlatform(key); setCsvPreview(null); }} />
                   <div className="actions-row" style={{ marginTop: 10, alignItems: 'center' }}>
                     <input type="file" accept=".csv,text/csv" aria-label="Guest CSV file" style={{ fontSize: 'var(--t-row-sub)', color: 'var(--muted)' }}
                       onChange={e => onCsvFile(e.target.files && e.target.files[0])} />
@@ -11361,9 +12015,10 @@ export default function HostShellV2() {
                 }
                 return (
                   <div style={{ padding: '2px 2px var(--sp-3)' }}>
-                    <div className="eyebrow">Your people</div>
-                    <div className="mega" style={{ fontSize: 'var(--t-hero-star)', margin: '6px 0 2px' }}>{n > 0 ? n : '—'}</div>
-                    <div className="mega-sub" style={{ fontSize: 'var(--t-body)', minHeight: 0 }}>{sub}</div>
+                    {/* Port — composes the parity kit like the other sheet heroes. */}
+                    <Eyebrow>Your people</Eyebrow>
+                    <BigValue style={{ fontVariantNumeric: 'tabular-nums' }}>{n > 0 ? n : '—'}</BigValue>
+                    <GuideLine>{sub}</GuideLine>
                   </div>
                 );
               })();
@@ -11427,14 +12082,25 @@ export default function HostShellV2() {
                         {event.collectAddresses ? 'Collecting for thank-you mail' : 'collect for thank-you mail?'}
                       </button>
                     </div>
-                    <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
-                    <div className="pill-grid" style={{ '--pill-min': '104px', margin: '0 0 var(--sp-1)' }}>
-                      {GIFTS.map(([mode, label]) => (
-                        <button key={mode} className="chip" style={{ ...chipSm, padding: '7px 4px' }} aria-pressed={gw.mode === mode}
-                          onClick={() => patchEvent({ giftWish: gw.mode === mode ? null : { mode, detail: '' } },
-                            gw.mode === mode ? 'Unset — the invite stays quiet on gifts.' : GIFT_TOAST[mode])}>{label}</button>
-                      ))}
-                    </div>
+                    {/* Fold-behind-Change (parity/MANIFEST) — one settled gift wish;
+                        the 5-chip grid folds to a hairline row, opens on tap. */}
+                    {(() => {
+                      const curGift = GIFTS.find(([m]) => m === gw.mode);
+                      const giftLabel = gw.mode ? (curGift ? curGift[1] : gw.mode) : 'none';
+                      if (!settledOpen.gifts) {
+                        return <SettledRow label="Gifts" value={giftLabel} tone={gw.mode ? 'ok' : 'default'} style={{ margin: '0 0 var(--sp-1)' }}
+                          onOpen={() => setSettledOpen(m => ({ ...m, gifts: true }))} />;
+                      }
+                      return (
+                        <>
+                          <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>gifts</div>
+                          <OptionList ariaLabel="Gifts" style={{ margin: '0 0 var(--sp-1)' }}
+                            options={GIFTS.map(([mode, label]) => ({ label, value: mode }))}
+                            value={gw.mode || ''}
+                            onPick={(mode) => { patchEvent({ giftWish: { mode, detail: gw.mode === mode ? (gw.detail || '') : '' } }, GIFT_TOAST[mode]); setSettledOpen(m => ({ ...m, gifts: false })); }} />
+                        </>
+                      );
+                    })()}
                     {gw.mode && gw.mode !== 'no_gifts' && (
                       <input className="field" style={{ maxWidth: 'none', fontSize: 'var(--t-input)', margin: 'var(--sp-1) 0 6px' }}
                         placeholder={GIFT_DETAIL[gw.mode] || ''} value={gw.detail || ''}
@@ -11592,10 +12258,28 @@ export default function HostShellV2() {
                               </span>
                             ) : null}
                           </button>
-                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }} onClick={() => toggleRsvp(i)} aria-label={'RSVP for ' + (g.name || 'guest')}>
-                            {/* UX_02 amber budget: a Maybe is UNKNOWN, and unknown is steel — amber is needs-attention only. */}
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
-                          </button>
+                          {/* Inline RSVP picker (audit 2026-07-22) — was a blind tap-to-cycle
+                              ('' → Yes → No → Maybe); now tap the reply to open a picker and
+                              set it directly, the same pattern as the meal chip below. */}
+                          {rsvpPickFor === i ? (
+                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', justifyContent: 'flex-end' }} role="group" aria-label={'RSVP for ' + (g.name || 'guest')}>
+                              {[['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'no reply']].map(([v, lbl]) => {
+                                const cur = String(g.rsvp || '') === v;
+                                return (
+                                  <button key={v || 'none'} className="chip" aria-pressed={cur}
+                                    style={{ padding: '4px 9px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                    onClick={() => setRsvpValue(i, v)}>{lbl}</button>
+                                );
+                              })}
+                            </span>
+                          ) : (
+                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                              aria-haspopup="true" aria-label={'RSVP for ' + (g.name || 'guest') + ': ' + (g.rsvp || 'no reply') + ' — tap to change'}
+                              onClick={() => setRsvpPickFor(i)}>
+                              {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
+                              <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
+                            </button>
+                          )}
                         </div>
                         {guestOpen === i && (
                           <div className="brow" style={{ margin: '2px 0 var(--sp-2)', padding: 'var(--sp-2) 6px' }}>
@@ -11708,6 +12392,10 @@ export default function HostShellV2() {
                   <datalist id="v2-groups">
                     <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />
                   </datalist>
+                  {/* ADD A GUEST sits FIRST below the roster — it is the primary action on
+                      this sheet. Burying it under the share/look/rules stack made "add who's
+                      coming" feel like a dead end (host 2026-07-22). */}
+                  {quickAdd}
                   {/* Share & invite settings — relocated here from above the roster
                       (audit S3: list-first). The roster now sits right under the hero;
                       sharing + look/artwork/rules/counting live below it. */}
@@ -11755,15 +12443,26 @@ export default function HostShellV2() {
                       host's word always wins (lib/inviteTone). */}
                   {/* Label on its own line + a 3-col grid so the three looks read as
                       an even segmented control instead of a 2+1 ragged wrap. */}
-                  <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
-                  <div className="pill-grid" style={{ '--pill-min': '104px', margin: '0 0 10px' }}>
-                    {[['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']].map(([val, label]) => (
-                      <button key={val || 'auto'} className="chip" style={{ padding: '7px 4px', fontSize: 'var(--t-pill)' }} aria-pressed={(event.inviteStyle || '') === val}
-                        onClick={() => patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.')}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
+                  {/* Fold-behind-Change (parity/MANIFEST) — one settled look; folds
+                      to a hairline row, opens the 3-up segmented control on tap. */}
+                  {(() => {
+                    const styles = [['', 'Match the event'], ['bright', 'Bright paper'], ['elegant', 'Elegant dark']];
+                    const cur = event.inviteStyle || '';
+                    const curLabel = (styles.find(([v]) => v === cur) || styles[0])[1];
+                    if (!settledOpen.inviteStyle) {
+                      return <SettledRow label="Invite look" value={curLabel} style={{ margin: '0 0 10px' }}
+                        onOpen={() => setSettledOpen(m => ({ ...m, inviteStyle: true }))} />;
+                    }
+                    return (
+                      <>
+                        <div className="of" style={{ display: 'block', margin: '0 0 6px' }}>invite look</div>
+                        <OptionList ariaLabel="Invite look" style={{ margin: '0 0 10px' }}
+                          options={styles.map(([val, label]) => ({ label, value: val }))}
+                          value={cur}
+                          onPick={(val) => { const label = (styles.find(([v]) => v === val) || styles[0])[1]; patchEvent({ inviteStyle: val }, val ? 'Invite set to ' + label.toLowerCase() + ' — the link updates instantly.' : 'The invite matches the event’s mood again.'); setSettledOpen(m => ({ ...m, inviteStyle: false })); }} />
+                      </>
+                    );
+                  })()}
                   {/* Crest choice — only offered when this event HAS registered
                       artwork (never a toggle that does nothing). The host's
                       call: artwork on the invite, or purely typographic. */}
@@ -11778,7 +12477,6 @@ export default function HostShellV2() {
                   )}
                   {inviteRules}
                   {countingChips}
-                  {quickAdd}
                   {csvBlock}
                   {pastImports}
                   {exportRow}
@@ -11822,7 +12520,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)', margin: '0 0 10px' }}>
                         <button className="mini" onClick={() => setK(kids - 1)} aria-label="Fewer kids or light eaters">−</button>
-                        <span className="of" style={{ minWidth: 20, textAlign: 'center', fontWeight: 700, color: 'var(--ink-soft)' }}>{kids}</span>
+                        <span className="step-val" style={{ minWidth: 20 }}>{kids}</span>
                         <button className="mini" onClick={() => setK(kids + 1)} aria-label="More kids or light eaters">+</button>
                         <span className="of">of your {guests} are kids / light eaters</span>
                       </div>
@@ -11855,8 +12553,12 @@ export default function HostShellV2() {
 
       {spot && <div className="dimveil" onClick={() => { clearTimeout(spotTimer.current); setSpot(null); }} />}
 
+      {/* Raise ladder (audit 2026-07-22, W2): the pill clears what's ACTUALLY pinned
+          below it. Elegant retires the dock, and the v2 dock auto-hides — raising to
+          the dock-clearing height while no dock shows left the pill floating mid-list
+          over content. -mid clears the NEXT bar only; -raised clears the visible dock. */}
       {wxImpact && stage === 'plan' && (
-        <div className={'wxpill' + (wxOpen ? ' open' : '')}>
+        <div className={'wxpill' + (wxOpen ? ' open' : '') + (!heroInView ? ((elegantMode || dockHidden) ? ' wxpill-mid' : ' wxpill-raised') : '')}>
           <button className="wxpill-head" onClick={() => { setWxOpen(o => !o); feedback('tick'); }} aria-expanded={wxOpen}>
             {/* Real stroke SVG (matches the shared Icon component's style) — was a
                 ☂ text dingbat, which the no-emoji doctrine bans in UI. aria-hidden;
