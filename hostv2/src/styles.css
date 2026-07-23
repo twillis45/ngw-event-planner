@@ -2335,6 +2335,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   /* Portrait ruling: full-bleed stage, single column PRESERVED (one loud thing),
      content measure capped, type up one notch. */
   .hero.elegant{ max-width:648px; margin-inline:auto; }
+  /* T8 extension (2026-07-23): the SAME measure principle for classic .content
+     surfaces (After stage, create) — they rendered full-width at tablet, running
+     ~120ch paragraphs. 720px keeps their denser sections breathing. */
+  .content{ max-width:720px; margin-inline:auto; }
   .hero.elegant .ask{ font-size:clamp(40px,7.5cqw,56px); }
   .hero.elegant .verdict{ font-size:22px; }
 }
