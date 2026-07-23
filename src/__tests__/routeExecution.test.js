@@ -268,3 +268,17 @@ describe('guests focusFields land on their rows', () => {
     expect(resolveRoute({ tab: 'Guests' })).toEqual({ kind: 'guests', focus: null });
   });
 });
+
+// ── Vendor promises deep link (Up-Next #5, 2026-07-22) ──────────────────────
+// vendorAccountability emits section:'promises' (not vendorSection) — the
+// resolver honors both spellings and the shell lands on the promises block.
+describe("section:'promises' lands on the vendor promises block", () => {
+  test('promise route → vendors · vendorSection promises', () => {
+    expect(resolveRoute({ tab: 'Vendors', vendorId: 'v1', section: 'promises' }))
+      .toEqual({ kind: 'vendors', focus: 'v1', vendorSection: 'promises' });
+  });
+  test('explicit vendorSection still wins', () => {
+    expect(resolveRoute({ tab: 'Vendors', vendorId: 'v1', vendorSection: 'payment' }))
+      .toEqual({ kind: 'vendors', focus: 'v1', vendorSection: 'payment' });
+  });
+});

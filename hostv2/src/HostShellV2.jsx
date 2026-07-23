@@ -2468,6 +2468,8 @@ export default function HostShellV2() {
         ? ['v-coi-' + id, 'v-contract-' + id]
         : sheet.vendorSection === 'documents'
         ? ['v-contract-' + id, 'v-coi-' + id]
+        : sheet.vendorSection === 'promises'
+        ? ['v-promises-' + id]
         : [];
       setTimeout(() => {
         try {
@@ -11674,8 +11676,10 @@ export default function HostShellV2() {
                             // actionable now, not an audit of everything at once.
                             const shown = openPromises.slice(0, 3);
                             const more = openPromises.length - shown.length;
-                            return [...shown.map(p => (
-                              <div key={p.promiseKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+                            // Anchor for section:'promises' deep links (Up-Next #5) —
+                            // rides the first rendered promise row.
+                            return [...shown.map((p, pi) => (
+                              <div key={p.promiseKey} id={pi === 0 ? 'v-promises-' + v.id : undefined} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', scrollMarginTop: 12 }}>
                                 <span className="vc-detail" style={{ margin: 0 }}>{p.promiseText}{p.dueDate ? ' · due ' + p.dueDate : ''}</span>
                                 {/* Item-scoped label (was a generic "Mark confirmed"
                                     that read as confirming the VENDOR — a host tapped

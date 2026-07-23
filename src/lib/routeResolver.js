@@ -60,7 +60,11 @@ export function resolveRoute(route) {
   // Vendors — the card opens on the vendor row; a money/insurance route also
   // names the sub-section it lands on (payment / documents).
   if (route.tab === 'Vendors') {
-    return { kind: 'vendors', focus: route.vendorId || null, vendorSection: route.vendorSection || null };
+    // vendorAccountability's promise routes name their section as `section`
+    // (not `vendorSection`) — honor both spellings so "review open promises"
+    // lands on the promises block, not the card top (Up-Next #5, route audit).
+    const vs = route.vendorSection || (route.section === 'promises' ? 'promises' : null);
+    return { kind: 'vendors', focus: route.vendorId || null, vendorSection: vs };
   }
   // Seating — the exact guest row when the route names one.
   if (route.tab === 'Seating' || /^seat/.test(ff)) {
