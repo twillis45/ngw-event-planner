@@ -25,7 +25,10 @@ const COI_PATCH = {
 
 // The seeded states — the same roster the live drives used. Weather is staged
 // deterministically for the outdoor T-2 event via route interception.
+const DAY_OF_PATCH = { date: new Date().toISOString().slice(0, 10) };
+
 const STATES = [
+  { id: 'test-two-days', label: 'Game Night DAY-OF (elegant ask)', weather: false, future: true, patch: DAY_OF_PATCH, stateKey: 'day-of' },
   { id: 'test-two-days',           label: 'Game Night T-2 (outdoor, weather)', weather: true,  future: true },
   { id: 'test-day-before-vendors', label: 'Dinner T-1 (vendors, COI unverified)', weather: false, future: true, patch: COI_PATCH },
   { id: 'ev-x-repast',             label: 'Repast T-3 (solemn)',               weather: false, future: true },

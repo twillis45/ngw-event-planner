@@ -2281,7 +2281,7 @@ export default function HostShellV2() {
   // engine has an ask, the display slot speaks it (the ASK) and queue[0]
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
   // past, no date) the countdown keeps the display — the date IS the story then.
-  const askMode = days !== null && days > 0 && !listIsCalm && queue.length > 0;
+  const askMode = days !== null && days >= 0 && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
   // bar fades in as the echo. (The dock already auto-hides on scroll — the two
@@ -5022,7 +5022,7 @@ export default function HostShellV2() {
                   up top, the summary tiles mid, and the NEXT tile anchored just
                   above the floating dock so the primary action sits at thumb
                   reach with no dead space below it. */}
-              <div className={'hero' + (elegantMode ? ' elegant voice-' + elegantVoice : '')}>
+              <div className={'hero' + (elegantMode ? ' elegant voice-' + elegantVoice : '') + (days === 0 ? ' is-dayof' : '')}>
               {/* First-screen bound (F13 foot-pin): a display:contents wrapper — invisible in
                   every mode EXCEPT elegant-ask, where it becomes a 100dvh flex column so the
                   progress hairline pins to the true foot and the see-all sits below it. */}
@@ -5035,7 +5035,7 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
                   <span className="eb-caret" aria-hidden="true">▾</span>
                 </button>
               ) : (
@@ -5153,6 +5153,9 @@ export default function HostShellV2() {
                          Conflicts → the clash; decisions (bundle OR a lone card) → the actual
                          call to make, framed as a question (parenthetical meta + quotes stripped). */
                       (() => {
+                        // Day-of (T2 ruling): the loud line is the DAY, not the item — the
+                        // item speaks from its own card below (is-dayof unhides the h3).
+                        if (elegantMode && days === 0) return 'It\u2019s today.';
                         const q0 = queue[0];
                         // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its
                         // own ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.

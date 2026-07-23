@@ -2371,3 +2371,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   }
   @keyframes panelrise{from{transform:translate(-50%,calc(-50% + 24px)); opacity:.4} to{transform:translate(-50%,-50%); opacity:1}}
 }
+
+/* DAY-OF IN THE ELEGANT SYSTEM (T2 ruling 2026-07-23, Figma 598:60/602:60): the hero
+   says the day ("It’s today."), so the first card must SPEAK its own item text —
+   un-hide the bundle-hero h3 that ask-mode normally suppresses. */
+.hero.elegant.is-dayof .hero-card.bundle-hero > .card-head > h3{ display:block; }
