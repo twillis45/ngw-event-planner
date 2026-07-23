@@ -2429,3 +2429,55 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .hero.elegant.is-dayof .ev-eyebrow, .hero.elegant.is-dayof .hero-card,
   .card.hero-card.receipted, .eprog.is-done::after, .efold-grab{ animation:none; }
 }
+
+/* ═══ CALM-BOARD BALANCE (host rulings 2026-07-23). File end on purpose. */
+/* All-quiet reads STEEL, not green (host: "All quiet CTAs should be steel blue
+   not green") — the allset tile was the one green CTA-shaped element. Status
+   green stays for status (chips, checks); the interactive register is steel. */
+.tile-d.allset{ background:var(--steel-tint); color:var(--steel-soft); }
+.tile-d.allset .t-label,.tile-d.allset .t-big,.tile-d.allset .t-num,.tile-d.allset .t-sub,.tile-d.allset .t-go{ color:var(--steel-soft); }
+.tile-d.allset:hover{ background:var(--steel-tint); }
+/* Below-fold recap rows (host "balance layout/font sizes"): the modeled band was
+   a two-line RIGHT-aligned wrap crammed against the number. Now the 565:60 recap
+   pattern: label left + number right on line one, the sub a full-width LEFT
+   line beneath. Number joins the stat scale. */
+.hero.elegant .bento .tile-b, .hero.elegant .bento .tile-c{ flex-wrap:wrap; }
+.hero.elegant .bento .tile-b > div:not(.t-label), .hero.elegant .bento .tile-c > div:not(.t-label){ display:contents; }
+.hero.elegant .bento .tile-b .t-label, .hero.elegant .bento .tile-c .t-label{ flex:1 1 auto; }
+.hero.elegant .bento .tile-b .t-num, .hero.elegant .bento .tile-c .t-num{ margin-left:auto; font-size:22px; font-variant-numeric:tabular-nums; }
+.hero.elegant .bento .tile-b .t-sub, .hero.elegant .bento .tile-c .t-sub{ flex-basis:100%; text-align:left; margin-top:2px; font-size:12.5px; }
+/* Only the OVER segment earns warn — the rest of the money line is calm muted. */
+.hero.elegant .bento .tile-c .t-sub.over{ color:var(--muted); }
+.hero.elegant .bento .tile-c .t-sub.over b{ color:var(--muted); }
+.hero.elegant .bento .tile-c .over-seg, .hero.elegant .bento .tile-c .t-sub.over .over-seg{ color:var(--warn); font-weight:650; }
+/* Coming-up rows: long titles wrap cleanly; the date meta keeps one quiet line,
+   dropping below the title when squeezed instead of colliding. */
+.hero.elegant .later-row{ display:flex; flex-wrap:wrap; align-items:baseline; column-gap:12px; }
+.hero.elegant .later-row .t{ flex:1 1 240px; min-width:0; }
+.hero.elegant .later-row .of{ margin-left:auto; font-size:12.5px; }
+
+/* Attention illumination (host ruling 2026-07-23 "add illumination to the
+   attention system, same color"): the spotlight ring now CASTS LIGHT — a steel
+   key-glow blooms behind the spotted card and decays with the ring (the Motion
+   Lab focus-lantern, in the attention system's own steel). Reduced-motion keeps
+   the static ring only. */
+.card.spot::before{
+  content:''; position:absolute; inset:-28px -18px; z-index:-1; pointer-events:none;
+  border-radius:24px;
+  background:radial-gradient(60% 70% at 50% 45%, color-mix(in srgb, var(--steel) 22%, transparent), transparent 70%);
+  animation:spotlamp 7.5s var(--ease-standard) 1 both;
+}
+@keyframes spotlamp{ 0%{opacity:1} 70%{opacity:.55} 100%{opacity:0} }
+@media (prefers-reduced-motion: reduce){ .card.spot::before{ animation:none; opacity:0 } }
+
+/* Pull-handle illumination (host ruling 2026-07-23): on board load the grab-bar
+   LIGHTS steel — a beacon for the fold — then cools back to its resting gray as
+   the board settles. Pairs with the 3s nudge bob; reduced-motion stays gray. */
+.efold-grab{ animation: foldbob 1.1s var(--ease-out) 3s 1, handlelight 2.6s var(--ease-out) .6s 1; }
+@keyframes handlelight{
+  0%{ background:var(--faint); box-shadow:none; }
+  25%{ background:var(--steel-soft); box-shadow:0 0 14px 2px color-mix(in srgb, var(--steel) 55%, transparent); }
+  70%{ background:var(--steel-soft); box-shadow:0 0 10px 1px color-mix(in srgb, var(--steel) 35%, transparent); }
+  100%{ background:var(--faint); box-shadow:none; }
+}
+@media (prefers-reduced-motion: reduce){ .efold-grab{ animation:none } }

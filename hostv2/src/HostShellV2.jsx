@@ -6040,7 +6040,11 @@ export default function HostShellV2() {
               })()}
               </div>{/* /escreen — first-screen bound ends; the see-all follows below the fold */}
               {/* Fold boundary below the first screen (grabbable — taps scroll to the see-all). */}
-              {elegantMode && askMode && (
+              {elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0)) && (
+                /* CALM JOINED (host "where's the handle" 2026-07-23): the calm board
+                   PROMISES "the heads-ups below" — it needs the same fold handle as the
+                   ask board (F13/F14: one skeleton holds both poles). Past keeps its
+                   own Wrapped foot. */
                 <button type="button" className="efold" aria-label="Show the rest of your plan"
                   onClick={(e) => { const app = e.currentTarget.closest('.app') || document.scrollingElement; if (app) app.scrollBy({ top: Math.round(app.clientHeight * 0.72), behavior: 'smooth' }); }}>
                   <div className="efold-grab" aria-hidden="true" />
@@ -6450,7 +6454,7 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? ` · ${fmt(money.committed - money.planned)} over` : ''}</> : 'no number yet — tap to set one'}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>
