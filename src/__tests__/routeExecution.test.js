@@ -252,3 +252,19 @@ describe('place-note focusFields land on the space sheet row', () => {
     expect(resolveRoute({ tab: 'Event Details' })).toEqual({ kind: 'stage:plan', focus: null, anchor: 'Venue' });
   });
 });
+
+// ── Guests row-level landings (Up-Next #4, 2026-07-22) ──────────────────────
+// The count entry and the invites block are anchors now — the whole-sheet
+// catch used to drop the focus these emitters promise (engine count actions,
+// weather guest-update CTAs, returnNarration, eventContextNudges).
+describe('guests focusFields land on their rows', () => {
+  test('guests-entry → guests · entry', () => {
+    expect(resolveRoute({ tab: 'Guests', focusField: 'guests-entry' })).toEqual({ kind: 'guests', focus: 'entry' });
+  });
+  test('guests-invites-<eventId> → guests · invites', () => {
+    expect(resolveRoute({ tab: 'Guests', focusField: 'guests-invites-ev-x-wanda' })).toEqual({ kind: 'guests', focus: 'invites' });
+  });
+  test('a bare Guests route still lands on the sheet', () => {
+    expect(resolveRoute({ tab: 'Guests' })).toEqual({ kind: 'guests', focus: null });
+  });
+});

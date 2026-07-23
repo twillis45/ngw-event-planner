@@ -68,6 +68,11 @@ export function resolveRoute(route) {
   }
   // Budget / Guests — whole-surface sheets, no row concept.
   if (route.tab === 'Budget' || ff === 'budget') return { kind: 'budget', focus: null };
+  // Guests row-level landings (Up-Next #4, 2026-07-22): the count entry and the
+  // invites block are real anchors now — the whole-sheet catch below kept
+  // dropping the focus these emitters promise (6+ sites across 5 files).
+  if (ff === 'guests-entry') return { kind: 'guests', focus: 'entry' };
+  if (/^guests-invites/.test(ff)) return { kind: 'guests', focus: 'invites' };
   if (route.tab === 'Guests') return { kind: 'guests', focus: null };
   // Food — a foodFocus id or a foodrow- focusField lands on the exact line.
   if (route.tab === 'Planning' && (route.foodFocus || /food/i.test(ff))) {

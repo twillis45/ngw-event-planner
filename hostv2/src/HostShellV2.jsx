@@ -2414,6 +2414,24 @@ export default function HostShellV2() {
       setPlaceNoteOpen(sheet.focus);
       setPlaceNoteDraft(String(event[PLACE_NOTE_FIELD[sheet.focus]] || ''));
     }
+    // Guests row-level landing (Up-Next #4): 'entry' scrolls to the count
+    // stepper (count mode) or the counting chips (roster mode) and focuses the
+    // number input; 'invites' scrolls to the share-and-invite block. Anchors
+    // exist per mode; the first one present wins.
+    if (sheet && sheet.kind === 'guests' && sheet.focus) {
+      const targets = sheet.focus === 'entry'
+        ? ['guests-entry-anchor', 'guests-counting-anchor']
+        : ['guests-invites-anchor'];
+      setTimeout(() => {
+        try {
+          const el = targets.map(t => document.getElementById(t)).find(Boolean);
+          if (!el) return;
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          const inp = el.querySelector('input');
+          if (inp) { try { inp.focus({ preventScroll: true }); } catch { /* focus is best-effort */ } }
+        } catch { /* sheet is still the right landing */ }
+      }, 120);
+    }
   }, [sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const sheetRef = useRef(null);              // the .sheet dialog container (a11y focus mgmt)
   // The meaning sheet can be opened generically (Sections directory) which
@@ -11994,7 +12012,7 @@ export default function HostShellV2() {
               // reads it): by-list hosts get reply tracking + chasing, by-headcount
               // hosts are never nagged about replies.
               const countingChips = (
-                <div className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center' }}>
+                <div id="guests-counting-anchor" className="actions-row" style={{ margin: '0 0 10px', alignItems: 'center', scrollMarginTop: 12 }}>
                   <span className="of">counting:</span>
                   <button className="chip" style={{ padding: '5px 11px', fontSize: 'var(--t-pill)' }} aria-pressed={chase}
                     onClick={() => patchEvent({ guestMode: 'list' }, 'By list — replies are tracked and the quiet ones can be nudged.')}>By list</button>
@@ -12501,7 +12519,7 @@ export default function HostShellV2() {
                   {/* Share & invite settings — relocated here from above the roster
                       (audit S3: list-first). The roster now sits right under the hero;
                       sharing + look/artwork/rules/counting live below it. */}
-                  <div className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)' }}>Share &amp; invite</div>
+                  <div id="guests-invites-anchor" className="shelf-label" style={{ margin: 'var(--sp-6) 0 var(--sp-2)', scrollMarginTop: 12 }}>Share &amp; invite</div>
                   {/* Balanced 2-up button grid (systematic .pill-grid). */}
                   <div className="pill-grid" style={{ margin: '0 0 var(--sp-3)' }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
@@ -12589,7 +12607,7 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: '2px 2px var(--sp-1)' }}>
                     No list yet{guests ? ' — you’re planning around ' + guests + ' for now' : ''}. A real list is what unlocks RSVPs, the confirmed count, and the caterer check.
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px' }}>
+                  <div id="guests-entry-anchor" style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center', margin: '0 0 10px', scrollMarginTop: 12 }}>
                     <button className="mini" onClick={() => { setGuestDraft(''); setGuests(Math.max(1, (Number(guests) || 0) - 1)); }} aria-label="Fewer guests">−</button>
                     <input className="field" style={{ width: 72, textAlign: 'center', fontSize: 'var(--t-input)', padding: 'var(--sp-2) 6px' }}
                       type="number" inputMode="numeric" min="1"
@@ -12628,7 +12646,7 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  <div className="actions-row" style={{ margin: '0 0 var(--sp-1)' }}>
+                  <div id="guests-invites-anchor" className="actions-row" style={{ margin: '0 0 var(--sp-1)', scrollMarginTop: 12 }}>
                     <button className="mini" onClick={shareInviteLink}>Share the RSVP link</button>
                     <button className="mini" onClick={showQr}>Show the QR</button>
                     {/* Preview the guest-facing RSVP page (host request 2026-07-16) — opens the
