@@ -4010,7 +4010,7 @@ export default function HostShellV2() {
             </div>
           ))}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
+            <button className="cta stay" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
