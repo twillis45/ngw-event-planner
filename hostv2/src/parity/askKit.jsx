@@ -49,14 +49,50 @@ export function Eyebrow({ children, tone = 'default', style }) {
 
 // The big grounded value — budget number, day-of clock. One type scale (44/750/-.03em),
 // serif-leaning under a solemn tone. Optional muted suffix ("Typical", "PM").
+// Motion #7 (host ruling 2026-07-23): a BigValue never teleports — when the SAME
+// mounted value changes (a settle re-sizing the plan), the numeric part ticks to
+// the new truth over 380ms in tabular-nums. Non-numeric children pass through
+// untouched; reduced-motion snaps.
+function useTickedValue(children) {
+  const [disp, setDisp] = React.useState(children);
+  const prevRef = React.useRef(children);
+  React.useEffect(() => {
+    const prev = prevRef.current; prevRef.current = children;
+    if (prev === children) { setDisp(children); return; }
+    const parse = (v) => {
+      if (typeof v === 'number') return { n: v, pre: '', post: '', comma: false };
+      if (typeof v !== 'string') return null;
+      const m = v.match(/^([^0-9-]*)(-?[\d,]+)(.*)$/);
+      if (!m) return null;
+      const n = Number(m[2].replace(/,/g, ''));
+      return Number.isFinite(n) ? { n, pre: m[1], post: m[3], comma: m[2].includes(',') } : null;
+    };
+    const a = parse(prev), b = parse(children);
+    const reduced = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!a || !b || a.n === b.n || reduced) { setDisp(children); return; }
+    const t0 = performance.now(); let raf;
+    const step = (t) => {
+      const p = Math.min(1, (t - t0) / 380), e = 1 - Math.pow(1 - p, 3);
+      const r = Math.round(a.n + (b.n - a.n) * e);
+      setDisp(p < 1 ? b.pre + (b.comma ? r.toLocaleString() : String(r)) + b.post : children);
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [children]);
+  return disp;
+}
+
 export function BigValue({ children, suffix, tone = 'default', gap = ASK_RHYTHM.eyebrowToValue, style }) {
   const t = toneOf(tone);
+  const disp = useTickedValue(children);
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: gap }}>
       <span style={{
         fontSize: 44, fontWeight: t.serifValue ? 600 : 750, letterSpacing: '-.03em', lineHeight: 1,
+        fontVariantNumeric: 'tabular-nums',
         color: t.value, ...(t.serifValue ? { fontFamily: 'var(--serif-read)' } : null), ...style,
-      }}>{children}</span>
+      }}>{disp}</span>
       {suffix ? <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--muted)' }}>{suffix}</span> : null}
     </div>
   );
