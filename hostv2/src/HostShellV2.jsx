@@ -5024,7 +5024,7 @@ export default function HostShellV2() {
               {/* First-screen bound (F13 foot-pin): a display:contents wrapper — invisible in
                   every mode EXCEPT elegant-ask, where it becomes a 100dvh flex column so the
                   progress hairline pins to the true foot and the see-all sits below it. */}
-              <div className={(elegantMode && (askMode || (listIsCalm && !isPast && days !== null && days > 0))) ? 'escreen on' : 'escreen'}>
+              <div className={(elegantMode && (askMode || isPast || (listIsCalm && !isPast && days !== null && days > 0))) ? 'escreen on' : 'escreen'}>
               {/* ELEGANT-MINIMAL PORT (F13 fidelity, host ruling "match Figma exactly"
                   2026-07-17): the ask screen's masthead collapses to ONE tiny eyebrow
                   (countdown · event name, uppercase) — the big serif name + venue + kicker
@@ -5204,14 +5204,66 @@ export default function HostShellV2() {
                     )}
                   </>);
                 }
-                // ELEGANT PAST (host "still not correct parity", 2026-07-22): the finished
-                // event reads in the same language as the ask screen — eyebrow (when · type)
-                // → one boss statement → the serif human line carrying the NAME — not the
-                // old masthead + giant "25d ago" + tiles stack. The recap rows follow.
+                // ELEGANT PAST — Figma 565:60 "Command — post-event · behind you"
+                // (screenshot-matched 2026-07-22): green BEHIND YOU eyebrow → the
+                // personal statement ("Maya's day, done.") → two-line serif guide →
+                // GUESTS / FINAL SPEND recap rows with honest subs ("Final, not a
+                // warning.") → Save-what-worked CTA into the After stage → the
+                // green Wrapped foot. All values from the same engines the tiles
+                // read — nothing invented; "~N came" only when the expectation
+                // band exists, hedged exactly as far as the band supports.
                 if (elegantMode && isPast && days !== null) {
+                  const first = (() => {
+                    const h = String(event.honoree || '').trim();
+                    if (h) return h.split(/\s+/)[0];
+                    const m = /^([A-Z][\w'’]+)(?:\s+[A-Z][\w'’]+)*['’]s\b/.exec(String(event.name || ''));
+                    return m ? m[1] : null;
+                  })();
+                  const agoN = Math.abs(days);
+                  const typeWord = String(eventTypeLabel(event) || 'day').toLowerCase();
+                  const yesN = (event.guests || []).filter(g => g && g.rsvp === 'Yes').length;
+                  const invitedN = (event.guests || []).length;
+                  // DATA HONESTY (host challenge, 2026-07-22): the Figma comp said
+                  // "~7 came · a couple more likely walked in" — but attendance was
+                  // never OBSERVED; walk-ins are a planning model, and "came" is a
+                  // past-tense fact claim. The recap states only what's on file.
+                  const over = (money.planned && money.committed > money.planned) ? money.committed - money.planned : 0;
+                  const rowL = { fontSize: 'var(--t-pill)', fontWeight: 600, letterSpacing: '.08em', textTransform: 'uppercase', color: 'var(--muted)' };
+                  const rowV = { fontSize: 26, fontWeight: 750, letterSpacing: '-.02em', fontVariantNumeric: 'tabular-nums' };
+                  const rowSub = { margin: '3px 0 0', fontSize: 'var(--t-meta)', color: 'var(--muted)', lineHeight: 1.4 };
                   return (<>
-                    <h2 className="ask">How it landed.</h2>
-                    <GuideLine>{(event.name || 'This one')} — behind you now.</GuideLine>
+                    <Eyebrow tone="ok" style={{ display: 'block', letterSpacing: '.1em' }}>BEHIND YOU</Eyebrow>
+                    <h2 className="ask">{first ? first + '’s day, done.' : 'The day, done.'}</h2>
+                    <GuideLine>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. Nothing needs you now; here’s how it landed.</GuideLine>
+                    <div style={{ marginTop: 26, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                        <span style={rowL}>Guests</span>
+                        <span style={rowV}>{yesN ? yesN + ' said yes' : (guests ? '~' + guests + ' planned' : '—')}</span>
+                      </div>
+                      <p style={rowSub}>{yesN
+                        ? (invitedN ? invitedN + ' invited — turnout itself wasn’t tracked.' : 'turnout itself wasn’t tracked.')
+                        : (guests ? 'no list was kept — this was the planning number.' : 'no list was kept.')}</p>
+                    </div>
+                    <div style={{ marginTop: 14, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
+                        <span style={rowL}>Final spend</span>
+                        <span style={rowV}>{money.committed ? fmt(money.committed) : '—'}</span>
+                      </div>
+                      <p style={rowSub}>{money.planned
+                        ? (over > 0
+                          ? 'Landed ' + fmt(over) + ' over the ' + fmt(money.planned) + ' you planned. Final, not a warning.'
+                          : 'Landed inside the ' + fmt(money.planned) + ' you planned.')
+                        : (money.committed ? fmt(money.committed) + ' all told.' : 'no budget was tracked.')}</p>
+                    </div>
+                    <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'nowrap' }}>
+                      <button className="cta stay" style={{ flex: '0 0 auto', width: 'auto', whiteSpace: 'nowrap', minHeight: 0, padding: '12px 18px', fontSize: 'var(--t-body-s)' }}
+                        onClick={() => setStage('after')}>Save what worked</button>
+                      <span style={{ fontSize: 'var(--t-meta)', color: 'var(--muted)', textAlign: 'right', flex: '1 1 auto', minWidth: 0, lineHeight: 1.35 }}>so your next one starts&nbsp;ahead.</span>
+                    </div>
+                    <div style={{ marginTop: 30, borderTop: '1px solid var(--ok)', paddingTop: 9, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <span style={{ color: 'var(--ok)', fontWeight: 650, fontSize: 'var(--t-meta)' }}>Wrapped</span>
+                      <span style={{ color: 'var(--muted)', fontSize: 'var(--t-meta)' }}>{dateLong || ''}</span>
+                    </div>
                   </>);
                 }
                 return (<>
@@ -6117,7 +6169,7 @@ export default function HostShellV2() {
                 </>
               )}
 
-              <div className="bento">
+              <div className="bento" style={elegantMode && isPast ? { display: 'none' } : undefined}>
                 {/* role=button div, NOT a <button> — it contains its own interactive
                     "what's counted" caret, and a native button-in-button is invalid
                     HTML + ambiguous to screen readers (per-screen re-audit). */}
