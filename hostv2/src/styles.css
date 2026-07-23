@@ -2355,3 +2355,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 0 440px; min-width:0; }
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
 }
+
+@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+  /* Sheet ruling (host 2026-07-23, "go with panel option"): at tablet every sheet
+     becomes a CENTERED FLOATING PANEL — the iPad-native modal read — instead of an
+     edge-to-edge bottom sheet stretched across the full width. One overlay shadow
+     level (UX_01); rises from below exactly like the phone sheet. */
+  .sheet{
+    left:50%; right:auto; bottom:auto; top:50%;
+    transform:translate(-50%,-50%);
+    width:min(680px, calc(100% - 80px)); max-height:min(760px, 84%);
+    border-radius:20px;
+    box-shadow:inset 0 1px 0 var(--sheen), 0 8px 32px rgba(0,0,0,.5);
+    animation:panelrise var(--ms-sheet) var(--ease-standard);
+  }
+  @keyframes panelrise{from{transform:translate(-50%,calc(-50% + 24px)); opacity:.4} to{transform:translate(-50%,-50%); opacity:1}}
+}
