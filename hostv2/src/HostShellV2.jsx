@@ -796,6 +796,13 @@ export default function HostShellV2() {
   // Create — ONE smart input; the real resolvers parse it. Form fields exist
   // only as corrections layered over the parse (host-shell logic, not a form).
   const [smartText, setSmartText] = useState('');
+  // SMALL INTAKE (host ruling 2026-07-23, Figma 626:61 link + 626:78 screen): a
+  // guided alternative to the free-text field. The three taps COMPOSE the same
+  // sentence the host would have typed, into the SAME smartText -> parser path —
+  // no second create pipeline, and the recognition chips still show/correct
+  // what was understood. 'Something else' honestly returns to the text field.
+  const [intakeOpen, setIntakeOpen] = useState(false);
+  const [intakePick, setIntakePick] = useState({ occ: null, count: null, when: null, date: '' });
   const [fName, setFName] = useState('');
   const [fCity, setFCity] = useState(''); // town for weather + maps, asked at creation
   const [fType, setFType] = useState(null);
@@ -3904,6 +3911,20 @@ export default function HostShellV2() {
               value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus />
             <button className="mini" onClick={saveVenue}>Save</button>
           </div>
+          {/* The suggestions were FETCHED here but never RENDERED (host report
+              2026-07-23 "attention system not working" on Add the location.) —
+              the hero editor was the one venue field dropping addrSugs on the
+              floor. Same rows as the sheet editors; pickAddr fills name+city. */}
+          {addrSugs.length > 0 && (
+            <div style={{ marginTop: 6 }}>
+              {addrSugs.map((sg, si) => (
+                <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+                  onClick={() => pickAddr(sg)}>
+                  <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
           {venueErr && <p className="because" style={{ color: 'var(--warn)', marginTop: 6 }}>{venueErr}</p>}
         </>
       );
@@ -4147,7 +4168,17 @@ export default function HostShellV2() {
       // renderDecision(foodDecisionND()) — full-width option rows with our-pick (unsettled) or the
       // chosen row highlighted (settled) + notes, NOT a parallel inline-chip render. One source of
       // truth for the food decision; the "Open the spread" detail link stays as a subtle secondary.
-      const fnd = foodDecisionND();
+      const fndBase = foodDecisionND();
+      // ADVANCE ON SELECTION (host ruling 2026-07-23 "once this is selection, go to
+      // the next step"): the editor's settle used to write + receipt but leave the
+      // editor open — a dead end after the choice. Now it mirrors the hero settle:
+      // write, close the editor, and satisfied-roll this action so the next queue
+      // item rises.
+      const fnd = { ...fndBase, settle: (v) => {
+        fndBase.settle(v);
+        setEditor(null);
+        if (a && a.id != null) setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]);
+      } };
       // PARITY (Figma 369:60): the decision leads with the guide-voice grounding (Newsreader
       // italic) — the proposed "why" when we have a pick, else the ask-mode why. Was missing on
       // :5129 after the #1 subhead suppression; this restores it via the kit GuideLine atom.
@@ -4779,13 +4810,87 @@ export default function HostShellV2() {
                       {listening ? 'Listening… tap to stop' : 'Say it'}
                     </button>
                   </div>
-                  {smartText.trim() === '' && (
-                    /* Empty state: one honest what-you-get line, no example
-                       chips (host ruling 2026-07-11 — the prompt stands alone). */
-                    <p className="grounding" style={{ marginTop: 18, maxWidth: '36ch' }}>
-                      A real plan — guests, food, budget, the day. Change anything.
-                    </p>
+                  {smartText.trim() === '' && !intakeOpen && (
+                    <>
+                      {/* Intake link (Figma 626:61): quiet steel, honest glyph — it navigates. */}
+                      <button onClick={() => setIntakeOpen(true)}
+                        style={{ background: 'none', border: 'none', padding: 0, marginTop: 16, alignSelf: 'flex-start', fontFamily: 'var(--sans)', fontSize: 14, fontWeight: 550, color: 'var(--steel-soft)', cursor: 'pointer' }}>
+                        Rather answer a few quick questions? ›
+                      </button>
+                      {/* Empty state: one honest what-you-get line, no example
+                         chips (host ruling 2026-07-11 — the prompt stands alone). */}
+                      <p className="grounding" style={{ marginTop: 18, maxWidth: '36ch' }}>
+                        A real plan — guests, food, budget, the day. Change anything.
+                      </p>
+                    </>
                   )}
+                  {smartText.trim() === '' && intakeOpen && (() => {
+                    /* SMALL INTAKE (Figma 626:78): three chip questions mapping 1:1 to what
+                       the parser reads from the placeholder ("crab feast for 20, Aug 2" =
+                       occasion + count + date). Build composes the sentence into smartText. */
+                    const OCCS = ['Birthday', 'Cookout', 'Retirement', 'Graduation', 'Reunion', 'Something else'];
+                    const COUNTS = [['10-ish', 10], ['25', 25], ['50', 50], ['75+', 75]];
+                    const pick = intakePick;
+                    const setP = (k, v) => setIntakePick(prev => ({ ...prev, [k]: prev[k] === v ? null : v }));
+                    const canBuild = !!(pick.occ || pick.count);
+                    const build = () => {
+                      const bits = [];
+                      if (pick.occ) bits.push(pick.occ.toLowerCase());
+                      if (pick.count) bits.push((pick.occ ? 'for ' : 'party for ') + pick.count);
+                      let out = bits.join(' ');
+                      // 'this month' is the parser's own vocabulary (smartParseEvent
+                      // monthYear rule) — it surfaces real Saturdays as OPTIONS, never
+                      // inventing a day. 'in July' would silently parse to nothing.
+                      if (pick.when === 'month') out += ' this month';
+                      if (pick.when === 'date' && pick.date) {
+                        const d = new Date(pick.date + 'T12:00:00');
+                        if (!isNaN(d)) out += ' ' + d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      }
+                      setIntakeOpen(false);
+                      setSmartText(out);
+                      setFType(null); setCreateEdit(null);
+                    };
+                    return (
+                      <div style={{ marginTop: 22, display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'stretch', width: '100%' }}>
+                        <div style={{ fontSize: 16, fontWeight: 650 }}>What’s the occasion?</div>
+                        <div className="chips">
+                          {OCCS.map(o => (
+                            <button key={o} className="chip" aria-pressed={pick.occ === o}
+                              onClick={() => {
+                                // 'Something else' has no honest sentence — hand back to the field.
+                                if (o === 'Something else') { setIntakeOpen(false); return; }
+                                setP('occ', o);
+                              }}>{o}</button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 650, marginTop: 10 }}>About how many people?</div>
+                        <div className="chips">
+                          {COUNTS.map(([l, v]) => (
+                            <button key={l} className="chip" aria-pressed={pick.count === v} onClick={() => setP('count', v)}>{l}</button>
+                          ))}
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 650, marginTop: 10 }}>When?</div>
+                        <div className="chips">
+                          <button className="chip" aria-pressed={pick.when === 'month'} onClick={() => setP('when', 'month')}>This month</button>
+                          <button className="chip" aria-pressed={pick.when === 'date'} onClick={() => setP('when', 'date')}>Pick a date</button>
+                          <button className="chip" aria-pressed={pick.when === null || pick.when === 'none'} onClick={() => setP('when', 'none')}>Not sure yet</button>
+                        </div>
+                        {pick.when === 'date' && (
+                          <input type="date" className="field" style={{ maxWidth: 200, fontSize: 'var(--t-input)' }}
+                            value={pick.date} onChange={e => setIntakePick(prev => ({ ...prev, date: e.target.value }))}
+                            aria-label="Event date" />
+                        )}
+                        <p className="grounding" style={{ margin: '2px 0 0' }}>Rough is fine — everything can change later.</p>
+                        <button className="cta" disabled={!canBuild} style={{ marginTop: 8, opacity: canBuild ? 1 : .5 }} onClick={build}>
+                          Build my plan
+                        </button>
+                        <button onClick={() => setIntakeOpen(false)}
+                          style={{ background: 'none', border: 'none', padding: 0, alignSelf: 'flex-start', fontFamily: 'var(--sans)', fontSize: 14, color: 'var(--muted)', cursor: 'pointer' }}>
+                          ‹ Back to just telling me
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {smartText.trim() !== '' && (
                     <>
                       {/* Recognition chips — what was understood; tap to correct. */}
@@ -4895,8 +5000,11 @@ export default function HostShellV2() {
                       )}
                       {createEdit === 'city' && (
                         <div className="hc-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
-                          <input className="field" placeholder="Annapolis · Silver Spring, MD · 21401"
-                            value={fCity || effCityText} onChange={e => setFCity(e.target.value)} aria-label="Town or ZIP" />
+                          {/* CityField, not a bare input (host report 2026-07-23 "location is not
+                              autocompleting"): the create flow was the one city entry WITHOUT the
+                              shared 29.7k-city suggestion dropdown. Same "City, ST" emit shape. */}
+                          <CityField value={fCity || effCityText} onChange={v => setFCity(v)} onPick={v => setFCity(v)}
+                            placeholder="Annapolis · Silver Spring, MD · 21401" ariaLabel="Town or ZIP" />
                           <p className="grounding" style={{ margin: 0 }}>The town is how weather and maps find a backyard — it rides into the plan from day one.</p>
                         </div>
                       )}
