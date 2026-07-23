@@ -118,14 +118,17 @@ button{font-family:inherit}
   background-repeat:no-repeat;
 }
 .app::-webkit-scrollbar{display:none}
-@media(min-width:700px) and (min-height:700px){
+@media(min-width:1280px) and (min-height:700px){
   /* True iPhone 15/16 geometry (393×852 pt); scales as a whole via --fit (main.jsx).
      Gated on height too (audit finding, 2026-07-11): width-only used to catch
      landscape phones — e.g. a phone whose logical width becomes ~852px when
      rotated has plenty of width but only ~393px of height, and --fit (height-only
      math in main.jsx) shrank the whole frame to ~0.4 scale, a postage stamp.
      Requiring both dimensions restricts this chrome to genuinely spacious
-     windows (desktop/laptop browsers), where a phone silhouette makes sense. */
+     windows (desktop/laptop browsers), where a phone silhouette makes sense.
+     TABLET RULING (2026-07-22, Figma 582:62 + 588:60): the silhouette retreats
+     from 700px to 1280px — tablets (768×1024, 1024×768) render full-bleed with
+     their own layout rules below, not a letterboxed phone. */
   .stagewrap{
     width:393px; height:852px; margin:var(--sp-5) auto 40px;
     transform-origin:top center; transform:scale(var(--fit,1));
@@ -133,7 +136,8 @@ button{font-family:inherit}
   }
   .app{border-radius:48px; box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line), 0 42px 90px -28px rgba(0,0,0,.5)}
 }
-@media(max-width:699px), (max-height:699px){ .stagewrap{height:100dvh} }
+@media(max-width:1279px), (max-height:699px){ .stagewrap{height:100dvh} }
+
 .content{padding:var(--sp-4) var(--sp-5) calc(170px + env(safe-area-inset-bottom, 0px))}
 
 .appbar{
@@ -369,6 +373,7 @@ button{font-family:inherit}
    the foot progress, at ANY content length. .ecenter is invisible (display:contents) outside
    elegant; inside, it's a flex:1 column that justify-centers its content. */
 .ecenter{ display:contents; }
+.eanswer{ display:contents; }
 .hero.elegant .escreen.on > .ecenter{ display:flex; flex-direction:column; justify-content:center; flex:1 1 auto; min-height:0; }
 /* BUNDLE HERO → pure button (#2): a bundle's h3 just restates the ask (the count lives in the
    CTA), so drop it — leaving the one action, like F13. Wired cards keep h3 (the vendor NAME). */
@@ -2319,3 +2324,34 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
 /* Scroll-end clearance grows by the pinned weather pill's band (Layer-2, 2026-07-22). */
 .app.has-wxpill::after{height:calc(160px + env(safe-area-inset-bottom,0px))}
+
+/* ——— TABLET RULES: kept at FILE END on purpose — they override the base elegant
+   rules (.ecenter flex, .ask clamp) purely by source order at equal specificity.
+   Moving them earlier silently disables the grid split (cost one debug round). */
+/* TABLET (ruled 2026-07-22 — Figma 🔒582:62 portrait, 🔒588:60 landscape variant B).
+   Layout-only: same DOM, same engine copy, nothing new rendered. min-height:700
+   keeps landscape PHONES (e.g. 860×430) on their existing shipped rules. */
+@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+  /* Portrait ruling: full-bleed stage, single column PRESERVED (one loud thing),
+     content measure capped, type up one notch. */
+  .hero.elegant{ max-width:648px; margin-inline:auto; }
+  .hero.elegant .ask{ font-size:clamp(40px,7.5cqw,56px); }
+  .hero.elegant .verdict{ font-size:22px; }
+}
+@media (min-width:1024px) and (max-width:1279px) and (min-height:700px){
+  /* Tablet-land ruling: variant B "question | answer" — the hzone (ask headline +
+     guide voice) owns the left half; the settle mechanics (status, option card,
+     other-ways) stack in a 440px right column, both vertically centered. The
+     progress foot and the fold below stay full-width, exactly as on the phone.
+     The .eanswer wrapper (display:contents outside this range) becomes the
+     real right column here — the one JSX wrapper this port needed. */
+  /* :has gate — the split needs REAL answer content (an ask board renders its
+     option/decision as a .card inside .eanswer). Past / calm / payoff boards
+     put their whole composition in .hzone and keep the single 648px column —
+     without the gate they squeezed into the left half over a dead right zone. */
+  .hero.elegant:has(.escreen.on > .ecenter > .eanswer .card){ max-width:1008px; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card){ flex-direction:row; align-items:center; column-gap:88px; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{ flex:1 1 0; min-width:0; margin-top:0; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 0 440px; min-width:0; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
+}

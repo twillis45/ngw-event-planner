@@ -20,6 +20,10 @@ export default defineConfig({
   projects: [
     { name: 'mobile',    use: { viewport: { width: 430, height: 860 } } },
     { name: 'landscape', use: { viewport: { width: 860, height: 430 } } },
+    // Tablet joined the matrix with the first ported tablet ruling (T1,
+    // 2026-07-22) — every probe now guards the full-bleed tablet layouts.
+    { name: 'tablet',      use: { viewport: { width: 768,  height: 1024 } } },
+    { name: 'tablet-land', use: { viewport: { width: 1024, height: 768 } } },
   ],
   webServer: {
     // Serves the EXISTING dist — run `npm run build` first (the deploy dance

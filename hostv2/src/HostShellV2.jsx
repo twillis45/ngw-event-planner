@@ -5281,6 +5281,10 @@ export default function HostShellV2() {
                   {statusNode}
                 </>);
               })()}{beat && <p className="verdict beat">{beat}</p>}</div>
+              {/* .eanswer — display:contents everywhere EXCEPT tablet-land (>=1024), where
+                  it becomes the 440px answer column of the ruled question|answer split
+                  (Figma 588:60). Pure grouping: renders nothing new. */}
+              <div className="eanswer">
               {/* START HERE retired (host request 2026-07-16): naming the #1 action MOVED to
                   the always-on .next-bar pinned at the frame bottom — one persistent, thumb-
                   reachable primary CTA that names the next thing, instead of a quiet hero row
@@ -5903,6 +5907,7 @@ export default function HostShellV2() {
                   content is short (calm boards), so "the rest" genuinely sits below the fold;
                   on a busy board it sits right after the cards and you scroll. askMode only —
                   the .mega (day-of / past / calm-nonask) branches are a later slice. */}
+              </div>{/* /eanswer */}
               </div>{/* /ecenter — the centered ask+action region */}
               {/* Progress hairline — pinned to the FOOT of the first screen (F13), after the
                   one action, above the fold. Real engine numbers. */}
