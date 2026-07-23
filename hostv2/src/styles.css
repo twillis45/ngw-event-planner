@@ -633,6 +633,10 @@ button{font-family:inherit}
    instead of a phantom 700px (audit 2026-07-22). */
 @media (max-height: 699px){
   .hero, .create-stage.centered, .inv2-sheet{ min-height:auto }
+  /* Short viewports (landscape phone): the full-height ask reservation pushed
+     the see-all pull handle BELOW a 430px viewport (Layer-2 landscape pass,
+     2026-07-22). Let content set the height — the handle sits right after it. */
+  .escreen.on{ min-height:auto }
 }
 @media(max-width:699px){
   .hero{min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px))}

@@ -14,8 +14,13 @@ export default defineConfig({
   use: {
     // vite preview serves dist under the build base.
     baseURL: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
-    viewport: { width: 430, height: 860 }, // phone-ish; the frame fills it (no stagewrap scale)
   },
+  // Two real geometries (Up-Next #3): portrait phone + the wide-but-short
+  // landscape that the min-height guards exist for. Every probe runs in both.
+  projects: [
+    { name: 'mobile',    use: { viewport: { width: 430, height: 860 } } },
+    { name: 'landscape', use: { viewport: { width: 860, height: 430 } } },
+  ],
   webServer: {
     // Serves the EXISTING dist — run `npm run build` first (the deploy dance
     // already does; CI chains them). Keeping the build out of here makes the

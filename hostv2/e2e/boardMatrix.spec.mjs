@@ -91,22 +91,47 @@ for (const state of STATES) {
       expect(dirty).toEqual([]);
     });
 
-    test('loop-advance — a settle tap must move the board', async ({ page }) => {
+    test('loop-advance — settles walk the queue without stalling', async ({ page }) => {
       await boot(page, state);
-      // The hero's actionable controls, most-specific first: decision/resolution
-      // rows, then an in-place settle CTA (.cta.stay). Route-out CTAs are
-      // excluded — navigation is its own advance.
-      const control = page.locator('.decopt, .cta.stay').first();
-      if (await control.count() === 0) { test.skip(true, 'no in-place settle on this state'); return; }
-      const heroBefore = await page.locator('h2').first().innerText().catch(() => '');
-      const bodyBefore = await page.locator('.hzone').innerText().catch(() => '');
-      await control.click();
-      await page.waitForTimeout(900);
-      const heroAfter = await page.locator('h2').first().innerText().catch(() => '');
-      const bodyAfter = await page.locator('.hzone').innerText().catch(() => '');
-      // The W14b assertion: SOMETHING moved — the ask rolled, the panel
-      // recomposed, or a settled state replaced the options.
-      expect(heroAfter !== heroBefore || bodyAfter !== bodyBefore).toBe(true);
+      // WALK THE QUEUE (Up-Next #2): repeatedly take the hero's first in-place
+      // settle (.decopt row or .cta.stay) and require the board to MOVE each
+      // time — the ask rolls, the panel recomposes, or a sheet opens (which we
+      // close and continue). A tap that changes nothing is a dead-end and fails.
+      // Mutations live in this test's own fresh context only.
+      // Bounded reads: an absent element (usually #sheet-title) must resolve
+      // in a beat, not wait out the default 30s locator timeout.
+      const read = (sel) => page.locator(sel).first().innerText({ timeout: 400 }).catch(() => '');
+      // The decision panel (article) sits OUTSIDE .hzone — a chosen-badge move
+      // is a real change and must be visible to the snapshot.
+      const snap = async () => [await read('h2'), await read('.hzone'), await read('article'), await read('#sheet-title')].join('§');
+      let steps = 0;
+      for (let i = 0; i < 8; i++) {
+        // Only board-level settles — never controls inside an open sheet or the
+        // weather pill (their flows are their own).
+        // Skip rows already marked chosen — re-tapping a settled value fires a
+        // receipt but legitimately re-renders nothing; the dead-end class is an
+        // UNSETTLED control that changes nothing.
+        const control = page.locator('.decopt:visible:not(:has-text("chosen")), .cta.stay:visible').first();
+        if (await control.count() === 0) break;
+        const inOverlay = await control.evaluate(el => !!el.closest('.sheet, .wxpill')).catch(() => true);
+        if (inOverlay) break;
+        const before = await snap();
+        // A receipt toast can briefly overlay the next control — transient
+        // chrome, not occlusion. Bounded click; a control that stays
+        // unclickable IS a finding.
+        try { await control.click({ timeout: 5000 }); }
+        catch (e) { throw new Error(`settle #${i + 1} unclickable (covered?): ` + String(e).slice(0, 120)); }
+        await page.waitForTimeout(900);
+        const after = await snap();
+        expect(after !== before, `settle #${i + 1} changed nothing (dead-end)`).toBe(true);
+        steps++;
+        // A settle that opened a sheet advanced the flow — close it and walk on.
+        const closer = page.locator('.sheet-x:visible');
+        if (await closer.count() > 0) { await closer.first().click({ timeout: 800 }).catch(() => {}); await page.waitForTimeout(400); }
+        // Let the receipt toast clear before the next tap targets anything.
+        await page.locator('.toast.on').waitFor({ state: 'hidden', timeout: 7000 }).catch(() => {});
+      }
+      if (steps === 0) { test.skip(true, 'no in-place settle on this state'); return; }
     });
 
     test('pinned geometry + scroll-end reachability', async ({ page }) => {
@@ -115,7 +140,8 @@ for (const state of STATES) {
       // IntersectionObserver that raises the pinned stack). Scroll until the
       // scroller is genuinely AT its end — mid-scroll there is always content
       // behind the pinned bar, so the reachability claim only exists at the end.
-      await page.mouse.move(215, 430); // wheel events land at the pointer — put it IN the app
+      const vp = page.viewportSize();
+      await page.mouse.move(vp.width / 2, vp.height / 2); // wheel events land at the pointer — put it IN the app
       let atEnd = false;
       for (let i = 0; i < 60 && !atEnd; i++) {
         await page.mouse.wheel(0, 700);
@@ -192,9 +218,14 @@ for (const state of STATES) {
         await boot(page, state);
         const grab = page.locator('.efold-grab');
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
+        // Documented boundary: the peek guarantee applies when the ask FITS the
+        // viewport. When the ask content itself exceeds it (short landscape),
+        // scrolling is already inevitable and the handle follows the content.
+        const askH = await page.locator('.escreen').first().evaluate(el => el.getBoundingClientRect().height).catch(() => 0);
+        if (askH > page.viewportSize().height) { test.skip(true, 'ask exceeds viewport — peek boundary'); return; }
         const box = await grab.boundingBox();
         expect(box).not.toBeNull();
-        expect(box.y).toBeLessThan(860); // inside the 430×860 viewport
+        expect(box.y).toBeLessThan(page.viewportSize().height); // inside the first viewport
       });
     }
   });
