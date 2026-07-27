@@ -21,6 +21,7 @@ import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor } from '@app/lib/venueFor';
+import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
 // assembleRevealEngines, which drags the whole planning engine (and the 40
@@ -780,6 +781,33 @@ export default function InviteV2({ code }) {
                 </div></>)}
               {!isPast && Array.isArray(event.airportOptions) && event.airportOptions.filter(a => a && (a.code || a.name)).length > 0 && (<><div className="inv2-label lp">Fly into</div>
                 <div className="inv2-val lp">{event.airportOptions.filter(a => a && (a.code || a.name)).map(a => [a.code, a.name].filter(Boolean).join(' — ') + (a.note ? ` (${a.note})` : '')).join(' · ')}</div></>)}
+              {/* ── The weekend plan (Slice A): HOST-ACCEPTED rows only —
+                  guestItinerary without getPlaybook yields source 'host' alone
+                  here, so an unaccepted proposal can never leak to guests.
+                  Slots, never invented clock times. */}
+              {!isPast && (() => {
+                const it = guestItinerary(event, null);
+                if (!it.relevant || it.source !== 'host') return null;
+                const byDay = [];
+                for (const r of it.rows) {
+                  const last = byDay[byDay.length - 1];
+                  if (last && last.day === r.day) last.rows.push(r);
+                  else byDay.push({ day: r.day, rows: [r] });
+                }
+                return (<><div className="inv2-label lp">The plan</div>
+                  <div className="inv2-val lp">
+                    {byDay.map((g) => (
+                      <div key={g.day} style={{ marginBottom: 4 }}>
+                        <strong>{dayLabelFor(event, g.day)}</strong>
+                        {g.rows.map((r, i) => (
+                          <div key={i}>
+                            {(r.time || r.slot) ? `${r.time || r.slot} — ` : ''}{r.anchor ? <strong>{r.title}</strong> : r.title}{r.note ? ` · ${r.note}` : ''}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div></>);
+              })()}
               {/* Details the host set — the backend already sends these on the
                   public event (whitelisted); the invite just wasn't rendering
                   them. Present-only, and hidden on a past-event recap. */}

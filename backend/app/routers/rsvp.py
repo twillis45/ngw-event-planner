@@ -94,6 +94,10 @@ PUBLIC_EVENT_FIELDS = (
     # group rate the host negotiated to share. moneyDates/frontedAmount stay
     # host-private and are deliberately ABSENT here.
     "lodging", "airportOptions",
+    # itinerary: the host-ACCEPTED weekend program (day/slot/title rows the
+    # host chose to publish to guests) — display copy, no owners, no crew
+    # times, no PII. Raw proposals never reach here; only event.itinerary.
+    "itinerary",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────

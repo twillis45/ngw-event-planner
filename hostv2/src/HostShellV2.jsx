@@ -129,6 +129,7 @@ import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
+import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -8150,6 +8151,59 @@ export default function HostShellV2() {
                   }} />
               </div>
             )}
+            {sheet.kind === 'space' && (() => {
+              // ── The weekend plan (Slice A): ONE schedule, guest projection.
+              // Proposal renders HERE for the host to accept — guests only ever
+              // see host-accepted rows (event.itinerary), never a raw proposal.
+              const it = guestItinerary(event, getPlaybook);
+              if (!it.relevant) return null;
+              const days = Math.max(1, spanNights(event) + 1);
+              const writeRows = (rows, msg) => patchEvent({ itinerary: rows }, msg);
+              const SLOT_OPTS = ['', 'morning', 'midday', 'afternoon', 'evening', 'night'];
+              return (
+                <>
+                  <div className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The weekend plan <span className="of">— what guests see, day by day</span></div>
+                  {it.source !== 'host' ? (
+                    <>
+                      {it.rows.map((r, i) => (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px' }}>
+                          <span>{dayLabelFor(event, r.day)}{r.slot ? ' ' + r.slot : ''} — <strong>{r.title}</strong>{r.note ? <span className="of"> · {r.note}</span> : null}</span>
+                        </div>
+                      ))}
+                      {it.provenance && it.provenance.note ? (
+                        <p className="v-meta" style={{ padding: '0 2px 6px' }}>{it.source === 'proposed' ? 'A suggested shape — ' : ''}{it.provenance.note}</p>
+                      ) : null}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows(it.rows, 'Weekend plan set — it’s on the invite now, and it’s yours to edit.')}>Use this plan</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {it.rows.map((r, i) => (
+                        <div className="line" key={i} style={{ padding: '2px 0 6px', gap: 6 }}>
+                          <span style={{ display: 'flex', gap: 6, flex: 1, minWidth: 0, alignItems: 'center' }}>
+                            <select className="field" style={{ maxWidth: 64, padding: '6px 4px' }} value={r.day} aria-label="Day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, day: Number(e.target.value) } : x); writeRows(rows); }}>
+                              {Array.from({ length: days }, (_, d) => <option key={d + 1} value={d + 1}>{dayLabelFor(event, d + 1).slice(0, 3)}</option>)}
+                            </select>
+                            <select className="field" style={{ maxWidth: 104, padding: '6px 4px' }} value={r.slot || ''} aria-label="Time of day"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, slot: e.target.value || null } : x); writeRows(rows); }}>
+                              {SLOT_OPTS.map((sl) => <option key={sl} value={sl}>{sl || '—'}</option>)}
+                            </select>
+                            <input className="field" style={{ flex: 1, minWidth: 0 }} value={r.title} aria-label="What's happening"
+                              onChange={(e) => { const rows = it.rows.map((x, j) => j === i ? { ...x, title: e.target.value } : x); writeRows(rows); }} />
+                          </span>
+                          <button className="mini" aria-label="Remove this line" onClick={() => writeRows(it.rows.filter((_, j) => j !== i), 'Line removed.')}>×</button>
+                        </div>
+                      ))}
+                      <div className="actions-row" style={{ marginBottom: 'var(--sp-2)' }}>
+                        <button className="mini" onClick={() => writeRows([...it.rows, { day: 1, slot: null, title: '' }])}>Add a line</button>
+                      </div>
+                    </>
+                  )}
+                </>
+              );
+            })()}
             {sheet.kind === 'space' && (() => {
               // ONE Place Core (queue: untouched list) — venue/location states;
               // 'na' is suppression, never failure.
