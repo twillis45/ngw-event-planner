@@ -6870,7 +6870,12 @@ export default function HostShellV2() {
                   <button className="cta" disabled={!addressDraft.trim()} style={!addressDraft.trim() ? { opacity: .45 } : undefined}
                     onClick={() => {
                       if (!validPlace(addressDraft) && !/\d/.test(addressDraft)) { toast('That doesn’t read like an address — street and number help guests find you.'); return; }
-                      patchEvent({ venue: event.venue + ' — ' + addressDraft.trim() }, 'Address on the plan — invites and the rain note now carry it.'); setAddressOpen(false); setAddressDraft('');
+                      // venueFor wave 4 (divergence #6): the address is a FIELD,
+                      // not a suffix mashed into the venue name — appending it
+                      // ("Backyard — 12 Elm St") polluted every name reader and
+                      // was the CITY-LEAK compound shape. venueAddress feeds
+                      // maps/geo through venueFor; the name stays the name.
+                      patchEvent({ venueAddress: addressDraft.trim() }, 'Address on the plan — invites and the rain note now carry it.'); setAddressOpen(false); setAddressDraft('');
                     }}>
                     Save
                   </button>
