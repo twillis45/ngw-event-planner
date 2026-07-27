@@ -52,16 +52,22 @@
 export function matchGuestIndexByName(guests, fullName) {
   const full = String(fullName || '').trim();
   if (!full) return -1;
+  // A couple-shaped name ("Ryan and Nicole") must NEVER partial-match a
+  // single-name row: the first-token rule below would land it on "Ryan", the
+  // update path doesn't rewrite `name`, and Nicole would be silently discarded
+  // (audit 2026-07-27). Couple strings match by exact equality only.
+  const coupleShaped = /\s(?:and|&|\+)\s/i.test(full);
   const toks = full.toLowerCase().split(/\s+/).filter(Boolean);
   const first = toks[0] || '';
   const last = toks[toks.length - 1] || '';
   return (guests || []).findIndex(g => {
     const gn = String((g && g.name) || '').trim().toLowerCase();
     if (!gn) return false;
+    if (gn === full.toLowerCase()) return true;
+    if (coupleShaped) return false;
     const gp = gn.split(/\s+/).filter(Boolean);
     const gFirst = gp[0] || '';
     const gLast = gp[gp.length - 1] || '';
-    if (gn === full.toLowerCase()) return true;
     if (last && last.length >= 3 && gLast === last && gFirst === first) return true;
     if (first.length >= 4 && gFirst === first) return true;
     return false;

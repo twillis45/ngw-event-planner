@@ -91,7 +91,9 @@ export function lineCrabCount(line) {
 // the party. Counting people, not rows, is what attendanceBand already does.
 function rosterHeadcount(ev) {
   const rows = Array.isArray(ev.guests) ? ev.guests.filter(g => g && /^y/i.test(String(g.rsvp || ''))) : [];
-  return rows.reduce((s, g) => s + 1 + Math.max(0, num(g.kids)), 0);
+  // + a filled plusOne: that's another adult mouth riding the row's Yes
+  // (engine parity with attendanceBand, audit 2026-07-27).
+  return rows.reduce((s, g) => s + 1 + Math.max(0, num(g.kids)) + (String(g.plusOne || '').trim() ? 1 : 0), 0);
 }
 
 export function buildCrabPlan(event) {

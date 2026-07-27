@@ -340,10 +340,14 @@ export function attendanceBand(event) {
       // the model the rest of the app now follows rather than re-deriving its own.
       const s = rsvpState(g);
       const gKids = Math.max(0, Math.round(Number(g && g.kids) || 0));
-      if (s === 'yes') { confirmed++; kidsConfirmed += gKids; }
-      else if (s === 'maybe') { maybe++; kidsOut += gKids; }
+      // A filled plusOne is a real adult riding this row's answer. The UI headers
+      // counted them for years while this engine didn't — so the roster said 12
+      // and the food sized 10 (audit 2026-07-27). One person, one count, here too.
+      const po = String((g && g.plusOne) || '').trim() ? 1 : 0;
+      if (s === 'yes') { confirmed += 1 + po; kidsConfirmed += gKids; }
+      else if (s === 'maybe') { maybe += 1 + po; kidsOut += gKids; }
       else if (s === 'no') declined++;
-      else { pending++; kidsOut += gKids; } // '' · 'Pending' · unknown → not yet replied
+      else { pending += 1 + po; kidsOut += gKids; } // '' · 'Pending' · unknown → not yet replied
     }
     const kids = kidsConfirmed + kidsOut; // total kids among everyone who hasn't said no
     const low = confirmed + kidsConfirmed; // only a CONFIRMED row's kids are locked in

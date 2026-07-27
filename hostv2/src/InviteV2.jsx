@@ -19,6 +19,7 @@ import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 // pays nothing), so a number typed here reads identically in the roster and
 // the host's call/text/email affordances.
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
+import { detectCoupleNames } from '@app/lib/guestSplit';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
 // assembleRevealEngines, which drags the whole planning engine (and the 40
@@ -886,6 +887,13 @@ export default function InviteV2({ code }) {
                     aria-describedby={nameInvalid ? 'rsvp-name-error' : undefined}
                     value={guestName} onChange={e => { setGuestName(e.target.value); if (nameInvalid && e.target.value.trim()) { setNameInvalid(false); setErr(attendInvalid ? 'Let us know if you can make it.' : ''); } }} aria-label="Your name" />
                   {nameInvalid && <p id="rsvp-name-error" className="grounding" role="alert" style={{ margin: '6px 0 0', color: 'var(--danger)' }}>Add your name to send.</p>}
+                  {!nameInvalid && detectCoupleNames(guestName) && (
+                    // "Ryan and Nicole" in ONE name field = one reply for two
+                    // people — the second person vanishes from every count.
+                    // Nudge, never auto-split: replying for someone else is
+                    // the guest's call, not a regex's.
+                    <p className="grounding" style={{ margin: '6px 0 0' }}>Replying for two? Put one name here and add the other under “Bringing someone?” so you’re both counted.</p>
+                  )}
 
                   {rsvp === 'Yes' && (
                     <>

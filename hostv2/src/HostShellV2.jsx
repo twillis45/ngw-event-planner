@@ -126,6 +126,7 @@ import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, 
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
+import { detectCoupleNames } from '@app/lib/guestSplit';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -3464,13 +3465,28 @@ export default function HostShellV2() {
     patchEvent({ guests: gs, kidsCount }, (g && g.name || 'Guest') + ' removed from the list.');
     setGuestOpen(null);
   };
+  // Couple lines ("Ryan and Nicole") become TWO real guests — each with their
+  // own RSVP, plate, and seat — because one shared row undercounts every
+  // engine (audit 2026-07-27). Suggest-and-confirm: the preview under the
+  // textarea shows the split before anything commits, and "keep as written"
+  // turns it off for lines like a band name the detector can't know about.
+  const [splitCouples, setSplitCouples] = useState(true);
+  const rosterLines = rosterText.split('\n').map(x => x.trim()).filter(Boolean);
+  const rosterCouples = rosterLines
+    .map(line => ({ line, hit: detectCoupleNames(line) }))
+    .filter(x => x.hit);
   const addRoster = () => {
-    const names = rosterText.split('\n').map(x => x.trim()).filter(Boolean);
+    const names = rosterLines.flatMap(line => {
+      const hit = splitCouples ? detectCoupleNames(line) : null;
+      return hit ? hit.names : [line];
+    });
     if (!names.length) return;
     const existing = event.guests || [];
     const add = names.map((name, i) => ({ id: 'g-' + Date.now() + '-' + i, name, rsvp: '' }));
+    const splitNote = splitCouples && rosterCouples.length
+      ? ' (' + rosterCouples.length + (rosterCouples.length === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
     patchEvent({ guests: [...existing, ...add] },
-      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.');
+      names.length + ' name' + (names.length === 1 ? '' : 's') + ' on the list — ' + (existing.length + add.length) + ' total. RSVPs start blank.' + splitNote);
     setRosterText('');
   };
 
@@ -12207,6 +12223,17 @@ export default function HostShellV2() {
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
                     placeholder={'Denise & Ray\nThe Okafors\nUncle Joe'}
                     value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
+                  {rosterCouples.length > 0 && (
+                    // Suggest-and-confirm (never silent): the split is visible BEFORE
+                    // commit, and one tap keeps a band name or duo as written.
+                    <div className="of" style={{ marginTop: 6, fontSize: 'var(--t-meta)' }}>
+                      {splitCouples
+                        ? <>Counting {rosterCouples.length === 1 ? 'a couple' : rosterCouples.length + ' couples'} as separate people: {rosterCouples.map(c => c.hit.names.join(' + ')).join(' · ')} — so each gets their own reply, plate, and seat.{' '}
+                          <button className="mini" onClick={() => setSplitCouples(false)}>keep as written</button></>
+                        : <>Adding lines exactly as written.{' '}
+                          <button className="mini" onClick={() => setSplitCouples(true)}>count couples separately</button></>}
+                    </div>
+                  )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
                     <button className="cta" disabled={!rosterText.trim()} style={!rosterText.trim() ? { opacity: .45 } : undefined} onClick={addRoster}>Add them</button>
                   </div>
