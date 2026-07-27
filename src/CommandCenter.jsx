@@ -84,6 +84,8 @@ import { daysUntil } from './lib/dates';
 // the same outbound/planner signal used elsewhere. Without this, a sent approval
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
+import { milestoneActionRoute } from './lib/taskRoute';
+export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
 
 // A "request needing a reply" is an INBOUND message (from client/vendor), not one
@@ -3111,11 +3113,8 @@ function QuestionRow({ q, onOpen, isFirst }) {
 // caterer … for your guest count"), so the domain whose keyword appears FIRST
 // owns the route. Shared by the Tier-7 next-step hero AND every Next Up row —
 // a visible milestone must never be a dead label (deep-link doctrine).
-// Moved to lib/taskRoute (routing audit 2026-07-27) so the V2 shell shares the
-// canonical producer without dragging this planner bundle along. Re-exported
-// here so every existing import keeps working.
-export { milestoneActionRoute } from './lib/taskRoute';
-const _milestoneActionRouteMoved = true; void _milestoneActionRouteMoved;
+// milestoneActionRoute moved to lib/taskRoute (routing audit 2026-07-27) —
+// imported at the top of this file and re-exported so every consumer keeps working.
 
 function TimelineRow({ t, isFirst, onOpen = null }) {
   // Deep-link doctrine: a Next Up row is never a dead label — it routes to the
