@@ -705,10 +705,14 @@ export default function HostShellV2() {
     if (splash === 'up') {
       let reduced = false;
       try { reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { reduced = false; }
-      // 1000ms, not 1200 — matches Android's own SplashScreen API bound
+      // QUICK path 1000ms — matches Android's own SplashScreen API bound
       // exactly (the one concrete numeric target the vs-leaders research
-      // found) rather than sitting 200ms over it for no reason.
-      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1000 : 2200);
+      // found). FULL first-boot film: the choreography itself (sp-glow-follow /
+      // sp-resolve / sp-boss-dip) runs 3600ms plus enter delays — the old
+      // 2200ms timer yanked it mid-motion and the welcome cut the brand beat
+      // off (host report 2026-07-27). 3900 = the film's real end + a settle
+      // breath; a tap still skips at any moment.
+      splashTimer.current = setTimeout(endSplash, splashHold ? 600000 : reduced ? 400 : splashQuick ? 1000 : 3900);
     } else if (splash === 'leaving') {
       splashTimer.current = setTimeout(() => setSplash('gone'), 220);
     }
