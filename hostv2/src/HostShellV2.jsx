@@ -953,19 +953,16 @@ export default function HostShellV2() {
   };
   const stopVoice = () => { clearVoiceIdleTimer(); try { recogRef.current && recogRef.current.stop(); } catch {} setListening(false); };
   const [revealed, setRevealed] = useState(false);
-  // REVEAL THEATER (Ignition port, host ruling 2026-07-27): phases run
-  // t0..tN (each understanding lands LOUD center-stage) → gather (the room's
-  // particle field streams into the bead) → windup → snap (the name ignites,
-  // the bead detonates into the locked period) → settle → assemble (the
-  // verbatim listing cascades in — "I want the listing back" honored) → rest.
+  // REVEAL — THE MONOLITH (host concept pick 2026-07-27, "partial to B", plus
+  // "the fallback list should be the baseline / let the host READ"): keynote
+  // choreography — intro (eyebrow tracks in) → zoom (the name arrives from
+  // infinity on one precision curve; the period bead ignites as it lands) →
+  // glint (one lens sweep) → rack (focus racks to the VERBATIM listing, which
+  // sharpens in one row at a time, slow enough to read) → rest (the ask).
   // Solemn events + prefers-reduced-motion skip straight to 'rest', which IS
-  // the pre-theater resolved screen.
+  // the resolved listing — the baseline the theater builds toward.
   const [revealPhase, setRevealPhase] = useState('rest');
-  const [revealTruthIdx, setRevealTruthIdx] = useState(0);
   const revealCtaRef = useRef(null); // a11y: focus lands here when the reveal finishes
-  const revealNameRef = useRef(null); // the ignited name — the burst detonates at its period
-  const revealFxRef = useRef(null);   // canvas particle field
-  const revealFx = useRef({ mode: 'drift', parts: [], nodes: [], burst: false, raf: 0 });
   const revealTimers = useRef([]);
   const clearRevealTimers = () => { revealTimers.current.forEach(clearTimeout); revealTimers.current = []; };
   useEffect(() => clearRevealTimers, []);
@@ -4479,6 +4476,9 @@ export default function HostShellV2() {
       name: effName ? effName + '’s ' + milestoneName : 'My ' + milestoneName,
       honoree: effName || '',
       type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      // "No kids." typed at create carries straight to the invite policy the
+      // invite + DIFM copy already consume (parser 2026-07-27; never invented).
+      ...(parsed.kidsPolicy ? { kidsPolicy: parsed.kidsPolicy } : {}),
       ...((() => {
         // Same strict city/state-or-ZIP gate as the other venueCity writers —
         // this is event CREATION, so a bare city typed here would otherwise
@@ -4526,28 +4526,18 @@ export default function HostShellV2() {
     // The Reveal, choreographed around the PRODUCTION reveal stages
     // (buildAssembleRevealStages): identity, blockers, domains, risks.
     clearRevealTimers();
-    let stageN = 3;
-    try { stageN = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), profile, 1) || []).length, 4); } catch { /* default */ }
-    stageN = Math.max(stageN, 1);
+    let rows = 5;
+    try { rows = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), profile, 1) || []).length, 5) + 1; } catch { /* default */ }
     // Solemn events keep the dignified straight-to-listing reveal; reduced
     // motion likewise never enters the theater.
     if (REDUCE_MOTION || isSolemnEvent(ev)) { setRevealPhase('rest'); return; }
-    setRevealPhase('t0'); setRevealTruthIdx(0);
-    const fx = revealFx.current;
-    fx.mode = 'drift'; fx.nodes = []; fx.burst = false;
-    let t = 0;
-    for (let i = 0; i < stageN; i++) {
-      if (i > 0) { const idx = i; revealTimers.current.push(setTimeout(() => { setRevealPhase('t' + idx); setRevealTruthIdx(idx); }, t)); }
-      const row = i; // each filed truth becomes a lit constellation node
-      revealTimers.current.push(setTimeout(() => { fx.nodes.push({ x: 36, y: 104 + row * 25, tw: Math.random() * 6.28 }); }, t + 900));
-      t += 1150;
-    }
-    revealTimers.current.push(setTimeout(() => { setRevealPhase('gather'); fx.mode = 'vortex'; }, t));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('windup'), t + 580));
-    revealTimers.current.push(setTimeout(() => { setRevealPhase('snap'); fx.mode = 'embers'; fx.burst = true; feedback('magic'); }, t + 800));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('settle'), t + 1500));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('assemble'), t + 3000));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), t + 4100));
+    setRevealPhase('intro');
+    revealTimers.current.push(setTimeout(() => setRevealPhase('zoom'), 1000));
+    revealTimers.current.push(setTimeout(() => { setRevealPhase('glint'); feedback('magic'); }, 3600));
+    revealTimers.current.push(setTimeout(() => setRevealPhase('rack'), 4800));
+    // one row every 900ms — slow enough to READ (host directive) — then the
+    // name lands last, then the ask.
+    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 900 + 1900));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -4571,68 +4561,6 @@ export default function HostShellV2() {
       try { revealCtaRef.current.focus(); } catch { /* focus is best-effort */ }
     }
   }, [revealed, revealPhase]);
-  const revealEyebrow = ['Reading your answers…', 'Sizing the crowd…', 'Pricing the spread…', 'Lining up your steps…'][Math.min(revealTruthIdx, 3)];
-  // The living room — a canvas particle field behind the theater. Drift while
-  // the truths land; ACCRETION VORTEX on the gather (the room + the
-  // constellation of filed answers visibly streams into the bead); a 80-mote
-  // detonation at the snap that decays to embers. Reduced-motion/solemn
-  // reveals never mount the canvas.
-  useEffect(() => {
-    const cv = revealFxRef.current;
-    if (!revealed || !cv) return undefined; // rest-only reveals never mount the canvas
-    const fx = revealFx.current;
-    const c2 = cv.getContext('2d');
-    if (!c2) return undefined;
-    const dpr = Math.min(2, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);
-    const host = cv.parentElement;
-    let W = 390, H = 800;
-    const size = () => { const b = host.getBoundingClientRect(); W = Math.max(b.width, 1); H = Math.max(b.height, 1); cv.width = W * dpr; cv.height = H * dpr; };
-    size();
-    fx.parts = [];
-    for (let i = 0; i < 130; i++) fx.parts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - .5) * .14, vy: (Math.random() - .5) * .14 - .02, r: .6 + Math.random() * 1.4, a: .10 + Math.random() * .32, tw: Math.random() * 6.28 });
-    const gatherPt = () => ({ x: W / 2, y: H * .34 });
-    const burstPt = () => {
-      const nm = revealNameRef.current;
-      if (!nm) return gatherPt();
-      try { const r = nm.getBoundingClientRect(), b = host.getBoundingClientRect(); return { x: r.right - b.left - 4, y: r.bottom - b.top - 14 }; } catch { return gatherPt(); }
-    };
-    const tick = () => {
-      c2.setTransform(dpr, 0, 0, dpr, 0, 0);
-      c2.clearRect(0, 0, W, H);
-      const t = performance.now() / 1000;
-      if (fx.burst) { fx.burst = false; const p0 = burstPt();
-        for (let i = 0; i < 80; i++) { const an = Math.random() * 6.283, sp = .8 + Math.random() * 3.4;
-          fx.parts.push({ x: p0.x, y: p0.y, vx: Math.cos(an) * sp, vy: Math.sin(an) * sp - .6, r: .5 + Math.random() * 1.6, a: .95, tw: Math.random() * 6.28, b: true, life: 1 }); } }
-      const T = gatherPt();
-      c2.fillStyle = '#8AA3B0';
-      for (const p of fx.parts) {
-        if (p.b) { p.x += p.vx; p.y += p.vy; p.vx *= .965; p.vy = p.vy * .965 + .013; p.life -= .012; p.a = Math.max(0, p.life * .9); }
-        else if (fx.mode === 'vortex') {
-          const dx = T.x - p.x, dy = T.y - p.y, d = Math.hypot(dx, dy) || 1;
-          p.vx += (dx / d) * .055 + (-dy / d) * .02; p.vy += (dy / d) * .055 + (dx / d) * .02;
-          p.vx *= .984; p.vy *= .984; p.x += p.vx; p.y += p.vy;
-          if (d < 7) { if (Math.random() < .5) { p.x = Math.random() < .5 ? -4 : W + 4; p.y = Math.random() * H; } else { p.x = Math.random() * W; p.y = Math.random() < .5 ? -4 : H + 4; } p.vx = p.vy = 0; }
-        } else { p.x += p.vx; p.y += p.vy; if (p.x < -5) p.x = W + 5; if (p.x > W + 5) p.x = -5; if (p.y < -5) p.y = H + 5; if (p.y > H + 5) p.y = -5; }
-        c2.globalAlpha = p.a * (.55 + .45 * Math.sin(t * 1.7 + p.tw)) * (fx.mode === 'embers' && !p.b ? .45 : 1);
-        c2.beginPath(); c2.arc(p.x, p.y, p.r, 0, 6.283); c2.fill();
-      }
-      fx.parts = fx.parts.filter(p => !(p.b && p.life <= 0));
-      if (fx.nodes.length) {
-        c2.strokeStyle = '#8AA3B0'; c2.lineWidth = .5;
-        for (let i = 1; i < fx.nodes.length; i++) { c2.globalAlpha = .15; c2.beginPath(); c2.moveTo(fx.nodes[i - 1].x, fx.nodes[i - 1].y); c2.lineTo(fx.nodes[i].x, fx.nodes[i].y); c2.stroke(); }
-        for (const n of fx.nodes) {
-          if (fx.mode === 'vortex') { c2.globalAlpha = .25; c2.beginPath(); c2.moveTo(n.x, n.y); c2.lineTo(T.x, T.y); c2.stroke(); n.x += (T.x - n.x) * .06; n.y += (T.y - n.y) * .06; }
-          c2.globalAlpha = .7 * (.6 + .4 * Math.sin(t * 2 + n.tw));
-          c2.beginPath(); c2.arc(n.x, n.y, 1.9, 0, 6.283); c2.fill();
-        }
-        if (fx.mode === 'vortex') fx.nodes = fx.nodes.filter(n => Math.hypot(n.x - T.x, n.y - T.y) > 8);
-      }
-      c2.globalAlpha = 1;
-      fx.raf = requestAnimationFrame(tick);
-    };
-    fx.raf = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(fx.raf); };
-  }, [revealed]);
   const customPlan = useMemo(() => {
     if (!revealed || !activeCustom) return null;
     try { return eventPlan(activeCustom, buildExperienceContext(activeCustom, profile, 1)); } catch { return null; }
@@ -5172,61 +5100,32 @@ export default function HostShellV2() {
                    statement, grounding line, both CTAs — only the frame
                    around them changed. */
                 <div className={'reveal-stage rv-' + revealPhase}>
-                  {/* THEATER LAYER — the living particle room + the phase beats.
-                      Mounted only while the theater runs; 'rest' is exactly the
-                      pre-theater resolved screen. */}
-                  {revealPhase !== 'rest' && <canvas ref={revealFxRef} className="rv-fx" aria-hidden="true" />}
-                  {revealPhase !== 'rest' && <div className="rv-bloom" aria-hidden="true" />}
                   <div className="reveal-inner">
                     {/* Skip for repeat creators (per-screen audit): jump straight to
                         the resolved understanding instead of replaying the theater. */}
                     {revealPhase !== 'rest' && (
                       <div style={{ textAlign: 'right', marginBottom: 2, position: 'relative', zIndex: 3 }}>
-                        <button className="mini" onClick={() => { clearRevealTimers(); revealFx.current.mode = 'drift'; setRevealPhase('rest'); try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
+                        <button className="mini" onClick={() => { clearRevealTimers(); setRevealPhase('rest'); try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
                       </div>
                     )}
-                    {/* BEATS t0..tN — one truth at a time, LOUD, center stage.
-                        The keyed remount replays the entrance per truth. */}
-                    {String(revealPhase).charAt(0) === 't' && (
-                      <>
-                        <div className="eyebrow rv-think" aria-live="polite">{revealEyebrow}</div>
-                        {revealStages[revealTruthIdx] ? (
-                          <div className="rv-truthwrap" key={revealTruthIdx}>
-                            <div className="rv-t-title">{revealStages[revealTruthIdx].title}</div>
-                            <div className="rv-t-what">{revealStages[revealTruthIdx].what}</div>
-                            {revealStages[revealTruthIdx].why ? <div className="rv-t-why">{revealStages[revealTruthIdx].why}</div> : null}
-                          </div>
-                        ) : null}
-                        <div className="rv-bead" aria-hidden="true" />
-                      </>
-                    )}
-                    {/* GATHER / WINDUP — everything exits; the bead alone, charging. */}
-                    {(revealPhase === 'gather' || revealPhase === 'windup') && <div className="rv-bead" aria-hidden="true" />}
-                    {/* SNAP / SETTLE — the name ignites letter by letter; the locked
-                        period bead drops+ignites; sparks arc; the trail lances. */}
-                    {(revealPhase === 'snap' || revealPhase === 'settle') && (
-                      <div className="rv-namewrap">
-                        <h1 className="rv-name" ref={revealNameRef} aria-label={activeCustom?.name || ''}>
-                          {[...String(activeCustom?.name || '')].map((ch, i) => (
-                            <span key={i} className="rv-L" style={{ '--i': i }} aria-hidden="true">{ch === ' ' ? ' ' : ch}</span>
-                          ))}
-                          <span className="reveal-dot" aria-hidden="true" />
-                          <span className="rv-sparks" aria-hidden="true">
-                            {[[-52, -38], [44, -56], [72, -12], [-68, 10], [-32, 54], [54, 46], [18, -70], [-14, 64]].map(([dx, dy], i) => (
-                              <i key={i} style={{ '--dx': dx + 'px', '--dy': dy + 'px' }} />
-                            ))}
-                          </span>
-                        </h1>
-                        <div className="rv-trail" aria-hidden="true" />
-                        {revealPhase === 'settle' && <p className="mega-sub rv-idline">{identityStatement(activeCustom)}</p>}
+                    {/* THE MONOLITH (host pick 2026-07-27) — the name arrives from
+                        infinity on one precision curve; the locked period bead
+                        ignites as it lands; one lens glint crosses it. */}
+                    {(revealPhase === 'intro' || revealPhase === 'zoom' || revealPhase === 'glint') && (
+                      <div className="rv-mwrap">
+                        <div className="rv-meyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
+                        <h1 className="rv-mname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                        <span className="rv-mglint" aria-hidden="true" />
                       </div>
                     )}
-                    {/* ASSEMBLE / REST — the verbatim listing, kept exactly (host's
-                        "I want the listing back"), cascading in one row per tick. */}
-                    {(revealPhase === 'assemble' || revealPhase === 'rest') && (
+                    {/* RACK / REST — focus racks to the VERBATIM listing (the
+                        baseline — host's "I want the listing back"): one row
+                        sharpens in every 900ms, slow enough to READ, and the
+                        name lands last. */}
+                    {(revealPhase === 'rack' || revealPhase === 'rest') && (
                       <>
                     <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
-                    <ul className="tick-list rv-cascade" style={{ marginTop: 22 }}>
+                    <ul className="tick-list rv-slowrows" style={{ marginTop: 22 }}>
                       {revealStages.map((st, i) => (
                         <li key={st.key || i} className="rv-line" style={{ '--i': i }}>
                           <strong>{st.title}:</strong> {st.what}{st.why ? <span style={{ color: 'var(--muted)' }}> {st.why}</span> : null}
@@ -5240,9 +5139,9 @@ export default function HostShellV2() {
                     {/* The name lands LAST — the conclusion the plan reached, not a header.
                         Its period is the same locked bead as the boot splash: it drops in
                         and ignites once the name has landed — the same mark, twice. */}
-                    <h1 className="mega title-drop in" style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: 'var(--ink)' }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                     {/* identityStatement() — the production identity engine, verbatim */}
-                    <p className="mega-sub pre in" style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2' }}>{identityStatement(activeCustom)}</p>
+                    <p className={revealPhase === 'rack' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2', '--i': revealStages.length + 2 }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
                     <div className={'actions-row pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-6)' }}>
                       <button ref={revealCtaRef} className={'cta big' + (revealPhase === 'rest' ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>

@@ -181,7 +181,17 @@ export function parseSmartEventText(text, opts = {}) {
   }
 
   // ── Honoree + venue ─────────────────────────────────────────────────────
-  const hm = t.match(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)[’']s\b/);
+  const hm = t.match(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)[’']s\b/)
+    // "for Vida", "honoring Marcus" — the honoree named without a possessive
+    // (host report 2026-07-27: "Birthday celebration for Vida" dropped the name).
+    // Months/weekdays/pronouns/articles are excluded so "for November" or
+    // "for My friends" never invents an honoree; "for Mom" stays valid.
+    || (() => {
+      const m = t.match(/\b(?:for|honoring|celebrating)\s+([A-Z][a-zA-Z]+)\b/);
+      if (!m) return null;
+      if (/^(January|February|March|April|May|June|July|August|September|October|November|December|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|My|Our|The|A|An|Me|Us|Him|Her|Them|Everyone|Family|Friends)$/i.test(m[1])) return null;
+      return m;
+    })();
   const home = /backyard|back\s?yard|at home|my place|our (house|home)|the house/i.test(t);
   // Venue phrase kept VERBATIM — "my brother's backyard" is the venue, not a
   // generic "Backyard". Guests read this in invites and rain notes.
@@ -261,13 +271,31 @@ export function parseSmartEventText(text, opts = {}) {
     if (raw && !/^the$/i.test(raw)) theme = raw;
   }
 
+  // ── Per-person money — "$200 a person", "per head", "each", "pp" ─────────────
+  // The amount the host typed is per-guest, not the total; multiply by the parsed
+  // count so budget means what they meant (host report 2026-07-27: "$200 a person
+  // for the rental house" for 10 people parsed as a $200 TOTAL budget).
+  if (budget != null && guests
+    && /\$?\s*\d[\d,]*\s*k?\s*(?:(?:a|per)\s+(?:person|head|guest|adult)|each\b|pp\b)/i.test(t)) {
+    budget = budget * guests;
+  }
+
+  // ── Rented roof — Airbnb/VRBO/cabin/lake house is a VENUE, not home ──────────
+  // venueKind '' falls back to 'home' downstream (doItForMe atHome), which is
+  // exactly wrong for a destination rental; 'venue' is the consumed vocabulary.
+  const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
+
   return {
     type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
-    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
+    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging ? 'venue' : ''),
     venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
     venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : null),
     venueState: loc ? (loc.state || null) : (area ? area.state : null),
     vacationArea: area ? area.id : null,
+    // "No kids." / "adults only" → the invite policy InviteV2 + doItForMe already
+    // consume; never invented — only when the host said it.
+    kidsPolicy: /\bno\s+(?:kids|children)\b|\badults?[\s-]only\b/i.test(t) ? 'adults_only'
+      : /\bkids?\s+(?:are\s+)?welcome\b|\bfamily[\s-]friendly\b/i.test(t) ? 'kids_welcome' : null,
   };
 }
