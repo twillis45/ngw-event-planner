@@ -1348,6 +1348,20 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-rest .rv-lastland{opacity:1; transform:none; filter:none; animation:none}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 /* the tick flares exactly as the front crosses its row */
+/* EVERYTHING IN VIEWPORT (host ruling 2026-07-27): the unveiling plays
+   entirely on the visible stage — no row ignites below the fold. The theater
+   compresses the listing's density so all rows + the name + the ask fit one
+   frame; inner scroll survives only as a safety for extreme content. */
+.reveal-stage .reveal-inner{display:flex; flex-direction:column; justify-content:center; min-height:100%}
+.reveal-stage .rv-slowrows{margin-top:12px !important}
+.reveal-stage .rv-slowrows .rv-line{margin-bottom:11px; font-size:var(--t-row-sub); line-height:1.4}
+.reveal-stage .rv-why{font-size:var(--t-tag); margin-top:2px}
+.reveal-stage .rv-prov{font-size:10px; margin-top:2px}
+.reveal-stage .rv-mguide{font-size:var(--t-pill); margin:4px 0 0}
+.reveal-stage .mega-sub{font-size:var(--t-body-s)}
+.reveal-stage .grounding{font-size:var(--t-caption)}
+.reveal-stage .actions-row{margin-top:var(--sp-3) !important; gap:var(--sp-2)}
+.reveal-stage .cta.big{padding:10px 18px; font-size:var(--t-cta)}
 .reveal-stage.rv-rack .rv-slowrows .rv-line::before{
   animation:rvracktick 1.2s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s + .35s)}
 @keyframes rvracktick{

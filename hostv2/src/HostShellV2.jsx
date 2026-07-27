@@ -5166,7 +5166,7 @@ export default function HostShellV2() {
                     {/* The name lands LAST — the conclusion the plan reached, not a header.
                         Its period is the same locked bead as the boot splash: it drops in
                         and ignites once the name has landed — the same mark, twice. */}
-                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 6, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'clamp(24px, 7cqw, 30px)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 4, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                     {/* identityStatement() — the production identity engine, verbatim */}
                     <p className={revealPhase === 'rack' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2', '--i': revealStages.length + 2 }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
