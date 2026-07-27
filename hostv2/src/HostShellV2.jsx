@@ -3096,7 +3096,19 @@ export default function HostShellV2() {
     if (!people.length) { toast('No helpers to message yet.'); return; }
     const drafts = people.map(h => {
       const mine = (helperData.responsibilities || []).filter(r => r.helperId === h.id);
-      const d = draftHelperConfirm(event, profile, h, mine);
+      // Slice B: their OWN run-of-show rows ride the draft — exact name (or an
+      // unambiguous first name) on a row the host authored, host times only.
+      const hn = String(h.name || '').trim().toLowerCase();
+      const hFirst = hn.split(/\s+/)[0] || '';
+      const dayRows = (() => {
+        try {
+          return (effectiveRos(event) || []).filter(r => {
+            const o = String((r && r.owner) || '').trim().toLowerCase();
+            return o && (o === hn || (hFirst.length >= 4 && o === hFirst));
+          });
+        } catch { return []; }
+      })();
+      const d = draftHelperConfirm(event, profile, h, mine, dayRows);
       return { title: 'Confirm with ' + h.name, body: [d.subject, d.body].filter(Boolean).join('\n\n'), name: h.name };
     }).filter(x => x.body.trim());
     if (!drafts.length) { toast('Nothing to draft yet — add a few more details first.'); return; }
@@ -4414,7 +4426,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </CtaRow>
         <Grounding gap={ASK_COMPACT.ctaToFoot}>
-          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.` : ''}
+          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
           {est && est.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
         </Grounding>
       </AskColumn>
@@ -5046,7 +5058,7 @@ export default function HostShellV2() {
                               aria-label="Total budget" />
                             {estC && (
                               <p className="grounding" style={{ margin: 0 }}>
-                                For {effGuests} at a {String(effType).toLowerCase()}: lean runs about {fmtC(estC.lowTotal)}, all-out about {fmtC(estC.highTotal)}.{estC.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
+                                For {effGuests} at a {String(effType).toLowerCase()}: lean runs about {fmtC(estC.lowTotal)}, all-out about {fmtC(estC.highTotal)}.{estC.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : (effEndDate ? ' That prices the main day — a multi-day stretch adds food and drinks for each extra day.' : '')}
                               </p>
                             )}
                           </div>

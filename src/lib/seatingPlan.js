@@ -336,10 +336,21 @@ export function autoAssignByGroup(guests, tableCount) {
   const groups = [...new Set(confirmed.map(g => g.group).filter(Boolean))];
   let tableIdx = 0;
   const updates = {};
+  const seen = new Set();
   groups.forEach(group => {
     const members = confirmed.filter(g => g.group === group && !g.table);
     members.forEach(g => {
-      updates[g.id] = (tableIdx % count) + 1;
+      if (seen.has(g.id)) return;
+      const table = (tableIdx % count) + 1;
+      updates[g.id] = table;
+      seen.add(g.id);
+      // A linked couple (coupleId, split-on-entry 2026-07-27) sits TOGETHER —
+      // the round-robin's preserved quirk scatters group members, but a couple
+      // is one unit: the partner lands on the same table, one index advance.
+      if (g.coupleId) {
+        const partner = confirmed.find(x => x && x !== g && x.coupleId === g.coupleId && !x.table && !seen.has(x.id));
+        if (partner) { updates[partner.id] = table; seen.add(partner.id); }
+      }
       tableIdx++;
     });
   });

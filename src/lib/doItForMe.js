@@ -369,7 +369,7 @@ export function draftHelperBrief(event, profile, opts = {}) {
 // is that SAME person's rows from .responsibilities (explicit param, not
 // re-derived here, so this stays a pure formatter like every other draft).
 // Never invents what they're covering — lists only what's actually assigned.
-export function draftHelperConfirm(event, profile, helper, responsibilities) {
+export function draftHelperConfirm(event, profile, helper, responsibilities, dayRows) {
   if (!event || !helper) return { subject: '', body: '' };
   const date = fmtLongDate(event.date);
   const host = hostName(profile);
@@ -380,7 +380,18 @@ export function draftHelperConfirm(event, profile, helper, responsibilities) {
   if (items.length) {
     lines.push('', `You're on for:`);
     items.forEach(i => lines.push(`  • ${i}`));
-    lines.push('', `Can you confirm you're still good for ${items.length === 1 ? 'this' : 'these'}? Thanks so much for helping out!`);
+  }
+  // Itinerary Slice B (2026-07-27): the helper's OWN times on the day — rows the
+  // host put their name on, with the host's own times (never an invented clock).
+  const times = (Array.isArray(dayRows) ? dayRows : [])
+    .map(r => r && String(r.what || r.label || '').trim() ? `  • ${String(r.time || r.when || '').trim() ? String(r.time || r.when).trim() + ' — ' : ''}${String(r.what || r.label).trim()}` : null)
+    .filter(Boolean);
+  if (times.length) {
+    lines.push('', 'Your times on the day:');
+    times.forEach(t => lines.push(t));
+  }
+  if (items.length || times.length) {
+    lines.push('', `Can you confirm you're still good for ${items.length + times.length === 1 ? 'this' : 'these'}? Thanks so much for helping out!`);
   } else {
     lines.push('', 'Just confirming you\'re still able to help out — thanks so much!');
   }

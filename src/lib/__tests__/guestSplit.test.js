@@ -68,6 +68,21 @@ describe('seating parity — a filled plusOne is a chair', () => {
   });
 });
 
+describe('seating — a linked couple lands on the SAME table', () => {
+  const { autoAssignByGroup } = require('../seatingPlan');
+  test('coupleId overrides the consecutive-table round-robin quirk', () => {
+    const guests = [
+      { id: 'a', name: 'Ryan Smith', rsvp: 'Yes', group: 'Family', coupleId: 'cp1' },
+      { id: 'b', name: 'Nicole Smith', rsvp: 'Yes', group: 'Family', coupleId: 'cp1' },
+      { id: 'c', name: 'Uncle Joe', rsvp: 'Yes', group: 'Family' },
+    ];
+    const next = autoAssignByGroup(guests, 4);
+    const t = Object.fromEntries(next.map((g) => [g.id, g.table]));
+    expect(t.a).toBe(t.b);      // the couple sits together
+    expect(t.c).not.toBe(null); // everyone still seated
+  });
+});
+
 describe('engine parity — a filled plusOne is a person', () => {
   const ev = {
     guests: [
