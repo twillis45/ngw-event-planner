@@ -1311,8 +1311,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-rack .rv-mwrap .rv-meyebrow{opacity:0; transition:opacity .5s var(--ease-out)}
 .reveal-stage.rv-rack .rv-mname{animation:rvmrackout 1.15s cubic-bezier(.6,0,.8,.4) both}
 @keyframes rvmrackout{from{opacity:1; transform:scale(1); filter:blur(0)} to{opacity:0; transform:scale(1.42); filter:blur(10px)}}
-/* keynote-clean primary: the reveal's ask is the WHITE PILL (scoped here only) */
-.reveal-stage .cta.big{background:#f2f4f7; color:#0d1014; border:none; border-radius:999px}
+/* (Concept B's white-pill CTA was tried and REVERTED by host ruling
+   2026-07-27 — UX_01's no-white rule holds even here; the ask stays steel.) */
 /* rack focus: the listing sharpens in slowly enough to READ — 1.35s per row
    (host 2026-07-27: "let each reveal piece breathe… this is our app's honesty
    and do-it-for-me"). Every row now carries its full engine truth: the why on
@@ -1322,7 +1322,18 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    is the only way to sequence a mount). */
 .rv-slowrows .rv-line, .rv-lastland{opacity:0; transform:translateY(6px); filter:blur(12px); transition:none;
   animation:rvrackrow 1.2s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*1.8s)}
-.rv-slowrows .rv-line{margin-bottom:20px}
+/* EACH ROW IS ITS OWN REVEAL (host 2026-07-27: "more illumination and
+   animation"): as a row lands, a steel LIGHT-PASS sweeps through it, a soft
+   key-glow spills and decays, and the tick flares — all on the same ladder. */
+.rv-slowrows .rv-line{margin-bottom:20px; position:relative; border-radius:8px;
+  background-image:linear-gradient(100deg, transparent 32%, rgba(138,163,176,.16) 47%, rgba(78,104,119,.10) 55%, transparent 70%);
+  background-size:260% 100%; background-position:130% 0; background-repeat:no-repeat;
+  animation:rvrackrow 1.2s cubic-bezier(.22,1,.36,1) both,
+    rvrowlight 1.6s cubic-bezier(.4,0,.2,1) both,
+    rvrowglow 1.8s var(--ease-out) both;
+  animation-delay:calc(var(--i)*1.8s), calc(var(--i)*1.8s + .2s), calc(var(--i)*1.8s + .15s)}
+@keyframes rvrowlight{from{background-position:130% 0} to{background-position:-80% 0}}
+@keyframes rvrowglow{0%{box-shadow:none} 30%{box-shadow:0 0 26px -6px rgba(78,104,119,.55)} 100%{box-shadow:none}}
 .rv-why{display:block; margin-top:3px; color:var(--muted)}
 .rv-prov{display:block; margin-top:5px; font-size:var(--t-caption); letter-spacing:.03em; opacity:.85}
 /* each line is its OWN small reveal (host: "each line should breathe more —
@@ -1338,7 +1349,7 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-slowrows .rv-line::before{animation:rvracktick 1.2s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s)}
 @keyframes rvracktick{
   0%{background:rgba(78,104,119,.12); box-shadow:none}
-  40%{background:var(--steel-soft); box-shadow:0 0 10px 2px rgba(78,104,119,.6)}
+  40%{background:#cfe0ea; box-shadow:0 0 16px 4px rgba(138,163,176,.85)}
   100%{background:rgba(78,104,119,.35); box-shadow:none}}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){
