@@ -1321,8 +1321,8 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    name still lands LAST (mounted-with-.in transitions never run — animation
    is the only way to sequence a mount). */
 /* THE UNVEILING (host ruling 2026-07-27: "introduce or reveal the list IN
-   PLACE — this is the magic"): the whole plan is VISIBLY ALREADY THERE — every
-   row present from the first rack frame, dim — and a soft light front travels
+   PLACE — this is the magic"): the whole plan is VISIBLY ALREADY THERE — the stage starts DARK
+   (host: no full-list preview) — and a soft light front travels
    down the list, igniting each line where it stands as it crosses. Nothing
    translates, nothing constructs: the plan was built while they typed; light
    just proves it. Rows brighten on the 1.8s ladder in sync with the front. */
@@ -1332,12 +1332,12 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   animation:rvfront calc(var(--rows, 6) * 1.8s) linear .2s both}
 @keyframes rvfront{from{top:-80px} to{top:100%}}
 .reveal-stage.rv-rest .rv-lightfront{display:none}
-.rv-slowrows .rv-line{margin-bottom:20px; position:relative; border-radius:8px; opacity:.09; transition:none}
+.rv-slowrows .rv-line{margin-bottom:20px; position:relative; border-radius:8px; opacity:0; transition:none}
 .reveal-stage.rv-rack .rv-slowrows .rv-line{
   animation:rvunveil 1.1s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s + .3s)}
 .reveal-stage.rv-rest .rv-slowrows .rv-line{opacity:1; animation:none}
 @keyframes rvunveil{
-  0%{opacity:.09}
+  0%{opacity:0}
   55%{opacity:1; box-shadow:0 0 26px -8px rgba(78,104,119,.45)}
   100%{opacity:1; box-shadow:none}}
 .rv-why{display:block; margin-top:3px; color:var(--muted)}
