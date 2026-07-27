@@ -26,7 +26,7 @@ import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { showsReplyTracking } from '@app/lib/guestMode';
-import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherRisk } from '@app/lib/weather';
+import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
 import { draftInvite, draftShoppingList, draftVendorOutreach, draftThankYou, draftRsvpChase, draftHelperBrief, draftHelperConfirm, draftVendorReconfirm, hasToastMaterial, draftToast, draftGuestUpdate, draftParkingInstructions, draftDietaryNote, draftRecap, draftDayBeforeDetails, draftVendorPaymentReminder, draftLodgingNote, draftRidesNote, draftGettingHereNote, draftGuestBrief, timePhrase, decisionApproach } from '@app/lib/doItForMe';
 
@@ -63,7 +63,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
@@ -1834,21 +1834,29 @@ export default function HostShellV2() {
 
   // ── Weather alerting (modern live-activity pill) ──
   // LIVE when configured: the production pipeline verbatim — geocodeVenue →
-  // getEventWeatherRisk (proxy via the API base, or the OpenWeather key).
+  // getEventWeatherSpan (proxy via the API base, or the OpenWeather key): ONE
+  // fetch, every span day classified; `primary` (first day still ahead) feeds
+  // every existing single-day consumer, the per-day rows feed the panel.
   // When NOT configured, the labeled sample drives the same engines. NEVER
   // both: a configured app shows live weather or nothing — a fabricated
   // fallback could contradict the real sky.
   const [liveWx, setLiveWx] = useState(null);
+  const [liveWxSpan, setLiveWxSpan] = useState(null);
   useEffect(() => {
     let dead = false;
     setLiveWx(null);
+    setLiveWxSpan(null);
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
         const out = isLikelyOutdoor(event.venue, event.notes);
         const past = isPastEvent(event);
         const d = daysUntil(event.date);
-        if (!out || past || d == null || d < 0 || d > 14) return;
+        // Span-aware window (P1 "weather range"): mid-event the START is past
+        // (d < 0) but the remaining days are still forecastable — gate on the
+        // LAST day instead. Single-day events: daysUntilEnd === d, unchanged.
+        const dEnd = (() => { try { return daysUntilEnd(event); } catch { return d; } })();
+        if (!out || past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
         // A bare home word ("Backyard") geocodes to junk — the town is the
         // real locator for at-home events; skip entirely when neither exists.
         const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String(event.venue || '').trim());
@@ -1863,12 +1871,17 @@ export default function HostShellV2() {
         if (!q) return;
         const coords = await geocodeVenue(q);
         if (dead || !coords) return;
-        const wxr = await getEventWeatherRisk(coords.lat, coords.lon, event.date);
-        if (!dead && wxr) setLiveWx(wxr);
+        const span = await getEventWeatherSpan(coords.lat, coords.lon, event);
+        if (!dead && span) {
+          setLiveWx(span.primary);
+          // Per-day rows are a multi-day surface: one row would just repeat
+          // the headline, so the panel list renders only from 2 days up.
+          setLiveWxSpan(span.days.length > 1 ? span.days : null);
+        }
       } catch { /* stay quiet — no forecast beats a wrong one */ }
     })();
     return () => { dead = true; };
-  }, [event.id, event.date, event.venue, event.venueCity, event.venueState, event.notes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, event.date, event.endDate, event.venue, event.venueCity, event.venueState, event.notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const wx = useMemo(() => {
     if (liveWx) return liveWx;
     if (isWeatherConfigured()) return null; // live mode: real data or nothing
@@ -4527,7 +4540,7 @@ export default function HostShellV2() {
     // (buildAssembleRevealStages): identity, blockers, domains, risks.
     clearRevealTimers();
     let rows = 5;
-    try { rows = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), profile, 1) || []).length, 5) + 1; } catch { /* default */ }
+    try { rows = Math.min((buildAssembleRevealStages(ev, revealIdentityFor(ev), profile, 1) || []).length, 8) + 1; } catch { /* default */ }
     // Solemn events keep the dignified straight-to-listing reveal; reduced
     // motion likewise never enters the theater.
     if (REDUCE_MOTION || isSolemnEvent(ev)) { setRevealPhase('rest'); return; }
@@ -4537,7 +4550,7 @@ export default function HostShellV2() {
     revealTimers.current.push(setTimeout(() => setRevealPhase('rack'), 4800));
     // one row every 900ms — slow enough to READ (host directive) — then the
     // name lands last, then the ask.
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 900 + 1900));
+    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 1350 + 2200));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -4550,7 +4563,7 @@ export default function HostShellV2() {
   // planning domains (with real $), risk preview.
   const revealStages = useMemo(() => {
     if (!revealed || !activeCustom) return [];
-    try { return (buildAssembleRevealStages(activeCustom, revealIdentityFor(activeCustom), profile, 1) || []).slice(0, 5); }
+    try { return (buildAssembleRevealStages(activeCustom, revealIdentityFor(activeCustom), profile, 1) || []).slice(0, 8); }
     catch { return []; }
   }, [revealed, activeCustom]);
   // a11y: when the reveal choreography finishes, move keyboard/SR focus to the
@@ -5125,11 +5138,16 @@ export default function HostShellV2() {
                     {(revealPhase === 'rack' || revealPhase === 'rest') && (
                       <>
                     <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
+                    <p className="rv-mguide">Built while you typed — every line traces to your answers.</p>
                     <ul className="tick-list rv-slowrows" style={{ marginTop: 22 }}>
                       {revealStages.map((st, i) => (
                         <li key={st.key || i} className="rv-line" style={{ '--i': i }}>
-                          <strong>{st.title}:</strong> {st.what}{st.why ? <span style={{ color: 'var(--muted)' }}> {st.why}</span> : null}
+                          <strong>{st.title}:</strong> {st.what}
+                          {st.why ? <span className="rv-why">{st.why}</span> : null}
                           {st.nextDecision && <span className="grounding" style={{ display: 'block', marginTop: 3 }}>{st.nextDecision}</span>}
+                          {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
+                            <span className="grounding rv-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' \u00b7 ')}</span>
+                          ) : null}
                         </li>
                       ))}
                       {customPlan && (
@@ -13118,7 +13136,7 @@ export default function HostShellV2() {
             <span className="wx-line">
               {/* The sample marker rides the COLLAPSED line — the only line most
                   hosts read. A forecast claim may never outrun its source. */}
-              {wxOpen ? 'Weather on your day' : (wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
+              {wxOpen ? (liveWxSpan ? 'Weather across your days' : 'Weather on your day') : (wx._sample ? 'Sample forecast · ' : '') + rainAwareSummary(wxImpact.headline, rainPlanStatus(event).hasPlan)}
             </span>
             <span className="chev" aria-hidden="true" style={{ position: 'static' }}>{wxOpen ? '▾' : '›'}</span>
           </button>
@@ -13133,6 +13151,32 @@ export default function HostShellV2() {
                   <strong style={{ color: 'var(--ink-soft)' }}>{ph.label || ph.phase}</strong>{ph.summary ? ' — ' + ph.summary : ''}
                 </p>
               ))}
+              {/* SPAN ROWS (P1 "weather range"): one line per remaining event day,
+                  real forecast only — liveWxSpan is null for single-day events,
+                  samples, and past days, so this renders exactly when a multi-day
+                  event has 2+ forecastable days. Data straight off each row's
+                  classifier result; no invented aggregation. */}
+              {liveWxSpan && (() => {
+                // The single worst day gets the marker (tie → earliest); marking
+                // every high day would dilute "sharpest" into noise.
+                const rank = { clear: 0, low: 1, medium: 2, high: 3 };
+                const sharpest = liveWxSpan.reduce((a, b) => ((rank[b.risk] || 0) > (rank[a.risk] || 0) ? b : a), liveWxSpan[0]);
+                return (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--line-soft)' }}>
+                    {liveWxSpan.map(dr => {
+                      const wd = (() => { try { return new Date(dr.date + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); } catch { return dr.date; } })();
+                      const cond = String(dr.conditions || '').replace(/^./, c => c.toUpperCase());
+                      return (
+                        <p key={dr.date} className="grounding" style={{ margin: '4px 0 0' }}>
+                          <strong style={{ color: 'var(--ink-soft)' }}>Day {dr.dayIndex} · {wd}</strong>
+                          {' — '}{cond || 'Forecast'}, {dr.precipitation}% rain · {dr.temp.min}°–{dr.temp.max}°F
+                          {dr === sharpest && (rank[dr.risk] || 0) >= 2 ? ' · sharpest day' : ''}
+                        </p>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
               <div className="actions-row" style={{ marginTop: 10 }}>
                 {/* CTAs follow the ENGINE's prompts, not a local guess */}
                 {(wxImpact.shouldPromptRainPlan || !rainPlanStatus(event).hasPlan) && (

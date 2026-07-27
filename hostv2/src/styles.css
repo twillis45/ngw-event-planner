@@ -1304,12 +1304,26 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-glint .rv-mglint{animation:rvmglint 1s cubic-bezier(.4,0,.2,1) .1s both}
 @keyframes rvmglint{0%{opacity:0; transform:rotate(-16deg) translateX(0)} 12%{opacity:1}
   100%{opacity:0; transform:rotate(-16deg) translateX(520px)}}
-/* rack focus: the listing sharpens in slowly enough to READ — 900ms per row.
+/* rack focus: the listing sharpens in slowly enough to READ — 1.35s per row
+   (host 2026-07-27: "let each reveal piece breathe… this is our app's honesty
+   and do-it-for-me"). Every row now carries its full engine truth: the why on
+   its own line, and the PROVENANCE receipt (confidence · status · engines).
    .rv-lastland extends the same landing to the name + identity line so the
    name still lands LAST (mounted-with-.in transitions never run — animation
    is the only way to sequence a mount). */
 .rv-slowrows .rv-line, .rv-lastland{opacity:0; transform:translateY(6px); filter:blur(12px); transition:none;
-  animation:rvrackrow 1s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*.9s)}
+  animation:rvrackrow 1.1s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*1.35s)}
+.rv-slowrows .rv-line{margin-bottom:18px}
+.rv-why{display:block; margin-top:3px; color:var(--muted)}
+.rv-prov{display:block; margin-top:5px; font-size:var(--t-caption); letter-spacing:.03em; opacity:.85}
+.rv-mguide{font-family:var(--serif-read); font-style:italic; font-optical-sizing:auto;
+  font-size:var(--t-body-s); color:var(--ink-soft); margin:6px 0 0}
+/* the row's tick ignites steel as its line arrives — the bead language, kept */
+.rv-slowrows .rv-line::before{animation:rvracktick 1.2s var(--ease-out) both; animation-delay:calc(var(--i)*1.35s)}
+@keyframes rvracktick{
+  0%{background:rgba(78,104,119,.12); box-shadow:none}
+  40%{background:var(--steel-soft); box-shadow:0 0 10px 2px rgba(78,104,119,.6)}
+  100%{background:rgba(78,104,119,.35); box-shadow:none}}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){
   .rv-meyebrow,.rv-mname,.rv-slowrows .rv-line{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
