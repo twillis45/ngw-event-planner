@@ -40,15 +40,38 @@ export function dayLabelFor(event, dayIndex) {
 }
 
 // The flagship reunion arc — PROPOSED, with its grounding attached. Slots only.
-const REUNION_ARC = [
-  { day: 1, slot: 'evening', title: 'Meet & greet', note: 'everyone lands, keep it easy', anchor: true },
-  { day: 2, slot: 'afternoon', title: 'The cookout — the big gathering', note: 'the day everyone came for', anchor: true },
-  { day: 3, slot: 'morning', title: 'Worship service', note: 'optional — the traditional close', anchor: false },
-  { day: 3, slot: 'midday', title: 'Farewell brunch & goodbyes', note: null, anchor: true },
-];
+// WEEKDAY-AWARE (host catch, 2026-07-27): the worship service is not "day 3" —
+// it is THE SUNDAY of the trip, and it is only proposed when the span actually
+// contains one (a Wed–Fri reunion must never be handed a Friday church
+// service). The cookout prefers the Saturday, else the middle day.
+const weekdayOfDay = (ev, dayIndex) => {
+  const start = ev && ev.date ? String(ev.date).slice(0, 10) : null;
+  if (!start || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
+  const d = new Date(start + 'T12:00:00');
+  d.setDate(d.getDate() + (dayIndex - 1));
+  return d.getDay(); // 0 = Sunday, 6 = Saturday
+};
+function reunionArc(ev, days) {
+  const dayOn = (wd) => {
+    for (let i = 1; i <= days; i += 1) if (weekdayOfDay(ev, i) === wd) return i;
+    return null;
+  };
+  const rows = [{ day: 1, slot: 'evening', title: 'Meet & greet', note: 'everyone lands, keep it easy', anchor: true }];
+  const saturday = dayOn(6);
+  const cookoutDay = (saturday && saturday > 1) ? saturday : Math.min(days, Math.max(2, Math.ceil(days / 2)));
+  rows.push({ day: cookoutDay, slot: 'afternoon', title: 'The cookout — the big gathering', note: 'the day everyone came for', anchor: true });
+  const sunday = dayOn(0);
+  if (sunday && sunday !== cookoutDay) {
+    rows.push({ day: sunday, slot: 'morning', title: 'Worship service', note: 'optional — the traditional close', anchor: false });
+  }
+  if (days > cookoutDay) {
+    rows.push({ day: days, slot: 'midday', title: 'Farewell brunch & goodbyes', note: null, anchor: true });
+  }
+  return rows;
+}
 const REUNION_ARC_PROVENANCE = {
   tier: 'researched',
-  note: 'The documented reunion weekend arc: arrival evening, the shared meal as the climax, worship + farewell close (McCoy, Generations/ASA; reunion-planning consensus, research dossier 2026-07-26).',
+  note: 'The documented reunion weekend arc: arrival evening, the shared meal as the climax, worship on the Sunday + farewell close (McCoy, Generations/ASA; reunion-planning consensus, research dossier 2026-07-26).',
 };
 
 const normRow = (r) => {
@@ -99,10 +122,10 @@ export function guestItinerary(event, getPlaybook) {
     };
   }
 
-  // 3 · the proposed reunion arc — multi-day reunions only, clipped to the span
+  // 3 · the proposed reunion arc — multi-day reunions only, weekday-aware
   if (String(ev.type || '') === 'Reunion' && spanNights(ev) >= 1) {
     const days = spanNights(ev) + 1;
-    const rows = REUNION_ARC.filter((r) => r.day <= days).map(normRow).filter(Boolean);
+    const rows = reunionArc(ev, days).map(normRow).filter(Boolean);
     if (rows.length) return { relevant: true, source: 'proposed', rows: sortRows(rows), provenance: REUNION_ARC_PROVENANCE };
   }
 

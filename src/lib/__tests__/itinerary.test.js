@@ -25,13 +25,25 @@ describe('guestItinerary', () => {
     expect(it.rows.every((r) => r.time === null)).toBe(true); // slots only — no invented clock
   });
 
-  test('multi-day Reunion gets the PROPOSED arc, clipped to the span', () => {
+  test('multi-day Reunion gets the PROPOSED arc — weekday-aware, span-clipped', () => {
+    // Fri–Sun (2026-09-11 is a Friday): cookout lands the Saturday, worship THE Sunday.
     const it = guestItinerary({ type: 'Reunion', date: '2026-09-11', endDate: '2026-09-13' }, getPlaybook);
     expect(it.source).toBe('proposed');
-    expect(it.rows.some((r) => /cookout/i.test(r.title) && r.anchor)).toBe(true);
+    const cookout = it.rows.find((r) => /cookout/i.test(r.title));
+    const worship = it.rows.find((r) => /worship/i.test(r.title));
+    expect(cookout.day).toBe(2); // Saturday
+    expect(worship.day).toBe(3); // Sunday
     expect(it.provenance.tier).toBe('researched');
     const twoDay = guestItinerary({ type: 'Reunion', date: '2026-09-11', endDate: '2026-09-12' }, getPlaybook);
-    expect(Math.max(...twoDay.rows.map((r) => r.day))).toBe(2); // day-3 rows clipped
+    expect(Math.max(...twoDay.rows.map((r) => r.day))).toBe(2); // clipped to the span
+  });
+
+  test('a Wed–Fri reunion is NEVER proposed a church service (host catch 2026-07-27)', () => {
+    // 2026-08-26 is a Wednesday; the span holds no Sunday.
+    const it = guestItinerary({ type: 'Reunion', date: '2026-08-26', endDate: '2026-08-28' }, getPlaybook);
+    expect(it.rows.some((r) => /worship/i.test(r.title))).toBe(false);
+    const cookout = it.rows.find((r) => /cookout/i.test(r.title));
+    expect(cookout.day).toBe(2); // middle day, no Saturday to prefer
   });
 
   test('single-day Reunion proposes nothing — a proposal needs a span', () => {
