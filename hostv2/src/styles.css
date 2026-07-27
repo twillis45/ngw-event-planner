@@ -1281,6 +1281,95 @@ button:disabled, .cta:disabled{ pointer-events:none; }
     box-shadow:-2.5px -3.4px 5.1px rgba(255,255,255,.3), 3.4px 5.1px 7.7px rgba(10,14,17,.44), 0 0 10px rgba(111,147,168,.32), 0 0 19px rgba(78,104,119,.18)!important}
 }
 
+/* ── REVEAL THEATER (Ignition port, host ruling 2026-07-27: "magic reveal…
+   has to be a winner in the app") — performed beats IN FRONT of the preserved
+   listing: each stage line lands LOUD center-stage then files away; a canvas
+   particle field fills the room and STREAMS INTO the bead on the gather; the
+   name ignites letter by letter as the traveling bead detonates into the
+   locked period; then the verbatim listing cascades in (the host's "I want
+   the listing back" IS the final two beats, untouched). Solemn events and
+   prefers-reduced-motion never enter the theater — straight to the resolved
+   listing, exactly today's behavior. */
+.rv-fx{position:absolute; inset:0; z-index:1; width:100%; height:100%; pointer-events:none}
+.rv-bloom{position:absolute; left:50%; top:44%; width:150%; aspect-ratio:4/3; transform:translate(-50%,-50%);
+  border-radius:50%; pointer-events:none; z-index:1; opacity:0; filter:blur(46px);
+  background:radial-gradient(closest-side, rgba(78,104,119,.55), transparent 70%);
+  transition:opacity .5s var(--ease-out)}
+.reveal-stage.rv-gather .rv-bloom,.reveal-stage.rv-windup .rv-bloom{opacity:.35; transition-duration:.9s}
+.reveal-stage.rv-snap .rv-bloom{opacity:.95; transition-duration:.22s}
+.reveal-stage.rv-settle .rv-bloom{opacity:.4; transition-duration:.9s}
+/* camera: dolly out on the held breath, push in on the flash */
+.reveal-stage .reveal-inner{transition:transform .7s cubic-bezier(.22,1,.36,1)}
+.reveal-stage.rv-gather .reveal-inner,.reveal-stage.rv-windup .reveal-inner{transform:scale(.988)}
+.reveal-stage.rv-snap .reveal-inner{transform:scale(1.016)}
+.rv-think{text-align:center; animation:rvfade .4s var(--ease-out) both}
+.rv-truthwrap{text-align:center; margin:26px auto 0; max-width:30rem}
+.rv-t-title{font-size:var(--t-overline); font-weight:650; letter-spacing:.1em; text-transform:uppercase;
+  color:#9aa7b2; animation:rvrise .48s cubic-bezier(.22,1,.36,1) both}
+.rv-t-what{font-family:var(--serif-read); font-style:italic; font-weight:500; font-optical-sizing:auto;
+  font-size:clamp(22px,6.4cqw,27px); line-height:1.32; color:var(--ink); margin-top:10px;
+  animation:rvrise .48s cubic-bezier(.22,1,.36,1) .05s both}
+.rv-t-why{font-size:var(--t-meta); color:#7a8792; margin-top:10px; animation:rvrise .48s cubic-bezier(.22,1,.36,1) .12s both}
+@keyframes rvrise{from{opacity:0; transform:translateY(26px); filter:blur(7px)} to{opacity:1; transform:none; filter:blur(0)}}
+@keyframes rvfade{from{opacity:0} to{opacity:1}}
+/* the traveling bead — breathes through the truths, swells on the gather,
+   crouches on the windup; hands off to the reveal-dot at the snap */
+.rv-bead{position:absolute; left:50%; top:34%; width:10px; height:10px; margin:-5px 0 0 -5px;
+  border-radius:50%; background:var(--steel-soft); z-index:3; pointer-events:none;
+  box-shadow:0 0 12px 2px rgba(78,104,119,.55);
+  animation:rvbreathe 2.2s var(--ease-in-out) infinite}
+.reveal-stage.rv-gather .rv-bead{width:15px; height:15px; margin:-7.5px 0 0 -7.5px;
+  box-shadow:0 0 24px 5px rgba(78,104,119,.8); animation:none;
+  transition:width .5s var(--ease-out), height .5s var(--ease-out), box-shadow .5s var(--ease-out)}
+.reveal-stage.rv-windup .rv-bead{width:13px; height:13px; margin:-6.5px 0 0 -6.5px;
+  transform:translateY(9px) scale(.9); animation:none;
+  transition:transform .15s ease-in; box-shadow:0 0 24px 5px rgba(78,104,119,.8)}
+@keyframes rvbreathe{0%,100%{transform:scale(1)} 50%{transform:scale(1.35)}}
+/* the name — letters ignite ember → hot → ink, riding a 26ms stagger */
+.rv-namewrap{position:relative; text-align:center; margin-top:36vh}
+.rv-name{font-family:var(--serif); font-weight:800; font-size:var(--t-display-l);
+  line-height:1.1; letter-spacing:-.015em; margin:0; color:var(--ink)}
+.rv-name .rv-L{display:inline-block; opacity:0; transform:translateY(30px); filter:blur(6px);
+  animation:rvignite .38s cubic-bezier(.34,1.4,.64,1) both; animation-delay:calc(var(--i)*26ms)}
+@keyframes rvignite{
+  0%{opacity:0; transform:translateY(30px); filter:blur(6px); color:#3d525f; text-shadow:none}
+  62%{opacity:1; color:#d7e2ea; text-shadow:0 0 20px rgba(138,163,176,.85)}
+  100%{opacity:1; transform:none; filter:blur(0); color:#f2f4f7; text-shadow:0 0 6px rgba(138,163,176,.22)}}
+/* the period ignites right behind the last letter (the traveling bead WAS the drop) */
+.rv-name .reveal-dot{animation:reveal-dot-drop .4s cubic-bezier(.5,0,1,.6) .22s both, reveal-dot-breathe 3400ms var(--ease-in-out) .8s infinite}
+/* sparks — arc out of the period under drag + gravity */
+.rv-sparks{position:relative; display:inline-block; width:0; height:0; vertical-align:baseline}
+.rv-sparks i{position:absolute; left:0; top:-6px; width:3px; height:3px; border-radius:50%;
+  background:var(--steel-soft); opacity:0; animation:rvspark .76s cubic-bezier(.17,.67,.35,1) .14s both}
+@keyframes rvspark{
+  0%{transform:none; opacity:.95}
+  55%{transform:translate(calc(var(--dx)*.62), calc(var(--dy)*.62 - 16px)) scale(.85); opacity:.85}
+  100%{transform:translate(var(--dx), var(--dy)) scale(.35); opacity:0}}
+/* the light-trail lances under the landed name, then narrows on the settle */
+.rv-trail{width:8px; height:2px; margin:26px auto 0; opacity:0;
+  background:linear-gradient(90deg, transparent, var(--steel-soft), transparent);
+  animation:rvtrail .45s cubic-bezier(.17,.67,.3,1) .2s both}
+.reveal-stage.rv-settle .rv-trail{animation:none; width:240px; opacity:.75;
+  transition:width .5s var(--ease-out), opacity .5s var(--ease-out)}
+@keyframes rvtrail{from{width:8px; opacity:0} to{width:320px; opacity:1}}
+/* one sheen pass over the settled name */
+.reveal-stage.rv-settle .rv-namewrap::after{content:""; position:absolute; inset:-24px -30px; pointer-events:none;
+  background:linear-gradient(100deg, transparent 40%, rgba(205,224,238,.16) 50%, transparent 60%);
+  animation:rvsheen .9s var(--ease-out) .35s both}
+@keyframes rvsheen{from{transform:translateX(-130%)} to{transform:translateX(130%)}}
+.rv-idline{text-align:center; margin-top:var(--sp-4); color:#9aa7b2; animation:rvfade .5s var(--ease-out) .3s both}
+/* the assemble — the verbatim listing cascades in, one row per tick, sweep on arrival */
+.rv-cascade .rv-line{opacity:0; transform:translateY(-10px); transition:none;
+  animation:rvrow .46s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*110ms)}
+@keyframes rvrow{
+  0%{opacity:0; transform:translateY(-10px); background:linear-gradient(90deg, rgba(78,104,119,.16), transparent)}
+  60%{opacity:1; background:linear-gradient(90deg, rgba(78,104,119,.1), transparent)}
+  100%{opacity:1; transform:none; background:transparent}}
+@media(prefers-reduced-motion:reduce){
+  .rv-fx,.rv-bloom,.rv-bead,.rv-trail,.rv-sparks{display:none!important}
+  .rv-t-title,.rv-t-what,.rv-t-why,.rv-think,.rv-name .rv-L,.rv-cascade .rv-line,.rv-idline{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
+}
+
 /* ── First-run welcome: lines settle in top-to-bottom, ease-out, no bounce ── */
 .welcome section > *{opacity:0; transform:translateY(12px); animation:welcomein .55s var(--ease-standard) both}
 .welcome section > *:nth-child(2){animation-delay:.09s}
