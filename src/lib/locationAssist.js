@@ -17,12 +17,13 @@
 // deriveCurrentLocationAssist(event, deviceLocation) is a PURE classifier —
 // the browser geolocation call itself lives in the UI, inside a tap handler.
 
+import { venueFor } from './venueFor';
+
 const has = (v) => !!String(v || '').trim();
 // CITY-LEAK guard: a city field counts as a location only when it looks like
 // a city (the pollution incident left venue strings in city fields).
 let _isPlausibleCity = (v) => has(v);
 try { _isPlausibleCity = require('./cityText').isPlausibleCityText; } catch { /* keep permissive */ }
-import { venueFor } from './venueFor';
 
 export function eventLocationStatus(event) {
   // ONE venue reader (venueFor): address/name/city all pre-gated there.
