@@ -20,16 +20,22 @@ describe('destination decisions are purely additive, gated on isDestination', ()
     expect(ids).not.toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare']));
   });
 
-  test('isDestination: true adds all 5 destination decisions on top of Birthday\'s own', () => {
+  test('isDestination: true adds the destination decisions on top of Birthday\'s own', () => {
     const b = playbookDecisionBoard(ev({ isDestination: true }), '2026-01-01');
     const ids = [...b.open, ...b.locked, ...b.deferred].map((r) => r.id);
-    expect(ids).toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare', 'dest_health']));
+    expect(ids).toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_health']));
+    // F7 (coherence, 2026-07-27): the childcare ask requires kids to exist —
+    // this fixture has none, so asking "childcare during the event?" was the
+    // exact dead ask the audit flagged. With kids, it appears.
+    expect(ids).not.toContain('dest_childcare');
+    const withKids = playbookDecisionBoard(ev({ isDestination: true, kidsCount: 2 }), '2026-01-01');
+    expect([...withKids.open, ...withKids.locked, ...withKids.deferred].map((r) => r.id)).toContain('dest_childcare');
     // Birthday's own decisions are still present — additive, not replaced.
     expect(ids.some((id) => id === 'food_style')).toBe(true);
   });
 
   test('destination decisions work identically on any base type — not hardcoded to one', () => {
-    const b = playbookDecisionBoard({ id: 'e', type: 'Anniversary', date: future, guestCount: 20, isDestination: true }, '2026-01-01');
+    const b = playbookDecisionBoard({ id: 'e', type: 'Anniversary', date: future, guestCount: 20, kidsCount: 1, isDestination: true }, '2026-01-01');
     const ids = [...b.open, ...b.locked, ...b.deferred].map((r) => r.id);
     expect(ids).toEqual(expect.arrayContaining(['dest_lodging', 'dest_travelmix', 'dest_transport', 'dest_childcare']));
   });

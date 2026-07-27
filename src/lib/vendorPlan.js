@@ -38,8 +38,16 @@ export function buildVendorPlan(event, opts = {}) {
   // should win rather than duplicate.
   const DEST_KEYWORDS = { 'Lodging / Concierge': /lodging/i, 'Transport': /transport/i, 'Childcare / Kids’ Program': /childcare|kids.{0,4}program/i };
   const baseHasKeyword = (re) => base.some((c) => c && re.test(c.category || ''));
+  // F14 (audit 2026-07-27): the destination vendor lines honor the host's
+  // ANSWERED picks — no Transport vendor ask after "guests self-manage," no
+  // Lodging/Concierge line after "guests book on their own." Answered only;
+  // the defaults never suppress a line.
+  const destPicks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  const destStoodDown = (c) =>
+    (c.category === 'Transport' && destPicks.dest_transport === 'No, guests self-manage')
+    || (c.category === 'Lodging / Concierge' && destPicks.dest_lodging === 'Guests book on their own');
   const categories = ev.isDestination
-    ? [...base, ...DESTINATION_VENDOR_CATEGORIES.filter((c) => !baseHasKeyword(DEST_KEYWORDS[c.category]))]
+    ? [...base, ...DESTINATION_VENDOR_CATEGORIES.filter((c) => !baseHasKeyword(DEST_KEYWORDS[c.category]) && !destStoodDown(c))]
     : base;
   if (!categories.length) return { relevant: false, categories: [] };
 

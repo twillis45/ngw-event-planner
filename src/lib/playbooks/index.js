@@ -649,16 +649,26 @@ function taskPhaseLabel(offset) {
 // or anniversary all get the same starting set, editable/removable like any
 // other decision or task.
 const DESTINATION_DECISIONS = [
-  { id: 'dest_lodging', label: 'How are guests staying?', options: ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'], default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors'], why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
+  { id: 'dest_lodging', label: 'How are guests staying?', options: ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'], default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors'], optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
   { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
-  { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
-  { id: 'dest_childcare', label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
+  { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', optionGates: { 'Yes, a shuttle or van': { minGuests: 10 } }, why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
+  { id: 'dest_childcare', whenKids: true, label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
   // DESTINATION-4: deliberately asks about HEALTH, not age — the research this
   // came from (a meta-analysis on altitude sickness) found no age link at all;
   // heart and lung health is what actually predicts who struggles. The yes-path
   // pacing task (dest_t_health below) fires off this answer via whenChoice.
   { id: 'dest_health', label: 'Any guests with heart or lung conditions?', options: ['Yes', 'No', 'Not sure'], default: 'Not sure', when: 'T-90d', why: 'It’s heart and lung health that struggles with altitude and long, active days — not age by itself. Knowing early lets you pace the schedule instead of scrambling once you’re there.' },
 ];
+
+// F10 (audit 2026-07-27): a travel-native playbook's OWN lodging decision
+// governs — appending the generic twin asked "how are guests staying?" twice
+// (Team Retreat 'lodging', Conference 'room_block'). Travel-mix/transport have
+// no exact base twins, so only the lodging collision is suppressed.
+export function destinationDecisionsFor(event, pb) {
+  if (!event || !event.isDestination) return [];
+  const baseIds = new Set(((pb && Array.isArray(pb.decisions)) ? pb.decisions : []).map((d) => d && d.id));
+  return DESTINATION_DECISIONS.filter((d) => !(d.id === 'dest_lodging' && (baseIds.has('lodging') || baseIds.has('room_block'))));
+}
 // DESTINATION-4 — kids-presence predicate (shared). ONE place "are kids actually
 // coming?" is read from: the SAME two sources the food plan's portion skew uses —
 // a roster's per-guest kids counts (attendanceBand sums them for everyone who
@@ -670,6 +680,12 @@ export function eventHasKids(event) {
   if (rosterMode) {
     try { return Math.max(0, Math.round(Number(attendanceBand(event).kids) || 0)) > 0; } catch { return false; }
   }
+  // F7 reconcile (audit 2026-07-27): the host's ANSWERED "No kids attending"
+  // (dest_childcare) beats a stale manual kidsCount stepper — the two kids
+  // signals could openly disagree on the board. It never beats roster-summed
+  // kids above: guests who SAID they're bringing kids are data, not a guess.
+  const answered = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices.dest_childcare : null;
+  if (answered === 'No kids attending') return false;
   return Math.max(0, Math.round(Number(event.kidsCount) || 0)) > 0;
 }
 // Vendor categories, same shape as playbook.vendors entries (buildVendorPlan
@@ -2109,7 +2125,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
   // modifier (same architecture as kids/diet elsewhere in this file).
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
-    ...(event.isDestination ? DESTINATION_DECISIONS : []),
+    ...destinationDecisionsFor(event, pb),
     ...militaryDecisionsFor(event),
   ];
   const picks = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices : {};
@@ -2180,6 +2196,9 @@ export function playbookDecisionBoard(event, asOf, profile) {
       const answered = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices[d.standsDownWhen.id] : null;
       if (answered != null && (Array.isArray(d.standsDownWhen.in) ? d.standsDownWhen.in : []).includes(answered)) continue;
     }
+    // whenKids on a DECISION (F7): a childcare ask has no business on a board
+    // with no kids coming — same eventHasKids truth tasks already gate on.
+    if (d.whenKids && !eventHasKids(event)) continue;
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
     const daysOut = (dte !== null && offset !== null) ? dte + offset : null;
     const dueDate = decisionDueDate(dateSet ? event.date : null, offset);
@@ -2603,7 +2622,7 @@ export function playbookDecisionOptions(event, id) {
   // options the host could never actually pick from on the board.)
   const decisions = [
     ...((pb && Array.isArray(pb.decisions)) ? pb.decisions : []),
-    ...(event.isDestination ? DESTINATION_DECISIONS : []),
+    ...destinationDecisionsFor(event, pb),
     ...militaryDecisionsFor(event),
   ];
   const d = decisions.find((x) => x && x.id === id);
@@ -2611,10 +2630,33 @@ export function playbookDecisionOptions(event, id) {
   // the What-to-settle board (seating layout, hiring help — not just menu picks).
   // Inline settle IS the deepest link: zero navigation, resolves where it's read.
   if (!d || !Array.isArray(d.options) || d.options.length === 0) return null;
+  // optionGates (audit 2026-07-27, F8/C): per-option pruning a prior answer makes
+  // possible — keyed by option string like optionNotes. Forms: whenChoice
+  // (show only while), standsDownWhen (hide once ANSWERED mooting), minGuests
+  // (a guaranteed room block or a shuttle is absurd for a 6-person dinner).
+  // The host's OWN chosen option is never hidden — an answer outranks a gate.
+  const chosenPick = choicePickFor(event, d.id);
+  const gates = (d.optionGates && typeof d.optionGates === 'object') ? d.optionGates : null;
+  const gatedOptions = (Array.isArray(d.options) ? d.options : []).filter((o) => {
+    if (o === chosenPick) return true;
+    const g = gates && gates[o];
+    if (!g) return true;
+    if (g.whenChoice && !choiceShown(event, g.whenChoice)) return false;
+    if (g.standsDownWhen && g.standsDownWhen.id) {
+      const a = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices[g.standsDownWhen.id] : null;
+      if (a != null && (Array.isArray(g.standsDownWhen.in) ? g.standsDownWhen.in : []).includes(a)) return false;
+    }
+    if (g.minGuests) {
+      const n = Number(event.guestCount) || Number(event.guestEstimate) || 0;
+      if (n && n < g.minGuests) return false;
+    }
+    return true;
+  });
+  if (gatedOptions.length === 0) return null;
   return {
     id: d.id,
     label: d.label,
-    options: Array.isArray(d.options) ? d.options : [],
+    options: gatedOptions,
     why: d.why || '',
     chosen: choicePickFor(event, d.id),
     // AUTHORED per-option intelligence (optional, playbook-by-playbook): the

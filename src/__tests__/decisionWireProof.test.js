@@ -18,8 +18,9 @@ import {
   ALL_PLAYBOOKS, playbookFoodPlan, playbookTypicalGuests,
   foodApproach, hostUsesCaterer,
   FOOD_APPROACH_DECISIONS, CATERER_OPTION_RE,
-  playbookDecisionBoard,
+  playbookDecisionBoard, playbookDecisionOptions, eventHasKids, destinationDecisionsFor,
 } from '../lib/playbooks';
+import { buildVendorPlan } from '../lib/vendorPlan';
 
 // Component-level source decisions: they pick an INGREDIENT's source, not the
 // meal's owner — exempt from lever registration by design. Review before adding.
@@ -172,4 +173,67 @@ describe('4 · coherence gates — settled answers retire what they moot', () =>
       expect(boardIds(mkEvent(pb, { [gate.id]: keepValue })).has(d.id)).toBe(true);
     });
   }
+});
+
+// ── CONTRACT 5 · the deferred coherence set (audit F7/F8/F10/F14, fixed
+// 2026-07-27): the two kids signals reconcile, per-option gates are real, the
+// destination lodging twin is suppressed on travel-native playbooks, and the
+// destination vendor lines honor answered picks.
+describe('5 · deferred coherence — kids signal, option gates, twins, vendor lines', () => {
+  const reunionPb = ALL_PLAYBOOKS.find((p) => p.type === 'Reunion');
+  const retreatPb = ALL_PLAYBOOKS.find((p) => p.type === 'Team Retreat');
+  const destEvent = (foodChoices = {}, extra = {}) =>
+    ({ ...mkEvent(reunionPb, foodChoices), isDestination: true, ...extra });
+  const boardIds = (event) => {
+    const b = playbookDecisionBoard(event);
+    return new Set([...(b.open || []), ...(b.locked || []), ...(b.deferred || [])]
+      .map((r) => r && (r.id || r.decisionId)).filter(Boolean));
+  };
+
+  test('F7 · dest_childcare never asks a kid-free board; appears when kids exist', () => {
+    expect(boardIds(destEvent()).has('dest_childcare')).toBe(false);          // kidsCount 0
+    expect(boardIds(destEvent({}, { kidsCount: 3 })).has('dest_childcare')).toBe(true);
+  });
+
+  test('F7 · answered "No kids attending" beats a stale kidsCount; roster kids beat the answer', () => {
+    expect(eventHasKids({ kidsCount: 3, foodChoices: { dest_childcare: 'No kids attending' } })).toBe(false);
+    expect(eventHasKids({
+      guests: [{ name: 'A', rsvp: 'Yes', kids: 2 }],
+      foodChoices: { dest_childcare: 'No kids attending' },
+    })).toBe(true); // guests SAID kids are coming — data outranks the answer
+  });
+
+  test('F8/C · minGuests gate: the guaranteed room block is absurd for 8, real for 40', () => {
+    const small = playbookDecisionOptions(destEvent({}, { guestCount: 8, guestEstimate: 8 }), 'dest_lodging');
+    const big = playbookDecisionOptions(destEvent({}, { guestCount: 40, guestEstimate: 40 }), 'dest_lodging');
+    expect(small.options).not.toContain('A room block I guarantee fills');
+    expect(big.options).toContain('A room block I guarantee fills');
+  });
+
+  test('C · the host\'s OWN answer is never hidden by a gate', () => {
+    const ev = destEvent({ dest_transport: 'Yes, a shuttle or van' }, { guestCount: 6, guestEstimate: 6 });
+    expect(playbookDecisionOptions(ev, 'dest_transport').options).toContain('Yes, a shuttle or van');
+  });
+
+  test('F8 · retirement "Restaurant set menu" option exists only with the restaurant venue', () => {
+    const pb = ALL_PLAYBOOKS.find((p) => p.type === 'Retirement Party');
+    const home = playbookDecisionOptions(mkEvent(pb, { venue: 'Host home' }), 'format');
+    const rest = playbookDecisionOptions(mkEvent(pb, { venue: 'Restaurant private room' }), 'format');
+    expect(home.options).not.toContain('Restaurant set menu');
+    expect(rest.options).toContain('Restaurant set menu');
+  });
+
+  test('F10 · travel-native playbooks suppress the dest_lodging twin; generic types keep it', () => {
+    const retreat = { ...mkEvent(retreatPb), isDestination: true };
+    expect(destinationDecisionsFor(retreat, retreatPb).map((d) => d.id)).not.toContain('dest_lodging');
+    expect(destinationDecisionsFor(destEvent(), reunionPb).map((d) => d.id)).toContain('dest_lodging');
+    expect(boardIds(retreat).has('dest_lodging')).toBe(false);
+  });
+
+  test('F14 · destination vendor lines honor the answered picks (answered only)', () => {
+    const cats = (ev) => (buildVendorPlan(ev).categories || []).map((c) => c.category);
+    expect(cats(destEvent())).toEqual(expect.arrayContaining(['Transport', 'Lodging / Concierge']));
+    expect(cats(destEvent({ dest_transport: 'No, guests self-manage' }))).not.toContain('Transport');
+    expect(cats(destEvent({ dest_lodging: 'Guests book on their own' }))).not.toContain('Lodging / Concierge');
+  });
 });
