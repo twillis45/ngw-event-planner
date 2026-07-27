@@ -3479,13 +3479,19 @@ export default function HostShellV2() {
     .map(line => ({ line, hit: detectCoupleNames(line) }))
     .filter(x => x.hit);
   const addRoster = () => {
-    const names = rosterLines.flatMap(line => {
+    const entries = rosterLines.flatMap((line, li) => {
       const hit = splitCouples ? detectCoupleNames(line) : null;
-      return hit ? hit.names : [line];
+      // A split couple stays CONNECTED: both rows share a coupleId, so the
+      // roster shows "with Nicole", counts stay per-person, and seating can
+      // keep them together (host ask 2026-07-27).
+      if (!hit) return [{ name: line, coupleId: null }];
+      const cid = 'cp-' + Date.now().toString(36) + '-' + li; // ONE id for the pair
+      return hit.names.map((name) => ({ name, coupleId: cid }));
     });
-    if (!names.length) return;
+    if (!entries.length) return;
+    const names = entries.map((e2) => e2.name);
     const existing = event.guests || [];
-    const add = names.map((name, i) => ({ id: 'g-' + Date.now() + '-' + i, name, rsvp: '' }));
+    const add = entries.map((e2, i) => ({ id: 'g-' + Date.now() + '-' + i, name: e2.name, rsvp: '', ...(e2.coupleId ? { coupleId: e2.coupleId } : {}) }));
     const splitNote = splitCouples && rosterCouples.length
       ? ' (' + rosterCouples.length + (rosterCouples.length === 1 ? ' couple' : ' couples') + ' split so everyone gets counted)' : '';
     patchEvent({ guests: [...existing, ...add] },
@@ -12724,10 +12730,14 @@ export default function HostShellV2() {
                             <span style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {g.name || 'Guest ' + (i + 1)}
                               {String(g.plusOne || '').trim() ? <span className="of"> +1 {g.plusOne}</span> : null}
+                              {g.coupleId ? (() => {
+                                const p = (event.guests || []).find((x) => x && x !== g && x.coupleId === g.coupleId);
+                                return p ? <span className="of"> · with {String(p.name || '').split(' ')[0]}</span> : null;
+                              })() : null}
                             </span>
                             {/* Audit #8: meal shown on the collapsed row (short form) so
                                 the whole roster's meals read at a glance, not one-by-one. */}
-                            {(Number(g.kids) > 0 || (String(g.meal || '').trim() && g.meal !== '—') || String(g.needs || '').trim()) ? (
+                            {(Number(g.kids) > 0 || (String(g.meal || '').trim() && g.meal !== '—') || String(g.needs || '').trim() || (Array.isArray(g.allergens) && g.allergens.length) || (Array.isArray(g.diets) && g.diets.length)) ? (
                               <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
                                 {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
                                 {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
@@ -12735,6 +12745,12 @@ export default function HostShellV2() {
                                     the guest, it doesn't warn about a gap — neutral .tag.plan,
                                     same treatment as the RSVP tag on this row. */}
                                 {String(g.needs || '').trim() ? <span className="tag plan">{g.needs}</span> : null}
+                                {/* Structured dietary from the invite (allergens/diets arrays)
+                                    now reach the LIST itself (host ask 2026-07-27) — deduped
+                                    against the free-text needs tag so nothing double-chips. */}
+                                {[...(Array.isArray(g.allergens) ? g.allergens : []), ...(Array.isArray(g.diets) ? g.diets : [])]
+                                  .filter((x) => x && !String(g.needs || '').toLowerCase().includes(String(x).toLowerCase()))
+                                  .map((x) => <span key={x} className="tag plan">{x}</span>)}
                               </span>
                             ) : null}
                           </button>

@@ -237,3 +237,27 @@ describe('time of day — the coarse word the host said (2026-07-14)', () => {
     expect(p('crab feast for 20').timeOfDay).toBeNull();
   });
 });
+
+
+describe('vacation areas (host ask 2026-07-27)', () => {
+  const opts = { now: new Date('2026-05-01T10:00:00') };
+  test('"Deep Creek Lake" reads as a destination with the honest hub town', () => {
+    const p = parseSmartEventText('Family reunion at Deep Creek Lake June 12-14 for 40 people', opts);
+    expect(p.isDestination).toBe(true);
+    expect(p.venue).toBe('Deep Creek Lake');
+    expect(p.venueCity).toBe('McHenry');
+    expect(p.venueState).toBe('MD');
+    expect(p.vacationArea).toBe('deep-creek');
+    expect(p.endDate).toBe('2026-06-14'); // the span still parses alongside
+  });
+  test('an explicit City, ST still wins over the area hub', () => {
+    const p = parseSmartEventText('destination party at Deep Creek Lake in Oakland, Maryland', opts);
+    expect(p.venueCity).toBe('Oakland');
+    expect(p.venueState).toBe('MD');
+  });
+  test('non-area text is untouched', () => {
+    const p = parseSmartEventText('Birthday June 12 for 20 people', opts);
+    expect(p.vacationArea).toBe(null);
+    expect(p.isDestination).toBe(false);
+  });
+});

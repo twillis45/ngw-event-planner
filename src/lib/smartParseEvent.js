@@ -11,6 +11,7 @@
 // than guessing a specific day and silently committing it.
 
 import { ALL_PLAYBOOKS } from './playbooks';
+import { matchVacationArea } from './vacationAreas';
 import { resolveCanonicalType } from './eventTaxonomyAdapter';
 import { parseVenueLocation } from './cityText';
 
@@ -207,7 +208,12 @@ export function parseSmartEventText(text, opts = {}) {
   // (the host confirms/edits it via a real toggle, same "suggest don't
   // invent" pattern as the guest-count typical and the month+year date
   // options) never silently committed as a fact from wording alone.
-  const isDestination = /\bdestination\b|\bfly (?:in|out)\b|\bout[- ]of[- ]town\b/i.test(t) || !!loc;
+  // Vacation AREAS (host ask 2026-07-27): "Deep Creek Lake" is not a City, ST —
+  // the strict gate is right to reject it — but it IS a destination with a
+  // recognizable name and a real hub town. The curated registry supplies all
+  // three facts honestly; the hub town (not the area) anchors weather/maps.
+  const area = matchVacationArea(t);
+  const isDestination = /\bdestination\b|\bfly (?:in|out)\b|\bout[- ]of[- ]town\b/i.test(t) || !!loc || !!area;
 
   // TIME OF DAY — the coarse word the host actually said. This used to be dropped entirely,
   // so "cookout in the afternoon" created an event with NO time signal at all, and the
@@ -259,8 +265,9 @@ export function parseSmartEventText(text, opts = {}) {
     type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
-    venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : ''),
-    venueCity: loc ? (loc.zip || loc.city) : null,
-    venueState: loc ? (loc.state || null) : null,
+    venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
+    venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : null),
+    venueState: loc ? (loc.state || null) : (area ? area.state : null),
+    vacationArea: area ? area.id : null,
   };
 }
