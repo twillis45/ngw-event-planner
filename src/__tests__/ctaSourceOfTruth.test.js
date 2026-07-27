@@ -17,6 +17,7 @@
 
 import { selectEventNextAction } from '../CommandCenter';
 import { milestoneActionRoute } from '../CommandCenter';
+import { checklistRouteFor } from '../lib/taskRoute';
 import { deriveEventPhaseProgress } from '../lib/phaseProgress';
 import { buildBudgetRecoveryPlan } from '../lib/budgetRecovery';
 import { buildCrabPlan } from '../lib/crabPlan';
@@ -186,6 +187,16 @@ function validateRoute(route, ev, producer) {
     const ok = (ev.timeline || []).some((t) => t && t.id === route.timelineId);
     if (!ok) problems.push(`${producer}: timelineId "${route.timelineId}" not on this event's timeline`);
   }
+  // Field-drift lock (routing audit 2026-07-27): resolveRoute and routeUpNext
+  // read `taskId`; a Timeline route carrying only `timelineId` passes the sweep
+  // yet drops the row focus at the executor. Timeline routes must carry taskId.
+  if (route.tab === 'Timeline' && route.timelineId && !route.taskId) {
+    problems.push(`${producer}: Timeline route carries timelineId but not taskId — the executor reads taskId and drops the focus`);
+  }
+  if (route.taskId && route.taskId !== 'musthave' && route.taskId !== '__compressed__') {
+    const ok = (ev.timeline || []).some((t) => t && t.id === route.taskId);
+    if (!ok) problems.push(`${producer}: taskId "${route.taskId}" not on this event's timeline`);
+  }
   return problems;
 }
 const safe = (fn) => { try { return fn(); } catch { return null; } };
@@ -204,6 +215,10 @@ function sweep(ev) {
   (ev.timeline || []).forEach((t) => {
     if (!t || t.done) return;
     add(safe(() => milestoneActionRoute(t.task, ev, t.id)), `milestone("${String(t.task).slice(0, 24)}…")`);
+    // The V2 checklist CTA producer rides the same sweep now (it used to be an
+    // in-component keyword router the audit could not see — audit R2).
+    const c = safe(() => checklistRouteFor(t.task, { week: t.week, category: t.category, taskId: t.id }, ev));
+    if (c && c.route && !c.route.stage) add(c.route, `checklist("${String(t.task).slice(0, 24)}…")`);
   });
 
   const rec = safe(() => buildBudgetRecoveryPlan(ev));

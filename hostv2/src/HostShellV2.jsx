@@ -130,6 +130,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
+import { checklistRouteFor } from '@app/lib/taskRoute';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -1803,47 +1804,14 @@ export default function HostShellV2() {
   // honest keyword approach as routeUpNext: a step with no clear home returns
   // null and gets NO button — never a dead CTA. Order matters: the more specific
   // verb wins ("spread the word" is guest comms, not "the spread" of food).
+  // Thin adapter over lib/taskRoute.checklistRouteFor (routing audit
+  // 2026-07-27): the host-tuned labels live in lib now, every destination is a
+  // resolver route (row-level vendorId included), and ctaSourceOfTruth sweeps
+  // the producer — this shell only executes routeSheet.
   const checklistActionFor = (task, meta = {}) => {
-    const t = String(task || '').toLowerCase();
-    const wk = String(meta.week || '').toLowerCase();
-    const dayOf = meta.category === 'event-day' || /day of\b|day-of/.test(wk);
-    // Day-of run of show — setup, serving, the pit, the pack-down. (\bserved?\b
-    // is word-bounded so it never fires on "reserve".)
-    if (dayOf || /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t))
-      return { label: 'See the day plan', go: () => { setSheet(null); setStage('day'); } };
-    // Day-BEFORE kitchen prep (marinate / cook overnight / make-ahead) is real-
-    // world execution with no app surface to open — honest check-off, no CTA.
-    if (/\b(marinate|season the|slow-cook|cook the|make-ahead|prep)\b/.test(t))
-      return null;
-    // Buying / groceries / supplies → the shopping list
-    if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
-      return { label: 'Open the list', go: () => setSheet({ kind: 'food' }) };
-    // Tribute speakers / speeches / slideshow → the tribute decision, NOT a vendor.
-    // "Line them up for the speakers" is arranging who speaks, not hiring anyone —
-    // it was falling into the hire match below on the bare word "speaker" (host
-    // 2026-07-22). An audio "speaker" with no tribute cue still routes to Vendors.
-    if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t))
-      return { label: 'Plan the tribute', go: () => setSheet({ kind: 'decisions', focus: 'tribute' }) };
-    // Hired help — DJ, band, photographer, caterer, rentals → people you're hiring
-    if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
-      return { label: 'Line them up', go: () => setSheet({ kind: 'vendors' }) };
-    // Weather / forecast / rain → the rain plan
-    if (/\b(forecast|weather|rain plan|shade\/rain)\b/.test(t))
-      return { label: 'Plan for weather', go: () => setSheet({ kind: 'rain' }) };
-    // Guest comms / headcount / who's coming → the guest list (before food, so
-    // "spread the word" doesn't get caught by the food "spread" match)
-    if (/\b(spread the word|group text|flyer|invite|rsvp|headcount|who is coming|firm the (head)?count)\b/.test(t))
-      return { label: 'Open guests', go: () => setSheet({ kind: 'guests' }) };
-    // The menu / spread / dishes / who's bringing what → the food plan
-    if (/\b(spread|menu|dish(es)?|mac|potato salad|beans|greens|cornbread|slaw|dessert|meat|ribs|assign each|bringing what|claimed|potluck)\b/.test(t))
-      return { label: 'Map the spread', go: () => setSheet({ kind: 'food' }) };
-    // Physical setup gear — canopies, chairs, tables, seating, shade → space
-    if (/\b(canop|chairs|tables?|seating|shade|spades table|tent)\b/.test(t))
-      return { label: 'Open the space list', go: () => setSheet({ kind: 'space' }) };
-    // Naming a lead / helper / backup person → the helpers on the space sheet
-    if (/\b(grill master|name the|point person|in charge|backup|helper)\b/.test(t))
-      return { label: 'Assign it', go: () => setSheet({ kind: 'space' }) };
-    return null;
+    const hit = (() => { try { return checklistRouteFor(task, meta, event); } catch { return null; } })();
+    if (!hit) return null;
+    return { label: hit.label, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
   };
   // Split a run-on step into a bold lead action + the detail that follows the
   // first separator, so the row is scannable ("Map the spread" over the list of
@@ -7993,6 +7961,32 @@ export default function HostShellV2() {
                       </div>
                     );
                   }
+                  // Foundation rows with a REAL in-place editor settle right here —
+                  // "Lock your guest count" gets the count stepper + "Lock N in"
+                  // instead of detouring to the Guests sheet (routing audit R1,
+                  // 2026-07-27; same wiredKind→renderEditor pair the hero uses).
+                  const inlineKind = (() => { try { return wiredKind(r); } catch { return null; } })();
+                  if (inlineKind) {
+                    return (
+                      <div key={r.id || i} style={{ ...heartStyle }}>
+                        <div className={'frow' + (focused ? ' rowfocus' : '')} style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both`, width: '100%' }}
+                          ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
+                          <span className="f-main">
+                            <span className="f-name">{r.label}
+                              {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                              {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
+                            </span>
+                            {r.because && <span className="v-meta">{r.because}</span>}
+                            {renderEditor(r)}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '6px 2px 0' }}>
+                          {meta || <span style={{ flex: 1 }} />}
+                          {pinBtn}
+                        </div>
+                      </div>
+                    );
+                  }
                   // Routed / prompt row: the interactive element can't nest the pin
                   // button, so wrap it and hang meta + pin as siblings.
                   return (
@@ -8071,7 +8065,11 @@ export default function HostShellV2() {
                       // directly so that CTA is honest, not a dead landing.
                       const opts = (() => { try { return playbookDecisionOptions(event, r.id); } catch { return null; } })();
                       const canChange = !!(opts && opts.options.length);
-                      const changeOpen = canChange && (choiceOpen === 'dec-' + r.id || (sheet.focus && sheet.focus === r.id));
+                      // Options-less settled foundations ("Headcount") used to render
+                      // as a dead line (audit R1) — the same inline editor now sits
+                      // behind their "change".
+                      const editorKind = !canChange ? (() => { try { return wiredKind(r); } catch { return null; } })() : null;
+                      const changeOpen = (canChange || editorKind) && (choiceOpen === 'dec-' + r.id || (sheet.focus && sheet.focus === r.id));
                       return (
                         // A routed focus can point at a SETTLED call too (the
                         // ground sheet's "Change the call") — same rowfocus
@@ -8082,7 +8080,7 @@ export default function HostShellV2() {
                             <span>{r.label}</span>
                             <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of">{r.because}</span>
-                              {canChange && !changeOpen && (
+                              {(canChange || editorKind) && !changeOpen && (
                                 <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>change</button>
                               )}
                               {!why && whyOpen !== r.id && (
@@ -8090,13 +8088,16 @@ export default function HostShellV2() {
                               )}
                             </span>
                           </div>
-                          {changeOpen && (
+                          {changeOpen && canChange && (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '2px 0 var(--sp-2)' }}>
                               {opts.options.map(opt => (
                                 <button key={opt} className="chip" aria-pressed={opts.chosen === opt}
                                   onClick={() => settleDecision(r, opt)}>{opt}</button>
                               ))}
                             </div>
+                          )}
+                          {changeOpen && !canChange && editorKind && (
+                            <div style={{ margin: '2px 0 var(--sp-2)' }}>{renderEditor(r)}</div>
                           )}
                           {why && <p className="grounding" style={{ margin: '0 0 6px' }}>Your call: “{why}”</p>}
                           {whyOpen === r.id && (

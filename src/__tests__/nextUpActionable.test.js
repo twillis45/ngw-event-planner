@@ -35,7 +35,7 @@ test('food/shopping label routes to the food plan anchor', () => {
 
 test('non-domain label falls back to the timeline anchored to the milestone — never a dead end', () => {
   expect(milestoneActionRoute('Charge phones and speakers', ev, 't5'))
-    .toEqual({ tab: 'Timeline', timelineId: 't5' });
+    .toEqual({ tab: 'Timeline', taskId: 't5', timelineId: 't5' }); // taskId rides too — the executor reads it (drift fix 2026-07-27)
 });
 
 test('vendor route with no vendors lands on the add-vendor anchor', () => {

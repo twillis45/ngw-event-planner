@@ -3111,28 +3111,11 @@ function QuestionRow({ q, onOpen, isFirst }) {
 // caterer … for your guest count"), so the domain whose keyword appears FIRST
 // owns the route. Shared by the Tier-7 next-step hero AND every Next Up row —
 // a visible milestone must never be a dead label (deep-link doctrine).
-export function milestoneActionRoute(label, event, timelineId) {
-  const s = String(label || '').toLowerCase();
-  const DOMAINS = [
-    { re: /guest|invite|rsvp|head\s?count|\bseat\b/, route: () => ({ tab: 'Guests', focusField: 'guests-entry' }) },
-    { re: /budget|deposit|payment|\bpay\b|\bcost|spend|quote|invoice/, route: () => ({ tab: 'Budget', focusField: 'hsp-budget' }) },
-    { re: /vendor|cater|venue|photograph|\bdj\b|florist|rental|baker|bartend|\bbook\b/, route: () => {
-      // First-undone-item rule: the first vendor row still needing the host,
-      // else the first row, else the add button.
-      const vs = ((event && event.vendors) || []).filter(v => v && String(v.name || '').trim());
-      // POP-1C: isVendorBooked is the canonical vendor-status reader (workstreams.js) —
-      // the inline regex here used to miss 'Deposit Paid' and 'Contracted'.
-      const undone = vs.find(v => !isVendorBooked(v)
-        || (Number(v.depositAmt) > 0 && !v.depositPaid) || v.coiStatus === 'required');
-      const targetV = undone || vs[0];
-      return targetV ? { tab: 'Vendors', vendorId: targetV.id } : { tab: 'Vendors', focusField: 'vendor-add' };
-    } },
-    { re: /food|menu|shop|grocer|drink|supplies|seating/, route: () => ({ tab: 'Planning', focusField: 'food-plan' }) },
-  ];
-  const hits = DOMAINS.map(d => ({ d, at: s.search(d.re) })).filter(x => x.at >= 0).sort((a, b) => a.at - b.at);
-  if (hits.length) return hits[0].d.route();
-  return { tab: 'Timeline', timelineId };
-}
+// Moved to lib/taskRoute (routing audit 2026-07-27) so the V2 shell shares the
+// canonical producer without dragging this planner bundle along. Re-exported
+// here so every existing import keeps working.
+export { milestoneActionRoute } from './lib/taskRoute';
+const _milestoneActionRouteMoved = true; void _milestoneActionRouteMoved;
 
 function TimelineRow({ t, isFirst, onOpen = null }) {
   // Deep-link doctrine: a Next Up row is never a dead label — it routes to the
