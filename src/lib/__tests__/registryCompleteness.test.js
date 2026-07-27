@@ -77,7 +77,11 @@ describe('registry completeness: qidx attention derives from the raise ledger', 
     const occurrences = [...region.matchAll(/attn:[^\n]*/g)].map((m) => m[0]);
     expect(occurrences.length).toBeGreaterThan(0);
 
-    const ledgerRead = /^attn:\s*\(\s*raised\[\s*['"][a-z-]+['"]\s*\]\s*\|\|\s*0\s*\)\s*>\s*0/;
+    // One ledger read, or a SUM of ledger reads — two surfaces may share one
+    // row (money-dates rides the lodging row: the dates live on that sheet).
+    // Every operand must still be a raised['<id>'] read; a hand-wired boolean
+    // still fails.
+    const ledgerRead = /^attn:\s*\(\s*raised\[\s*['"][a-z-]+['"]\s*\]\s*\|\|\s*0\s*\)(\s*\+\s*\(\s*raised\[\s*['"][a-z-]+['"]\s*\]\s*\|\|\s*0\s*\))*\s*>\s*0/;
     const exceptions = [];
     const violations = [];
     for (const line of occurrences) {
