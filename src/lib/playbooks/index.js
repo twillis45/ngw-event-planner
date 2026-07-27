@@ -563,9 +563,13 @@ export function resolveAnsweredCopy(base, copyByAnswer, event) {
 // Order = priority when several coexist: dedicated food decisions outrank
 // format/venue framings.
 export const FOOD_APPROACH_DECISIONS = [
-  'sourcing', 'help', 'food_style', 'menu',
+  // 'help' (a STAFFING decision that merely mentions caterers) must rank AFTER
+  // every dedicated food decision: with the old order, help='Fully DIY' silently
+  // overrode food_style='Caterer', flipping usesCaterer false and re-adding the
+  // food buys the caterer covers (audit F9 — a live-money bug, not board copy).
+  'sourcing', 'food_style', 'menu',
   'food_source', 'food_menu', 'food_format', 'food', 'food-model', 'food_model',
-  'grill_master', 'cook', 'format', 'venue',
+  'help', 'grill_master', 'cook', 'format', 'venue',
 ];
 // "Order in" here means the MEAL arrives made (ordered-in trays, takeout) — a
 // bare "Order from a market" (buying raw ingredients) must NOT match.
@@ -694,7 +698,7 @@ const DESTINATION_TASKS = [
   // unanswered question never claims a health need). No medical advice beyond
   // "worth a call to their doctor."
   { id: 'dest_t_health', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
-  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d' },
+  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
   { id: 'dest_t_info', label: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates', when: 'T-30d' },
   // DESTINATION-4: kids get a real role in the adult event — not the center of
   // it, not parked away from it (Priya Parker's framing). Gated on kids actually
@@ -2159,6 +2163,23 @@ export function playbookDecisionBoard(event, asOf, profile) {
   };
   for (const d of decisions) {
     if (!d || !d.label) continue;
+    // ── Coherence gate (audit 2026-07-27): the board finally speaks the same
+    // gating vocabulary tasks and purchases always have. Two forms:
+    //   whenChoice {id,in}      — show only while the referenced pick (answered
+    //                             OR authored default, same as choiceShown
+    //                             everywhere else) is in `in`.
+    //   standsDownWhen {id,in}  — the inverse blocks[] never had: RETIRE this
+    //                             decision once the referenced decision is
+    //                             ANSWERED with a pick in `in`. Answered only —
+    //                             a default is an assumption, and suppressing a
+    //                             real ask on an assumption would hide work.
+    // Before this gate, settling "caterer" left potluck-coordination, menus,
+    // and pot-sizing decisions live on the board (findings F1–F6).
+    if (d.whenChoice && !choiceShown(event, d.whenChoice)) continue;
+    if (d.standsDownWhen && d.standsDownWhen.id) {
+      const answered = (event.foodChoices && typeof event.foodChoices === 'object') ? event.foodChoices[d.standsDownWhen.id] : null;
+      if (answered != null && (Array.isArray(d.standsDownWhen.in) ? d.standsDownWhen.in : []).includes(answered)) continue;
+    }
     const offset = buyOffsetDays(d.when); // 'T-21d' → -21 ; null when no `when`
     const daysOut = (dte !== null && offset !== null) ? dte + offset : null;
     const dueDate = decisionDueDate(dateSet ? event.date : null, offset);

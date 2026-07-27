@@ -18,6 +18,7 @@ import {
   ALL_PLAYBOOKS, playbookFoodPlan, playbookTypicalGuests,
   foodApproach, hostUsesCaterer,
   FOOD_APPROACH_DECISIONS, CATERER_OPTION_RE,
+  playbookDecisionBoard,
 } from '../lib/playbooks';
 
 // Component-level source decisions: they pick an INGREDIENT's source, not the
@@ -125,5 +126,50 @@ describe('3 · declared effect is real — costFactors/affects must move the pla
         expect(prints.size).toBeGreaterThan(1);
       });
     }
+  }
+});
+
+// ── CONTRACT 4 · coherence gates — a settled answer retires what it moots ─────
+// (audit 2026-07-27). Two gate forms on DECISIONS, same vocabulary as
+// tasks/purchases: whenChoice {id,in} shows only while the referenced pick is
+// in `in`; standsDownWhen {id,in} retires the decision once the referenced
+// decision is ANSWERED with a pick in `in`. This contract proves every
+// authored gate is REAL: the parent exists, its option strings are not
+// phantoms, the stand-down answer removes the child from the board, and a
+// keep answer retains it. Before this class existed, settling "caterer" left
+// potluck-coordination/menu/pot-size asks live on the board (F1–F6).
+describe('4 · coherence gates — settled answers retire what they moot', () => {
+  const boardIds = (event) => {
+    const b = playbookDecisionBoard(event);
+    return new Set([...(b.open || []), ...(b.locked || []), ...(b.deferred || [])]
+      .map((r) => r && (r.id || r.decisionId)).filter(Boolean));
+  };
+  const gated = [];
+  for (const pb of playbooksWithDecisions) {
+    for (const d of pb.decisions) {
+      if (d && (d.standsDownWhen || d.whenChoice)) {
+        gated.push({ pb, d, gate: d.standsDownWhen || d.whenChoice, kind: d.standsDownWhen ? 'standsDownWhen' : 'whenChoice' });
+      }
+    }
+  }
+
+  test('the class has members — this contract is not vacuous', () => {
+    expect(gated.length).toBeGreaterThanOrEqual(9);
+  });
+
+  for (const { pb, d, gate, kind } of gated) {
+    test(`${pb.type} · ${d.id} [${kind} → ${gate.id}]`, () => {
+      const parent = pb.decisions.find((x) => x && x.id === gate.id);
+      expect(parent).toBeTruthy();                       // real sibling, no dangling gate
+      const inList = Array.isArray(gate.in) ? gate.in : [];
+      expect(inList.length).toBeGreaterThan(0);
+      for (const v of inList) expect(parent.options).toContain(v); // no phantom option strings
+      const downValue = kind === 'standsDownWhen' ? inList[0] : parent.options.find((o) => !inList.includes(o));
+      const keepValue = kind === 'standsDownWhen' ? parent.options.find((o) => !inList.includes(o)) : inList[0];
+      expect(downValue).toBeTruthy();
+      expect(keepValue).toBeTruthy();
+      expect(boardIds(mkEvent(pb, { [gate.id]: downValue })).has(d.id)).toBe(false);
+      expect(boardIds(mkEvent(pb, { [gate.id]: keepValue })).has(d.id)).toBe(true);
+    });
   }
 });
