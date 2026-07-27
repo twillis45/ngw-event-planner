@@ -133,6 +133,17 @@ export function confirmedGuests(guests) {
 }
 
 /**
+ * Chairs a guest row actually needs: the guest plus a filled plusOne. A couple
+ * stays ONE assignment unit (they sit together), but they are TWO people — one
+ * row = one chair undercounted every couple at every table until the 2026-07-27
+ * audit (engine parity with attendanceBand/crabPlan).
+ */
+export function seatsFor(g) {
+  return 1 + (String((g && g.plusOne) || '').trim() ? 1 : 0);
+}
+const seatSum = (rows) => rows.reduce((s, g) => s + seatsFor(g), 0);
+
+/**
  * Name-search filter for guest rows (legacy inline search). Empty query
  * passes everything; otherwise case-insensitive substring on name.
  * @param {Array} list guest objects
@@ -165,8 +176,12 @@ export function dietChipsFor(confirmed) {
   let veg = 0, gf = 0, kids = 0, wheel = 0;
   for (const g of confirmed) {
     // Read the guest's plate AND their structured diet array (redesigned invite),
-    // so a veg/GF pick counts no matter where it was recorded.
-    const dietHay = [String((g && g.meal) || ''), ...(Array.isArray(g && g.diets) ? g.diets : [])].join(' ');
+    // so a veg/GF pick counts no matter where it was recorded. The plus-one's
+    // recorded plate/needs ride the same row (they have no row of their own).
+    const dietHay = [String((g && g.meal) || ''),
+      String((g && g.plusOne) ? (g.plusOneMeal || '') : ''),
+      String((g && g.plusOne) ? (g.plusOneNeeds || '') : ''),
+      ...(Array.isArray(g && g.diets) ? g.diets : [])].join(' ');
     if (/veg(etarian|an)?/i.test(dietHay)) veg++;
     if (/gluten|^gf$/i.test(dietHay)) gf++;
     if (g && g.kids) kids += Number(g.kids) || 0;
@@ -227,15 +242,24 @@ export function buildSeatingPlan(event) {
   const tableNames = Array.isArray(ev.tableNames) ? ev.tableNames : [];
   const confirmed = confirmedGuests(ev.guests);
   const unassigned = confirmed.filter(g => !g.table);
-  const seated = confirmed.length - unassigned.length;
+  // People, not rows: a row with a filled plusOne is two chairs (seatsFor).
+  const confirmedSeats = seatSum(confirmed);
+  const unassignedSeats = seatSum(unassigned);
+  const seated = confirmedSeats - unassignedSeats;
 
   const tables = Array.from({ length: tableCount }, (_, i) => {
     const number = i + 1;
     const guests = confirmed.filter(g => g.table === number); // strict ===, as legacy
-    const meals = guests.reduce((acc, g) => { if (g.meal !== '—') acc[g.meal] = (acc[g.meal] || 0) + 1; return acc; }, {});
+    const meals = guests.reduce((acc, g) => {
+      if (g.meal !== '—') acc[g.meal] = (acc[g.meal] || 0) + 1;
+      // The plus-one's plate counts at this table too (their own meal when
+      // recorded; never invented).
+      if (String(g.plusOne || '').trim() && g.plusOneMeal && g.plusOneMeal !== '—') acc[g.plusOneMeal] = (acc[g.plusOneMeal] || 0) + 1;
+      return acc;
+    }, {});
     const kids = guests.reduce((sum, g) => sum + (g.kids || 0), 0);
     const name = tableNames[i] || null;
-    return { number, name, label: name || `Table ${number}`, guests, count: guests.length, kids, meals };
+    return { number, name, label: name || `Table ${number}`, guests, count: seatSum(guests), kids, meals };
   });
 
   // Legacy evenness: false until someone is seated; a single occupied table is
@@ -260,13 +284,13 @@ export function buildSeatingPlan(event) {
     // actionable instead of a dead tally.
     accessibleSeats: accessibleSeatNames(confirmed),
     totals: {
-      confirmed: confirmed.length,
+      confirmed: confirmedSeats, // chairs needed, not rows — a couple is two
       seated,
-      unassigned: unassigned.length,
+      unassigned: unassignedSeats,
       tableCount,
-      avgPerTable: confirmed.length ? Math.round(confirmed.length / tableCount) : null,
+      avgPerTable: confirmedSeats ? Math.round(confirmedSeats / tableCount) : null,
       tablesEven,
-      allSeated: confirmed.length > 0 && unassigned.length === 0,
+      allSeated: confirmedSeats > 0 && unassignedSeats === 0,
     },
   };
 }

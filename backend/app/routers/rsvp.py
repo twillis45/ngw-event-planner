@@ -78,7 +78,12 @@ PUBLIC_EVENT_FIELDS = (
     "name", "type", "date", "endDate", "startTime", "timeOfDay", "endTime",
     "venue", "venueAddress", "venueCity", "venueState", "address",
     "inviteStyle", "hostNames", "rsvpCode",
-    "dressCode", "parking", "bringNote", "hostContact",
+    # parkingNotes: the field hosts ACTUALLY write (both editors). The bare
+    # "parking" alias below was whitelisted first but has no writer — guests
+    # never saw parking notes on remote invites until parkingNotes joined
+    # (venue tokenization audit, 2026-07-27). Both stay: the client reads
+    # parkingNotes || parking.
+    "dressCode", "parking", "parkingNotes", "bringNote", "hostContact",
     # Recap keepsake — host-authored content the host chooses to publish to the
     # shared invite link (a note + a photo-album URL). Both are host-facing-public
     # by intent, not PII, so they belong in the whitelist for the post-event recap.

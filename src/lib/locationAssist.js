@@ -22,12 +22,14 @@ const has = (v) => !!String(v || '').trim();
 // a city (the pollution incident left venue strings in city fields).
 let _isPlausibleCity = (v) => has(v);
 try { _isPlausibleCity = require('./cityText').isPlausibleCityText; } catch { /* keep permissive */ }
+import { venueFor } from './venueFor';
 
 export function eventLocationStatus(event) {
-  const ev = event || {};
-  if (has(ev.venueAddress)) return 'full_address';
-  if (has(ev.venue)) return 'venue_only';
-  if ((has(ev.venueCity) && _isPlausibleCity(ev.venueCity)) || (has(ev.city) && _isPlausibleCity(ev.city))) return 'city_only';
+  // ONE venue reader (venueFor): address/name/city all pre-gated there.
+  const v = venueFor(event || {});
+  if (v.address) return 'full_address';
+  if (v.name) return 'venue_only';
+  if (v.city) return 'city_only';
   return 'missing';
 }
 

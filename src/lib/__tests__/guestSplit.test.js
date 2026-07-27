@@ -49,6 +49,25 @@ describe('merge guard — couple strings never partial-match a single row', () =
   });
 });
 
+describe('seating parity — a filled plusOne is a chair', () => {
+  const { buildSeatingPlan, seatsFor } = require('../seatingPlan');
+  test('couple row = one unit, two chairs; totals count people', () => {
+    const plan = buildSeatingPlan({
+      tables: 2,
+      guests: [
+        { id: 'g1', name: 'Ryan Smith', rsvp: 'Yes', plusOne: 'Nicole Smith', plusOneMeal: 'Vegetarian', table: 1 },
+        { id: 'g2', name: 'Uncle Joe', rsvp: 'Yes' },
+      ],
+    });
+    expect(seatsFor({ plusOne: 'Nicole' })).toBe(2);
+    expect(plan.totals.confirmed).toBe(3);      // people, not rows
+    expect(plan.totals.seated).toBe(2);         // Ryan + Nicole at table 1
+    expect(plan.totals.unassigned).toBe(1);     // Joe
+    expect(plan.tables[0].count).toBe(2);       // two chairs at table 1
+    expect(plan.tables[0].meals.Vegetarian).toBe(1); // Nicole's plate counted
+  });
+});
+
 describe('engine parity — a filled plusOne is a person', () => {
   const ev = {
     guests: [

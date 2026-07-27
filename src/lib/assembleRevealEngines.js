@@ -8,6 +8,7 @@ import { playbookFoodPlan, effectiveRos } from './playbooks';
 // right side still carried the wall clock, so for most of every day it reported one day
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
 import { daysUntil as daysToEvent } from './dates';
+import { venueFor } from './venueFor';
 
 // ─── Card Contract ─────────────────────────────────────────────────────────
 // Every stage (identity, timeline, food, risks, blockers) uses this shape:
@@ -97,9 +98,11 @@ function deriveDecisionBlockers(event, eventIdentity) {
   // permanent unresolvable blocker. At-home resolves on the at-home path's own
   // required field (city). Every other venue model (venueKind 'venue'/unset,
   // planner events) still requires event.venue exactly as before.
-  const venueResolved = (event.venueKind === 'home')
-    ? !!String(event.venueCity || '').trim()
-    : !!(event.venue && String(event.venue).trim());
+  // ONE venue reader (venueFor): home needs a REAL city (the CITY-LEAK gate
+  // rides inside — a polluted venueCity no longer fakes a resolved venue);
+  // everything else needs a name.
+  const vf = venueFor(event);
+  const venueResolved = vf.isHome ? !vf.needsCityForWeather : !!vf.name;
   if (!venueResolved) {
     blockers.push({
       type: 'venue-selection',

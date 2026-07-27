@@ -66,6 +66,7 @@ import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timing
 import { isGroundedCulture } from '../knowledge/culturalContext';
 import { militaryDecisionsFor, isGroundedMilitary } from '../knowledge/militaryRetirement';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
+import { venueFor } from '../venueFor';
 import { effectiveAccessibility, isGroundedAccessibility } from '../knowledge/accessibilityContext';
 import { isGroundedCost } from '../knowledge/costProvenance';
 import { isGroundedItemQty } from '../knowledge/quantityProvenance';
@@ -2044,7 +2045,9 @@ export function playbookDecisionBoard(event, asOf, profile) {
   const TIME_CRITICAL_BUMP = 1.5; // bounded — never crosses a status tier (gap is 100)
 
   const dateSet = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
-  const hasVenue = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
+  // venueFor: home-with-city counts as venued (audit divergence #2 — the
+  // "Lock the venue" foundation task was raised at hosts hosting at home).
+  const hasVenue = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();
   const gc = guestCountResolved(event);
   const band = attendanceBand(event);
   const di = dietaryResolved(event);

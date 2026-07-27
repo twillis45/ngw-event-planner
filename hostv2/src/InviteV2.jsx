@@ -20,6 +20,7 @@ import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 // the host's call/text/email affordances.
 import { formatPhoneUS, isIncompletePhone, isValidPhone, isMalformedEmail, normalizePhone } from '@app/lib/contactFormat';
 import { detectCoupleNames } from '@app/lib/guestSplit';
+import { venueFor } from '@app/lib/venueFor';
 // GUEST PAYLOAD: this page used buildExperienceContext for exactly ONE thing —
 // ctx.eventIdentity, to choose a headline. But experienceContext imports
 // assembleRevealEngines, which drags the whole planning engine (and the 40
@@ -765,8 +766,8 @@ export default function InviteV2({ code }) {
                     : null}
                   {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}</span> : null}
                 </div></>)}
-              {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
-                <div className="inv2-val lp">{[event.venue, event.venueCity].filter(Boolean).join(', ')}</div></>)}
+              {venueFor(event).displayLine && (<><div className="inv2-label lp">Where</div>
+                <div className="inv2-val lp">{venueFor(event).displayLine}</div></>)}
               {/* Details the host set — the backend already sends these on the
                   public event (whitelisted); the invite just wasn't rendering
                   them. Present-only, and hidden on a past-event recap. */}
@@ -1138,13 +1139,13 @@ export default function InviteV2({ code }) {
           </div>
 
           {/* ── Getting there — event day only; unchanged mechanics. ── */}
-          {days != null && days <= 0 && !isPast && (event.venue || event.venueCity) && (
+          {days != null && days <= 0 && !isPast && venueFor(event).isSet && (
             <div className="card no-hover" style={{ marginTop: 14 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
               <div className="shelf-label" style={{ marginBottom: 4 }}>Getting there — it’s today</div>
-              <p className="grounding" style={{ margin: '0 0 8px' }}>{[event.venue, event.venueCity].filter(Boolean).join(', ')}</p>
+              <p className="grounding" style={{ margin: '0 0 8px' }}>{venueFor(event).displayLine}</p>
               <div className="actions-row" style={{ marginTop: 0 }}>
                 <a className="mini" style={{ textDecoration: 'none' }} target="_blank" rel="noreferrer"
-                  href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent([event.venue, event.venueCity].filter(Boolean).join(', '))}>
+                  href={'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(venueFor(event).mapsQuery)}>
                   Directions
                 </a>
                 {nearState === 'idle' && <button className="mini" onClick={startNearWatch}>Tell me when I’m close</button>}

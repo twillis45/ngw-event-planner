@@ -1,4 +1,5 @@
 import { vendorIsCommitted, vendorOutstanding } from './vendorMoney';
+import { venueFor } from './venueFor';
 import { rsvpHasResponded } from './rsvp';
 
 // Single source of truth for "is this planning task already handled by real event state?"
@@ -38,7 +39,9 @@ export function taskSatisfied(event, task) {
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
   const hasBudget  = (Number(event.totalBudget) || 0) > 0 || (Array.isArray(event.budget) && event.budget.some((b) => Number(b && b.budgeted) > 0));
-  const hasVenue   = !!String(event.venue || '').trim() && !/^(tbd|tba)$/i.test(String(event.venue).trim());
+  // venueFor: an at-home event with a city IS venued — reading bare event.venue
+  // here told home hosts to go book a venue (audit divergence #2).
+  const hasVenue   = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();
   const hasVendors = hasNamedVendor(event);
   const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);
   const dateSet    = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());

@@ -15,6 +15,7 @@
 // with wholeEventReadinessScore (PROGRESS doctrine). Counts, not percentages.
 
 import { rainPlanStatus, RAIN_PLAN_TARGET, isLikelyOutdoor } from './weather';
+import { venueFor } from './venueFor';
 
 export const PLACE_STATES = {
   HANDLED: 'handled',
@@ -39,14 +40,13 @@ export const PLACE_TARGETS = {
 const has = (v) => !!String(v || '').trim();
 
 export function derivePlaceIntelligence(event = {}) {
-  const kind = event.venueKind || (event.recordKind === 'host_event' ? 'home' : 'venue');
-  const atHome = kind === 'home';
-  // Same at-home carve-out as the venue-selection blocker: a home host's
-  // location lives in venueCity, never event.venue.
-  const venueResolved = atHome
-    ? has(event.venueCity) || has(event.venue)
-    : has(event.venue);
-  const hasAddress = has(event.venueAddress) || has(event.venueStreet);
+  // ONE venue reader (venueFor) — kind rule, at-home carve-out, and the
+  // CITY-LEAK gate all live there now instead of a local copy.
+  const vf = venueFor(event);
+  const kind = vf.kind;
+  const atHome = vf.isHome;
+  const venueResolved = vf.isSet;
+  const hasAddress = !!vf.address;
   const outdoors = kind === 'outdoor'
     || event.indoorOutdoor === 'outdoor'
     || event.indoorOutdoor === 'both'
@@ -71,10 +71,7 @@ export function derivePlaceIntelligence(event = {}) {
       'Add it so guest directions and vendor plans stay accurate.',
       atHome ? 'Add your city' : 'Add the location');
   } else {
-    const placeName = atHome
-      ? (has(event.venue) ? String(event.venue).trim() : `At home in ${String(event.venueCity).trim()}`)
-      : String(event.venue).trim();
-    add('venue', 'Venue / location', PLACE_STATES.HANDLED, `Set: ${placeName}`);
+    add('venue', 'Venue / location', PLACE_STATES.HANDLED, `Set: ${vf.displayLine || vf.name}`);
   }
 
   // 2 · Guest arrival — guests need an exact address, not just a name.

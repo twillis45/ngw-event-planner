@@ -27,6 +27,7 @@ import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd } from './dates';
+import { venueFor } from './venueFor';
 import { startTimeIsConfirmed } from './startTime';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -160,7 +161,7 @@ function preProgress(ev, phase, daysOut) {
   }
 
   // Rain plan — outdoor-relevant events only.
-  const outdoor = OUTDOOR_TYPE.test(String(ev.type || '')) || (() => { try { return isLikelyOutdoor(ev.venue, ev.notes); } catch { return false; } })();
+  const outdoor = OUTDOOR_TYPE.test(String(ev.type || '')) || (() => { try { return isLikelyOutdoor(venueFor(ev).name, ev.notes); } catch { return false; } })();
   if (outdoor && !noDate) {
     const rp = (() => { try { return rainPlanStatus(ev); } catch { return { hasPlan: false }; } })();
     add('rain', true, rp.hasPlan, 'Add a rain backup', { tab: 'Event Details', focusField: 'rain-plan' }, 5);

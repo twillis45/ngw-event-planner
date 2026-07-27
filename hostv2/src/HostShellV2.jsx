@@ -127,6 +127,7 @@ import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
+import { venueFor } from '@app/lib/venueFor';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -890,7 +891,7 @@ export default function HostShellV2() {
   };
   // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
   // same field weather geocoding reads) — so home events get a city ask.
-  const needsCity = () => event.venueKind === 'home' && !String(event.venueCity || '').trim();
+  const needsCity = () => venueFor(event).needsCityForWeather; // ONE definition (venueFor) — was the third hand copy of the at-home rule
   const saveCity = () => {
     const c = cityDraft.trim();
     // Bare-city geocoding is genuinely ambiguous — "Springfield", "Arlington",
