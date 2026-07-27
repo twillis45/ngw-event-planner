@@ -4547,10 +4547,16 @@ export default function HostShellV2() {
     setRevealPhase('intro');
     revealTimers.current.push(setTimeout(() => setRevealPhase('zoom'), 1000));
     revealTimers.current.push(setTimeout(() => { setRevealPhase('glint'); feedback('magic'); }, 3600));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rack'), 4800));
-    // one row every 900ms — slow enough to READ (host directive) — then the
-    // name lands last, then the ask.
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 1800 + 2600));
+    // EACH PLAN LINE TAKES OVER THE SCREEN (host ruling 2026-07-27): one
+    // full-viewport cinematic card per stage — 2.4s of undivided stage each —
+    // then the baseline listing COMPOSES (settle) and the ask arrives (rest).
+    const cardN = Math.max(rows - 1, 1);
+    for (let i = 0; i < cardN; i++) {
+      const idx = i;
+      revealTimers.current.push(setTimeout(() => setRevealPhase('c' + idx), 4800 + i * 2400));
+    }
+    revealTimers.current.push(setTimeout(() => setRevealPhase('settle'), 4800 + cardN * 2400));
+    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + cardN * 2400 + 2400));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -5139,16 +5145,29 @@ export default function HostShellV2() {
                         <span className="rv-mglint" aria-hidden="true" />
                       </div>
                     )}
-                    {/* RACK / REST — focus racks to the VERBATIM listing (the
-                        baseline — host's "I want the listing back"): one row
-                        sharpens in every 900ms, slow enough to READ, and the
-                        name lands last. */}
-                    {(revealPhase === 'rack' || revealPhase === 'rest') && (
+                    {/* THE TAKEOVER — each plan line owns the whole screen for a
+                        beat: a cinematic card per stage (host ruling 2026-07-27). */}
+                    {String(revealPhase).charAt(0) === 'c' && (() => {
+                      const ci = parseInt(String(revealPhase).slice(1), 10);
+                      const st = revealStages[ci];
+                      return st ? (
+                        <div className="rv-card" key={ci}>
+                          <div className="rv-card-kicker">{st.title}</div>
+                          <div className="rv-card-what">{st.what}</div>
+                          {st.why ? <div className="rv-card-why">{st.why}</div> : null}
+                          {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
+                            <div className="rv-card-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ')}</div>
+                          ) : null}
+                        </div>
+                      ) : null;
+                    })()}
+                    {/* SETTLE / REST — the baseline listing COMPOSES (the verbatim
+                        list, host's "I want the listing back"), then the ask. */}
+                    {(revealPhase === 'settle' || revealPhase === 'rest') && (
                       <>
                     <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
                     <p className="rv-mguide">Built while you typed — every line traces to your answers.</p>
                     <ul className="tick-list rv-slowrows" style={{ marginTop: 22, '--rows': revealStages.length + 1 }}>
-                      {revealPhase === 'rack' && <span className="rv-lightfront" aria-hidden="true" />}
                       {revealStages.map((st, i) => (
                         <li key={st.key || i} className="rv-line" style={{ '--i': i }}>
                           <strong>{st.title}:</strong> {st.what}

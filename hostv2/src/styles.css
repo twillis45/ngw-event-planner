@@ -1348,6 +1348,38 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-rest .rv-lastland{opacity:1; transform:none; filter:none; animation:none}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 /* the tick flares exactly as the front crosses its row */
+/* THE TAKEOVER (host ruling 2026-07-27: "I want the plan line to take over
+   the screen cinematically"): each stage line owns the whole viewport for a
+   beat — kicker overline, the WHAT at display scale, the why beneath, the
+   provenance receipt as the foot. Card cuts to card; never two live. */
+.rv-card{position:absolute; inset:0; z-index:4; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; text-align:center; padding:0 30px;
+  animation:rvcardin .7s cubic-bezier(.22,1,.36,1) both}
+.rv-card::before{content:""; position:absolute; left:50%; top:46%; width:150%; aspect-ratio:5/3;
+  transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; z-index:-1;
+  background:radial-gradient(closest-side, rgba(78,104,119,.34), transparent 70%); filter:blur(44px)}
+@keyframes rvcardin{from{opacity:0; transform:scale(.94); filter:blur(9px)} to{opacity:1; transform:none; filter:blur(0)}}
+.rv-card-kicker{font-size:var(--t-overline); font-weight:650; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--steel-soft); animation:rvcardbit .6s var(--ease-out) .15s both}
+.rv-card-what{font-family:var(--sans); font-weight:800; font-size:clamp(30px,8.6cqw,40px); line-height:1.14;
+  letter-spacing:-.025em; color:#f2f4f7; margin-top:14px; text-wrap:balance;
+  animation:rvcardbit .7s cubic-bezier(.22,1,.36,1) .25s both}
+.rv-card-why{font-size:var(--t-body-s); line-height:1.5; color:#9aa7b2; margin-top:14px; max-width:30ch;
+  animation:rvcardbit .7s var(--ease-out) .7s both}
+.rv-card-prov{font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em; color:#7a8792;
+  margin-top:16px; animation:rvcardbit .7s var(--ease-out) 1.05s both}
+@keyframes rvcardbit{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+/* SETTLE — the baseline listing composes fast (the cards already told the
+   story; this is the plan filing itself), then rest is static-full. */
+.reveal-stage.rv-settle .rv-slowrows .rv-line{opacity:0;
+  animation:rvcompose .5s var(--ease-out) both; animation-delay:calc(var(--i)*.12s)}
+.reveal-stage.rv-settle .rv-lastland{opacity:0; transform:translateY(6px); filter:blur(12px);
+  animation:rvrackrow .9s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*.12s + .35s)}
+.reveal-stage.rv-settle .rv-slowrows .rv-line::before{animation:rvracktick 1s var(--ease-out) both; animation-delay:calc(var(--i)*.12s)}
+@keyframes rvcompose{from{opacity:0} to{opacity:1}}
+@media(prefers-reduced-motion:reduce){
+  .rv-card, .rv-card-kicker, .rv-card-what, .rv-card-why, .rv-card-prov{animation:none!important; opacity:1!important; transform:none!important; filter:none!important}
+}
 /* EVERYTHING IN VIEWPORT (host ruling 2026-07-27): the unveiling plays
    entirely on the visible stage — no row ignites below the fold. The theater
    compresses the listing's density so all rows + the name + the ask fit one
