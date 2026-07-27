@@ -88,6 +88,12 @@ PUBLIC_EVENT_FIELDS = (
     # shared invite link (a note + a photo-album URL). Both are host-facing-public
     # by intent, not PII, so they belong in the whitelist for the post-event recap.
     "recapNote", "albumUrl",
+    # Trip Brief (Destination program, 2026-07-27): host-authored FOR guests —
+    # the stay (hotel name / group rate / booking code / book-by date) and the
+    # airport options. No PII, no guest data, no money ledger; the rate is the
+    # group rate the host negotiated to share. moneyDates/frontedAmount stay
+    # host-private and are deliberately ABSENT here.
+    "lodging", "airportOptions",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────

@@ -128,6 +128,7 @@ import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmatio
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor } from '@app/lib/venueFor';
+import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -7007,19 +7008,28 @@ export default function HostShellV2() {
                   // The sub is honest per mode: a real not-booked count in
                   // roster mode, the place (or its absence) otherwise.
                   travel.relevant
-                    ? {
-                        key: 'lodging', label: 'Where everyone stays',
-                        sub: travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
-                          ? (travel.lodging.notBookedCount > 0
-                              ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
-                              : 'everyone has a room lined up')
-                          : (travel.lodging.hotelName || 'no place picked yet'),
-                        // WAVE-6 (one number per row): the lodging raise is an aggregate —
-                        // the sub already carries the real count ("3 of 8 haven't booked").
-                        // Tint only, no ledger badge beside it.
-                        attn: (raised['lodging'] || 0) > 0,
-                        go: () => setSheet({ kind: 'lodging' }),
-                      } : null,
+                    ? (() => {
+                        // Money-Safe Date Chain (MVP #1): the money raise rides THIS
+                        // row (the dates live on the lodging sheet) — a closing
+                        // refund window outranks the booked-count sub because it's
+                        // the fact that can cost the host real money this week.
+                        const md = moneyDatesFor(event);
+                        const dueSoon = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
+                        return {
+                          key: 'lodging', label: 'Where everyone stays',
+                          sub: dueSoon.length
+                            ? dueSoon[0].label.toLowerCase() + ' in ' + dueSoon[0].daysLeft + (dueSoon[0].daysLeft === 1 ? ' day' : ' days')
+                            : (travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
+                              ? (travel.lodging.notBookedCount > 0
+                                  ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
+                                  : 'everyone has a room lined up')
+                              : (travel.lodging.hotelName || 'no place picked yet')),
+                          // WAVE-6 (one number per row): raises here are aggregates —
+                          // the sub carries the real fact. Tint only, no ledger badge.
+                          attn: (raised['lodging'] || 0) + (raised['money-dates'] || 0) > 0,
+                          go: () => setSheet({ kind: 'lodging' }),
+                        };
+                      })() : null,
                   // DESTINATION-2 slice 3: getting here, same gate. The sub is
                   // honest per mode — a real flight-info count (and any real
                   // conflicts) in roster mode, the airports card otherwise.
@@ -8446,6 +8456,59 @@ export default function HostShellV2() {
                       </p>
                     );
                   })()}
+                  {/* ── Money-Safe Date Chain (program MVP #1, 2026-07-27) ──
+                      Dates TRANSCRIBED from the host's own booking confirmation
+                      (liability ruling: never derived from platform policy
+                      tables). frontedAmount = the host's one out-of-pocket
+                      number — never per-guest money (Phase-4 gate). */}
+                  {(() => {
+                    const md = (event.moneyDates && typeof event.moneyDates === 'object') ? event.moneyDates : {};
+                    const m = moneyDatesFor(event);
+                    const setMd = (k) => (e) => patchEvent({ moneyDates: { ...md, [k]: e.target.value || null } });
+                    const dateFld = (k, label) => (
+                      <div className="line" key={k} style={{ padding: '2px 0 8px' }}>
+                        <span>{label}</span>
+                        <input className="field" type="date" style={{ maxWidth: 150 }} value={md[k] || ''} onChange={setMd(k)} aria-label={label} />
+                      </div>
+                    );
+                    return (
+                      <>
+                        <div className="shelf-label" style={{ marginTop: 'var(--sp-3)' }}>The money-safe dates <span className="of">— copy them from your booking confirmation</span></div>
+                        {dateFld('refundDeadline', 'Refund window closes')}
+                        {dateFld('installmentDue', 'Next payment due')}
+                        {dateFld('headcountDue', 'Final headcount due')}
+                        <div className="line" style={{ padding: '2px 0 8px' }}>
+                          <span>Fronted so far <span className="of">— what’s on your card</span></span>
+                          <input className="field" type="number" inputMode="numeric" min="0" style={{ maxWidth: 110 }}
+                            value={event.frontedAmount != null ? event.frontedAmount : ''}
+                            onChange={(e) => { const n = parseFloat(e.target.value); patchEvent({ frontedAmount: Number.isFinite(n) && n > 0 ? n : null }); }}
+                            aria-label="Amount you have fronted" />
+                        </div>
+                        {m.exposureLine && (
+                          <p className="v-meta" style={{ padding: '2px 2px var(--sp-2)', color: m.refund && !m.refund.passed && m.refund.daysLeft > 14 ? undefined : 'var(--warn)', fontWeight: 650 }}>
+                            {m.exposureLine}
+                          </p>
+                        )}
+                        {m.rows.filter((r) => !r.passed).map((r) => (
+                          <p key={r.key} className="v-meta" style={{ padding: '0 2px 4px' }}>
+                            {r.label} in {r.daysLeft} {r.daysLeft === 1 ? 'day' : 'days'} — {r.note}.
+                          </p>
+                        ))}
+                        {m.collectBy && (
+                          <p className="v-meta" style={{ padding: '0 2px 4px' }}>
+                            Ask the group to settle up by {new Date(m.collectBy + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })} — a small cushion before the window closes (adjust to your booking).
+                          </p>
+                        )}
+                        {settleUpDraft(event) && (
+                          <div className="actions-row" style={{ marginTop: 2, marginBottom: 'var(--sp-2)' }}>
+                            <button className="mini" onClick={() => { try { navigator.clipboard.writeText(settleUpDraft(event)); } catch { /* copy blocked */ } }}>
+                              Copy the settle-up ask
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {/* The stay form folds to a summary card once a place is
                       named (Figma 428) — tap to edit; the roster stays open. */}
                   {lg.hotelName && !settledOpen.lodgeStay ? (
@@ -9392,7 +9455,15 @@ export default function HostShellV2() {
                 { title: 'Keep it on track', rows: [
                   { k: 'risks', label: 'What could go wrong', sub: 'The risks the plan is watching' },
                   ...(outdoor ? [{ k: 'rain', label: 'If it rains', sub: 'Your weather backup' }] : []),
-                  ...(travel && travel.relevant ? [{ k: 'lodging', label: 'Travel & where everyone stays', sub: 'Lodging, rides, arrivals' }] : []),
+                  // Money-Safe Date Chain: in elegant mode this Sections row is the
+                  // travel wayfinding, so a closing money deadline surfaces HERE —
+                  // the one fact that can cost real dollars this week leads the sub.
+                  ...(travel && travel.relevant ? [(() => {
+                    const md = moneyDatesFor(event);
+                    const due = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
+                    return { k: 'lodging', label: 'Travel & where everyone stays',
+                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days') : 'Lodging, rides, arrivals' };
+                  })()] : []),
                   ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
                   ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
                 ] },

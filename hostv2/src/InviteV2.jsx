@@ -768,6 +768,18 @@ export default function InviteV2({ code }) {
                 </div></>)}
               {venueFor(event).displayLine && (<><div className="inv2-label lp">Where</div>
                 <div className="inv2-val lp">{venueFor(event).displayLine}</div></>)}
+              {/* ── Trip Brief v0 (destination events) — host-authored stay +
+                  airports, read-only. Renders on DATA presence, never on an
+                  inferred flag; nothing here is guest data or money. */}
+              {!isPast && event.lodging && event.lodging.hotelName && (<><div className="inv2-label lp">Stay</div>
+                <div className="inv2-val lp">
+                  {event.lodging.hotelName}
+                  {event.lodging.rate ? ` · $${event.lodging.rate}/night group rate` : ''}
+                  {event.lodging.code ? ` · code ${event.lodging.code}` : ''}
+                  {event.lodging.deadline ? ` · book by ${dfmt(String(event.lodging.deadline).slice(0, 10), { month: 'long', day: 'numeric' })}` : ''}
+                </div></>)}
+              {!isPast && Array.isArray(event.airportOptions) && event.airportOptions.filter(a => a && (a.code || a.name)).length > 0 && (<><div className="inv2-label lp">Fly into</div>
+                <div className="inv2-val lp">{event.airportOptions.filter(a => a && (a.code || a.name)).map(a => [a.code, a.name].filter(Boolean).join(' — ') + (a.note ? ` (${a.note})` : '')).join(' · ')}</div></>)}
               {/* Details the host set — the backend already sends these on the
                   public event (whitelisted); the invite just wasn't rendering
                   them. Present-only, and hidden on a past-event recap. */}

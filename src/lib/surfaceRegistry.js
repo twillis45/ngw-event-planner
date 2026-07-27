@@ -61,9 +61,10 @@ import { deriveVendorPromiseConflicts } from './vendorAccountability/conflicts';
 import { inferPromisesFromVendor } from './vendorAccountability/derive';
 import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks, playbookDecisionBoard } from './playbooks';
-import { daysUntil, isEventDay, isPastEvent } from './dates';
+import { daysUntil, isEventDay, isPastEvent, daysUntilEnd } from './dates';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
+import { moneyDatesFor } from './moneyDates';
 import { deriveHelperResponsibilities, helperStatusLine } from './helperResponsibility';
 import { DAY_BEFORE_WINDOW } from './dayBefore';
 import { getVendorCOIState, coiNextAction } from './vendorIntelligence';
@@ -327,6 +328,37 @@ export const SURFACES = [
   // (lodging.deadline, an ISO day the host entered). The lib (travelPlan.js
   // buildTravelPlan) carries no urgency logic beyond these two facts, so the
   // shell predicate and the lib agree — no divergence to note.
+  // Money-Safe Date Chain (MVP #1): the host transcribed real deadlines from
+  // their booking — raise them while they can still act (14-day window), and
+  // lead with the exposure when they've fronted money against a closing
+  // refund window. Route lands on the Travel sheet where the dates live.
+  {
+    id: 'money-dates',
+    label: 'Money-safe dates',
+    domain: 'travel',
+    route: { tab: 'Travel' },
+    bundleTitle: (n) => `${n} money deadlines closing in`,
+    raise(event) {
+      // Span-aware: mid-span (day 2 of 3) is NOT past — the single-day
+      // isPastEvent(event.date) guard the sibling raisers use suppressed this
+      // raise while the event was live (caught on the 2026-07-27 drive; the
+      // sibling raisers' guards are the wave-3 lifecycle sweep's job).
+      const de = daysUntilEnd(event);
+      if (de != null && de < 0) return [];
+      let m = null;
+      try { m = moneyDatesFor(event); } catch (_e) { return []; }
+      if (!m || !m.relevant) return [];
+      const due = m.rows.filter((r) => !r.passed && r.daysLeft <= 14);
+      if (!due.length) return [];
+      const first = due[0];
+      return [{
+        severity: first.daysLeft <= 5 ? 'urgent' : 'attention',
+        title: `${first.label} in ${first.daysLeft} ${first.daysLeft === 1 ? 'day' : 'days'}`,
+        because: m.exposureLine || `${first.note}.`,
+        route: { tab: 'Travel' },
+      }];
+    },
+  },
   {
     id: 'lodging',
     label: 'Where everyone stays',

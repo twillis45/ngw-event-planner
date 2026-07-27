@@ -50,6 +50,10 @@ const SHELL_PATH = path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'Host
 const CONTRACT_IDS = [
   'risks', 'vendor-conflicts', 'vendor-arrivals', 'vendor-reconfirm', 'day-of',
   'seating', 'lodging', 'travel-air', 'travel-ground',
+  // Money-Safe Date Chain (program MVP #1, 2026-07-27): host-transcribed
+  // booking deadlines (refund window / installment / headcount) raised inside
+  // the 14-day action window, exposure-led when money is fronted.
+  'money-dates',
   'helpers', 'decisions', 'vendor-payments', 'vendor-coi',
 ];
 
