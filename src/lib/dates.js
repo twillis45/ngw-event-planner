@@ -43,6 +43,42 @@ export const isEventDay = (d, now) => daysUntil(d, now) === 0;
 /** True once the event's date has passed. */
 export const isPastEvent = (d, now) => { const n = daysUntil(d, now); return n != null && n < 0; };
 
+// ── MULTI-DAY SPAN (R1 ruling, 2026-07-26) ────────────────────────────────────
+// Event-shaped span readers. `event.endDate` (YYYY-MM-DD) is the host-set LAST day
+// of a multi-day event; absent or malformed it degrades to the start date, so a
+// single-day event answers identically through these helpers and through the raw
+// date readers above. An endDate on-or-before the start date is IGNORED, never
+// trusted — the span can only extend forward. Engines asking "is the event over /
+// live" must ask about the SPAN (these helpers), not event.date; the raw readers
+// above stay for genuinely single-date questions (a task deadline, an RSVP cutoff).
+export const spanEnd = (event) => {
+  const start = event?.date ? String(event.date).slice(0, 10) : null;
+  if (!start) return null;
+  const end = event?.endDate ? String(event.endDate).slice(0, 10) : null;
+  return end && /^\d{4}-\d{2}-\d{2}$/.test(end) && end > start ? end : start;
+};
+
+/** Nights between first and last day — 0 for a single-day event. */
+export const spanNights = (event) => {
+  const end = spanEnd(event);
+  if (!end) return 0;
+  const a = daysUntil(event.date), b = daysUntil(end);
+  return a == null || b == null ? 0 : Math.max(0, b - a);
+};
+
+/** Whole calendar days until the LAST day of the event. */
+export const daysUntilEnd = (event, now) => daysUntil(spanEnd(event), now);
+
+/** True on any calendar day of the event, first through last inclusive. */
+export const isDuringEvent = (event, now) => {
+  const ds = daysUntil(event?.date, now), de = daysUntilEnd(event, now);
+  return ds != null && de != null && ds <= 0 && de >= 0;
+};
+
+/** 1-based day index ("Day 2 of 3") while the event is live; null otherwise. */
+export const dayIndexOf = (event, now) =>
+  isDuringEvent(event, now) ? 1 - daysUntil(event.date, now) : null;
+
 // ── TIME INTELLIGENCE ─────────────────────────────────────────────────────────
 // ONE source for "is this event date usable, and what is its standing relative to
 // today?" Built on daysUntil so every surface (create flow, Where & when, the action

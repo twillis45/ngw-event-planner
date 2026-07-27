@@ -85,6 +85,32 @@ export function parseSmartEventText(text, opts = {}) {
       d.setDate(d.getDate() + add); d.setHours(12); date = d.toISOString().slice(0, 10);
     }
   }
+  // ── Date RANGE — "June 12–14", "June 12 to 14", "June 30 to July 2" ─────
+  // Tried BEFORE the single "Mon D" matcher, which would otherwise eat the first
+  // half and silently DROP the "–14" (the range end vanished — a data-honesty
+  // defect, board-confirmed 2026-07-26). endDate is only ever emitted when the
+  // host actually said a range; same never-invent rule as everything else here.
+  let endDate = null;
+  if (!date) {
+    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/i);
+    if (rng) {
+      const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
+      const m2 = rng[3] ? MONTHS.indexOf(rng[3].slice(0, 3).toLowerCase()) : m1;
+      const start = new Date(now.getFullYear(), m1, parseInt(rng[2], 10), 12);
+      if (start < now) start.setFullYear(start.getFullYear() + 1);
+      const end = new Date(start.getFullYear(), m2, parseInt(rng[4], 10), 12);
+      // Year-straddling ranges ("Dec 30 – Jan 2") bump the end year — but ONLY
+      // when a second month was explicitly said; a same-month backwards "range"
+      // ("June 14-12") is noise and must fail the end>start check, not get
+      // rescued into next year.
+      if (end < start && rng[3] && m2 !== m1) end.setFullYear(end.getFullYear() + 1);
+      // A same-month "range" running backwards ("June 14-12") is noise, not a span.
+      if (!isNaN(start) && !isNaN(end) && end > start) {
+        date = start.toISOString().slice(0, 10);
+        endDate = end.toISOString().slice(0, 10);
+      }
+    }
+  }
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
   if (dm) {
     const cand = new Date(now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
@@ -97,6 +123,21 @@ export function parseSmartEventText(text, opts = {}) {
       const cand = new Date(y, Number(sm2[1]) - 1, Number(sm2[2]), 12);
       if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
       if (!isNaN(cand)) date = cand.toISOString().slice(0, 10);
+    }
+  }
+  // Duration form — "3-day reunion", "2 nights" — only meaningful once a start
+  // date resolved, and never from the relative "in N days" form (rel), whose
+  // "N days" phrase would otherwise read as a duration.
+  if (date && !endDate && !rel) {
+    const dur = t.match(/\b(\d{1,2})\s*-?\s*(night|day)s?\b/i);
+    if (dur) {
+      const n = parseInt(dur[1], 10);
+      const nights = dur[2].toLowerCase() === 'night' ? n : n - 1;
+      if (nights > 0 && nights <= 30) {
+        const e = new Date(date + 'T12:00:00');
+        e.setDate(e.getDate() + nights);
+        endDate = e.toISOString().slice(0, 10);
+      }
     }
   }
   // Month + year, no day ("June of 2028", "June 2028") — a real signal the
@@ -215,7 +256,7 @@ export function parseSmartEventText(text, opts = {}) {
   }
 
   return {
-    type, secondaryType, theme, guests, budget, date, monthYear, milestone, isDestination, timeOfDay,
+    type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : '',
     venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : ''),

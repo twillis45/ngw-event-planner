@@ -101,6 +101,9 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         // affordances (tel:/sms:/mailto:) read one shape from either source.
         phone: sub.phone || g.phone,
         email: sub.email || g.email,
+        // Crab-picker answer (only carried when the guest actually answered —
+        // an absent answer must not overwrite a recorded one).
+        ...(typeof sub.picksCrabs === 'boolean' ? { picksCrabs: sub.picksCrabs } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
       if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; merged += 1; }
@@ -123,6 +126,7 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         partyNotes: sub.note || '',
         phone: sub.phone || '',
         email: sub.email || '',
+        ...(typeof sub.picksCrabs === 'boolean' ? { picksCrabs: sub.picksCrabs } : {}),
       });
       added += 1;
     }

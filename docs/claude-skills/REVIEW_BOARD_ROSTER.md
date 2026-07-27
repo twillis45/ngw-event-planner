@@ -1,6 +1,6 @@
 # NGW Review Board Roster
 
-_Authoritative reference. Last updated: 2026-07-01. Mirrors the `feedback_review_board_roster` memory — keep the two in sync. Governs every NGW visual/UX/strategy audit. Pairs with `NGW_10PLUS_MASTER_PROMPT.md` and `02_STUDIO_MATTE_UI_STANDARD.md`._
+_Authoritative reference. Last updated: 2026-07-26. Mirrors the `reference_review_board_roster` memory (panel index) — keep the two in sync. Governs every NGW visual/UX/strategy audit. Pairs with `NGW_10PLUS_MASTER_PROMPT.md` and `02_STUDIO_MATTE_UI_STANDARD.md`._
 
 > **The board is a panel of NAMED INDUSTRY STARS** — channel each person's actual publicly-known signature principle (a synthesis of their philosophy, not the literal individual). Convening only generic "UI lead / planner / grandmother" seats is INCOMPLETE. Run **render-first**, **design-stars-then-event-pros**, **brutal not consensus**, bar = **bless = 10+** (not 9).
 
@@ -110,6 +110,21 @@ _Regional/community insiders are EXPANDABLE — recruit a community's authority 
 - A **Salvadoran / Central American DMV** food authority (pupusas — largest Salvadoran community in the US)
 - An **Ethiopian-DMV** food & culture authority (injera, coffee ceremony; U Street "Little Ethiopia")
 - **Resources:** Maine Ave Fish Market / The Wharf, Jessie Taylor / Captain White's, Cameron's, Eastern Market, Union Market, J.O. Spice + Old Bay, local Go-Go playlists
+
+### Destination & Multi-Day / Group-Money wing (added 2026-07-26)
+
+**Program Red Team — 7 adversarial seats (convene on any program/plan review; all reported 2026-07-26 on the Destination + Multi-Day program):**
+- **The Trench Organizer** — the cousin who actually collects the money; human failure modes of ledgers/deadlines (organizer exposure, partial/cash payments, the 11pm chase roster)
+- **The Scope Executioner** — kills programs for a living; scope vs the product's actual bottleneck, sequencing risk, kill criteria, entitlement tie-in
+- **The Liability & Trust Reviewer** — where grounded copy becomes advice; sensitive-data exposure; staleness of shipped tax/policy figures; regulated-copy gating
+- **The Engineering Realist** — code-verified; write-path/concurrency truth, merge conflicts, migration cost, freeze collisions
+- **The Cultural Authenticity Reviewer** — the tokenism line: authorship not just targeting; community-reviewed gate for named modules; no synthesized content on grief (extends the floating Cultural Authenticity seat to program scope)
+- **The Guest-Side Reviewer** — everything from the guest's chair: dignity of subsidy/debt visibility, health-flag exposure, minors' data, code-link security, ask-fatigue
+- **The Market Realist** — assumes every feature exists somewhere done better; build-vs-orchestrate verdicts vs named incumbents; where the moat actually is
+
+**Destination-Celebration Research Board (2026-07-10, 14 members — transcribed here; full findings in the research-transcript memory):** engines auditor · lodging/hotel coordinator · air-travel coordinator · ground-transport researcher · professional destination-event planner (milestone-birthday specialist) · hotel-side group coordinator · veteran DIY destination host (the stale-data finding) · articles+books researcher · social-media researcher · YouTube/podcasts researcher · African American family-traditions researcher · elderly-travel/accessibility researcher · children/multigen researcher · Instagram/TikTok feasibility scout.
+
+**Destination Research Fleet (2026-07-26, 6 real-source researchers → dossier artifact d19242e2):** rental-home group lodging · group excursions · group money · destination-reunion deep dive · multi-day arcs per type family · diversity axis (ROSCAs, padrinos, universal accommodations, anti-stereotyping grounding).
 
 ### Vendor Relations & Partner Cultivation
 Experts on lasting vendor partnerships (Refine for Wedding Planners, WeddingPro, vendor-side voices) → reliability scoring, proactive touchpoints, pay-on-time/clear-brief nudges, dock/COI respect, strained-relationship recovery.

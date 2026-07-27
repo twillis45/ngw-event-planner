@@ -161,10 +161,14 @@ export async function flushRsvpOutbox(eventId, code) {
         plus_one_needs: item.plusOneNeeds,
         kids:           item.kids,
         note:           item.note,
-        // Optional guest contact (invite's "how to reach you" ask). The current
-        // backend RsvpSubmit model ignores unknown fields, so replaying these is
-        // harmless today and correct the day the server learns to store them.
-        // JSON.stringify drops undefined — an entry without contact sends none.
+        // Structured details + contact — the server stores these as of the
+        // 2026-07-27 data-loss fix (migration 015). JSON.stringify drops
+        // undefined, so an entry without a field sends none.
+        allergens:       Array.isArray(item.allergens) && item.allergens.length ? item.allergens : undefined,
+        diets:           Array.isArray(item.diets) && item.diets.length ? item.diets : undefined,
+        access:          Array.isArray(item.access) && item.access.length ? item.access : undefined,
+        picks_crabs:     typeof item.picksCrabs === 'boolean' ? item.picksCrabs : undefined,
+        mailing_address: item.mailingAddress || undefined,
         phone:          item.phone,
         email:          item.email,
       });

@@ -11,7 +11,7 @@
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
-import { rsvpDeadlineFor, daysUntil } from '@app/lib/dates';
+import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
 import { inviteTone, invitePalette, deepenForLight } from '@app/lib/inviteTone';
 // Optional contact at RSVP (host-approved 2026-07-14): ONE formatter/validator
@@ -356,7 +356,9 @@ export default function InviteV2({ code }) {
     // isPast is computed later in render (needs `days`); recompute the same test
     // locally so the deck line can drop future-tense copy on a past-event recap.
     let past = false;
-    try { const d = daysUntil(event.date); past = d != null && d < 0; } catch { /* undated → not past */ }
+    // Span-aware (R1): past means past the LAST day — day 2 of a June 12–14
+    // event must not read as a memory while guests are still living it.
+    try { const d = daysUntilEnd(event); past = d != null && d < 0; } catch { /* undated → not past */ }
     return deckLineFor(event, tone === 'muted', past);
   }, [event, tone]);
 
@@ -425,7 +427,8 @@ export default function InviteV2({ code }) {
     );
   }
 
-  const days = (() => { try { return daysUntil(event.date); } catch { return null; } })();
+  const days = (() => { try { return daysUntil(event.date); } catch { return null; } })(); // countdown → FIRST day
+  const daysEnd = (() => { try { return daysUntilEnd(event); } catch { return null; } })(); // tense → LAST day
   const rsvpBy = (() => { try { return rsvpDeadlineFor(event); } catch { return null; } })();
   // Only a date the HOST set is a date a guest can be held to. 'derived' is our own
   // event.date − 7d guess; printing it as "replies by" puts words in the host's mouth.
@@ -511,7 +514,10 @@ export default function InviteV2({ code }) {
   // (goingCount for backend invites, the local Yes tally otherwise); a null
   // count stays silent rather than fabricate. The guest's own prior reply is
   // echoed from the outbox if present.
-  const isPast = days != null && days < 0;
+  // Span-aware (R1): the recap flip waits for the LAST day to pass. On a
+  // multi-day event `days` goes negative on day 2 while the party is still on —
+  // keying isPast on it locked guests out of the RSVP form mid-event.
+  const isPast = daysEnd != null && daysEnd < 0;
   const recapAttendance = (() => {
     const n = event.rosterUnknown
       ? (Number.isFinite(Number(event.goingCount)) ? Number(event.goingCount) : null)
@@ -590,6 +596,14 @@ export default function InviteV2({ code }) {
           idempotency_key: idk, name: payload.name, rsvp: payload.rsvp, meal: payload.meal,
           needs: payload.needs, plus_one: payload.plusOne, plus_one_meal: payload.plusOneMeal,
           plus_one_needs: payload.plusOneNeeds, kids: payload.kids, note: payload.note,
+          // Structured dietary/access MUST ride the wire — until 2026-07-27 these
+          // reached only the same-browser localStorage queue; the server schema
+          // dropped them silently, so a remote guest's ALLERGY answer never
+          // reached the host's roster. Data-loss class, fixed with the schema.
+          ...(payload.allergens?.length ? { allergens: payload.allergens } : {}),
+          ...(payload.diets?.length ? { diets: payload.diets } : {}),
+          ...(payload.access?.length ? { access: payload.access } : {}),
+          ...(payload.mailingAddress ? { mailing_address: payload.mailingAddress } : {}),
           ...(payload.picksCrabs !== undefined ? { picks_crabs: payload.picksCrabs } : {}),
           ...(payload.phone ? { phone: payload.phone } : {}),
           ...(payload.email ? { email: payload.email } : {}),
@@ -644,11 +658,14 @@ export default function InviteV2({ code }) {
     }
   };
 
-  // Add-to-calendar: Google link + a real .ics — all-day, from the plan's date.
+  // Add-to-calendar: Google link + a real .ics — all-day, spanning the whole
+  // event (DTEND is exclusive, so last day + 1). Before R1 this always booked a
+  // one-day block: a guest calendared "June 12" for a June 12–14 reunion.
   const calDate = String(event.date || '').replace(/-/g, '');
   const calEnd = (() => {
     if (!event.date) return '';
-    const d = new Date(event.date + 'T12:00:00'); d.setDate(d.getDate() + 1);
+    const last = spanEnd(event) || String(event.date).slice(0, 10);
+    const d = new Date(last + 'T12:00:00'); d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10).replace(/-/g, '');
   })();
   const gcalUrl = event.date
@@ -740,6 +757,11 @@ export default function InviteV2({ code }) {
               {event.date && (<><div className="inv2-label lp">When</div>
                 <div className="inv2-val lp">
                   {dfmt(event.date, { weekday: 'long', month: 'long', day: 'numeric' })}
+                  {/* Multi-day span (R1): the range the host actually set — never
+                      just day 1 of a three-day weekend. */}
+                  {spanEnd(event) !== String(event.date).slice(0, 10)
+                    ? <> – {dfmt(spanEnd(event), { weekday: 'long', month: 'long', day: 'numeric' })}</>
+                    : null}
                   {whenLabel ? <span className="inv2-when-time"> · {whenLabel.label}</span> : null}
                 </div></>)}
               {(event.venue || event.venueCity) && (<><div className="inv2-label lp">Where</div>
@@ -758,10 +780,19 @@ export default function InviteV2({ code }) {
                   "Hosted by" would print an address on the invitation. hostName is a
                   real name, captured in "Make it yours". The contact row still renders
                   below it for the guest who needs to reach someone. */}
-              {!isPast && String(event.hostName || '').trim() && (<><div className="inv2-label lp">Hosted by</div>
-                <div className="inv2-val lp">{event.hostName}</div></>)}
+              {/* Field-name truth: the local pool carries hostName (singular); the
+                  backend whitelist ships hostNames (plural, rsvp.py) — reading only
+                  one meant remote invites NEVER showed who's hosting. */}
+              {!isPast && String(event.hostName || event.hostNames || '').trim() && (<><div className="inv2-label lp">Hosted by</div>
+                <div className="inv2-val lp">{event.hostName || event.hostNames}</div></>)}
               {!isPast && String(event.hostContact || '').trim() && (<><div className="inv2-label lp">Host</div>
-                <div className="inv2-val lp">{event.hostContact}</div></>)}
+                <div className="inv2-val lp">{(() => {
+                  // Backend contract (rsvp.py): hostContact renders as a tap-to-message
+                  // link, never printed raw. Email → mailto:, anything phone-shaped → sms:.
+                  const c = String(event.hostContact).trim();
+                  const href = c.includes('@') ? 'mailto:' + c : 'sms:' + c.replace(/[^\d+]/g, '');
+                  return <a href={href} style={{ color: 'inherit' }}>Message the host</a>;
+                })()}</div></>)}
               {/* A REPLY-BY DATE THE HOST NEVER SET (2026-07-14).
                   rsvpDeadlineFor() returns `source: 'derived'` with `hard: true` when the
                   host set nothing — an invented `event.date − 7d` flagged as FIRM — and this
@@ -1099,7 +1130,7 @@ export default function InviteV2({ code }) {
           </div>
 
           {/* ── Getting there — event day only; unchanged mechanics. ── */}
-          {days === 0 && (event.venue || event.venueCity) && (
+          {days != null && days <= 0 && !isPast && (event.venue || event.venueCity) && (
             <div className="card no-hover" style={{ marginTop: 14 }}><div className="card-head" style={{ cursor: 'default', padding: '14px 18px' }}>
               <div className="shelf-label" style={{ marginBottom: 4 }}>Getting there — it’s today</div>
               <p className="grounding" style={{ margin: '0 0 8px' }}>{[event.venue, event.venueCity].filter(Boolean).join(', ')}</p>

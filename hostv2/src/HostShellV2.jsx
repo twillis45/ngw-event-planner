@@ -63,7 +63,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus } from '@app/lib/dates';
+import { daysUntil, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
@@ -978,6 +978,10 @@ export default function HostShellV2() {
   const pbTypical = effType ? playbookTypicalGuests(effType) : null;
   const effGuests = (fGuests ?? parsed.guests) ?? pbTypical;
   const effDate = fDate || parsed.date || '';
+  // Range end rides ONLY while the start it was heard with still stands — a
+  // manually corrected start date can't keep a parsed end that no longer means
+  // anything (R1 span ruling, 2026-07-26).
+  const effEndDate = (parsed.endDate && effDate === parsed.date) ? parsed.endDate : '';
   const effName = fName || parsed.honoree || '';
   // A real "in Santa Fe, New Mexico" match pre-fills the town field the same
   // way a typical guest count pre-fills — visible, editable, never silently
@@ -3737,6 +3741,11 @@ export default function HostShellV2() {
           name: r.guest_name, rsvp: r.rsvp, meal: r.meal, needs: r.needs,
           plusOne: r.plus_one, plusOneMeal: r.plus_one_meal, plusOneNeeds: r.plus_one_needs,
           kids: r.kids, note: r.note, idempotencyKey: r.idempotency_key,
+          // Structured details (2026-07-27 fix): before migration 015 the server
+          // dropped these, so a remote guest's allergy answer never landed here.
+          allergens: r.allergens, diets: r.diets, access: r.access,
+          picksCrabs: typeof r.picks_crabs === 'boolean' ? r.picks_crabs : undefined,
+          phone: r.phone, email: r.email, mailingAddress: r.mailing_address,
         }));
         const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
         if (!dead) announceReplies(gs, merged + added, yesCount);
@@ -4449,7 +4458,7 @@ export default function HostShellV2() {
       createdAt: new Date().toISOString(), // overdue-on-creation fix: the board needs to know the runway existed
       name: effName ? effName + '’s ' + milestoneName : 'My ' + milestoneName,
       honoree: effName || '',
-      type: effType, date: effDate || '', venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
       ...((() => {
         // Same strict city/state-or-ZIP gate as the other venueCity writers —
         // this is event CREATION, so a bare city typed here would otherwise
@@ -4903,7 +4912,7 @@ export default function HostShellV2() {
                           {effGuests ? '~' + effGuests + (fGuests == null && parsed.guests == null ? ' · typical' : '') : 'How many?'}
                         </button>
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'date' ? null : 'date')}>
-                          {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
+                          {effDate ? new Date(effDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + (effEndDate ? ' – ' + new Date(effEndDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '') : (parsed.monthYear ? parsed.monthYear.label + ' · pick a day' : 'No date yet')}
                         </button>
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
@@ -5381,7 +5390,12 @@ export default function HostShellV2() {
                 }
                 return (<>
                   <div className="mega">
-                    {days === null ? 'No date' : days === 0 ? 'Today' : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
+                    {/* Mid-span truth (R1): on day 2 of a June 12–14 event `days`
+                        is -1 — the old label said "1d ago" while the reunion was
+                        LIVE. The span check must come before the ago branch. */}
+                    {days === null ? 'No date'
+                      : isDuringEvent(event) ? (spanNights(event) > 0 ? `Day ${dayIndexOf(event)} of ${spanNights(event) + 1}` : 'Today')
+                        : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
                   </div>
                   <p className="mega-sub">
                     {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
@@ -8090,6 +8104,23 @@ export default function HostShellV2() {
                     !event.isDestination ? 'Marked as a destination event — lodging, transport, and travel decisions just got added to your plan.' : 'Back to a local event — the travel decisions and vendor categories are removed.')}>
                   {event.isDestination ? 'yes' : 'no'}
                 </button>
+              </div>
+            )}
+            {sheet.kind === 'space' && (
+              // R1 span ruling (2026-07-26): endDate is host-editable after
+              // creation, not only heard once at create. Empty = one day.
+              <div className="line" style={{ padding: '2px 0 10px' }}>
+                <span>Last day <span className="of">— if it runs more than one day</span></span>
+                <input className="field" type="date" style={{ maxWidth: 160 }}
+                  value={/^\d{4}-\d{2}-\d{2}/.test(String(event.endDate || '')) ? String(event.endDate).slice(0, 10) : ''}
+                  min={event.date || undefined}
+                  aria-label="Last day of the event"
+                  onChange={e => {
+                    const v = e.target.value;
+                    if (v && event.date && v <= String(event.date).slice(0, 10)) return; // span only extends forward
+                    patchEvent({ endDate: v || null },
+                      v ? 'Multi-day set — the plan now runs through your last day.' : 'Back to a single day.');
+                  }} />
               </div>
             )}
             {sheet.kind === 'space' && (() => {

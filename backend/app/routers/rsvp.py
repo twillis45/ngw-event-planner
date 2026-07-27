@@ -41,6 +41,10 @@ MAX_NEEDS = 500
 MAX_NOTE  = 1000
 MAX_CODE  = 80
 MAX_KEY   = 120
+MAX_CONTACT = 160   # guest-volunteered phone/email
+MAX_ADDR    = 300   # mailing address (host-requested)
+MAX_LIST    = 12    # structured dietary/access chips per list
+MAX_ITEM    = 60    # single chip length
 
 # Minimum entropy floor for a public rsvp_code. New events mint a 22-char rsvpToken
 # (see rsvpToken() in src/App.js). A short/guessable/legacy code must NEVER be able to
@@ -68,7 +72,10 @@ MIN_CODE_LEN = 16
 #     printed raw text. Still host-controlled and invite-scoped; never auto-derived
 #     from account PII.
 PUBLIC_EVENT_FIELDS = (
-    "name", "type", "date", "startTime", "timeOfDay", "endTime",
+    # endDate: INTENTIONAL (R1 span, 2026-07-27). The last day of a multi-day
+    # event — pure display logistics a guest needs (span line, calendar window,
+    # live-vs-past tense). No PII; same class as `date`.
+    "name", "type", "date", "endDate", "startTime", "timeOfDay", "endTime",
     "venue", "venueAddress", "venueCity", "venueState", "address",
     "inviteStyle", "hostNames", "rsvpCode",
     "dressCode", "parking", "bringNote", "hostContact",
@@ -157,6 +164,18 @@ class RsvpSubmit(BaseModel):
     plus_one_needs: Optional[str] = None
     kids: int = 0
     note: Optional[str] = None
+    # ── Structured guest details (2026-07-27 data-loss fix) ──────────────────
+    # The invite has been SENDING these since the reply-form redesign; this model
+    # silently dropped them (pydantic default ignores unknown fields), so a remote
+    # guest's allergy answer never reached the host. allergens/diets/access are
+    # health-adjacent — host read-back only, never on any public response.
+    allergens: Optional[list[str]] = None
+    diets: Optional[list[str]] = None
+    access: Optional[list[str]] = None
+    picks_crabs: Optional[bool] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    mailing_address: Optional[str] = None
 
     @field_validator("name")
     @classmethod
@@ -271,12 +290,20 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
                 "This invite has reached its response limit — contact the host.",
             )
 
+        # Structured list caps: at most MAX_LIST real, clipped, non-empty chips.
+        def _clip_list(v):
+            if not isinstance(v, list):
+                return None
+            out = [s.strip()[:MAX_ITEM] for s in v if isinstance(s, str) and s.strip()]
+            return out[:MAX_LIST] or None
+
         row = await conn.fetchrow(
             """
             insert into public.rsvp_submissions
               (event_id, rsvp_code, idempotency_key, guest_name, rsvp, meal, needs,
-               plus_one, plus_one_meal, plus_one_needs, kids, note)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+               plus_one, plus_one_meal, plus_one_needs, kids, note,
+               allergens, diets, access, picks_crabs, phone, email, mailing_address)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
             on conflict (rsvp_code, idempotency_key) do update set
               guest_name     = excluded.guest_name,
               rsvp           = excluded.rsvp,
@@ -287,6 +314,13 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
               plus_one_needs = excluded.plus_one_needs,
               kids           = excluded.kids,
               note           = excluded.note,
+              allergens       = excluded.allergens,
+              diets           = excluded.diets,
+              access          = excluded.access,
+              picks_crabs     = excluded.picks_crabs,
+              phone           = excluded.phone,
+              email           = excluded.email,
+              mailing_address = excluded.mailing_address,
               updated_at     = now()
             returning submitted_at
             """,
@@ -302,6 +336,13 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             _clip(payload.plus_one_needs, MAX_NEEDS),
             int(payload.kids or 0),
             _clip(payload.note, MAX_NOTE),
+            _clip_list(payload.allergens),
+            _clip_list(payload.diets),
+            _clip_list(payload.access),
+            payload.picks_crabs,
+            _clip(payload.phone, MAX_CONTACT),
+            _clip(payload.email, MAX_CONTACT),
+            _clip(payload.mailing_address, MAX_ADDR),
         )
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
@@ -388,6 +429,7 @@ async def list_rsvps(
         rows = await conn.fetch(
             """select id, event_id, rsvp_code, guest_name, rsvp, meal, needs,
                       plus_one, plus_one_meal, plus_one_needs, kids, note,
+                      allergens, diets, access, picks_crabs, phone, email, mailing_address,
                       submitted_at, updated_at
                from public.rsvp_submissions
                where event_id = $1

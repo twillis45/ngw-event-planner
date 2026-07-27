@@ -26,7 +26,7 @@ import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
 import { isVendorConfirmed } from './workstreams';
 import { hostSpending } from './hostSpending';
-import { daysUntil } from './dates';
+import { daysUntil, spanEnd } from './dates';
 import { startTimeIsConfirmed } from './startTime';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -38,9 +38,12 @@ const OUTDOOR_TYPE = /cookout|bbq|barbecue|fish fry|crab feast|crawfish|boil|pic
 export function deriveEventPhaseProgress(event, now = new Date()) {
   const ev = event || {};
   const d = daysTo(ev.date, now);
+  const dEnd = daysTo(spanEnd(ev), now); // = d for single-day events
 
   // ── Phase ───────────────────────────────────────────────────────────────────
-  const phase = d == null ? 'unknown' : d > 0 ? 'pre_event' : d === 0 ? 'live_event' : 'post_event';
+  // Span-aware (R1, 2026-07-26): live holds from the first day THROUGH the last
+  // day (endDate) — day 2 of a 3-day event is live_event, not post_event.
+  const phase = d == null ? 'unknown' : d > 0 ? 'pre_event' : dEnd >= 0 ? 'live_event' : 'post_event';
 
   if (phase === 'live_event') return liveProgress(ev, now);
   if (phase === 'post_event') return postProgress(ev);
