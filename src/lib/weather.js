@@ -9,7 +9,7 @@
  * Outdoor events only — indoor events skip the check.
  */
 
-import { daysUntil } from './dates';
+import { daysUntil, spanEnd } from './dates';
 
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
 const BASE = 'https://api.openweathermap.org/data/3.0/onecall';
@@ -80,13 +80,36 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
   const daysOut = daysUntil(eventDateIso);
   if (daysOut == null || daysOut < 0 || daysOut > 14) return null; // outside forecast window
 
+  const data = await fetchForecast(lat, lon);
+  if (!data) return null;
+  return assessForecastDay(data, eventDateIso);
+}
+
+// One Call fetch, shared by the single-day and span readers so a multi-day
+// event still costs ONE API call (free tier: 1000/day).
+async function fetchForecast(lat, lon) {
   try {
     const res = PROXY
       ? await fetch(`${PROXY}/api/weather/onecall?lat=${lat}&lon=${lon}`)
       : await fetch(`${BASE}?lat=${lat}&lon=${lon}&exclude=current,minutely,alerts&units=imperial&appid=${API_KEY}`);
     if (!res.ok) return null;
-    const data = await res.json();
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
 
+/**
+ * Classify ONE forecast day out of an already-fetched One Call payload.
+ * Pure (no fetch) — this is the exact classifier getEventWeatherRisk has always
+ * applied, extracted so the span reader can run it per day on a single payload.
+ * Returns the same result shape as getEventWeatherRisk, or null when the daily
+ * array doesn't cover the date.
+ */
+export function assessForecastDay(data, eventDateIso) {
+  if (!data || !eventDateIso) return null;
+  const daysOut = daysUntil(eventDateIso);
+  try {
     // Find the daily forecast matching the event date (proxy + direct both
     // expose a `daily` array).
     const eventDay = data.daily?.find(d => {
@@ -185,6 +208,51 @@ export async function getEventWeatherRisk(lat, lon, eventDateIso) {
   } catch {
     return null;
   }
+}
+
+/**
+ * getEventWeatherSpan — the whole event, not just its first day (Destination +
+ * Multi-Day program, P1 "weather range"). ONE fetch; every span day inside the
+ * forecast window classified through assessForecastDay. Span truth comes from
+ * spanEnd (./dates): endDate absent ⇒ one day ⇒ primary is byte-identical to
+ * getEventWeatherRisk — single-day events cannot change behavior.
+ *
+ * Day gating is PER DAY: mid-event (day 2 of 3) the passed days drop out and
+ * `primary` is today — the first day still ahead of or on the clock. Returns
+ * { days: [row], primary: row } or null when no span day is forecastable.
+ * Rows carry dayIndex/dayCount ("Day 2 of 3") for honest labeling.
+ */
+export async function getEventWeatherSpan(lat, lon, event) {
+  const startIso = event && event.date ? String(event.date).slice(0, 10) : null;
+  if ((!API_KEY && !PROXY) || !lat || !lon || !startIso) return null;
+  const endIso = spanEnd(event) || startIso;
+
+  // Enumerate the span's calendar dates via local noon (DST-safe stepping).
+  const dates = [];
+  const cursor = new Date(startIso + 'T12:00:00');
+  const last = new Date(endIso + 'T12:00:00');
+  const fmt = (dt) => `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+  while (!isNaN(cursor) && !isNaN(last) && cursor <= last && dates.length < 14) {
+    dates.push(fmt(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  if (!dates.length) return null;
+
+  const inWindow = dates.filter(d => {
+    const n = daysUntil(d);
+    return n != null && n >= 0 && n <= 14;
+  });
+  if (!inWindow.length) return null;
+
+  const data = await fetchForecast(lat, lon);
+  if (!data) return null;
+  const days = [];
+  for (const d of inWindow) {
+    const row = assessForecastDay(data, d);
+    if (row) days.push({ ...row, dayIndex: dates.indexOf(d) + 1, dayCount: dates.length });
+  }
+  if (!days.length) return null;
+  return { days, primary: days[0] };
 }
 
 /**
