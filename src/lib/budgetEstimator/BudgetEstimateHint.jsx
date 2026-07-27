@@ -43,6 +43,7 @@ export default function BudgetEstimateHint({
   compact = false,
   family = null,
   isDestination = false,
+  nights = 0,
 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
@@ -113,6 +114,14 @@ export default function BudgetEstimateHint({
         letterSpacing: '-0.005em',
       }}>
         {type} · {guests} guests typically runs {fmtMoney(lowTotal)}–{fmtMoney(highTotal)}
+        {Number(nights) > 0 && !destinationAdjusted ? (
+          // Multi-day honesty (span slice 2): the band prices the MAIN gathering
+          // day — we say so instead of inventing a per-day multiplier with no
+          // grounding. (Destination-adjusted bands already price the whole trip.)
+          <span style={{ display: 'block', fontWeight: 500, fontSize: '0.86em', opacity: 0.75 }}>
+            for the main day — a {Number(nights) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those
+          </span>
+        ) : null}
       </div>
 
       <div style={{ fontSize: 11.5, color: palette.muted, marginTop: 4, lineHeight: 1.5 }}>

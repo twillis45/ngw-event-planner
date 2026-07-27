@@ -17,6 +17,13 @@ export const DESTINATION_SOURCES = {
   'cdc-altitude': { title: 'CDC Travelers’ Health — High-Altitude Travel & Altitude Illness', publisher: 'U.S. Centers for Disease Control and Prevention', tier: 'established-consensus', note: 'Altitude illness is predicted by rate of ascent and by heart/lung health, not age — the basis for pacing a high-altitude schedule.' },
   'ahla-roomblock': { title: 'Hotel group room-block practice — courtesy vs. guaranteed block (attrition)', publisher: 'American Hotel & Lodging Association (industry practice)', tier: 'established-consensus', note: 'A courtesy block holds rooms with no host liability; a guaranteed block gets a firmer rate but the host owes an attrition penalty on rooms that don’t fill.' },
   'nhtsa-impaired': { title: 'NHTSA impaired-driving data', publisher: 'U.S. National Highway Traffic Safety Administration (DOT)', tier: 'established-consensus', note: 'Late-night, alcohol-served travel is when impaired-driving risk peaks — why the ride home from a destination venue is the single riskiest logistics gap.' },
+  // CVB free group services — three named, directly verified programs (pages
+  // fetched 2026-07-26, research dossier d19242e2). The generalization ("every
+  // destination city has one, funded by hotel tax") is established practice;
+  // specific service claims stay tied to these verified bureaus.
+  'cvb-gwinnett': { title: 'Explore Gwinnett — Family Reunion Planning Kit & reunion services', publisher: 'Gwinnett County (GA) Convention & Visitors Bureau', tier: 'cited', note: 'Physical reunion planning kit, quarterly planner workshops, free room-block sourcing across ~100 hotels, welcome bags with a booked block. Verified 2026-07-26.' },
+  'cvb-atlanta': { title: 'Atlanta CVB — Reunion Services', publisher: 'Atlanta Convention & Visitors Bureau', tier: 'cited', note: 'Hotel sourcing, Governor/Mayor welcome letters, name badges, genealogy charts, personal planning consultation. Verified 2026-07-26.' },
+  'cvb-myrtle-beach': { title: 'Visit Myrtle Beach — Planning Your Family Reunion', publisher: 'Myrtle Beach Area CVB', tier: 'cited', note: 'Dedicated reunion planners who source room blocks and recommend venues; publishes the resort/rental/campground lodging triad. Verified 2026-07-26.' },
 };
 
 // Grounded when it names an element AND cites >=1 source id that resolves here

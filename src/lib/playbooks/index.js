@@ -703,6 +703,16 @@ const DESTINATION_TASKS = [
   // DESTINATION-4: kidsLine rides the same hotel call as the room block — the
   // crib/connecting-room ask is one phone call, not a second task. Appended by
   // playbookChecklist only when kids are actually coming (eventHasKids).
+  // CVB UNLOCK (research dossier d19242e2 + spec artifact 8c1a72a7): every US
+  // destination city has a visitors bureau funded by hotel tax — free group
+  // services almost no host knows exist. Named verified programs: Explore
+  // Gwinnett (planning kit, workshops, block sourcing across ~100 hotels),
+  // Atlanta CVB (welcome letters, name badges, genealogy charts), Visit
+  // Myrtle Beach (dedicated reunion planners). Copy stays at "typically" for
+  // unverified cities; completion = the host's own "contacted", never an
+  // app-asserted outcome. A courtesy block a CVB sources is the ZERO-risk
+  // lodging model — this task deliberately precedes the room-block one.
+  { id: 'dest_t_cvb', label: 'Call the destination’s visitors bureau — it’s free (hotel tax pays for it). Ask for: room-block options at 2-3 price points, their group planning kit, welcome bags, and a welcome letter for the program', when: 'T-240d' },
   { id: 'dest_t_lodging', label: 'Confirm the room block or share group hotel options with guests', when: 'T-210d', kidsLine: 'traveling with little kids? Ask about cribs and connecting rooms in the same call (one ask, not two)' },
   // DESTINATION-4: an accessibility WALK, not a checkbox — venues answer "are you
   // accessible?" about the room; the trip fails on everything between the car
