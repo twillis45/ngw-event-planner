@@ -4960,6 +4960,14 @@ export default function HostShellV2() {
                         <button className="chip" aria-pressed={effIsDestination} onClick={() => setFIsDestination(!effIsDestination)}>
                           {effIsDestination ? 'Destination event' + (fIsDestination == null ? ' · heard' : '') : 'Local event'}
                         </button>
+                        {/* Kids policy — CAPTURED silently since the Vida fixes but never
+                            echoed; a heard fact the host can't see is a fact they'll
+                            re-type. Display-only (edits live on the invite settings). */}
+                        {parsed.kidsPolicy ? (
+                          <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>
+                            {parsed.kidsPolicy === 'adults_only' ? 'No kids · heard' : 'Kids welcome · heard'}
+                          </span>
+                        ) : null}
                       </div>
                       {(createEdit === 'type' || !effType) && (
                         <div className="typebrowser" style={{ marginTop: 'var(--sp-3)' }}>
@@ -5139,7 +5147,8 @@ export default function HostShellV2() {
                       <>
                     <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
                     <p className="rv-mguide">Built while you typed — every line traces to your answers.</p>
-                    <ul className="tick-list rv-slowrows" style={{ marginTop: 22 }}>
+                    <ul className="tick-list rv-slowrows" style={{ marginTop: 22, '--rows': revealStages.length + 1 }}>
+                      {revealPhase === 'rack' && <span className="rv-lightfront" aria-hidden="true" />}
                       {revealStages.map((st, i) => (
                         <li key={st.key || i} className="rv-line" style={{ '--i': i }}>
                           <strong>{st.title}:</strong> {st.what}
