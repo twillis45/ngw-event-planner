@@ -331,7 +331,11 @@ function buildDomainStage(domain) {
     budget: {
       icon: 'wallet',
       title: 'Budget',
-      buildWhat: (data) => `$${(Number(data.totalBudget) || 0).toLocaleString()} allocated across ${data.categories.length} categories.`,
+      // "across 0 categories" read as broken (host 2026-07-27) — when no
+      // categories exist yet, say the honest simpler thing instead.
+      buildWhat: (data) => (data.categories.length > 0
+        ? `$${(Number(data.totalBudget) || 0).toLocaleString()} allocated across ${data.categories.length} categories.`
+        : `$${(Number(data.totalBudget) || 0).toLocaleString()} set — ready to allocate.`),
       buildWhy: (data) => 'Budget is set and live. Track spending in real time.',
       status: 'Ready'
     },

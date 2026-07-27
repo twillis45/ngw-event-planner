@@ -1289,9 +1289,11 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-meyebrow{text-align:center; font-size:var(--t-overline); font-weight:650; color:var(--muted);
   letter-spacing:8px; opacity:0; transition:letter-spacing 1.4s var(--ease-out), opacity 1.2s var(--ease-out)}
 .reveal-stage.rv-intro .rv-meyebrow,.reveal-stage.rv-zoom .rv-meyebrow,.reveal-stage.rv-glint .rv-meyebrow{opacity:.7; letter-spacing:3px}
-.rv-mwrap{position:relative; margin-top:30vh; text-align:center; overflow:visible}
-.rv-mname{font-family:var(--serif); font-weight:800; font-size:var(--t-display-l); line-height:1.08;
-  letter-spacing:-.015em; color:#f4f6f8; margin:18px 0 0; display:block;
+.rv-mwrap{position:absolute; left:24px; right:24px; top:30%; text-align:center; overflow:visible; z-index:3; pointer-events:none}
+/* Host ruling 2026-07-27: the reveal name wears the APP'S display voice
+   (the welcome/splash sans at 800) — Playfair stays stationery-only. */
+.rv-mname{font-family:var(--sans); font-weight:800; font-size:var(--t-display-l); line-height:1.05;
+  letter-spacing:-.03em; color:#f4f6f8; margin:18px 0 0; display:block;
   transform:scale(.06); opacity:0;
   transition:transform 2.4s cubic-bezier(.16,1,.3,1), opacity .9s var(--ease-out)}
 .reveal-stage.rv-zoom .rv-mname,.reveal-stage.rv-glint .rv-mname{transform:scale(1); opacity:1}
@@ -1304,6 +1306,13 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .reveal-stage.rv-glint .rv-mglint{animation:rvmglint 1s cubic-bezier(.4,0,.2,1) .1s both}
 @keyframes rvmglint{0%{opacity:0; transform:rotate(-16deg) translateX(0)} 12%{opacity:1}
   100%{opacity:0; transform:rotate(-16deg) translateX(520px)}}
+/* RACK-OUT (concept B fidelity): the name DISSOLVES FORWARD — blur + scale
+   toward the lens — while the plan wall sharpens behind it. */
+.reveal-stage.rv-rack .rv-mwrap .rv-meyebrow{opacity:0; transition:opacity .5s var(--ease-out)}
+.reveal-stage.rv-rack .rv-mname{animation:rvmrackout 1.15s cubic-bezier(.6,0,.8,.4) both}
+@keyframes rvmrackout{from{opacity:1; transform:scale(1); filter:blur(0)} to{opacity:0; transform:scale(1.42); filter:blur(10px)}}
+/* keynote-clean primary: the reveal's ask is the WHITE PILL (scoped here only) */
+.reveal-stage .cta.big{background:#f2f4f7; color:#0d1014; border:none; border-radius:999px}
 /* rack focus: the listing sharpens in slowly enough to READ — 1.35s per row
    (host 2026-07-27: "let each reveal piece breathe… this is our app's honesty
    and do-it-for-me"). Every row now carries its full engine truth: the why on
@@ -1312,21 +1321,28 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    name still lands LAST (mounted-with-.in transitions never run — animation
    is the only way to sequence a mount). */
 .rv-slowrows .rv-line, .rv-lastland{opacity:0; transform:translateY(6px); filter:blur(12px); transition:none;
-  animation:rvrackrow 1.1s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*1.35s)}
-.rv-slowrows .rv-line{margin-bottom:18px}
+  animation:rvrackrow 1.2s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*1.8s)}
+.rv-slowrows .rv-line{margin-bottom:20px}
 .rv-why{display:block; margin-top:3px; color:var(--muted)}
 .rv-prov{display:block; margin-top:5px; font-size:var(--t-caption); letter-spacing:.03em; opacity:.85}
+/* each line is its OWN small reveal (host: "each line should breathe more —
+   more of a reveal"): the headline lands first, its why follows a beat later,
+   the provenance receipt last — a three-beat arrival per row on the 1.8s ladder */
+.rv-slowrows .rv-why{opacity:0; animation:rvfollow .7s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s + .5s)}
+.rv-slowrows .grounding{opacity:0; animation:rvfollow .7s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s + .75s)}
+.rv-slowrows .rv-prov{animation-delay:calc(var(--i)*1.8s + 1s)}
+@keyframes rvfollow{from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none}}
 .rv-mguide{font-family:var(--serif-read); font-style:italic; font-optical-sizing:auto;
   font-size:var(--t-body-s); color:var(--ink-soft); margin:6px 0 0}
 /* the row's tick ignites steel as its line arrives — the bead language, kept */
-.rv-slowrows .rv-line::before{animation:rvracktick 1.2s var(--ease-out) both; animation-delay:calc(var(--i)*1.35s)}
+.rv-slowrows .rv-line::before{animation:rvracktick 1.2s var(--ease-out) both; animation-delay:calc(var(--i)*1.8s)}
 @keyframes rvracktick{
   0%{background:rgba(78,104,119,.12); box-shadow:none}
   40%{background:var(--steel-soft); box-shadow:0 0 10px 2px rgba(78,104,119,.6)}
   100%{background:rgba(78,104,119,.35); box-shadow:none}}
 @keyframes rvrackrow{from{opacity:0; transform:translateY(6px); filter:blur(12px)} to{opacity:1; transform:none; filter:blur(0)}}
 @media(prefers-reduced-motion:reduce){
-  .rv-meyebrow,.rv-mname,.rv-slowrows .rv-line{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
+  .rv-meyebrow,.rv-mname,.rv-slowrows .rv-line,.rv-slowrows .rv-why,.rv-slowrows .grounding,.rv-slowrows .rv-prov{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
   .rv-mglint{display:none!important}
 }
 

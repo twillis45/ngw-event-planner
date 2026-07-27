@@ -4550,7 +4550,7 @@ export default function HostShellV2() {
     revealTimers.current.push(setTimeout(() => setRevealPhase('rack'), 4800));
     // one row every 900ms — slow enough to READ (host directive) — then the
     // name lands last, then the ask.
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 1350 + 2200));
+    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + rows * 1800 + 2600));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -5124,7 +5124,7 @@ export default function HostShellV2() {
                     {/* THE MONOLITH (host pick 2026-07-27) — the name arrives from
                         infinity on one precision curve; the locked period bead
                         ignites as it lands; one lens glint crosses it. */}
-                    {(revealPhase === 'intro' || revealPhase === 'zoom' || revealPhase === 'glint') && (
+                    {(revealPhase === 'intro' || revealPhase === 'zoom' || revealPhase === 'glint' || revealPhase === 'rack') && (
                       <div className="rv-mwrap">
                         <div className="rv-meyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
                         <h1 className="rv-mname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
@@ -5157,7 +5157,7 @@ export default function HostShellV2() {
                     {/* The name lands LAST — the conclusion the plan reached, not a header.
                         Its period is the same locked bead as the boot splash: it drops in
                         and ignites once the name has landed — the same mark, twice. */}
-                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--serif)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.1, letterSpacing: '-.015em', marginTop: 6, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'var(--t-display-l)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 6, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
                     {/* identityStatement() — the production identity engine, verbatim */}
                     <p className={revealPhase === 'rack' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2', '--i': revealStages.length + 2 }}>{identityStatement(activeCustom)}</p>
                     <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
