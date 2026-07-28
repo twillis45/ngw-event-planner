@@ -6070,7 +6070,13 @@ export default function HostShellV2() {
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
                 // a host that a CTA does not land HERE, and these now do. ('Communication'
                 // stays off the list: V2 has no messages surface, so its tag is still true.)
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks'].includes(a.route.tab));
+                // 'Travel' added 2026-07-28: resolveRoute has handled tab:'Travel'
+                // (→ the lodging sheet) since the resolver was written, but this
+                // allowlist never learned it. So a hero routed to Travel rendered
+                // the honest-but-wrong "in the full app" chip and refused to move —
+                // the tag exists to warn about surfaces hostv2 genuinely lacks, and
+                // this one it has. Found by driving the host's own report.
+                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks', 'Travel'].includes(a.route.tab));
                 // REBALANCE (dedup): the hero panel — the ask above owns the VERB;
                 // the panel names the NOUN (record) only when it adds information.
                 const isHero = askMode && i === 0;

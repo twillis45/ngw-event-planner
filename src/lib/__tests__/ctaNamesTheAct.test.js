@@ -184,3 +184,46 @@ describe('no CTA describes a trip instead of the work', () => {
     expect(isBanned('Build the day')).toBe(false);
   });
 });
+
+// ─── THE LABEL AND THE ROUTE MUST COME FROM ONE RESOLUTION ───────────────────
+//
+// Host, 2026-07-28: "this CTA destination is not correct." The hero read
+// "Open travel & stays" and landed on the plan list. Cause: the compression
+// tier took the LABEL from the checklist router but kept the task deep-link as
+// its ROUTE — I had even written a comment calling the task row "tighter".
+//
+// A label naming one destination while the route goes to another is a lying CTA
+// wearing an honest name, which is worse than the generic label it replaced:
+// "Do this" at least promised nothing.
+describe('a hero CTA goes where its label says', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const cc = fs.readFileSync(path.resolve(__dirname, '../..', 'CommandCenter.jsx'), 'utf8');
+
+  test('label and route both read the same resolution', () => {
+    expect(cc).toMatch(/const routerHit = _lead \? _lead\.hit : null;/);
+    expect(cc).toMatch(/primaryCta: routerHit\.label,/);
+    expect(cc).toMatch(/primaryRoute: routerHit\.route,/);
+  });
+
+  // ── THE HERO NEVER LANDS ON A LIST (host ruling 2026-07-28) ────────────────
+  // "dont have the hero CTAs go to the checklist. They should have final
+  // destination. not 2 click to get to the deal."
+  test('a row the router cannot PLACE never becomes the hero', () => {
+    // The tier leads with the first do-now row that resolves to a real
+    // destination, and explicitly refuses routes back onto the task list.
+    expect(cc).toMatch(/hit\.route\.tab === 'Planning Tasks' \|\| hit\.route\.tab === 'Timeline'/);
+    expect(cc).toMatch(/if \(!routerHit\) return null;/);
+  });
+
+  test('no checklist fallback label survives in this tier', () => {
+    const tier = cc.slice(cc.indexOf('THE HERO NEVER LANDS ON THE CHECKLIST'));
+    const block = tier.slice(0, tier.indexOf('// Tier 5'));
+    expect(block).not.toMatch(/'Open your checklist'/);
+  });
+
+  test('the label is never taken from the router while the route ignores it', () => {
+    // The exact shape of the defect: hit.label used with firstRoute alongside.
+    expect(cc).not.toMatch(/hit && hit\.label\)[\s\S]{0,400}primaryRoute: firstRoute,/);
+  });
+});

@@ -97,6 +97,31 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // Crabs have their own planning surface in the resolver's vocabulary.
   if (/\bcrabs?\b|crab house|crawfish/.test(t))
     return { label: 'Open the crab plan', route: { focusField: 'crab-plan' } };
+  // ── THE GETTING-HERE BRIEF IS TRAVEL, NOT THE GUEST LIST ──────────────────
+  // Host report 2026-07-28: "Send guests the getting-here info — airport, hotel,
+  // transport, cutoff dates" landed on Open guests. No specific rule matched it,
+  // so it fell through to milestoneActionRoute, whose FIRST domain is
+  // /guest|invite|rsvp|.../ — and the bare word "guests" in "Send guests…" won.
+  // That is the fall-through-catch trap the routing audit already recorded:
+  // a broad domain matcher silently eats a task that is about something else
+  // entirely. The word "guests" here names the AUDIENCE, not the destination.
+  //
+  // Two shapes, both landing on Travel & where everyone stays:
+  //   · the brief itself — "getting-here info", "travel details", "how to get here"
+  //   · a task naming the airport ALONGSIDE lodging or transport, which is the
+  //     trip brief by description even when it isn't called one
+  if (/getting[- ]here|travel (info|details|brief|plan)\b|how to get (here|there)|arrival info/.test(t)
+    || (/\bairport\b/.test(t) && /\b(hotel|lodging|transport|shuttle|stay)\b/.test(t)))
+    return { label: 'Open travel & stays', route: { tab: 'Travel' } };
+
+  // A row that is ONLY about the airport lands on the airports card. Found while
+  // fixing the above: "Add the nearest airport" / "Note the airport code" routed
+  // to NOTHING — milestoneActionRoute has no air domain, so they fell to the
+  // Timeline self-route and were nulled out. The app has an airports card and a
+  // 119-airport table; these rows had no way to reach either.
+  if (/\bairports?\b|\bflight|\bterminal\b|airport code/.test(t))
+    return { label: 'Open the airports', route: { focusField: 'air' } };
+
   if (/room block/.test(t))
     return { label: 'Open the stay', route: { focusField: 'lodging' } };
   if (/gift log|who-gave-what/.test(t))
