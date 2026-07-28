@@ -98,6 +98,11 @@ PUBLIC_EVENT_FIELDS = (
     # host chose to publish to guests) — display copy, no owners, no crew
     # times, no PII. Raw proposals never reach here; only event.itinerary.
     "itinerary",
+    # lodgingOptions (rental-house engine, 2026-07-28): the host's SHARED
+    # shortlist of rental candidates — listing links + host-typed facts
+    # (sleeps/beds/price/tier) published so guests can weigh in from the
+    # invite. Host-curated display data; no PII, no money ledger.
+    "lodgingOptions",
 )
 
 # ── In-memory sliding-window rate limiter (mirrors routers/ai.py) ──────────────
@@ -191,6 +196,9 @@ class RsvpSubmit(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     mailing_address: Optional[str] = None
+    # Rental-house shortlist reply (migration 016): the guest's preferred
+    # lodgingOptions id — an opinion for the host, never a booking commitment.
+    lodging_pick: Optional[str] = None
 
     @field_validator("name")
     @classmethod
@@ -317,8 +325,9 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             insert into public.rsvp_submissions
               (event_id, rsvp_code, idempotency_key, guest_name, rsvp, meal, needs,
                plus_one, plus_one_meal, plus_one_needs, kids, note,
-               allergens, diets, access, picks_crabs, phone, email, mailing_address)
-            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+               allergens, diets, access, picks_crabs, phone, email, mailing_address,
+               lodging_pick)
+            values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
             on conflict (rsvp_code, idempotency_key) do update set
               guest_name     = excluded.guest_name,
               rsvp           = excluded.rsvp,
@@ -336,6 +345,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
               phone           = excluded.phone,
               email           = excluded.email,
               mailing_address = excluded.mailing_address,
+              lodging_pick    = excluded.lodging_pick,
               updated_at     = now()
             returning submitted_at
             """,
@@ -358,6 +368,7 @@ async def public_rsvp(rsvp_code: str, payload: RsvpSubmit, request: Request):
             _clip(payload.phone, MAX_CONTACT),
             _clip(payload.email, MAX_CONTACT),
             _clip(payload.mailing_address, MAX_ADDR),
+            _clip(payload.lodging_pick, MAX_KEY),
         )
     return {"ok": True, "submitted_at": row["submitted_at"].isoformat()}
 
@@ -445,6 +456,7 @@ async def list_rsvps(
             """select id, event_id, rsvp_code, guest_name, rsvp, meal, needs,
                       plus_one, plus_one_meal, plus_one_needs, kids, note,
                       allergens, diets, access, picks_crabs, phone, email, mailing_address,
+                      lodging_pick,
                       submitted_at, updated_at
                from public.rsvp_submissions
                where event_id = $1
