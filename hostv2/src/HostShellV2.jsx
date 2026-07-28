@@ -4547,19 +4547,24 @@ export default function HostShellV2() {
     // Solemn events keep the dignified straight-to-listing reveal; reduced
     // motion likewise never enters the theater.
     if (REDUCE_MOTION || isSolemnEvent(ev)) { setRevealPhase('rest'); return; }
+    // THE SPINE (host lock 2026-07-28): the name lands anchored, then an
+    // attention system walks DOWN the spine — one node takes focus at a time
+    // (its label expands + self-illuminates, the rest of the screen darkens),
+    // each dwelling long enough to read. At the end the whole spine un-dims to
+    // the fully-lit plan and the ask arrives. Audio deferred to native port —
+    // device haptics carry each stop there; here the haptic fires on resolve.
     setRevealPhase('intro');
-    revealTimers.current.push(setTimeout(() => setRevealPhase('zoom'), 1000));
-    revealTimers.current.push(setTimeout(() => { setRevealPhase('glint'); feedback('magic'); }, 3600));
-    // EACH PLAN LINE TAKES OVER THE SCREEN (host ruling 2026-07-27): one
-    // full-viewport cinematic card per stage — 2.4s of undivided stage each —
-    // then the baseline listing COMPOSES (settle) and the ask arrives (rest).
-    const cardN = Math.max(rows - 1, 1);
-    for (let i = 0; i < cardN; i++) {
+    const SP_START = 1300; // the name breathes before the spine ignites
+    const SP_CYCLE = 2000; // dwell per node — long enough to actually read it
+    const nodeN = Math.max(rows - 1, 1);
+    for (let i = 0; i < nodeN; i++) {
       const idx = i;
-      revealTimers.current.push(setTimeout(() => setRevealPhase('c' + idx), 4800 + i * 2400));
+      revealTimers.current.push(setTimeout(() => setRevealPhase('s' + idx), SP_START + i * SP_CYCLE));
     }
-    revealTimers.current.push(setTimeout(() => setRevealPhase('settle'), 4800 + cardN * 2400));
-    revealTimers.current.push(setTimeout(() => setRevealPhase('rest'), 4800 + cardN * 2400 + 2400));
+    revealTimers.current.push(setTimeout(() => {
+      setRevealPhase('rest');
+      try { if (!isSolemnEvent(ev)) feedback('magic'); } catch { /* no haptics */ }
+    }, SP_START + nodeN * SP_CYCLE + 900));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -4612,6 +4617,41 @@ export default function HostShellV2() {
     if (!cueId) return; // an id-less legacy row can't be targeted safely — stay read-only
     const next = ros.map(r => (r && r.id === cueId) ? { ...r, ...patch } : r);
     patchEvent({ ros: next, rosEdited: true }, msg);
+  };
+  // ── DRAG-REORDER (host ask 2026-07-28: "move day of by drag and drop") ──
+  // Same ownership contract as writeRosCue: the reorder snapshots the FULL
+  // effectiveRos (not the day-filtered view — ids, never indices, so a
+  // mid-span filter can't corrupt the array) and sets rosEdited so the
+  // host's order wins from now on. Dropping a row into another day's group
+  // (multi-day preview) adopts that day — an authored move, never a guess.
+  const [rosDragId, setRosDragId] = useState(null);
+  const [rosOverId, setRosOverId] = useState(null);
+  const moveRosRow = (fromId, toId) => {
+    if (!fromId || !toId || fromId === toId) return;
+    let full = [];
+    try { full = (effectiveRos(event) || []).slice(); } catch { full = Array.isArray(event.ros) ? event.ros.slice() : []; }
+    const fi = full.findIndex(r => r && r.id === fromId);
+    const ti = full.findIndex(r => r && r.id === toId);
+    if (fi < 0 || ti < 0) return;
+    const draggingDown = fi < ti;
+    const [moved] = full.splice(fi, 1);
+    const insertAt = full.findIndex(r => r && r.id === toId) + (draggingDown ? 1 : 0);
+    const next = { ...moved };
+    const neighbor = full[draggingDown ? insertAt - 1 : insertAt];
+    const destDay = (neighbor && neighbor.day) || undefined;
+    if ((next.day || undefined) !== destDay) {
+      if (destDay === undefined) delete next.day; else next.day = destDay; // adopt the drop day
+    }
+    full.splice(insertAt, 0, next);
+    patchEvent({ ros: full, rosEdited: true }, 'Reordered — the day runs in your order now.');
+  };
+  const rosRowFromPoint = (x, y) => {
+    try { const el = document.elementFromPoint(x, y); const row = el && el.closest && el.closest('[data-ros-id]'); return row ? row.getAttribute('data-ros-id') : null; } catch { return null; }
+  };
+  const rosNudge = (id, dir) => {
+    const idx = ros.findIndex(r => r && r.id === id);
+    const to = ros[idx + dir];
+    if (to && to.id) moveRosRow(id, to.id);
   };
   // T-2d: inside the day-before window the board simplifies, not busies.
   const nearDayPlan = !!(dayBefore && dayBefore.applicable && askMode);
@@ -5147,82 +5187,51 @@ export default function HostShellV2() {
                         <button className="mini" onClick={() => { clearRevealTimers(); setRevealPhase('rest'); try { if (!isSolemnEvent(event)) feedback('magic'); } catch { /* no haptics */ } }}>Skip ›</button>
                       </div>
                     )}
-                    {/* THE MONOLITH (host pick 2026-07-27) — the name arrives from
-                        infinity on one precision curve; the locked period bead
-                        ignites as it lands; one lens glint crosses it. */}
-                    {(revealPhase === 'intro' || revealPhase === 'zoom' || revealPhase === 'glint' || revealPhase === 'rack') && (
-                      <div className="rv-mwrap">
-                        <div className="rv-meyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
-                        <h1 className="rv-mname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
-                        <span className="rv-mglint" aria-hidden="true" />
-                      </div>
-                    )}
-                    {/* THE TAKEOVER — each plan line owns the whole screen for a
-                        beat: a cinematic card per stage (host ruling 2026-07-27). */}
-                    {String(revealPhase).charAt(0) === 'c' && (() => {
-                      const ci = parseInt(String(revealPhase).slice(1), 10);
-                      const st = revealStages[ci];
+                    {/* THE SPINE (host lock 2026-07-28) — the name lands anchored,
+                        then an attention system walks DOWN the spine: one node
+                        takes focus at a time (its label expands + self-illuminates,
+                        the rest of the screen darkens around it), each dwelling
+                        long enough to read. At the end the whole spine un-dims to
+                        the fully-lit plan and the ask arrives. Box-free; every
+                        line carries its provenance receipt back to an answer.
+                        Audio deferred to the native port (device haptics carry
+                        each stop there). */}
+                    {(revealPhase === 'intro' || String(revealPhase).charAt(0) === 's' || revealPhase === 'rest') && (() => {
+                      const focus = revealPhase === 'rest'
+                        ? revealStages.length
+                        : (String(revealPhase).charAt(0) === 's' ? parseInt(String(revealPhase).slice(1), 10) : -1);
+                      const resolved = revealPhase === 'rest';
                       return (
-                        <>
-                          <div className="rv-cardzone">
-                            {st ? (
-                              <div className="rv-card" key={ci}>
-                                <div className="rv-card-kicker">{st.title}</div>
-                                <div className="rv-card-what">{st.what}</div>
-                                {st.why ? <div className="rv-card-why">{st.why}</div> : null}
-                                {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
-                                  <div className="rv-card-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ')}</div>
-                                ) : null}
-                              </div>
-                            ) : null}
+                        <div className={'rv-spinewrap' + (resolved ? ' resolved' : '')}>
+                          <div className="rv-seyebrow" aria-live="polite">YOUR EVENT, UNDERSTOOD</div>
+                          <h1 className="rv-sname">{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                          <p className="rv-ssub">{identityStatement(activeCustom)}</p>
+                          <div className="rv-spine-col">
+                            {revealStages.map((st, i) => {
+                              const cls = i === focus ? ' focus' : (i < focus ? ' lit' : '');
+                              const prov = [st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ');
+                              return (
+                                <div key={st.key || i} className={'rv-snode' + cls} style={{ '--n': i }}>
+                                  <span className="rv-shalo" aria-hidden="true" />
+                                  <span className="rv-sdot" aria-hidden="true" />
+                                  <div className="rv-scontent">
+                                    <div className="rv-slabel">{st.title}</div>
+                                    <div className="rv-sval">{st.what}{st.why ? <span className="rv-swhy"> {st.why}</span> : null}</div>
+                                    {prov ? <div className="rv-sprov">{prov}</div> : null}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
-                          {/* the plan-at-a-glance grid BUILDS beneath the cards — the
-                              payoff is always in view, never below a fold */}
-                          <div className="rv-grid">
-                            {revealStages.map((tg, i) => (
-                              <div key={tg.key || i} className={'rv-tile' + (i <= ci ? ' in' : '')}>
-                                <div className="rv-tile-t">{tg.title}</div>
-                                <div className="rv-tile-v">{tg.what}</div>
-                              </div>
-                            ))}
+                          <p className={'grounding pre rv-sground' + (resolved ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
+                          <div className={'actions-row pre' + (resolved ? ' in' : '')} style={{ marginTop: 'var(--sp-2)' }}>
+                            <button ref={revealCtaRef} className={'cta big' + (resolved ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
+                            <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
+                            <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                           </div>
-                        </>
+                        </div>
                       );
                     })()}
-                    {/* SETTLE / REST — the plan AT A GLANCE (host ruling 2026-07-27:
-                        no payoff below the fold): name + identity on top, the tile
-                        grid as the resolved plan, the ask always visible. The cards
-                        already told each line's full story; the full listing lives
-                        on the board. */}
-                    {(revealPhase === 'settle' || revealPhase === 'rest') && (
-                      <>
-                    <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
-                    <h1 className={revealPhase === 'settle' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'clamp(24px, 7cqw, 30px)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 4, color: 'var(--ink)', '--i': 0 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
-                    <p className={revealPhase === 'settle' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-1)', color: '#9aa7b2', '--i': 1 }}>{identityStatement(activeCustom)}</p>
-                    <p className="rv-mguide">Built while you typed — every line traces to your answers.</p>
-                    <div className="rv-grid rv-grid-rest">
-                      {revealStages.map((tg, i) => (
-                        <div key={tg.key || i} className={'rv-tile in' + (revealPhase === 'settle' ? ' rv-tile-compose' : '')} style={{ '--i': i }}>
-                          <div className="rv-tile-t">{tg.title}</div>
-                          <div className="rv-tile-v">{tg.what}</div>
-                        </div>
-                      ))}
-                      {customPlan && (
-                        <div className={'rv-tile in' + (revealPhase === 'settle' ? ' rv-tile-compose' : '')} style={{ '--i': revealStages.length }}>
-                          <div className="rv-tile-t">Next steps</div>
-                          <div className="rv-tile-v">{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}, in the order they’ll matter.</div>
-                        </div>
-                      )}
-                    </div>
-                    <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
-                    <div className={'actions-row pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-3)' }}>
-                      <button ref={revealCtaRef} className={'cta big' + (revealPhase === 'rest' ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
-                      <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
-                      <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
-                    </div>
-                    <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-1)', textAlign: 'center' }}>Your guests reply at that link — nothing to install, no account.</p>
-                      </>
-                    )}
                   </div>
                 </div>
               )}
@@ -7568,8 +7577,13 @@ export default function HostShellV2() {
                     {ros.map((r, i) => {
                       const prev = ros[i - 1];
                       const clash = !!(r && r.time && prev && prev.time && r.time <= prev.time);
+                      const dragging = rosDragId && r.id === rosDragId;
+                      const over = rosDragId && rosOverId && r.id === rosOverId && !dragging;
                       return (
-                        <div className={'then-row' + (r.done ? ' is-done' : '')} key={r.id || i} style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                        <div className={'then-row' + (r.done ? ' is-done' : '')} key={r.id || i} data-ros-id={r.id || ''}
+                          style={{ alignItems: 'center', flexWrap: 'wrap', gap: 'var(--sp-2)',
+                            ...(dragging ? { opacity: .45 } : null),
+                            ...(over ? { boxShadow: 'inset 0 2px 0 var(--steel-soft)' } : null) }}>
                           {/* A row without a clock is not an unknown row — it is a row whose
                               ORDER we know and whose HOUR the host has not given us. Show the
                               knowledge we have ("2h before guests arrive"), not an em-dash and
@@ -7579,6 +7593,34 @@ export default function HostShellV2() {
                             {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
                           {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done</span>}
+                          {/* DRAG HANDLE (host ask 2026-07-28) — pointer-drag reorders (touch
+                              included; touch-action none keeps scroll from hijacking), arrow
+                              keys nudge one slot for keyboard/SR users. Real stroke SVG grip
+                              per the no-dingbat rule; rows without ids stay read-only. */}
+                          {r.id ? (
+                            <button type="button" className="mini" aria-label={'Move ' + String(r.segment || 'this moment')}
+                              style={{ touchAction: 'none', cursor: 'grab', padding: '4px 8px', minHeight: 0, lineHeight: 1 }}
+                              onKeyDown={(e) => { if (e.key === 'ArrowUp') { e.preventDefault(); rosNudge(r.id, -1); } if (e.key === 'ArrowDown') { e.preventDefault(); rosNudge(r.id, 1); } }}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
+                                setRosDragId(r.id); setRosOverId(r.id);
+                              }}
+                              onPointerMove={(e) => {
+                                if (!rosDragId) return;
+                                const id = rosRowFromPoint(e.clientX, e.clientY);
+                                if (id) setRosOverId(id);
+                              }}
+                              onPointerUp={() => {
+                                if (rosDragId && rosOverId && rosDragId !== rosOverId) moveRosRow(rosDragId, rosOverId);
+                                setRosDragId(null); setRosOverId(null);
+                              }}
+                              onPointerCancel={() => { setRosDragId(null); setRosOverId(null); }}>
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ display: 'block' }} aria-hidden="true">
+                                <path d="M4 9h16M4 15h16" />
+                              </svg>
+                            </button>
+                          ) : null}
                         </div>
                       );
                     })}
