@@ -458,16 +458,21 @@ button{font-family:inherit}
 /* CTA PARITY WITH FIGMA (host 2026-07-18): the elegant hero CTA is a DARK RAISED TACTILE key
    (not the gradient .cta, not white) — a solid bottom edge + soft cast + inset top highlight,
    depressing on press. Scoped to the elegant hero; the rest of the app's .cta is untouched. */
+/* HOST RULING 2026-07-28: "primary cta is a centered label". Verified against
+   four frames — 13 (ask pole), 18 (SCROLL resting), 22 (NAV), 27 (receipt +
+   advance) — every one shows the primary action as a centred label with NO
+   arrow ("Message the club", "I've got it"). The rule below used to claim
+   "Figma parity" for a → that appears in none of them. */
 .hero.elegant .cta{ background:#282d33; color:var(--ink); border-radius:14px; padding:15px 20px; min-height:54px;
-  width:100%; justify-content:space-between; text-align:left; font-size:16px;
+  width:100%; justify-content:center; text-align:center; font-size:16px;
   box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
-/* the → arrow (Figma parity) — added via ::after so no markup change; muted like the comps */
-.hero.elegant .cta::after{ content:'→'; color:var(--faint); font-weight:800; margin-left:14px; flex:0 0 auto; transition:transform var(--ms-fast) var(--ease-out), color var(--ms-fast) var(--ease-out); }
-/* `.stay` = an in-place settle CTA (Lock N in, Mark as paid): the glyph doctrine —
-   render the arrow ONLY when the handler routes; a settle wearing one reads as
-   false navigation (audit 2026-07-22, W14 follow-through). */
-.hero.elegant .cta.stay::after{ content:none; }
+/* THE ARROW IS GONE (host ruling 2026-07-28). It was added claiming Figma
+   parity; the frames show none. Note for whoever considers bringing it back:
+   the glyph doctrine ("render a → ONLY when the handler routes") constrains
+   when an arrow MAY appear — it never required one. Removing it satisfies the
+   doctrine and the frames at the same time. Row-level chevrons elsewhere are a
+   separate control and are untouched. */
 /* primary takes the full row; any secondary actions wrap quietly beneath it */
 .hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
 .hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
@@ -476,10 +481,8 @@ button{font-family:inherit}
    surface (the depress). Two clear states, both subtle. */
 .hero.elegant .cta:hover:not(:disabled){ transform:translateY(-1px);
   box-shadow:0 4px 0 #06080b, 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
-.hero.elegant .cta:hover:not(:disabled)::after{ transform:translateX(3px); color:var(--muted); }
 .hero.elegant .cta:active{ transform:translateY(3px);
   box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
-.hero.elegant .cta:active::after{ transform:translateX(1px); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
