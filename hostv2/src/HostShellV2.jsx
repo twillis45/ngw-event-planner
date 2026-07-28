@@ -3,7 +3,7 @@
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
@@ -73,6 +73,7 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel } from '@app/lib/lodgingIntel';
+import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -2765,6 +2766,10 @@ export default function HostShellV2() {
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '' });
+  // Visitors-bureau contact capture (host directive 2026-07-28): the number the
+  // host brings back from the call lives on the event; the row renders it as
+  // real tel:/site links. Host-entered only — never scraped.
+  const [cvbForm, setCvbForm] = useState({ name: '', phone: '', url: '' });
   useEffect(() => {
     if (!lodgeSheetOpen) { setLodgeForm(null); return; }
     const lo = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
@@ -4433,7 +4438,7 @@ export default function HostShellV2() {
         {/* Guide voice (Newsreader italic). Honest: the engine sizes food/vendors/shopping off
             the number but does NOT re-split into named categories — so no "I'll re-split the
             plan" promise (the estimator returns only low/high). */}
-        <GuideLine>Pick a size, or type your own.</GuideLine>
+        <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>Pick a size, or type your own.</GuideLine>
         {opts.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             {opts.map((n, idx) => (
@@ -5490,7 +5495,7 @@ export default function HostShellV2() {
                   return (<>
                     <Eyebrow tone="ok" style={{ display: 'block', letterSpacing: '.1em' }}>BEHIND YOU</Eyebrow>
                     <h2 className="ask">{first ? first + '’s day, done.' : 'The day, done.'}</h2>
-                    <GuideLine>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. Nothing needs you now; here’s how it landed.</GuideLine>
+                    <GuideLine gap={ASK_RHYTHM.eyebrowToValue}>The {typeWord} happened — {agoN === 1 ? 'yesterday' : agoN + ' days ago'}. Nothing needs you now; here’s how it landed.</GuideLine>
                     <div style={{ marginTop: 26, borderTop: '1px solid var(--line)', paddingTop: 12 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
                         <span style={rowL}>Guests</span>
@@ -10814,7 +10819,10 @@ export default function HostShellV2() {
                     // never got migrated to it.
                     const { lead, detail } = splitTask(t.task);
                     const action = checklistActionFor(t.task, { week: t.week, category: t.category });
-                    return (
+                    // The visitors-bureau row carries its own brief (host directive
+                    // 2026-07-28): contact capture + the asks with direct links.
+                    const isCvbRow = /visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(String(t.task || ''));
+                    const rowBtn = (
                     <button key={t.id || i} className={'frow' + (inferred ? ' got' : '') + (sheet.focus && t.id === sheet.focus ? ' rowfocus' : '')}
                       ref={el => { if (el && sheet.focus && t.id === sheet.focus) el.scrollIntoView({ block: 'center' }); }}
                       style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
@@ -10868,6 +10876,61 @@ export default function HostShellV2() {
                         </span>
                       </span>
                     </button>
+                    );
+                    if (!isCvbRow) return rowBtn;
+                    // ── The bureau brief — sibling of the row (inputs can't live
+                    // inside a <button>). Contact is host-entered; every ask link
+                    // is an honestly-labeled find link scoped to the destination;
+                    // sources resolve in DESTINATION_SOURCES (admin → Grounding).
+                    const ci = cvbIntelFor(event);
+                    const savedCvb = ci.contact;
+                    const saveCvb = () => {
+                      const c = { name: cvbForm.name.trim(), phone: cvbForm.phone.trim(), url: cvbForm.url.trim() };
+                      if (!c.name && !c.phone && !c.url) { toast('Nothing to save yet — add a name, number, or site.'); return; }
+                      patchEvent({ cvb: { ...(event.cvb || {}), ...c } }, 'Bureau contact saved — it rides this row now.');
+                      setCvbForm({ name: '', phone: '', url: '' });
+                    };
+                    return (
+                      <Fragment key={(t.id || i) + '-cvb'}>
+                        {rowBtn}
+                        <details className="cvb-brief" style={{ margin: '2px 0 10px', padding: '0 2px' }}>
+                          <summary className="v-meta" style={{ cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span className="mini rowlink">{savedCvb ? 'Their contact + what to ask for' : 'What to ask for — and where their contact goes'} ▾</span>
+                          </summary>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '10px 2px 2px' }}>
+                            {savedCvb ? (
+                              <div className="v-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+                                <strong style={{ color: 'var(--ink)' }}>{savedCvb.name || 'The bureau'}</strong>
+                                {savedCvb.telHref ? <a className="mini rowlink" href={savedCvb.telHref}>Call {savedCvb.phone}</a> : null}
+                                {savedCvb.siteHref ? <a className="mini rowlink" href={savedCvb.siteHref} target="_blank" rel="noopener noreferrer">Their site ↗</a> : null}
+                              </div>
+                            ) : (
+                              <>
+                                <div className="v-meta">Found them? Write the contact down — it stays on this row.</div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                  <input className="field" style={{ flex: '1 1 120px' }} placeholder="Bureau name" value={cvbForm.name}
+                                    onChange={e => setCvbForm(f => ({ ...f, name: e.target.value }))} />
+                                  <input className="field" style={{ flex: '1 1 100px' }} placeholder="Phone" inputMode="tel" value={cvbForm.phone}
+                                    onChange={e => setCvbForm(f => ({ ...f, phone: e.target.value }))} />
+                                  <input className="field" style={{ flex: '1 1 120px' }} placeholder="Website" inputMode="url" value={cvbForm.url}
+                                    onChange={e => setCvbForm(f => ({ ...f, url: e.target.value }))} />
+                                  <button className="mini" onClick={saveCvb}>Save</button>
+                                </div>
+                                <a className="mini rowlink" href={ci.contactFinder.href} target="_blank" rel="noopener noreferrer">{ci.contactFinder.label} ↗</a>
+                              </>
+                            )}
+                            {ci.asks.map(a => (
+                              <div key={a.key} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                <span style={{ fontSize: 'var(--t-meta)', fontWeight: 650 }}>{a.label}</span>
+                                <span className="v-meta" style={{ whiteSpace: 'normal' }}>{a.why}{' '}
+                                  <a className="rowlink" href={a.href} target="_blank" rel="noopener noreferrer">{a.hrefLabel} ↗</a>
+                                </span>
+                              </div>
+                            ))}
+                            <p className="grounding" style={{ margin: 0 }}>Grounded in verified bureau programs (Gwinnett, Atlanta, Myrtle Beach) and hotel group-sales practice — sources under You &amp; settings → Grounding.</p>
+                          </div>
+                        </details>
+                      </Fragment>
                     );
                   })}
                   {(event.timeline || []).some(t => t && t.done) && (

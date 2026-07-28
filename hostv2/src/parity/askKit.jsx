@@ -89,7 +89,10 @@ export function BigValue({ children, suffix, tone = 'default', gap = ASK_RHYTHM.
   return (
     <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: gap }}>
       <span style={{
-        fontSize: 44, fontWeight: t.serifValue ? 600 : 750, letterSpacing: '-.03em', lineHeight: 1,
+        // 1.08, not 1: word stars wrap ("No place picked yet") and at 44px a unit
+        // line box gives wrapped lines zero leading and lets descenders collide
+        // with the guide voice below (hero/voice overlap audit, 2026-07-28).
+        fontSize: 44, fontWeight: t.serifValue ? 600 : 750, letterSpacing: '-.03em', lineHeight: 1.08,
         fontVariantNumeric: 'tabular-nums',
         color: t.value, ...(t.serifValue ? { fontFamily: 'var(--serif-read)' } : null), ...style,
       }}>{disp}</span>
@@ -110,7 +113,7 @@ export function BigValueInput({ value, onChange, onFocus, onCommit, suffix, aria
         onKeyDown={(e) => { if (e.key === 'Enter' && onCommit) onCommit(); }}
         onBlur={onCommit}
         style={{
-          fontSize: 44, fontWeight: 750, letterSpacing: '-.03em', lineHeight: 1,
+          fontSize: 44, fontWeight: 750, letterSpacing: '-.03em', lineHeight: 1.08,
           color: 'var(--ink)', background: 'none', border: 'none', padding: 0,
           width: Math.max(2, String(value ?? '').length) + 'ch', textAlign: 'center',
           fontVariantNumeric: 'tabular-nums', ...style,
@@ -122,7 +125,11 @@ export function BigValueInput({ value, onChange, onFocus, onCommit, suffix, aria
 
 // The guide voice — Newsreader italic (Figma 344:61 B3). An instruction/reassurance,
 // not a fact. Keep it honest: never promise capability the engine lacks.
-export function GuideLine({ children, gap = ASK_RHYTHM.eyebrowToValue, style }) {
+// Default gap is the value→why rhythm: the guide voice almost always sits under a
+// BigValue, and the old eyebrowToValue default (6) put it inside the 44px star's
+// descenders (hero/voice overlap audit, 2026-07-28). The two sites where it follows
+// an eyebrow/heading instead pass gap={ASK_RHYTHM.eyebrowToValue} explicitly.
+export function GuideLine({ children, gap = ASK_RHYTHM.valueToWhy, style }) {
   return (
     <p style={{ margin: `${gap}px 0 0`, fontFamily: 'var(--serif-read)', fontStyle: 'italic', fontSize: 'var(--t-input)', color: 'var(--ink-soft)', ...style }}>
       {children}

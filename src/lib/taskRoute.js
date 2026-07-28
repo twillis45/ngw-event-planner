@@ -80,6 +80,12 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open arrivals', route: { focusField: 'air' } };
   if (/ground[- ]transport|shuttle|rideshare coverage|self-drive/i.test(t))
     return { label: 'Open rides', route: { focusField: 'ground' } };
+  // "Send the invites" is a SEND, not a headcount edit — it lands on the
+  // share-and-invite block (guests-invites anchor), not the count stepper. Sits
+  // above the generic guest-comms rule so it wins the more-specific match; the
+  // chase/rsvp/headcount rows still land on the count entry below.
+  if (/send\s+(the\s+|out\s+)?invit/i.test(t))
+    return { label: 'Open the invite', route: { focusField: 'guests-invites' } };
   if (/chase non-?responders|lock the count/i.test(t))
     return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
   if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))

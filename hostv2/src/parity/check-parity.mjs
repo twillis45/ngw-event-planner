@@ -33,12 +33,15 @@ const violations = [];
 // plus the atom to use instead. `mustDefineInKit` guards the atom from silent removal.
 const RULES = [
   { sig: "fontSize: 44\\b",       atom: 'BigValue', label: 'the BigValue type scale (fontSize: 44)' },
+  // kitOnly: `.mega` headings legitimately use 1.08 inline (they are CSS-class
+  // surfaces, exempt); the guard here is only that the kit never loses the fix.
+  { sig: "lineHeight: 1\\.08",    atom: 'BigValue', kitOnly: true, label: 'the BigValue wrap leading (lineHeight: 1.08 — the hero/voice overlap fix)' },
   { sig: "padding: '13px 16px'",  atom: 'TierRow',  label: "the TierRow padding ('13px 16px')" },
 ];
 
 for (const r of RULES) {
   const inHost = count(HOST, r.sig);
-  if (inHost > 0) violations.push(`HostShellV2.jsx re-inlines ${r.label} ${inHost}× — compose <${r.atom}> from ./parity/askKit instead.`);
+  if (!r.kitOnly && inHost > 0) violations.push(`HostShellV2.jsx re-inlines ${r.label} ${inHost}× — compose <${r.atom}> from ./parity/askKit instead.`);
   if (count(KIT, r.sig) === 0) violations.push(`askKit.jsx no longer defines ${r.label} — the <${r.atom}> atom lost its lock.`);
 }
 
