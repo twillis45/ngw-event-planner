@@ -73,7 +73,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2782,6 +2782,7 @@ export default function HostShellV2() {
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
   const [helperForm, setHelperForm] = useState({ name: '', job: '' });
+  const [unfurling, setUnfurling] = useState(false);
   const addHelper = () => {
     const name = String(helperForm.name || '').trim();
     const job = String(helperForm.job || '').trim();
@@ -9171,9 +9172,54 @@ export default function HostShellV2() {
                               ))}
                             </div>
                           </div>
+                          {/* READ THE LISTING (host decision 2026-07-28 — the explicit
+                              exception to "never contact the platform"). One page, pasted by
+                              the host, on a button they press: the sharing metadata the page
+                              publishes for exactly this. Airbnb returns its own bedrooms /
+                              beds / baths; Vrbo commonly declines, and when it does we say so
+                              and point at the paste, which never fails. */}
+                          {isUnfurlConfigured() && rf.url.trim() && (
+                            <button className="mini" style={{ justifySelf: 'start' }} disabled={unfurling}
+                              onClick={async () => {
+                                setUnfurling(true);
+                                const r = await unfurlListing(rf.url.trim());
+                                setUnfurling(false);
+                                if (!r.ok) { toast(r.reason); return; }
+                                const f = r.facts || {};
+                                setRentalForm((prev) => ({
+                                  ...prev,
+                                  url: r.url || prev.url,
+                                  label: prev.label.trim() || r.title || prev.label,
+                                  sleeps: prev.sleeps.trim() || (f.guests ? String(f.guests) : prev.sleeps),
+                                  beds: f.beds ? String(f.beds) : prev.beds,
+                                  notes: prev.notes || [r.description, f.baths ? `${f.baths} baths` : null, f.bedrooms ? `${f.bedrooms} bedrooms` : null].filter(Boolean).join(' · '),
+                                  photo: prev.photo || r.image || '',
+                                }));
+                                const got = [r.title ? 'the name' : null, f.beds ? `${f.beds} beds` : null, f.baths ? `${f.baths} baths` : null, r.image ? 'a photo' : null].filter(Boolean);
+                                toast(`Read the listing — got ${got.join(', ')}. Paste the gallery for the rest of the photos.`);
+                              }}>{unfurling ? 'Reading…' : 'Read the listing'}</button>
+                          )}
                           {!canAdd && <span className="v-meta" style={{ color: 'var(--muted)' }}>Paste the listing link, or give it a name, and this turns on.</span>}
                           <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
                             onClick={() => {
+                              // AUTO-READ ON ADD (DIFM audit 2026-07-28). Adding with only a
+                              // link produced a row called "Option 4" carrying nothing — the
+                              // app had the URL and made the host go back and fill the rest.
+                              // Now the add reads the listing first when it can, and falls
+                              // straight through when it can't.
+                              const nameless = !rf.label.trim();
+                              if (nameless && rf.url.trim() && isUnfurlConfigured()) {
+                                unfurlListing(rf.url.trim()).then((r) => {
+                                  if (!r.ok) return;
+                                  const f = r.facts || {};
+                                  write((Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).map((o) => (
+                                    o.url === rf.url.trim() && !String(o.label || '').trim().replace(/^Option \d+$/, '')
+                                      ? { ...o, label: r.title || o.label, beds: f.beds || o.beds,
+                                          notes: o.notes || [r.description, f.baths ? `${f.baths} baths` : null].filter(Boolean).join(' · '),
+                                          photoUrl: o.photoUrl || r.image || undefined }
+                                      : o)), `Read the listing — ${r.title || 'details'} filled in.`);
+                                }).catch(() => {});
+                              }
                               const next = (Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).concat([{
                                 id: 'lodge-' + Math.random().toString(36).slice(2, 8),
                                 label: rf.label.trim(), url: rf.url.trim(),
@@ -9303,6 +9349,42 @@ export default function HostShellV2() {
                   ) : (
                   <>
                   <div className="shelf-label">The stay</div>
+                  {/* STOP ASKING FOR WHAT YOU ALREADY HAVE (DIFM audit, host 2026-07-28).
+                      This form asked the host to retype a place name and a nightly rate for
+                      a house they had already shortlisted AND marked as the pick — the app
+                      asking for its own data back. One tap fills it, and the same for the
+                      backup, which is simply the runner-up in the ranking. */}
+                  {(() => {
+                    const sug = (() => { try { return stayFromPick(event); } catch { return null; } })();
+                    const bk = (() => { try { return backupFromRunnerUp(event); } catch { return null; } })();
+                    const stayEmpty = !String(f.hotelName || '').trim();
+                    const backupEmpty = !((f.backups || []).some((b) => String((b && b.name) || '').trim()));
+                    if (!(sug && stayEmpty) && !(bk && backupEmpty)) return null;
+                    return (
+                      <div className="brow" style={{ margin: '0 0 10px' }}>
+                        {sug && stayEmpty && (
+                          <p className="grounding" style={{ margin: 0 }}>
+                            You picked <strong style={{ color: 'var(--ink-soft)' }}>{sug.hotelName}</strong>
+                            {sug.rate ? ` at about $${sug.rate.toLocaleString()} a night` : ''} — want that in here?
+                          </p>
+                        )}
+                        {bk && backupEmpty && (
+                          <p className="grounding" style={{ margin: sug && stayEmpty ? '4px 0 0' : 0 }}>
+                            Your backup is already on the shortlist: <strong style={{ color: 'var(--ink-soft)' }}>{bk.name}</strong>{bk.note ? ` — ${bk.note}` : ''}.
+                          </p>
+                        )}
+                        <button className="mini" style={{ marginTop: 6 }}
+                          onClick={() => setLodgeForm((d) => ({
+                            ...d,
+                            hotelName: (sug && stayEmpty) ? sug.hotelName : d.hotelName,
+                            rate: (sug && stayEmpty && sug.rate != null) ? String(sug.rate) : d.rate,
+                            backups: (bk && backupEmpty)
+                              ? [{ name: bk.name, note: bk.note }, ...((d.backups || []).filter((x) => String((x && x.name) || '').trim()))]
+                              : d.backups,
+                          }))}>Fill it from my shortlist</button>
+                      </div>
+                    );
+                  })()}
                   <div className="lodge-form">
                     {/* A hotel/rental IS an address — same lookup the venue field
                         uses (Places when a key exists, OSM otherwise), so the host

@@ -406,7 +406,8 @@ describe('must-have requirements', () => {
     const rec = lodgingRecommendation({ ...base, lodgingOptions: opts, lodgingMustHaves: ['hottub'] });
     expect(rec.pick.id).toBe('tub');
     expect(rec.why.join(' ')).toMatch(/has hot tub/);
-    expect(rec.scores.find((x) => x.id === 'plain').reasons.join(' ')).toMatch(/doesn't say it has hot tub/);
+    // wording tightened 2026-07-28 when the reason lists were capped
+    expect(rec.scores.find((x) => x.id === 'plain').reasons.join(' ')).toMatch(/doesn't mention hot tub/);
   });
 
   test('junk requirement ids are dropped, never stored as a criterion', () => {
@@ -505,5 +506,42 @@ describe('extractListingMeta', () => {
 
   test('a non-https link is never accepted as the listing', () => {
     expect(extractListingMeta('http://www.vrbo.com/987654').url).toBe('');
+  });
+});
+
+// ─── STOP ASKING FOR WHAT YOU ALREADY HAVE (DIFM audit, host 2026-07-28) ─────
+// The stay form asked the host to retype a place name and nightly rate for the
+// house they had already shortlisted and picked; "backup place" asked them to
+// name a fallback when the runner-up in the ranking IS the fallback.
+const { stayFromPick, backupFromRunnerUp } = require('../lodgingIntel');
+
+describe('the stay block derives itself', () => {
+  const ev = (opts) => ({ id: 'd', type: 'Reunion', date: iso(60), endDate: iso(63), guestCount: 10, lodgingOptions: opts });
+
+  test('the pick fills the stay, with a nightly rate worked back from the total', () => {
+    const s = stayFromPick(ev([
+      { id: 'a', label: 'Lakefront A-frame', url: 'https://www.vrbo.com/1', sleeps: 12, totalPrice: 2400, status: 'chosen' },
+    ]));
+    expect(s.hotelName).toBe('Lakefront A-frame');
+    expect(s.rate).toBe(800);              // 2400 over 3 nights
+    expect(s.from).toMatch(/picked/);
+  });
+
+  test('nothing picked, nothing proposed — it never guesses the stay', () => {
+    expect(stayFromPick(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12 }]))).toBe(null);
+  });
+
+  test('the backup is the runner-up, and it is not the one already picked', () => {
+    const b = backupFromRunnerUp(ev([
+      { id: 'a', label: 'Picked House', url: 'https://www.vrbo.com/1', sleeps: 12, totalPrice: 3000, status: 'chosen' },
+      { id: 'b', label: 'Second Best', url: 'https://www.vrbo.com/2', sleeps: 12, totalPrice: 2400 },
+    ]));
+    expect(b.name).toBe('Second Best');
+    expect(b.note).toMatch(/\$2,400/);
+    expect(b.from).toMatch(/next best/);
+  });
+
+  test('one option is no backup at all', () => {
+    expect(backupFromRunnerUp(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12, status: 'chosen' }]))).toBe(null);
   });
 });

@@ -10,7 +10,7 @@ import hashlib
 import hmac
 from .config import ALLOWED_ORIGINS, ALLOWED_ORIGIN_REGEX
 from .db import close_pool
-from .routers import communication
+from .routers import communication, lodging
 from .routers import docusign
 from .routers import ai
 from .routers import weather
@@ -225,3 +225,4 @@ app.include_router(kroger.router)
 app.include_router(rsvp.router)
 app.include_router(vendor_brief.router)
 app.include_router(research.router)
+app.include_router(lodging.router)

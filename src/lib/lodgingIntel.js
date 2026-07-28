@@ -293,6 +293,44 @@ export function lodgingIntel(event) {
   return { options, chosen, guidance, share, roles, nights, guests, votes, voted, groupSaid };
 }
 
+const API_BASE = process.env.REACT_APP_API_BASE_URL;
+
+/** True when the unfurl endpoint can be reached at all. */
+export const isUnfurlConfigured = () => Boolean(API_BASE);
+
+/**
+ * READ ONE LISTING PAGE (host decision 2026-07-28 — an explicit exception).
+ *
+ * The standing rule is that this app never contacts Airbnb or Vrbo. The host
+ * overrode it for exactly this: one page, that they pasted, on a button they
+ * pressed, read for the sharing metadata the page publishes for that purpose.
+ * It is a link unfurl — what every messaging app does with a pasted link — not
+ * a crawl, not a search harvest, and not a gallery grab. The gallery still comes
+ * from the host's own copy-paste, which needs no fetch and always works.
+ *
+ * Verified 2026-07-28: a real Airbnb listing returns a title carrying its own
+ * bedrooms / beds / baths, plus a description and one sharing image. Vrbo
+ * declined the automated read — which is expected, is reported plainly, and is
+ * why the paste path stays primary.
+ *
+ * @returns {{ok:true, url, title, facts, image, description}|{ok:false, reason}}
+ */
+export async function unfurlListing(url) {
+  if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
+  const clean = String(url || '').trim();
+  if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the listing.' };
+  try {
+    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      return { ok: false, reason: (body && body.detail) || 'Couldn’t read that listing. Copy the page and paste it instead.' };
+    }
+    return { ok: true, ...body };
+  } catch {
+    return { ok: false, reason: 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+  }
+}
+
 /**
  * ONE PASTE FILLS THE FORM (host question 2026-07-28: "if the app can pull the
  * deep links does the host need to input the urls for property and gallery?").
@@ -624,8 +662,12 @@ export function lodgingRecommendation(event, intel) {
     const hay = `${o.label} ${o.notes || ''}`;
     const met = [], missing = [];
     for (const m of musts) (m.match.test(hay) ? met : missing).push(m.label.toLowerCase());
-    if (met.length) { score += met.length * 2; reasons.push(`has ${met.join(', ')}`); }
-    if (missing.length) { score -= missing.length; reasons.push(`doesn't say it has ${missing.join(', ')}`); }
+    // Cap the LISTS, not just the reason count — the run-on was inside a single
+    // reason ("has dock, hot tub, pool, table for everyone, washer & dryer…"),
+    // so capping the outer array changed nothing (host report 2026-07-28).
+    const brief = (xs) => (xs.length <= 2 ? xs.join(' and ') : `${xs.slice(0, 2).join(', ')} and ${xs.length - 2} more`);
+    if (met.length) { score += met.length * 2; reasons.push(`has ${brief(met)}`); }
+    if (missing.length) { score -= missing.length; reasons.push(`doesn't mention ${brief(missing)}`); }
 
     // WHO IS COMING — these only speak when the roster actually says so.
     if (needsAccess > 0 && o.notes) {
@@ -649,6 +691,53 @@ export function lodgingRecommendation(event, intel) {
     return { pick: null, why: [], unweighed, scores: ranked, tie: true };
   }
   return { pick: top, why: top.reasons, unweighed, scores: ranked, tie: false };
+}
+
+/**
+ * WHAT THE STAY BLOCK ALREADY KNOWS (DIFM audit, host 2026-07-28).
+ *
+ * The "The stay" form asks the host to type a place name, a nightly rate and a
+ * booking code — for a house they have ALREADY put on the shortlist and marked
+ * as the pick. That is the app asking for its own data back. Same for "Backup
+ * place": the runner-up in the ranking IS the backup.
+ *
+ * Returns a proposal, never a write. `from` names where each value came from so
+ * the surface can show it as ours rather than as fact.
+ */
+export function stayFromPick(event, intel) {
+  const li = intel || lodgingIntel(event);
+  const chosen = li.chosen;
+  if (!chosen) return null;
+  const nights = li.nights;
+  const perNight = chosen.pricePerNight != null
+    ? chosen.pricePerNight
+    : (chosen.totalPrice != null && nights ? Math.round(chosen.totalPrice / nights) : null);
+  return {
+    hotelName: chosen.label || '',
+    rate: perNight,
+    url: chosen.url || '',
+    from: 'the option you picked',
+  };
+}
+
+/** The runner-up — which is what "if the first fills up" means. */
+export function backupFromRunnerUp(event, intel) {
+  const li = intel || lodgingIntel(event);
+  const rec = lodgingRecommendation(event, li);
+  if (!rec || !rec.scores || rec.scores.length < 2) return null;
+  const chosenId = li.chosen && li.chosen.id;
+  const runnerUp = rec.scores.find((x) => x.id !== chosenId && x.fits) || rec.scores.find((x) => x.id !== chosenId);
+  if (!runnerUp) return null;
+  const opt = li.options.find((o) => o.id === runnerUp.id);
+  if (!opt) return null;
+  return {
+    name: opt.label,
+    note: [
+      opt.allIn != null ? `$${opt.allIn.toLocaleString()}${opt.feesKnown ? ' all in' : ' before fees'}` : null,
+      opt.sleeps != null ? `sleeps ${opt.sleeps}` : null,
+    ].filter(Boolean).join(' · '),
+    from: 'next best on your shortlist',
+  };
 }
 
 // Proof helper: every guidance source id must resolve in the booking registry.
