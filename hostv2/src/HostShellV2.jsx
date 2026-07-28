@@ -8895,7 +8895,14 @@ export default function HostShellV2() {
                             {/* Same component the guest sees on the invite — flip through
                                 in place, tap to enlarge (host ask 2026-07-28). */}
                             <PhotoStrip photos={o.photos} alt={o.label} size={64} />
-                            <span className="f-main" style={{ minWidth: 0 }}>
+                            {/* LAYOUT (host report 2026-07-28: "where everyone stays needs
+                                layout adjustment"). The row is photo + text + two buttons on
+                                353px. The text column was flex:1 1 0 against buttons at their
+                                natural width, so it collapsed to THIRTY-ONE PIXELS — one word
+                                per line — the moment a real photo and a real listing name were
+                                in it. A basis wide enough to hold a name forces the actions to
+                                wrap onto their own line instead of strangling the content. */}
+                            <span className="f-main" style={{ minWidth: 0, flex: '1 1 180px' }}>
                               <span className="f-name">{o.label}
                                 {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
                                 {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
@@ -8905,10 +8912,12 @@ export default function HostShellV2() {
                               ))}
                               {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)' }}>Open the listing ↗</a> : null}
                             </span>
-                            {o.status !== 'chosen'
-                              ? <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: x.id === o.id ? 'chosen' : 'option' })), o.label + ' is the pick — the plan reads it now.')}>Make it the pick</button>
-                              : <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: 'option' })), 'Back to comparing.')}>Unpick</button>}
-                            <button className="mini" onClick={() => write(li.options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
+                            <span style={{ flex: '1 0 100%', display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-1)' }}>
+                              {o.status !== 'chosen'
+                                ? <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: x.id === o.id ? 'chosen' : 'option' })), o.label + ' is the pick — the plan reads it now.')}>Make it the pick</button>
+                                : <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: 'option' })), 'Back to comparing.')}>Unpick</button>}
+                              <button className="mini" onClick={() => write(li.options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
+                            </span>
                           </div>
                         ))}
                         <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
