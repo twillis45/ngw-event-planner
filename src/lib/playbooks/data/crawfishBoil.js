@@ -146,7 +146,7 @@ const crawfishBoil = {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
     note: 'This playbook is grounded in the Louisiana / Gulf-Coast crawfish-boil tradition — a springtime, community-rooted way of eating that anchors backyards across South Louisiana and the wider Gulf Coast when the crawfish are running. The specifics reflect widely-recognized insider practice: live crawfish bought by the sack, purged and rinsed; a heavy seasoning (Zatarain\'s or Louisiana Fish Fry crab/crawfish boil, cayenne, lemon, salt) carried in a big propane pot; red potatoes, corn, smoked sausage or andouille, onions, garlic, and mushrooms boiled alongside; the short boil and the all-important SOAK; and the catch dumped on a paper-covered table — no plates — with cold beer, soda, water, and lots of ice over a long afternoon. Quantities (~3-5 lb live crawfish per adult eater, ~30-35 lb per sack, ~1 lb seasoning per sack, generous ice and water) are common Louisiana planning rules of thumb that real eaters and the catch both move around. Propane-burner and boiling-water safety reflect widely-published practice (level stable ground away from structures, don\'t overfill, never leave it unattended, keep children back), as does live-crawfish handling (keep cool/damp/shaded, never sealed or submerged, cull and never boil dead crawfish, purge and rinse before the pot). Authored respectfully as established Gulf-Coast home practice — not caricature — and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
-    sources: [],
+    sources: ['fsis-big9'],
   },
 };
 

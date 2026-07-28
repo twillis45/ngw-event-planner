@@ -7,7 +7,7 @@
 //   3. conditional lines gate on REAL fields: heat only outdoors, the water
 //      watcher only with water + kids around; adults-only suppresses it
 //   4. the 911 line carries the real venue address when one exists
-const { INCIDENT_SOURCES, incidentPlanFor } = require('./incidentContext');
+const { INCIDENT_SOURCES, incidentPlanFor, resolveIncidentSource } = require('./incidentContext');
 
 const BASE = { id: 'ev-t', type: 'Backyard BBQ', date: '2026-08-08', venue: 'Backyard', venueCity: 'Annapolis', venueState: 'MD' };
 
@@ -18,7 +18,7 @@ describe('incident plan', () => {
     for (const l of lines) {
       expect(Array.isArray(l.sources) && l.sources.length > 0).toBe(true);
       for (const id of l.sources) {
-        const src = INCIDENT_SOURCES[id];
+        const src = resolveIncidentSource(id);
         expect(src && src.org && src.url && src.fetched && src.claim).toBeTruthy();
       }
     }
@@ -33,6 +33,15 @@ describe('incident plan', () => {
     expect(all).not.toMatch(/diagnos|assess their|probably fine|\bBAC\b|blood alcohol|one hour before/);
     // The NHTSA "no reliable okay-to-drive judgment" stance is IN, not out.
     expect(all).toMatch(/never the wheel|take their keys/i);
+  });
+
+  test('the fire line gates on flame-cooking events and outdoor gatherings', () => {
+    const bbq = incidentPlanFor({ ...BASE });
+    expect(bbq.lines.some((l) => l.key === 'fire')).toBe(true);
+    const indoorDinner = incidentPlanFor({ id: 'x', type: 'Dinner Party', date: '2026-08-08', venue: 'The Hall' });
+    expect(indoorDinner.lines.some((l) => l.key === 'fire')).toBe(false);
+    const fry = incidentPlanFor({ id: 'y', type: 'Fish Fry', date: '2026-08-08', venue: 'The Hall' });
+    expect(fry.lines.some((l) => l.key === 'fire')).toBe(true);
   });
 
   test('heat line gates on outdoors; water watcher gates on water AND kids', () => {

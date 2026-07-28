@@ -23,6 +23,9 @@ import { CHILDCARE_SOURCES } from './childcareContext';
 import { MILITARY_SOURCES } from './militaryRetirement';
 import { DESTINATION_SOURCES } from './destinationContext';
 import { INCIDENT_SOURCES } from './incidentContext';
+import { FOOD_SAFETY_SOURCES } from './foodSafetyContext';
+import { FIRE_SAFETY_SOURCES } from './fireSafetyContext';
+import { BOOKING_RISK_SOURCES } from './bookingRiskContext';
 import { normalizeTier, tierInfo } from './groundingDoctrine';
 
 const REGISTRIES = [
@@ -40,6 +43,9 @@ const REGISTRIES = [
   ['Childcare', CHILDCARE_SOURCES],
   ['Military ceremony', MILITARY_SOURCES],
   ['Incident / guest safety', INCIDENT_SOURCES],
+  ['Food safety', FOOD_SAFETY_SOURCES],
+  ['Fire & burn safety', FIRE_SAFETY_SOURCES],
+  ['Booking / vendor collapse', BOOKING_RISK_SOURCES],
   ['Destination / travel', DESTINATION_SOURCES],
 ];
 

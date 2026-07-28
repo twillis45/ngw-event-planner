@@ -181,7 +181,7 @@ const juneteenthCookout = {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
     note: 'Juneteenth (June 19) commemorates the 1865 arrival of Union troops in Galveston, Texas enforcing the Emancipation Proclamation and freeing the last enslaved Black Americans — it became a U.S. federal holiday in 2021. This playbook honors that freedom/history meaning: it front-loads a meaning/program element (a reading of the history, a moment of reflection, a kids\' education element, music celebrating Black artists, or sourcing from Black-owned businesses) so the day is remembered, not just enjoyed. It centers the documented RED-food symbolism — red drink (hibiscus/sorrel, strawberry, Big Red, punch), watermelon, red velvet cake, red beans — where red signifies resilience and the bloodshed/sacrifice of the enslaved, and reflects red as a sacred color in West African (Yoruba/Kongo) heritage carried to Texas. The full cookout spread (ribs, chicken, hot links, mac & cheese, baked beans, collard greens, potato salad, cornbread) reflects widely-celebrated Juneteenth and soul-food tradition. This is intended as respectful insider practice, dignity-first, with no caricature or stereotype. Cookout quantities reflect common US rules of thumb (~0.6-0.75 lb total protein/guest across a multi-protein spread, ~1 drink/guest/hour in heat, ~2 lb ice/guest outdoor) and food-safety guidance reflects widely-published USDA-style practice. Authored as established-consensus / cultural-tradition / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
-    sources: [],
+    sources: ['fsis-danger-zone', 'fsis-temp-chart', 'fsis-grilling', 'fsis-cooking-groups'],
   },
 };
 

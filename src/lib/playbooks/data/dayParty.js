@@ -167,7 +167,7 @@ const dayParty = {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
     note: 'This playbook is grounded in the lived tradition of the African American afternoon day party — the grown-and-sexy, DJ-led, all-white / linen, line-dance-and-Afrobeats social documented across the modern brunch-and-day-party scene (R&B-only day parties, rooftop Afro-dance collectives) — and in the generous, intentional, dignity-first hosting standard of figures like B. Smith, Carla Hall, Marcus Samuelsson, Sunny Anderson and Tabitha Brown. It is written from the inside as respectful practice, not caricature: the music is the hero, the bar is real, the food is light because people came to vibe, and the day ends at a civilized hour. Quantities reflect common US event rules of thumb (~1 drink/guest/hr over a 4-5h event with a 40/35/25 wine/beer/spirits mix, ~1 bottle of spirits per ~16 cocktails, ~1.5-2 lb ice/guest outdoors, ~5-6 light bites/guest, plenty of water). Safety guidance (pace the bar, keep water and food out, last call, pre-arranged rides; check the daytime noise ordinance / permit and give neighbors notice) reflects widely-published responsible-hosting and municipal practice. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
-    sources: [],
+    sources: ['fsis-danger-zone', 'fda-outdoors'],
   },
 };
 

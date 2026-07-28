@@ -100,7 +100,7 @@ const fishFry = {
   ],
 
   risks: [
-    { id: 'r_hotoil', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'Set the fryer on LEVEL ground well away from the house, deck, and overhangs. Never overfill (oil rises when fish goes in). NEVER leave it unattended, and keep kids and pets back. Keep a Class B/K extinguisher and a metal lid within reach — water makes a grease fire worse. Use long tools and heat gloves; pat fish dry before it hits the oil.' },
+    { id: 'r_hotoil', trigger: 'Hot-oil burn, overflow, or grease fire from the propane fryer', severity: 'high', mitigation: 'USFA fryer rules: LEVEL ground at least 10 feet from the house, never under eaves. Size the oil with a WATER test before heating, clip on a thermometer (no thermostat means oil can overheat to ignition), and fry only fully-thawed, patted-dry fish — ice meets hot oil violently. NEVER leave it unattended; 3-foot kid-and-pet zone. Keep a Class B/K extinguisher and a metal lid in reach — water makes a grease fire worse.' },
     { id: 'r_fuel', trigger: 'Propane runs out / burner won\'t light mid-fry', severity: 'high', mitigation: 'Test-fire the burner at T-7d; start with a FULL tank and a backup on hand.' },
     { id: 'r_undersold', trigger: 'Fundraiser plates under-sell or no-show', severity: 'med', mitigation: 'Take pre-orders + pre-pay where possible; set a realistic target; plan to sell walk-up and to-go plates to clear extras.' },
     { id: 'r_fishqty', trigger: 'Run out of fish (or buy way too much)', severity: 'med', mitigation: 'Lock the count at T-3d; plan ~0.5 lb/person; buy fresh at T-1d so it isn\'t sitting.' },
@@ -152,7 +152,7 @@ const fishFry = {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
     note: 'This playbook is grounded in the African American fish-fry tradition — a Black Southern foodway carried into home gatherings, church suppers, and community fundraisers, and shifted toward Friday in many cities. The specifics reflect widely-recognized insider practice: cornmeal-dredged whiting, catfish, or porgies served on white bread with hot sauce and lemon; spaghetti-or-grits, slaw, hush puppies, fries, and potato salad; sweet tea and red drink; and the outdoor propane fryer with a large quantity of peanut or vegetable oil. Quantities (~0.5 lb fish/guest, ~2 slices bread/guest, ~3 drinks/guest, and a large oil volume that scales with batches) are common US planning rules of thumb. Hot-oil and propane-fryer safety reflects widely-published fire-safety practice (level ground away from structures, never overfill, never leave unattended, keep children back, Class B/K extinguisher and a smothering lid, never water on a grease fire). Authored respectfully as established insider practice and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
-    sources: [],
+    sources: ['fsis-danger-zone', 'fsis-temp-chart'],
   },
 };
 

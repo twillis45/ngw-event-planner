@@ -178,7 +178,7 @@ const dinnerParty = {
     governanceVersion: '1.1.0',
     verificationStatus: 'cited',
     note: 'Source-verified in the 2026-06-13 foreground pass: quantities + food-safety/culinary practices are established-consensus / trade-heuristic and cited; coaching / ROI claims are labeled synthesized. Full cited principles and sources live in engine-audit/playbooks/dinner-party.knowledge.json.',
-    sources: [],
+    sources: ['fsis-danger-zone', 'fsis-temp-chart', 'fsis-leftovers'],
   },
 };
 

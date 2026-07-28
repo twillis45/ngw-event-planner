@@ -90,6 +90,7 @@ const backyardBbq = {
   risks: [
     { id: 'r_weather', trigger: 'Rain or extreme heat, no plan', severity: 'high', mitigation: 'Check the forecast at T-3d; secure a canopy/indoor fallback; move earlier/later to dodge peak heat.' },
     { id: 'r_fuel', trigger: 'Out of charcoal / empty propane tank', severity: 'high', mitigation: 'Check + buy fuel at T-3d; keep a spare bag/tank.' },
+    { id: 'r_grillfire', trigger: 'Grill flare-up or grease fire', severity: 'high', mitigation: 'NFPA/USFA rules: grill outdoors only, well away from the house, deck rails, and eaves — never a porch or balcony — with a 3-foot kid-and-pet zone, and never left alone while lit. A dirty grill is the top fire factor, so scrape the grease. If a grease fire starts: lid on, burner off, never water; any doubt — everyone away and 911. Cool coals go in a lidded metal can.' },
     { id: 'r_ice', trigger: 'Ice melts, drinks go warm', severity: 'med', mitigation: 'Buy ~2 lb ice/guest day-of (outdoor melts fast); keep a shaded backup cooler.' },
     { id: 'r_foodsafe', trigger: 'Food left out in the heat', severity: 'high', mitigation: 'Keep cold food on ice; don\'t leave perishables out >1h in 90°F+; grill to safe temps.' },
     { id: 'r_bugs', trigger: 'Mosquitoes / sun run guests off', severity: 'low', mitigation: 'Bug spray, citronella, shade, and water available.' },
@@ -136,8 +137,8 @@ const backyardBbq = {
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
-    note: 'Quantities reflect common US cookout rules of thumb (~0.5 lb grilled protein/guest, ~2 buns/guest, ~3 drinks/guest over 4h, ~2 lb ice/guest for outdoor coolers). Food-safety guidance (don\'t leave perishables out >1h above 90°F; grill to safe internal temps) reflects widely-published USDA-style practice. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
-    sources: [],
+    note: 'Quantities reflect common US cookout rules of thumb (~0.5 lb grilled protein/guest, ~2 buns/guest, ~3 drinks/guest over 4h, ~2 lb ice/guest for outdoor coolers). Food-safety guidance (perishables out ≤1h above 90°F; chicken 165°F, burgers 160°F; raw/cooked separation; cooler practice) was VERIFIED against primary USDA FSIS/FDA text on 2026-07-28 — see sources — so those specific claims are cited; the quantity rules of thumb remain synthesized. No fabricated sources.',
+    sources: ['fsis-danger-zone', 'fsis-temp-chart', 'fsis-grilling', 'fda-outdoors', 'fsis-leftovers', 'fsis-cooking-groups'],
   },
 };
 

@@ -16,6 +16,7 @@
 
 import { venueFor } from '../venueFor';
 import { isLikelyOutdoor } from '../weather';
+import { FIRE_SAFETY_SOURCES } from './fireSafetyContext';
 
 // Every id referenced by a line below resolves here — the same {org, url,
 // fetched, claim} shape as every other *_SOURCES registry, unioned into the
@@ -147,6 +148,30 @@ export const INCIDENT_SOURCES = {
     fetched: '2026-07-28',
     claim: 'Most states treat hosting minors who drink far more strictly than serving adults — many impose civil liability and criminal penalties on adults who host or permit underage drinking. The page’s state counts are from 2014; ship the pattern, not the numbers.',
   },
+  'ncmec-missing-child': {
+    org: 'NCMEC — Is Your Child Missing?',
+    url: 'https://www.missingkids.org/gethelpnow/isyourchildmissing',
+    fetched: '2026-07-28',
+    claim: 'A missing child is an IMMEDIATE call to local law enforcement — no waiting period exists — then 1-800-THE-LOST. At a venue, notify security in parallel, never instead. Have ready: name, age, height, weight, clothing, last-seen time.',
+  },
+  'mkca-lost-child-prevention': {
+    org: 'Canadian Centre for Child Protection — Lost Child prevention',
+    url: 'https://missingkids.ca/en/how-can-we-help/lost-child/prevention/',
+    fetched: '2026-07-28',
+    claim: 'Before a crowd event: set a clearly visible meeting spot with kids; teach them to stay put, call out, and ask a person WITH CHILDREN for help; put the host phone number on a sticker on younger kids.',
+  },
+  'hillsborough-party-guide': {
+    org: 'Hillsborough (CA) Police Department — party guide',
+    url: 'https://www.hillsborough.net/395/Teenage-Party-Guide-for-Parents-Teens',
+    fetched: '2026-07-28',
+    claim: 'Police guidance for hosted parties: a guest list and real invitations — crashing not allowed; uncooperative guests are made to leave; be willing to call the police when they refuse; fixed start and end times.',
+  },
+  'nyc311-noise': {
+    org: 'NYC 311 / NYPD — noise from neighbor',
+    url: 'https://portal.311.nyc.gov/article/?kanumber=KA-01017',
+    fetched: '2026-07-28',
+    claim: 'The line, drawn by a city: 911 is for party noise CAUSING DANGER — fighting, screaming, gunshots. Routine loud-party complaints are non-emergency; officers must witness the noise to act, so the productive host move is turning it down before they arrive. (Municipal quiet hours commonly start 10 PM; parties don\u2019t get variances \u2014 Everett, WA.)',
+  },
   'msu-family-gatherings': {
     org: 'Michigan State University Extension — Family gatherings',
     url: 'https://www.canr.msu.edu/news/you_do_not_have_to_dread_family_gatherings',
@@ -161,6 +186,12 @@ export const INCIDENT_SOURCES = {
 // the playbook already carries). Conditional lines gate on REAL fields — never
 // an inferred guess about the crowd. Returns { lines, boundary } where every
 // line = { key, label, text, sources: [ids in INCIDENT_SOURCES] }.
+// A line's source ids may live in either registry — one resolver for proofs
+// and any surface that renders per-line provenance.
+export function resolveIncidentSource(id) {
+  return INCIDENT_SOURCES[id] || FIRE_SAFETY_SOURCES[id] || null;
+}
+
 export function incidentPlanFor(event) {
   const ev = event || {};
   const vfv = venueFor(ev);
@@ -194,6 +225,17 @@ export function incidentPlanFor(event) {
     text: 'Know where the first-aid kit is before guests arrive — professional event plans write its location down. The AHA/Red Cross minimum kit list is the standard.',
     sources: ['yale-event-eap', 'aha-arc-firstaid-kit'],
   });
+  // Cooking-fire line gates on the events that actually cook with flame/oil —
+  // type/venue words, never an inferred guess about the menu.
+  const flameish = /(bbq|barbecue|cookout|grill|fry|boil|roast|fish fry|crawfish|juneteenth)/i.test([String(ev.type || ''), vfv.name, String(ev.notes || '')].join(' '));
+  if (flameish || outdoors) {
+    lines.push({
+      key: 'fire',
+      label: 'Grease or grill fire',
+      text: 'Lid on, burner off — never water on a grease fire (NFPA’s own words). Any doubt: everyone away and 911 from outside. A burn cools under running water for 5–30 minutes — never ice, never butter; palm-size or bigger, or on the face or hands, is a 911 call.',
+      sources: ['nfpa-cooking-tips', 'nih-burns'],
+    });
+  }
   if (outdoors) {
     lines.push({
       key: 'heat',
