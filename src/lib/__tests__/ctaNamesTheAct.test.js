@@ -227,3 +227,60 @@ describe('a hero CTA goes where its label says', () => {
     expect(cc).not.toMatch(/hit && hit\.label\)[\s\S]{0,400}primaryRoute: firstRoute,/);
   });
 });
+
+// ─── "THEN, IN ORDER" — NO ARROW WITHOUT A DESTINATION ───────────────────────
+//
+// Host ask 2026-07-28: "audit Then in Order for dead links."
+//
+// Result of the sweep — 39 playbooks × T-45/14/3, every row's route through
+// resolveRoute: ZERO dead links. Nothing in that list currently fails to open.
+//
+// But the arrow was rendered UNCONDITIONALLY, so the promise was structural
+// rather than earned: the first row to arrive without a resolvable route would
+// have shown a → and then toasted "Not wired here yet". This gate keeps the
+// glyph tied to the navigation, so the class cannot appear at all.
+describe('the then-in-order rows only promise what they deliver', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const shell = fs.readFileSync(
+    path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('the row arrow is conditional, not hard-coded', () => {
+    expect(shell).toMatch(/\{goes && <span className="ef-g" aria-hidden="true">→<\/span>\}/);
+    expect(shell).not.toMatch(/<span className="ef-g" aria-hidden="true">→<\/span><\/span>\s*\n\s*<\/button>/);
+  });
+
+  test('a row that settles in place earns no arrow', () => {
+    // wiredKind → the inline editor. Settling is not navigating; the hero has
+    // followed this rule since the 2026-07-22 glyph audit and the list now does.
+    expect(shell).toMatch(/if \(wiredKind\(a\)\) return false;/);
+    expect(shell).toMatch(/return !!resolveRoute\(a\.route\);/);
+  });
+
+  test('every route the then-list can emit still resolves', () => {
+    // The sweep, kept as a live gate rather than a one-off finding.
+    const { eventPlan } = require('../../CommandCenter');
+    const { resolveRoute } = require('../routeResolver');
+    const { ALL_PLAYBOOKS } = require('../playbooks');
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
+    const dead = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const type = pb.label || pb.type || pb.id;
+      for (const days of [45, 14, 3]) {
+        let plan = null;
+        try {
+          plan = eventPlan({ id: 'dl', type, date: iso(days), guestCount: 24,
+            venueCity: 'McHenry', venueState: 'MD', totalBudget: 5000 });
+        } catch (_e) { continue; }
+        for (const a of ((plan && plan.queue) || []).slice(1).filter((x) => x && x.level !== 'critical')) {
+          if (a.kind === 'bundle') continue;            // bundles open their own sheet
+          let r = null;
+          try { r = resolveRoute(a.route); } catch (_e) { r = null; }
+          // A row with no route at all is allowed — it simply wears no arrow now.
+          if (a.route && !r) dead.push(`${type} @T-${days} :: ${String(a.title || '').slice(0, 50)}`);
+        }
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+});

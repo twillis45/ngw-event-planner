@@ -6375,10 +6375,24 @@ export default function HostShellV2() {
                       {thenItems.map((a, i) => {
                         const cnt = a.kind === 'bundle' ? (a.count != null ? a.count : (Array.isArray(a.items) ? a.items.length : null)) : null;
                         const t = String(a.title || '').replace(/\s+—\s.*$/, '').replace(/\.+$/, '');
+                        // ── THE GLYPH WAS UNCONDITIONAL (dead-link audit 2026-07-28) ──
+                        // Every row rendered a → whether or not anything was behind it.
+                        // Swept all 39 playbooks at T-45/14/3 and found ZERO rows that
+                        // currently fail to resolve — but the promise was structural, not
+                        // earned, so the first row with a missing route would have shown
+                        // an arrow and then toasted "Not wired here yet".
+                        // Now the arrow is rendered only when the tap genuinely NAVIGATES:
+                        // a bundle opens its sheet, a resolvable route opens a surface. A
+                        // row that settles in place (wiredKind → the inline editor) is not
+                        // navigation and wears no arrow — the same rule the hero follows.
+                        const goes = a.kind === 'bundle' || (() => {
+                          if (wiredKind(a)) return false;
+                          try { return !!resolveRoute(a.route); } catch (_e) { return false; }
+                        })();
                         return (
                           <button key={String(a.id || i)} className="ef-row" onClick={() => openThen(a, String(a.id || (i + 1)))}>
                             <span className="t">{t}</span>
-                            <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}<span className="ef-g" aria-hidden="true">→</span></span>
+                            <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
                           </button>
                         );
                       })}
