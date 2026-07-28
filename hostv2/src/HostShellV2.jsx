@@ -7971,7 +7971,7 @@ export default function HostShellV2() {
                     const phases = (() => { try { return dayPhases(ros, anchorMin, event.rosDone || {}); } catch { return []; } })();
                     if (phases.length < 2) return null;   // one phase is not a spine
                     return (
-                      <div style={{ marginTop: 'var(--sp-5)' }}>
+                      <div style={{ marginTop: 34 }}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           {phases.map(ph => (
                             <div key={ph.id} style={{ flex: 1, height: 3, borderRadius: 2, overflow: 'hidden',
@@ -7982,15 +7982,29 @@ export default function HostShellV2() {
                             </div>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                          {phases.map(ph => (
-                            <span key={ph.id} style={{ flex: 1, fontSize: 'var(--t-caption-min)', fontWeight: ph.state === 'now' ? 750 : 600,
-                              letterSpacing: '.04em',
-                              color: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--carbon-muted)' }}>
-                              {ph.label}
-                            </span>
-                          ))}
-                        </div>
+                        {/* ── NOT A LEGEND (host 2026-07-28: "doesn't look like the latest
+                            innovative designs we did in Figma") ─────────────────────────
+                            Figma 39:60 "15 · ELEGANT — T-0 day-of" labels the spine ONCE:
+                            the phase just finished on the left, in green, and the work
+                            remaining on the right. I had put a caption under every segment,
+                            which turns a glanceable bar into a chart legend and spends the
+                            void the frame deliberately keeps. One line, two facts. */}
+                        {(() => {
+                          const lastDone = [...phases].reverse().find(p => p.state === 'done');
+                          const now = phases.find(p => p.state === 'now');
+                          const left = lastDone ? `${lastDone.label} done` : (now ? now.label : '');
+                          const beats = phases.reduce((n, p) => n + Math.max(0, (p.total || 0) - (p.done || 0)), 0);
+                          return (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                              gap: 12, marginTop: 8 }}>
+                              <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650,
+                                color: lastDone ? 'var(--ok)' : 'var(--warn)' }}>{left}</span>
+                              <span style={{ fontSize: 'var(--t-caption)', color: 'var(--carbon-muted)' }}>
+                                {beats} {beats === 1 ? 'beat' : 'beats'} to go
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
