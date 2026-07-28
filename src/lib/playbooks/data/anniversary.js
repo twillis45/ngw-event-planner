@@ -164,8 +164,17 @@ const anniversary = {
     setup: [
       { when: 'T0 -3h', what: 'Set tables/stations, seating, florals, candles, cake table; chill whites + champagne; build the bar + ice' },
       { when: 'T0 -2h', what: 'Set up + re-test the screen/projector + speakers; queue the slideshow; set dim-able lighting near the screen' },
-      { when: 'T0 -2h', what: 'Empty dishwasher; stage a bus tub + trash/recycling station; place the memory/photo display' },
+      { when: 'T0 -1:55', what: 'Empty dishwasher; stage a bus tub + trash/recycling station; place the memory/photo display' },
       { when: 'T0 -0:30', what: 'Light candles, start the looping slideshow softly, pour welcome drinks for early arrivals' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: guests in, drinks out, photo table where people will see it' },
+      { when: 'T0 +30m', what: 'The welcome toast — keep the couple’s entrance simple' },
+      { when: 'T0 +1h', what: 'Dinner: blessing, then serve; elders first' },
+      { when: 'T0 +1:45', what: 'The tribute — slideshow, the kids’ speeches, the letters' },
+      { when: 'T0 +2:15', what: 'Cake, and their song' },
+      { when: 'T0 +2:45', what: 'The floor opens; play the era they got married in' },
+      { when: 'T0 +4:05', what: 'Wind down, to-go plates, help the elders to their cars' },
     ],
     cleanup: [
       { when: 'during', what: 'Clear courses/plates into the staged bus tub; keep trash + recycling moving; do NOT wash mid-party' },

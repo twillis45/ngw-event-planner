@@ -139,10 +139,18 @@ const housewarming = {
       { when: 'T0 -1h', what: 'Final wipe of bathrooms + kitchen, take out current trash, set the playlist' },
     ],
     setup: [
-      { when: 'T0 -3h', what: 'Pre-clean: empty dishwasher, clear sink, stage trash + recycling station and a used-glass tub' },
+      { when: 'T0 -2:55', what: 'Pre-clean: empty dishwasher, clear sink, stage trash + recycling station and a used-glass tub' },
       { when: 'T0 -2h', what: 'Set the entry: shoe tray + basket, coat space, welcome/shoes-off sign, and the gift-landing spot near the door' },
-      { when: 'T0 -2h', what: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, cocktail pitcher; pre-chill bottles' },
-      { when: 'T0 -1h', what: 'Set the board out, scatter snack bowls along the tour path, light unscented candles, decide and clear the house-tour route' },
+      { when: 'T0 -1:55', what: 'Build the self-serve drinks station: beer/wine/soda, ice tub, cups/glasses, opener, cocktail pitcher; pre-chill bottles' },
+      { when: 'T0 -55m', what: 'Set the board out, scatter snack bowls along the tour path, light unscented candles, decide and clear the house-tour route' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: drinks out, coats somewhere obvious, music on' },
+      { when: 'T0 +30m', what: 'The tour — do it once, for whoever’s here, not five times' },
+      { when: 'T0 +1h', what: 'Grazing table opens; keep it topped up in waves' },
+      { when: 'T0 +1:45', what: 'The toast: short, thank whoever helped you move' },
+      { when: 'T0 +2:15', what: 'The hang; let people find their own corners' },
+      { when: 'T0 +3:35', what: 'Wind down: leftovers pressed on people, cups cleared quietly' },
     ],
     cleanup: [
       { when: 'during', what: 'Quietly clear stray cups into the staged tub, top up the board + ice, blot any spills immediately — do NOT do a full wash mid-party' },

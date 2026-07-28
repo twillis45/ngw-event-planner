@@ -142,8 +142,19 @@ const kwanzaaGathering = {
       { when: 'T0 -3h', what: 'Reheat mains; finish sides; lay out the program/reading near the kinara' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Set the kinara, mkeka, the ears of corn and the unity cup' },
+      { when: 'T0 -2:55', what: 'Cook or reheat the meal; decide who lights and who speaks tonight' },
       { when: 'T0 -1:30', what: 'Lay the mkeka; set the kinara with the mishumaa saba (black candle center, three red to the left, three green to the right); place the muhindi (one ear per child), mazao bowl, the unity cup, and the zawadi' },
       { when: 'T0 -0:45', what: 'Set the food spread + serving dishes; fill the unity cup for the libation; cue the music low; set out trash + recycling bins' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Gather: greet everyone, the kinara set and ready' },
+      { when: 'T0 +20m', what: 'Libation and the greeting — Habari gani' },
+      { when: 'T0 +30m', what: 'Light the candle for tonight’s principle and speak on it' },
+      { when: 'T0 +45m', what: 'The meal: blessing, then serve, elders first' },
+      { when: 'T0 +1:45', what: 'Sharing — the children speak too' },
+      { when: 'T0 +2:35', what: 'Music, and any gifts made by hand' },
+      { when: 'T0 +3:30', what: 'Close: thanks, and the plates for anyone travelling' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep hot dishes warm and cold sides chilled; bag bottles/cans for recycling as you go' },

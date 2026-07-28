@@ -126,8 +126,19 @@ const ethiopianCoffeeCeremony = {
       { when: 'T0 morning', what: 'Pop the popcorn; gather and trim the fresh grass; wash the green beans' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Collect fresh injera and cut the grass for the floor' },
+      { when: 'T0 -3h', what: 'Wash the jebena and cups; set the low table and the incense' },
       { when: 'T0 -1h', what: 'Strew grass, set the low ceremony tray with cini cups, arrange floor cushions/stools' },
       { when: 'T0 -0:30', what: 'Light the charcoal brazier (let it ash over); ready the roasting pan, mortar/grinder, and incense on a heatproof surface' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Gather: guests seated, grass down, incense lit' },
+      { when: 'T0 +15m', what: 'Wash and roast the beans; carry the pan around so everyone smells it' },
+      { when: 'T0 +35m', what: 'Grind and brew; snacks go out while the jebena works' },
+      { when: 'T0 +50m', what: 'Abol — the first pour, served to the eldest first' },
+      { when: 'T0 +1:20', what: 'Tona — the second round' },
+      { when: 'T0 +1:50', what: 'Baraka — the third and the blessing' },
+      { when: 'T0 +2:20', what: 'Close: thanks, and see the elders out' },
     ],
     cleanup: [
       { when: 'during', what: 'Refill the jebena with fresh water between rounds; keep coals attended; tidy cups as you go' },

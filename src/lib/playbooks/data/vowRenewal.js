@@ -188,8 +188,17 @@ const vowRenewal = {
     setup: [
       { when: 'T0 -3h', what: 'Set ceremony chairs in rows with an aisle, place + anchor the arch/backdrop, mark the processional path; chill whites + champagne; build the bar + ice' },
       { when: 'T0 -2h', what: 'Set reception tables/stations, seating, cake table, guest-book table with a working pen; set up + test the processional + reception music' },
-      { when: 'T0 -2h', what: 'Empty dishwasher; stage a bus tub + trash/recycling station; place florals + candles' },
+      { when: 'T0 -1:55', what: 'Empty dishwasher; stage a bus tub + trash/recycling station; place florals + candles' },
       { when: 'T0 -0:30', what: 'Final touches; queue the processional track; pour welcome drinks for early arrivals and start seating guests' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: seat guests, music on, hand out any programs' },
+      { when: 'T0 +20m', what: 'The renewal: walk in together, the vows you wrote, rings if you’re exchanging' },
+      { when: 'T0 +45m', what: 'Photos with family while the room resets and drinks go out' },
+      { when: 'T0 +1:15', what: 'Meal: blessing, then serve — elders and anyone with mobility needs first' },
+      { when: 'T0 +2h', what: 'Toasts and any tribute — the kids or the friend who was there the first time' },
+      { when: 'T0 +2:30', what: 'Cake and the first dance again' },
+      { when: 'T0 +4:05', what: 'Wind down, hand out to-go plates, send people home' },
     ],
     cleanup: [
       { when: 'during', what: 'Clear courses/plates into the staged bus tub; keep trash + recycling moving; do NOT wash mid-party' },

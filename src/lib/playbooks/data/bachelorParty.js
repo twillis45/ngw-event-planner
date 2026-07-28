@@ -123,8 +123,19 @@ const bachelorParty = {
       { when: 'T0 -2h', what: 'Chill the beer, set up coolers + ice, lay out food + water station, confirm the DD/rides one more time' },
     ],
     setup: [
-      { when: 'T0 -2h', what: 'Stock the base, build the bar, set a VISIBLE water + food station next to the bar, stage trash/recycling' },
+      { when: 'T0 -5h', what: 'Confirm every booking for tonight — table, tickets, transport — and re-send the meeting point' },
+      { when: 'T0 -4h', what: 'Name the sober point-person out loud and give them the list of who’s coming' },
+      { when: 'T0 -3h', what: 'Charge phones and a power bank; put cash in a pocket for the cab nobody planned' },
+      { when: 'T0 -1:55', what: 'Stock the base, build the bar, set a VISIBLE water + food station next to the bar, stage trash/recycling' },
       { when: 'T0 -0:30', what: 'Brief the crew on the plan + the buddy/point-person + the ride-home plan; start the playlist' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Everyone gathers at the meeting point; confirm the headcount before you move' },
+      { when: 'T0 +45m', what: 'First activity — the thing he actually asked for' },
+      { when: 'T0 +2h', what: 'Food, and water alongside it' },
+      { when: 'T0 +3:30', what: 'The main event of the night' },
+      { when: 'T0 +5h', what: 'Wind down; the point-person counts heads again' },
+      { when: 'T0 +6h', what: 'Everyone home: rides confirmed, nobody left behind' },
     ],
     cleanup: [
       { when: 'during', what: 'Point-person keeps water + food flowing and watches the groom; bag bottles/cans as you go' },

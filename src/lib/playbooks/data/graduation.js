@@ -117,8 +117,17 @@ const graduation = {
       { when: 'T0 -3h', what: 'Heat/hold buffet items; set drinks + ice' },
     ],
     setup: [
-      { when: 'T0 -3h', what: 'Buffet flow, drinks station, photo display + yard sign, seating + shade' },
+      { when: 'T0 -2:55', what: 'Buffet flow, drinks station, photo display + yard sign, seating + shade' },
       { when: 'T0 -1h', what: 'Chafing dishes on, ice the drinks, stage trash/recycling + card box' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: guests in, drinks out, the grad’s photos on display' },
+      { when: 'T0 +30m', what: 'Photos with each side of the family before anyone eats' },
+      { when: 'T0 +1h', what: 'Food out — buffet moves faster than plates for this one' },
+      { when: 'T0 +1:45', what: 'The toast: parents, then anyone who wants to say something short' },
+      { when: 'T0 +2:15', what: 'Cake, and open the cards where people can see' },
+      { when: 'T0 +3h', what: 'The hang; the grad’s friends will separate from the adults, let them' },
+      { when: 'T0 +4:05', what: 'Wind down, to-go plates, thank the people who travelled' },
     ],
     cleanup: [
       { when: 'during', what: 'Replenish buffet in waves; collect cards/gifts to the card box' },

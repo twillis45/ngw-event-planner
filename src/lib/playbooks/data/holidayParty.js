@@ -157,7 +157,16 @@ const holidayParty = {
     setup: [
       { when: 'T0 -3h', what: 'Set food stations + bar tables; stage glassware, ice tubs, garnish, trash/recycling bins' },
       { when: 'T0 -2h', what: 'Hang lights + decor, set candles, stage the photo moment, start the playlist low' },
-      { when: 'T0 -1h', what: 'Set the entry: coat rack + hangers, name-tag table, welcome-drink tray; brief the bartender on pour control + cut-off' },
+      { when: 'T0 -55m', what: 'Set the entry: coat rack + hangers, name-tag table, welcome-drink tray; brief the bartender on pour control + cut-off' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: coats, first drink, music on' },
+      { when: 'T0 +45m', what: 'Food out — buffet keeps the room moving better than a seated meal' },
+      { when: 'T0 +1:30', what: 'The programme: the toast, the thanks, any awards' },
+      { when: 'T0 +2h', what: 'Gift exchange if you’re doing one — set the rules before you start' },
+      { when: 'T0 +2:45', what: 'Dessert and coffee' },
+      { when: 'T0 +3:35', what: 'Music and the floor' },
+      { when: 'T0 +4:35', what: 'Send-off: confirm every ride, hand out leftovers' },
     ],
     cleanup: [
       { when: 'during', what: 'Bus empties into trash/recycling; keep stations consolidated and tidy; do not deep-clean mid-party' },

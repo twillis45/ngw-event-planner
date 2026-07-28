@@ -158,11 +158,20 @@ const engagementParty = {
       { when: 'T0 -1h', what: 'Final garnish prep; plate the grazing station; arrange passed-app trays for batch baking' },
     ],
     setup: [
-      { when: 'T0 -4h', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
+      { when: 'T0 -3:55', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
       { when: 'T0 -3h', what: 'Build the bar: glassware, signature-cocktail station, printed bar card, garnishes, zero-proof, cocktail napkins' },
       { when: 'T0 -2h', what: 'Stage the welcome/photo moment (sign + florals) and the guest book + pens at the entry; place high-tops + flowers' },
-      { when: 'T0 -1h', what: 'Set the playlist + speaker and test volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
+      { when: 'T0 -55m', what: 'Set the playlist + speaker and test volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
       { when: 'T0 -10m', what: 'Pre-pour a tray of welcome drinks; light candles; first batch of hot apps in the oven' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: welcome drinks poured, both families introduced to each other' },
+      { when: 'T0 +30m', what: 'Passed bites while everyone lands' },
+      { when: 'T0 +1h', what: 'The toast: whoever’s hosting, then a parent from each side' },
+      { when: 'T0 +1:30', what: 'Food out' },
+      { when: 'T0 +2:15', what: 'The couple works the room — make sure they eat something' },
+      { when: 'T0 +3h', what: 'Dessert' },
+      { when: 'T0 +3:45', what: 'Send-off; confirm rides for anyone who’s been drinking' },
     ],
     cleanup: [
       { when: 'during', what: 'Bus empties/plates into the staged tub continuously; keep the recycling bin visible for bottles/cans; do NOT wash mid-party' },

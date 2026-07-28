@@ -264,8 +264,19 @@ const crabFeast = {
       { when: 'T0 -1:30', what: 'Steam/boil the corn and shrimp; melt butter; pour vinegar into dipping bowls; if steaming your own crabs, get the pot and liquid ready' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Confirm the pickup slot with the crab house and the count you’re collecting' },
+      { when: 'T0 -4h', what: 'Drinks on ice; paper, mallets, knives, shell buckets and rolls of paper towel staged' },
+      { when: 'T0 -3h', what: 'Tables papered and the seasoning, vinegar and butter set out' },
       { when: 'T0 -0:30', what: 'Cover the tables thick in newspaper/brown paper, stand a paper-towel roll on each, lay out mallets/knives/butter/vinegar, ice the drinks in coolers' },
       { when: 'T0 -0:10', what: 'Stage the shell bucket(s) and a trash/recycle station within reach of the table; set sides out buffet-style' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: paper down, mallets out, drinks on ice' },
+      { when: 'T0 +30m', what: 'First steam hits the table — Old Bay, vinegar, shell bucket' },
+      { when: 'T0 +1:15', what: 'Sides out and the second steam goes on' },
+      { when: 'T0 +2h', what: 'Second round to the table; refill the seasoning and the paper towels' },
+      { when: 'T0 +3h', what: 'Dessert and the last of the picking' },
+      { when: 'T0 +4:05', what: 'Wind down: shells bagged, table stripped, to-go containers out' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep a shell bucket on the table; refill Old Bay, paper towels, drinks, and ice; do an interim roll-and-bag if the shell piles up' },

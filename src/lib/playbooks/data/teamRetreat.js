@@ -121,6 +121,7 @@ const teamRetreat = {
 
   schedules: {
     purchasing: [
+      { when: 'T0', what: 'Day-of catering received; snacks and coffee restocked' },
       { when: 'T-3d', what: 'Name tags, welcome kits, session supplies, first-aid kit' },
       { when: 'T-1d', what: 'Snacks, coffee/tea, drinks (incl. non-alcoholic), any DIY activity supplies' },
     ],
@@ -131,10 +132,23 @@ const teamRetreat = {
       { when: 'T-7d', what: 'Final attendee comms: arrival times, on-site contacts, day-1 plan' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Room set: seating in the shape the session needs, not rows by default' },
+      { when: 'T0 -4h', what: 'Materials out — worksheets, markers, boards; test the screen' },
+      { when: 'T0 -3h', what: 'Coffee and water in every room; confirm the catering window' },
       { when: 'T-1d', what: 'Lay out name tags + welcome kits, test AV/Wi-Fi, set the meeting room, name a day-of point person' },
       { when: 'T0 -2h', what: 'Stage coffee/snacks, charge devices, post signage and the printed agenda' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Arrivals and room drop; coffee and a soft start' },
+      { when: 'T0 +45m', what: 'Opening: why we’re here, and what we need to leave with' },
+      { when: 'T0 +1:30', what: 'Session one — the hardest thing, while everyone’s fresh' },
+      { when: 'T0 +3:30', what: 'Lunch, with real downtime after it' },
+      { when: 'T0 +5h', what: 'Session two' },
+      { when: 'T0 +7h', what: 'Close the day: decisions made, owners named' },
+      { when: 'T0 +8h', what: 'Dinner together — no agenda' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Protect the downtime as fiercely as the sessions; keep water and coffee available in every room' },
       { when: 'T0 last day', what: 'Settle the venue/caterer bill, collect lost-and-found, coordinate departures and transfers' },
       { when: 'T0 +5d', what: 'Send recap with decisions + owners + photos and a feedback survey so the work sticks' },
     ],

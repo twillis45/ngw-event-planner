@@ -118,8 +118,18 @@ const repast = {
       { when: 'T-1d', what: 'Confirm with everyone bringing a dish; gather serving utensils and linens' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Collect or receive the food; set the hall so the family walks into a room that’s ready' },
+      { when: 'T0 -3h', what: 'Elders’ seating placed; to-go containers stacked out of sight' },
       { when: 'T0 -1:30', what: 'Arrive early; set tables and chairs, seat for every elder, drinks and coffee station' },
       { when: 'T0 -0:45', what: 'Lay out warming trays for the brought dishes; set the memory table and guest book; ready the to-go containers' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Family arrives from the service; meet them at the door and seat them' },
+      { when: 'T0 +20m', what: 'Blessing over the food' },
+      { when: 'T0 +30m', what: 'Serve: the immediate family first, then the elders, then everyone' },
+      { when: 'T0 +1:15', what: 'Open sharing if the family wants it — no programme, no microphone rules' },
+      { when: 'T0 +2h', what: 'Make up to-go plates for the family and anyone who travelled' },
+      { when: 'T0 +3:05', what: 'Quiet wind-down; someone stays with the family until they’re ready to go' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep dishes warm and refilled; make up to-go plates for the family and elders before the food runs low' },

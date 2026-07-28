@@ -152,9 +152,20 @@ const juneteenthCookout = {
       { when: 'T0 -4h', what: 'Start the smoke/grill for ribs; stage the program/readings near the food' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Start the slow-cooked meats; red drinks into the cooler' },
+      { when: 'T0 -3:55', what: 'Set the display or flag, and cue up whatever you’re reading or playing' },
+      { when: 'T0 -3h', what: 'Shade and seating placed for elders before anyone else arrives' },
       { when: 'T0 -2h', what: 'Raise canopies/shade, set out tables (food, drinks, red-table/dessert, program), arrange chairs in shade' },
       { when: 'T0 -1h', what: 'Coolers + ice (family vs grown), drink station with red drink front and center, red-black-green decor, music on' },
       { when: 'T0 -0:30', what: 'Set out warm mains + sides in waves, dessert/red-table staged, to-go containers nearby, trash + recycling bins out' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: red drinks out, music on, flag or display where people see it' },
+      { when: 'T0 +45m', what: 'The moment: read or say what the day is, however your family does it' },
+      { when: 'T0 +1h', what: 'Blessing, then the meal — elders first' },
+      { when: 'T0 +2h', what: 'Music, games, and the visiting' },
+      { when: 'T0 +3h', what: 'Red dessert and the last round' },
+      { when: 'T0 +4h', what: 'Send-off: to-go plates, thank the people who cooked' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep cold sides on ice; restock buffet in waves; bag cans for recycling as you go' },

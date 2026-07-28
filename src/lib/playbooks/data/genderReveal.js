@@ -221,9 +221,21 @@ const genderReveal = {
       { when: 'T0 -2h', what: 'Plate snacks, build the drink station, confirm the reveal item is the right color and ready' },
     ],
     setup: [
-      { when: 'T0 -2h', what: 'Pink/blue decor, snack + dessert table, drink station, guessing board' },
+      { when: 'T0 -5h', what: 'Collect the reveal item and keep it out of sight and refrigerated if it’s cake' },
+      { when: 'T0 -4h', what: 'Re-confirm the method is safe — no pyro, no explosives, no hot smoke' },
+      { when: 'T0 -3h', what: 'Brief the one person who knows; check fire conditions if you’re outdoors' },
+      { when: 'T0 -1:55', what: 'Pink/blue decor, snack + dessert table, drink station, guessing board' },
       { when: 'T0 -1h', what: 'Stage the reveal spot (drop cloth/tarp if confetti/powder), position the camera, ice the drinks' },
       { when: 'T0 -15m', what: 'Gather guests, brief the photographer, place the reveal item; if outdoor + dry, do a final fire-safety check' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: guests in, drinks out, the guessing board where people see it' },
+      { when: 'T0 +30m', what: 'Food and the guessing' },
+      { when: 'T0 +1h', what: 'Gather everyone: phones up, photographer placed, kids and pets back' },
+      { when: 'T0 +1:15', what: 'The reveal' },
+      { when: 'T0 +1:30', what: 'Photos with both families' },
+      { when: 'T0 +2:15', what: 'Cake' },
+      { when: 'T0 +3h', what: 'Wind down, to-go plates' },
     ],
     cleanup: [
       { when: 'during', what: 'Bus plates/cups into a tub between rounds; keep a trash bag near the reveal spot' },

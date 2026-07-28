@@ -7464,7 +7464,12 @@ export default function HostShellV2() {
                   <div className="then-spine-link" aria-hidden="true" />
                   <div className="eyebrow" style={{ marginBottom: 'var(--sp-2)' }}>{solemn ? 'The rest, in their time' : <>Then · {cuesAfterNow.length} more moment{cuesAfterNow.length === 1 ? '' : 's'}</>}</div>
                   <div className="then-spine">
-                  {cuesAfterNow.slice(0, 7).map((r, i) => {
+                  {/* EVERY MOMENT ON A ROW (host ruling 2026-07-28: "let's make all
+                      visible on rows"). This was capped at 7 with a "+N more" stub —
+                      fine when a playbook authored 8 day-of cues, wrong now that every
+                      type carries a full programme (14 rows on average). A host running
+                      the day should see the whole day, not a teaser. */}
+                  {cuesAfterNow.map((r, i) => {
                     const m = cueMins(r.time);
                     const behind = m !== null && m < nowMin;
                     return (
@@ -7485,7 +7490,7 @@ export default function HostShellV2() {
                       </button>
                     );
                   })}
-                  {cuesAfterNow.length > 7 && <div className="then-row"><span className="dot" aria-hidden="true" /><span className="d" /><span style={{ color: 'var(--carbon-muted)' }}>+ {cuesAfterNow.length - 7} more, through the last item</span></div>}
+
                   </div>
                 </div>
               )}
@@ -7814,15 +7819,26 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
-                  {/* UP NEXT — just the SINGLE next moment, condensed (Figma 331:61). The whole
-                      editable agenda lives in "Full agenda"; Walk it never dumps the list. */}
+                  {/* UP NEXT — the next TWO moments, so three beats are visible at once
+                      (host ruling 2026-07-28: "six plus but three visible"). Now that every
+                      playbook authors 6-9 programme beats, one-at-a-time was too narrow a
+                      window to run a day from — but dumping the list is the thing the
+                      call-sheet ruling rejected. So: HIERARCHY, not a flat list. The next
+                      moment keeps its weight; the one after it is a quieter line beneath.
+                      The whole editable agenda still lives in "Full agenda". */}
                   {dayIdx < ros.length - 1 && (() => {
+                    const clean = (r) => String((r && r.segment) || '').replace(/\s*[:;]\s*/g, ' · ').replace(/,\s+/g, ' · ');
                     const nx = ros[dayIdx + 1];
-                    const nseg = String(nx.segment || '').replace(/\s*[:;]\s*/g, ' · ').replace(/,\s+/g, ' · ');
+                    const after = dayIdx + 2 < ros.length ? ros[dayIdx + 2] : null;
                     return (
                       <div className="then" style={{ marginTop: 'var(--sp-5)' }}>
                         <div className="eyebrow">{(solemn ? 'Then' : 'Up next') + (nx.time ? ' · ' + fmt12h(nx.time) : '')}</div>
-                        <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--steel-soft)', fontSize: 'var(--t-input)', lineHeight: 1.4 }}>{nseg}{nx.vendorName ? ' · ' + nx.vendorName : ''}</p>
+                        <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--steel-soft)', fontSize: 'var(--t-input)', lineHeight: 1.4 }}>{clean(nx)}{nx.vendorName ? ' · ' + nx.vendorName : ''}</p>
+                        {after && (
+                          <p style={{ margin: 'var(--sp-2) 0 0', color: 'var(--carbon-muted)', fontSize: 'var(--t-note)', lineHeight: 1.4 }}>
+                            {(after.time ? fmt12h(after.time) + ' · ' : 'then · ') + clean(after)}
+                          </p>
+                        )}
                       </div>
                     );
                   })()}

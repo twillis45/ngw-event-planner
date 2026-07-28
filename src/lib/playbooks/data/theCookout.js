@@ -208,8 +208,19 @@ const theCookout = {
       { when: 'T0 morning', what: 'Bake the mac & cheese; finish potato salad and slaw; brew the red drink; pre-cook ribs if needed' },
     ],
     setup: [
+      { when: 'T0 -4:55', what: 'Start the slow-cooked meats and the sides that hold' },
+      { when: 'T0 -4h', what: 'Drinks into coolers with plenty of ice' },
+      { when: 'T0 -3h', what: 'Shade and seating placed; check the forecast and make the rain call' },
       { when: 'T0 -2:00', what: 'Light the pit early; set up canopies + shaded elder seating; coolers + ice (separate grown-folks cooler); food line, drink station, dessert table; spades table; speaker/music' },
       { when: 'T0 -0:30', what: 'Lay out foil pans warm, sturdy plates, sturdy cutlery; stage trash + recycling bins; cue the playlist' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: drinks on ice, music on, first people at the grill' },
+      { when: 'T0 +45m', what: 'First plates off the grill — feed the elders and kids first' },
+      { when: 'T0 +1:30', what: 'Main service: sides out, keep the grill going for second rounds' },
+      { when: 'T0 +2:15', what: 'Spades table and the music turns up' },
+      { when: 'T0 +3h', what: 'Dessert and the last round off the grill' },
+      { when: 'T0 +4h', what: 'Wind down: to-go plates, kill the coals safely' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep cold sides on ice; bag cans for recycling as you go; refill ice and the red drink; set out to-go containers as people start making plates' },

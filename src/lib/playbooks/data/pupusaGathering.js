@@ -110,6 +110,7 @@ const pupusaGathering = {
 
   schedules: {
     purchasing: [
+      { when: 'T0', what: 'Any last fresh items — cheese, cream, plantain — and ice for drinks' },
       { when: 'T-5d', what: 'Latin market: masa, quesillo, chicharrón, beans, loroco/ayote; reserve pupusería order if hybrid' },
       { when: 'T-3d', what: 'Curtido + salsa veg, horchata/tamarindo, beer/sodas, oil, tableware, cleanup kit' },
       { when: 'T-1d', what: 'Any fresh masa from the tortillería + last produce' },
@@ -120,8 +121,19 @@ const pupusaGathering = {
       { when: 'T0 -1h', what: 'Heat the comal; set the masa bowl, water dish, and fillings on the shaping table' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Make the curtido so it has hours to sour' },
+      { when: 'T0 -4h', what: 'Mix the masa and prepare every filling; keep them covered and cold' },
+      { when: 'T0 -3h', what: 'Comal set and tested; salsa made; drinks chilled' },
       { when: 'T0 -0:45', what: 'Get the comal/griddle hot; lay out the shaping line (masa, water, oil, fillings)' },
       { when: 'T0 -0:30', what: 'Set the toppings line — curtido and salsa roja out, plates and napkins, drinks station; pull early shapers to the table' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: comal hot, curtido and salsa out, drinks poured' },
+      { when: 'T0 +30m', what: 'First round off the comal — serve as they come, don’t stack them' },
+      { when: 'T0 +1:15', what: 'Second round; refill curtido and salsa, start any new fillings' },
+      { when: 'T0 +2h', what: 'Third round for whoever’s still eating' },
+      { when: 'T0 +2:45', what: 'Sweets and coffee' },
+      { when: 'T0 +3:30', what: 'Wind down: comal off, leftovers portioned to take' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep curtido/salsa replenished; jar refrigerated fillings between batches; pass pupusas hot so they don\'t stack and steam' },

@@ -125,8 +125,19 @@ const backyardBbq = {
       { when: 'T-1d', what: 'Marinate proteins; make cold sides; check fuel + grill' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Pull proteins from the fridge to temper; light the coals late but check you have enough fuel' },
+      { when: 'T0 -4h', what: 'Drinks into the cooler now so they’re cold by the time people arrive' },
+      { when: 'T0 -3h', what: 'Check the forecast and make the rain call while there’s still time to move things' },
       { when: 'T0 -1h', what: 'Set up coolers + ice, canopy/shade, chairs, food + drinks tables' },
       { when: 'T0 -0:45', what: 'Light the grill; stage trash + recycling bins' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: drinks on ice, music on, greet people at the gate' },
+      { when: 'T0 +30m', what: 'Grill starts serving — first plates to whoever’s been waiting' },
+      { when: 'T0 +1:15', what: 'Everything out: sides, condiments, second rounds' },
+      { when: 'T0 +2h', what: 'The hang — yard games, music, let it run itself' },
+      { when: 'T0 +3h', what: 'Dessert and the last call on the grill' },
+      { when: 'T0 +4:05', what: 'Wind down, to-go plates, coals out' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep cold food on ice; bag cans for recycling as you go' },

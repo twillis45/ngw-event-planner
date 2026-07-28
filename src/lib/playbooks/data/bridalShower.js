@@ -123,8 +123,16 @@ const bridalShower = {
       { when: 'T0 -3h', what: 'Plate food, build the coffee/mimosa bar, chill bubbly + juice' },
     ],
     setup: [
-      { when: 'T0 -3h', what: 'Decorate, set the table, food + dessert/cake table, gift-opening area with a chair for the bride' },
+      { when: 'T0 -2:55', what: 'Decorate, set the table, food + dessert/cake table, gift-opening area with a chair for the bride' },
       { when: 'T0 -2h', what: 'Coffee/tea urn + mimosa bar + punch dispensers, ice; stage trash/recycling; place the gift log on the gift table' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: welcome drink in hand, gift table set, guest book open' },
+      { when: 'T0 +30m', what: 'Mingling and the first game' },
+      { when: 'T0 +1h', what: 'Food out' },
+      { when: 'T0 +1:45', what: 'Gifts: log each gift to its giver as she opens it' },
+      { when: 'T0 +2:30', what: 'Cake and the toast' },
+      { when: 'T0 +3:05', what: 'Send-off: favours out, gifts to her car' },
     ],
     cleanup: [
       { when: 'during', what: 'Log each gift → giver as the bride opens it; bus dishes into a tub' },

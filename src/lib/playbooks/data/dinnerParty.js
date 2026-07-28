@@ -119,8 +119,17 @@ const dinnerParty = {
     ],
     setup: [
       { when: 'T0 -3h', what: 'Set the table: linens, plates, glasses, flatware, place cards, centerpiece, candles' },
-      { when: 'T0 -3h', what: 'Chill whites/sparkling; build the drinks station + ice tub' },
+      { when: 'T0 -2:55', what: 'Chill whites/sparkling; build the drinks station + ice tub' },
       { when: 'T0 -2h', what: 'Empty dishwasher, stage bus tub + trash/recycling, light candles 15 min before' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: coats taken, first drink in every hand within a minute' },
+      { when: 'T0 +30m', what: 'Passed bites while the last guests land' },
+      { when: 'T0 +1h', what: 'Seated: first course out, wine poured' },
+      { when: 'T0 +1:45', what: 'Main course; keep the table’s glasses filled' },
+      { when: 'T0 +2:45', what: 'Dessert' },
+      { when: 'T0 +3:15', what: 'Coffee and the move back to the sofa' },
+      { when: 'T0 +4:05', what: 'Wind down; the dishes wait until they’ve gone' },
     ],
     cleanup: [
       { when: 'during', what: 'Clear courses into the staged bus tub; do NOT wash mid-party' },

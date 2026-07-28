@@ -33,7 +33,10 @@ describe('continuous responsibilities reach the host', () => {
       }
       if (cues.length) withCues += 1;
     }
-    expect(withCues).toBeGreaterThanOrEqual(25);
+    // RATCHET (host ruling 2026-07-28, "six plus"): every playbook authors one.
+    // This number only ever goes UP — a new event type ships with its continuous
+    // duty or this fails.
+    expect(withCues).toBe(ALL_PLAYBOOKS.length);
   });
 
   test('they carry NO clock — a continuous duty is not a point in time', () => {

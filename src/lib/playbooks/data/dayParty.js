@@ -139,8 +139,19 @@ const dayParty = {
       { when: 'T0 -3h', what: 'Final garnish prep; stage food on the grazing table; charge the backup speaker' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Sound check with the DJ at real volume — before the neighbours are home' },
+      { when: 'T0 -4h', what: 'Bar built: ice, mixers, cups, and the non-alcoholic option out front' },
+      { when: 'T0 -2:55', what: 'Confirm the posted end time with everyone working it' },
       { when: 'T0 -2h', what: 'Build the bar + punch dispenser, set DJ power + speakers, raise canopies/shade, arrange seating pods + high-tops' },
       { when: 'T0 -1h', what: 'Hang decor + the photo wall in the theme palette, fill coolers/tubs with ice, lay out cups + water station, soundcheck' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: DJ on, bar open, the room still bright' },
+      { when: 'T0 +1h', what: 'First set — build it, don’t peak yet' },
+      { when: 'T0 +2h', what: 'Food out while the floor rests' },
+      { when: 'T0 +3h', what: 'Peak: the set everyone came for' },
+      { when: 'T0 +4h', what: 'Last call announced ~30 minutes before the posted end' },
+      { when: 'T0 +4:35', what: 'Music fades at the posted hour; lights up; guide people out' },
     ],
     cleanup: [
       { when: 'during', what: 'Refresh the grazing table in waves; keep cold bites on ice; bag cans/bottles for recycling as you go; keep water flowing' },

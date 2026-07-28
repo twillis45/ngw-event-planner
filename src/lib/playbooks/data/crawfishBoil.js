@@ -133,8 +133,19 @@ const crawfishBoil = {
       { when: 'T0 -1h', what: 'Stage the basket, paddle, long tools, gloves, and the timing order (potatoes → corn/sausage → crawfish → soak)' },
     ],
     setup: [
-      { when: 'T0 -1h', what: 'Place the burner on LEVEL ground away from the house and kids, fill the pot ~½-⅔ with water + seasoning, locate gloves and long tools, bring to a ROLLING boil' },
+      { when: 'T0 -5h', what: 'Collect the sack; keep it cool, damp and shaded — never sealed and never on ice' },
+      { when: 'T0 -4h', what: 'Purge and rinse; get the pot, burner, basket and paddle staged together' },
+      { when: 'T0 -3h', what: 'Weigh the propane, drinks on ice, tables papered' },
+      { when: 'T0 -55m', what: 'Place the burner on LEVEL ground away from the house and kids, fill the pot ~½-⅔ with water + seasoning, locate gloves and long tools, bring to a ROLLING boil' },
       { when: 'T0 -0:30', what: 'Cover the dump table in paper/newspaper, set the drinks coolers on ice, stack napkins/paper towels and shell bowls' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: table papered, drinks on ice, burner lit and attended' },
+      { when: 'T0 +45m', what: 'First boil dumps on the table — corn, potatoes, sausage with it' },
+      { when: 'T0 +1:30', what: 'Second sack goes in; keep the seasoning and the drinks moving' },
+      { when: 'T0 +2:15', what: 'Second dump; show the first-timers how to pinch and suck' },
+      { when: 'T0 +3h', what: 'Dessert and the last of the picking' },
+      { when: 'T0 +4h', what: 'Wind down: shells bagged, burner off and cooled, table stripped' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep the pot attended at all times; pull each boil into the basket; CUT the heat and let it soak before the dump; restock napkins, drinks, and ice' },

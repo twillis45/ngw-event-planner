@@ -110,10 +110,21 @@ const watchParty = {
       { when: 'T0 -1:30', what: 'Cook wings + hot food, back-timed to be ready before kickoff' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Confirm the stream or channel works — actually load it, don’t assume' },
+      { when: 'T0 -3h', what: 'Drinks on ice; seating arranged so everyone can see the screen' },
       { when: 'T0 -1h', what: 'Coolers + ice, food + drinks table, extra seating toward the screen' },
       { when: 'T0 -0:30', what: 'Food OUT and ready; slow cooker on; trash + recycling bins set; stream/channel confirmed' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: TV on the pre-game, drinks on ice, seats claimed' },
+      { when: 'T0 +45m', what: 'Kickoff — food already out so nobody’s in the kitchen' },
+      { when: 'T0 +1:45', what: 'Halftime: hot food refresh, refill drinks, bathroom rotation' },
+      { when: 'T0 +2:15', what: 'Second half' },
+      { when: 'T0 +3:30', what: 'The finish — let the room have it' },
+      { when: 'T0 +4:05', what: 'Wind down: to-go plates, rides checked for anyone who’s been drinking' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Keep hot food refreshed at the breaks and cold drinks on ice; watch anyone who’s drinking through a long game' },
       { when: 'halftime', what: 'Restock food, swap trash bag, bag cans for recycling, top up ice' },
       { when: 'T0 +4h', what: 'Pack leftovers, bag trash/recycling, wipe surfaces, run the dishwasher' },
     ],

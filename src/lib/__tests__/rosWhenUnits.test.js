@@ -118,3 +118,59 @@ describe('no playbook can author a nameless day-of cue', () => {
     expect(ros.every((r) => String(r.segment || '').trim())).toBe(true);
   });
 });
+
+// ─── THE EVENT ITSELF IS ON THE BOARD (host ruling 2026-07-28) ───────────────
+// Setup ran to the anchor, cleanup began at T0+4h, and NOTHING covered the hours
+// between — the event. `program` is now a first-class schedule key and every
+// playbook authors its beats. This is a RATCHET: the allowlist below is empty
+// and must stay empty. A new event type ships with its programme or this fails.
+describe('every playbook covers the event itself', () => {
+  const { ALL_PLAYBOOKS, playbookRunOfShow } = require('../playbooks');
+  const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
+  const NOT_YET_AUTHORED = [];   // ← only ever shrinks
+
+  test('a programme exists, with at least six beats, for every type', () => {
+    const thin = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const type = pb.label || pb.type || pb.id;
+      if (NOT_YET_AUTHORED.includes(type)) continue;
+      const rows = (pb.schedules && pb.schedules.program) || [];
+      if (rows.length < 6) thin.push(`${type} :: ${rows.length} beats`);
+    }
+    expect(thin).toEqual([]);
+  });
+
+  test('the authored programme actually reaches the built run of show', () => {
+    // NB: row._min is absolute minutes-of-day (anchor hour + offset), NOT
+    // anchor-relative — an earlier draft of this test assumed otherwise and
+    // proved nothing. The honest check is that the beat a playbook AUTHORS is
+    // a row the host will SEE.
+    const bare = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const type = pb.label || pb.type || pb.id;
+      if (NOT_YET_AUTHORED.includes(type)) continue;
+      const authored = ((pb.schedules && pb.schedules.program) || [])
+        .map((r) => String((r.what != null ? r.what : r.do) || '').trim())
+        .filter(Boolean);
+      const ros = playbookRunOfShow({ id: 'p', type, date: iso(0), guestCount: 24 }) || [];
+      const segments = new Set(ros.map((r) => String((r && r.segment) || '').trim()));
+      const landed = authored.filter((a) => segments.has(a)).length;
+      // Some beats are answer-resolved or gated (the caterer lever), so demand a
+      // clear majority rather than every single row.
+      if (landed < Math.ceil(authored.length / 2)) bare.push(`${type} :: ${landed}/${authored.length} beats reached the board`);
+    }
+    expect(bare).toEqual([]);
+  });
+
+  test('the Reunion day now runs through the event, not just up to it', () => {
+    const ros = playbookRunOfShow({ id: 'p', type: 'Reunion', date: iso(0), guestCount: 24 }) || [];
+    const text = ros.map((r) => r.segment).join(' | ');
+    // the gap this closed, in the host's own terms
+    expect(text).toMatch(/group photo/i);
+    expect(text).toMatch(/blessing/i);
+    expect(text).toMatch(/games/i);
+    expect(text).toMatch(/send-off|to-go plates/i);
+    // and the board is meaningfully longer than the old setup+cleanup-only day
+    expect(ros.length).toBeGreaterThanOrEqual(12);
+  });
+});

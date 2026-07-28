@@ -200,11 +200,20 @@ const retirementParty = {
       { when: 'T0 -1h', what: 'Final plating; fill the chafing dishes; light candles; cue the slideshow' },
     ],
     setup: [
-      { when: 'T0 -4h', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
+      { when: 'T0 -3:55', what: 'Start chilling bottles; set up the ice tubs (chilling vs drink ice, separate)' },
       { when: 'T0 -3h', what: 'Set the room: ample accessible seating, clear walkways, buffet table (≤36" reach), bar, cake/display tables; reserve front-row seats near the speakers' },
       { when: 'T0 -2h', what: 'Stage the memory/photo display, the signing card + pens, and the slideshow screen; place coffee/tea station, decor, centerpieces' },
-      { when: 'T0 -1h', what: 'Test the mic + speaker and the slideshow on the actual screen; set music volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
+      { when: 'T0 -55m', what: 'Test the mic + speaker and the slideshow on the actual screen; set music volume; pre-clean — empty dishwasher, stage bus tub + recycling bin' },
       { when: 'T0 -30m', what: 'Final setup check: greet early arrivals, confirm the buffet/bar and seating are ready, first appetizers out', copyByAnswer: { surprise: { 'Full surprise': 'SURPRISE prep: get guests in and quiet, brief the co-conspirator and the lookout, position the surprise guest out of sight, first appetizers out', 'Soft surprise (honoree knows, not the details)': 'Get guests settled in and greeted, quietly confirm arrival timing with your co-conspirator for the honoree, first appetizers out' } } },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: guests in and settled, drinks out, sign the card on the way in' },
+      { when: 'T0 +20m', what: 'The honoree arrives — or the room quiets for the surprise' },
+      { when: 'T0 +45m', what: 'Dinner served; blessing first if that’s your family' },
+      { when: 'T0 +1:30', what: 'The program: the boss, the oldest friend, the family — two minutes each' },
+      { when: 'T0 +2h', what: 'The gift and the honoree’s own words' },
+      { when: 'T0 +2:30', what: 'Cake, then open floor for the people who couldn’t get to them earlier' },
+      { when: 'T0 +4h', what: 'Send-off; make sure the honoree leaves with the card and every gift' },
     ],
     cleanup: [
       { when: 'during', what: 'Bus empties/plates into the staged tub continuously; keep the recycling bin and to-go containers visible; do NOT wash mid-party' },

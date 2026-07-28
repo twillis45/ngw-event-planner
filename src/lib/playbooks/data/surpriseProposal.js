@@ -120,6 +120,7 @@ const surpriseProposal = {
 
   schedules: {
     purchasing: [
+      { when: 'T0', what: 'Flowers if you’re bringing them, collected on the way' },
       { when: 'T-42d', what: 'Order the ring (custom 4-6 wk); set financing + insurance' },
       { when: 'T-5d', what: 'Pick up the ring; verify fit + insurance rider' },
       { when: 'T-3d', what: 'LED candles, "Marry Me" sign, slim ring box, keepsake' },
@@ -131,10 +132,22 @@ const surpriseProposal = {
       { when: 'T-1d', what: 'Confirm forecast + Plan B; confirm photographer 48h out; confirm reservation / family reveal' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Ring on your person; check the setting once more in today’s weather' },
+      { when: 'T0 -4h', what: 'Confirm the photographer’s position and the signal' },
+      { when: 'T0 -3h', what: 'Get where you need to be early — traffic is the thing that ruins these' },
       { when: 'T0 -2h', what: 'Photographer + helpers arrive; stage any décor (sign, LED candles, petals) discreetly' },
       { when: 'T0 -0:30', what: 'Photographer takes hidden position; ring in the slim box in a secure pocket; cover story in motion' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Arrive at the spot; the photographer is already in position' },
+      { when: 'T0 +10m', what: 'The moment' },
+      { when: 'T0 +20m', what: 'Photos, while you’re both still shaking' },
+      { when: 'T0 +45m', what: 'The calls — whoever has to hear it from you first' },
+      { when: 'T0 +1:30', what: 'The celebration you booked' },
+      { when: 'T0 +3h', what: 'Post it if you’re posting it, then put the phones away' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Keep the ring on your person the whole time — never in a bag, a coat or someone else’s pocket' },
       { when: 'T0 +0:15', what: 'Pack down décor immediately (especially in a permitted public spot); collect candles/sign/petals' },
       { when: 'T0 +0:30', what: 'Champagne toast + portraits, then move to dinner / the family + friends reveal' },
     ],

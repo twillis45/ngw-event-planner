@@ -1136,6 +1136,15 @@ const ROS_SCHEDULE_KINDS = [
   { key: 'cooking', segType: 'event' },
   { key: 'preparation', segType: 'event' },
   { key: 'setup', segType: 'prep' },
+  // THE EVENT ITSELF (host ruling 2026-07-28). Until now the day board covered
+  // the hours BEFORE the anchor (setup, 105 authored rows, every one of them
+  // pre-anchor) and the hours AFTER it (cleanup, starting T0+4h) — and nothing
+  // in between. A reunion host got "arrive early… ice the coolers… stage the
+  // games" and then, four hours later, "start consolidating food": no meal, no
+  // group photo, no toast, no send-off. `program` is the missing key. Rows sort
+  // by their own offset, so a beat lands between setup and cleanup with no new
+  // ordering logic.
+  { key: 'program', segType: 'event' },
   { key: 'cleanup', segType: 'prep' },
 ];
 
@@ -1175,6 +1184,28 @@ export function rosWhenOffset(when) {
     // 'T0+4.5h' — hours, remainder kept.
     return sign * Math.round(value * 60);
   }
+  // PROSE DAY-OF TOKENS (day-model audit 2026-07-28). Some playbooks author the
+  // day in words rather than offsets — 'T0 morning', 'T0 after the meal'. The
+  // bare-T0 fallback below swallowed every one of them and returned 0, so Sunday
+  // Dinner stacked SEVEN distinct moments on the anchor minute: grace, plates,
+  // to-go plates, leftovers and the kitchen reset all at once, and the board
+  // flagged its own day as seven overlapping moments. Third instance today of
+  // one root cause — a token vocabulary the parser only half understood.
+  // These are approximations by nature, exactly like the numeric offsets, and
+  // they order the day correctly instead of collapsing it.
+  const PROSE = [
+    [/^T0\s+morning\b/i, -5 * 60],
+    [/^T0\s+(pre-meal|before guests)\b/i, -30],
+    [/^T0\s+at the table\b/i, 0],
+    [/^T0\s+after the meal\b/i, 90],
+    [/^T0\s+end of day\b/i, 4 * 60],
+  ];
+  for (const [re, mins] of PROSE) if (re.test(w)) return mins;
+  // NB: 'T0 last day' deliberately falls through to the bare-T0 catch below and
+  // returns 0. It is NOT a day-1 cue, but the row has to EXIST before the
+  // multi-day pass further down can promote it to the last day (it finds the row
+  // by segment text and shifts its day/_min). Returning null here deleted the
+  // row outright and broke that promotion — caught by rosDayProof.
   if (/^T0\b/i.test(w)) return 0;               // bare T0 → anchor
   return null;
 }

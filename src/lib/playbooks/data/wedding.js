@@ -145,6 +145,7 @@ const wedding = {
 
   schedules: {
     purchasing: [
+      { when: 'T0', what: 'Ice, and any last fresh items the florist or caterer didn’t bring' },
       { when: 'T-180d', what: 'Pay design-vendor deposits (florist, baker, rentals, stationery); order attire if not already' },
       { when: 'T-14d', what: 'Final vendor balances paid; tip envelopes prepped; favors/welcome-bag/signage materials in hand' },
       { when: 'T-3d', what: 'Buy/assemble favors, welcome bags, emergency kit, signage, guest book; toast champagne + bar alcohol IF self-supplied' },
@@ -158,6 +159,16 @@ const wedding = {
       { when: 'T-1d', what: 'Drop welcome bags at the hotel; deliver décor/signage/seating cards to the venue; stage the emergency kit' },
       { when: 'T0 -6h', what: 'Hair + makeup begins (start early; ~45 min/face + bride buffer); vendors load in; florist + rentals dress the room' },
       { when: 'T0 -2h', what: 'Final venue walk-through; place escort cards, favors, signage, guest book; sound check; first look + portraits' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: ushers seat guests, prelude music on, programs handed out' },
+      { when: 'T0 +30m', what: 'Ceremony: processional, vows, rings, pronouncement, recessional' },
+      { when: 'T0 +1h', what: 'Cocktail hour: couple and party take portraits while guests hit the bar' },
+      { when: 'T0 +2h', what: 'Grand entrance and first dance; guests find their seats' },
+      { when: 'T0 +2:15', what: 'Dinner service: blessing, then tables released to the buffet or plates out' },
+      { when: 'T0 +3h', what: 'Toasts — brief each speaker to two minutes and hold the mic yourself' },
+      { when: 'T0 +3:30', what: 'Cake cutting, then parent dances, then the floor opens' },
+      { when: 'T0 +5h', what: 'Last dance and send-off; someone sober drives the couple' },
     ],
     cleanup: [
       { when: 'during', what: 'Coordinator distributes tip envelopes; collects gifts/cards to a secured spot; tracks rental counts' },

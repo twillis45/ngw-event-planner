@@ -119,8 +119,19 @@ const boardMeeting = {
       { when: 'T-1d', what: 'End-to-end AV/hybrid dry run; confirm catering, parking, and badges' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Confirm quorum by reply; chase anyone who hasn’t answered' },
+      { when: 'T0 -3h', what: 'Print or repost the packet; test the video bridge and the screen-share end to end' },
       { when: 'T0 -1h', what: 'Set seating + name cards, power/AV at each seat, screens on, minute-taker station ready' },
       { when: 'T0 -30m', what: 'Stage catering, open the video bridge, admit remote directors, verify screen-share is visible to them' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Call to order; confirm quorum and note it' },
+      { when: 'T0 +10m', what: 'Approve the prior minutes; flag open action items' },
+      { when: 'T0 +25m', what: 'Reports: each presenter to their allotted minutes' },
+      { when: 'T0 +1:15', what: 'Main business — the item this meeting exists for' },
+      { when: 'T0 +2h', what: 'Votes taken and recorded, with abstentions named' },
+      { when: 'T0 +2:30', what: 'New business and the date of the next meeting' },
+      { when: 'T0 +2:45', what: 'Adjourn; minutes drafted while it’s fresh' },
     ],
     cleanup: [
       { when: 'during', what: 'Minute-taker logs motions, votes (roll call), and action items live; coordinator monitors the remote feed' },

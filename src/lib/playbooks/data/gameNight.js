@@ -115,10 +115,22 @@ const gameNight = {
       { when: 'T0 -2h', what: 'Plate snacks, mix the batch drink, final fridge check' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Pull the games and open every box — count pieces, cards and dice now, not at the table' },
+      { when: 'T0 -3h', what: 'Snacks portioned into bowls; drinks chilled and kept off the playing surface' },
       { when: 'T0 -1h', what: 'Clear + wipe the main table; a seat per guest; bright over-table lighting; low playlist' },
       { when: 'T0 -0:30', what: 'Snack + drink station (and food tray) AWAY from the table; ice out; napkins/hand wipes + scorepad + pen on the table; trash/recycling spot; first game laid out' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: snacks out, drinks poured, table cleared' },
+      { when: 'T0 +20m', what: 'A quick filler game while the last people arrive' },
+      { when: 'T0 +45m', what: 'Teach the headliner — rules read aloud once, properly' },
+      { when: 'T0 +1h', what: 'The headline game' },
+      { when: 'T0 +2:15', what: 'Break: hot food, refill drinks, stretch' },
+      { when: 'T0 +2:45', what: 'Second game — shorter, lighter' },
+      { when: 'T0 +4h', what: 'Wind down; boxes checked for pieces before anyone goes' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Keep snacks topped up and drinks off the board; return pieces to their boxes between games' },
       { when: 'T0 +1:30', what: 'Mid-night: refresh snack bowls, restock drinks + ice, swap any full trash bag' },
       { when: 'T0 +3h', what: 'Clear cups/plates, bag trash + recycling, consolidate leftovers, reshelve every game (pieces back in the box)' },
     ],

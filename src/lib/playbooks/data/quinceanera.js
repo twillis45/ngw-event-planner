@@ -455,6 +455,17 @@ const quinceanera = {
       { when: 'T0 -2h', what: 'DJ/banda sound check and uplighting; place ceremonial items (doll, crown, heels, toast glasses) at the head table' },
       { when: 'T0 -1h', what: 'Caterer sets the buffet/plated stations; MC reviews the run-of-show; court takes entrance positions' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Mass or ceremony begins — court seated, padrinos in place' },
+      { when: 'T0 +1h', what: 'Photos: family, court, padrinos — the shot list you wrote' },
+      { when: 'T0 +2h', what: 'Reception entrance: court presentation, then the quinceañera' },
+      { when: 'T0 +2:20', what: 'Father-daughter waltz, then the vals with the court' },
+      { when: 'T0 +2:45', what: 'Changing of the shoes and the last-doll moment' },
+      { when: 'T0 +3h', what: 'Dinner served; blessing first, elders’ tables first' },
+      { when: 'T0 +3:45', what: 'Toasts from padrinos and family; cake' },
+      { when: 'T0 +4:30', what: 'Surprise dance, then the floor opens to everyone' },
+      { when: 'T0 +6:05', what: 'Last song, send-off, and collect the gifts to one secured spot' },
+    ],
     cleanup: [
       { when: 'during', what: 'Caterer buses tables; keep the cake and ceremonial items safe; settle vendor balances and tips as agreed' },
       { when: 'T0 +6h', what: 'Gather all gifts, the last doll, the crown, and leftover cake into boxes; recover rental deposits' },

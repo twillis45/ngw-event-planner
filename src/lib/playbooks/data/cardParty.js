@@ -133,10 +133,21 @@ const cardParty = {
       { when: 'T0 -3h', what: 'Pot on low and slow; bake/fry wings + meatballs to hit warm at start; plate the cold spread' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Set the tables and check you have enough chairs, decks and score pads' },
+      { when: 'T0 -2:55', what: 'Drinks on ice; decide and write down the stakes before anyone arrives' },
       { when: 'T0 -1h', what: 'Square up the card tables (one per four), real seat per player, bright even light over each, partners able to sit across; queue a low grown-and-groovy playlist' },
       { when: 'T0 -0:30', what: 'Food station + bar set AWAY from the tables; punch + water + ice out; cups/plates/napkins stacked; 2 decks + score pad + pen on every table; trash/recycling visible' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: tables set, drinks poured, partners sorted' },
+      { when: 'T0 +20m', what: 'First hands — set the stakes and the house rules out loud' },
+      { when: 'T0 +1:30', what: 'Break: food out, refill drinks, rotate partners if you’re rotating' },
+      { when: 'T0 +2:05', what: 'Second round' },
+      { when: 'T0 +3:15', what: 'Dessert and the last hands' },
+      { when: 'T0 +4:05', what: 'Settle up, and settle it in front of everyone' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Keep drinks and snacks moving without crowding the table; settle each hand’s score before the next deal' },
       { when: 'T0 +2:00', what: 'Snack refresh: top up the spread + pot bowl, restock the bar + ice + water, swap any full trash bag' },
       { when: 'T0 +4:00', what: 'Clear cups/plates, bag trash + recycling, pack leftovers, gather + count every deck back to 52/54, fold and stack the card tables' },
     ],

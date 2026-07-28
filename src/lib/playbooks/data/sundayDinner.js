@@ -444,6 +444,7 @@ const sundayDinner = {
 
   schedules: {
     purchasing: [
+      { when: 'T0', what: 'Anything fresh you didn’t get yesterday, and ice' },
       { when: 'T-3d', what: 'Buy greens, smoked seasoning meat, and dried peas — the slow-cook items.' },
       { when: 'T-2d', what: 'Buy mac and cheese, yams, cornbread fixings, dessert, drinks, to-go containers, and frying supplies.' },
       { when: 'T-1d', what: 'Buy the fresh chicken or roast last so it is at its best for Sunday.' },
@@ -454,13 +455,25 @@ const sundayDinner = {
       { when: 'T0 pre-meal', what: 'Fry or finish the main last so it lands hot, timed with the sides.' },
     ],
     setup: [
+      { when: 'T0 -4h', what: 'Start whatever needs the oven longest' },
+      { when: 'T0 -2h', what: 'Set the table properly — this is the part that makes it Sunday' },
+      { when: 'T0 -1h', what: 'Reheat, carve, and get the sides into serving dishes' },
       { when: 'T-1d', what: 'Count chairs against the headcount and add a leaf or kids table; set place settings.' },
-      { when: 'T0 before guests', what: 'Lay out serving spoons, napkins, and drinks; clear a counter as the plating station.' },
-      { when: 'T0 at the table', what: 'Gather everyone, say grace, and make plates for the elders first.' },
+      { when: 'T0 -25m', what: 'Lay out serving spoons, napkins, and drinks; clear a counter as the plating station.' },
+      { when: 'T0 +5m', what: 'Gather everyone, say grace, and make plates for the elders first.' },
+    ],
+    program: [
+      { when: 'T0 +10m', what: 'Everyone in; drinks poured, kids settled' },
+      { when: 'T0 +20m', what: 'Blessing' },
+      { when: 'T0 +30m', what: 'Plates: elders first, then the kids, then everyone' },
+      { when: 'T0 +1:15', what: 'Seconds, and the table talk that’s the whole point' },
+      { when: 'T0 +1:45', what: 'Dessert and coffee' },
+      { when: 'T0 +2:30', what: 'Clear together; to-go plates for whoever’s driving home' },
     ],
     cleanup: [
+      { when: 'during', what: 'Keep dishes warm and refilled; keep the kitchen open so people drift in and help' },
       { when: 'T0 after the meal', what: 'Fix to-go plates for everyone leaving — one per departing guest, full.' },
-      { when: 'T0 after the meal', what: 'Box the remaining leftovers, wipe down the table, and start the dishes while family lingers.' },
+      { when: 'T0 +1:35', what: 'Box the remaining leftovers, wipe down the table, and start the dishes while family lingers.' },
       { when: 'T0 end of day', what: 'Reset the kitchen and put the good serving dishes away for next Sunday.' },
     ],
   },

@@ -120,10 +120,22 @@ const elopement = {
       { when: 'T-1d', what: 'Confirm vendors + forecast; practice vows; lay out attire; chill champagne' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Collect the licence, the rings and the flowers; put them in one bag you carry' },
+      { when: 'T0 -4h', what: 'Confirm the officiant, the photographer and the restaurant' },
+      { when: 'T0 -3h', what: 'Get dressed somewhere with good light and no rush' },
       { when: 'T0 -2h', what: 'Hair/makeup + dress at the lodging; load rings, license, vows, champagne, glasses, florals into the pack' },
       { when: 'T0 -0:30', what: 'Arrive at the site, meet officiant + photographer, set the picnic/toast spot' },
     ],
+    program: [
+      { when: 'T0 +5m', what: 'Meet the officiant at the spot; hand over the licence and rings' },
+      { when: 'T0 +15m', what: 'The ceremony: vows, rings, pronouncement — witnesses sign' },
+      { when: 'T0 +35m', what: 'Portraits while the light holds' },
+      { when: 'T0 +1h', what: 'Call the people who need to hear it from you first' },
+      { when: 'T0 +1:30', what: 'The meal you booked — this is the celebration' },
+      { when: 'T0 +3h', what: 'Post the news if you’re posting it, and put the phone away' },
+    ],
     cleanup: [
+      { when: 'during', what: 'Keep the licence, rings and phone somewhere secure and dry all day' },
       { when: 'T0 +0:30', what: 'Officiant + witnesses sign the license; photographer captures the signing; secure the document' },
       { when: 'T0 +6h', what: 'Leave-no-trace pack-out (bottles, florals, wrappers); mail/return the signed license to the clerk; send the announcement if telling family after' },
     ],

@@ -114,8 +114,16 @@ const birthday = {
       { when: 'T0 -3h', what: 'Decorate, blow up balloons, set food + drinks stations' },
     ],
     setup: [
-      { when: 'T0 -3h', what: 'Decor + tables + food station' },
+      { when: 'T0 -2:55', what: 'Decor + tables + food station' },
       { when: 'T0 -2h', what: 'Chill drinks; build the drinks station + ice; stage trash/recycling' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: greet people, drinks out, music on' },
+      { when: 'T0 +30m', what: 'Food out while everyone’s still arriving' },
+      { when: 'T0 +1:15', what: 'Cake, candles and the song — do it before anyone starts leaving' },
+      { when: 'T0 +1:40', what: 'Gifts if there are gifts; someone writes down who gave what' },
+      { when: 'T0 +2h', what: 'The hang — this is the actual party, don’t over-program it' },
+      { when: 'T0 +3:30', what: 'Wind down: to-go plates, thank people as they go' },
     ],
     cleanup: [
       { when: 'during', what: 'Bus into a tub; keep a trash + recycling bag visible' },

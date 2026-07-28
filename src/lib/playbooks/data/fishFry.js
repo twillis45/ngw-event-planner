@@ -126,8 +126,19 @@ const fishFry = {
       { when: 'T0 -2h', what: 'Cut fish to size, pat dry, stage the dredge station and hot-hold racks' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Cut and season the fish; set up the dredge station away from the fryer' },
+      { when: 'T0 -4h', what: 'Site the fryer on level ground, well clear of the house; extinguisher and metal lid beside it' },
+      { when: 'T0 -3h', what: 'Oil in and up to temperature slowly; drinks on ice' },
       { when: 'T0 -1h', what: 'Place the fryer on LEVEL ground away from the house, fill oil to the line, locate the extinguisher + metal lid, heat oil to ~350°F' },
       { when: 'T0 -0:30', what: 'Set the serving line (fish, bread, sides, hot sauce, lemon), drinks table on ice, to-go containers stacked' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: fryer at temperature and attended, drinks out, plates staged' },
+      { when: 'T0 +30m', what: 'First batch out — serve while it’s hot, elders first' },
+      { when: 'T0 +1:15', what: 'Second batch; sides and bread down the line' },
+      { when: 'T0 +2h', what: 'Third batch for the late arrivals and anyone going back' },
+      { when: 'T0 +2:45', what: 'Dessert' },
+      { when: 'T0 +3:30', what: 'Wind down: fryer off and cooling, oil left to cool before anyone moves it' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep the fryer attended at all times; box to-go plates; restock bread, hot sauce, and lemon on the line' },

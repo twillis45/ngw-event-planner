@@ -428,7 +428,7 @@ const sweet16 = {
     preparation: [
       { when: 'T-7d', what: 'Write run-of-show; confirm DJ, chaperones, and headcount' },
       { when: 'T-1d', what: 'Prep make-ahead food; pre-batch mocktail syrups; charge backup playlist device' },
-      { when: 'T0', what: 'Set out food at serving time; fill ice tubs and drink dispensers' },
+      { when: 'T0 +5m', what: 'Set out food at serving time; fill ice tubs and drink dispensers' },
     ],
     setup: [
       { when: 'T0-4h', what: 'Hang decor and balloon arch; set tables and seating' },
@@ -437,8 +437,18 @@ const sweet16 = {
       { when: 'T0-1h', what: 'DJ sound check; cue grand-entrance song + spotlight; brief chaperones on posts' },
       { when: 'T0-30m', what: 'Adults take posts (door, bar, floor); music on as guests arrive' },
     ],
+    program: [
+      { when: 'T0 +15m', what: 'Doors: adults on their posts, music on, phones charging station out' },
+      { when: 'T0 +30m', what: 'The entrance — her moment, everyone watching, get it on video' },
+      { when: 'T0 +1h', what: 'Food out; keep the line moving and the drinks non-alcoholic' },
+      { when: 'T0 +1:45', what: 'Speeches: parents keep it to two minutes, then her friends' },
+      { when: 'T0 +2:15', what: 'Cake and the song' },
+      { when: 'T0 +2:45', what: 'The floor opens — this is the part she’ll remember' },
+      { when: 'T0 +4h', what: 'Last song, favours out, and check every ride before anyone leaves' },
+    ],
     cleanup: [
-      { when: 'T0+0h', what: 'During party: bus tables, swap trash bags, restock ice and cups' },
+      { when: 'during', what: 'Adults hold their posts all night — door, bar and floor; no unattended drinks and no adults-only areas open' },
+      { when: 'T0 +10m', what: 'During party: bus tables, swap trash bags, restock ice and cups' },
       { when: 'End', what: 'Confirm every teen is picked up by a parent before closing the door' },
       { when: 'End+30m', what: 'Tear down decor; pack and return rentals; recover deposits' },
       { when: 'End+1h', what: 'Bag trash, wipe surfaces, sweep dance floor, final venue walkthrough' },

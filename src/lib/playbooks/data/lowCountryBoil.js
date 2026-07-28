@@ -126,8 +126,19 @@ const lowCountryBoil = {
       { when: 'T-1h', what: 'Ice down the beer/tea/water; pat shrimp dry and stage everything by cook order at the burner' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Collect the seafood; keep it cold and damp until it goes in' },
+      { when: 'T0 -4h', what: 'Pot, burner and basket staged; weigh the propane' },
+      { when: 'T0 -3h', what: 'Tables papered, butter and sauces portioned, drinks on ice' },
       { when: 'T0 -1h', what: 'Place the burner on LEVEL ground away from the house, fill the pot no more than ~2/3, add Old Bay/crab boil, bring to a rolling boil; locate gloves, paddle, and extinguisher' },
       { when: 'T0 -0:20', what: 'Cover the table with newspaper/kraft paper; set out butter, sauces, lemon, paper towels, and shell buckets' },
+    ],
+    program: [
+      { when: 'T0 +5m', what: 'Doors: table papered, drinks on ice, pot on and attended' },
+      { when: 'T0 +45m', what: 'The dump: everything onto the table at once, butter and sauce down the line' },
+      { when: 'T0 +1:30', what: 'Second round for anyone still going; restock lemon and sauce' },
+      { when: 'T0 +2:15', what: 'Sides and bread out' },
+      { when: 'T0 +3h', what: 'Dessert' },
+      { when: 'T0 +3:45', what: 'Wind down: shells bagged, burner off and cooled, table stripped' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep the burner attended at all times; restock butter, sauce, and lemon on the table; clear shells into buckets' },
