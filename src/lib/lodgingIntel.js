@@ -557,7 +557,15 @@ export function candidatesFromGroups(groups) {
     // count or a price. Airbnb writes it there; Vrbo puts it first, so a card
     // with no type line falls back to the first substantial line.
     const isFact = (l) => /^\$|\d+\s*(bed|bedroom|bath|guest)/i.test(l);
-    const name = (lines.slice(typeIdx + 1).find((l) => l.length > 3 && !isFact(l))
+    // A PHOTO VIEWER IS NOT A DIFFERENT HOUSE (found in the host's own data,
+    // 2026-07-28: seven of eight shortlist rows were named "Photo gallery for
+    // Golden Crest"). Opening a listing's gallery keeps the listing URL and
+    // swaps the title, so the right repair is to recover the property's name,
+    // not to reject the row — the URL was always correct.
+    const ungallery = (l) => String(l || '')
+      .replace(/^\s*(photo gallery|photos?|image gallery|gallery)\s+(for|of)\s+/i, '')
+      .trim();
+    const name = ungallery(lines.slice(typeIdx + 1).find((l) => l.length > 3 && !isFact(l))
       || lines.find((l) => l.length > 3 && !isFact(l) && !TYPE_LINE.test(l))
       || '').slice(0, 70);
 
@@ -1013,7 +1021,28 @@ export function lodgingCommitted(event) {
   const chosen = li && li.chosen;
   if (!chosen || chosen.allIn == null) return 0;
   const n = Number(chosen.allIn);
-  return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+  if (!Number.isFinite(n) || n <= 0) return 0;
+
+  // ── DON'T CHARGE HER TWICE (audit finding, 2026-07-28) ────────────────────
+  // The first cut of this documented the double-count risk and shipped it
+  // anyway. Measured: a host with the house on her shortlist AND typed as a
+  // budget row read `committed = 4,848` for a $2,200 house. Documenting a money
+  // bug is not the same as it being acceptable.
+  //
+  // vendorOwed can never double-count structurally — outstanding money cannot
+  // already be in a paid row. Lodging has no such protection, so it needs an
+  // explicit check. When a budget row already accounts for the house, THE ROW
+  // WINS: it is the host's own record, and skipping the derived term is
+  // correct rather than under-counting.
+  const rows = Array.isArray(event && event.budget) ? event.budget : [];
+  const label = String(chosen.label || '').trim().toLowerCase();
+  const already = rows.some((r) => {
+    const l = String((r && r.label) || '').trim().toLowerCase();
+    if (!l) return false;
+    if (label && (l === label || l.includes(label) || label.includes(l))) return true;
+    return /\b(rental|lodging|airbnb|vrbo|the house|house rental|cabin|stay)\b/.test(l);
+  });
+  return already ? 0 : Math.round(n);
 }
 
 export function stayFromPick(event, intel) {

@@ -8971,16 +8971,30 @@ export default function HostShellV2() {
                       // options we are about to write, not the stale ones on `event`.
                       let stay = null;
                       try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
+                      const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
                       if (stay && stay.hotelName) {
                         // Never clobber what the host typed herself: a hand-entered stay
                         // outranks a derived one. Fill only what is empty.
-                        const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
                         patch.lodging = {
                           ...cur,
                           hotelName: cur.hotelName || stay.hotelName,
                           rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
                           url: cur.url || stay.url,
                         };
+                      } else {
+                        // ── A STAY MUST NOT OUTLIVE THE PICK IT CAME FROM ──────────
+                        // Audit finding 2026-07-28: un-picking cleared `chosen` but left
+                        // `event.lodging` standing, so the travel plan kept naming a house
+                        // the host had just walked away from — a stale claim with nothing
+                        // behind it, which is worse than an empty field.
+                        //
+                        // Only what WE derived is withdrawn: the stay is cleared solely
+                        // when its name still matches an option on the shortlist. A stay
+                        // she typed herself is hers and survives untouched.
+                        const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
+                        const wasDerived = prevLabel && (li.options || []).some(
+                          (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
+                        if (wasDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
                       }
                       patchEvent(patch, msg);
                     };
