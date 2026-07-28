@@ -10,13 +10,18 @@
 // DATA MODEL (as found in App.js — nothing here is invented):
 //   event.tables      — a NUMBER: how many tables exist (default 5 via
 //                       `event.tables || 5` at every legacy read site).
-//                       There is NO per-table seat capacity anywhere in the
-//                       model — "capacity" in legacy is only the derived
-//                       average (confirmed ÷ tableCount) and the evenness
-//                       check (max−min occupancy ≤ 1). This engine therefore
-//                       exposes occupancy + avgPerTable + tablesEven and does
-//                       NOT fabricate a seats-per-table limit or an
-//                       over-capacity flag off data that doesn't exist.
+//                       Legacy had NO per-table seat capacity — "capacity" was
+//                       only the derived average (confirmed ÷ tableCount) and
+//                       the evenness check (max−min occupancy ≤ 1), so this
+//                       engine refused to fabricate a seats-per-table limit off
+//                       data that didn't exist. That rule still holds; what
+//                       changed (host directive 2026-07-28) is that the data can
+//                       now EXIST. See lib/tableTypes: once the host declares a
+//                       table TYPE, its seat count is a published dimensional
+//                       fact, and a per-table override always wins. Undeclared
+//                       tables still report seats: null — unknown, not zero.
+//   event.tableTypes  — string[] indexed by tableNum−1 (a TABLE_TYPES id).
+//   event.tableSeats  — (number|null)[] indexed by tableNum−1, host override.
 //   event.tableNames  — string[] indexed by tableNum−1; '' / missing means
 //                       the default "Table N" label.
 //   event.guests[i]   — { id, name, rsvp, table, group, meal, kids, needs }
@@ -40,6 +45,7 @@
 //     consecutive tables — that is what shipped; noted, not changed).
 
 import { playbookCapacity } from './playbooks';
+import { seatsForTable, tableTypeOf } from './tableTypes';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
@@ -273,7 +279,21 @@ export function buildSeatingPlan(event) {
     }, {});
     const kids = guests.reduce((sum, g) => sum + (g.kids || 0), 0);
     const name = tableNames[i] || null;
-    return { number, name, label: name || `Table ${number}`, guests, count: seatSum(guests), kids, meals };
+    // PER-TABLE CAPACITY (host directive 2026-07-28). The header above says this
+    // engine must not fabricate a seats-per-table limit — it still doesn't. The
+    // number only exists once the host declares a TYPE (a published dimensional
+    // fact) or overrides a specific table. Unknown stays null, and `open` is
+    // null with it rather than a confident-looking zero.
+    const cap = seatsForTable(ev, number);
+    const type = tableTypeOf(ev, number);
+    const count = seatSum(guests);
+    return {
+      number, name, label: name || `Table ${number}`, guests, count, kids, meals,
+      seats: cap.seats, seatsMax: cap.seatsMax, seatsBasis: cap.basis,
+      typeId: type ? type.id : null, typeLabel: type ? type.label : null, shape: type ? type.shape : null,
+      open: cap.seats == null ? null : Math.max(0, cap.seats - count),
+      over: cap.seats == null ? false : count > cap.seats,
+    };
   });
 
   // Legacy evenness: false until someone is seated; a single occupied table is

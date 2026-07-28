@@ -74,6 +74,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
+import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
@@ -9605,7 +9606,11 @@ export default function HostShellV2() {
                     const groupColor = g => (g ? GROUP_COLORS[groupList.indexOf(g) % GROUP_COLORS.length] : null);
                     const honoreeName = String(event.honoree || '').trim().toLowerCase();
                     const longTables = /crab|cookout|\bbbq\b|barbecue|feast|reunion|potluck/i.test(String(event.type || '') + ' ' + String(event.name || ''));
-                    const cap = Number(event.seatsPerTable) || 0; // host-set capacity; 0 = unknown, never fabricated
+                    // Per-table capacity (host directive 2026-07-28): each table now
+                    // carries its own seats/over from its declared TYPE or override,
+                    // computed in buildSeatingPlan. The room-wide seatsPerTable is
+                    // still honoured underneath as the fallback basis.
+                    const cap = Number(event.seatsPerTable) || 0; // room-wide fallback; 0 = unknown, never fabricated
                     return (
                     <>
                     <div className="floorplan" ref={floorRef} style={{ aspectRatio: 'auto', height: fpH }}>
@@ -9616,7 +9621,10 @@ export default function HostShellV2() {
                         const tAccess = t.guests.some(g => accessSet.has(g.name));
                         // over-capacity when the host has set seats-per-table; otherwise fall
                         // back to "fuller than the room's average" (no fabricated capacity).
-                        const tOver = cap ? t.count > cap : (sp.totals.avgPerTable && t.count > sp.totals.avgPerTable + 1);
+                        // t.over is the honest per-table answer when a capacity is
+                        // known at all; only when it is NOT do we fall back to the
+                        // relative "fuller than the room's average" signal.
+                        const tOver = t.seats != null ? t.over : (cap ? t.count > cap : (sp.totals.avgPerTable && t.count > sp.totals.avgPerTable + 1));
                         const caution = tAccess ? 'access' : (tOver ? 'full' : null);
                         // guest first-names on the table (the categories/roster from code, not a bare count).
                         const names = t.guests.slice(0, 4).map(g => String(g.name || '').split(' ')[0]).join(' · ')
@@ -9627,7 +9635,7 @@ export default function HostShellV2() {
                         const tHonoree = !!honoreeName && t.guests.some(g => String(g.name || '').trim().toLowerCase() === honoreeName);
                         return (
                           <button key={t.number} type="button" data-tnum={t.number}
-                            className={'tpuck' + (t.count ? ' seated' : '') + (picked || guestDrag ? ' seatable' : '') + (caution ? ' caution' : '') + (longTables ? ' long' : '') + (tHonoree ? ' honoree' : '') + (seatSelTable === t.number ? ' sel' : '')}
+                            className={'tpuck' + (t.count ? ' seated' : '') + (picked || guestDrag ? ' seatable' : '') + (caution ? ' caution' : '') + ((t.shape ? t.shape === 'long' : longTables) ? ' long' : '') + (tHonoree ? ' honoree' : '') + (seatSelTable === t.number ? ' sel' : '')}
                             style={{ left: (dp.x * 100) + '%', top: (dp.y * 100) + '%', ...(gc && !t.count ? { borderColor: gc } : {}), ...(gc && t.count ? { boxShadow: '0 0 0 2px ' + gc + ', 0 2px 8px -3px rgba(0,0,0,.5)' } : {}) }}
                             onPointerDown={startPuckDrag(t.number)}
                             onClick={() => { if (justDraggedRef.current) return; if (picked) { seatGuestAt(picked, t); } else { setSeatSelTable(seatSelTable === t.number ? null : t.number); } }}
@@ -9712,6 +9720,46 @@ export default function HostShellV2() {
                           <div style={{ padding: '2px 0 var(--sp-2) 14px' }}>
                             {t.guests.map(g => guestRow(g, true))}
                             {t.guests.length === 0 && <p className="v-meta" style={{ margin: 'var(--sp-1) 0' }}>No one here yet.</p>}
+                            {/* WHAT KIND OF TABLE, AND HOW MANY IT SITS (host directive
+                                2026-07-28). Capacity is derived from the declared type — a
+                                published dimensional fact, not a guess — and the ± overrides
+                                THIS table when the host squeezes people in. Undeclared stays
+                                honestly unknown; nothing here fabricates a seat count. */}
+                            <div style={{ marginTop: 8 }}>
+                              <span className="of" style={{ display: 'block', marginBottom: 4 }}>What kind of table</span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {TABLE_TYPES.map(tt => (
+                                  <button key={tt.id} className="chip" aria-pressed={t.typeId === tt.id}
+                                    onClick={() => patchEvent(
+                                      { tableTypes: withTableType(event, t.number, t.typeId === tt.id ? '' : tt.id) },
+                                      t.typeId === tt.id
+                                        ? `${t.label} — kind cleared.`
+                                        : `${t.label} is a ${tt.label} — seats ${tt.seats}${tt.seatsMax > tt.seats ? ` (${tt.seatsMax} tight)` : ''}.`)}>
+                                    {tt.label}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="line" style={{ alignItems: 'center', padding: '8px 0 0' }}>
+                                <span>Seats at this table {t.seatsBasis === 'type' && <span className="of">— from the {t.typeLabel}</span>}</span>
+                                <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
+                                  <button className="mini" aria-label={'One seat fewer at ' + t.label}
+                                    onClick={() => patchEvent({ tableSeats: withTableSeats(event, t.number, (t.seats || 0) - 1) }, null)}>−</button>
+                                  <span className="step-val" style={{ minWidth: 20 }}>{t.seats != null ? t.seats : '—'}</span>
+                                  <button className="mini" aria-label={'One seat more at ' + t.label}
+                                    onClick={() => patchEvent({ tableSeats: withTableSeats(event, t.number, (t.seats || 0) + 1) }, null)}>+</button>
+                                </span>
+                              </div>
+                              {t.seats != null && (
+                                <p className="grounding" style={{ margin: '2px 0 0' }}>
+                                  {t.over
+                                    ? `${t.count} seated where ${t.seats} fit${t.seatsMax > t.seats ? ` — ${t.seatsMax} is the squeeze` : ''}.`
+                                    : t.open === 0
+                                      ? 'Full.'
+                                      : `${t.open} seat${t.open === 1 ? '' : 's'} open.`}
+                                  {t.seatsBasis === 'host' ? ' Your number.' : t.seatsBasis === 'room' ? ' From your room-wide setting.' : ''}
+                                </p>
+                              )}
+                            </div>
                             {renaming ? (
                               <div className="actions-row" style={{ marginTop: 6, alignItems: 'center' }}>
                                 <input className="field" style={{ maxWidth: 200, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }}
