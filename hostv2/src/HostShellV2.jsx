@@ -73,7 +73,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -8884,12 +8884,64 @@ export default function HostShellV2() {
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         <div className="shelf-label">The rental shortlist</div>
                         {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
+                        {/* GO LOOK, PRE-FILTERED (host question 2026-07-28). We can't search
+                            those platforms — a live rental API is on the never-build list —
+                            but we can hand over a search already carrying the town, the real
+                            dates, the head count and the budget. They browse there, bring two
+                            or three back, and the ranking below does the comparing. */}
+                        {(() => {
+                          const links = (() => { try { return lodgingSearchLinks(event) || []; } catch { return []; } })();
+                          if (!links.length) return null;
+                          return (
+                            <div style={{ margin: '2px 0 12px' }}>
+                              <div className="actions-row" style={{ gap: 'var(--sp-2)' }}>
+                                {links.map((l) => (
+                                  <a key={l.id} className="mini" href={l.href} target="_blank" rel="noopener noreferrer"
+                                    style={{ textDecoration: 'none' }}>{l.label} ↗</a>
+                                ))}
+                              </div>
+                              <p className="grounding" style={{ margin: '4px 0 0' }}>
+                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring back the two or three you like and I’ll compare them.
+                              </p>
+                            </div>
+                          );
+                        })()}
                         {/* WHAT THE GROUP SAID (migration 016 applied 2026-07-28). Guests
                             answer on the invite; the picks ride the per-guest upsert home.
                             A tally, never a verdict — and silence reads as silence. */}
                         {li.options.length > 0 && li.groupSaid && (
                           <p className="grounding" style={{ margin: '2px 0 10px' }}>{li.groupSaid}</p>
                         )}
+                        {/* WHAT THE PLAN WOULD PICK (host directive 2026-07-28). A proposal
+                            with its reasoning shown — the engine scores only on facts the
+                            host typed and facts the event already knows, says out loud what
+                            it could NOT weigh, and refuses to break a tie. Accepting is one
+                            tap and it is still the host's tap. */}
+                        {(() => {
+                          const rec = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
+                          if (!rec) return null;
+                          const chosenAlready = li.chosen && rec.pick && li.chosen.id === rec.pick.id;
+                          return (
+                            <div className="brow" style={{ margin: '0 0 10px' }}>
+                              <p className="grounding" style={{ margin: 0 }}>
+                                {rec.tie
+                                  ? 'These come out even on what I can see — this one is yours to call.'
+                                  : `On your numbers I'd take ${rec.pick.label}${rec.why.length ? ' — ' + rec.why.join(', ') : ''}.`}
+                              </p>
+                              {rec.unweighed.length > 0 && (
+                                <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--muted)' }}>
+                                  I couldn’t weigh {rec.unweighed.join(', ')}.
+                                </p>
+                              )}
+                              {!rec.tie && !chosenAlready && (
+                                <button className="mini" style={{ marginTop: 6 }}
+                                  onClick={() => write(li.options.map((x) => ({ ...x, status: x.id === rec.pick.id ? 'chosen' : 'option' })), rec.pick.label + ' is the pick — the plan reads it now.')}>
+                                  Go with {rec.pick.label}
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {li.options.map((o) => (
                           <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             {/* Same component the guest sees on the invite — flip through

@@ -27,8 +27,9 @@
 //      notes, status: 'option'|'chosen' }]
 // The chosen option feeds the existing trip-brief `event.lodging` surface.
 
-import { spanNights } from './dates';
+import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
+import { venueFor } from './venueFor';
 
 // URL host → platform id. Anything else is 'other' — named honestly, never
 // upgraded to a platform we have no policy grounding for.
@@ -274,6 +275,154 @@ export function lodgingIntel(event) {
       })();
 
   return { options, chosen, guidance, share, roles, nights, guests, votes, voted, groupSaid };
+}
+
+/**
+ * GO LOOK, WITH YOUR OWN ANSWERS ALREADY IN THE BOX (host question 2026-07-28:
+ * "can the app use the event to find our suggest say a top 3 compatible options
+ * from airbnb or vrbo?").
+ *
+ * The app cannot SEARCH those platforms — a live rental API is on the
+ * never-build list and the alternative is scraping their results, which is both
+ * banned here and against their terms. What it can do is hand the host a search
+ * that is already filtered by everything the event knows: the town, the real
+ * dates, the real head count, the budget they set. The platform runs its own
+ * search in its own UI; the host brings back the two or three they like (the
+ * paste flow takes a whole gallery at once) and lodgingRecommendation ranks
+ * those against the same criteria.
+ *
+ * Verified against both platforms' live search on 2026-07-28 — these parameter
+ * names are the ones their own search pages produce, not invented.
+ */
+export function lodgingSearchLinks(event) {
+  const ev = event || {};
+  const vf = venueFor(ev);
+  const place = [vf.city, vf.state].filter(Boolean).join(', ');
+  if (!place) return [];                       // no town, no honest search
+
+  const start = /^\d{4}-\d{2}-\d{2}/.test(String(ev.date || '')) ? String(ev.date).slice(0, 10) : null;
+  const end = (() => {
+    const e = spanEnd(ev);
+    return /^\d{4}-\d{2}-\d{2}/.test(String(e || '')) ? String(e).slice(0, 10) : null;
+  })();
+  const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || (Array.isArray(ev.guests) ? ev.guests.length : 0) || null;
+  const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;
+
+  const said = [
+    place,
+    start && end ? `${start} to ${end}` : null,
+    guests ? `${guests} guests` : null,
+    budget ? `under $${budget.toLocaleString()}` : null,
+  ].filter(Boolean);
+
+  const ab = new URLSearchParams();
+  if (start) ab.set('checkin', start);
+  if (end) ab.set('checkout', end);
+  if (guests) ab.set('adults', String(guests));
+  if (budget) ab.set('price_max', String(budget));
+  const abSlug = place.replace(/,\s*/g, '--').replace(/\s+/g, '-');
+
+  const vr = new URLSearchParams({ destination: place });
+  if (start) vr.set('startDate', start);
+  if (end) vr.set('endDate', end);
+  if (guests) vr.set('adults', String(guests));
+
+  return [
+    { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
+    { id: 'vrbo', label: 'Search Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said },
+  ];
+}
+
+/**
+ * WHICH ONE THE PLAN WOULD PICK (host directive 2026-07-28: "intelligence should
+ * derive a rental choice based on our event choices and criteria").
+ *
+ * DOCTRINE:
+ *   · This is a PROPOSAL with its reasoning shown, never a decision. Nothing here
+ *     writes; the host still taps "Make it the pick". Same shape as every other
+ *     grounded proposal in the app (propose-don't-ask, host-owns-the-call).
+ *   · It scores ONLY on facts the host typed and facts the event already knows —
+ *     the guest count, the nights, the budget, who needs step-free access, how
+ *     many kids. It never invents a listing fact to justify a preference.
+ *   · A criterion with no data DOES NOT SCORE. An option is not punished for a
+ *     price the host never entered; it simply says what it could not weigh, so
+ *     the host can see the recommendation is partial rather than authoritative.
+ *   · Fit is a GATE, not a weight. A house that cannot sleep the group is not a
+ *     cheaper option, it is the wrong house.
+ *
+ * @returns {{ pick, why: string[], unweighed: string[], scores: Array }|null}
+ */
+export function lodgingRecommendation(event, intel) {
+  const ev = event || {};
+  const li = intel || lodgingIntel(ev);
+  const options = li.options || [];
+  if (options.length < 2) return null;      // nothing to choose between
+
+  const guests = li.guests;
+  const nights = li.nights;
+  const budget = Number(ev.totalBudget) > 0 ? Number(ev.totalBudget) : null;
+  const roster = Array.isArray(ev.guests) ? ev.guests : [];
+  const needsAccess = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane/i.test(String(g.needs || ''))).length;
+  const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0);
+
+  const unweighed = [];
+  if (!guests) unweighed.push('how many are coming');
+  if (!options.some((o) => o.totalPrice != null || o.pricePerNight != null)) unweighed.push('what any of them cost');
+  if (!options.some((o) => o.cancellationTier)) unweighed.push('how cancellation works on them');
+
+  const scored = options.map((o) => {
+    const reasons = [];
+    let score = 0;
+    let fits = true;
+
+    // GATE — it has to hold the group at all.
+    if (guests && o.sleeps != null) {
+      if (o.sleeps < guests) { fits = false; reasons.push(`sleeps ${o.sleeps} of your ${guests}`); }
+      else {
+        score += 3;
+        const slack = o.sleeps - guests;
+        reasons.push(slack === 0 ? `sleeps exactly your ${guests}` : `sleeps ${o.sleeps}, ${slack} spare`);
+        if (slack > 0 && slack <= 4) score += 1;          // room to breathe, not wasted money
+      }
+    }
+
+    // MONEY — against the host's own budget when they set one, else cheapest wins.
+    const total = o.totalPrice != null ? o.totalPrice : (o.pricePerNight != null && nights ? o.pricePerNight * nights : null);
+    if (total != null) {
+      const cheapest = Math.min(...options.map((x) => (x.totalPrice != null ? x.totalPrice : (x.pricePerNight != null && nights ? x.pricePerNight * nights : Infinity))));
+      if (total === cheapest && options.length > 1) { score += 2; reasons.push('the least expensive of these'); }
+      if (budget && total <= budget) { score += 1; reasons.push('inside the budget you set'); }
+      if (budget && total > budget) { score -= 2; reasons.push(`$${(total - budget).toLocaleString()} over your budget`); }
+    }
+
+    // CANCELLATION — a big group booked far out should not be locked in hard.
+    if (o.cancellationTier) {
+      if (/flexible|moderate/.test(o.cancellationTier)) { score += 2; reasons.push(`${o.cancellationTier} cancellation`); }
+      else { score -= 1; reasons.push(`${o.cancellationTier} cancellation — your own drop-outs would be a total loss`); }
+    }
+
+    // WHO IS COMING — these only speak when the roster actually says so.
+    if (needsAccess > 0 && o.notes) {
+      if (/step-free|ground floor|single (level|story|storey)|no stairs|elevator|accessible/i.test(o.notes)) {
+        score += 2; reasons.push(`step-free — ${needsAccess === 1 ? 'someone' : needsAccess + ' people'} asked for that`);
+      }
+    }
+    if (kids > 0 && o.notes && /crib|pack.?n.?play|fenced|pool fence|kid|family/i.test(o.notes)) {
+      score += 1; reasons.push(`set up for kids — ${kids} coming`);
+    }
+
+    return { id: o.id, label: o.label, score, fits, reasons };
+  });
+
+  const eligible = scored.filter((x) => x.fits);
+  const pool = eligible.length ? eligible : scored;
+  const ranked = [...pool].sort((a, b) => b.score - a.score);
+  const top = ranked[0];
+  // A tie is not a recommendation. Say so rather than picking arbitrarily.
+  if (ranked.length > 1 && ranked[1].score === top.score) {
+    return { pick: null, why: [], unweighed, scores: ranked, tie: true };
+  }
+  return { pick: top, why: top.reasons, unweighed, scores: ranked, tie: false };
 }
 
 // Proof helper: every guidance source id must resolve in the booking registry.

@@ -229,3 +229,141 @@ describe('extractPhotoUrls — the host pastes once', () => {
     expect(extractPhotoUrls('just some words about a house')).toEqual([]);
   });
 });
+
+// ─── WHICH ONE THE PLAN WOULD PICK (host directive 2026-07-28) ───────────────
+// "intelligence should derive a rental choice based on our event choices and
+// criteria." A PROPOSAL with its reasoning shown — never a decision, never a
+// write. Scores only on facts the host typed and facts the event already knows.
+const { lodgingRecommendation } = require('../lodgingIntel');
+
+const evWith = (opts, extra) => ({
+  id: 'r', name: 'Deep Creek Reunion', type: 'Reunion',
+  date: iso(60), endDate: iso(63), guestCount: 10, lodgingOptions: opts, ...extra,
+});
+
+describe('lodgingRecommendation', () => {
+  test('a house that cannot hold the group is not a cheap option, it is the wrong house', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'small', label: 'Cheap Cabin', url: 'https://www.airbnb.com/rooms/1', sleeps: 6, totalPrice: 900 },
+      { id: 'right', label: 'Lake House', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400 },
+    ]));
+    expect(rec.pick.id).toBe('right');                    // not the cheaper one
+    expect(rec.why.join(' ')).toMatch(/sleeps 12/);
+  });
+
+  test('among houses that fit, the cheaper one wins and says so', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'a', label: 'A', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 3200 },
+      { id: 'b', label: 'B', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400 },
+    ]));
+    expect(rec.pick.id).toBe('b');
+    expect(rec.why.join(' ')).toMatch(/least expensive/);
+  });
+
+  test('the host budget is a real criterion, and going over it is named in dollars', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'over', label: 'Over', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 5000 },
+      { id: 'in', label: 'In', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400 },
+    ], { totalBudget: 3000 }));
+    expect(rec.pick.id).toBe('in');
+    expect(rec.scores.find((s) => s.id === 'over').reasons.join(' ')).toMatch(/\$2,000 over your budget/);
+  });
+
+  test('a hard cancellation is weighed against a group booked months out', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'strict', label: 'Strict', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 2400, cancellationTier: 'strict' },
+      { id: 'flex', label: 'Flex', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400, cancellationTier: 'flexible' },
+    ]));
+    expect(rec.pick.id).toBe('flex');
+    expect(rec.scores.find((s) => s.id === 'strict').reasons.join(' ')).toMatch(/total loss/);
+  });
+
+  test('who is coming counts — step-free only when the roster actually asked', () => {
+    const opts = [
+      { id: 'stairs', label: 'Stairs', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 2400 },
+      { id: 'flat', label: 'Flat', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400, notes: 'Single level, no stairs' },
+    ];
+    const withNeed = lodgingRecommendation(evWith(opts, {
+      guests: [{ id: 'g1', name: 'A', rsvp: 'Yes', needs: 'uses a wheelchair' }],
+    }));
+    expect(withNeed.pick.id).toBe('flat');
+    expect(withNeed.why.join(' ')).toMatch(/step-free/);
+    // …and with nobody asking, that criterion stays silent rather than inventing a preference
+    const noNeed = lodgingRecommendation(evWith(opts));
+    expect(noNeed.tie).toBe(true);
+  });
+
+  test('a tie says tie — it never picks arbitrarily', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'a', label: 'A', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 2400 },
+      { id: 'b', label: 'B', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400 },
+    ]));
+    expect(rec.tie).toBe(true);
+    expect(rec.pick).toBe(null);
+  });
+
+  test('it says out loud what it could NOT weigh', () => {
+    const rec = lodgingRecommendation(evWith([
+      { id: 'a', label: 'A', url: 'https://www.airbnb.com/rooms/1', sleeps: 12 },
+      { id: 'b', label: 'B', url: 'https://www.airbnb.com/rooms/2', sleeps: 14 },
+    ]));
+    expect(rec.unweighed.join(' ')).toMatch(/what any of them cost/);
+    expect(rec.unweighed.join(' ')).toMatch(/how cancellation works/);
+  });
+
+  test('one option is not a choice', () => {
+    expect(lodgingRecommendation(evWith([{ id: 'a', label: 'A', url: 'https://www.airbnb.com/rooms/1', sleeps: 12 }]))).toBe(null);
+    expect(lodgingRecommendation(evWith([]))).toBe(null);
+  });
+});
+
+// ─── GO LOOK, PRE-FILTERED (host question 2026-07-28) ────────────────────────
+// "can the app use the event to find our suggest say a top 3 compatible options
+// from airbnb or vrbo?" — not by searching them (live rental API is never-build,
+// and the alternative is scraping). It hands over a search already filtered by
+// everything the event knows. Parameter names verified against both platforms'
+// live search pages on 2026-07-28, not invented.
+const { lodgingSearchLinks } = require('../lodgingIntel');
+
+describe('lodgingSearchLinks', () => {
+  const EV2 = { id: 's', type: 'Reunion', date: '2026-09-11', endDate: '2026-09-13',
+    venueCity: 'Deep Creek Lake', venueState: 'Maryland', guestCount: 10, totalBudget: 3000 };
+
+  test('the event fills the search box on both platforms', () => {
+    const [ab, vr] = lodgingSearchLinks(EV2);
+    expect(ab.href).toMatch(/airbnb\.com\/s\/.*Deep-Creek-Lake.*Maryland.*\/homes/);
+    expect(ab.href).toMatch(/checkin=2026-09-11/);
+    expect(ab.href).toMatch(/checkout=2026-09-13/);
+    expect(ab.href).toMatch(/adults=10/);
+    expect(ab.href).toMatch(/price_max=3000/);
+    expect(vr.href).toMatch(/vrbo\.com\/search\?/);
+    expect(vr.href).toMatch(/destination=Deep\+Creek\+Lake/);
+    expect(vr.href).toMatch(/startDate=2026-09-11/);
+    expect(vr.href).toMatch(/adults=10/);
+  });
+
+  test('it says what it applied, so the host can see it is their own answers', () => {
+    const [ab] = lodgingSearchLinks(EV2);
+    expect(ab.applied.join(' · ')).toMatch(/Deep Creek Lake, Maryland/);
+    expect(ab.applied.join(' · ')).toMatch(/10 guests/);
+    expect(ab.applied.join(' · ')).toMatch(/under \$3,000/);
+  });
+
+  test('a fact the host never gave is simply left out of the search', () => {
+    const [ab] = lodgingSearchLinks({ ...EV2, totalBudget: 0, guestCount: 0, guests: [] });
+    expect(ab.href).not.toMatch(/price_max/);
+    expect(ab.href).not.toMatch(/adults/);
+    expect(ab.applied.join(' ')).not.toMatch(/under \$/);
+  });
+
+  test('no town, no search — it never guesses where the event is', () => {
+    expect(lodgingSearchLinks({ id: 'x', type: 'Reunion', date: '2026-09-11' })).toEqual([]);
+    expect(lodgingSearchLinks(null)).toEqual([]);
+  });
+
+  test('a single-day event still produces a real checkout date', () => {
+    const [ab] = lodgingSearchLinks({ ...EV2, endDate: null });
+    expect(ab.href).toMatch(/checkin=2026-09-11/);
+    expect(ab.href).toMatch(/checkout=2026-09-11/);
+  });
+});
