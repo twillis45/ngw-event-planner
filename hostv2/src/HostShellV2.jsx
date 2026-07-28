@@ -3842,6 +3842,9 @@ export default function HostShellV2() {
           // dropped these, so a remote guest's allergy answer never landed here.
           allergens: r.allergens, diets: r.diets, access: r.access,
           picksCrabs: typeof r.picks_crabs === 'boolean' ? r.picks_crabs : undefined,
+          // The rental pick rides the same rail (migration 016) — an opinion for
+          // the host's shortlist, never a booking.
+          lodgingPick: r.lodging_pick || undefined,
           phone: r.phone, email: r.email, mailingAddress: r.mailing_address,
         }));
         const { guests: gs, merged, added, yesCount } = mergeGuestReplies(event.guests || [], subs);
@@ -8838,6 +8841,12 @@ export default function HostShellV2() {
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         <div className="shelf-label">The rental shortlist</div>
                         {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing — the group sees them, you make the call.</p>}
+                        {/* WHAT THE GROUP SAID (migration 016 applied 2026-07-28). Guests
+                            answer on the invite; the picks ride the per-guest upsert home.
+                            A tally, never a verdict — and silence reads as silence. */}
+                        {li.options.length > 0 && li.groupSaid && (
+                          <p className="grounding" style={{ margin: '2px 0 10px' }}>{li.groupSaid}</p>
+                        )}
                         {li.options.map((o) => (
                           <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             {o.photoUrl ? (

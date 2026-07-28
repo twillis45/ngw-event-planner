@@ -89,6 +89,21 @@ export function lodgingIntel(event) {
   const options = (Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : []).map(normalizeLodgingOption);
   const chosen = options.find((o) => o.status === 'chosen') || null;
 
+  // ── WHAT THE GROUP SAID (migration 016, guest picks come home) ─────────────
+  // Guests answer on the invite; the reply rides the per-guest upsert as
+  // `lodging_pick` and lands on the roster row as `lodgingPick`. This is a TALLY
+  // and nothing more — it informs the host, it never picks for them, and a guest
+  // who has not answered is silent rather than counted as a no.
+  const roster = Array.isArray(ev.guests) ? ev.guests : [];
+  const votes = {};
+  let voted = 0;
+  for (const g of roster) {
+    const pick = String((g && g.lodgingPick) || '').trim();
+    if (!pick) continue;
+    votes[pick] = (votes[pick] || 0) + 1;
+    voted += 1;
+  }
+
   // Per-option checks — arithmetic on host-entered facts, never a verdict.
   for (const o of options) {
     o.checks = [];
@@ -96,6 +111,13 @@ export function lodgingIntel(event) {
       o.checks.push(o.sleeps >= guests
         ? { key: 'fit', ok: true, text: `Sleeps ${o.sleeps} — covers your ${guests}.` }
         : { key: 'fit', ok: false, text: `Sleeps ${o.sleeps} of your ${guests} — ${guests - o.sleeps} would need another plan.` });
+    }
+    // The group's own answer, when there is one. Never a percentage — a bar at
+    // 60% of four replies reads as certainty the room does not have.
+    o.votes = votes[o.id] || 0;
+    if (o.votes) {
+      o.checks.push({ key: 'votes', ok: true,
+        text: `${o.votes} ${o.votes === 1 ? 'person prefers' : 'people prefer'} this one${voted ? ` — ${voted} of ${roster.length || voted} have said` : ''}.` });
     }
     if (o.totalPrice != null && guests) {
       o.checks.push({ key: 'split', ok: true, text: `$${o.totalPrice.toLocaleString()} ÷ ${guests} ≈ $${Math.round(o.totalPrice / guests).toLocaleString()} a person${nights ? ` for ${nights} night${nights === 1 ? '' : 's'}` : ''}.` });
@@ -171,7 +193,19 @@ export function lodgingIntel(event) {
   }
   const share = { subject: `Where we'd stay — ${name}`, body: lines.join('\n') };
 
-  return { options, chosen, guidance, share, roles, nights, guests };
+  // The honest headline for the shortlist block: silence is silence.
+  const groupSaid = !options.length ? null
+    : voted === 0 ? 'Nobody has weighed in yet.'
+    : (() => {
+        const top = [...options].sort((a, b) => (b.votes || 0) - (a.votes || 0))[0];
+        const tie = options.filter((o) => (o.votes || 0) === (top.votes || 0) && o.votes).length > 1;
+        if (!top || !top.votes) return `${voted} ${voted === 1 ? 'reply' : 'replies'} in — no clear favourite yet.`;
+        return tie
+          ? `${voted} ${voted === 1 ? 'reply' : 'replies'} in — it's a tie so far.`
+          : `${top.votes} of ${voted} ${voted === 1 ? 'reply leans' : 'replies lean'} toward ${top.label}. Yours is still the call.`;
+      })();
+
+  return { options, chosen, guidance, share, roles, nights, guests, votes, voted, groupSaid };
 }
 
 // Proof helper: every guidance source id must resolve in the booking registry.

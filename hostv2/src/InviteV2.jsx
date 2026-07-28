@@ -291,6 +291,27 @@ export default function InviteV2({ code }) {
   // null = not asked/not answered; true/false = the guest told us. Never defaulted —
   // an unanswered picker question must not be counted as a 'no' (or a 'yes').
   const [picksCrabs, setPicksCrabs] = useState(null);
+  // ── WHERE WOULD YOU RATHER STAY (rental-house engine, migration 016) ────────
+  // The host shares a shortlist from the app; the group weighs in from here. The
+  // answer is an OPINION that rides the same per-guest upsert as everything else
+  // (`lodging_pick`) — never a booking, never a commitment. Renders only when the
+  // host has actually published options, so it can't ask about nothing.
+  const [lodgingPick, setLodgingPick] = useState('');
+  const lodgingChoices = useMemo(() => {
+    // `event` is NULL while the public code is still resolving — every other read
+    // in this component sits behind that gate, and mine did not. Driving the real
+    // invite URL caught it as a white screen for every guest, before ship.
+    const raw = Array.isArray(event && event.lodgingOptions) ? event.lodgingOptions : [];
+    return raw.filter(Boolean).map((o, i) => ({
+      id: String((o && o.id) || `lodge-${i + 1}`),
+      label: String((o && o.label) || `Option ${i + 1}`).trim() || `Option ${i + 1}`,
+      // Only facts the host typed — never a computed claim on the guest's screen.
+      sub: [
+        o && Number(o.sleeps) > 0 ? `sleeps ${Number(o.sleeps)}` : null,
+        o && Number(o.totalPrice) > 0 ? `$${Number(o.totalPrice).toLocaleString()} total` : null,
+      ].filter(Boolean).join(' · '),
+    }));
+  }, [event]);
   const [note, setNote] = useState('');
   const [mailingAddress, setMailingAddress] = useState('');
   // Optional contact — phone OR email, both skippable. Never gates the reply:
@@ -576,6 +597,8 @@ export default function InviteV2({ code }) {
       // Only send it when they actually answered AND they're coming — an absent answer
       // stays absent rather than becoming a fabricated false.
       ...(rsvp === 'Yes' && isCrabEvent && picksCrabs !== null ? { picksCrabs } : {}),
+      // Same rule as picksCrabs: only when they're actually coming AND they answered.
+      ...(rsvp === 'Yes' && lodgingChoices.length && lodgingPick ? { lodgingPick } : {}),
       note: note.trim(),
       ...(event.collectAddresses && mailingAddress.trim() ? { mailingAddress: mailingAddress.trim() } : {}),
       // Contact rides along ONLY when it's real: a complete US-shaped phone
@@ -611,6 +634,7 @@ export default function InviteV2({ code }) {
           ...(payload.access?.length ? { access: payload.access } : {}),
           ...(payload.mailingAddress ? { mailing_address: payload.mailingAddress } : {}),
           ...(payload.picksCrabs !== undefined ? { picks_crabs: payload.picksCrabs } : {}),
+          ...(payload.lodgingPick ? { lodging_pick: payload.lodgingPick } : {}),
           ...(payload.phone ? { phone: payload.phone } : {}),
           ...(payload.email ? { email: payload.email } : {}),
         });
@@ -994,6 +1018,24 @@ export default function InviteV2({ code }) {
                           </div>
                           <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
                             It’s how your host knows how many crabs to buy.
+                          </p>
+                        </>
+                      )}
+                      {/* The rental shortlist the host published. One tap, and it's
+                          explicitly a preference — the host still books it. */}
+                      {lodgingChoices.length > 0 && (
+                        <>
+                          <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Where would you rather stay?</div>
+                          <div className="chips">
+                            {lodgingChoices.map(o => chip(
+                              lodgingPick === o.id,
+                              o.sub ? `${o.label} — ${o.sub}` : o.label,
+                              () => setLodgingPick(lodgingPick === o.id ? '' : o.id),
+                              'lodge-' + o.id,
+                            ))}
+                          </div>
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
+                            Just a preference — your host makes the call and books it.
                           </p>
                         </>
                       )}

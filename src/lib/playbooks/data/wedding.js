@@ -156,6 +156,9 @@ const wedding = {
       { when: 'T-1d', what: 'Rehearsal + dinner; pack the emergency kit; assemble welcome bags; brief the wedding party' },
     ],
     setup: [
+      { when: 'T0 -5h', what: 'Party dressed and photographed getting ready; someone brings them food they can eat in a robe' },
+      { when: 'T0 -4h', what: 'Ceremony chairs, aisle and arch set; sound check the officiant’s mic and the processional music' },
+      { when: 'T0 -3h', what: 'Escort cards, seating chart, guest book and favours placed; the emergency kit staged where the party is' },
       { when: 'T-1d', what: 'Drop welcome bags at the hotel; deliver décor/signage/seating cards to the venue; stage the emergency kit' },
       { when: 'T0 -6h', what: 'Hair + makeup begins (start early; ~45 min/face + bride buffer); vendors load in; florist + rentals dress the room' },
       { when: 'T0 -2h', what: 'Final venue walk-through; place escort cards, favors, signage, guest book; sound check; first look + portraits' },

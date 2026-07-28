@@ -110,6 +110,11 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         // Crab-picker answer (only carried when the guest actually answered —
         // an absent answer must not overwrite a recorded one).
         ...(typeof sub.picksCrabs === 'boolean' ? { picksCrabs: sub.picksCrabs } : {}),
+        // Rental-house preference (migration 016) — same rule as the crab answer:
+        // only carried when the guest actually answered, so an absent pick can
+        // never blank a recorded one. Applies to BOTH branches: the merge into an
+        // existing roster row AND the row created for a brand-new replier.
+        ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       };
       // Server rows re-arrive on every visit — only count real changes.
       if (JSON.stringify(next) !== JSON.stringify(g)) { guests[ix] = next; merged += 1; }
@@ -133,6 +138,11 @@ export function mergeGuestReplies(existingGuests, submissions, opts = {}) {
         phone: sub.phone || '',
         email: sub.email || '',
         ...(typeof sub.picksCrabs === 'boolean' ? { picksCrabs: sub.picksCrabs } : {}),
+        // Rental-house preference (migration 016) — same rule as the crab answer:
+        // only carried when the guest actually answered, so an absent pick can
+        // never blank a recorded one. Applies to BOTH branches: the merge into an
+        // existing roster row AND the row created for a brand-new replier.
+        ...(String(sub.lodgingPick || '').trim() ? { lodgingPick: String(sub.lodgingPick).trim() } : {}),
       });
       added += 1;
     }

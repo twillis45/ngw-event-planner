@@ -97,3 +97,46 @@ describe('rosSlotTime', () => {
     expect(rosSlotTime('', undefined)).toBe(null);
   });
 });
+
+// ─── THE GROUP'S ANSWER COMES HOME (migration 016, applied 2026-07-28) ───────
+// Guests pick on the invite; the reply rides the per-guest upsert as
+// `lodging_pick` and lands on the roster row as `lodgingPick`. This is a TALLY:
+// it informs the host and never picks for them, and silence stays silence.
+describe('guest lodging picks', () => {
+  const withPicks = (picks) => lodgingIntel({
+    ...EV,
+    guests: picks.map((p, i) => ({ id: 'g' + i, name: 'G' + i, rsvp: 'Yes', ...(p ? { lodgingPick: p } : {}) })),
+  });
+
+  test('no replies reads as silence, never as zero support', () => {
+    const i = withPicks([null, null, null]);
+    expect(i.voted).toBe(0);
+    expect(i.groupSaid).toBe('Nobody has weighed in yet.');
+    expect(i.options.every((o) => o.votes === 0)).toBe(true);
+  });
+
+  test('a lean is reported with the count, and the call stays the host’s', () => {
+    const i = withPicks(['a', 'a', 'b', null]);
+    expect(i.voted).toBe(3);
+    expect(i.options.find((o) => o.id === 'a').votes).toBe(2);
+    expect(i.groupSaid).toMatch(/2 of 3/);
+    expect(i.groupSaid).toMatch(/Lakefront A-frame/);
+    expect(i.groupSaid).toMatch(/Yours is still the call/);
+  });
+
+  test('a tie says tie rather than picking a winner', () => {
+    expect(withPicks(['a', 'b']).groupSaid).toMatch(/tie/i);
+  });
+
+  test('the tally shows up as a per-option check, in people not percentages', () => {
+    const a = withPicks(['a', 'a']).options.find((o) => o.id === 'a');
+    expect(a.checks.find((c) => c.key === 'votes').text).toMatch(/2 people prefer this one/);
+    expect(JSON.stringify(a.checks)).not.toMatch(/%/);
+  });
+
+  test('a pick for an option the host deleted never invents a row', () => {
+    const i = withPicks(['ghost-option']);
+    expect(i.options.every((o) => o.votes === 0)).toBe(true);
+    expect(i.voted).toBe(1);   // they DID answer — we just don't have that option any more
+  });
+});

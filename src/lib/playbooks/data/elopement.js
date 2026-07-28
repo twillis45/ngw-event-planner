@@ -127,6 +127,8 @@ const elopement = {
       { when: 'T0 -0:30', what: 'Arrive at the site, meet officiant + photographer, set the picnic/toast spot' },
     ],
     program: [
+      { when: 'T0 +4h', what: 'Walk somewhere together — the part of the day that is just the two of you' },
+      { when: 'T0 +5h', what: 'Send the photos to the people who could not be there' },
       { when: 'T0 +5m', what: 'Meet the officiant at the spot; hand over the licence and rings' },
       { when: 'T0 +15m', what: 'The ceremony: vows, rings, pronouncement — witnesses sign' },
       { when: 'T0 +35m', what: 'Portraits while the light holds' },

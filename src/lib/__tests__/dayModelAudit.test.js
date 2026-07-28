@@ -88,6 +88,22 @@ describe('the built day is coherent', () => {
     expect(bad).toEqual([]);
   });
 
+  test('no dead air — nothing leaves the host with a multi-hour hole', () => {
+    // The first audit flagged three of these and I was ready to call them
+    // legitimate (a wedding's hair-and-makeup block, two wind-downs). The host's
+    // ruling: fill them. A host standing in a room at hour four does not care
+    // that the gap was defensible — they care that the board went quiet on them.
+    const bad = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const offs = offsetsFor(pb);
+      for (let i = 1; i < offs.length; i += 1) {
+        const gap = offs[i] - offs[i - 1];
+        if (gap > 150) bad.push(`${pb.label || pb.id}: ${(gap / 60).toFixed(1)}h of nothing at ${(offs[i - 1] / 60).toFixed(1)}h`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
+
   test('the day is substantial — the board is not three rows and a shrug', () => {
     const thin = typesOf().filter((t) => (playbookRunOfShow(ev(t)) || []).length < 8);
     expect(thin).toEqual([]);
