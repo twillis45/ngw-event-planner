@@ -230,12 +230,41 @@ function preProgress(ev, phase, daysOut) {
   };
 }
 
+// ── THE CUE'S ACTION LABEL (host ruling 2026-07-28: no "Do this" CTAs) ───────
+// Every cue used to carry `actionLabel: 'Go'`, and the two CommandCenter tiers
+// that render a cue as the hero hard-coded "Take me to it" over the top of it —
+// a label that describes the HOST moving, not the work. The cue id set is small
+// and closed, so each one can name its own destination as an act.
+//
+// Deliberately NOT the cueLabel: the cue label is already the hero TITLE, and a
+// button that repeats the headline verbatim is the same overlap the hero/voice
+// audit removed. Title says what's open; the button says where the work is.
+const CUE_ACTIONS = {
+  datetime: 'Open the date',
+  location: 'Open the place',
+  headcount: 'Open guests',
+  food: 'Open the food plan',
+  shopping: 'Open the list',
+  vendors: 'Open vendors',
+  rain: 'Open the backup plan',
+  budget: 'Open your money',
+  payments: 'Open vendors',
+  thankyous: 'Open guests',
+  rentals: 'Open the rentals',
+  'ros-next': 'Open the day plan',
+};
+export const cueActionLabel = (cue) =>
+  (cue && CUE_ACTIONS[cue.id]) || (cue && CUE_ACTIONS[cue.source]) || 'Open the plan';
+
 // One cue: nearest meaningful finishable step, spec priority order.
 function pickCue(items) {
   const open = items.filter(i => !i.handled && i.cueLabel && i.route);
   if (!open.length) return null;
   const best = open.sort((a, b) => (a.priority || 9) - (b.priority || 9))[0];
-  return { id: best.id, label: best.cueLabel, actionLabel: 'Go', route: best.route, source: best.id };
+  return {
+    id: best.id, label: best.cueLabel, route: best.route, source: best.id,
+    actionLabel: CUE_ACTIONS[best.id] || 'Open the plan',
+  };
 }
 
 // ── Live event — the day's cues, never stale planning gaps ────────────────────
@@ -268,7 +297,7 @@ function liveProgress(ev, now) {
     phase: 'live_event', label: 'Event flow', completedCount: done, totalCount: total,
     progress: total ? done / total : 0,
     summary,
-    nextCue: nextSeg ? { id: 'ros-next', label: `Next: ${nextSeg.segment}${nextSeg.time ? ` · ${nextSeg.time}` : ''}`, actionLabel: 'Go', route: { tab: 'Event Day Schedule', focusField: 'ros-now' }, source: 'ros' } : null,
+    nextCue: nextSeg ? { id: 'ros-next', label: `Next: ${nextSeg.segment}${nextSeg.time ? ` · ${nextSeg.time}` : ''}`, actionLabel: 'Open the day plan', route: { tab: 'Event Day Schedule', focusField: 'ros-now' }, source: 'ros' } : null,
     items: [], // live day has no essentials rail — the run of show owns the rows
   };
 }

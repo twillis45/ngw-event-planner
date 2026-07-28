@@ -84,7 +84,15 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   // rows were falling through to nothing.
   if (/\bagenda\b|daily flow|order across nights/.test(t))
     return { label: 'Build the day', route: { tab: 'Event Day Schedule' } };
-  if (/\bparking\b/.test(t))
+  // THE ACT BEATS THE INVENTORY (found live on the hero, 2026-07-28). Venue rows
+  // are written as "reserve the pavilion and confirm what it includes (tables,
+  // grills, power, parking)" — the trailing list is what you CHECK once you have
+  // the space, not the job. Matching /parking/ first sent a booking row to the
+  // parking note, and once the hero stopped saying "Do this" the button read
+  // "Open the parking note" on a row about reserving a pavilion. A leading
+  // reserve/book verb wins; a row that is only about parking still lands here.
+  const RESERVES_A_SPACE = /\b(reserve|book|secure|lock in)\b[^.;]{0,40}\b(hall|space|room|pavilion|shelter|site|center|centre|venue|park)\b/;
+  if (/\bparking\b/.test(t) && !RESERVES_A_SPACE.test(t))
     return { label: 'Open the parking note', route: { focusField: 'parking-notes' } };
   // Crabs have their own planning surface in the resolver's vocabulary.
   if (/\bcrabs?\b|crab house|crawfish/.test(t))

@@ -51,7 +51,7 @@ import { confidencePersona, confidenceFor } from './lib/confidenceGrammar';
 // "Waiting on" word (both derived from this engine) agree.
 import { getVendorCOIState, coiNextAction } from './lib/vendorIntelligence';
 import { topPlaybookTask, topPlaybookDecision, nextUpcomingTask, playbookCapacity, playbookInfraPrompts, playbookFoodPlan, playbookDecisionBoard } from './lib/playbooks';
-import { deriveEventPhaseProgress } from './lib/phaseProgress';
+import { deriveEventPhaseProgress, cueActionLabel } from './lib/phaseProgress';
 import { taskIsOverdue, taskDueInDays, taskLeadDays } from './lib/taskLead';
 import { raiseAll, surfaceMeta } from './lib/surfaceRegistry';
 // WAVE-6 (2026-07-15): snooze is applied INSIDE eventPlan — nextActions is the
@@ -84,7 +84,7 @@ import { daysUntil } from './lib/dates';
 // the same outbound/planner signal used elsewhere. Without this, a sent approval
 // is misread as an unsent draft and the next action wrongly says "send it" /
 // "Waiting on: You" when it's really "nudge the client" / "Waiting on: Client".
-import { milestoneActionRoute } from './lib/taskRoute';
+import { milestoneActionRoute, checklistRouteFor } from './lib/taskRoute';
 export { milestoneActionRoute };
 const approvalIsSent = (m) => !!m.requestSentAt || m.direction === 'outbound' || m.sender === 'planner' || /sent|delivered/i.test(m.deliveryStatus || '');
 
@@ -1186,7 +1186,7 @@ export function selectStudioCommand(events = []) {
       // the framing. Headline is now the plain truth: who has how many.
       title: `${critical.eventName} has ${sameEventCount > 1 ? `${sameEventCount} blockers` : 'a blocker'}.`,
       consequence: `"${critical.title}" — ${critical.dueLabel || 'awaiting your action'}. Other tasks are stuck until this is handled.`,
-      primaryCta: 'Handle this first',
+      primaryCta: 'Clear the blocker',
       primaryRoute: { eventId: critical.eventId, ...critical.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
@@ -1204,7 +1204,7 @@ export function selectStudioCommand(events = []) {
       // Sprint 60.O Addendum: dropped "Start here:" prefix.
       title: `${awaiting.eventName} is waiting on client approval.`,
       consequence: `"${(awaiting.title || '').slice(0, 100)}" — sent, awaiting reply. Decisions downstream are paused.`,
-      primaryCta: 'Handle this first',
+      primaryCta: 'Nudge the client',
       primaryRoute: { eventId: awaiting.eventId, ...awaiting.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
@@ -1221,7 +1221,7 @@ export function selectStudioCommand(events = []) {
       eventName: pending.eventName,
       title: `An approval for ${pending.eventName} is drafted but not sent.`,
       consequence: `"${(pending.title || '').slice(0, 100)}" is sitting in your queue. Send it so the client clock can start.`,
-      primaryCta: 'Handle this first',
+      primaryCta: 'Send the approval',
       primaryRoute: { eventId: pending.eventId, ...pending.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
@@ -1238,7 +1238,7 @@ export function selectStudioCommand(events = []) {
       eventName: vendor.eventName,
       title: `${vendor.title.replace(/^[A-Z][a-z]+ — /, '')} still needs confirmation for ${vendor.eventName}.`,
       consequence: `Currently ${vendor.statusLabel.toLowerCase().replace('_', ' ')}. The longer it sits, the tighter your fallback window.`,
-      primaryCta: 'Handle this first',
+      primaryCta: 'Confirm the vendor',
       primaryRoute: { eventId: vendor.eventId, ...vendor.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
@@ -1295,7 +1295,7 @@ export function selectStudioCommand(events = []) {
       eventName: req.eventName,
       title: `${req.owner || 'Someone'} is waiting on a reply for ${req.eventName}.`,
       consequence: `"${(req.title || '').slice(0, 100)}" came in ${req.dueLabel || 'recently'}. A short reply keeps trust intact.`,
-      primaryCta: 'Handle this first',
+      primaryCta: 'Reply',
       primaryRoute: { eventId: req.eventId, ...req.clickTarget },
       secondaryCta: items.length > 1 ? `View all ${items.length} attention items` : 'View all attention items',
       secondaryAction: 'attention',
@@ -1893,8 +1893,10 @@ export function eventPlan(event, ctx = null) {
         // The foundation actions right above use `route` + `cta`. That is the contract.
         route: i.route,
         primaryRoute: i.route,
-        cta: 'Go',
-        ctaLabel: 'Go',
+        // A phase cue KNOWS its own destination (CUE_ACTIONS), so it names the act
+        // outright rather than leaning on the shell's generic 'Go' translation.
+        cta: cueActionLabel(i),
+        ctaLabel: cueActionLabel(i),
         level: 'attention',
         category: 'phase',
         done: false,
@@ -2243,7 +2245,7 @@ export function selectEventNextAction(event) {
         level: 'neutral', category: 'wrapup',
         title: `${pp.nextCue.label}.`,
         consequence: 'The event is done — this is the last of the wrap-up.',
-        primaryCta: 'Take me to it',
+        primaryCta: cueActionLabel(pp.nextCue),
         primaryRoute: pp.nextCue.route,
       };
     }
@@ -2637,7 +2639,22 @@ export function _selectEventNextActionInner(event) {
         consequence: firstText
           ? `${more > 0 ? `${more} more cluster around the same time — do this one first and the rest stay in order. ` : ''}${compression.meta.sub}`
           : `${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now. ${compression.meta.sub}`,
-        primaryCta: firstText ? 'Do this' : 'Review tasks',
+        // NAME THE ACT, NOT THE TRIP (host report 2026-07-28, seen live on the
+        // hero: "Call your vendor." → a button reading "Do this"). This tier
+        // KNOWS the row it leads with, so the label comes from the same router
+        // that names every checklist row's act — "Open the details", "Line them
+        // up", "Build the day". The route is unchanged: it still deep-links to
+        // the specific task, which is tighter than the router's tab-level one.
+        // A row with no app surface at all (real-world kitchen prep — the router
+        // honestly returns null) falls back to naming the list it lives on.
+        primaryCta: firstText
+          ? ((() => {
+            try {
+              const hit = checklistRouteFor(firstText, { week: first && first.week, category: first && first.category }, event);
+              return (hit && hit.label) || null;
+            } catch (_e) { return null; }
+          })() || 'Open your checklist')
+          : 'Review tasks',
         // Surfaced so the persona voice can lead with the action without re-deriving it.
         firstAction: firstText,
         moreCount: more,
@@ -2855,7 +2872,7 @@ export function _selectEventNextActionInner(event) {
         category: 'readiness',
         title: `${_pp.nextCue.label}.`,
         consequence: `The last of the planning essentials — ${_pp.completedCount} of ${_pp.totalCount} are already handled. After this, the plan really is quiet.`,
-        primaryCta: 'Take me to it',
+        primaryCta: cueActionLabel(_pp.nextCue),
         primaryRoute: _pp.nextCue.route,
         contextLine: daysSub,
       };

@@ -394,6 +394,27 @@ function describeRoute(route, event) {
   return bits.join(' → ');
 }
 
+// ── THE CTA LABEL (host ruling 2026-07-28: "shouldn't have do this cta") ─────
+//
+// A button says what the WORK is, never that the host is about to travel.
+// "Do this" / "Take me to it" were scattered as inline fallbacks at four render
+// sites, each one written the moment its branch needed a string — which is
+// exactly how the class kept regrowing after the engine side was cleaned.
+//
+// When the engine handed us a real label we use it verbatim. When all we truly
+// have is a route (the 'Go' sentinel, or no label at all), we name the real
+// destination rather than substituting a generic one: "Open vendors → Fired Up
+// BBQ", not "Take me to it". Only the LEADING tab word is lowercased so a
+// vendor's proper name keeps its case (audit 2026-07-22 W5).
+function ctaLabelFor(cta, route, event, fallback = 'the plan') {
+  const given = String(cta || '').trim();
+  if (given && given !== 'Go') return given;
+  const where = String(describeRoute(route, event) || fallback)
+    .replace(/^the\s+/i, '')
+    .replace(/^[A-Z][a-z]*/, (m) => m.toLowerCase());
+  return 'Open ' + where;
+}
+
 // Occasion choices = the REAL playbook catalog (single source: HOST_TYPES and
 // the free-text parser both live in lib/smartParseEvent now).
 
@@ -3107,7 +3128,7 @@ export default function HostShellV2() {
       <div className="later-row" style={{ marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
         <span className="t" style={{ color: 'var(--muted)', fontWeight: 550, fontSize: 'var(--t-row-sub)', minWidth: 200 }}>{n.text}</span>
         <span style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{n.actionLabel || 'Open'}</button>}
+          {n.route && <button className="mini" onClick={() => routeSheet(n.route)}>{ctaLabelFor(n.actionLabel, n.route, event)}</button>}
           <button className="mini" onClick={() => patchEvent({ contextNudges: { ...(event.contextNudges || {}), [n.id]: 'dismissed' } }, 'Noted.')}>Dismiss</button>
         </span>
       </div>
@@ -3983,7 +4004,7 @@ export default function HostShellV2() {
     return (
       <div key={rowKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
         <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{title}</span>
-        <button className="mini" onClick={() => onCta(c, rowKey)}>{(!c || !c.cta || c.cta === 'Go') ? 'Take me to it' : c.cta}</button>
+        <button className="mini" onClick={() => onCta(c, rowKey)}>{ctaLabelFor(c && c.cta, c && c.route, event)}</button>
       </div>
     );
   };
@@ -5848,7 +5869,7 @@ export default function HostShellV2() {
                             </div>
                           ) : (
                           <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-                            <button className="cta" onClick={goFix}>{vendName ? ('Take me to ' + vendName) : 'Take me to the fix'}</button>
+                            <button className="cta" onClick={goFix}>{vendName ? ('Open ' + vendName) : 'Open the vendor'}</button>
                           </div>
                           )}
                           {heroReceipt && (
@@ -5889,7 +5910,7 @@ export default function HostShellV2() {
                           {dec.because && <p className="because">{dec.because}</p>}
                           {renderDecisionActions(dec) || (
                             <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-                              <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>Take me to it</button>
+                              <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
                             </div>
                           )}
                           {heroReceipt && (
@@ -6140,11 +6161,9 @@ export default function HostShellV2() {
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
-                             destination when a route is genuinely all we have, so the CTA still says
-                             where it goes. */
-                          /* Lowercase ONLY the leading tab word — a vendor's proper name must
-                             keep its case ("Open vendors → Fired Up BBQ", audit 2026-07-22 W5). */
-                          : (a.cta === 'Go' ? ('Open ' + String(describeRoute(a.route, event) || 'the plan').replace(/^the\s+/i, '').replace(/^[A-Z][a-z]*/, (m) => m.toLowerCase())) : a.cta)
+                             destination when a route is genuinely all we have. One shared helper
+                             now, so the four render sites can't drift apart again. */
+                          : ctaLabelFor(a.cta, a.route, event)
                         }</button>; })()}
                         {/* SNOOZE — set it down without losing it. The reason a zero state can
                             be believed: a host who has decided to leave a thing can SAY so, and
@@ -10510,7 +10529,8 @@ export default function HostShellV2() {
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--steel-soft)' }}>Your next move</div>
                       <p className="f-name" style={{ margin: '0 0 8px' }}>{nc.label}</p>
-                      <button className="cta" onClick={() => { if (!routeSheet(nc.route)) { setStage('plan'); setSheet(null); } }}>Take me to it</button>
+                      {/* nc IS a phase cue — it carries its own act label (CUE_ACTIONS). */}
+                      <button className="cta" onClick={() => { if (!routeSheet(nc.route)) { setStage('plan'); setSheet(null); } }}>{nc.actionLabel || ctaLabelFor(null, nc.route, event)}</button>
                     </div>
                   )}
                   <div className="shelf-label" style={{ margin: '0 0 6px' }}>How Event Boss works</div>
@@ -13241,7 +13261,7 @@ export default function HostShellV2() {
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                             {(s.estimatedSavings || s.amount) ? <span className="of" style={{ whiteSpace: 'nowrap' }}>~{fmt(s.estimatedSavings || s.amount)}</span> : null}
-                            {s.route && <button className="mini" onClick={() => { if (!routeSheet(s.route)) toast('In the app this opens: ' + (describeRoute(s.route, event) || 'the right spot')); }}>{s.actionLabel || 'Open'}</button>}
+                            {s.route && <button className="mini" onClick={() => { if (!routeSheet(s.route)) toast('In the app this opens: ' + (describeRoute(s.route, event) || 'the right spot')); }}>{ctaLabelFor(s.actionLabel, s.route, event)}</button>}
                           </span>
                         </div>
                       ))}
