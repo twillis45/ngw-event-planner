@@ -432,6 +432,10 @@ const dietTagFor = (s) => {
 // 24h clock (a host-typed "4:00 PM", a worded time) passes through untouched.
 // timePhrase (lib/doItForMe) is NOT this: it answers "when is the event"
 // (startTime / part-of-day), not "format this clock string".
+// Compact field metrics shared by the inline add-forms that sit outside the
+// sheet blocks owning their own local `fld`.
+const HELPER_FLD = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+
 const fmt12h = (t) => {
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim());
   if (!m) return String(t || '').trim();
@@ -2771,6 +2775,25 @@ export default function HostShellV2() {
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '' });
+  // Add-a-helper form (host report 2026-07-28: the helpers block had no action).
+  // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
+  // already reads (source: 'timeline.owner'), so one write reaches every surface.
+  const [helperForm, setHelperForm] = useState({ name: '', job: '' });
+  const addHelper = () => {
+    const name = String(helperForm.name || '').trim();
+    const job = String(helperForm.job || '').trim();
+    if (!name) { toast('Give them a name first.'); return; }
+    if (!job) { toast('Say what they’ve got — that’s what lands on the day plan.'); return; }
+    const row = {
+      id: 'help-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 6),
+      task: job, owner: name, done: false,
+      // Day-of work: no lead to work back from, and the category the day board reads.
+      week: 'Day of', leadDays: 0, category: 'event-day',
+    };
+    patchEvent({ timeline: [...(Array.isArray(event.timeline) ? event.timeline : []), row] },
+      `${name} has it — ${job.charAt(0).toLowerCase() + job.slice(1)}. It’s on the day plan and their message now.`);
+    setHelperForm({ name: '', job: '' });
+  };
   // Visitors-bureau contact capture (host directive 2026-07-28): the number the
   // host brings back from the call lives on the event; the row renders it as
   // real tel:/site links. Host-entered only — never scraped.
@@ -8154,9 +8177,12 @@ export default function HostShellV2() {
                       {approach && <span className="v-meta" style={{ display: 'block' }}>{approach.note}</span>}
                     </span>
                   ) : null;
+                  // Label names what the control DOES (host ruling 2026-07-28: no
+                  // "do this" CTAs) — this pins the decision to the top of the
+                  // list; it does not perform the decision.
                   const pinBtn = (
                     <button type="button" className="mini" aria-pressed={pinned} onClick={(e) => { e.stopPropagation(); toggleDecisionPin(r.id); }}
-                      style={{ flex: '0 0 auto', alignSelf: 'flex-start' }}>{pinned ? 'Pinned first' : 'Do this first'}</button>
+                      style={{ flex: '0 0 auto', alignSelf: 'flex-start' }}>{pinned ? 'Pinned to top' : 'Pin to top'}</button>
                   );
                   // DIFM-PROPOSE-2 — the "accept the proposal" join (mirrors App.js
                   // HostDecisionsPanel + the start-time "that's right" confirm). The note
@@ -8360,11 +8386,19 @@ export default function HostShellV2() {
               const venuePhrase = venue
                 ? `${/^(the|a|an)\s/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
                 : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
+              // ONE SUBJECT PER LINE (host report 2026-07-28): the sub used to be
+              // the VENUE sentence under a HELPERS star — two different subjects
+              // glued together, so "No helpers yet / No venue named yet…" read as
+              // a non-sequitur. The guide voice now speaks to the star; the venue
+              // fact drops to the grounding line, which is what it is for.
               return (
                 <SheetHero
                   eyebrow="Helping hands"
                   star={n ? `${n} helping` : 'No helpers yet'}
-                  sub={venuePhrase}
+                  sub={n
+                    ? 'Everyone here has something with their name on it — they ride the day plan and the helper messages.'
+                    : 'Name someone and what they’ve got — it lands on the day plan and in their message.'}
+                  grounding={venuePhrase}
                 />
               );
             })()}
@@ -8603,13 +8637,34 @@ export default function HostShellV2() {
                     </div>
                   </>
                 )}
-                {helpers.length > 0 && (
+                {/* ALWAYS RENDERED (host report 2026-07-28: "doesn't have an
+                    action to add helpers"). Helpers are DERIVED from owner names
+                    on real items, so the empty state used to render nothing at
+                    all — the hero said "No helpers yet" and the sheet offered no
+                    way to change that. The add form below writes a real timeline
+                    row with an owner, which is exactly what the derivation reads,
+                    so a helper added here shows up on the day plan, in the helper
+                    messages, and in the checklist — one write, every surface. */}
+                {(
                   <>
                     <div className="shelf-label" style={{ margin: '14px 0 var(--sp-1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>Who’s helping</span>
                       {(helperData.helpers || []).length > 0 && (
                         <button className="mini" onClick={startHelperMessages}>Draft helper messages</button>
                       )}
+                    </div>
+                    <div className="lodge-form" style={{ marginBottom: 4 }}>
+                      <label className="lodge-f"><span className="of">Who</span>
+                        <input className="field" style={HELPER_FLD} placeholder="Aunt Rose" value={helperForm.name}
+                          aria-label="Helper name"
+                          onChange={e => setHelperForm(f => ({ ...f, name: e.target.value }))} /></label>
+                      <label className="lodge-f"><span className="of">What they’ve got</span>
+                        <input className="field" style={HELPER_FLD} placeholder="Runs the welcome table" value={helperForm.job}
+                          aria-label="What this helper is covering"
+                          onChange={e => setHelperForm(f => ({ ...f, job: e.target.value }))} /></label>
+                      <label className="lodge-f full">
+                        <button className="mini" type="button" onClick={addHelper}>Add this helper</button>
+                      </label>
                     </div>
                     {/* Stacked row (was a ragged 2-col .line where the status
                         REPEATED the owner name and both columns wrapped

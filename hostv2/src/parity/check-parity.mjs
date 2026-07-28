@@ -68,6 +68,42 @@ for (const r of CSS_RULES) {
   if (line && r.bad.test(line)) violations.push(`styles.css: ${r.label}.`);
 }
 
+// ── NO WHITE SURFACES (host ruling 2026-07-28) ───────────────────────────────
+// "app is not supposed to have … white ctas or confirmations [with] white
+// backgrounds." The neutral toast was an INVERTED pill (background:var(--ink)
+// = #eef0f4) carrying 84 of 86 toast call sites — a white card in a dark-only
+// app. Studio Matte has one surface family: carbon on a hairline.
+//
+// EXEMPT, deliberately: the public invite (.inv2-*, a paper aesthetic by
+// design), the print stylesheet (@media print IS paper), and QR code plates
+// (a scanner needs a light quiet-zone to read the code at all).
+const WHITE_BG = /background(-color)?:\s*(var\(--ink\)|#fff\b|#ffffff\b|white\b)/i;
+// Comments are prose ABOUT the rule (including this fix's own rationale), never
+// a painted surface — strip them before scanning, or the gate flags its own note.
+const CSS_NO_COMMENTS = CSS.replace(/\/\*[\s\S]*?\*\//g, '');
+let printDepth = 0;          // brace depth inside an @media print block
+for (const line of CSS_NO_COMMENTS.split('\n')) {
+  if (/@media\s+print/.test(line)) printDepth = 1;
+  else if (printDepth > 0) {
+    printDepth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+    if (printDepth <= 0) printDepth = 0;
+  }
+  if (printDepth > 0) continue;                 // print IS paper
+  if (/^\s*\.inv2-/.test(line)) continue;        // the public invite is a paper aesthetic
+  if (WHITE_BG.test(line)) {
+    violations.push(`styles.css: a runtime surface paints a WHITE background ("${line.trim().slice(0, 72)}") — dark-only app; use var(--card) on var(--line-soft), or var(--ok) for a confirmation.`);
+  }
+}
+// The JSX side: an inline white plate is only legitimate behind a QR code (a
+// scanner needs the light quiet-zone), so the surrounding block must say so.
+const HOST_LINES = HOST.split('\n');
+HOST_LINES.forEach((line, i) => {
+  if (!/background:\s*'(#fff(fff)?|white)'/i.test(line)) return;
+  const near = HOST_LINES.slice(Math.max(0, i - 4), i + 5).join(' ');
+  if (/\bqr\b/i.test(near)) return;
+  violations.push(`HostShellV2.jsx:${i + 1} inline white plate outside a QR surface ("${line.trim().slice(0, 64)}").`);
+});
+
 if (violations.length) {
   console.error('✗ Parity drift detected:');
   for (const v of violations) console.error('  • ' + v);

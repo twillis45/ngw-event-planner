@@ -98,9 +98,12 @@ export const VOICE = {
     // passes the engine's action through untouched.)
     host: (c) => ({
       consequence: (c && c.moreCount > 0)
-        ? `${c.moreCount} more cluster around now — do this first and I'll keep the rest in order.`
+        ? `${c.moreCount} more cluster around now — start here and I'll keep the rest in order.`
         : "Knock this out and the home stretch stays calm — I've got the order.",
-      primaryCta: 'Do this first',
+      // NO "do this" CTAs (host ruling 2026-07-28): a button must name the act it
+      // performs. This tier has no idea what the act IS — the engine's own
+      // primaryCta ("Set guest count", "Take me to it") does. Omitting the key
+      // passes that concrete label straight through (OVERRIDE_FIELDS merge).
     }),
     operator: (c) => ({
       consequence: (c && c.moreCount > 0)

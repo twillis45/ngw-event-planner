@@ -60,8 +60,69 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     // "See the day plan" CTA dead-tapped into the toast fallback. Caught by the
     // board-matrix checklist probe's first run (2026-07-27).
     return { label: 'See the day plan', route: { tab: 'Event Day Schedule' } };
+  // ── COVERAGE WAVE (host ask 2026-07-28, probe: 79% of rows had a CTA) ──────
+  // These land ABOVE the kitchen-prep null because none of them is ever a
+  // cooking row — "prep the name tags" is guest-list work, and the /prep/ rule
+  // below was swallowing it. Each destination is real resolver vocabulary.
+  if (/run[- ]of[- ]show|order of events|write the run\b/.test(t))
+    return { label: 'Build the day', route: { tab: 'Event Day Schedule' } };
+  if (/every household|households\b|contact for each|sign-?in sheet|contact[- ]update|name tags?/.test(t))
+    return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
+  // Permits, alcohol rules, sound ordinances are PLACE facts — the house-rules note.
+  if (/\bpermit\b|alcohol rule|amplified[- ]sound|noise ordinance/.test(t))
+    return { label: 'Open the place rules', route: { focusField: 'house-rules' } };
+  if (/safe[- ]rides?|designated[- ]driver|rideshare code/.test(t))
+    return { label: 'Open rides', route: { focusField: 'ground' } };
+  // A per-person share is a MONEY agreement, not a vendor booking.
+  if (/per[- ]person\b.{0,40}(number|cost|amount|budget)|who pays|we cover the\b/.test(t))
+    return { label: 'Open your money', route: { tab: 'Budget', focusField: 'hsp-budget' } };
+  // Watchers, chaperones and house rules are the helper/place assignments.
+  if (/chaperones?|floor watchers?|door watch|assign .{0,14}(door|bar|floor)|house rules/.test(t))
+    return { label: 'Assign it', route: { tab: 'Event Details', focusField: 'space' } };
+
+  // The agenda / daily flow IS the day board — several conference and retreat
+  // rows were falling through to nothing.
+  if (/\bagenda\b|daily flow|order across nights/.test(t))
+    return { label: 'Build the day', route: { tab: 'Event Day Schedule' } };
+  if (/\bparking\b/.test(t))
+    return { label: 'Open the parking note', route: { focusField: 'parking-notes' } };
+  // Crabs have their own planning surface in the resolver's vocabulary.
+  if (/\bcrabs?\b|crab house|crawfish/.test(t))
+    return { label: 'Open the crab plan', route: { focusField: 'crab-plan' } };
+  if (/room block/.test(t))
+    return { label: 'Open the stay', route: { focusField: 'lodging' } };
+  if (/gift log|who-gave-what/.test(t))
+    return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
+  if (/meaning moment/.test(t))
+    return { label: 'Plan the tribute', route: { tab: 'Decisions', decisionId: 'tribute' } };
+  if (/\bkeynotes?\b|\bav\b\/?|production rider|av rider/.test(t))
+    return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
+
+  // MONEY + VENDOR ROWS RUN BEFORE THE KITCHEN NULL (false-null found by the
+  // coverage probe 2026-07-28): "Give caterer FINAL headcount; pay remaining
+  // vendor balances; prep tip envelopes" was killed by the /prep/ rule below —
+  // a vendor-money row silently lost its CTA because it ended in a prep verb.
+  if (/\bcaterer\b|vendor balance|remaining balance|pay (remaining|the) /.test(t))
+    return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
+
   if (/\b(marinate|season the|slow-cook|cook the|make-ahead|prep)\b/.test(t))
     return null;
+  // Signage, badges and swag are a supply run like decor.
+  if (/\bsignage\b|\bbadges?\b|lanyards?|\bswag\b/.test(t))
+    return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
+  // Catering orders written in trade shorthand (BEO / plated / buffet) and the
+  // "what are we serving" decision both belong on the food plan.
+  if (/\bbeos?\b|plated|buffet|decide the main|who cooks/.test(t))
+    return { label: 'Map the spread', route: { tab: 'Planning', focusField: 'food-plan' } };
+  if (/reserve (the )?[a-z ]{0,18}(hall|space|room|pavilion|center|centre)\b/.test(t))
+    return { label: 'Open the details', route: { tab: 'Event Details' } };
+  // Supply runs — decor, favors, paper goods, drink stock — get bought off the
+  // SAME list as the food. Below the kitchen null on purpose: a row that leads
+  // with cooking ("Prep make-ahead bites; assemble favors") stays honest-CTA-less.
+  if (/\b(decor|favou?rs?|balloons?|banner|backdrop|yard sign|paper goods|mixers?|liquor|alcohol|champagne|non-perishables|prizes|goodie bags?|party supplies|centerpieces?|prints)\b/.test(t))
+    return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
+  if (/\b(proteins?|buns|produce|condiments)\b/.test(t))
+    return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
     return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t))

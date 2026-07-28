@@ -887,15 +887,21 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
 
 .toast{
   position:absolute; left:50%; bottom:calc(84px + env(safe-area-inset-bottom,0px)); transform:translate(-50%,0); z-index:60;
-  background:var(--ink); color:var(--card); font-size:var(--t-toast); font-weight:550;
+  /* NO WHITE SURFACES (host ruling 2026-07-28): the neutral toast was an
+     INVERTED pill — background:var(--ink) is #eef0f4, i.e. a white card in a
+     dark-only app, and it carried 84 of the 86 toast call sites. Studio Matte
+     has one surface family: a raised carbon card on a hairline. Confirmations
+     stay green via .toast.ok below. */
+  background:var(--card); color:var(--ink); border:1px solid var(--line-soft);
+  font-size:var(--t-toast); font-weight:550;
   padding:var(--sp-3) var(--sp-5); border-radius:var(--r-lg); width:max-content; max-width:min(88vw,356px); text-align:center; line-height:1.45;
-  box-shadow:0 12px 40px rgba(0,0,0,.3);
+  box-shadow:0 12px 40px rgba(0,0,0,.45);
   animation:toastin var(--ms-escalation) var(--ease-out) both;
 }
 /* CONFIRM-GREEN (2026-07-16): a success confirmation reads green from ONE place —
    the same --ok / --on-ok pair the "all set" tile uses. Driven by toastTone==='ok'
-   (every patchEvent write); error/neutral toasts keep the default --ink pill. */
-.toast.ok{ background:var(--ok); color:var(--on-ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
+   (every patchEvent write); error/neutral toasts keep the default carbon pill. */
+.toast.ok{ background:var(--ok); color:var(--on-ok); border-color:var(--ok); box-shadow:0 12px 40px rgba(47,107,70,.34); }
 @keyframes toastin{from{opacity:0; transform:translate(-50%,10px)} to{opacity:1; transform:translate(-50%,0)}}
 /* Money-move undo: the one inline action a toast can carry. Inherits the
    toast's inverted palette — .mini's steel tint vanishes on var(--ink). */
@@ -1354,25 +1360,25 @@ button:disabled, .cta:disabled{ pointer-events:none; }
    provenance receipt as the foot. Card cuts to card; never two live. */
 .rv-card{position:absolute; inset:0; z-index:4; display:flex; flex-direction:column;
   justify-content:center; align-items:center; text-align:center; padding:0 30px;
-  animation:rvcardin .7s cubic-bezier(.22,1,.36,1) both}
+  animation:rvcardin 1s cubic-bezier(.33,0,.2,1) both}
 .rv-card::before{content:""; position:absolute; left:50%; top:46%; width:150%; aspect-ratio:5/3;
   transform:translate(-50%,-50%); border-radius:50%; pointer-events:none; z-index:-1;
   background:radial-gradient(closest-side, rgba(78,104,119,.34), transparent 70%); filter:blur(44px)}
-@keyframes rvcardin{from{opacity:0; transform:scale(.94); filter:blur(9px)} to{opacity:1; transform:none; filter:blur(0)}}
+@keyframes rvcardin{from{opacity:0; transform:scale(.975); filter:blur(4px)} to{opacity:1; transform:none; filter:blur(0)}}
 .rv-card-kicker{font-size:var(--t-overline); font-weight:650; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--steel-soft); animation:rvcardbit .6s var(--ease-out) .15s both}
+  color:var(--steel-soft); animation:rvcardbit .8s cubic-bezier(.33,0,.2,1) .2s both}
 .rv-card-what{font-family:var(--sans); font-weight:800; font-size:clamp(30px,8.6cqw,40px); line-height:1.14;
   letter-spacing:-.025em; color:#f2f4f7; margin-top:14px; text-wrap:balance;
-  animation:rvcardbit .7s cubic-bezier(.22,1,.36,1) .25s both}
+  animation:rvcardbit .9s cubic-bezier(.33,0,.2,1) .35s both}
 .rv-card-why{font-size:var(--t-body-s); line-height:1.5; color:#9aa7b2; margin-top:14px; max-width:30ch;
-  animation:rvcardbit .7s var(--ease-out) .7s both}
+  animation:rvcardbit .85s cubic-bezier(.33,0,.2,1) .62s both}
 .rv-card-prov{font-size:var(--t-caption-min); font-weight:600; letter-spacing:.04em; color:#7a8792;
-  margin-top:16px; animation:rvcardbit .7s var(--ease-out) 1.05s both}
-@keyframes rvcardbit{from{opacity:0; transform:translateY(10px)} to{opacity:1; transform:none}}
+  margin-top:16px; animation:rvcardbit .85s cubic-bezier(.33,0,.2,1) .9s both}
+@keyframes rvcardbit{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
 /* SETTLE — the baseline listing composes fast (the cards already told the
    story; this is the plan filing itself), then rest is static-full. */
 .reveal-stage.rv-settle .rv-slowrows .rv-line{opacity:0;
-  animation:rvcompose .5s var(--ease-out) both; animation-delay:calc(var(--i)*.12s)}
+  animation:rvcompose .7s cubic-bezier(.33,0,.2,1) both; animation-delay:calc(var(--i)*.16s)}
 .reveal-stage.rv-settle .rv-lastland{opacity:0; transform:translateY(6px); filter:blur(12px);
   animation:rvrackrow .9s cubic-bezier(.22,1,.36,1) both; animation-delay:calc(var(--i)*.12s + .35s)}
 .reveal-stage.rv-settle .rv-slowrows .rv-line::before{animation:rvracktick 1s var(--ease-out) both; animation-delay:calc(var(--i)*.12s)}
@@ -1390,15 +1396,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .rv-cardzone .rv-card-what{font-size:clamp(24px,7cqw,32px)}
 .rv-grid{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:10px}
 .rv-tile{background:color-mix(in srgb, var(--card) 82%, transparent); border:1px solid var(--line);
-  border-radius:10px; padding:8px 10px; opacity:0; transform:scale(.92)}
-.rv-tile.in{opacity:1; transform:none; transition:opacity .45s var(--ease-out), transform .45s cubic-bezier(.22,1.2,.36,1)}
+  border-radius:10px; padding:8px 10px; opacity:0; transform:scale(.965)}
+.rv-tile.in{opacity:1; transform:none; transition:opacity .7s cubic-bezier(.33,0,.2,1), transform .7s cubic-bezier(.33,0,.2,1)}
 .rv-tile-t{font-size:9.5px; font-weight:650; letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
 .rv-tile-v{font-size:11.5px; font-weight:600; color:var(--ink); line-height:1.35; margin-top:3px;
   display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .rv-grid-rest .rv-tile{opacity:1; transform:none}
-.rv-tile-compose{opacity:0 !important; animation:rvtilein .5s cubic-bezier(.22,1.2,.36,1) both !important;
-  animation-delay:calc(var(--i)*.1s) !important}
-@keyframes rvtilein{from{opacity:0; transform:scale(.9)} to{opacity:1; transform:none}}
+.rv-tile-compose{opacity:0 !important; animation:rvtilein .7s cubic-bezier(.33,0,.2,1) both !important;
+  animation-delay:calc(var(--i)*.16s) !important}
+@keyframes rvtilein{from{opacity:0; transform:scale(.965)} to{opacity:1; transform:none}}
 @media(prefers-reduced-motion:reduce){ .rv-tile,.rv-tile-compose{opacity:1!important; transform:none!important; animation:none!important} }
 /* EVERYTHING IN VIEWPORT (host ruling 2026-07-27): the unveiling plays
    entirely on the visible stage — no row ignites below the fold. The theater
@@ -1424,6 +1430,65 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 @media(prefers-reduced-motion:reduce){
   .rv-meyebrow,.rv-mname,.rv-slowrows .rv-line,.rv-slowrows .rv-why,.rv-slowrows .grounding,.rv-slowrows .rv-prov{opacity:1!important; transform:none!important; filter:none!important; animation:none!important; transition:none!important}
   .rv-mglint{display:none!important}
+}
+
+/* ── THE SPINE (host lock 2026-07-28): the box-free attention payoff. The name
+   lands anchored; an attention system then walks DOWN the spine one node at a
+   time — the focused label EXPANDS and self-illuminates (color, not a flash)
+   while the rest of the screen darkens around it; visited nodes stay quietly
+   on the record. At rest the spotlight lifts and the WHOLE spine reads fully
+   lit — the resolved plan. Audio is deferred to the native port, where device
+   haptics carry each stop. Supersedes the takeover cards + tile grid. */
+.rv-spinewrap{position:relative; z-index:2; display:flex; flex-direction:column; justify-content:center; min-height:100%; padding:6px 2px 2px; text-align:left}
+.rv-seyebrow{font-size:var(--t-pill); letter-spacing:3px; font-weight:600; color:var(--steel-soft); opacity:.7; margin-bottom:6px}
+.rv-sname{font-family:var(--sans); font-weight:800; font-size:clamp(24px,7cqw,30px); line-height:1.04; letter-spacing:-.03em; color:var(--ink); margin:0}
+.rv-ssub{margin:4px 0 0; color:#8b98a3; font-size:var(--t-body-s); font-style:italic; font-family:var(--serif)}
+
+.rv-spine-col{position:relative; margin:16px 0 2px; padding-left:26px}
+.rv-spine-col::before{content:""; position:absolute; left:6px; top:14px; bottom:16px; width:1.5px;
+  background:linear-gradient(180deg, rgba(138,163,176,.42), rgba(78,104,119,.14)); border-radius:1px}
+
+.rv-snode{position:relative; padding:8px 0; min-height:40px}
+.rv-sdot{position:absolute; left:-20px; top:16px; width:8px; height:8px; margin:-4px 0 0 -4px; border-radius:50%;
+  background:var(--steel-soft); opacity:.35; box-shadow:0 0 8px 1px rgba(78,104,119,.4);
+  transition:opacity .6s var(--ease-out), background .6s, box-shadow .6s, width .5s, height .5s, margin .5s}
+.rv-shalo{position:absolute; left:-20px; top:16px; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%;
+  background:radial-gradient(circle, rgba(138,163,176,.5), transparent 68%); opacity:0; transition:opacity .6s}
+
+.rv-scontent{transform-origin:left center}
+.rv-slabel{display:inline-block; transform-origin:left center; font:600 14px/1.15 var(--sans);
+  color:#5d6772; opacity:.34; transition:color .7s var(--ease-out), opacity .7s, transform .7s cubic-bezier(.33,0,.2,1)}
+.rv-sval{margin-top:3px; font-size:12px; line-height:1.35; color:#5a6570; opacity:.16; transition:color .7s, opacity .7s}
+.rv-swhy{color:inherit; opacity:.82}
+.rv-sprov{margin-top:3px; font-size:9px; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+  color:var(--muted); opacity:.05; transition:opacity .7s}
+
+/* visited (lit) — quiet, legible, on the record */
+.rv-snode.lit .rv-sdot{opacity:1}
+.rv-snode.lit .rv-shalo{opacity:.22}
+.rv-snode.lit .rv-slabel{color:#9aa7b2; opacity:.72}
+.rv-snode.lit .rv-sval{color:#8792a0; opacity:.5}
+.rv-snode.lit .rv-sprov{opacity:.3}
+
+/* focus — the one loud thing: the label expands + self-illuminates, dot flares */
+.rv-snode.focus .rv-sdot{background:#dbe9f2; opacity:1; width:12px; height:12px; margin:-6px 0 0 -6px;
+  box-shadow:0 0 18px 5px rgba(138,163,176,.9)}
+.rv-snode.focus .rv-shalo{opacity:.6; width:30px; height:30px; margin:-15px 0 0 -15px}
+.rv-snode.focus .rv-slabel{color:#fbfdff; opacity:1; transform:scale(1.26)}
+.rv-snode.focus .rv-sval{color:#cdd6de; opacity:1}
+.rv-snode.focus .rv-sprov{color:var(--steel-soft); opacity:.9}
+
+/* resolved (rest) — the spotlight lifts, the WHOLE spine reads fully lit */
+.rv-spinewrap.resolved .rv-snode .rv-sdot{opacity:1; background:var(--steel-soft); width:8px; height:8px; margin:-4px 0 0 -4px; box-shadow:0 0 8px 1px rgba(78,104,119,.45)}
+.rv-spinewrap.resolved .rv-snode .rv-shalo{opacity:.24}
+.rv-spinewrap.resolved .rv-snode .rv-slabel{color:#e4eaef; opacity:.96; transform:none}
+.rv-spinewrap.resolved .rv-snode .rv-sval{color:#a6b1bb; opacity:.88}
+.rv-spinewrap.resolved .rv-snode .rv-sprov{opacity:.42}
+
+.rv-sground{margin-top:12px}
+
+@media(prefers-reduced-motion:reduce){
+  .rv-sdot,.rv-shalo,.rv-slabel,.rv-sval,.rv-sprov{transition:none!important}
 }
 
 /* ── REVEAL THEATER (Ignition port, host ruling 2026-07-27: "magic reveal…
