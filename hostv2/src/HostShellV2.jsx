@@ -72,6 +72,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
+import { lodgingIntel } from '@app/lib/lodgingIntel';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -2762,6 +2763,8 @@ export default function HostShellV2() {
   };
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
+  // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
+  const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '' });
   useEffect(() => {
     if (!lodgeSheetOpen) { setLodgeForm(null); return; }
     const lo = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
@@ -8683,6 +8686,70 @@ export default function HostShellV2() {
               const focusDeadline = sheet.focus === 'deadline';
               return (
                 <>
+                  {/* ── THE RENTAL SHORTLIST (host directive 2026-07-28) ──
+                      lodgingIntel renders host-typed listing facts: honest math,
+                      the pick, the group-share draft. Never scraped; the listing
+                      link is the truth and opens externally. */}
+                  {(() => {
+                    let li = null; try { li = lodgingIntel(event); } catch { li = null; }
+                    if (!li) return null;
+                    const write = (opts, msg) => patchEvent({ lodgingOptions: opts }, msg);
+                    const rf = rentalForm;
+                    const canAdd = rf.url.trim() || rf.label.trim();
+                    const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+                    return (
+                      <div style={{ marginBottom: 'var(--sp-4)' }}>
+                        <div className="shelf-label">The rental shortlist</div>
+                        {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing — the group sees them, you make the call.</p>}
+                        {li.options.map((o) => (
+                          <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                            <span className="f-main" style={{ minWidth: 0 }}>
+                              <span className="f-name">{o.label}
+                                {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
+                                {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
+                              </span>
+                              {(o.checks || []).map((c) => (
+                                <span key={c.key} className="v-meta" style={{ display: 'block', color: c.ok === false ? 'var(--warn)' : undefined }}>{c.text}</span>
+                              ))}
+                              {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)' }}>Open the listing ↗</a> : null}
+                            </span>
+                            {o.status !== 'chosen'
+                              ? <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: x.id === o.id ? 'chosen' : 'option' })), o.label + ' is the pick — the plan reads it now.')}>Make it the pick</button>
+                              : <button className="mini" onClick={() => write(li.options.map((x) => ({ ...x, status: 'option' })), 'Back to comparing.')}>Unpick</button>}
+                            <button className="mini" onClick={() => write(li.options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
+                          </div>
+                        ))}
+                        <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                          <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
+                          <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
+                            <input className="field" style={{ ...fldR, flex: 2 }} placeholder="Call it (“Lakefront A-frame”)" value={rf.label} onChange={(e) => setRentalForm({ ...rf, label: e.target.value })} aria-label="Rental name" />
+                            <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Sleeps" inputMode="numeric" value={rf.sleeps} onChange={(e) => setRentalForm({ ...rf, sleeps: e.target.value })} aria-label="Sleeps how many" />
+                            <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Total $" inputMode="numeric" value={rf.total} onChange={(e) => setRentalForm({ ...rf, total: e.target.value })} aria-label="Listing total price" />
+                          </div>
+                          <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
+                            onClick={() => {
+                              const next = (Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).concat([{
+                                id: 'lodge-' + Math.random().toString(36).slice(2, 8),
+                                label: rf.label.trim(), url: rf.url.trim(),
+                                sleeps: rf.sleeps.trim() ? Number(rf.sleeps) : undefined,
+                                totalPrice: rf.total.trim() ? Number(rf.total) : undefined,
+                                status: 'option',
+                              }]);
+                              setRentalForm({ url: '', label: '', sleeps: '', total: '' });
+                              write(next, 'On the shortlist — the numbers are what the listing says.');
+                            }}>Add to the shortlist</button>
+                          {li.options.length > 0 && (
+                            <button className="cta" onClick={() => { try { openDraft(li.share.subject, li.share.body); } catch { toast('Couldn’t draft it.'); } }}>
+                              Share the options with the group
+                            </button>
+                          )}
+                        </div>
+                        <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
+                          Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
+                        </p>
+                      </div>
+                    );
+                  })()}
                   {/* Hero copy (host request 2026-07-11): the booked count is the
                       star in roster mode; the stay's own state otherwise. All
                       figures from lib/travelPlan — the roster summary line below
