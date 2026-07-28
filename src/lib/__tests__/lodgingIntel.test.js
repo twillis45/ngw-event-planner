@@ -61,6 +61,13 @@ describe('lodging intelligence', () => {
     expect(roles[2].why).toMatch(/photograph/i);
   });
 
+  test('photoUrl rides only as a pasted https link — never anything else', () => {
+    const withPhoto = lodgingIntel({ ...EV, lodgingOptions: [{ ...EV.lodgingOptions[0], photoUrl: 'https://a0.muscache.com/im/pictures/x.jpg' }] });
+    expect(withPhoto.options[0].photoUrl).toMatch(/^https:\/\//);
+    const bad = lodgingIntel({ ...EV, lodgingOptions: [{ ...EV.lodgingOptions[0], photoUrl: 'javascript:alert(1)' }] });
+    expect(bad.options[0].photoUrl).toBe('');
+  });
+
   test('chosen surfaces; empty shortlist stays honest', () => {
     const withChoice = lodgingIntel({ ...EV, lodgingOptions: [{ ...EV.lodgingOptions[0], status: 'chosen' }] });
     expect(withChoice.chosen && withChoice.chosen.id).toBe('a');

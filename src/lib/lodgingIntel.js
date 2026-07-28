@@ -62,6 +62,10 @@ export function normalizeLodgingOption(raw, i = 0) {
     totalPrice: num(o.totalPrice),
     cancellationTier: String(o.cancellationTier || '').toLowerCase().trim(),
     notes: String(o.notes || '').trim(),
+    // The listing photo, HOST-PASTED (copy image address on the listing) —
+    // never fetched from the listing page; https-only so a stray string
+    // can't become a request.
+    photoUrl: /^https:\/\//i.test(String(o.photoUrl || '').trim()) ? String(o.photoUrl).trim() : '',
     status: o.status === 'chosen' ? 'chosen' : 'option',
   };
 }
