@@ -1821,6 +1821,9 @@ export default function HostShellV2() {
   const checklistActionFor = (task, meta = {}) => {
     const hit = (() => { try { return checklistRouteFor(task, meta, event); } catch { return null; } })();
     if (!hit) return null;
+    // External grounded destinations (the CVB search link): a real new-tab
+    // open, glyph-earning navigation — never a toast pretending to be one.
+    if (hit.href) return { label: hit.label, go: () => { try { window.open(hit.href, '_blank', 'noopener'); } catch { toast('Couldn’t open the link.'); } } };
     return { label: hit.label, go: () => { if (!routeSheet(hit.route)) toast(hit.label); } };
   };
   // Split a run-on step into a bold lead action + the detail that follows the

@@ -40,6 +40,11 @@ describe('every checklist CTA route resolves', () => {
           let hit = null;
           try { hit = checklistRouteFor(task, meta, ev); } catch (e) { dead.push(`${type} · "${String(task).slice(0, 50)}" THREW: ${e.message}`); continue; }
           if (!hit) continue; // no CTA is an honest choice (real-world-only work)
+          if (hit.href) {
+            // External destinations (the CVB search link) must be real https URLs.
+            if (!/^https:\/\//.test(hit.href)) dead.push(`${type} · "${String(task).slice(0, 50)}" bad href`);
+            continue;
+          }
           if (!resolveRoute(hit.route)) {
             dead.push(`${type} · "${String(task).slice(0, 50)}" → ${JSON.stringify(hit.route)} resolves NULL`);
           }

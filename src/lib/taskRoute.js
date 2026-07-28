@@ -6,6 +6,7 @@
 // exact defect, alongside its keyword-missed rows getting nothing at all).
 
 import { isVendorBooked } from './workstreams';
+import { venueFor } from './venueFor';
 
 // The first vendor row still needing the host — the row-level rule the
 // Vendors deep-link doctrine requires (not the sheet top).
@@ -65,6 +66,22 @@ export function checklistRouteFor(task, meta = {}, event = null) {
     return { label: 'Open the list', route: { tab: 'Planning', focusField: 'food-plan' } };
   if (/\btribute\b|\bspeeches?\b|\bslideshow\b|\bmontage\b|\bopen mic\b|\beulog|line\b.{0,24}\bspeakers?\b/.test(t))
     return { label: 'Plan the tribute', route: { tab: 'Decisions', decisionId: 'tribute' } };
+  // GROUNDED DESTINATIONS (host ask 2026-07-28: every row lands somewhere real).
+  // The CVB task's destination is EXTERNAL by design (spec 8c1a72a7: generic
+  // cities get the search deep-link, built from the EVENT's own town — the
+  // constitution accessor, never a raw field). Arrivals/ground rows land on
+  // their own sheets via the resolver's air/ground vocabulary.
+  if (/visitors bureau|convention .{0,3}visitors|\bcvb\b/i.test(t)) {
+    const vf = venueFor(event || {});
+    const q = [vf.city, vf.state, 'convention visitors bureau'].filter(Boolean).join(' ');
+    return { label: 'Find the visitors bureau', href: 'https://www.google.com/search?q=' + encodeURIComponent(q) };
+  }
+  if (/arrivals?\s*\/?\s*departures|arrivals grid|flying in when/i.test(t))
+    return { label: 'Open arrivals', route: { focusField: 'air' } };
+  if (/ground[- ]transport|shuttle|rideshare coverage|self-drive/i.test(t))
+    return { label: 'Open rides', route: { focusField: 'ground' } };
+  if (/chase non-?responders|lock the count/i.test(t))
+    return { label: 'Open guests', route: { tab: 'Guests', focusField: 'guests-entry' } };
   if (/\b(dj|playlist|band|speaker|photographer|caterer|book the|rent(al)?|hire)\b/.test(t))
     return { label: 'Line them up', route: firstUndoneVendorRoute(event) };
   if (/\b(forecast|weather|rain plan|shade\/rain)\b/.test(t))
