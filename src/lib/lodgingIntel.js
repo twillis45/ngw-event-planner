@@ -30,6 +30,7 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
+import { isAllowedMedia } from './lodgingBookmarklet';
 
 // URL host → platform id. Anything else is 'other' — named honestly, never
 // upgraded to a platform we have no policy grounding for.
@@ -447,6 +448,10 @@ function tokenStream(html) {
       if (child.nodeType === 1) {
         const href = child.getAttribute && child.getAttribute('href');
         if (child.tagName === 'A' && href) toks.push({ link: href });
+        // The card's thumbnail rides in the same pasted HTML as its words.
+        if (child.tagName === 'IMG' && child.getAttribute) {
+          toks.push({ img: child.getAttribute('src') || '' });
+        }
         walk(child);
       } else if (child.nodeType === 3) {
         const t = String(child.nodeValue || '').replace(/\s+/g, ' ').trim();
@@ -491,6 +496,7 @@ export function extractListingCandidates(payload) {
 
   const toks = tokenStream(html);
   const byUrl = new Map();
+  const imgByUrl = new Map();
   let current = '';
   for (const t of toks) {
     if (t.link !== undefined) {
@@ -498,7 +504,10 @@ export function extractListingCandidates(payload) {
       if (u) { current = u; if (!byUrl.has(u)) byUrl.set(u, []); }
       continue;
     }
-    if (current && t.text) byUrl.get(current).push(t.text);
+    if (!current) continue;
+    // FIRST image per card wins — later ones are carousel frames or badges.
+    if (t.img !== undefined) { if (!imgByUrl.has(current) && t.img) imgByUrl.set(current, t.img); continue; }
+    if (t.text) byUrl.get(current).push(t.text);
   }
 
   // A plain-text paste (or a page with no card markup) still yields URLs — say so.
@@ -513,7 +522,8 @@ export function extractListingCandidates(payload) {
     };
   }
 
-  const candidates = candidatesFromGroups([...byUrl].map(([url, lines]) => ({ url, lines })));
+  const candidates = candidatesFromGroups(
+    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })));
   return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
 }
 
@@ -530,7 +540,7 @@ export function extractListingCandidates(payload) {
  */
 export function candidatesFromGroups(groups) {
   const candidates = [];
-  for (const { url, lines: raw } of (Array.isArray(groups) ? groups : [])) {
+  for (const { url, lines: raw, img } of (Array.isArray(groups) ? groups : [])) {
     if (!listingUrl(url)) continue;
     // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
     const lines = [];
@@ -562,6 +572,9 @@ export function candidatesFromGroups(groups) {
       name,
       kind,
       place,
+      // Gated on BOTH paths (paste and bookmarklet) by the one media allowlist —
+      // the paste path reads arbitrary HTML too, so it needs the same guard.
+      photo: isAllowedMedia(img) ? String(img).trim() : '',
       bedrooms: numFrom(lines, /(\d+)\s*bedrooms?/i),
       beds: numFrom(lines, /(\d+)\s*beds?\b/i),
       baths: numFrom(lines, /(\d+(?:\.\d)?)\s*baths?\b/i),

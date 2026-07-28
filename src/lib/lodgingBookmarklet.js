@@ -27,6 +27,35 @@
 /** Hosts whose result pages this may read. Same list the server unfurl allows. */
 export const BOOKMARKLET_HOSTS = ['airbnb.', 'vrbo.com', 'booking.com'];
 
+// ── WHERE A CARD'S PHOTO IS ALLOWED TO COME FROM ────────────────────────────
+// Host 2026-07-28: "why don't those 18 findings have images". Because the
+// collector only took text — an omission, not a decision. The card's thumbnail
+// is right there in the page the host is looking at, and it is the SAME picture
+// they are judging the house by.
+//
+// It is still a URL arriving in a fragment, and the app will put it in an <img
+// src>, which makes it a request the host's browser fires at whatever host it
+// names. So it is allowlisted exactly like the listing URLs are. These four were
+// read off live pages on 2026-07-28 (muscache = Airbnb; media.vrbo /
+// travel-assets = Vrbo) — the same pages also served maps.googleapis.com and
+// cdn.cookielaw.org, which is precisely what an allowlist is for.
+//
+// Booking.com's CDN is deliberately ABSENT: unverified. A Booking card will
+// simply arrive without a photo, and the host can paste one — the same rule the
+// search filters follow (a filter we cannot prove is a filter we do not send).
+export const MEDIA_HOSTS = ['muscache.com', 'media.vrbo.com', 'travel-assets.com'];
+
+const MAX_IMG = 500;
+
+/** True when a URL is an https image on a platform media host we verified. */
+export function isAllowedMedia(url) {
+  const u = String(url || '').trim();
+  if (!/^https:\/\//i.test(u) || u.length > MAX_IMG) return false;
+  let host = '';
+  try { host = new URL(u).hostname.toLowerCase(); } catch (_e) { return false; }
+  return MEDIA_HOSTS.some((h) => host === h || host.endsWith('.' + h));
+}
+
 // Caps. The payload rides in a URL fragment, and a fragment is untrusted input
 // even when we wrote the code that produced it — a host could click the
 // bookmarklet on any page, and a crafted page could stuff it.
@@ -58,7 +87,10 @@ for(var i=0;i<L.length;i++){
   var p=L[i],b='';
   for(var j=0;j<6&&p;j++){p=p.parentElement;if(!p)break;var t=(p.innerText||'');if(t.length>b.length)b=t;if(b.length>60)break;}
   var lines=b.split('\\n').map(function(x){return x.replace(/\\s+/g,' ').trim();}).filter(Boolean).slice(0,${MAX_LINES});
-  O.push({url:u.slice(0,${MAX_URL}),lines:lines});
+  var q=L[i],im=null;
+  for(var m=0;m<6&&q&&!im;m++){q=q.parentElement;if(q&&q.querySelector)im=q.querySelector('img');}
+  var isrc=im?(im.currentSrc||im.src||''):'';
+  O.push({url:u.slice(0,${MAX_URL}),lines:lines,img:(/^https:/.test(isrc)?isrc.slice(0,${MAX_IMG}):'')});
   if(O.length>=${MAX_CANDIDATES})break;
 }
 if(!O.length){alert('No rental listings found on this page. Open a search results page or a listing, then click this again.');return;}
@@ -99,7 +131,10 @@ export function parseBookmarkletPayload(raw) {
       .slice(0, MAX_LINES)
       .map((l) => String(l == null ? '' : l).replace(/\s+/g, ' ').trim().slice(0, MAX_LINE))
       .filter(Boolean);
-    out.push({ url, lines });
+    // A photo is optional and never load-bearing: an option with no usable
+    // image is a row without a picture, not a dropped listing.
+    const img = isAllowedMedia(row.img) ? String(row.img).trim() : '';
+    out.push({ url, lines, img });
   }
   return out;
 }

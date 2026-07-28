@@ -74,7 +74,7 @@ import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
-import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload } from '@app/lib/lodgingBookmarklet';
+import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2804,6 +2804,8 @@ export default function HostShellV2() {
   // staged for the host to confirm. NEVER written straight to the event: one of
   // the two sources is a URL fragment, which is untrusted input by definition.
   const [lodgeStaged, setLodgeStaged] = useState(null);
+  // Typing must not stage on every keystroke — see the paste box below.
+  const lodgePasteTimer = useRef(null);
 
   // ── THE BOOKMARKLET LANDS HERE (#6, host 2026-07-28) ──────────────────────
   // "Send to Event Boss" opens the app with the listings it collected in the URL
@@ -9091,14 +9093,52 @@ export default function HostShellV2() {
                             let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
                             try { ranked = rankCandidates(fresh, event, { budget }); } catch (_e) { /* unranked is still useful */ }
                             setLodgeStaged({ ...ranked, source: out.source, linksOnly: out.linksOnly,
-                              dupes: out.candidates.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+                              dupes: out.candidates.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)),
+                              filling: 0 });
+                            fillFromListings(ranked.ranked);
                           };
+                          // ── THE PHONE PATH (host 2026-07-28: "Grandmother is supposed to do
+                          //    that on her phone?") ────────────────────────────────────────
+                          // On a phone there is no bookmarks bar and no ⌘A — what a host
+                          // actually does is tap Share → Copy Link in the Airbnb app and paste
+                          // ONE link. That paste carries a URL and nothing else, so the rows
+                          // would sit there nameless and pictureless while the desktop paste
+                          // got everything. The server read (now deployed) closes that gap: it
+                          // fills the name, the beds, the baths and the sharing photo from the
+                          // listing's own published metadata.
+                          //
+                          // Capped and sequential on purpose — this fires off a paste, not a
+                          // button, so it must never look like a burst of traffic. Anything
+                          // that fails just stays as it was; a row is never lost to a failed
+                          // read, and Vrbo (which declines) simply keeps the link it had.
+                          async function fillFromListings(list) {
+                            if (!isUnfurlConfigured()) return;
+                            const need = (list || []).filter((c) => !c.name || !c.photo).slice(0, 8);
+                            if (!need.length) return;
+                            for (const c of need) {
+                              let r = null;
+                              try { r = await unfurlListing(c.url); } catch (_e) { r = null; }
+                              if (!r || !r.ok) continue;
+                              const f = r.facts || {};
+                              setLodgeStaged((st) => (st ? {
+                                ...st,
+                                ranked: st.ranked.map((x) => (x.url !== c.url ? x : {
+                                  ...x,
+                                  name: x.name || String(r.title || '').slice(0, 70),
+                                  photo: x.photo || (isAllowedMedia(r.image) ? r.image : ''),
+                                  beds: x.beds != null ? x.beds : (f.beds != null ? f.beds : null),
+                                  bedrooms: x.bedrooms != null ? x.bedrooms : (f.bedrooms != null ? f.bedrooms : null),
+                                  baths: x.baths != null ? x.baths : (f.baths != null ? f.baths : null),
+                                })),
+                              } : st));
+                            }
+                          }
                           return (
                             <div style={{ margin: '0 0 14px' }}>
                               {!staged && (
                                 <>
                                   <textarea className="field" rows={2} style={{ width: '100%', resize: 'vertical' }}
-                                    placeholder="Paste the whole results page here — I’ll pull out every listing"
+                                    placeholder="Paste a listing link — or a whole results page"
                                     aria-label="Paste a search results page"
                                     onPaste={(e) => {
                                       // THE HTML FLAVOUR IS THE ONE THAT CARRIES MEANING.
@@ -9116,9 +9156,20 @@ export default function HostShellV2() {
                                       e.preventDefault();
                                       readPage(text);
                                     }}
-                                    onChange={(e) => { const v = e.target.value; if (v.length > 40) readPage(v); }} />
+                                    /* DON'T STAGE MID-KEYSTROKE (found by driving it 2026-07-28).
+                                       Firing on every change past 40 characters read a HALF-TYPED
+                                       url — the box swapped itself for the results list while the
+                                       rest of the link was still arriving, and the row showed
+                                       rooms/132529631954 instead of the real id. A paste arrives
+                                       complete and is handled above; typing waits for a pause. */
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      clearTimeout(lodgePasteTimer.current);
+                                      if (v.trim().length < 20) return;
+                                      lodgePasteTimer.current = setTimeout(() => readPage(v), 800);
+                                    }} />
                                   <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                    Nothing is sent anywhere — the page is read right here on your phone.
+                                    One link or twenty — on your phone, tap Share → Copy Link and paste it here. I’ll look up the name, the beds and a photo.
                                   </p>
                                 </>
                               )}
@@ -9133,7 +9184,11 @@ export default function HostShellV2() {
                                   </div>
                                   {staged.linksOnly && (
                                     <p className="grounding" style={{ margin: '0 0 8px' }}>
-                                      That paste only carried links — no names or prices came with it. Copy the page itself (⌘A then ⌘C) if you want the details too.
+                                      {/* The old copy told a phone host to press ⌘A — advice for a
+                                          keyboard they don't have, on the one path that exists FOR
+                                          the phone. It also predates the listing read, which now
+                                          fills these in. */}
+                                      A link on its own carries no name or price, so I’m looking each one up now.
                                     </p>
                                   )}
                                   <ul className="req-list">
@@ -9149,6 +9204,15 @@ export default function HostShellV2() {
                                             style={staged.pick.has(c.url) ? undefined : { color: 'var(--faint)' }}>
                                             {staged.pick.has(c.url) ? '✓' : '○'}
                                           </span>
+                                          {/* The card's OWN thumbnail — the picture the host was
+                                              already judging the house by on the results page. It
+                                              drops out silently if it fails to load, so a dead
+                                              image never makes a real listing look broken. */}
+                                          {c.photo && (
+                                            <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer"
+                                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                              style={{ width: 66, height: 44, objectFit: 'cover', flex: '0 0 auto', display: 'block' }} />
+                                          )}
                                           <span className="req-body">
                                             <span className="req-label">{c.name || c.url.replace(/^https:\/\/(www\.)?/, '')}</span>
                                             <span className="req-why">
@@ -9182,6 +9246,7 @@ export default function HostShellV2() {
                                           label: c.name || '',
                                           beds: c.beds != null ? c.beds : undefined,
                                           totalPrice: c.priceShown != null ? c.priceShown : undefined,
+                                          photoUrl: c.photo || undefined,
                                           notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
                                             c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
                                           status: 'option',
@@ -9201,12 +9266,21 @@ export default function HostShellV2() {
                                   a collector, not a parser (see lib/lodgingBookmarklet): it
                                   contacts nothing, stores nothing, and the payload rides in a
                                   URL fragment, which browsers never send to a server. */}
+                              {/* SAY WHO THIS IS FOR (host 2026-07-28: "Grandmother is supposed
+                                  to do that on her phone?"). Fair hit. A bookmarks bar does not
+                                  exist on a phone, and installing a bookmarklet on mobile means
+                                  saving a bookmark, editing it, and pasting a javascript: URL
+                                  into it — which no host is doing. This is a COMPUTER
+                                  convenience, and the label now says so instead of quietly
+                                  wasting a phone host's time. The phone path is the paste box
+                                  above, which fills itself from the listing. */}
                               <details style={{ marginTop: 10 }}>
                                 <summary className="grounding" style={{ cursor: 'pointer', listStyle: 'none' }}>
-                                  Skip the pasting altogether ▾
+                                  On a computer? Skip the pasting altogether ▾
                                 </summary>
                                 <p className="grounding" style={{ margin: '6px 0' }}>
-                                  Drag this to your bookmarks bar. Then, on any Airbnb or Vrbo results page, click it — every listing on the page comes straight here.
+                                  This one needs a bookmarks bar, so it’s a laptop trick — on a phone, paste the link above instead and I’ll fill in the rest.
+                                  Drag this to your bookmarks bar, then click it on any Airbnb or Vrbo page and every listing comes straight here.
                                 </p>
                                 {/* REACT WILL NOT LET A javascript: URL THROUGH href (found by
                                     driving it, 2026-07-28 — the host asked to test #6 in Chrome).

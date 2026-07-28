@@ -279,3 +279,54 @@ describe('the bookmarklet reaches the DOM intact', () => {
     expect(got).toMatch(/React has blocked|void 0/);
   });
 });
+
+// ─── PHOTOS (host 2026-07-28: "why don't those 18 findings have images") ─────
+describe('a card brings its own picture, from a host we verified', () => {
+  const { isAllowedMedia, parseBookmarkletPayload, buildBookmarklet } = require('../lodgingBookmarklet');
+
+  test('only https images on verified platform media hosts are allowed', () => {
+    // Read off live pages 2026-07-28: muscache = Airbnb, media.vrbo /
+    // travel-assets = Vrbo. The SAME pages also served maps.googleapis.com and
+    // cdn.cookielaw.org — which is exactly what the allowlist is for.
+    expect(isAllowedMedia('https://a0.muscache.com/im/pictures/x.jpg')).toBe(true);
+    expect(isAllowedMedia('https://media.vrbo.com/lodging/x.jpg')).toBe(true);
+    expect(isAllowedMedia('https://a.travel-assets.com/x.jpg')).toBe(true);
+    expect(isAllowedMedia('https://maps.googleapis.com/x.png')).toBe(false);
+    expect(isAllowedMedia('https://cdn.cookielaw.org/x.png')).toBe(false);
+    expect(isAllowedMedia('http://a0.muscache.com/x.jpg')).toBe(false);   // not https
+    expect(isAllowedMedia('https://evil.example/muscache.com/x.jpg')).toBe(false);
+    expect(isAllowedMedia('')).toBe(false);
+  });
+
+  test('the collector takes the card thumbnail, the receiver vets it', () => {
+    const src = decodeURIComponent(buildBookmarklet('https://x.test/').slice('javascript:'.length));
+    expect(src).toMatch(/querySelector\('img'\)/);
+    expect(src).toMatch(/currentSrc\|\|im\.src/);
+
+    const good = 'https://a0.muscache.com/im/pictures/ok.jpg';
+    const out = parseBookmarkletPayload(JSON.stringify([
+      { url: 'https://www.airbnb.com/rooms/1', lines: ['Home in X', 'Nice place'], img: good },
+      { url: 'https://www.airbnb.com/rooms/2', lines: ['Home in X', 'Other place'], img: 'https://tracker.example/pixel.gif' },
+    ]));
+    expect(out[0].img).toBe(good);
+    // An off-allowlist image is dropped, but the LISTING survives — a photo is
+    // never load-bearing.
+    expect(out[1].img).toBe('');
+    expect(out[1].url).toBe('https://www.airbnb.com/rooms/2');
+  });
+
+  test('the paste path pulls the photo out of the same HTML as the words', () => {
+    const html = '<div><a href="/rooms/9"><img src="https://a0.muscache.com/im/pictures/a.jpg"></a>'
+      + '<div>Cabin in McHenry</div><div>Nice Cabin</div><span>4 beds</span></div>';
+    const { candidates } = extractListingCandidates(html);
+    expect(candidates[0].photo).toBe('https://a0.muscache.com/im/pictures/a.jpg');
+  });
+
+  test('an off-allowlist image in pasted HTML is dropped, not rendered', () => {
+    const html = '<div><a href="/rooms/9"><img src="https://tracker.example/p.gif"></a>'
+      + '<div>Cabin in McHenry</div><div>Nice Cabin</div><span>4 beds</span></div>';
+    const { candidates } = extractListingCandidates(html);
+    expect(candidates[0].photo).toBe('');
+    expect(candidates[0].name).toBe('Nice Cabin');
+  });
+});
