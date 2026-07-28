@@ -1438,7 +1438,7 @@ export default function HostShellV2() {
       if (travel.relevant && travel.lodging && travel.lodging.deadline && (travel.lodging.notBookedCount || 0) > 0) {
         let dd = null; try { dd = daysUntil(travel.lodging.deadline); } catch { dd = null; }
         out.push({
-          label: 'Group rate ends — ' + travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked a room yet',
+          label: 'Group rate ends — ' + travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet',
           due: travel.lodging.deadline, days: dd, kind: 'lodging',
         });
       }
@@ -7228,7 +7228,7 @@ export default function HostShellV2() {
                             ? dueSoon[0].label.toLowerCase() + ' in ' + dueSoon[0].daysLeft + (dueSoon[0].daysLeft === 1 ? ' day' : ' days')
                             : (travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
                               ? (travel.lodging.notBookedCount > 0
-                                  ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
+                                  ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet'
                                   : 'everyone has a room lined up')
                               : (travel.lodging.hotelName || 'no place picked yet')),
                           // WAVE-6 (one number per row): raises here are aggregates —
@@ -8935,8 +8935,17 @@ export default function HostShellV2() {
                           const toggle = (id) => patchEvent(
                             { lodgingMustHaves: on.includes(id) ? on.filter((x) => x !== id) : [...on, id] }, null);
                           const chosen = LODGING_MUST_HAVES.filter((m) => on.includes(m.id));
+                          const rest = LODGING_MUST_HAVES.filter((m) => !on.includes(m.id));
+                          // The engine's reason for each item, read whether or not the host
+                          // has since edited the list — a requirement doesn't stop having a
+                          // reason because the host added one of their own next to it.
+                          const whyFor = {};
+                          try { for (const s of suggestedMustHaves(event)) whyFor[s.id] = s.why; } catch (_e) { /* no reasons, rows still render */ }
+                          // Naming two of seven ("Table for everyone, Washer & dryer +5") is
+                          // an arbitrary pair that reads like the list only half-loaded. The
+                          // count is the honest one-line answer.
                           const summary = chosen.length
-                            ? chosen.slice(0, 2).map((m) => m.label).join(', ') + (chosen.length > 2 ? ` +${chosen.length - 2}` : '')
+                            ? `${chosen.length} thing${chosen.length === 1 ? '' : 's'}`
                             : 'anything';
                           return (
                             <details className="lodge-req" style={{ margin: '2px 0 10px' }}>
@@ -8954,24 +8963,53 @@ export default function HostShellV2() {
                                   {summary} ▾
                                 </span>
                               </summary>
-                              {suggestions.length > 0 && (
-                                <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  {suggestions.map((sg) => (
-                                    <p key={sg.id} className="grounding" style={{ margin: 0 }}>
-                                      <strong style={{ color: 'var(--ink-soft)' }}>{sg.label}</strong> — {sg.why}
-                                    </p>
-                                  ))}
-                                  <p className="grounding" style={{ margin: 0, color: 'var(--muted)' }}>
-                                    Yours to change — tap any of them off. Sources under You &amp; settings → Grounding.
-                                  </p>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 8 }}>
-                                {LODGING_MUST_HAVES.map((m) => (
-                                  <button key={m.id} className="chip" aria-pressed={on.includes(m.id)}
-                                    onClick={() => toggle(m.id)}>{m.label}</button>
+                              {/* ONE LIST, TWO DENSITIES (host 2026-07-28: "clean up the pills.
+                                  come up with something else here").
+                                  What was here said everything TWICE: seven reasons as prose
+                                  paragraphs, then all fourteen requirements again as identical
+                                  chips — and because the on-state was only a background tint on
+                                  a pill in a fourteen-pill blob, you could not see at a glance
+                                  which seven the engine had actually chosen.
+                                  Now a requirement appears exactly ONCE, and where it appears
+                                  IS its state. Chosen ones are rows carrying their own reason
+                                  (tap to drop). The rest sit below as small "+" chips (tap to
+                                  add). The reason lives with the requirement instead of in a
+                                  separate wall of prose you have to cross-reference. */}
+                              <ul className="req-list">
+                                {chosen.map((m) => (
+                                  <li key={m.id}>
+                                    <button type="button" className="req-row" aria-pressed="true"
+                                      onClick={() => toggle(m.id)}
+                                      aria-label={`${m.label} — asked for. Tap to drop it.`}>
+                                      <span className="req-tick" aria-hidden="true">✓</span>
+                                      <span className="req-body">
+                                        <span className="req-label">{m.label}</span>
+                                        {whyFor[m.id] && <span className="req-why">{whyFor[m.id]}</span>}
+                                      </span>
+                                    </button>
+                                  </li>
                                 ))}
-                              </div>
+                              </ul>
+                              {chosen.length === 0 && (
+                                <p className="grounding" style={{ margin: '8px 0 0' }}>
+                                  Nothing required — every place will pass. Add what matters below.
+                                </p>
+                              )}
+                              {rest.length > 0 && (
+                                <>
+                                  <div className="of" style={{ margin: '12px 0 6px' }}>Add if you want it</div>
+                                  <div className="chips">
+                                    {rest.map((m) => (
+                                      <button key={m.id} type="button" className="chip" aria-pressed="false"
+                                        onClick={() => toggle(m.id)}
+                                        aria-label={`Add ${m.label} to what the house needs`}>+ {m.label}</button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                              <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--muted)' }}>
+                                Yours to change. Sources under You &amp; settings → Grounding.
+                              </p>
                             </details>
                           );
                         })()}
@@ -9270,12 +9308,19 @@ export default function HostShellV2() {
                       figures from lib/travelPlan — the roster summary line below
                       was PROMOTED here, not duplicated. */}
                   {travel.rosterMode && lg.roster.length > 0 ? (
+                    /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
+                       booked and confirmed"). notBookedCount counts ONLY 'not_started'
+                       — its own comment says "booked here means booked OR confirmation
+                       in hand" — so this headline labelled a two-state number with a
+                       one-state word. A host who had already cycled someone to
+                       "Confirmation in hand" saw them tallied under "booked", which
+                       reads as a demotion. The arithmetic was right; the noun wasn't. */
                     <SheetHero
                       eyebrow="Rooms lined up"
-                      star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} booked`}
+                      star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} have a room`}
                       tone={lg.notBookedCount === 0 ? 'ok' : undefined}
                       sub={lg.notBookedCount > 0
-                        ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'hasn’t' : 'haven’t'} booked yet — tap a name each time you hear where they stand.`
+                        ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'has no room' : 'have no room'} yet — tap a name each time you hear where they stand.`
                         : 'Everyone has a room lined up — tap a name if anything changes.'}
                     />
                   ) : (

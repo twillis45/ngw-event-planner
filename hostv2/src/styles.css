@@ -2811,3 +2811,26 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   100%{ background:var(--faint); box-shadow:none; }
 }
 @media (prefers-reduced-motion: reduce){ .efold-grab{ animation:none } }
+
+/* ── The house's requirements — one list, two densities ──────────────────────
+   Host 2026-07-28: "clean up the pills. come up with something else here."
+   A chosen requirement is a ROW that carries its own reason; an unchosen one is
+   a small "+" chip below. Where an item sits IS its state, so nothing needs a
+   selected-tint to be legible and nothing is said twice.
+   Restraint per UX_01: hairline separators, no boxes, no colour — the tick is
+   the only mark, and it is --ok because "this is required" is a settled state,
+   not a warning. */
+.req-list{ list-style:none; margin:8px 0 0; padding:0 }
+.req-list li + li{ border-top:1px solid var(--line) }
+.req-row{
+  width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left;
+  background:none; border:none; padding:9px 0; cursor:pointer; color:inherit;
+}
+.req-row:hover .req-label{ color:var(--ink) }
+.req-tick{ flex:0 0 auto; color:var(--ok); font-size:12px; line-height:1.5; font-weight:700 }
+.req-body{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+.req-label{ font-size:var(--t-row); font-weight:650; color:var(--ink-soft); transition:color var(--ms-press) var(--ease-out) }
+.req-why{ font-size:var(--t-row-sub); line-height:1.45; color:var(--muted) }
+/* Dropping one is a quiet, reversible act — the row dims rather than shouting. */
+.req-row:active{ opacity:.6 }
+@media (prefers-reduced-motion:reduce){ .req-row, .req-label{ transition:none } }

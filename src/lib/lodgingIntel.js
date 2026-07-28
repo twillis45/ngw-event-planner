@@ -397,6 +397,217 @@ export function extractListingMeta(payload) {
   return { url: /^https:\/\//i.test(url) ? url : '', title };
 }
 
+// ─── ONE PASTE, THE WHOLE SHORTLIST ─────────────────────────────────────────
+//
+// Host question 2026-07-28: "if you initially tested by creating a search on the
+// vrbo and airbnb platforms to create a list and used the list to find listings
+// that fit our criteria, why can't you do the same here? why does the host have
+// to pull a url?"
+//
+// Fair question, and the answer is about WHO does the searching. During testing
+// the searching was done by the host's own browser — their profile, their IP, a
+// page already open in front of them. For the app to do it, Render would have to
+// hit the search endpoint from a datacenter, which is (a) the harvesting the
+// never-build list names, and (b) mostly futile: Vrbo already refuses our
+// single-page read in production, and that is the easy case.
+//
+// So the app doesn't search. It makes the RETURN TRIP cost one action. The app
+// already builds the search with the host's own answers in it; this reads the
+// results page they copied back.
+//
+// WHAT A COPIED RESULTS PAGE ACTUALLY CONTAINS (measured against a live Airbnb
+// McHenry search, 2026-07-28 — not assumed):
+//   · the `/rooms/` anchors have EMPTY text, and a text/plain copy is mostly
+//     chrome ("Prices include all fees" ×11). Plain text CANNOT pair a name to a
+//     link, so the HTML flavour of the clipboard is the one that carries meaning.
+//   · linearised, each card reads:
+//       [link ×7] "Top guest favorite" "Cabin in McHenry" "Spacious 5BR Family
+//       Cabin" "5 bedrooms" "5 bedrooms" "," "·" "8 beds" "8 beds" "$1,997"
+//       "$1,668" "Show price breakdown" "for 2 nights"
+//     — the link repeats, accessibility text duplicates, and the card's own text
+//     FOLLOWS its link. Grouping by "most recent link seen" recovers each card.
+//
+// Nothing here fetches. It reads a document the host copied, exactly like
+// extractListingMeta does for a single page — this one just yields many.
+
+// Chrome the cards carry that is never a property name.
+const CARD_NOISE = /^(top guest favorite|guest favorite|superhost|rare find|show price breakdown|for \d+ nights?|book early to save|prices include all fees|add to wishlist|save this home|new|check availability|\d+ nights?|[,·|+]|)$/i;
+// "Cabin in McHenry" / "Home in Deep Creek Lake" — Airbnb's type line, not a name.
+const TYPE_LINE = /^(home|cabin|condo|cottage|villa|townhouse|apartment|guesthouse|guest suite|chalet|loft|bungalow|tiny home|camper|farm stay|houseboat|place|room|barn|treehouse|tent)\b.*\bin\b\s+(.+)$/i;
+
+/** Linearise HTML into an ordered stream of {link} / {text} tokens. */
+function tokenStream(html) {
+  const toks = [];
+  if (typeof DOMParser === 'undefined') return toks;
+  let doc;
+  try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (_e) { return toks; }
+  if (!doc || !doc.body) return toks;
+  const walk = (node) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 1) {
+        const href = child.getAttribute && child.getAttribute('href');
+        if (child.tagName === 'A' && href) toks.push({ link: href });
+        walk(child);
+      } else if (child.nodeType === 3) {
+        const t = String(child.nodeValue || '').replace(/\s+/g, ' ').trim();
+        if (t) toks.push({ text: t });
+      }
+    }
+  };
+  walk(doc.body);
+  return toks;
+}
+
+/** A listing page URL on a platform we model — absolute or site-relative. */
+function listingUrl(href) {
+  const h = String(href || '').trim();
+  const abs = /^https?:\/\//i.test(h) ? h
+    : h.startsWith('/rooms/') ? `https://www.airbnb.com${h}`
+      : '';
+  if (!abs) return '';
+  const clean = abs.split('?')[0].split('#')[0];
+  if (!/^https:\/\//i.test(clean)) return '';
+  return /(^|\.)airbnb\.[a-z.]+\/rooms\/\d/i.test(clean)
+    || /(^|\.)vrbo\.com\/\d/i.test(clean)
+    || /(^|\.)booking\.com\/hotel\//i.test(clean)
+    ? clean : '';
+}
+
+const numFrom = (lines, re) => {
+  for (const l of lines) { const m = l.match(re); if (m) return Number(m[1]); }
+  return null;
+};
+
+/**
+ * Read a copied SEARCH RESULTS page into shortlist candidates.
+ *
+ * @returns {{candidates: Array, source: string|null, linksOnly: boolean}}
+ *   `linksOnly` is true when all we could recover were URLs (a plain-text paste)
+ *   — the caller must say so rather than presenting nameless rows as a read.
+ */
+export function extractListingCandidates(payload) {
+  const html = String(payload == null ? '' : payload);
+  if (!html.trim()) return { candidates: [], source: null, linksOnly: false };
+
+  const toks = tokenStream(html);
+  const byUrl = new Map();
+  let current = '';
+  for (const t of toks) {
+    if (t.link !== undefined) {
+      const u = listingUrl(t.link);
+      if (u) { current = u; if (!byUrl.has(u)) byUrl.set(u, []); }
+      continue;
+    }
+    if (current && t.text) byUrl.get(current).push(t.text);
+  }
+
+  // A plain-text paste (or a page with no card markup) still yields URLs — say so.
+  if (!byUrl.size) {
+    const urls = (html.match(/https:\/\/[^\s"'<>)\]]+/gi) || [])
+      .map(listingUrl).filter(Boolean);
+    const uniq = [...new Set(urls)];
+    return {
+      candidates: uniq.map((url) => ({ url, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null })),
+      source: uniq.length ? platformOf(uniq[0]) : null,
+      linksOnly: uniq.length > 0,
+    };
+  }
+
+  const candidates = [];
+  for (const [url, raw] of byUrl) {
+    // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
+    const lines = [];
+    for (const l of raw) { if (!CARD_NOISE.test(l) && lines[lines.length - 1] !== l) lines.push(l); }
+
+    let kind = '', place = '';
+    const typeIdx = lines.findIndex((l) => TYPE_LINE.test(l));
+    if (typeIdx >= 0) {
+      const m = lines[typeIdx].match(TYPE_LINE);
+      kind = m[1]; place = m[2].trim();
+    }
+    // The NAME is the first substantial line after the type line that isn't a
+    // count or a price. Airbnb writes it there; Vrbo puts it first, so a card
+    // with no type line falls back to the first substantial line.
+    const isFact = (l) => /^\$|\d+\s*(bed|bedroom|bath|guest)/i.test(l);
+    const name = (lines.slice(typeIdx + 1).find((l) => l.length > 3 && !isFact(l))
+      || lines.find((l) => l.length > 3 && !isFact(l) && !TYPE_LINE.test(l))
+      || '').slice(0, 70);
+
+    // PRICE: cards show a strike-through original then the discounted figure
+    // ("$1,997 $1,668"). The LAST one is what the platform is actually asking.
+    // Named `priceShown`, never `total` — we did not see a checkout, and the
+    // page's own "prices include all fees" claim is theirs, not ours to repeat.
+    const money = lines.join(' ').match(/\$[\d,]+/g) || [];
+    const priceShown = money.length ? Number(money[money.length - 1].replace(/[$,]/g, '')) : null;
+
+    candidates.push({
+      url,
+      name,
+      kind,
+      place,
+      bedrooms: numFrom(lines, /(\d+)\s*bedrooms?/i),
+      beds: numFrom(lines, /(\d+)\s*beds?\b/i),
+      baths: numFrom(lines, /(\d+(?:\.\d)?)\s*baths?\b/i),
+      priceShown: Number.isFinite(priceShown) ? priceShown : null,
+    });
+  }
+
+  // A card with neither a name nor a single fact is markup we misread — drop it
+  // rather than offering the host a blank row.
+  const real = candidates.filter((c) => c.name || c.bedrooms || c.beds || c.priceShown);
+  return { candidates: real, source: real.length ? platformOf(real[0].url) : null, linksOnly: false };
+}
+
+function platformOf(url) {
+  if (/airbnb\./i.test(url)) return 'Airbnb';
+  if (/vrbo\./i.test(url)) return 'Vrbo';
+  if (/booking\./i.test(url)) return 'Booking.com';
+  return null;
+}
+
+/**
+ * Rank pasted candidates against what the event says the house needs.
+ *
+ * HONEST LIMITS, and they matter because this decides what the host looks at:
+ *   · a results card carries bedrooms, beds and a price — NOT amenities. So a
+ *     must-have like "hot tub" can only be judged from the NAME ("…Hot Tub!"),
+ *     and absence of the word is NOT absence of the feature. Unmatched
+ *     requirements are reported as `unknown`, never as failed.
+ *   · the only hard filters are ones the card can actually answer: real beds for
+ *     the party, and the budget the host set. Everything else informs the order.
+ */
+export function rankCandidates(candidates, event, opts) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const wants = mustHavesFor(event || {});
+  const guests = Number((event && (event.guestCount || event.guests)) || 0) || 0;
+  const budget = Number((opts && opts.budget) || 0) || 0;
+
+  const scored = list.map((c) => {
+    const hay = `${c.name || ''} ${c.kind || ''} ${c.place || ''}`;
+    const matched = wants.filter((w) => w.match && w.match.test(hay)).map((w) => w.label);
+    const unknown = wants.filter((w) => !(w.match && w.match.test(hay))).map((w) => w.label);
+
+    // REAL BEDS, not headline capacity — the researched guidance this engine
+    // already carries (book under stated capacity so nobody is on an air bed).
+    const bedsShort = guests > 0 && c.beds != null && c.beds < guests;
+    const overBudget = budget > 0 && c.priceShown != null && c.priceShown > budget;
+
+    return {
+      ...c,
+      matched,
+      unknown,
+      clears: !bedsShort && !overBudget,
+      why: bedsShort ? `${c.beds} beds for ${guests} — someone's on a sofa`
+        : overBudget ? `$${c.priceShown.toLocaleString()} is over the $${budget.toLocaleString()} you set`
+          : null,
+      score: matched.length * 10 + (c.beds || 0) - (overBudget ? 100 : 0) - (bedsShort ? 100 : 0),
+    };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return { ranked: scored, clearing: scored.filter((c) => c.clears), considered: scored.length };
+}
+
 /**
  * WHAT THIS HOUSE HAS TO HAVE (host directive 2026-07-28: "have the host input
  * other amenities or things that are requirements for the search").
