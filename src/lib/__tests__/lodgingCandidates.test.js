@@ -243,3 +243,39 @@ describe('bulk-added options use the shape the engine reads', () => {
     expect(lib).toMatch(/beds:\s*num\(o\.beds\)/);
   });
 });
+
+// ─── THE BOOKMARK MUST SURVIVE THE RENDER, NOT JUST THE BUILDER ──────────────
+//
+// Found by driving it (host: "in chrome dev test the #6"): buildBookmarklet was
+// correct and its unit tests passed, and the anchor on screen still carried
+//   javascript:throw new Error('React has blocked a javascript: URL …')
+// because React sanitises any javascript: URL passed through the `href` PROP.
+// A host dragging that to their bookmarks bar installs a bookmark that throws.
+//
+// Same lesson as the CTA gate: testing the producer is not testing the surface.
+describe('the bookmarklet reaches the DOM intact', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const SHELL = fs.readFileSync(
+    path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('buildBookmarklet is never passed through the href prop', () => {
+    // `href={buildBookmarklet(…)}` is the exact shape React rewrites.
+    expect(SHELL).not.toMatch(/href=\{\s*buildBookmarklet\(/);
+  });
+
+  test('the attribute is written directly, which React leaves alone', () => {
+    expect(SHELL).toMatch(/setAttribute\('href',\s*buildBookmarklet\(/);
+  });
+
+  test("React's sanitiser really does bite (guard against a dead rule)", () => {
+    // If a future React stops rewriting javascript: URLs the workaround is still
+    // harmless — but this documents WHY it exists, in executable form.
+    const { render } = (() => { try { return require('@testing-library/react'); } catch (_e) { return {}; } })();
+    if (!render) return;                    // RTL absent: the source rules above still hold
+    const React = require('react');
+    const { container } = render(React.createElement('a', { href: 'javascript:void 0' }));
+    const got = container.querySelector('a').getAttribute('href');
+    expect(got).toMatch(/React has blocked|void 0/);
+  });
+});

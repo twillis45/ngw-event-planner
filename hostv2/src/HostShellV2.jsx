@@ -9208,9 +9208,27 @@ export default function HostShellV2() {
                                 <p className="grounding" style={{ margin: '6px 0' }}>
                                   Drag this to your bookmarks bar. Then, on any Airbnb or Vrbo results page, click it — every listing on the page comes straight here.
                                 </p>
+                                {/* REACT WILL NOT LET A javascript: URL THROUGH href (found by
+                                    driving it, 2026-07-28 — the host asked to test #6 in Chrome).
+                                    Passing it as a JSX prop silently rewrites the whole thing to
+                                    `javascript:throw new Error('React has blocked a javascript:
+                                    URL as a security precaution.')`, so a bookmark dragged to the
+                                    bar would have THROWN instead of collecting. The unit test
+                                    never saw it: it exercised buildBookmarklet in isolation and
+                                    stopped short of the render.
+                                    A callback ref writes the attribute directly. React does not
+                                    manage attributes it was never handed as a prop, so it stays
+                                    put across re-renders — and no hook is needed, which matters
+                                    because this sits inside a render-time IIFE. */}
                                 {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
                                 <a className="mini" draggable="true"
-                                  href={buildBookmarklet(typeof window !== 'undefined' ? window.location.href.split('#')[0] : '')}
+                                  ref={(el) => {
+                                    if (!el) return;
+                                    try {
+                                      el.setAttribute('href', buildBookmarklet(
+                                        typeof window !== 'undefined' ? window.location.href.split('#')[0] : ''));
+                                    } catch (_e) { /* degrade to an inert drag target, never to a throw */ }
+                                  }}
                                   onClick={(e) => { e.preventDefault(); toast('Drag this up to your bookmarks bar — clicking it here does nothing.'); }}
                                   style={{ textDecoration: 'none', display: 'inline-block' }}>
                                   Send to Event Boss
