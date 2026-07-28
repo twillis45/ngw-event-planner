@@ -74,6 +74,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
+import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
@@ -7872,6 +7873,47 @@ export default function HostShellV2() {
                             <span>{c.segment}</span>
                           </button>
                         ))}
+                      </div>
+                    );
+                  })()}
+                  {/* ── THE PHASE SPINE (Figma 110:60 / 524:60) ────────────────────
+                      Deliberately the LAST thing built. Until every playbook authored
+                      its programme, three of the five phases in those frames had no
+                      data behind them — five labelled segments over a day that
+                      supported two. Now it is a real projection: phases derive from
+                      each row's kind and offset, counts come from the same rosDone
+                      ledger the rows tick, and a phase with no rows simply does not
+                      render rather than being drawn empty. */}
+                  {(() => {
+                    const anchorMin = (() => {
+                      const first = ros.find(r => r && r._min != null && r.time);
+                      if (!first) return null;
+                      const m = parseMin(first.time);
+                      return m == null ? null : first._min - 0;
+                    })();
+                    const phases = (() => { try { return dayPhases(ros, anchorMin, event.rosDone || {}); } catch { return []; } })();
+                    if (phases.length < 2) return null;   // one phase is not a spine
+                    return (
+                      <div style={{ marginTop: 'var(--sp-5)' }}>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {phases.map(ph => (
+                            <div key={ph.id} style={{ flex: 1, height: 3, borderRadius: 2, overflow: 'hidden',
+                              background: 'var(--carbon-line)' }}>
+                              <div style={{ height: '100%', width: `${ph.total ? Math.round((ph.done / ph.total) * 100) : 0}%`,
+                                background: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--steel-soft)',
+                                transition: 'width 260ms var(--ease-out)' }} />
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          {phases.map(ph => (
+                            <span key={ph.id} style={{ flex: 1, fontSize: 'var(--t-caption-min)', fontWeight: ph.state === 'now' ? 750 : 600,
+                              letterSpacing: '.04em',
+                              color: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--carbon-muted)' }}>
+                              {ph.label}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     );
                   })()}

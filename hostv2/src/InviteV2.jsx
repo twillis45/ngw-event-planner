@@ -308,8 +308,16 @@ export default function InviteV2({ code }) {
       // Only facts the host typed — never a computed claim on the guest's screen.
       sub: [
         o && Number(o.sleeps) > 0 ? `sleeps ${Number(o.sleeps)}` : null,
+        o && Number(o.beds) > 0 ? `${Number(o.beds)} beds` : null,
         o && Number(o.totalPrice) > 0 ? `$${Number(o.totalPrice).toLocaleString()} total` : null,
       ].filter(Boolean).join(' · '),
+      // The picture and the listing the host actually pasted. Guests were being
+      // asked to choose a house from a NAME (host question 2026-07-28: "where are
+      // the guests seeing the information, picture, link"). https-only, same gate
+      // the host-side engine applies, so a stray string can never become a request.
+      photoUrl: /^https:\/\//i.test(String((o && o.photoUrl) || '').trim()) ? String(o.photoUrl).trim() : '',
+      url: /^https:\/\//i.test(String((o && o.url) || '').trim()) ? String(o.url).trim() : '',
+      note: String((o && o.notes) || '').trim(),
     }));
   }, [event]);
   const [note, setNote] = useState('');
@@ -1026,13 +1034,35 @@ export default function InviteV2({ code }) {
                       {lodgingChoices.length > 0 && (
                         <>
                           <div className="shelf-label" style={{ margin: '14px 0 6px' }}>Where would you rather stay?</div>
-                          <div className="chips">
-                            {lodgingChoices.map(o => chip(
-                              lodgingPick === o.id,
-                              o.sub ? `${o.label} — ${o.sub}` : o.label,
-                              () => setLodgingPick(lodgingPick === o.id ? '' : o.id),
-                              'lodge-' + o.id,
-                            ))}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {lodgingChoices.map(o => {
+                              const on = lodgingPick === o.id;
+                              return (
+                                <div key={'lodge-' + o.id} className="chip"
+                                  role="radio" aria-checked={on}
+                                  tabIndex={0}
+                                  onClick={() => setLodgingPick(on ? '' : o.id)}
+                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLodgingPick(on ? '' : o.id); } }}
+                                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', textAlign: 'left',
+                                    width: '100%', cursor: 'pointer', padding: 10, height: 'auto', whiteSpace: 'normal' }}>
+                                  {o.photoUrl ? (
+                                    <img src={o.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
+                                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flex: '0 0 auto' }}
+                                      onError={e => { e.currentTarget.style.display = 'none'; }} />
+                                  ) : null}
+                                  <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <strong style={{ fontWeight: 650 }}>{o.label}</strong>
+                                    {o.sub ? <span className="inv2-fine" style={{ margin: 0 }}>{o.sub}</span> : null}
+                                    {o.note ? <span className="inv2-fine" style={{ margin: 0 }}>{o.note}</span> : null}
+                                    {o.url ? (
+                                      <a href={o.url} target="_blank" rel="noopener noreferrer"
+                                        onClick={e => e.stopPropagation()}
+                                        style={{ fontSize: 12, textDecoration: 'underline' }}>See the listing ↗</a>
+                                    ) : null}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                           <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
                             Just a preference — your host makes the call and books it.
