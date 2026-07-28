@@ -112,7 +112,7 @@ import { pickDroppableBudgetRow } from '@app/lib/budgetSwap';
 import { eventContextNudge } from '@app/lib/eventContextNudges';
 import { derivePlaceIntelligence } from '@app/lib/placeIntelligence';
 import { budgetHeroCopy } from '@app/lib/budgetCopy';
-import { rosOverlapCount } from '@app/lib/rosOverlap';
+import { rosOverlapCount, rosSlotTime } from '@app/lib/rosOverlap';
 import { suggestableMoments, buildMomentSegment } from '@app/lib/momentLibrary';
 import { vendorMemoryFor, summarizeVendorMemory } from '@app/lib/eventMemory';
 import { taskUrgencyChip } from '@app/lib/workflowCompression';
@@ -4645,8 +4645,19 @@ export default function HostShellV2() {
     if ((next.day || undefined) !== destDay) {
       if (destDay === undefined) delete next.day; else next.day = destDay; // adopt the drop day
     }
+    // THE SLOT (host ask 2026-07-28): the drop is the host saying "this
+    // happens HERE" — the moved row adopts a clock derived from its SAME-DAY
+    // neighbors' times (rosSlotTime: midpoint / +15m / −15m, never invented
+    // on a clockless day). Their action, their clock; the time editor stays
+    // one tap away to change it.
+    const sameDay = (r) => r && ((r.day || 1) === (next.day || 1));
+    const above = full.slice(0, insertAt).reverse().find((r) => sameDay(r) && r.time);
+    const below = full.slice(insertAt).find((r) => sameDay(r) && r.time);
+    const slot = rosSlotTime(above && above.time, below && below.time);
+    if (slot) { next.time = slot; next.rel = null; }
     full.splice(insertAt, 0, next);
-    patchEvent({ ros: full, rosEdited: true }, 'Reordered — the day runs in your order now.');
+    patchEvent({ ros: full, rosEdited: true },
+      slot ? 'Moved into the ' + slot + ' slot — tap the time to adjust it.' : 'Reordered — the day runs in your order now.');
   };
   const rosRowFromPoint = (x, y) => {
     try { const el = document.elementFromPoint(x, y); const row = el && el.closest && el.closest('[data-ros-id]'); return row ? row.getAttribute('data-ros-id') : null; } catch { return null; }

@@ -35,3 +35,28 @@ export function rosOverlapCount(rows) {
   }
   return hit.size;
 }
+
+// ─── rosSlotTime — the time a dragged row ADOPTS from its drop slot ──────────
+// (Host ask 2026-07-28: "when dragging on day of or timeline, move the detail
+// into a timeslot.") The drop is the host's own authored statement — "this
+// happens HERE" — so the assigned clock descends from THEIR action and their
+// neighbors' times, never from an invented anchor:
+//   · both neighbors timed → the slot midpoint (rounded to 5 min), only when
+//     the slot has ≥10 minutes of room — a 5-minute gap assigns nothing
+//   · only the row above timed → 15 minutes after it (capped 23:55)
+//   · only the row below timed → 15 minutes before it (floored 00:00)
+//   · neither timed → null: a clockless day stays clockless (order-only)
+// Returns "HH:MM" or null. Pure; callers decide whether to write it.
+export function rosSlotTime(prevTime, nextTime) {
+  const p = parseRosMin(prevTime);
+  const n = parseRosMin(nextTime);
+  const fmt = (m) => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  if (p != null && n != null) {
+    if (n - p < 10) return null;                 // no honest room in the slot
+    const mid = Math.round(((p + n) / 2) / 5) * 5;
+    return fmt(Math.min(Math.max(mid, p + 5), n - 5));
+  }
+  if (p != null) return fmt(Math.min(p + 15, 23 * 60 + 55));
+  if (n != null) return fmt(Math.max(n - 15, 0));
+  return null;
+}

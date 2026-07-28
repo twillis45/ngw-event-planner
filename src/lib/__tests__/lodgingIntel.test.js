@@ -69,3 +69,24 @@ describe('lodging intelligence', () => {
     expect(none.share.body).toMatch(/No options on the list yet/i);
   });
 });
+
+// ─── rosSlotTime (day-of drag → timeslot adoption, host ask 2026-07-28) ──────
+const { rosSlotTime } = require('../rosOverlap');
+describe('rosSlotTime', () => {
+  test('both neighbors: the slot midpoint, on 5-minute grid, inside the slot', () => {
+    expect(rosSlotTime('13:00', '15:00')).toBe('14:00');
+    expect(rosSlotTime('14:30', '15:00')).toBe('14:45');
+  });
+  test('no honest room in a tight slot: nothing assigned', () => {
+    expect(rosSlotTime('14:00', '14:05')).toBe(null);
+  });
+  test('one-sided: 15 minutes off the timed neighbor, clamped to the day', () => {
+    expect(rosSlotTime('22:00', null)).toBe('22:15');
+    expect(rosSlotTime(null, '00:10')).toBe('00:00');
+    expect(rosSlotTime('23:50', null)).toBe('23:55');
+  });
+  test('clockless day stays clockless', () => {
+    expect(rosSlotTime(null, null)).toBe(null);
+    expect(rosSlotTime('', undefined)).toBe(null);
+  });
+});
