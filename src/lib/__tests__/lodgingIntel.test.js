@@ -180,3 +180,52 @@ describe('a property can carry a strip of photos', () => {
     expect(o.photoUrl).toBe(REAL_A);
   });
 });
+
+// ─── ONE PASTE, EVERY PHOTO (host ask 2026-07-28) ────────────────────────────
+// "can the app do the several link pasting?" — yes, and without touching the
+// never-build line: the app never contacts the platform. The HOST copies the
+// gallery they are looking at; we parse what they pasted. Same sanctioned shape
+// as the vendor-reply parser ("apply reviewed extraction").
+//
+// The fixture is REAL markup from a live Vrbo listing gallery (media.vrbo.com
+// lodging paths, captured 2026-07-28), not an invented sample.
+const { extractPhotoUrls } = require('../lodgingIntel');
+const V = 'https://media.vrbo.com/lodging/21000000/20260000/20256300/20256226';
+
+describe('extractPhotoUrls — the host pastes once', () => {
+  test('a copied gallery yields every image, in order, deduped', () => {
+    const pastedHtml = `
+      <div><img alt="A two-story building with a swimming pool" src="${V}/dc3f560c.jpg"/>
+      <img alt="Balcony" src="${V}/367aec85.jpg?impolicy=resizecrop&rw=1200"/>
+      <img alt="Kitchen" src="${V}/d43597c4.jpg"/>
+      <img alt="dupe" src="${V}/dc3f560c.jpg"/></div>`;
+    expect(extractPhotoUrls(pastedHtml)).toEqual([
+      `${V}/dc3f560c.jpg`,
+      `${V}/367aec85.jpg?impolicy=resizecrop&rw=1200`,
+      `${V}/d43597c4.jpg`,
+    ]);
+  });
+
+  test('srcset candidates and background-image both come through', () => {
+    expect(extractPhotoUrls(`<img srcset="${V}/a.jpg 400w, ${V}/b.jpg 800w">`))
+      .toEqual([`${V}/a.jpg`, `${V}/b.jpg`]);
+    expect(extractPhotoUrls(`<div style="background-image:url('${V}/c.jpg')">`))
+      .toEqual([`${V}/c.jpg`]);
+  });
+
+  test('a plain-text column of links works for the host who pasted those instead', () => {
+    expect(extractPhotoUrls(`${V}/a.jpg\n${V}/b.webp`)).toEqual([`${V}/a.jpg`, `${V}/b.webp`]);
+  });
+
+  test('page furniture is not a property photo', () => {
+    const junk = `<img src="https://www.vrbo.com/static/logo.svg"><a href="https://www.vrbo.com/help">Help</a>
+                  <img src="http://insecure.test/a.jpg"><img src="${V}/real.jpg">`;
+    expect(extractPhotoUrls(junk)).toEqual([`${V}/real.jpg`]);   // no svg, no page link, no http
+  });
+
+  test('nothing in, nothing out — never a fabricated photo', () => {
+    expect(extractPhotoUrls('')).toEqual([]);
+    expect(extractPhotoUrls(null)).toEqual([]);
+    expect(extractPhotoUrls('just some words about a house')).toEqual([]);
+  });
+});

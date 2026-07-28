@@ -1047,7 +1047,18 @@ export default function InviteV2({ code }) {
                                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLodgingPick(on ? '' : o.id); } }}>
                                   <PhotoStrip photos={o.photos} alt={o.label} size={56} radius="8px" />
                                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                    <strong style={{ fontWeight: 650 }}>{o.label}</strong>
+                                    <strong style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      {/* OBVIOUS CONFIRMATION (host 2026-07-28: "guest needs more
+                                          obvious confirmation of rental choice"). A tint and a
+                                          border is a designer's signal; a guest wants to be TOLD.
+                                          A check plus the word, on the row itself. */}
+                                      {on ? <span aria-hidden="true" style={{
+                                        flex: '0 0 auto', width: 18, height: 18, borderRadius: '50%',
+                                        background: '#3E7A5A', color: '#fff', fontSize: 11, lineHeight: '18px',
+                                        textAlign: 'center', fontWeight: 800,
+                                      }}>✓</span> : null}
+                                      {o.label}
+                                    </strong>
                                     {o.sub ? <span className="inv2-fine" style={{ margin: 0 }}>{o.sub}</span> : null}
                                     {o.note ? <span className="inv2-fine" style={{ margin: 0 }}>{o.note}</span> : null}
                                     {/* SELECTION MUST NOT EAT THE LINK (host report 2026-07-28).
@@ -1067,8 +1078,10 @@ export default function InviteV2({ code }) {
                               );
                             })}
                           </div>
-                          <p className="inv2-fine" style={{ margin: '6px 0 0' }}>
-                            Just a preference — your host makes the call and books it.
+                          <p className="inv2-fine" style={{ margin: '6px 0 0' }} aria-live="polite">
+                            {lodgingPick
+                              ? `Got it — you'd rather stay at ${(lodgingChoices.find(x => x.id === lodgingPick) || {}).label || 'that one'}. It's a preference, not a booking; your host makes the call.`
+                              : 'Tap the one you\u2019d rather stay at. It\u2019s a preference, not a booking — your host makes the call and books it.'}
                           </p>
                         </>
                       )}

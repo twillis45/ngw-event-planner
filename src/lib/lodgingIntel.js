@@ -49,6 +49,45 @@ const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n
 // several links — hosts paste in bulk and a comma is not a URL delimiter they
 // think about.
 const HTTPS = /^https:\/\//i;
+
+/**
+ * Pull every image URL out of ONE paste (host ask 2026-07-28: "can the app do
+ * the several link pasting?").
+ *
+ * DOCTRINE — why this is allowed where a gallery fetch is not: the never-build
+ * list bans a live rental API and scraping the platform, and this does neither.
+ * The app never contacts Airbnb or Vrbo. The HOST performs the access, copies
+ * what they are looking at, and pastes it here; we parse content they supplied.
+ * That is the same sanctioned shape as the vendor-reply parser ("apply reviewed
+ * extraction", skill 06) — extraction only ever PROPOSES into a field the host
+ * can still edit, and nothing is written on their behalf.
+ *
+ * Copying from a web page puts `text/html` on the clipboard, so one copy of a
+ * gallery carries every <img src> in it. Plain text works too, for a host who
+ * pasted a column of links.
+ */
+export function extractPhotoUrls(payload) {
+  const text = String(payload == null ? '' : payload);
+  if (!text.trim()) return [];
+  const out = [];
+  const add = (u) => {
+    const clean = String(u || '').trim().replace(/&amp;/g, '&');
+    if (HTTPS.test(clean) && !out.includes(clean)) out.push(clean);
+  };
+  // 1 · src="…" / data-src="…" — the ordinary gallery image.
+  for (const m of text.matchAll(/(?:data-)?src\s*=\s*["']([^"']+)["']/gi)) add(m[1]);
+  // 2 · srcset="url 400w, url 800w" — take each candidate's URL.
+  for (const m of text.matchAll(/srcset\s*=\s*["']([^"']+)["']/gi)) {
+    for (const cand of m[1].split(',')) add(cand.trim().split(/\s+/)[0]);
+  }
+  // 3 · CSS background-image:url(…) — some galleries paint rather than <img>.
+  for (const m of text.matchAll(/url\(\s*["']?([^"')]+)["']?\s*\)/gi)) add(m[1]);
+  // 4 · Bare links in plain text — a host who pasted a column of addresses.
+  for (const m of text.matchAll(/https:\/\/[^\s"'<>)]+/gi)) add(m[0]);
+  // Only things that actually look like images. A listing page paste is full of
+  // icons, logos and tracking pixels otherwise.
+  return out.filter((u) => /\.(jpe?g|png|webp|avif)(\?|$)/i.test(u) || /\/(photo|image|media|lodging|pictures)\//i.test(u));
+}
 export function photoList(raw) {
   const o = raw || {};
   const bag = [];

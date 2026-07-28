@@ -73,7 +73,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -8913,7 +8913,29 @@ export default function HostShellV2() {
                         ))}
                         <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
                           <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
-                          <input className="field" style={fldR} placeholder="Photo links — copy image address; paste several, separated by spaces" value={rf.photo || ''} onChange={(e) => setRentalForm({ ...rf, photo: e.target.value })} aria-label="Rental photo link" />
+                          <input className="field" style={fldR} placeholder="Photos — copy the gallery on the listing and paste once; every image comes through"
+                            value={rf.photo || ''}
+                            onChange={(e) => setRentalForm({ ...rf, photo: e.target.value })}
+                            onPaste={(e) => {
+                              // ONE PASTE, EVERY PHOTO (host ask 2026-07-28). Copying from a
+                              // web page puts text/html on the clipboard, so a copied gallery
+                              // carries all its <img src>. We parse what the HOST pasted — the
+                              // app never contacts the platform, which is what the never-build
+                              // list actually forbids. Same shape as the vendor-reply parser:
+                              // extraction PROPOSES into a field they can still edit.
+                              try {
+                                const cd = e.clipboardData;
+                                if (!cd) return;
+                                const found = extractPhotoUrls(cd.getData('text/html') || '')
+                                  .concat(extractPhotoUrls(cd.getData('text/plain') || ''));
+                                const uniq = [...new Set(found)];
+                                if (uniq.length < 2) return;   // one link pastes normally
+                                e.preventDefault();
+                                setRentalForm({ ...rf, photo: uniq.join(' ') });
+                                toast(uniq.length + ' photos found in that paste — edit or drop any of them.');
+                              } catch { /* fall through to the normal paste */ }
+                            }}
+                            aria-label="Rental photo links" />
                           <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                             <input className="field" style={{ ...fldR, flex: 2 }} placeholder="Call it (“Lakefront A-frame”)" value={rf.label} onChange={(e) => setRentalForm({ ...rf, label: e.target.value })} aria-label="Rental name" />
                             <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Sleeps" inputMode="numeric" value={rf.sleeps} onChange={(e) => setRentalForm({ ...rf, sleeps: e.target.value })} aria-label="Sleeps how many" />
