@@ -1141,7 +1141,7 @@ const ROS_SCHEDULE_KINDS = [
 
 // A day-of `when` token → minutes offset from the anchor. null for pre-day /
 // non-clock tokens (T-1d, T-3d, 'during', 'ongoing') so they're skipped.
-function rosWhenOffset(when) {
+export function rosWhenOffset(when) {
   const w = String(when || '').trim();
   if (/^T-\d+d/i.test(w)) return null;          // pre-day shopping/prep
   if (/during|ongoing/i.test(w)) return null;   // not a point in time
@@ -1151,12 +1151,29 @@ function rosWhenOffset(when) {
   // sweep, 2026-07-28). Follow-ups live on the checklist, not the day board.
   if (/^T0\s*[+-]\s*\d+\s*d\b/i.test(w)) return null;
   if (/guests?\s*arrive/i.test(w)) return 0;    // at the anchor
-  const m = /^T0\s*([+-])\s*(\d+)(?::(\d+))?\s*h?/i.exec(w);
+  // THE UNIT SUFFIX IS DATA, NOT DECORATION (day-board audit 2026-07-28).
+  // The old pattern was /^T0\s*([+-])\s*(\d+)(?::(\d+))?\s*h?/ — the trailing
+  // `h?` was OPTIONAL AND IGNORED, so every authored minute cue was read as
+  // hours: 'T0-120m' (two hours before) became 120 HOURS before, and the day
+  // board told a host arriving today that setup was "~120h before guests
+  // arrive". Ten cues across six playbooks were wrong (reunion's whole setup
+  // block, sweet16, board meeting, engagement, gender reveal, retirement).
+  // A fractional hour was truncated the same way: 'T0+4.5h' parsed as 4h.
+  // Now the suffix decides: `m` = minutes, `h`/bare = hours, `H:MM` = both,
+  // and a decimal hour keeps its remainder.
+  const m = /^T0\s*([+-])\s*(\d+(?:\.\d+)?)\s*(?::(\d{1,2}))?\s*([hm])?/i.exec(w);
   if (m) {
     const sign = m[1] === '-' ? -1 : 1;
-    const h = parseInt(m[2], 10);
-    const min = m[3] != null ? parseInt(m[3], 10) : 0;
-    return sign * (m[3] != null ? h * 60 + min : h * 60);
+    const value = parseFloat(m[2]);
+    if (!Number.isFinite(value)) return null;
+    const colonMin = m[3] != null ? parseInt(m[3], 10) : null;
+    const unit = (m[4] || 'h').toLowerCase();
+    // 'T0-1:30' — hours and minutes spelled out with a colon.
+    if (colonMin != null) return sign * Math.round(value * 60 + colonMin);
+    // 'T0-90m' — minutes mean minutes.
+    if (unit === 'm') return sign * Math.round(value);
+    // 'T0+4.5h' — hours, remainder kept.
+    return sign * Math.round(value * 60);
   }
   if (/^T0\b/i.test(w)) return 0;               // bare T0 → anchor
   return null;
@@ -1236,6 +1253,15 @@ export function playbookRunOfShow(event) {
     return off < 0 ? `${span} before guests arrive` : `${span} in`;
   };
 
+  // ONE CUE, TWO SPELLINGS (day-board audit 2026-07-28). Every playbook but one
+  // authors a schedule entry as `what:`; reunion.js authors all 14 of its rows as
+  // `do:`. The reader only ever looked at `what`, so EVERY Reunion day-of cue was
+  // nameless — the day hero fell back to the placeholder "This moment." and the
+  // UP NEXT block rendered its header over nothing (a ghost zone). Accept both
+  // spellings so an authoring choice can never blank a cue again; the schedule
+  // gate in __tests__/rosWhenUnits proves no entry resolves empty.
+  const cueText = (entry) => (entry && (entry.what != null ? entry.what : entry.do)) || '';
+
   // Food-approach lever — drop "caterer arrives / load-in" day-of cues when the host cooks.
   const dropCatererCue = foodApproach(event).usesCaterer === false;
   const rows = [];
@@ -1245,7 +1271,7 @@ export function playbookRunOfShow(event) {
     for (const entry of list) {
       const off = rosWhenOffset(entry.when);
       if (off === null) continue;
-      if (dropCatererCue && /cater(er|ing)/i.test(entry.what)) continue;
+      if (dropCatererCue && /cater(er|ing)/i.test(cueText(entry))) continue;
       const total = baseMin + off;
       rows.push({
         id: `pb-ros-${event.id}-${kind.key}-${seq++}`,
@@ -1255,7 +1281,7 @@ export function playbookRunOfShow(event) {
         rel: exact ? null : relLabel(off),
         anchorSource,
         _min: total,
-        segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
+        segment: resolveAnsweredCopy(cueText(entry), entry.copyByAnswer, event),
         location: '',
         type: kind.segType,
         owner: 'Host',
@@ -1288,7 +1314,7 @@ export function playbookRunOfShow(event) {
       anchorSource: 'day-bucket',
       day: dt.day,
       _min: (dt.day - 1) * 1440 + hour * 60,
-      segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
+      segment: resolveAnsweredCopy(cueText(entry), entry.copyByAnswer, event),
       location: '', type: 'event', owner: 'Host',
       confirmed: false, notes: '', source: 'playbook', generated: true,
       playbookType: playbook.type,
@@ -1303,7 +1329,7 @@ export function playbookRunOfShow(event) {
       const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
       for (const entry of list) {
         if (!/last day/i.test(String(entry.when || ''))) continue;
-        const hit = rows.find((r) => r.segment === resolveAnsweredCopy(entry.what, entry.copyByAnswer, event) && (r.day || 1) === 1);
+        const hit = rows.find((r) => r.segment === resolveAnsweredCopy(cueText(entry), entry.copyByAnswer, event) && (r.day || 1) === 1);
         if (hit) { hit.day = lastDay; hit._min += (lastDay - 1) * 1440; hit.rel = hit.time ? hit.rel : `Day ${lastDay}`; }
       }
     }
