@@ -5150,57 +5150,65 @@ export default function HostShellV2() {
                     {String(revealPhase).charAt(0) === 'c' && (() => {
                       const ci = parseInt(String(revealPhase).slice(1), 10);
                       const st = revealStages[ci];
-                      return st ? (
-                        <div className="rv-card" key={ci}>
-                          <div className="rv-card-kicker">{st.title}</div>
-                          <div className="rv-card-what">{st.what}</div>
-                          {st.why ? <div className="rv-card-why">{st.why}</div> : null}
-                          {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
-                            <div className="rv-card-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ')}</div>
-                          ) : null}
-                        </div>
-                      ) : null;
+                      return (
+                        <>
+                          <div className="rv-cardzone">
+                            {st ? (
+                              <div className="rv-card" key={ci}>
+                                <div className="rv-card-kicker">{st.title}</div>
+                                <div className="rv-card-what">{st.what}</div>
+                                {st.why ? <div className="rv-card-why">{st.why}</div> : null}
+                                {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
+                                  <div className="rv-card-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ')}</div>
+                                ) : null}
+                              </div>
+                            ) : null}
+                          </div>
+                          {/* the plan-at-a-glance grid BUILDS beneath the cards — the
+                              payoff is always in view, never below a fold */}
+                          <div className="rv-grid">
+                            {revealStages.map((tg, i) => (
+                              <div key={tg.key || i} className={'rv-tile' + (i <= ci ? ' in' : '')}>
+                                <div className="rv-tile-t">{tg.title}</div>
+                                <div className="rv-tile-v">{tg.what}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      );
                     })()}
-                    {/* SETTLE / REST — the baseline listing COMPOSES (the verbatim
-                        list, host's "I want the listing back"), then the ask. */}
+                    {/* SETTLE / REST — the plan AT A GLANCE (host ruling 2026-07-27:
+                        no payoff below the fold): name + identity on top, the tile
+                        grid as the resolved plan, the ask always visible. The cards
+                        already told each line's full story; the full listing lives
+                        on the board. */}
                     {(revealPhase === 'settle' || revealPhase === 'rest') && (
                       <>
                     <div className="eyebrow" aria-live="polite">Here’s what we understood</div>
+                    <h1 className={revealPhase === 'settle' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'clamp(24px, 7cqw, 30px)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 4, color: 'var(--ink)', '--i': 0 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
+                    <p className={revealPhase === 'settle' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-1)', color: '#9aa7b2', '--i': 1 }}>{identityStatement(activeCustom)}</p>
                     <p className="rv-mguide">Built while you typed — every line traces to your answers.</p>
-                    <ul className="tick-list rv-slowrows" style={{ marginTop: 22, '--rows': revealStages.length + 1 }}>
-                      {revealStages.map((st, i) => (
-                        <li key={st.key || i} className="rv-line" style={{ '--i': i }}>
-                          <strong>{st.title}:</strong> {st.what}
-                          {st.why ? <span className="rv-why">{st.why}</span> : null}
-                          {st.nextDecision && <span className="grounding" style={{ display: 'block', marginTop: 3 }}>{st.nextDecision}</span>}
-                          {(st.confidenceLabel || st.status || (st.sourceEngines && st.sourceEngines.length)) ? (
-                            <span className="grounding rv-prov">{[st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' \u00b7 ')}</span>
-                          ) : null}
-                        </li>
+                    <div className="rv-grid rv-grid-rest">
+                      {revealStages.map((tg, i) => (
+                        <div key={tg.key || i} className={'rv-tile in' + (revealPhase === 'settle' ? ' rv-tile-compose' : '')} style={{ '--i': i }}>
+                          <div className="rv-tile-t">{tg.title}</div>
+                          <div className="rv-tile-v">{tg.what}</div>
+                        </div>
                       ))}
                       {customPlan && (
-                        <li className="rv-line" style={{ '--i': revealStages.length }}><strong>{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}</strong> waiting in your plan, lined up in the order they’ll matter.</li>
+                        <div className={'rv-tile in' + (revealPhase === 'settle' ? ' rv-tile-compose' : '')} style={{ '--i': revealStages.length }}>
+                          <div className="rv-tile-t">Next steps</div>
+                          <div className="rv-tile-v">{customPlan.nextActions.length} step{customPlan.nextActions.length === 1 ? '' : 's'}, in the order they’ll matter.</div>
+                        </div>
                       )}
-                    </ul>
-                    {/* The name lands LAST — the conclusion the plan reached, not a header.
-                        Its period is the same locked bead as the boot splash: it drops in
-                        and ignites once the name has landed — the same mark, twice. */}
-                    <h1 className={revealPhase === 'rack' ? 'mega rv-line rv-lastland' : 'mega title-drop in'} style={{ fontFamily: 'var(--sans)', fontWeight: 800, fontSize: 'clamp(24px, 7cqw, 30px)', lineHeight: 1.05, letterSpacing: '-.03em', marginTop: 4, color: 'var(--ink)', '--i': revealStages.length + 1 }}>{activeCustom?.name}<span className="reveal-dot" aria-hidden="true" /></h1>
-                    {/* identityStatement() — the production identity engine, verbatim */}
-                    <p className={revealPhase === 'rack' ? 'mega-sub rv-line rv-lastland' : 'mega-sub pre in'} style={{ marginTop: 'var(--sp-2)', color: '#9aa7b2', '--i': revealStages.length + 2 }}>{identityStatement(activeCustom)}</p>
+                    </div>
                     <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')}>All of this came straight from your answers — nothing made up.</p>
-                    <div className={'actions-row pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-6)' }}>
+                    <div className={'actions-row pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-3)' }}>
                       <button ref={revealCtaRef} className={'cta big' + (revealPhase === 'rest' ? ' glow-once' : '')} onClick={() => setStage('plan')}>Open your plan</button>
-                      {/* Build-map #5 — hand the host the thing their guests tap,
-                          right at the moment of creation. The share rails already
-                          exist; this is sequencing, and it seeds the viral loop
-                          before the host ever leaves the reveal. */}
-                      {/* Demoted to ghost so "Open your plan" is the sole primary at
-                          the reveal climax (one primary ask — invite-remake directive). */}
                       <button className="cta ghost" onClick={shareInviteLink}>Share the invite</button>
                       <button className="cta ghost" onClick={() => { clearRevealTimers(); redoEventId.current = activeCustom ? activeCustom.id : null; setRevealed(false); }}>Change an answer</button>
                     </div>
-                    <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-2)', textAlign: 'center' }}>Your guests reply at that link — nothing to install, no account.</p>
+                    <p className={'grounding pre' + (revealPhase === 'rest' ? ' in' : '')} style={{ marginTop: 'var(--sp-1)', textAlign: 'center' }}>Your guests reply at that link — nothing to install, no account.</p>
                       </>
                     )}
                   </div>
@@ -5235,7 +5243,12 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()}</span>
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
+                    /* Span visibility (host report 2026-07-27 "I don't see the multi day"):
+                       the range rides the always-on eyebrow — the ONE element every
+                       elegant screen keeps — so a 3-day event reads as one at a glance.
+                       Single-day events render byte-identically (spanNights 0). */
+                    + (() => { try { if (!(spanNights(event) > 0)) return ''; const f = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); return ('  ·  ' + f(event.date) + '–' + f(event.endDate)).toUpperCase(); } catch { return ''; } })()}</span>
                   <span className="eb-caret" aria-hidden="true">▾</span>
                 </button>
               ) : (
@@ -5485,6 +5498,9 @@ export default function HostShellV2() {
                     {/* Past says it ONCE — the "How it landed · behind you" header carries it;
                         this sub and the empty-state used to re-say it (audit 2026-07-22, W7). */}
                     {!isPast && days !== null && days > 1 && `until ${dateLong}`}
+                    {/* Span truth on the calm countdown: the start date alone under-told
+                        a 3-day event (same host report as the eyebrow range). */}
+                    {!isPast && days !== null && days > 1 && spanNights(event) > 0 && (() => { try { return ` — ${spanNights(event) + 1} days, through ${new Date(event.endDate + 'T12:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}`; } catch { return ''; } })()}
                   </p>
                   {statusNode}
                 </>);
