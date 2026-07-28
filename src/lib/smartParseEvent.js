@@ -111,6 +111,28 @@ export function parseSmartEventText(text, opts = {}) {
         endDate = end.toISOString().slice(0, 10);
       }
     }
+    // Numeric ranges — "11/13-11/16", "11/13/2026 - 11/16/2026" (host live
+    // report 2026-07-27: the numeric form parsed its start and silently
+    // DROPPED the end — the same data-honesty defect the word-month range
+    // fixed). Both sides must be full M/D; a bare "-16" tail stays unheard
+    // (ambiguous against times and phone digits).
+    if (!date) {
+      const nrng = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\s*(?:-|–|—|to|through|thru)\s*(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/i);
+      if (nrng) {
+        const y1 = nrng[3] ? (nrng[3].length === 2 ? 2000 + Number(nrng[3]) : Number(nrng[3])) : now.getFullYear();
+        const start = new Date(y1, Number(nrng[1]) - 1, Number(nrng[2]), 12);
+        if (!nrng[3] && start < now) start.setFullYear(start.getFullYear() + 1);
+        const y2 = nrng[6] ? (nrng[6].length === 2 ? 2000 + Number(nrng[6]) : Number(nrng[6])) : start.getFullYear();
+        const end = new Date(y2, Number(nrng[4]) - 1, Number(nrng[5]), 12);
+        // Dec→Jan straddle bumps the end year ONLY on an explicit earlier end
+        // month with no typed year; "11/16-11/13" stays noise, never rescued.
+        if (!nrng[6] && end < start && Number(nrng[4]) < Number(nrng[1])) end.setFullYear(end.getFullYear() + 1);
+        if (!isNaN(start) && !isNaN(end) && end > start) {
+          date = start.toISOString().slice(0, 10);
+          endDate = end.toISOString().slice(0, 10);
+        }
+      }
+    }
   }
   const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
   if (dm) {
@@ -211,8 +233,17 @@ export function parseSmartEventText(text, opts = {}) {
   // correctly. A bare city with no state is deliberately NOT accepted here
   // either (same strict gate the manual field uses — a guessed state would be
   // worse than asking).
+  // Three comma parts FIRST — "at City Park, New Orleans, LA" (live-drive find
+  // 2026-07-27: the 2-part gate swallowed "City Park, New Orleans" as
+  // city+state, the strict state gate refused it, and BOTH the venue and the
+  // town were dropped). Part 1 is the venue VERBATIM; parts 2+3 go through the
+  // same strict parseVenueLocation gate, so "at the park, food, and games"
+  // can never invent a location ("games" is not a state).
+  const l3 = t.match(/\b(?:in|at)\s+([A-Z][\w.'’-]*(?:\s+[\w.'’-]+){0,4}?),\s*([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
+  const loc3 = l3 ? (() => { try { return parseVenueLocation(l3[2] + ', ' + l3[3]); } catch { return null; } })() : null;
+  const venueAt = loc3 && l3 ? l3[1].trim() : '';
   const lm = t.match(/\b(?:in|at)\s+([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
-  const loc = lm ? (() => { try { return parseVenueLocation(lm[1] + ', ' + lm[2]); } catch { return null; } })() : null;
+  const loc = loc3 || (lm ? (() => { try { return parseVenueLocation(lm[1] + ', ' + lm[2]); } catch { return null; } })() : null);
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't
@@ -288,8 +319,8 @@ export function parseSmartEventText(text, opts = {}) {
   return {
     type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, timeOfDay,
     honoree: hm ? hm[1] : null,
-    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging ? 'venue' : ''),
-    venue: venuePhrase || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
+    venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging || venueAt ? 'venue' : ''),
+    venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),
     venueCity: loc ? (loc.zip || loc.city) : (area ? area.hubTown : null),
     venueState: loc ? (loc.state || null) : (area ? area.state : null),
     vacationArea: area ? area.id : null,

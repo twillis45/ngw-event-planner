@@ -47,3 +47,58 @@ describe('Vida destination-birthday intake (host report 2026-07-27)', () => {
     expect(q.budget).toBe(500);
   });
 });
+
+// Live-drive find 2026-07-27 (New Orleans seed): "at City Park, New Orleans, LA"
+// left venue AND town empty — the 2-part gate ate "City Park, New Orleans" as
+// city+state and the strict state gate (rightly) refused it. Three comma parts
+// now mean venue verbatim + the same strict city/state gate on the tail.
+describe('"at Venue, City, ST" three-part grammar', () => {
+  test('venue, town, and state all heard', () => {
+    const p = parseSmartEventText('Family reunion cookout July 29-31 at City Park, New Orleans, LA for 30 people');
+    expect(p.venue).toBe('City Park');
+    expect(p.venueKind).toBe('venue');
+    expect(p.venueCity).toBe('New Orleans');
+    expect(p.venueState).toBe('LA');
+  });
+
+  test('the 2-part "in City, State" form is unchanged', () => {
+    const p = parseSmartEventText('Graduation party in Santa Fe, New Mexico for 40');
+    expect(p.venueCity).toBe('Santa Fe');
+    expect(p.venueState).toBe('NM');
+    expect(p.venue).toBe('');
+  });
+
+  test('a comma list after "at" never invents a location', () => {
+    const p = parseSmartEventText('Cookout at the park, food, and games for everyone');
+    expect(p.venueCity).toBe(null);
+    expect(p.venueState).toBe(null);
+  });
+});
+
+// Host live report 2026-07-27 (second round): numeric ranges parsed the start
+// and silently dropped the end — the exact defect the word-month range fixed.
+describe('numeric date ranges', () => {
+  test('"11/13-11/16" is a span', () => {
+    const p = parseSmartEventText('Birthday 11/13-11/16 for 10');
+    expect(p.date).toMatch(/-11-13$/);
+    expect(p.endDate).toMatch(/-11-16$/);
+  });
+
+  test('full years ride both sides', () => {
+    const p = parseSmartEventText('Birthday 11/13/2026 - 11/16/2026');
+    expect(p.date).toBe('2026-11-13');
+    expect(p.endDate).toBe('2026-11-16');
+  });
+
+  test('a backwards numeric "range" is noise, not a span', () => {
+    const p = parseSmartEventText('Party 11/16-11/13');
+    expect(p.endDate).toBe(null);
+  });
+
+  test('Dec–Jan numeric straddle lands next year', () => {
+    const p = parseSmartEventText('Reunion 12/30-1/2');
+    expect(p.date).toMatch(/-12-30$/);
+    expect(p.endDate).toMatch(/-01-02$/);
+    expect(Number(p.endDate.slice(0, 4))).toBe(Number(p.date.slice(0, 4)) + 1);
+  });
+});

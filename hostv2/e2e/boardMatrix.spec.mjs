@@ -217,6 +217,78 @@ for (const state of STATES) {
     });
 
     if (state.future) {
+      // Routing-audit adds (2026-07-27, queue item ⑥). The nav-layer unit gate
+      // proves every route RESOLVES; these two prove the interaction layer in a
+      // real browser — rows actually open their editors, and a checklist CTA
+      // lands a sheet instead of dying under a fall-through.
+      test('decisions sheet — every unsettled row opens its editor', async ({ page }) => {
+        test.setTimeout(90_000);
+        await boot(page, state);
+        // Deterministic nav: masthead menu → Jump to a section → Calls to make.
+        await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
+        await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
+        const calls = page.locator('.sheet').last().getByText('Calls to make', { exact: false }).first();
+        if (await calls.count() === 0) { test.skip(true, 'no Calls to make section on this state'); return; }
+        await calls.click({ timeout: 5000 });
+        await expect(page.locator('#sheet-title')).toHaveText('Calls to make', { timeout: 5000 });
+        const sheet = page.locator('.sheet').last();
+        const read = () => sheet.innerText({ timeout: 1000 }).catch(() => '');
+        // Sweep the sheet's row-level controls: each tap must CHANGE the sheet
+        // (editor opens, chosen badge moves, row recomposes). Same chosen-row
+        // exemption as loop-advance — a settled value re-render is legit-static.
+        let swept = 0;
+        for (let i = 0; i < 6; i++) {
+          const row = sheet.locator('.frow .chip:visible[aria-pressed="false"], .decopt:visible:not(:has-text("chosen"))').nth(i);
+          if (await row.count() === 0) break;
+          const before = await read();
+          await row.click({ timeout: 4000 }).catch(() => {});
+          await page.waitForTimeout(700);
+          const after = await read();
+          expect(after !== before, `decisions row #${i + 1} changed nothing (dead row)`).toBe(true);
+          swept++;
+          await page.locator('.toast.on').waitFor({ state: 'hidden', timeout: 6000 }).catch(() => {});
+        }
+        if (swept === 0) test.skip(true, 'no unsettled decision rows on this state');
+      });
+
+      test('checklist CTA — a task action lands a real destination, never a dead tap', async ({ page }) => {
+        test.setTimeout(60_000);
+        // KNOWN FINDING (probe's first catch, 2026-07-27): on Dinner T-1 the
+        // first task's CTA resolves routeSheet() FALSE and falls back to a
+        // label toast — the soft dead-end class (glyph-only-when-navigates).
+        // Expected-fail documents it; flips to alert when the route is fixed.
+        test.fail(state.label.startsWith('Dinner T-1'), 'first task CTA dead-taps — routeSheet false → toast fallback; trace queued');
+        await boot(page, state);
+        await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
+        await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
+        const tasksRow = page.locator('.sheet').last().getByText('Your checklist', { exact: false }).first();
+        if (await tasksRow.count() === 0) { test.skip(true, 'no checklist section on this state'); return; }
+        await tasksRow.click({ timeout: 5000 });
+        await expect(page.locator('#sheet-title')).toHaveText('Your checklist', { timeout: 5000 });
+        // First task-row action CTA (checklistActionFor renders it) — tapping it
+        // must move the host somewhere real: the sheet title changes to the
+        // destination sheet (the RIGHT-sheet claim the unit gate can't make), or
+        // an in-sheet editor opens. Same-title + same-content = the audit's
+        // fall-through dead-end class.
+        const sheet = page.locator('.sheet').last();
+        const cta = sheet.locator('.mini.rowlink:visible').first();
+        if (await cta.count() === 0) { test.skip(true, 'no task CTA on this state'); return; }
+        const focusSig = () => page.evaluate(() => {
+          const f = document.querySelector('.rowfocus');
+          return f ? (f.innerText || '').slice(0, 60) : '';
+        });
+        const beforeTitle = await page.locator('#sheet-title').innerText();
+        const beforeBody = await sheet.innerText({ timeout: 1000 }).catch(() => '');
+        const beforeFocus = await focusSig();
+        await cta.click({ timeout: 4000 });
+        await page.waitForTimeout(1200);
+        const afterTitle = await page.locator('#sheet-title').innerText().catch(() => '');
+        const afterBody = await page.locator('.sheet').last().innerText({ timeout: 1000 }).catch(() => '');
+        const afterFocus = await focusSig();
+        expect(afterTitle !== beforeTitle || afterBody !== beforeBody || afterFocus !== beforeFocus,
+          'task CTA changed nothing — dead tap (fall-through class)').toBe(true);
+      });
+
       test('fold peek — the pull handle is in the first viewport', async ({ page }) => {
         await boot(page, state);
         const grab = page.locator('.efold-grab');
