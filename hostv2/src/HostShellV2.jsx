@@ -4856,7 +4856,19 @@ export default function HostShellV2() {
     if (/guests/i.test(to)) { setSheet({ kind: 'guests' }); return; }
     if (/task/i.test(to)) { setSheet({ kind: 'tasks', focus: null }); return; }
     if (/communication/i.test(to)) { toast('Approvals live in the app’s messages — not wired here yet.'); return; }
-    // Event Day Schedule → we're already looking at it.
+    // ── "See the day plan" WAS A DEAD BUTTON (found by driving it, 2026-07-28) ──
+    // This case was a comment and nothing else: "we're already looking at it."
+    // The premise was half-true and the behaviour was wrong. On the live day the
+    // host IS on the day board — but the schedule is below the fold, and the
+    // nudge's own route says `focusField: 'ros-now'`, an anchor that existed
+    // NOWHERE in the shell. So a real click did nothing at all, silently, which
+    // is exactly the class "Glyph only when it navigates" exists to prevent.
+    // The anchor is now on the now-card; take her to it.
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('ros-now');
+      if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    }
+    toast('The day plan is on this screen, just below.');
   };
   // Handled whispers — ONLY facts the data proves (original Focus semantics).
   const dayWhispers = useMemo(() => {
@@ -7487,7 +7499,7 @@ export default function HostShellV2() {
                 // ~34667: live-bordered card, tinted background, glow) so the
                 // ONE moment actually happening now reads unmistakably
                 // different from "up next"/"up first", which stay neutral.
-                <div className="now-card" style={nowActive
+                <div className="now-card" id="ros-now" style={nowActive
                   ? { marginTop: 6, borderColor: 'var(--ok)', background: 'var(--ok-tint)', boxShadow: '0 0 28px -8px rgba(79,174,122,.4)' }
                   : { marginTop: 6 }}>
                   <div className="now-label" style={nowActive ? { color: 'var(--ok)' } : undefined}>{nowActive ? 'Happening now' : (dayStarted ? 'Next up' : 'Up first') + (nowCue.time ? ' · ' + fmt12h(nowCue.time) : '')}</div>
