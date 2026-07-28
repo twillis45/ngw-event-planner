@@ -105,8 +105,12 @@ export function parseClock(s) {
 export function isOutdoorEvent(event) {
   const ev = event || {};
   if (ev.indoorVenue === true) return false;
-  if (String(ev.venueKind || '') === 'venue' && !OUTDOOR_TYPE.test(String(ev.type || ''))) return false;
-  return OUTDOOR_TYPE.test(String(ev.type || '')) || String(ev.venueKind || '') === 'home';
+  // These two ask about the EXPLICIT venueKind the host set, deliberately NOT
+  // venueFor's resolved kind: the constitution defaults an unnamed-venue
+  // host_event to 'home', which would flip every such event into outdoor
+  // start-time logic — a different question than "did the host say home?".
+  if (String(ev.venueKind || '') === 'venue' && !OUTDOOR_TYPE.test(String(ev.type || ''))) return false; // venue-exempt: explicit-kind question, not resolved-kind
+  return OUTDOOR_TYPE.test(String(ev.type || '')) || String(ev.venueKind || '') === 'home'; // venue-exempt: explicit-kind question, not resolved-kind
 }
 
 /** The playbook's own authored run-length. Null when the playbook doesn't say. */

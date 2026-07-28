@@ -36,16 +36,16 @@ const SANCTIONED = new Set([
 // read venueFor(event) instead, or (rare, justified) add a `// venue-exempt:`
 // note on the line and explain it in review.
 const BASELINE = {
-  'src/lib/doItForMe.js': 7,
-  'src/lib/weather.js': 4,
-  'src/lib/assembleRevealEngines.js': 3,
-  'src/lib/startTime.js': 2,
+  'src/lib/doItForMe.js': 0,
+  'src/lib/weather.js': 0,
+  'src/lib/assembleRevealEngines.js': 0,
+  'src/lib/startTime.js': 0,
   'src/lib/webhookService.js': 1,
   'src/lib/vendorBrief.js': 1,
   'src/lib/taskEngine.js': 1,
   'src/lib/playbooks/index.js': 1,
   'src/lib/placeIntelligence.js': 1,
-  'src/lib/eventSolve.mjs': 3,
+  'src/lib/eventSolve.mjs': 0,
   'hostv2/src/HostShellV2.jsx': 54,
   'hostv2/src/InviteV2.jsx': 10,
 };

@@ -7,6 +7,7 @@
 
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
+import { venueFor } from './venueFor';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
@@ -49,7 +50,7 @@ export function timePhrase(event) {
 // Place line: a real venue string, or "our place" for an at-home event. Empty when
 // the host hasn't said where yet (we won't guess — we just leave it off).
 export function placePhrase(event) {
-  const v = (event && event.venue ? String(event.venue) : '').trim();
+  const v = venueFor(event).name;
   if (!v) return '';
   if (/\bhome\b/i.test(v) || /our (place|home|backyard)/i.test(v) || v.toLowerCase() === "host's home") return 'our place';
   return v;
@@ -873,8 +874,11 @@ export function draftGuestUpdate(event, opts = {}) {
   const type = opts.type || 'general';
   const name = String(ev.name || '').trim();
   const forName = name ? ` for ${name}` : '';
-  const venueName = String(ev.venue || '').trim();
-  const city = String(ev.venueCity || ev.city || '').trim();
+  // venueFor constitution (ratchet shrink): name + gated city from the one
+  // accessor — a polluted venueCity can no longer leak into guest drafts.
+  const vf = venueFor(ev);
+  const venueName = vf.name;
+  const city = vf.city;
   const parking = String(ev.parkingNotes || '').trim();
   const rain = String(ev.rainPlan || '').trim();
   const when = (() => { try { return fmtLongDate(ev.date); } catch { return ''; } })();
@@ -925,9 +929,13 @@ export function draftGuestUpdate(event, opts = {}) {
 // nothing here is sent anywhere.
 export function draftParkingInstructions(event) {
   const ev = event || {};
-  const atHome = (ev.venueKind || 'home') === 'home';
-  const venueName = String(ev.venue || '').trim();
-  const city = String(ev.venueCity || ev.city || '').trim();
+  // venueFor constitution: the old `(venueKind || 'home')` defaulted a NAMED
+  // venue with no explicit kind to at-home copy — the accessor's kind rule
+  // (named venue ⇒ 'venue') is the ratified fix for exactly that drift.
+  const vf = venueFor(ev);
+  const atHome = vf.isHome;
+  const venueName = vf.name;
+  const city = vf.city;
   const rain = String(ev.rainPlan || '').trim();
   const lines = [];
   if (atHome) {

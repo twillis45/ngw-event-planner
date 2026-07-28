@@ -748,7 +748,7 @@ function completionFromEvent(event, graph, asOf) {
   const coiAll = bk.length ? (bk.every(v => v.coiStatus && /valid|on.?file|received|signed|active/i.test(v.coiStatus)) || undefined) : undefined;
   const balAll = bk.length ? bk.every(v => v.balancePaid) : undefined;
   // generic, family-agnostic signals reused by the keyword-inference layer below
-  const venueSig    = (!!event.venue || booked('Venue')) || undefined;
+  const venueSig    = (!!event.venue || booked('Venue')) || undefined; // venue-exempt: node-standalone .mjs cannot import the .js venueFor constitution
   const cateringSig = (booked('Catering') || bookedRe(/cater/i)) || undefined;
   const guestsSig   = (guests.length > 0) || undefined;
   const photoSig    = (booked('Photography') || bookedRe(/photo|video/i)) || undefined;
@@ -756,8 +756,8 @@ function completionFromEvent(event, graph, asOf) {
   const R = {
     // positive signal asserts DONE; absence → undefined → date-estimate (never assert "not booked" from missing data)
     date_budget: !!(event.date && (event.budget || event.totalBudget)) || undefined,
-    venue: !!event.venue || booked('Venue') || undefined,
-    venue_date: !!event.venue || booked('Venue') || undefined,
+    venue: !!event.venue || booked('Venue') || undefined, // venue-exempt: node-standalone .mjs
+    venue_date: !!event.venue || booked('Venue') || undefined, // venue-exempt: node-standalone .mjs
     photographer: booked('Photography') || undefined,
     caterer: booked('Catering') || undefined,
     catering: booked('Catering') || undefined,

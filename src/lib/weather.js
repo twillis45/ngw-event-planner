@@ -10,6 +10,7 @@
  */
 
 import { daysUntil, spanEnd } from './dates';
+import { venueFor } from './venueFor';
 
 const API_KEY = process.env.REACT_APP_OPENWEATHER_KEY;
 const BASE = 'https://api.openweathermap.org/data/3.0/onecall';
@@ -445,8 +446,12 @@ export function rainAwareSummary(summary, hasPlan) {
 // silently (the UI hides the action once event.rainPlan has text).
 export function suggestRainPlan(event) {
   const ev = event || {};
-  const venue = String(ev.venue || '').trim();
-  const atHome = ev.venueKind === 'home';
+  // venueFor constitution (ratchet shrink 2026-07-27): name + the at-home
+  // carve-out come from the one accessor, never raw fields — a host_event
+  // with no named venue now correctly drafts the at-home plan.
+  const v = venueFor(ev);
+  const venue = v.name;
+  const atHome = v.isHome;
   if (atHome) {
     return 'If weather turns, move food, seating, and the key moments to your covered or indoor backup spot. Keep power, sound, and setup protected, and send guests an updated entrance and parking note before they arrive.';
   }
@@ -465,8 +470,9 @@ export function suggestRainPlan(event) {
 export function guestRainMessage(event, wx) {
   const ev = event || {};
   const name = String(ev.name || '').trim();
-  const venue = String(ev.venue || '').trim();
-  const atHome = ev.venueKind === 'home';
+  const v = venueFor(ev);
+  const venue = v.name;
+  const atHome = v.isHome;
   const parkingNote = String(ev.parkingNotes || ev.parking || '').trim();
 
   const where = atHome

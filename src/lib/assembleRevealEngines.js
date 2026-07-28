@@ -93,11 +93,11 @@ function deriveDecisionBlockers(event, eventIdentity) {
 
   // RULE: No venue = everything blocks.
   // At-home carve-out (POP-1 continuity): the host's "At home · your place"
-  // path (venueKind === 'home') stores its location as venueCity — it never
-  // writes event.venue — so requiring event.venue left at-home hosts with a
+  // path (kind 'home') stores its location in the city field — it never
+  // writes the venue name — so requiring one left at-home hosts with a
   // permanent unresolvable blocker. At-home resolves on the at-home path's own
   // required field (city). Every other venue model (venueKind 'venue'/unset,
-  // planner events) still requires event.venue exactly as before.
+  // planner events) still requires the venue name exactly as before.
   // ONE venue reader (venueFor): home needs a REAL city (the CITY-LEAK gate
   // rides inside — a polluted venueCity no longer fakes a resolved venue);
   // everything else needs a name.
