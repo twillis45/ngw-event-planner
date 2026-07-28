@@ -53,7 +53,9 @@ export default function BudgetEstimateHint({
   // DESTINATION-3 — isDestination blends the band toward the travel-led range
   // (see estimateTotalRange); destinationAdjusted drives the honest disclosure
   // in the anchor line below.
-  const { lowTotal, highTotal, destinationAdjusted } = estimateTotalRange({ type, guestCount: guests, date, timeOfDay, metroFactor: 1, isDestination });
+  // NIGHTS TERM (P1 cost duration): the range now COMPUTES the extra days'
+  // food+drinks (catering share per extra day) instead of only disclosing them.
+  const { lowTotal, highTotal, destinationAdjusted, nightsAdjusted } = estimateTotalRange({ type, guestCount: guests, date, timeOfDay, metroFactor: 1, isDestination, nights });
 
   const conf = estimatorConfidence({
     hasType:       !!type,
@@ -115,11 +117,15 @@ export default function BudgetEstimateHint({
       }}>
         {type} · {guests} guests typically runs {fmtMoney(lowTotal)}–{fmtMoney(highTotal)}
         {Number(nights) > 0 && !destinationAdjusted ? (
-          // Multi-day honesty (span slice 2): the band prices the MAIN gathering
-          // day — we say so instead of inventing a per-day multiplier with no
-          // grounding. (Destination-adjusted bands already price the whole trip.)
+          // Multi-day honesty (span slice 2 → nights term): the extra days'
+          // food + drinks are now IN the range (catering share per extra day,
+          // same tables) — the copy says included only when the math moved
+          // (nightsAdjusted); a type with no catering share keeps the old
+          // main-day disclosure. Destination-adjusted bands price the trip.
           <span style={{ display: 'block', fontWeight: 500, fontSize: '0.86em', opacity: 0.75 }}>
-            for the main day — a {Number(nights) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those
+            {nightsAdjusted
+              ? `across your ${Number(nights) + 1} days — food and drinks for the extra days are in the range; venues and vendors usually book for the stay`
+              : `for the main day — a ${Number(nights) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those`}
           </span>
         ) : null}
       </div>

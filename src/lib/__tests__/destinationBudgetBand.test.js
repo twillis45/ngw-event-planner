@@ -118,3 +118,48 @@ describe('notIncludedFor — destination itemizes travel the way travel_led alre
     }
   });
 });
+
+// ─── NIGHTS TERM (P1 cost duration, 2026-07-27) ──────────────────────────────
+// Extra event days add the type's own CATERING share of the base day — the
+// exact claim the estimator's copy shipped in 7bfa5f/7bfa25f5, now computed
+// from the same tables. Locks: zero-nights identity, the additive math, the
+// destination-blend suppression (travel_led already prices the trip), and the
+// honesty flag the copy keys on.
+const { estimateTotalRange: estRange } = require('../budgetEstimator/totalEstimate');
+const { getCategoryShares } = require('../budgetEstimator/categoryShares');
+
+describe('nights term', () => {
+  const base = { type: 'Reunion', guestCount: 30 };
+
+  test('nights absent or zero: byte-identical to the single-day estimate', () => {
+    const a = estRange(base);
+    const b = estRange({ ...base, nights: 0 });
+    expect(b).toEqual({ ...a });
+    expect(a.nightsAdjusted).toBe(false);
+  });
+
+  test('extra days add the catering share per day, from the existing tables', () => {
+    const one = estRange(base);
+    const three = estRange({ ...base, nights: 2 });
+    const cat = getCategoryShares('Reunion').catering;
+    expect(three.nightsAdjusted).toBe(true);
+    expect(three.lowTotal).toBe(Math.round(one.lowTotal * (1 + cat.min * 2) / 100) * 100);
+    expect(three.highTotal).toBe(Math.round(one.highTotal * (1 + cat.max * 2) / 100) * 100);
+  });
+
+  test('destination-blended bands suppress the term (no double count)', () => {
+    const d = estRange({ ...base, isDestination: true, nights: 2 });
+    const d0 = estRange({ ...base, isDestination: true });
+    expect(d.destinationAdjusted).toBe(true);
+    expect(d.nightsAdjusted).toBe(false);
+    expect(d.lowTotal).toBe(d0.lowTotal);
+    expect(d.highTotal).toBe(d0.highTotal);
+  });
+
+  test('nights clamp: nonsense values cannot run away', () => {
+    const wild = estRange({ ...base, nights: 999 });
+    const cap = estRange({ ...base, nights: 13 });
+    expect(wild.lowTotal).toBe(cap.lowTotal);
+    expect(estRange({ ...base, nights: -3 }).nightsAdjusted).toBe(false);
+  });
+});

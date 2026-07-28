@@ -6,6 +6,7 @@
 
 import { getDatePremium, getTimeOfDayFactor } from '../estimatorFactors.js';
 import { budgetFamilyForType } from './confidence.js';
+import { getCategoryShares } from './categoryShares.js';
 
 // Per-event-type per-head bands. Reflect commonly cited US bands.
 export const PER_HEAD_BY_TYPE = {
@@ -59,7 +60,7 @@ export const PER_HEAD_BY_FAMILY = {
  * `destinationAdjusted` tells the surface whether the blend actually moved
  * the band, so copy can disclose it honestly.
  */
-export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false }) {
+export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 'afternoon', metroFactor = 1, isDestination = false, nights = 0 }) {
   const guests = Math.max(0, Number(guestCount) || 0);
   if (!type || guests < 1) return null;
   let ph = PER_HEAD_BY_TYPE[type] || PER_HEAD_BY_FAMILY[budgetFamilyForType(type)] || { low: 100, high: 250 };
@@ -73,9 +74,33 @@ export function estimateTotalRange({ type, guestCount, date = null, timeOfDay = 
   const tod = getTimeOfDayFactor(timeOfDay);
   const datePrem = getDatePremium(date, type);
   const factor = (metroFactor || 1) * (tod.multiplier || 1) * (datePrem.multiplier || 1);
+  let low = ph.low * guests * factor;
+  let high = ph.high * guests * factor;
+  // NIGHTS TERM (P1 "cost duration term", 2026-07-27): each extra event day
+  // adds the type's own CATERING share of the base day — the exact claim the
+  // estimator's copy has shipped since 7bfa25f5 ("adds food and drinks for
+  // each extra day"), now computed from the same tables it always cited
+  // (per-head band × the type's catering share band). No invented figures.
+  // Venue/vendor lines are NOT re-multiplied (bookings usually span the stay),
+  // and when the destination blend already moved the band to travel_led —
+  // whose comment says it encodes multi-day scope — the term stays OFF so a
+  // destination weekend is never double-counted. `nightsAdjusted` tells the
+  // surface whether the math actually moved, so copy can say "includes" only
+  // when it does.
+  const extraDays = Math.max(0, Math.min(13, Math.round(Number(nights) || 0)));
+  let nightsAdjusted = false;
+  if (extraDays > 0 && !destinationAdjusted && budgetFamilyForType(type) !== 'travel_led') {
+    const cat = (getCategoryShares(type) || {}).catering;
+    if (cat && cat.min > 0) {
+      low  += low  * cat.min * extraDays;
+      high += high * cat.max * extraDays;
+      nightsAdjusted = true;
+    }
+  }
   return {
-    lowTotal:  Math.round(ph.low  * guests * factor / 100) * 100,
-    highTotal: Math.round(ph.high * guests * factor / 100) * 100,
+    lowTotal:  Math.round(low  / 100) * 100,
+    highTotal: Math.round(high / 100) * 100,
     destinationAdjusted,
+    nightsAdjusted,
   };
 }

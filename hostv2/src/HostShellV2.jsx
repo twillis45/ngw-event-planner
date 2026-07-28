@@ -4340,7 +4340,7 @@ export default function HostShellV2() {
   // forceChange: open straight into the CHANGE drawer (skip the AGREED read-only display and
   // the PROPOSED lead) — used by the money-sheet fold, whose whole intent is "change the number".
   const budgetEditorBlock = (forceChange = false) => {
-    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination });
+    const est = estimateTotalRange({ type: event.type, guestCount: guests, date: event.date, timeOfDay: event.timeOfDay, isDestination: !!event.isDestination, nights: spanNights(event) });
     // HOST MODEL: one number (event.totalBudget). Offered three ways — the
     // estimator's real low/mid/high as Lean / Typical / All-out chips (host
     // request, 2026-07-08), a custom number, and the range as a hint.
@@ -4449,7 +4449,7 @@ export default function HostShellV2() {
             onClick={() => setB(customN)}>Use it</button>
         </CtaRow>
         <Grounding gap={ASK_COMPACT.ctaToFoot}>
-          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
+          {est ? `For ${guests} at a ${String(event.type).toLowerCase()}: lean runs about ${fmt(est.lowTotal)}, all-out about ${fmt(est.highTotal)}.${est.nightsAdjusted ? ` That covers your ${spanNights(event) + 1} days — food and drinks for the extra days are in the range.` : spanNights(event) > 0 && !est.destinationAdjusted ? ` That prices the main day — your ${spanNights(event) + 1}-day stretch adds food and drinks for each extra day; the spread plan sizes those.` : ''}` : ''}
           {est && est.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : ''}
         </Grounding>
       </AskColumn>
@@ -5074,7 +5074,7 @@ export default function HostShellV2() {
                         // type yet) → the honest custom field alone.
                         const estC = (() => {
                           try {
-                            return effType ? estimateTotalRange({ type: effType, guestCount: effGuests, date: effDate || undefined, isDestination: effIsDestination }) : null;
+                            return effType ? estimateTotalRange({ type: effType, guestCount: effGuests, date: effDate || undefined, isDestination: effIsDestination, nights: spanNights({ date: effDate, endDate: effEndDate }) }) : null;
                           } catch { return null; }
                         })();
                         const midC = estC ? Math.round(((estC.lowTotal + estC.highTotal) / 2) / 100) * 100 : 0;
@@ -5098,7 +5098,7 @@ export default function HostShellV2() {
                               aria-label="Total budget" />
                             {estC && (
                               <p className="grounding" style={{ margin: 0 }}>
-                                For {effGuests} at a {String(effType).toLowerCase()}: lean runs about {fmtC(estC.lowTotal)}, all-out about {fmtC(estC.highTotal)}.{estC.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : (effEndDate ? ' That prices the main day — a multi-day stretch adds food and drinks for each extra day.' : '')}
+                                For {effGuests} at a {String(effType).toLowerCase()}: lean runs about {fmtC(estC.lowTotal)}, all-out about {fmtC(estC.highTotal)}.{estC.destinationAdjusted ? ' These ranges run wider because guests are traveling in.' : estC.nightsAdjusted ? ' Food and drinks for the extra days are in these numbers.' : (effEndDate ? ' That prices the main day — a multi-day stretch adds food and drinks for each extra day.' : '')}
                               </p>
                             )}
                           </div>
