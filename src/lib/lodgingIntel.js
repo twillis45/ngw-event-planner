@@ -278,6 +278,39 @@ export function lodgingIntel(event) {
 }
 
 /**
+ * WHAT THIS HOUSE HAS TO HAVE (host directive 2026-07-28: "have the host input
+ * other amenities or things that are requirements for the search").
+ *
+ * `search` carries a platform filter ONLY where that filter was verified against
+ * the live search page on 2026-07-28 — Airbnb's own chips produced
+ * `amenities[]=25` (hot tub), `amenities[]=7` (pool) and `pets=1`, and applying
+ * two of them cut 495 homes to 125. The rest have no verified filter param, so
+ * they are NOT faked into the URL; they steer the recommendation instead, matched
+ * against what the host typed about each option. A filter we cannot prove is a
+ * filter we do not send.
+ */
+export const LODGING_MUST_HAVES = [
+  { id: 'hottub',   label: 'Hot tub',            search: { 'amenities[]': '25' }, match: /hot ?tub|jacuzzi|spa\b/i },
+  { id: 'pool',     label: 'Pool',               search: { 'amenities[]': '7' },  match: /\bpool\b/i },
+  { id: 'pets',     label: 'Pets welcome',       search: { pets: '1' },           match: /pet|dog friendly|dogs? ok/i },
+  { id: 'stepfree', label: 'Step-free access',   search: null, match: /step-free|ground floor|single (level|story|storey)|no stairs|elevator|accessible/i },
+  { id: 'kids',     label: 'Kid-ready',          search: null, match: /crib|pack.?n.?play|high ?chair|fenced|kid|family/i },
+  { id: 'bigtable', label: 'Table for everyone', search: null, match: /big table|large table|seats \d+|dining for/i },
+  { id: 'water',    label: 'Dock / water access',search: null, match: /dock|lakefront|waterfront|beach access|boat/i },
+  { id: 'laundry',  label: 'Washer & dryer',     search: null, match: /washer|laundry|dryer/i },
+  { id: 'ac',       label: 'Air conditioning',   search: null, match: /\ba\/?c\b|air.?condition/i },
+  { id: 'parking',  label: 'Parking for several',search: null, match: /parking|driveway|garage/i },
+];
+
+const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id || '').trim()) || null;
+
+/** The host's requirement list off the event, junk dropped. */
+export function mustHavesFor(event) {
+  const raw = Array.isArray(event && event.lodgingMustHaves) ? event.lodgingMustHaves : [];
+  return raw.map(mustHaveById).filter(Boolean);
+}
+
+/**
  * GO LOOK, WITH YOUR OWN ANSWERS ALREADY IN THE BOX (host question 2026-07-28:
  * "can the app use the event to find our suggest say a top 3 compatible options
  * from airbnb or vrbo?").
@@ -315,11 +348,18 @@ export function lodgingSearchLinks(event) {
     budget ? `under $${budget.toLocaleString()}` : null,
   ].filter(Boolean);
 
+  const musts = mustHavesFor(ev);
+  for (const m of musts) if (m.search) said.push(m.label.toLowerCase());
   const ab = new URLSearchParams();
   if (start) ab.set('checkin', start);
   if (end) ab.set('checkout', end);
   if (guests) ab.set('adults', String(guests));
   if (budget) ab.set('price_max', String(budget));
+  // Only the filters proven against the live search page ride the URL.
+  for (const m of musts) {
+    if (!m.search) continue;
+    for (const [k, v] of Object.entries(m.search)) ab.append(k, v);
+  }
   const abSlug = place.replace(/,\s*/g, '--').replace(/\s+/g, '-');
 
   const vr = new URLSearchParams({ destination: place });
@@ -365,6 +405,7 @@ export function lodgingRecommendation(event, intel) {
   const needsAccess = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane/i.test(String(g.needs || ''))).length;
   const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0);
 
+  const musts = mustHavesFor(ev);
   const unweighed = [];
   if (!guests) unweighed.push('how many are coming');
   if (!options.some((o) => o.totalPrice != null || o.pricePerNight != null)) unweighed.push('what any of them cost');
@@ -400,6 +441,17 @@ export function lodgingRecommendation(event, intel) {
       if (/flexible|moderate/.test(o.cancellationTier)) { score += 2; reasons.push(`${o.cancellationTier} cancellation`); }
       else { score -= 1; reasons.push(`${o.cancellationTier} cancellation — your own drop-outs would be a total loss`); }
     }
+
+    // THE HOST'S OWN REQUIREMENTS — the strongest signal here, because they are
+    // the only criterion the host stated outright rather than us inferring it.
+    // An option is credited for meeting one and named for missing one; we match
+    // against what the HOST typed about the option, never against a listing fact
+    // we went and fetched.
+    const hay = `${o.label} ${o.notes || ''}`;
+    const met = [], missing = [];
+    for (const m of musts) (m.match.test(hay) ? met : missing).push(m.label.toLowerCase());
+    if (met.length) { score += met.length * 2; reasons.push(`has ${met.join(', ')}`); }
+    if (missing.length) { score -= missing.length; reasons.push(`doesn't say it has ${missing.join(', ')}`); }
 
     // WHO IS COMING — these only speak when the roster actually says so.
     if (needsAccess > 0 && o.notes) {

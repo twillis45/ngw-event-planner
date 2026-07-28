@@ -73,7 +73,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -8884,6 +8884,26 @@ export default function HostShellV2() {
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         <div className="shelf-label">The rental shortlist</div>
                         {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
+                        {/* WHAT IT HAS TO HAVE (host directive 2026-07-28). The host's own
+                            requirements — the only criterion they state outright rather than
+                            us inferring it. The verified filters ride the platform search;
+                            all of them steer the ranking. */}
+                        {(() => {
+                          const on = Array.isArray(event.lodgingMustHaves) ? event.lodgingMustHaves : [];
+                          const toggle = (id) => patchEvent(
+                            { lodgingMustHaves: on.includes(id) ? on.filter((x) => x !== id) : [...on, id] }, null);
+                          return (
+                            <div style={{ margin: '2px 0 10px' }}>
+                              <span className="of" style={{ display: 'block', marginBottom: 4 }}>Has to have</span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {LODGING_MUST_HAVES.map((m) => (
+                                  <button key={m.id} className="chip" aria-pressed={on.includes(m.id)}
+                                    onClick={() => toggle(m.id)}>{m.label}</button>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })()}
                         {/* GO LOOK, PRE-FILTERED (host question 2026-07-28). We can't search
                             those platforms — a live rental API is on the never-build list —
                             but we can hand over a search already carrying the town, the real
@@ -8921,13 +8941,24 @@ export default function HostShellV2() {
                           const rec = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
                           if (!rec) return null;
                           const chosenAlready = li.chosen && rec.pick && li.chosen.id === rec.pick.id;
+                          // The house it is recommending, so the host can SEE the one being
+                          // argued for (host 2026-07-28: "make sure recommendation pulls the
+                          // images"). Same strip as everywhere else — flip through, tap to
+                          // enlarge — because a recommendation you can't look at is just a
+                          // sentence.
+                          const picked = rec.pick ? (li.options.find((o) => o.id === rec.pick.id) || null) : null;
                           return (
                             <div className="brow" style={{ margin: '0 0 10px' }}>
-                              <p className="grounding" style={{ margin: 0 }}>
-                                {rec.tie
-                                  ? 'These come out even on what I can see — this one is yours to call.'
-                                  : `On your numbers I'd take ${rec.pick.label}${rec.why.length ? ' — ' + rec.why.join(', ') : ''}.`}
-                              </p>
+                              <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                                {picked && (picked.photos || []).length > 0 && (
+                                  <PhotoStrip photos={picked.photos} alt={picked.label} size={56} />
+                                )}
+                                <p className="grounding" style={{ margin: 0, flex: '1 1 160px', minWidth: 0 }}>
+                                  {rec.tie
+                                    ? 'These come out even on what I can see — this one is yours to call.'
+                                    : `On your numbers I'd take ${rec.pick.label}${rec.why.length ? ' — ' + rec.why.join(', ') : ''}.`}
+                                </p>
+                              </div>
                               {rec.unweighed.length > 0 && (
                                 <p className="grounding" style={{ margin: '4px 0 0', color: 'var(--muted)' }}>
                                   I couldn’t weigh {rec.unweighed.join(', ')}.
@@ -8942,7 +8973,10 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
-                        {li.options.map((o) => (
+                        {li.options.map((o) => {
+                          const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
+                          const isRec = !!(recNow && recNow.pick && recNow.pick.id === o.id);
+                          return (
                           <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             {/* Same component the guest sees on the invite — flip through
                                 in place, tap to enlarge (host ask 2026-07-28). */}
@@ -8955,8 +8989,13 @@ export default function HostShellV2() {
                                 in it. A basis wide enough to hold a name forces the actions to
                                 wrap onto their own line instead of strangling the content. */}
                             <span className="f-main" style={{ minWidth: 0, flex: '1 1 180px' }}>
+                              {/* WHICH ONE IS THE RECOMMENDATION (host 2026-07-28) — said on
+                                  the row itself, not only in the block above, so the list can
+                                  be read on its own. Distinct from "the pick", which is what
+                                  the HOST chose. */}
                               <span className="f-name">{o.label}
                                 {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
+                                {isRec && o.status !== 'chosen' ? <span className="tag plan" style={{ color: 'var(--steel-soft)', background: 'var(--steel-tint)' }}>what I&rsquo;d take</span> : null}
                                 {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
                               </span>
                               {(o.checks || []).map((c) => (
@@ -8971,7 +9010,8 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => write(li.options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
                             </span>
                           </div>
-                        ))}
+                          );
+                        })}
                         <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
                           <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
                           <input className="field" style={fldR} placeholder="Photos — copy the gallery on the listing and paste once; every image comes through"

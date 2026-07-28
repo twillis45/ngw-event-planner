@@ -367,3 +367,58 @@ describe('lodgingSearchLinks', () => {
     expect(ab.href).toMatch(/checkout=2026-09-11/);
   });
 });
+
+// ─── THE HOST'S OWN REQUIREMENTS (host directive 2026-07-28) ─────────────────
+// "have the host input other amenities or things that are requirements for the
+// search." These are the only criterion the host states outright rather than us
+// inferring it, so they weigh heaviest — and the ones with a VERIFIED platform
+// filter also ride the search URL. A filter we cannot prove is not sent.
+const { LODGING_MUST_HAVES, mustHavesFor } = require('../lodgingIntel');
+
+describe('must-have requirements', () => {
+  const base = { id: 'm', type: 'Reunion', date: '2026-09-11', endDate: '2026-09-13',
+    venueCity: 'Deep Creek Lake', venueState: 'Maryland', guestCount: 10 };
+
+  test('only verified platform filters reach the search URL', () => {
+    const [ab] = lodgingSearchLinks({ ...base, lodgingMustHaves: ['hottub', 'pool', 'pets', 'bigtable'] });
+    // verified live 2026-07-28: amenities[]=25 hot tub, []=7 pool, pets=1
+    expect(ab.href).toMatch(/amenities(%5B%5D|\[\])=25/);
+    expect(ab.href).toMatch(/amenities(%5B%5D|\[\])=7/);
+    expect(ab.href).toMatch(/pets=1/);
+    // 'bigtable' has no proven filter param — it must NOT be faked into the URL
+    expect(ab.href).not.toMatch(/bigtable/);
+  });
+
+  test('the search says which requirements it actually applied', () => {
+    const [ab] = lodgingSearchLinks({ ...base, lodgingMustHaves: ['hottub', 'bigtable'] });
+    expect(ab.applied.join(' · ')).toMatch(/hot tub/);
+    expect(ab.applied.join(' · ')).not.toMatch(/table for everyone/i);
+  });
+
+  test('a requirement the host set decides the ranking', () => {
+    const opts = [
+      { id: 'plain', label: 'Plain House', url: 'https://www.airbnb.com/rooms/1', sleeps: 12, totalPrice: 2000 },
+      { id: 'tub', label: 'Hot Tub House', url: 'https://www.airbnb.com/rooms/2', sleeps: 12, totalPrice: 2400, notes: 'Hot tub on the deck' },
+    ];
+    // without the requirement, the cheaper one wins
+    expect(lodgingRecommendation({ ...base, lodgingOptions: opts }).pick.id).toBe('plain');
+    // with it, the one that meets it wins and says so
+    const rec = lodgingRecommendation({ ...base, lodgingOptions: opts, lodgingMustHaves: ['hottub'] });
+    expect(rec.pick.id).toBe('tub');
+    expect(rec.why.join(' ')).toMatch(/has hot tub/);
+    expect(rec.scores.find((x) => x.id === 'plain').reasons.join(' ')).toMatch(/doesn't say it has hot tub/);
+  });
+
+  test('junk requirement ids are dropped, never stored as a criterion', () => {
+    expect(mustHavesFor({ lodgingMustHaves: ['hottub', 'not-a-thing', null] }).map((m) => m.id)).toEqual(['hottub']);
+    expect(mustHavesFor({})).toEqual([]);
+  });
+
+  test('every requirement in the vocabulary is usable', () => {
+    for (const m of LODGING_MUST_HAVES) {
+      expect(m.id).toMatch(/^[a-z]+$/);
+      expect(String(m.label).length).toBeGreaterThan(2);
+      expect(m.match instanceof RegExp).toBe(true);
+    }
+  });
+});

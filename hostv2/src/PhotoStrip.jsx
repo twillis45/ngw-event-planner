@@ -21,7 +21,12 @@ import { createPortal } from 'react-dom';
 //   · The enlarged view is a real dialog: Escape closes, the arrows still work,
 //     and the scrim is the click target for dismissal.
 
-export default function PhotoStrip({ photos, alt, size = 64, radius = 'var(--r-md)' }) {
+// THUMBNAILS ARE LANDSCAPE (host report 2026-07-28: "thumbnails are shape
+// wrong"). Property photography is 3:2 — cropping a house to a square throws
+// away the house and keeps a wall. `size` is the WIDTH; the box is 3:2 from it,
+// which is also the shape Airbnb and Vrbo use on their own result cards.
+export default function PhotoStrip({ photos, alt, size = 84, radius = 'var(--r-md)' }) {
+  const boxH = Math.round(size / 1.5);
   const all = Array.isArray(photos) ? photos.filter(Boolean) : [];
   const [dead, setDead] = useState([]);          // urls that failed to load
   const live = all.filter((u) => !dead.includes(u));
@@ -55,11 +60,11 @@ export default function PhotoStrip({ photos, alt, size = 64, radius = 'var(--r-m
 
   return (
     <>
-      <span style={{ position: 'relative', width: size, height: size, flex: '0 0 auto', display: 'block' }}>
+      <span style={{ position: 'relative', width: size, height: boxH, flex: '0 0 auto', display: 'block' }}>
         <img
           src={src} alt={alt || ''} loading="lazy" referrerPolicy="no-referrer"
           onClick={(e) => { stop(e); setOpen(true); }}
-          style={{ width: size, height: size, objectFit: 'cover', borderRadius: radius, display: 'block', cursor: 'zoom-in' }}
+          style={{ width: size, height: boxH, objectFit: 'cover', borderRadius: radius, display: 'block', cursor: 'zoom-in' }}
           onError={() => setDead((d) => (d.includes(src) ? d : [...d, src]))}
         />
         {n > 1 && (
