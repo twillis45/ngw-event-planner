@@ -42,8 +42,9 @@ export function taskSatisfied(event, task) {
   // venueFor: an at-home event with a city IS venued — reading the bare venue
   // name here told home hosts to go book a venue (audit divergence #2).
   const hasVenue   = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();
-  const hasVendors = hasNamedVendor(event);
-  const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);
+  // Menu proof needs MENU content — a lone sourcing key ("host cooks") proves a
+  // sourcing choice, not a locked menu (audit class S7).
+  const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).some((k) => k !== 'sourcing')) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);
   const dateSet    = !!String(event.date || '').trim() && !/^(tbd|tba)$/i.test(String(event.date).trim());
 
   // "Set the date…" composites (playbook setup milestones like "Set date, headcount, menu")
@@ -52,6 +53,18 @@ export function taskSatisfied(event, task) {
   // bundled string never lingers in a "what's left" list once event.date exists. FIRST so it
   // wins over the generic headcount match below.
   if (/^set\b.*\bdate\b/.test(s) || /\bset (the |a )?date\b/.test(s))         return dateSet;
+
+  // ── BRUTAL AUDIT 2026-07-28 GUARDS — these run before every domain rule ─────
+  // A this-or-that question is a DECISION — no stored fact proves a choice was
+  // made ("Ticketed (paid) or free registration?", "At home or a venue?").
+  if (/\bor\b/.test(s) && /\?\s*$/.test(s)) return false;
+  // ACTS — calls, briefings, walk-throughs, physical work, ongoing collection —
+  // are never proven by presence facts. "Recruit 3-5 volunteers" was marked done
+  // by a typed headcount; "share live location" by a venue name; "track RSVPs"
+  // by a single reply. No stored field witnesses these happening, so they stay
+  // open until the host ticks them. (Chase-class rows keep their own stronger
+  // proof below — none of these words appear in the chase regex.)
+  if (/\b(re-?confirm|call (every|all)|brief|remind|greet|walk|tour|rehears|recruit|volunteers?|sound check|run.of.show|give\b|pick(ing)? up|drop(ping)? off|load|unload|pack|clean|decorat|escort|collect|track|share|point)\b/.test(s)) return false;
 
   // ── C2 — A PRESENCE PREDICATE MAY NOT SATISFY AN ACT ────────────────────────
   // This file's own header promises it "returns true ONLY when we can prove from
@@ -76,8 +89,16 @@ export function taskSatisfied(event, task) {
       .filter(v => v && String(v.name || '').trim() && vendorIsCommitted(v));
     if (!committed.length) return false;           // nothing to prove it against
     if (/deposit/.test(s)) {
-      return committed.every(v => !(Number(v.depositAmt) > 0) || v.depositPaid === true);
+      // Vacuous-proof fix (audit class S5): a committed vendor with NO deposit
+      // amount recorded proves nothing about deposits being paid. Require at
+      // least one recorded deposit, all of them paid.
+      const withDep = committed.filter(v => Number(v.depositAmt) > 0);
+      if (!withDep.length) return false;
+      return withDep.every(v => v.depositPaid === true);
     }
+    // Same class: vendorOutstanding is 0 when no costs were ever recorded.
+    // "Nothing owed" is proof only when some money was actually on the books.
+    if (!committed.some(v => Number(v.cost) > 0 || Number(v.depositAmt) > 0)) return false;
     return vendorOutstanding(event) === 0;         // pay / balance / settle: nothing owed
   }
 
@@ -114,17 +135,48 @@ export function taskSatisfied(event, task) {
     return guests.some(g => rsvpHasResponded(g));
   }
 
-  // Caterer-specific FIRST — before the generic guest/headcount match — so a sourcing
-  // toggle gates catering tasks even when they also say "headcount" (e.g. "confirm
-  // catering headcount"). Satisfied when a real caterer exists OR the host self-provides.
-  if (/cater/.test(s))                                                       return hasVendors || cateringSelfProvided(event);
-  // Headcount/guest-count tasks: a typed count DOES prove "set the guest count".
-  // (The invite/RSVP acts are handled above — they are not the same question.)
-  if (/\bguest|head\s?count|who.?s coming|adult|kids?\b/.test(s))             return hasGuests;
-  if (/budget|spending plan|set (a |the )?(cost|spend)/.test(s))             return hasBudget;
-  if (/venue|location|book.*(space|hall|room|venue)|secure.*(space|venue)/.test(s)) return hasVenue;
-  if (/vendor|photograph|\bdj\b|florist|hire|book a /.test(s))               return hasVendors;
-  if (/menu|food plan|what to (cook|serve|make)|plan the food/.test(s))       return hasFood;
+  // ── BRUTAL AUDIT 2026-07-28: a MENTION may not satisfy a TASK ───────────────
+  // The audit ran every playbook label against these rules and found the mention-
+  // match classes below marking unproven work "done by your plan" (which the host
+  // checklist then DROPS, and taskLead can never call overdue). The rules now
+  // require the task to BE about the fact — an action anchor — not merely to
+  // mention a related word. Prefer a false negative (the host ticks it) over a
+  // false positive (the app hides work that was never done).
+
+  // Catering moot-ness rides the sourcing choice regardless of verb: if the host
+  // self-provides, every caterer task is about a vendor this event doesn't have.
+  if (/cater/.test(s) && cateringSelfProvided(event)) return true;
+
+  // Booking-verb vendor proof — ROLE-AWARE and STATUS-AWARE. "Book the DJ" is
+  // proven by a DJ the host actually booked (isVendorBooked via vendorIsCommitted),
+  // never by a florist, and never by a name typed while still considering.
+  const vendors = Array.isArray(event.vendors) ? event.vendors : [];
+  const committedMatch = (re) => vendors.some((v) => v && vendorIsCommitted(v)
+    && re.test(((v.name || '') + ' ' + (v.category || '') + ' ' + (v.type || '')).toLowerCase()));
+  if (/\b(book(ed)?|hire[ds]?|lock(ed)? in|secure[d]?)\b/.test(s) || /vendor/.test(s)) {
+    if (/cater/.test(s)) return committedMatch(/cater|food/);
+    const roles = [
+      [/photograph|videograph/, /photo|video/],
+      [/\bdj\b|\bbanda?\b|entertain|\bmusic\b/, /\bdj\b|music|banda?\b|entertain/],
+      [/florist|\bflowers?\b/, /flor/],
+      [/\bcake\b|\bbaker\b/, /bak|cake/],
+      [/officiant/, /offici/],
+    ];
+    const named = roles.filter(([taskRe]) => taskRe.test(s));
+    if (named.length) return named.every(([, vendRe]) => committedMatch(vendRe));
+    if (/vendor|\bhire[ds]?\b|book a /.test(s)) return vendors.some((v) => v && vendorIsCommitted(v));
+  }
+
+  // Headcount/guest-count tasks: a typed count DOES prove "set the guest count" —
+  // but only tasks about ESTABLISHING the count qualify. The old rule fired on any
+  // mention of guest/adult/kids ("Greet guests", "Keep kids back", "buy ice
+  // ~1.5 lb/guest") — audit class S4.
+  if (/\b(set|lock|confirm|final(ize)?|decide|land)\b.{0,24}\b(head\s?count|guest.?count|the count)\b|head\s?count target|guest list\b|who.?s coming/.test(s)) return hasGuests;
+  if (/\b(set|agree[d]?|decide|pick|land)\b.{0,30}budget|^budget\b|spending plan|set (a |the )?(cost|spend)/.test(s)) return hasBudget;
+  // Venue: booking/choosing verbs only. Bare /location/ used to close safety rows
+  // ("share live location", "Plan B location") off a typed venue name — class S3.
+  if (/\b(book(ed)?|find|pick|choose|secure[d]?|reserve[d]?|lock(ed)?|scout)\b.{0,40}\b(venue|location|space|hall|room)\b|^venue\b|venue rfp/.test(s)) return hasVenue;
+  if (/\b(set|lock|plan|decide|map)\b.{0,20}\b(menu|spread)\b|\bmenu\b|food plan|what to (cook|serve|make)|plan the food/.test(s)) return hasFood;
   return false;
 }
 

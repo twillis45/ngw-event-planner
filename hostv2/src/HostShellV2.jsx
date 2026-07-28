@@ -1347,7 +1347,11 @@ export default function HostShellV2() {
           && (travel.air.roster || []).some(r => r.hasFlightInfo));
       } catch { return false; }
     }
-    if (/\b(buy|shop)\b|shopping/i.test(String(t.task || ''))) {
+    // Scoped to FOOD purchases (brutal audit 2026-07-28, class S9): this rule
+    // proves against the GROCERY list, and it's the one inference that WRITES
+    // done:true — so "buy the linens" / "alcohol + decor run" must never ride
+    // a fully-ticked food list. Food context required.
+    if (/\b(buy|shop)\b.{0,50}\b(food|grocer|ingredient|ice|drink|produce|meat|snack)\b|grocery|shopping list|food shop/i.test(String(t.task || ''))) {
       try {
         const fp = playbookFoodPlan(event);
         const active = ((fp && fp.list) || []).filter(it => it && !it.skipped);

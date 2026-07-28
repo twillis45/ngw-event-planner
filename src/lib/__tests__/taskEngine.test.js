@@ -34,8 +34,12 @@ describe('taskSatisfied — derives from real event state', () => {
     expect(taskSatisfied({}, t('Secure the space'))).toBe(false);
   });
 
-  test('generic vendor tasks satisfied once a named vendor exists', () => {
-    expect(taskSatisfied({ vendors: [{ name: 'DJ Sol' }] }, t('Book entertainment / DJ'))).toBe(true);
+  test('vendor booking is proven by a BOOKED vendor in that ROLE — never a name alone', () => {
+    // Brutal audit 2026-07-28 (class S1): a typed name with no booked status used
+    // to prove every book/hire/reconfirm task in any category.
+    expect(taskSatisfied({ vendors: [{ name: 'DJ Sol', status: 'Booked' }] }, t('Book entertainment / DJ'))).toBe(true);
+    expect(taskSatisfied({ vendors: [{ name: 'DJ Sol' }] }, t('Book entertainment / DJ'))).toBe(false);          // considering ≠ booked
+    expect(taskSatisfied({ vendors: [{ name: 'Lens & Co', status: 'Booked' }] }, t('Book the DJ'))).toBe(false);  // wrong role
     expect(taskSatisfied({ vendors: [{ name: '' }] }, t('Book the photographer'))).toBe(false);
     expect(taskSatisfied({}, t('Book the photographer'))).toBe(false);
   });
@@ -60,8 +64,10 @@ describe('choices are engine inputs — sourcing toggles ripple into caterer tas
     expect(taskSatisfied({ foodChoices: { sourcing: 'Hire a caterer' } }, t('Book the caterer'))).toBe(false);
   });
 
-  test('caterer task satisfied either way once a real caterer vendor exists', () => {
-    expect(taskSatisfied({ foodChoices: { sourcing: 'Hire a caterer' }, vendors: [{ name: "Soul Daddy's" }] }, t('Book the caterer'))).toBe(true);
+  test('caterer task satisfied once a real CATERING vendor is booked — not any vendor', () => {
+    expect(taskSatisfied({ foodChoices: { sourcing: 'Hire a caterer' }, vendors: [{ name: "Soul Daddy's", category: 'Catering', status: 'Booked' }] }, t('Book the caterer'))).toBe(true);
+    // Brutal audit class S2: a booked PHOTOGRAPHER used to satisfy caterer tasks.
+    expect(taskSatisfied({ foodChoices: { sourcing: 'Hire a caterer' }, vendors: [{ name: 'Lens & Co', category: 'Photo', status: 'Booked' }] }, t('Book the caterer'))).toBe(false);
   });
 
   test('cateringSelfProvided reads the sourcing choice', () => {
