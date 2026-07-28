@@ -253,11 +253,6 @@ for (const state of STATES) {
 
       test('checklist CTA — a task action lands a real destination, never a dead tap', async ({ page }) => {
         test.setTimeout(60_000);
-        // KNOWN FINDING (probe's first catch, 2026-07-27): on Dinner T-1 the
-        // first task's CTA resolves routeSheet() FALSE and falls back to a
-        // label toast — the soft dead-end class (glyph-only-when-navigates).
-        // Expected-fail documents it; flips to alert when the route is fixed.
-        test.fail(state.label.startsWith('Dinner T-1'), 'first task CTA dead-taps — routeSheet false → toast fallback; trace queued');
         await boot(page, state);
         await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
         await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
@@ -282,10 +277,15 @@ for (const state of STATES) {
         const beforeFocus = await focusSig();
         await cta.click({ timeout: 4000 });
         await page.waitForTimeout(1200);
-        const afterTitle = await page.locator('#sheet-title').innerText().catch(() => '');
-        const afterBody = await page.locator('.sheet').last().innerText({ timeout: 1000 }).catch(() => '');
+        // A route may legitimately CLOSE the sheet for a stage landing (the
+        // day-of run of show) — sheet-gone is arrival, not a dead tap. All
+        // reads bounded: a vanished element must answer in a beat, never the
+        // 30s locator default (that wait was itself a probe timeout).
+        const sheetGone = await page.evaluate(() => !document.querySelector('.sheet'));
+        const afterTitle = await page.locator('#sheet-title').innerText({ timeout: 1500 }).catch(() => '');
+        const afterBody = await page.locator('.sheet').last().innerText({ timeout: 1500 }).catch(() => '');
         const afterFocus = await focusSig();
-        expect(afterTitle !== beforeTitle || afterBody !== beforeBody || afterFocus !== beforeFocus,
+        expect(sheetGone || afterTitle !== beforeTitle || afterBody !== beforeBody || afterFocus !== beforeFocus,
           'task CTA changed nothing — dead tap (fall-through class)').toBe(true);
       });
 

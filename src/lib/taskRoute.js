@@ -54,7 +54,11 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   const wk = String((meta && meta.week) || '').toLowerCase();
   const dayOf = (meta && meta.category) === 'event-day' || /day of\b|day-of/.test(wk);
   if (dayOf || /\bfire[s]? the pit|light the pit|set up (the )?canop|set out (foil|to-go)|\bserved?\b|bless the food|scrape the grill|pack (up|leftovers|the)|fold (the )?canopies|works batches\b/.test(t))
-    return { label: 'See the day plan', route: { stage: 'day' } };
+    // The resolver's day-stage vocabulary — `{ stage: 'day' }` was a shape
+    // resolveRoute never understood (no tab, no focusField → null), so EVERY
+    // "See the day plan" CTA dead-tapped into the toast fallback. Caught by the
+    // board-matrix checklist probe's first run (2026-07-27).
+    return { label: 'See the day plan', route: { tab: 'Event Day Schedule' } };
   if (/\b(marinate|season the|slow-cook|cook the|make-ahead|prep)\b/.test(t))
     return null;
   if (/\b(buys?|groceries|drinks|soda|water|ice\b|disposable|foil|to-go|trash|recycl|fuel|charcoal|napkins|cups|plates|shopping)\b/.test(t))
