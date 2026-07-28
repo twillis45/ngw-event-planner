@@ -8,6 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
+import { incidentPlanFor } from './knowledge/incidentContext';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
 const SOMBRE_RE = /funeral|memorial|shiva|celebration of life|life celebration|wake|remembrance|in memoriam|mourn|repast/i;
@@ -360,6 +361,20 @@ export function draftHelperBrief(event, profile, opts = {}) {
     }
     lines.push('You’ve got this — text me if anything comes up!');
   }
+  // Incident lines (host ask 2026-07-28) — the two facts helpers most need in a
+  // bad moment, from the SAME sourced composer the Day stage renders (ONE
+  // source of truth, incidentPlanFor): the words for 911, and the water-watcher
+  // rule when the event has water + kids. Never a diagnosis, never invented.
+  try {
+    const ip = incidentPlanFor(event);
+    const call = (ip.lines || []).find((l) => l.key === 'call');
+    const water = (ip.lines || []).find((l) => l.key === 'water');
+    if (call || water) {
+      lines.push('', 'If something goes wrong:');
+      if (call) lines.push(`  • ${call.text}`);
+      if (water) lines.push(`  • ${water.text}`);
+    }
+  } catch { /* incident plan is additive — the brief stands without it */ }
   if (host) lines.push('', `— ${host}`);
   return { subject: `The plan for ${name}`, body: lines.join('\n').replace(/\n{3,}/g, '\n\n').trim() };
 }

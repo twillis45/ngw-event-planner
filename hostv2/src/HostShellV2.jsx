@@ -13426,6 +13426,25 @@ export default function HostShellV2() {
               ))}
             </>
           )}
+          {/* Incident plan on the PRINTED sheet (host ask 2026-07-28) — the
+              kitchen-counter artifact carries the same sourced, procedural
+              lines the Day stage shows; a phone in a pocket helps nobody. */}
+          {(() => {
+            let ip = null;
+            try { ip = incidentPlanFor(event); } catch { ip = null; }
+            if (!ip || !ip.lines || !ip.lines.length) return null;
+            return (
+              <>
+                <div className="p-head">If something goes wrong</div>
+                {ip.lines.map((l) => (
+                  <div className="p-row" key={l.key}>
+                    <span className="p-time">·</span>
+                    <span><b>{l.label}</b><span className="p-meta"> — {l.text}</span></span>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
         </div>
       )}
 

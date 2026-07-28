@@ -287,6 +287,8 @@ const reunion = {
     { id: 'r-heat', trigger: 'Hot day with too little shade or water', severity: 'medium', mitigation: 'Two shade canopies, extra water, ~2 lb ice/guest, and a shaded seating zone for elders and kids.' },
     { id: 'r-headcount', trigger: 'Soft RSVPs across households — real count unknown', severity: 'high', mitigation: 'Chase by household at T-21d; plan food/ice/seating to the high end of the confirmed range.' },
     { id: 'r-potluck-gaps', trigger: 'Duplicate dishes / no hot entree from an uncoordinated potluck', severity: 'medium', mitigation: 'Assign by category or last-name letter on a sign-up; host backstops mains and staples.' },
+    // MSU Extension guidance (INCIDENT_SOURCES 'msu-family-gatherings', fetched 2026-07-28) — the family-dynamics risk every reunion carries.
+    { id: 'r-family-tension', trigger: 'Old family tension flares mid-gathering', severity: 'medium', mitigation: 'Michigan State Extension’s advice: expect people not to change — make distance, not arguments; move rooms or seats instead of engaging, deliberately ignore baiting remarks, and watch the alcohol. A walk beats a showdown.' },
     { id: 'r-no-photo', trigger: 'Group photo never happens — people drift off', severity: 'medium', mitigation: 'Named shooter + a fixed early-to-mid-afternoon photo time announced at arrival.' },
     { id: 'r-trash', trigger: 'Park bins overflow under a big crowd', severity: 'low', mitigation: 'Bring heavy-duty bags, stage multiple labeled stations, and assign a cleanup crew.' },
     { id: 'r-restroom', trigger: 'No usable restrooms at a remote site', severity: 'medium', mitigation: 'Confirm park facilities at booking or order a portable unit by T-36d.' },
