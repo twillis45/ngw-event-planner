@@ -2777,7 +2777,7 @@ export default function HostShellV2() {
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
-  const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '' });
+  const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '' });
   // Add-a-helper form (host report 2026-07-28: the helpers block had no action).
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
@@ -8951,7 +8951,7 @@ export default function HostShellV2() {
                             <div className="brow" style={{ margin: '0 0 10px' }}>
                               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                                 {picked && (picked.photos || []).length > 0 && (
-                                  <PhotoStrip photos={picked.photos} alt={picked.label} size={56} />
+                                  <PhotoStrip photos={picked.photos} alt={picked.label} size={116} />
                                 )}
                                 <p className="grounding" style={{ margin: 0, flex: '1 1 160px', minWidth: 0 }}>
                                   {rec.tie
@@ -8980,7 +8980,7 @@ export default function HostShellV2() {
                           <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
                             {/* Same component the guest sees on the invite — flip through
                                 in place, tap to enlarge (host ask 2026-07-28). */}
-                            <PhotoStrip photos={o.photos} alt={o.label} size={64} />
+                            <PhotoStrip photos={o.photos} alt={o.label} size={132} />
                             {/* LAYOUT (host report 2026-07-28: "where everyone stays needs
                                 layout adjustment"). The row is photo + text + two buttons on
                                 353px. The text column was flex:1 1 0 against buttons at their
@@ -9041,6 +9041,11 @@ export default function HostShellV2() {
                             <input className="field" style={{ ...fldR, flex: 2 }} placeholder="Call it (“Lakefront A-frame”)" value={rf.label} onChange={(e) => setRentalForm({ ...rf, label: e.target.value })} aria-label="Rental name" />
                             <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Sleeps" inputMode="numeric" value={rf.sleeps} onChange={(e) => setRentalForm({ ...rf, sleeps: e.target.value })} aria-label="Sleeps how many" />
                             <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Total $" inputMode="numeric" value={rf.total} onChange={(e) => setRentalForm({ ...rf, total: e.target.value })} aria-label="Listing total price" />
+                            {/* Fees are what turn an $1,800 listing into a $2,300 bill
+                                (host 2026-07-28: "include fees in rate for the per person
+                                cost"). Optional — left blank, the split says it is BEFORE
+                                fees rather than pretending it is the whole number. */}
+                            <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Fees $" inputMode="numeric" value={rf.fees || ''} onChange={(e) => setRentalForm({ ...rf, fees: e.target.value })} aria-label="Cleaning and service fees" />
                           </div>
                           <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
                             onClick={() => {
@@ -9049,6 +9054,7 @@ export default function HostShellV2() {
                                 label: rf.label.trim(), url: rf.url.trim(),
                                 sleeps: rf.sleeps.trim() ? Number(rf.sleeps) : undefined,
                                 totalPrice: rf.total.trim() ? Number(rf.total) : undefined,
+                                fees: String(rf.fees || '').trim() ? Number(rf.fees) : undefined,
                                 photoUrl: (rf.photo || '').trim() || undefined,
                                 status: 'option',
                               }]);

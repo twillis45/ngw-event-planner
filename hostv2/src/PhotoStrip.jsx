@@ -21,11 +21,14 @@ import { createPortal } from 'react-dom';
 //   · The enlarged view is a real dialog: Escape closes, the arrows still work,
 //     and the scrim is the click target for dismissal.
 
-// THUMBNAILS ARE LANDSCAPE (host report 2026-07-28: "thumbnails are shape
-// wrong"). Property photography is 3:2 — cropping a house to a square throws
-// away the house and keeps a wall. `size` is the WIDTH; the box is 3:2 from it,
-// which is also the shape Airbnb and Vrbo use on their own result cards.
-export default function PhotoStrip({ photos, alt, size = 84, radius = 'var(--r-md)' }) {
+// THUMBNAILS ARE LANDSCAPE, BIG, AND SQUARE-CORNERED (host reports 2026-07-28:
+// "thumbnails are shape wrong", then "thumbnails shouldn't be rounded and big
+// enough to see on phone"). Property photography is 3:2 — cropping a house to a
+// square throws away the house and keeps a wall. Rounding a photograph is a UI
+// habit, not a help: it eats the corners of the room you are trying to judge.
+// And 64px on a 390px phone is a swatch, not a picture. `size` is the WIDTH; the
+// box is 3:2 from it, the shape Airbnb and Vrbo use on their own result cards.
+export default function PhotoStrip({ photos, alt, size = 132, radius = '0' }) {
   const boxH = Math.round(size / 1.5);
   const all = Array.isArray(photos) ? photos.filter(Boolean) : [];
   const [dead, setDead] = useState([]);          // urls that failed to load

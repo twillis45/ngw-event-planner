@@ -422,3 +422,43 @@ describe('must-have requirements', () => {
     }
   });
 });
+
+// ─── FEES ARE PART OF THE PRICE (host directive 2026-07-28) ──────────────────
+// "include fees in rate for the per person cost. what would be the total cost
+// for each" — cleaning, service and taxes turn an $1,800 listing into a $2,300
+// bill, so splitting the sticker price understates what each person owes.
+describe('the all-in number', () => {
+  const ev = (opts) => ({ id: 'f', type: 'Reunion', date: iso(60), endDate: iso(63), guestCount: 10, lodgingOptions: opts });
+
+  test('fees are added to the total and the split runs off the real number', () => {
+    const i = lodgingIntel(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12, totalPrice: 1800, fees: 500 }]));
+    const o = i.options[0];
+    expect(o.allIn).toBe(2300);
+    expect(o.checks.find((c) => c.key === 'total').text).toMatch(/\$2,300 all in — \$1,800 plus \$500 in fees/);
+    expect(o.checks.find((c) => c.key === 'split').text).toMatch(/\$230 a person/);
+    expect(o.checks.find((c) => c.key === 'split').text).toMatch(/fees included/);
+  });
+
+  test('no fees entered says BEFORE fees rather than pretending', () => {
+    const i = lodgingIntel(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12, totalPrice: 1800 }]));
+    const o = i.options[0];
+    expect(o.allIn).toBe(1800);
+    expect(o.feesKnown).toBe(false);
+    expect(o.checks.find((c) => c.key === 'total').text).toMatch(/before fees/);
+    expect(o.checks.find((c) => c.key === 'split').text).toMatch(/before fees/);
+  });
+
+  test('the cheaper sticker is not the cheaper house once fees land', () => {
+    const rec = lodgingRecommendation(ev([
+      { id: 'sticker', label: 'Cheap Sticker', url: 'https://www.vrbo.com/1', sleeps: 12, totalPrice: 1800, fees: 900 },
+      { id: 'honest', label: 'Honest Total', url: 'https://www.vrbo.com/2', sleeps: 12, totalPrice: 2400, fees: 100 },
+    ]));
+    expect(rec.pick.id).toBe('honest');           // 2,500 all in beats 2,700 all in
+    expect(rec.why.join(' ')).toMatch(/least expensive/);
+  });
+
+  test('a nightly rate plus fees still produces a real all-in total', () => {
+    const i = lodgingIntel(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12, pricePerNight: 500, fees: 300 }]));
+    expect(i.options[0].allIn).toBe(500 * 3 + 300);
+  });
+});

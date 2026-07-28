@@ -1045,7 +1045,7 @@ export default function InviteV2({ code }) {
                                   tabIndex={0}
                                   onClick={() => setLodgingPick(on ? '' : o.id)}
                                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLodgingPick(on ? '' : o.id); } }}>
-                                  <PhotoStrip photos={o.photos} alt={o.label} size={56} radius="8px" />
+                                  <PhotoStrip photos={o.photos} alt={o.label} size={120} />
                                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <strong style={{ fontWeight: 650, display: 'flex', alignItems: 'center', gap: 6 }}>
                                       {/* OBVIOUS CONFIRMATION (host 2026-07-28: "guest needs more

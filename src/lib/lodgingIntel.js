@@ -120,6 +120,13 @@ export function normalizeLodgingOption(raw, i = 0) {
     beds: num(o.beds),
     pricePerNight: num(o.pricePerNight),
     totalPrice: num(o.totalPrice),
+    // FEES ARE PART OF THE PRICE (host directive 2026-07-28: "include fees in
+    // rate for the per person cost"). Cleaning, service and taxes are what turn
+    // an $1,800 listing into a $2,300 bill, and splitting the sticker price
+    // understates what each person actually owes. Host-typed like everything
+    // else here; when they leave it blank we say the number is before fees
+    // rather than quietly pretending it is the whole cost.
+    fees: num(o.fees),
     cancellationTier: String(o.cancellationTier || '').toLowerCase().trim(),
     notes: String(o.notes || '').trim(),
     // The listing photos, HOST-PASTED (copy image address on the listing) —
@@ -184,11 +191,20 @@ export function lodgingIntel(event) {
       o.checks.push({ key: 'votes', ok: true,
         text: `${o.votes} ${o.votes === 1 ? 'person prefers' : 'people prefer'} this one${voted ? ` — ${voted} of ${roster.length || voted} have said` : ''}.` });
     }
+    // The real number: what the stay costs plus what the platform adds.
+    o.allIn = o.totalPrice != null ? o.totalPrice + (o.fees || 0)
+      : (o.pricePerNight != null && nights ? o.pricePerNight * nights + (o.fees || 0) : null);
+    o.feesKnown = o.fees != null;
+    if (o.allIn != null) {
+      o.checks.push({ key: 'total', ok: true,
+        text: o.feesKnown
+          ? `$${o.allIn.toLocaleString()} all in — $${o.totalPrice != null ? o.totalPrice.toLocaleString() : (o.pricePerNight * nights).toLocaleString()} plus $${o.fees.toLocaleString()} in fees.`
+          : `$${o.allIn.toLocaleString()} before fees — cleaning and service still to come.` });
+    }
     if (o.totalPrice != null && guests) {
-      o.checks.push({ key: 'split', ok: true, text: `$${o.totalPrice.toLocaleString()} ÷ ${guests} ≈ $${Math.round(o.totalPrice / guests).toLocaleString()} a person${nights ? ` for ${nights} night${nights === 1 ? '' : 's'}` : ''}.` });
-    } else if (o.pricePerNight != null && nights && guests) {
-      const total = o.pricePerNight * nights;
-      o.checks.push({ key: 'split', ok: true, text: `~$${total.toLocaleString()} for ${nights} night${nights === 1 ? '' : 's'} ÷ ${guests} ≈ $${Math.round(total / guests).toLocaleString()} a person (before fees — the listing total is the real number).` });
+      o.checks.push({ key: 'split', ok: true, text: `$${o.allIn.toLocaleString()} ÷ ${guests} ≈ $${Math.round(o.allIn / guests).toLocaleString()} a person${nights ? ` for ${nights} night${nights === 1 ? '' : 's'}` : ''}${o.feesKnown ? ', fees included' : ' — before fees'}.` });
+    } else if (o.allIn != null && guests) {
+      o.checks.push({ key: 'split', ok: true, text: `~$${o.allIn.toLocaleString()} for ${nights} night${nights === 1 ? '' : 's'} ÷ ${guests} ≈ $${Math.round(o.allIn / guests).toLocaleString()} a person${o.feesKnown ? ', fees included' : ' (before fees — the listing total is the real number)'}.` });
     }
   }
 
@@ -428,9 +444,11 @@ export function lodgingRecommendation(event, intel) {
     }
 
     // MONEY — against the host's own budget when they set one, else cheapest wins.
-    const total = o.totalPrice != null ? o.totalPrice : (o.pricePerNight != null && nights ? o.pricePerNight * nights : null);
+    // Compare on what it actually costs, fees and all — a cheaper sticker with a
+    // $600 cleaning fee is not the cheaper house.
+    const total = o.allIn != null ? o.allIn : null;
     if (total != null) {
-      const cheapest = Math.min(...options.map((x) => (x.totalPrice != null ? x.totalPrice : (x.pricePerNight != null && nights ? x.pricePerNight * nights : Infinity))));
+      const cheapest = Math.min(...options.map((x) => (x.allIn != null ? x.allIn : Infinity)));
       if (total === cheapest && options.length > 1) { score += 2; reasons.push('the least expensive of these'); }
       if (budget && total <= budget) { score += 1; reasons.push('inside the budget you set'); }
       if (budget && total > budget) { score -= 2; reasons.push(`$${(total - budget).toLocaleString()} over your budget`); }
