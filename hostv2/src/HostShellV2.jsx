@@ -73,7 +73,8 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload } from '@app/lib/lodgingBookmarklet';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2799,6 +2800,40 @@ export default function HostShellV2() {
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
+  // Candidates read off a pasted results page or handed over by the bookmarklet,
+  // staged for the host to confirm. NEVER written straight to the event: one of
+  // the two sources is a URL fragment, which is untrusted input by definition.
+  const [lodgeStaged, setLodgeStaged] = useState(null);
+
+  // ── THE BOOKMARKLET LANDS HERE (#6, host 2026-07-28) ──────────────────────
+  // "Send to Event Boss" opens the app with the listings it collected in the URL
+  // FRAGMENT. A fragment is the right carrier: browsers never transmit it to a
+  // server, so the listings the host was browsing stay on their device.
+  //
+  // It is still untrusted input — the host can click that bookmark on any page,
+  // and a crafted page could stuff the payload. So it is validated hard
+  // (parseBookmarkletPayload: https + platform allowlist, every string and the
+  // array itself capped), interpreted by the SAME code the paste path uses, and
+  // then STAGED for confirmation. Nothing reaches the event until the host says
+  // so. The hash is cleared immediately so a refresh can't replay it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = lodgingHashPayload(window.location.hash);
+    if (!raw) return;
+    try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_e) { /* hash stays, staging still guards */ }
+    let cands = [];
+    try { cands = candidatesFromGroups(parseBookmarkletPayload(raw)); } catch (_e) { cands = []; }
+    if (!cands.length) { toast('Nothing readable came across — open a results page and click it again.'); return; }
+    const known = new Set((event.lodgingOptions || []).map((o) => String(o.url || '').split('?')[0]));
+    const fresh = cands.filter((c) => !known.has(c.url));
+    let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
+    try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
+    setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
+      linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+    setSheet({ kind: 'lodging' });
+    // Mount only: the hash is consumed and cleared on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Add-a-helper form (host report 2026-07-28: the helpers block had no action).
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
@@ -9030,8 +9065,160 @@ export default function HostShellV2() {
                                 ))}
                               </div>
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring back the two or three you like and I’ll compare them.
+                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
+                            </div>
+                          );
+                        })()}
+                        {/* ── THE RETURN TRIP (host 2026-07-28: "why does the host have to
+                            pull a url?") ───────────────────────────────────────────────
+                            The app can't search those platforms — that's the never-build
+                            line, and it would fail from a datacenter anyway (Vrbo refuses
+                            even our single-page read in production). What it CAN do is
+                            stop charging the host one paste per listing. A copied results
+                            page carries every card's name, bedrooms, beds and price, so
+                            one paste builds the whole shortlist with no server call at all.
+                            The bookmarklet below removes even that paste. */}
+                        {(() => {
+                          const staged = lodgeStaged;
+                          const budget = Number(event.totalBudget || 0) || 0;
+                          const readPage = (text) => {
+                            let out = { candidates: [], source: null, linksOnly: false };
+                            try { out = extractListingCandidates(text) || out; } catch (_e) { /* nothing readable */ }
+                            if (!out.candidates.length) { toast('Nothing I could read on that — copy the whole results page (⌘A then ⌘C) and paste it here.'); return; }
+                            const known = new Set((li.options || []).map((o) => String(o.url || '').split('?')[0]));
+                            const fresh = out.candidates.filter((c) => !known.has(c.url));
+                            let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
+                            try { ranked = rankCandidates(fresh, event, { budget }); } catch (_e) { /* unranked is still useful */ }
+                            setLodgeStaged({ ...ranked, source: out.source, linksOnly: out.linksOnly,
+                              dupes: out.candidates.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+                          };
+                          return (
+                            <div style={{ margin: '0 0 14px' }}>
+                              {!staged && (
+                                <>
+                                  <textarea className="field" rows={2} style={{ width: '100%', resize: 'vertical' }}
+                                    placeholder="Paste the whole results page here — I’ll pull out every listing"
+                                    aria-label="Paste a search results page"
+                                    onPaste={(e) => {
+                                      // THE HTML FLAVOUR IS THE ONE THAT CARRIES MEANING.
+                                      // Measured on a live Airbnb search: the /rooms/ anchors
+                                      // have EMPTY text and a text/plain copy is mostly chrome
+                                      // ("Prices include all fees" ×11), so plain text cannot
+                                      // pair a name to a link. Read HTML when the clipboard
+                                      // offers it; fall back to plain text, which still yields
+                                      // the links (and says so).
+                                      const cd = e.clipboardData;
+                                      if (!cd) return;
+                                      const html = cd.getData('text/html');
+                                      const text = html || cd.getData('text/plain');
+                                      if (!text) return;
+                                      e.preventDefault();
+                                      readPage(text);
+                                    }}
+                                    onChange={(e) => { const v = e.target.value; if (v.length > 40) readPage(v); }} />
+                                  <p className="grounding" style={{ margin: '4px 0 0' }}>
+                                    Nothing is sent anywhere — the page is read right here on your phone.
+                                  </p>
+                                </>
+                              )}
+                              {staged && (
+                                <div>
+                                  <div className="of" style={{ marginBottom: 6 }}>
+                                    {staged.considered} listing{staged.considered === 1 ? '' : 's'}
+                                    {staged.source ? ' from ' + staged.source : ''}
+                                    {staged.clearing.length < staged.considered
+                                      ? ` · ${staged.clearing.length} clear what the house needs` : ''}
+                                    {staged.dupes > 0 ? ` · ${staged.dupes} already on your list` : ''}
+                                  </div>
+                                  {staged.linksOnly && (
+                                    <p className="grounding" style={{ margin: '0 0 8px' }}>
+                                      That paste only carried links — no names or prices came with it. Copy the page itself (⌘A then ⌘C) if you want the details too.
+                                    </p>
+                                  )}
+                                  <ul className="req-list">
+                                    {staged.ranked.slice(0, 12).map((c) => (
+                                      <li key={c.url}>
+                                        <button type="button" className="req-row" aria-pressed={staged.pick.has(c.url)}
+                                          onClick={() => setLodgeStaged((s) => {
+                                            const pick = new Set(s.pick);
+                                            if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
+                                            return { ...s, pick };
+                                          })}>
+                                          <span className="req-tick" aria-hidden="true"
+                                            style={staged.pick.has(c.url) ? undefined : { color: 'var(--faint)' }}>
+                                            {staged.pick.has(c.url) ? '✓' : '○'}
+                                          </span>
+                                          <span className="req-body">
+                                            <span className="req-label">{c.name || c.url.replace(/^https:\/\/(www\.)?/, '')}</span>
+                                            <span className="req-why">
+                                              {[c.beds ? c.beds + ' beds' : null,
+                                                c.bedrooms ? c.bedrooms + ' bedrooms' : null,
+                                                c.priceShown ? '$' + c.priceShown.toLocaleString() + ' shown' : null,
+                                              ].filter(Boolean).join(' · ') || 'no details on the card'}
+                                              {/* The card cannot answer amenities, so an unmatched
+                                                  requirement is never reported as failed. */}
+                                              {c.why ? ' — ' + c.why : (c.matched && c.matched.length ? ' — ' + c.matched.join(', ') : '')}
+                                            </span>
+                                          </span>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  <div className="actions-row" style={{ marginTop: 10, gap: 'var(--sp-2)' }}>
+                                    <button className="cta" disabled={staged.pick.size === 0}
+                                      style={staged.pick.size === 0 ? { opacity: .45 } : undefined}
+                                      onClick={() => {
+                                        // THE CANONICAL OPTION SHAPE, not the form's field names.
+                                        // First cut wrote `total` and a string `sleeps` — the form's
+                                        // INPUT names — and the engine promptly said "I couldn't weigh
+                                        // what any of them cost" next to three visible prices. It was
+                                        // right: the reader is `totalPrice`, and nothing reads `total`.
+                                        // Numbers stay numbers; a bed count is NOT a sleeps count, so
+                                        // `beds` is written as `beds` and sleeps is left for the host.
+                                        const add = staged.ranked.filter((c) => staged.pick.has(c.url)).map((c) => ({
+                                          id: 'lodge-' + Math.random().toString(36).slice(2, 8),
+                                          url: c.url,
+                                          label: c.name || '',
+                                          beds: c.beds != null ? c.beds : undefined,
+                                          totalPrice: c.priceShown != null ? c.priceShown : undefined,
+                                          notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                                            c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
+                                          status: 'option',
+                                        }));
+                                        patchEvent({ lodgingOptions: [...(event.lodgingOptions || []), ...add] }, null);
+                                        setLodgeStaged(null);
+                                        toast(`Added ${add.length} to your shortlist.`, null, 'ok');
+                                      }}>
+                                      Add {staged.pick.size} to the shortlist
+                                    </button>
+                                    <button className="mini" onClick={() => setLodgeStaged(null)}>Never mind</button>
+                                  </div>
+                                </div>
+                              )}
+                              {/* #6 — ZERO PASTE. The host's own browser does the reading, on a
+                                  page they're already looking at, on a click they make. It is
+                                  a collector, not a parser (see lib/lodgingBookmarklet): it
+                                  contacts nothing, stores nothing, and the payload rides in a
+                                  URL fragment, which browsers never send to a server. */}
+                              <details style={{ marginTop: 10 }}>
+                                <summary className="grounding" style={{ cursor: 'pointer', listStyle: 'none' }}>
+                                  Skip the pasting altogether ▾
+                                </summary>
+                                <p className="grounding" style={{ margin: '6px 0' }}>
+                                  Drag this to your bookmarks bar. Then, on any Airbnb or Vrbo results page, click it — every listing on the page comes straight here.
+                                </p>
+                                {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                                <a className="mini" draggable="true"
+                                  href={buildBookmarklet(typeof window !== 'undefined' ? window.location.href.split('#')[0] : '')}
+                                  onClick={(e) => { e.preventDefault(); toast('Drag this up to your bookmarks bar — clicking it here does nothing.'); }}
+                                  style={{ textDecoration: 'none', display: 'inline-block' }}>
+                                  Send to Event Boss
+                                </a>
+                                <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--muted)' }}>
+                                  It reads only the page you click it on, and only listings. Nothing is sent to us — you can read the whole thing in the bookmark itself.
+                                </p>
+                              </details>
                             </div>
                           );
                         })()}

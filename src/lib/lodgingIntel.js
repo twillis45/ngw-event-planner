@@ -513,8 +513,25 @@ export function extractListingCandidates(payload) {
     };
   }
 
+  const candidates = candidatesFromGroups([...byUrl].map(([url, lines]) => ({ url, lines })));
+  return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
+}
+
+/**
+ * THE ONE INTERPRETER.
+ *
+ * Both entry points land here: a pasted results page (tokenised above) and the
+ * bookmarklet (which ships this exact shape, already grouped, so it can stay a
+ * dumb collector — see lib/lodgingBookmarklet). Two copies of this reasoning
+ * would drift the first time a platform changed a label, and the copy running in
+ * the host's browser is the one we could never re-deploy.
+ *
+ * @param {Array<{url:string, lines:string[]}>} groups
+ */
+export function candidatesFromGroups(groups) {
   const candidates = [];
-  for (const [url, raw] of byUrl) {
+  for (const { url, lines: raw } of (Array.isArray(groups) ? groups : [])) {
+    if (!listingUrl(url)) continue;
     // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
     const lines = [];
     for (const l of raw) { if (!CARD_NOISE.test(l) && lines[lines.length - 1] !== l) lines.push(l); }
@@ -554,8 +571,7 @@ export function extractListingCandidates(payload) {
 
   // A card with neither a name nor a single fact is markup we misread — drop it
   // rather than offering the host a blank row.
-  const real = candidates.filter((c) => c.name || c.bedrooms || c.beds || c.priceShown);
-  return { candidates: real, source: real.length ? platformOf(real[0].url) : null, linksOnly: false };
+  return candidates.filter((c) => c.name || c.bedrooms || c.beds || c.priceShown);
 }
 
 function platformOf(url) {
