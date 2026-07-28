@@ -51,7 +51,11 @@ describe('lodging intelligence', () => {
     expect(share.body).toMatch(/Lakefront A-frame/);
     expect(share.body).toMatch(/airbnb\.com\/rooms\/12345/);
     expect(share.body).toMatch(/sleeps 12/);
-    expect(share.body).toMatch(/which works for you/i);
+    // Copy relaid 2026-07-28 once the invite could actually take a pick: the
+    // draft now points at the invite block by name instead of vaguely inviting a
+    // reply, and says what tapping it does NOT do.
+    expect(share.body).toMatch(/tap your pick on the invite/i);
+    expect(share.body).toMatch(/not a booking/i);
     expect(share.body).toMatch(/own checkout/i);
   });
 

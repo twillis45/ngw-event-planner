@@ -187,9 +187,13 @@ export function lodgingIntel(event) {
       if (o.url) lines.push(`   ${o.url}`);
       if (o.notes) lines.push(`   ${o.notes}`);
     });
-    lines.push('', 'Look them over and tell me which works for you (or what rules one out) — replying on the invite works too.', '', 'Once we pick, one of us books it through the site’s own checkout and we split it fairly.');
+    // COPY FOLLOWS THE CAPABILITY (2026-07-28). This said "replying on the invite
+    // works too" while the invite had no way to reply — a soft promise the app
+    // could not keep. The pick block ships now, with the photo and the listing, so
+    // the draft names it plainly and tells them what tapping it does and doesn't do.
+    lines.push('', 'Tap your pick on the invite — the photos and listings are right there. It’s just a preference, not a booking; I’ll make the call.', '', 'Once we pick, one of us books it through the site’s own checkout and we split it fairly.');
   } else {
-    lines.push('No options on the list yet — send me links you like and I’ll add them.');
+    lines.push('No options on the list yet — send me links you like and I’ll put them on the invite for everyone to see.');
   }
   const share = { subject: `Where we'd stay — ${name}`, body: lines.join('\n') };
 

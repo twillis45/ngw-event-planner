@@ -8882,7 +8882,7 @@ export default function HostShellV2() {
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         <div className="shelf-label">The rental shortlist</div>
-                        {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing — the group sees them, you make the call.</p>}
+                        {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
                         {/* WHAT THE GROUP SAID (migration 016 applied 2026-07-28). Guests
                             answer on the invite; the picks ride the per-guest upsert home.
                             A tally, never a verdict — and silence reads as silence. */}
