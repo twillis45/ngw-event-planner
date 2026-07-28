@@ -23,6 +23,7 @@ import { CHILDCARE_SOURCES } from './childcareContext';
 import { MILITARY_SOURCES } from './militaryRetirement';
 import { DESTINATION_SOURCES } from './destinationContext';
 import { TABLE_TYPE_SOURCES } from '../tableTypes';
+import { GROUP_RENTAL_SOURCES } from '../lodgingIntel';
 import { INCIDENT_SOURCES } from './incidentContext';
 import { FOOD_SAFETY_SOURCES } from './foodSafetyContext';
 import { FIRE_SAFETY_SOURCES } from './fireSafetyContext';
@@ -49,6 +50,7 @@ const REGISTRIES = [
   ['Booking / vendor collapse', BOOKING_RISK_SOURCES],
   ['Destination / travel', DESTINATION_SOURCES],
   ['Table & seating capacity', TABLE_TYPE_SOURCES],
+  ['Group rental fit', GROUP_RENTAL_SOURCES],
 ];
 
 // The full provenance catalog: every grounding axis, and every source it cites.

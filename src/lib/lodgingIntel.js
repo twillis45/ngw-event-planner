@@ -294,6 +294,51 @@ export function lodgingIntel(event) {
 }
 
 /**
+ * ONE PASTE FILLS THE FORM (host question 2026-07-28: "if the app can pull the
+ * deep links does the host need to input the urls for property and gallery?").
+ *
+ * The deep link only goes OUT — it is a string we build from facts the event
+ * already holds, and it fetches nothing, so nothing comes back on it. The host
+ * is still the only thing that crosses back from the platform, because the app
+ * contacting Airbnb or Vrbo is the never-build line. What we CAN do is make that
+ * crossing cost one action instead of three: a copied listing page carries its
+ * canonical link and its title in the same clipboard payload as the images.
+ *
+ * Extracted, never fetched. Fills only EMPTY fields, so it can't overwrite what
+ * the host typed.
+ */
+export function extractListingMeta(payload) {
+  const text = String(payload == null ? '' : payload);
+  if (!text.trim()) return { url: '', title: '' };
+
+  // The listing URL: prefer an explicit canonical/og:url, else the first link
+  // that looks like a property page on a platform we recognise.
+  const pick = (re) => { const m = text.match(re); return m ? m[1].trim() : ''; };
+  let url = pick(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)
+    || pick(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i);
+  if (!url) {
+    const all = text.match(/https:\/\/[^\s"'<>)]+/gi) || [];
+    url = all.find((u) => /(^|\.)airbnb\.[a-z.]+\/rooms\//i.test(u))
+      || all.find((u) => /(^|\.)vrbo\.com\/\d/i.test(u))
+      || all.find((u) => /(^|\.)booking\.com\/hotel\//i.test(u))
+      || '';
+  }
+  url = url.split('?')[0];
+
+  // The name: og:title or <title>, with the platform's own suffix trimmed off
+  // ("… - Pensacola Beach | Vrbo" → "…").
+  let title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+    || pick(/<title[^>]*>([^<]+)<\/title>/i);
+  title = title
+    .replace(/\s*[|·—-]\s*(Vrbo|Airbnb|Booking\.com).*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+
+  return { url: /^https:\/\//i.test(url) ? url : '', title };
+}
+
+/**
  * WHAT THIS HOUSE HAS TO HAVE (host directive 2026-07-28: "have the host input
  * other amenities or things that are requirements for the search").
  *
@@ -316,14 +361,125 @@ export const LODGING_MUST_HAVES = [
   { id: 'laundry',  label: 'Washer & dryer',     search: null, match: /washer|laundry|dryer/i },
   { id: 'ac',       label: 'Air conditioning',   search: null, match: /\ba\/?c\b|air.?condition/i },
   { id: 'parking',  label: 'Parking for several',search: null, match: /parking|driveway|garage/i },
+  // ── RESEARCHED ADDITIONS (2026-07-28, see GROUP_RENTAL_SOURCES) ─────────────
+  // The event-permission gate is the highest-stakes item on this list: Airbnb's
+  // own policy prohibits disruptive gatherings REGARDLESS OF SIZE and carves out
+  // no exception for host approval, so booking a rental as a party or ceremony
+  // venue is a live risk, not a formality.
+  { id: 'eventok',  label: 'Gathering allowed in writing', search: null, match: /event(s)? (ok|allowed|welcome)|part(y|ies) (ok|allowed)|wedding|celebration(s)? welcome|gathering(s)? (ok|allowed)/i },
+  // "Sleeps 14" routinely means sofa beds and air mattresses; the guidance is to
+  // book at 70-80% of stated capacity so everyone gets a real bed.
+  { id: 'realbeds', label: 'Real beds, not pull-outs', search: null, match: /real bed|king|queen|bunk|no (sofa|pull)/i },
+  // One bathroom per two-to-three people for a large group; a ground-floor bed
+  // AND bath is "the single most overlooked thing" in a multigenerational stay.
+  { id: 'baths',    label: 'Enough bathrooms',      search: null, match: /(\d+(\.\d+)?)\s*(full\s*)?bath|ensuite|en-suite/i },
+  { id: 'quiet',    label: 'A room to escape to',   search: null, match: /den|study|bonus room|finished basement|screened porch|sunroom/i },
+  { id: 'wifi',     label: 'Wifi that holds a call',search: null, match: /wifi|wi-fi|fiber|gigabit|internet|workspace|desk/i },
 ];
+
+/**
+ * Sources behind the requirement vocabulary and the suggestions. Registered in
+ * knowledge/groundingSources.js so the provenance is auditable in the admin.
+ */
+export const GROUP_RENTAL_SOURCES = {
+  'airbnb-disturbance': {
+    title: 'Community Disturbance Policy — parties, events and disruptive gatherings',
+    publisher: 'Airbnb (platform policy)',
+    url: 'https://www.airbnb.com/help/article/2704/party-and-events-policy',
+    fetched: '2026-07-28',
+    tier: 'cited',
+    note: 'Prohibits "disruptive gatherings and other community disturbances, regardless of size" and "open-invite gatherings"; names excessive noise, trash, trespassing, smoking, parking nuisances and vandalism as indicators; enforcement runs to "account or listing suspension or removal". NO exception for host-approved events — which is why a rental booked as a ceremony or party venue needs written permission from the property host, and why the plan should say so.',
+  },
+  'multigen-rental-fit': {
+    title: 'Choosing a group rental that works for a multi-generational party',
+    publisher: 'Wandering Educators (travel guidance)',
+    url: 'https://www.wanderingeducators.com/best/traveling/group-vacation-rentals-multi-generational-travel-how-to-choose-one-that-actually-works',
+    fetched: '2026-07-28',
+    tier: 'researched',
+    note: 'Checkable attributes for a group stay: "one bathroom per two-to-three people"; "a ground-floor bedroom and bathroom" / "a primary suite on the entry level"; whether "sleeps 14" means real beds "or a lot of sofa beds and air mattresses"; kitchen "counter space, a full-size refrigerator", "enough plates and chairs that everyone sits down at once"; "one big gathering space, plus somewhere to escape to"; "which rooms have doors that close"; "minimal stairs to the main living space".',
+  },
+  'retreat-rental-fit': {
+    title: 'What a corporate offsite actually needs from a rental',
+    publisher: 'Industry guidance (offsite/retreat venue sourcing)',
+    tier: 'established-consensus',
+    note: 'Bandwidth for "20+ people on simultaneous video calls, screen sharing and cloud collaboration", verified rather than taken from "high-speed" marketing copy, often with a backup connection; "multiple rooms for breakouts" and screens; book at "70-80% of stated capacity so everyone gets actual beds instead of pullouts"; extras beyond the nightly rate "can add 40-60% to initial venue quotes" — the same reason fees belong in our per-person number.',
+  },
+};
 
 const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id || '').trim()) || null;
 
-/** The host's requirement list off the event, junk dropped. */
-export function mustHavesFor(event) {
-  const raw = Array.isArray(event && event.lodgingMustHaves) ? event.lodgingMustHaves : [];
-  return raw.map(mustHaveById).filter(Boolean);
+/**
+ * WHAT THIS EVENT NEEDS FROM A HOUSE (host directive 2026-07-28: "app should
+ * default to the options/amenities needed for event from intelligence engine").
+ *
+ * Propose-don't-ask, applied to requirements: rather than ten empty chips, the
+ * engine reads the event and says which ones this gathering actually needs, with
+ * the reason attached. Every suggestion is earned by a fact — the event's type,
+ * its roster, its span — and each carries the source that makes it more than an
+ * opinion. The host can drop any of them; the moment they touch the list, theirs
+ * wins outright.
+ *
+ * @returns {Array<{id, label, why, source}>}
+ */
+export function suggestedMustHaves(event) {
+  const ev = event || {};
+  const type = String(ev.type || '').toLowerCase();
+  const roster = Array.isArray(ev.guests) ? ev.guests : [];
+  const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || roster.length || 0;
+  const nights = spanNights(ev);
+  const out = [];
+  const add = (id, why, source) => {
+    const m = mustHaveById(id);
+    if (m && !out.some((x) => x.id === id)) out.push({ id, label: m.label, why, source });
+  };
+
+  // THE PERMISSION GATE — anything that reads as a party or a ceremony.
+  if (/wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {
+    add('eventok', 'A rental is a home, not a venue — the platform bans disruptive gatherings regardless of size and makes no exception for host approval, so get the yes in writing before you book.', 'airbnb-disturbance');
+  }
+  // A GROUP SLEEPING SOMEWHERE — real beds and enough bathrooms.
+  if (guests >= 6 && nights >= 1) {
+    add('realbeds', `Sleeping ${guests} on paper often means sofa beds and air mattresses — the guidance is to book under the headline capacity so everyone gets a real bed.`, 'multigen-rental-fit');
+    add('baths', `One bathroom per two or three people is the working ratio; ${guests} people sharing one is the morning everybody remembers.`, 'multigen-rental-fit');
+  }
+  // WHO IS ACTUALLY COMING — the roster decides these, not the event type.
+  const access = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane|elder/i.test(String(g.needs || ''))).length;
+  if (access > 0) add('stepfree', `${access === 1 ? 'Someone' : access + ' people'} asked about stairs — a ground-floor bed and bath is the most overlooked thing in a group house.`, 'multigen-rental-fit');
+  const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0) || Number(ev.kidsCount) || 0;
+  if (kids > 0) add('kids', `${kids} ${kids === 1 ? 'child' : 'children'} coming — cribs, a fence and doors that close matter more than square footage.`, 'multigen-rental-fit');
+  // MULTI-DAY UNDER ONE ROOF — somewhere to be together, and somewhere not to be.
+  if (nights >= 2) {
+    add('bigtable', 'More than one night together means at least one meal where everyone sits down at once.', 'multigen-rental-fit');
+    add('quiet', 'A few days under one roof needs somewhere to escape to as much as it needs the big room.', 'multigen-rental-fit');
+    add('laundry', 'Past a couple of nights, laundry stops being a luxury.', 'multigen-rental-fit');
+  }
+  // WORKING EVENTS — the connection is the venue.
+  if (/retreat|board|conference|meeting|offsite/.test(type)) {
+    add('wifi', 'Confirm the actual bandwidth rather than the word "high-speed" — a room of people on calls is a different load, and a backup connection is normal now.', 'retreat-rental-fit');
+    add('quiet', 'Sessions need breakout rooms, not one big table.', 'retreat-rental-fit');
+  }
+  // TRAVELLING IN — cars have to land somewhere.
+  if (ev.isDestination || guests >= 8) {
+    add('parking', `${guests >= 8 ? 'A group this size' : 'People travelling in'} arrives in several cars, and a one-car driveway becomes the neighbours' problem.`, 'airbnb-disturbance');
+  }
+  return out;
+}
+
+/**
+ * The requirement list in force: the host's own once they have touched it, else
+ * the engine's proposal. `basis` says which, so a surface can present a
+ * proposal as a proposal.
+ */
+export function mustHavesFor(event, opts) {
+  const own = Array.isArray(event && event.lodgingMustHaves) ? event.lodgingMustHaves : null;
+  if (own) return own.map(mustHaveById).filter(Boolean);
+  if (opts && opts.hostOnly) return [];
+  return suggestedMustHaves(event).map((sug) => mustHaveById(sug.id)).filter(Boolean);
+}
+
+/** 'host' once they have edited the list, otherwise 'suggested'. */
+export function mustHaveBasis(event) {
+  return Array.isArray(event && event.lodgingMustHaves) ? 'host' : 'suggested';
 }
 
 /**

@@ -73,7 +73,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -8904,19 +8904,55 @@ export default function HostShellV2() {
                             us inferring it. The verified filters ride the platform search;
                             all of them steer the ranking. */}
                         {(() => {
-                          const on = Array.isArray(event.lodgingMustHaves) ? event.lodgingMustHaves : [];
+                          // DEFAULTED FROM THE EVENT (host directive 2026-07-28). Rather than
+                          // ten empty chips, the engine reads the event — its type, its roster,
+                          // its span — and proposes what this gathering actually needs, each
+                          // with the reason and the source behind it. The instant the host
+                          // touches the list, theirs wins outright.
+                          const basis = mustHaveBasis(event);
+                          const on = mustHavesFor(event).map((m) => m.id);
+                          const suggestions = basis === 'suggested' ? suggestedMustHaves(event) : [];
                           const toggle = (id) => patchEvent(
                             { lodgingMustHaves: on.includes(id) ? on.filter((x) => x !== id) : [...on, id] }, null);
+                          const chosen = LODGING_MUST_HAVES.filter((m) => on.includes(m.id));
+                          const summary = chosen.length
+                            ? chosen.slice(0, 2).map((m) => m.label).join(', ') + (chosen.length > 2 ? ` +${chosen.length - 2}` : '')
+                            : 'anything';
                           return (
-                            <div style={{ margin: '2px 0 10px' }}>
-                              <span className="of" style={{ display: 'block', marginBottom: 4 }}>Has to have</span>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            <details className="lodge-req" style={{ margin: '2px 0 10px' }}>
+                              {/* A WALL OF TEN CHIPS IS NOT A CONTROL (host 2026-07-28: "we
+                                  need a modern UI/UX option for the option/amenities listing.
+                                  this is getting messy"). Ten always-open chips took four rows
+                                  and pushed the actual shortlist off the screen. Collapsed to
+                                  one summary row that states the answer — the app's own
+                                  disclosure pattern (Figma 395:60) — and opens when the host
+                                  wants to change it. Same information, one line at rest. */}
+                              <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                                alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                                <span className="of">Has to have{basis === 'suggested' ? ' · from your event' : ''}</span>
+                                <span className="v-meta" style={{ color: chosen.length ? 'var(--ink-soft)' : 'var(--muted)' }}>
+                                  {summary} ▾
+                                </span>
+                              </summary>
+                              {suggestions.length > 0 && (
+                                <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                  {suggestions.map((sg) => (
+                                    <p key={sg.id} className="grounding" style={{ margin: 0 }}>
+                                      <strong style={{ color: 'var(--ink-soft)' }}>{sg.label}</strong> — {sg.why}
+                                    </p>
+                                  ))}
+                                  <p className="grounding" style={{ margin: 0, color: 'var(--muted)' }}>
+                                    Yours to change — tap any of them off. Sources under You &amp; settings → Grounding.
+                                  </p>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 8 }}>
                                 {LODGING_MUST_HAVES.map((m) => (
                                   <button key={m.id} className="chip" aria-pressed={on.includes(m.id)}
                                     onClick={() => toggle(m.id)}>{m.label}</button>
                                 ))}
                               </div>
-                            </div>
+                            </details>
                           );
                         })()}
                         {/* GO LOOK, PRE-FILTERED (host question 2026-07-28). We can't search
@@ -8969,9 +9005,12 @@ export default function HostShellV2() {
                                   <PhotoStrip photos={picked.photos} alt={picked.label} size={116} />
                                 )}
                                 <p className="grounding" style={{ margin: 0, flex: '1 1 160px', minWidth: 0 }}>
+                                  {/* THREE REASONS, NOT SEVEN. With ten requirements switched
+                                      on this became a run-on paragraph nobody reads. The
+                                      strongest reasons lead; the rest are counted honestly. */}
                                   {rec.tie
                                     ? 'These come out even on what I can see — this one is yours to call.'
-                                    : `On your numbers I'd take ${rec.pick.label}${rec.why.length ? ' — ' + rec.why.join(', ') : ''}.`}
+                                    : `On your numbers I'd take ${rec.pick.label}${rec.why.length ? ' — ' + rec.why.slice(0, 3).join(', ') + (rec.why.length > 3 ? `, and ${rec.why.length - 3} more` : '') : ''}.`}
                                 </p>
                               </div>
                               {rec.unweighed.length > 0 && (
@@ -9054,7 +9093,18 @@ export default function HostShellV2() {
                           </div>
                           );
                         })}
+                        {/* THE COUNT WHERE THE HOST IS LOOKING (host 2026-07-28: "options
+                            count is not changing"). It DOES change — 3 → 4 on every add,
+                            verified live — but it lived in a header scrolled far off screen
+                            while the host was down here using the form, so it looked frozen.
+                            It now sits on the add control itself, which is the moment it
+                            actually changes. */}
                         <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
+                          {li.options.length > 0 && (
+                            <span className="of" style={{ fontWeight: 650 }}>
+                              Add another — {li.options.length} on the list
+                            </span>
+                          )}
                           <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
                           <input className="field" style={fldR} placeholder="Photos — copy the gallery on the listing and paste once; every image comes through"
                             value={rf.photo || ''}
@@ -9072,10 +9122,23 @@ export default function HostShellV2() {
                                 const found = extractPhotoUrls(cd.getData('text/html') || '')
                                   .concat(extractPhotoUrls(cd.getData('text/plain') || ''));
                                 const uniq = [...new Set(found)];
-                                if (uniq.length < 2) return;   // one link pastes normally
+                                const meta = extractListingMeta(cd.getData('text/html') || cd.getData('text/plain') || '');
+                                const fillsUrl = !rf.url.trim() && meta.url;
+                                const fillsName = !rf.label.trim() && meta.title;
+                                if (uniq.length < 2 && !fillsUrl && !fillsName) return;   // one link pastes normally
                                 e.preventDefault();
-                                setRentalForm({ ...rf, photo: uniq.join(' ') });
-                                toast(uniq.length + ' photos found in that paste — edit or drop any of them.');
+                                setRentalForm({
+                                  ...rf,
+                                  photo: uniq.length ? uniq.join(' ') : rf.photo,
+                                  url: fillsUrl ? meta.url : rf.url,
+                                  label: fillsName ? meta.title : rf.label,
+                                });
+                                const got = [
+                                  uniq.length ? `${uniq.length} photos` : null,
+                                  fillsUrl ? 'the listing link' : null,
+                                  fillsName ? 'the name' : null,
+                                ].filter(Boolean);
+                                toast(`Pulled ${got.join(' and ')} out of that paste — change anything that's off.`);
                               } catch { /* fall through to the normal paste */ }
                             }}
                             aria-label="Rental photo links" />
@@ -9108,6 +9171,7 @@ export default function HostShellV2() {
                               ))}
                             </div>
                           </div>
+                          {!canAdd && <span className="v-meta" style={{ color: 'var(--muted)' }}>Paste the listing link, or give it a name, and this turns on.</span>}
                           <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
                             onClick={() => {
                               const next = (Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).concat([{

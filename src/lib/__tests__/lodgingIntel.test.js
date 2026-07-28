@@ -462,3 +462,48 @@ describe('the all-in number', () => {
     expect(i.options[0].allIn).toBe(500 * 3 + 300);
   });
 });
+
+// ─── ONE PASTE FILLS THE FORM (host question 2026-07-28) ────────────────────
+// "if the app can pull the deep links does the host need to input the urls for
+// property and gallery?" — the deep link only goes OUT and fetches nothing, so
+// the host is still the one thing that crosses back. What we can do is make the
+// crossing cost ONE action: a copied listing page carries its canonical link and
+// its title in the same payload as the images.
+//
+// Fixture is the real shape of the live Vrbo listing open during this session.
+const { extractListingMeta } = require('../lodgingIntel');
+
+describe('extractListingMeta', () => {
+  const PAGE = `
+    <head>
+      <link rel="canonical" href="https://www.vrbo.com/987654?pwaThumbnailDialog=thumbnail-gallery"/>
+      <meta property="og:title" content="Gulf View Home with Private Pool! Large Families &amp; Reunions Welcome. - Pensacola Beach | Vrbo"/>
+      <title>Gulf View Home with Private Pool! - Pensacola Beach | Vrbo</title>
+    </head>`;
+
+  test('the canonical link comes through, query junk stripped', () => {
+    expect(extractListingMeta(PAGE).url).toBe('https://www.vrbo.com/987654');
+  });
+
+  test('the name comes through with the platform suffix trimmed', () => {
+    const t = extractListingMeta(PAGE).title;
+    expect(t).toMatch(/^Gulf View Home with Private Pool/);
+    expect(t).not.toMatch(/Vrbo/);
+    expect(t).not.toMatch(/Pensacola Beach \|/);
+  });
+
+  test('with no metadata it finds a property link among plain text', () => {
+    expect(extractListingMeta('look at https://www.airbnb.com/rooms/12345 and https://www.airbnb.com/help/x').url)
+      .toBe('https://www.airbnb.com/rooms/12345');
+  });
+
+  test('a page with nothing usable returns empties, never a guess', () => {
+    expect(extractListingMeta('just some words')).toEqual({ url: '', title: '' });
+    expect(extractListingMeta('')).toEqual({ url: '', title: '' });
+    expect(extractListingMeta(null)).toEqual({ url: '', title: '' });
+  });
+
+  test('a non-https link is never accepted as the listing', () => {
+    expect(extractListingMeta('http://www.vrbo.com/987654').url).toBe('');
+  });
+});
