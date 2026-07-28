@@ -472,9 +472,10 @@ function listingUrl(href) {
   if (!abs) return '';
   const clean = abs.split('?')[0].split('#')[0];
   if (!/^https:\/\//i.test(clean)) return '';
+  // Booking.com removed 2026-07-28 (review board): its terms uniquely name
+  // browser-based assistants, and this gate feeds the same collector path.
   return /(^|\.)airbnb\.[a-z.]+\/rooms\/\d/i.test(clean)
     || /(^|\.)vrbo\.com\/\d/i.test(clean)
-    || /(^|\.)booking\.com\/hotel\//i.test(clean)
     ? clean : '';
 }
 
@@ -838,9 +839,25 @@ export function lodgingSearchLinks(event) {
   if (end) vr.set('endDate', end);
   if (guests) vr.set('adults', String(guests));
 
+  // ── WHY VRBO'S LINK IS DIFFERENT (review board, Liability ruling 2026-07-28) ──
+  // Airbnb's terms carry no deep-link prohibition; Vrbo's §2 does, verbatim:
+  // "deep link to any part of our Service". We were emitting a constructed URL
+  // into a non-homepage path with parameters we chose — if "deep link" means
+  // anything it means that, and we are the party who read the clause and shipped
+  // it anyway. (The clause is widely regarded as unenforceable post-Ticketmaster
+  // v. Tickets.com and is near-universally violated; that is a reason not to
+  // panic, not a reason to be the one violating it by construction.)
+  //
+  // The proportionate answer is not to drop Vrbo — hosts genuinely use it, and
+  // removing it would harm them for our comfort. It is to send them to the front
+  // door with their own answers in hand to paste. She loses a few seconds; we
+  // stop violating the one clause we violate by construction rather than by
+  // interpretation. Treating different terms differently is what reading them is
+  // for. `criteria` is rendered for the host to copy.
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
-    { id: 'vrbo', label: 'Search Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said },
+    { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
+      criteria: [place, start && end ? `${start} to ${end}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
   ];
 }
 
@@ -965,6 +982,40 @@ export function lodgingRecommendation(event, intel) {
  * Returns a proposal, never a write. `from` names where each value came from so
  * the surface can show it as ours rather than as fact.
  */
+/**
+ * WHAT THE CHOSEN HOUSE COSTS THE PLAN (review board, 2026-07-28).
+ *
+ * The board's finding, verified by grep: `lodgingOptions` was read by NOTHING —
+ * not travelPlan, not hostSpending, not surfaceRegistry, not phaseProgress. The
+ * host could shortlist eighteen houses, pick a $6,400 one, and read a toast
+ * saying "the plan reads it now" while the budget stayed at zero. The intake was
+ * a pipe into a display component.
+ *
+ * This is the outlet. It reports the ALL-IN cost of the chosen option — sticker
+ * plus fees, the same `allIn` the recommendation already compares on, because a
+ * cheaper listing with a $600 cleaning fee is not the cheaper house.
+ *
+ * HONEST LIMITS, because this feeds money:
+ *   · only the CHOSEN option counts. Shortlisted-but-not-picked is not a
+ *     commitment and must never move the budget.
+ *   · a chosen option with no price returns 0, not a guess. The host sees "I
+ *     couldn't weigh what it costs" elsewhere; inventing a number here would
+ *     contradict that to the penny.
+ *   · this is a COMMITMENT, not spend — the same class as vendorOwed. If the
+ *     host ALSO types the rental as a budget line by hand it will double-count,
+ *     exactly as vendor balances can. That is a known shape in this engine, not
+ *     a new one (see hostSpending's C1 note), and the fix if it bites is
+ *     de-duplication at the source, not silently dropping the term.
+ */
+export function lodgingCommitted(event) {
+  let li = null;
+  try { li = lodgingIntel(event); } catch (_e) { return 0; }
+  const chosen = li && li.chosen;
+  if (!chosen || chosen.allIn == null) return 0;
+  const n = Number(chosen.allIn);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+}
+
 export function stayFromPick(event, intel) {
   const li = intel || lodgingIntel(event);
   const chosen = li.chosen;

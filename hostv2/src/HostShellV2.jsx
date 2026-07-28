@@ -2803,6 +2803,9 @@ export default function HostShellV2() {
   // Candidates read off a pasted results page or handed over by the bookmarklet,
   // staged for the host to confirm. NEVER written straight to the event: one of
   // the two sources is a URL fragment, which is untrusted input by definition.
+  // How many staged candidates the list renders. Stated in the header whenever
+  // it truncates — a count contradicted by the list below it is a small lie.
+  const STAGED_SHOWN = 12;
   const [lodgeStaged, setLodgeStaged] = useState(null);
   // Typing must not stage on every keystroke — see the paste box below.
   const lodgePasteTimer = useRef(null);
@@ -8933,7 +8936,38 @@ export default function HostShellV2() {
                   {(() => {
                     let li = null; try { li = lodgingIntel(event); } catch { li = null; }
                     if (!li) return null;
-                    const write = (opts, msg) => patchEvent({ lodgingOptions: opts }, msg);
+                    // ── THE OUTLET (review board 2026-07-28) ───────────────────────
+                    // The board proved by grep that `lodgingOptions` was read by NOTHING —
+                    // not travelPlan, not hostSpending, not surfaceRegistry. Marking a pick
+                    // toasted "the plan reads it now", which was false: her $6,400 house
+                    // touched no budget, no task, no readiness row. The only bridge was
+                    // `stayFromPick`, wired to a manual "Fill it from my shortlist" button
+                    // that wrote FORM state and only rendered when the stay was empty —
+                    // four steps, three undiscoverable, behind a toast claiming it had
+                    // already happened.
+                    //
+                    // Now the pick writes `event.lodging` in the SAME patch, so travelPlan
+                    // reads it and hostSpending counts its all-in cost. The toast stops
+                    // being a lie by becoming true, which is the better repair.
+                    const write = (opts, msg) => {
+                      const patch = { lodgingOptions: opts };
+                      // stayFromPick reads the CHOSEN option, so it must run against the
+                      // options we are about to write, not the stale ones on `event`.
+                      let stay = null;
+                      try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
+                      if (stay && stay.hotelName) {
+                        // Never clobber what the host typed herself: a hand-entered stay
+                        // outranks a derived one. Fill only what is empty.
+                        const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+                        patch.lodging = {
+                          ...cur,
+                          hotelName: cur.hotelName || stay.hotelName,
+                          rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
+                          url: cur.url || stay.url,
+                        };
+                      }
+                      patchEvent(patch, msg);
+                    };
                     const rf = rentalForm;
                     const canAdd = rf.url.trim() || rf.label.trim();
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
@@ -9069,6 +9103,17 @@ export default function HostShellV2() {
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
                                 Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
+                              {/* Vrbo opens at the front door (its terms forbid deep linking
+                                  where Airbnb's don't), so hand the host her own criteria to
+                                  type in rather than silently giving her less. */}
+                              {(() => {
+                                const v = links.find((l) => l.id === 'vrbo' && l.criteria);
+                                return v ? (
+                                  <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
+                                    Vrbo opens at its own search — put in {v.criteria}.
+                                  </p>
+                                ) : null;
+                              })()}
                             </div>
                           );
                         })()}
@@ -9087,7 +9132,23 @@ export default function HostShellV2() {
                           const readPage = (text) => {
                             let out = { candidates: [], source: null, linksOnly: false };
                             try { out = extractListingCandidates(text) || out; } catch (_e) { /* nothing readable */ }
-                            if (!out.candidates.length) { toast('Nothing I could read on that — copy the whole results page (⌘A then ⌘C) and paste it here.'); return; }
+                            if (!out.candidates.length) {
+                              // ADVICE SHE CAN ACT ON, ON THE DEVICE SHE IS HOLDING.
+                              // This line used to say "copy the whole results page (⌘A then
+                              // ⌘C)". The review board called it the single documented
+                              // abandonment point in the feature, and they were right: it
+                              // fires at the moment she has ALREADY failed once, and it tells
+                              // a woman holding a phone to press a key that is not on it.
+                              // Her account: "That is when I put it down. Not angry. I just
+                              // decided it wasn't for me." NN/g: seniors blame themselves for
+                              // failure 90% of the time and quit 30 seconds sooner.
+                              const touch = typeof window !== 'undefined' && window.matchMedia
+                                && window.matchMedia('(pointer:coarse)').matches;
+                              toast(touch
+                                ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+                                : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+                              return;
+                            }
                             const known = new Set((li.options || []).map((o) => String(o.url || '').split('?')[0]));
                             const fresh = out.candidates.filter((c) => !known.has(c.url));
                             let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
@@ -9137,8 +9198,36 @@ export default function HostShellV2() {
                             <div style={{ margin: '0 0 14px' }}>
                               {!staged && (
                                 <>
-                                  <textarea className="field" rows={2} style={{ width: '100%', resize: 'vertical' }}
-                                    placeholder="Paste a listing link — or a whole results page"
+                                  {/* A LABEL THAT DOESN'T VANISH. It was placeholder-only, so
+                                      the instruction disappeared the instant she touched the
+                                      field — the oldest mobile-form failure, in our highest-
+                                      value input. */}
+                                  <div className="of" style={{ marginBottom: 6 }}>Paste a link from Airbnb or Vrbo</div>
+                                  {/* ── GIVE HER A BUTTON (review board, Grandmother's one ask) ──
+                                      "Don't make me hold my finger down on a box and wait for a
+                                      bubble — that's the part I get wrong, and when I get it
+                                      wrong I feel like the problem. Give me a button. I have
+                                      never once failed to press a button."
+                                      The barrier was never the tap COUNT, it was the long-press
+                                      gesture with a timing requirement — she reported getting it
+                                      wrong about one try in three. readText() must be called
+                                      synchronously inside the tap handler to keep the user
+                                      gesture, and iOS then shows its OWN one-tap Allow Paste —
+                                      an Apple affordance she already trusts.
+                                      Degrades to the plain field, never to a dead control. */}
+                                  {typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText && (
+                                    <button className="cta" style={{ marginBottom: 8 }}
+                                      onClick={() => {
+                                        navigator.clipboard.readText().then((t) => {
+                                          if (t && t.trim()) readPage(t);
+                                          else toast('Nothing copied yet — tap Share, then Copy Link, then press this again.');
+                                        }).catch(() => toast('I couldn’t read the clipboard — paste into the box below instead.'));
+                                      }}>
+                                      Paste the link you copied
+                                    </button>
+                                  )}
+                                  <textarea className="field" rows={3} style={{ width: '100%', resize: 'vertical', minHeight: 88 }}
+                                    placeholder="…or paste it here"
                                     aria-label="Paste a search results page"
                                     onPaste={(e) => {
                                       // THE HTML FLAVOUR IS THE ONE THAT CARRIES MEANING.
@@ -9181,6 +9270,11 @@ export default function HostShellV2() {
                                     {staged.clearing.length < staged.considered
                                       ? ` · ${staged.clearing.length} clear what the house needs` : ''}
                                     {staged.dupes > 0 ? ` · ${staged.dupes} already on your list` : ''}
+                                    {/* NEVER PRINT A COUNT YOU THEN CONTRADICT. The header said
+                                        18 and the list rendered 12 — a silent truncation reads
+                                        as "we showed you everything" when it didn't. */}
+                                    {staged.ranked.length > STAGED_SHOWN
+                                      ? ` · showing the first ${STAGED_SHOWN}` : ''}
                                   </div>
                                   {staged.linksOnly && (
                                     <p className="grounding" style={{ margin: '0 0 8px' }}>
@@ -9192,7 +9286,7 @@ export default function HostShellV2() {
                                     </p>
                                   )}
                                   <ul className="req-list">
-                                    {staged.ranked.slice(0, 12).map((c) => (
+                                    {staged.ranked.slice(0, STAGED_SHOWN).map((c) => (
                                       <li key={c.url}>
                                         <button type="button" className="req-row" aria-pressed={staged.pick.has(c.url)}
                                           onClick={() => setLodgeStaged((s) => {
@@ -9251,9 +9345,14 @@ export default function HostShellV2() {
                                             c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
                                           status: 'option',
                                         }));
-                                        patchEvent({ lodgingOptions: [...(event.lodgingOptions || []), ...add] }, null);
+                                        const before = event.lodgingOptions || [];
+                                        patchEvent({ lodgingOptions: [...before, ...add] }, null);
                                         setLodgeStaged(null);
-                                        toast(`Added ${add.length} to your shortlist.`, null, 'ok');
+                                        // REVERSIBILITY IS CHEAPER THAN CONFIRMATION, and the
+                                        // toast signature already took an action — we were
+                                        // passing null. Undoing meant scrolling and hunting.
+                                        toast(`Added ${add.length} to your shortlist.`,
+                                          { label: 'Undo', fn: () => patchEvent({ lodgingOptions: before }, null) }, 'ok');
                                       }}>
                                       Add {staged.pick.size} to the shortlist
                                     </button>
@@ -9528,7 +9627,7 @@ export default function HostShellV2() {
                                   label: prev.label.trim() || r.title || prev.label,
                                   sleeps: prev.sleeps.trim() || (f.guests ? String(f.guests) : prev.sleeps),
                                   beds: f.beds ? String(f.beds) : prev.beds,
-                                  notes: prev.notes || [r.description, f.baths ? `${f.baths} baths` : null, f.bedrooms ? `${f.bedrooms} bedrooms` : null].filter(Boolean).join(' · '),
+                                  notes: prev.notes || [f.baths ? `${f.baths} baths` : null, f.bedrooms ? `${f.bedrooms} bedrooms` : null].filter(Boolean).join(' · '),
                                   photo: prev.photo || r.image || '',
                                 }));
                                 const got = [r.title ? 'the name' : null, f.beds ? `${f.beds} beds` : null, f.baths ? `${f.baths} baths` : null, r.image ? 'a photo' : null].filter(Boolean);
@@ -9551,7 +9650,7 @@ export default function HostShellV2() {
                                   write((Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).map((o) => (
                                     o.url === rf.url.trim() && !String(o.label || '').trim().replace(/^Option \d+$/, '')
                                       ? { ...o, label: r.title || o.label, beds: f.beds || o.beds,
-                                          notes: o.notes || [r.description, f.baths ? `${f.baths} baths` : null].filter(Boolean).join(' · '),
+                                          notes: o.notes || [f.baths ? `${f.baths} baths` : null].filter(Boolean).join(' · '),
                                           photoUrl: o.photoUrl || r.image || undefined }
                                       : o)), `Read the listing — ${r.title || 'details'} filled in.`);
                                 }).catch(() => {});

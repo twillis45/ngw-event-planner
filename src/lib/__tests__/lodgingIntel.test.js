@@ -329,17 +329,32 @@ describe('lodgingSearchLinks', () => {
   const EV2 = { id: 's', type: 'Reunion', date: '2026-09-11', endDate: '2026-09-13',
     venueCity: 'Deep Creek Lake', venueState: 'Maryland', guestCount: 10, totalBudget: 3000 };
 
-  test('the event fills the search box on both platforms', () => {
-    const [ab, vr] = lodgingSearchLinks(EV2);
+  test('the event fills the Airbnb search box', () => {
+    const [ab] = lodgingSearchLinks(EV2);
     expect(ab.href).toMatch(/airbnb\.com\/s\/.*Deep-Creek-Lake.*Maryland.*\/homes/);
     expect(ab.href).toMatch(/checkin=2026-09-11/);
     expect(ab.href).toMatch(/checkout=2026-09-13/);
     expect(ab.href).toMatch(/adults=10/);
     expect(ab.href).toMatch(/price_max=3000/);
-    expect(vr.href).toMatch(/vrbo\.com\/search\?/);
-    expect(vr.href).toMatch(/destination=Deep\+Creek\+Lake/);
-    expect(vr.href).toMatch(/startDate=2026-09-11/);
-    expect(vr.href).toMatch(/adults=10/);
+  });
+
+  // ── TREAT DIFFERENT TERMS DIFFERENTLY (review board, 2026-07-28) ────────────
+  // This test used to assert a constructed vrbo.com/search?destination=… URL.
+  // Vrbo's ToS §2 forbids "deep link to any part of our Service" in those words;
+  // Airbnb's has no equivalent clause. So Airbnb keeps its pre-filled search and
+  // Vrbo gets the front door plus the criteria rendered for the host to paste.
+  // The asymmetry is the POINT — it is what reading the terms was for.
+  test('Vrbo gets the front door, not a constructed deep link', () => {
+    const [, vr] = lodgingSearchLinks(EV2);
+    expect(vr.href).toBe('https://www.vrbo.com/');
+    expect(vr.href).not.toMatch(/\/search|destination=|startDate=/);
+  });
+
+  test('…and the host is handed her own criteria to paste there', () => {
+    const [, vr] = lodgingSearchLinks(EV2);
+    expect(vr.criteria).toMatch(/Deep Creek Lake/);
+    expect(vr.criteria).toMatch(/2026-09-11 to 2026-09-13/);
+    expect(vr.criteria).toMatch(/10 guests/);
   });
 
   test('it says what it applied, so the host can see it is their own answers', () => {

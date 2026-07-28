@@ -24,8 +24,17 @@
 // would drift the first time a platform renamed a label — and the copy sitting
 // in someone's bookmarks bar is the one we could never re-deploy.
 
-/** Hosts whose result pages this may read. Same list the server unfurl allows. */
-export const BOOKMARKLET_HOSTS = ['airbnb.', 'vrbo.com', 'booking.com'];
+// BOOKING.COM IS DELIBERATELY ABSENT (review board ruling, 2026-07-28).
+// Booking's terms (A15) are the only ones that pre-emptively name the exact
+// mechanism this file implements: automated assistants "that operate by
+// interacting with or otherwise making use of your browser". Every other
+// exposure here needs an argument; this one needs none — the clause was drafted
+// with this shape in mind. And the trade was bad in both directions: Booking is
+// a HOTEL platform, this engine is for whole-home group rentals, and MEDIA_HOSTS
+// below never carried its CDN, so a Booking card arrived without a photo anyway.
+// We were holding our single clearest liability in exchange for a degraded
+// experience on our least relevant platform.
+export const BOOKMARKLET_HOSTS = ['airbnb.', 'vrbo.com'];
 
 // ── WHERE A CARD'S PHOTO IS ALLOWED TO COME FROM ────────────────────────────
 // Host 2026-07-28: "why don't those 18 findings have images". Because the
@@ -81,7 +90,7 @@ var L=[].slice.call(document.querySelectorAll('a[href]')),S={},O=[];
 for(var i=0;i<L.length;i++){
   var h=L[i].href||'';
   if(!/^https:\\/\\//.test(h))continue;
-  if(!(/airbnb\\.[a-z.]+\\/rooms\\/\\d/.test(h)||/vrbo\\.com\\/\\d/.test(h)||/booking\\.com\\/hotel\\//.test(h)))continue;
+  if(!(/airbnb\\.[a-z.]+\\/rooms\\/\\d/.test(h)||/vrbo\\.com\\/\\d/.test(h)))continue;
   var u=h.split('?')[0].split('#')[0];
   if(S[u])continue;S[u]=1;
   var p=L[i],b='';

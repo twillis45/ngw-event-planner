@@ -367,6 +367,36 @@ export const SURFACES = [
     bundleTitle: (n) => `${n} lodging deadlines to watch`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
+      // ── THE RENTAL SHORTLIST IS AN OPEN DECISION (review board 2026-07-28) ──
+      // This surface only ever knew the HOTEL ROOM-BLOCK model: it keyed on
+      // notBookedCount and a deadline. A host could shortlist eighteen rental
+      // houses and the plan raised nothing at all, because `lodgingOptions` was
+      // read by no engine anywhere. Weighing options and never choosing is a real
+      // open decision — usually the largest one in the event — and it belongs in
+      // the same ledger as every other thing waiting on her.
+      //
+      // Raised ONLY while she is genuinely mid-decision: two or more options and
+      // none chosen. One option is not a comparison, and a made choice is not a
+      // question. Nothing is invented — the count is hers.
+      //
+      // DELIBERATELY ABOVE the destination-relevance gate. That gate exists for
+      // the hotel room-block model, and it was swallowing this row: a host who
+      // has shortlisted two rental houses has PROVEN lodging matters by her own
+      // action, whatever the engine has classified her event as. Self-gating on
+      // opts.length >= 2 is the honest condition here.
+      const opts = Array.isArray(event && event.lodgingOptions) ? event.lodgingOptions.filter(Boolean) : [];
+      const picked = opts.some((o) => o && o.status === 'chosen');
+      if (opts.length >= 2 && !picked) {
+        return [{
+          severity: 'attention',
+          title: `${opts.length} places on your shortlist — none picked yet`,
+          why: 'Until one is the pick, the plan can’t count what it costs',
+          route: { tab: 'Travel', focusField: 'lodging' },
+          id: 'lodging-unpicked',
+          domain: 'travel',
+        }];
+      }
+
       let travel = null;
       try { travel = buildTravelPlan(event); } catch (_e) { return []; }
       if (!travel || !travel.relevant) return [];          // destination events only — the engine's own gate
