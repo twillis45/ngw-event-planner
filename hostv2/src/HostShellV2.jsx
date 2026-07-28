@@ -9629,7 +9629,13 @@ export default function HostShellV2() {
                             style={{ left: (dp.x * 100) + '%', top: (dp.y * 100) + '%', ...(gc && !t.count ? { borderColor: gc } : {}), ...(gc && t.count ? { boxShadow: '0 0 0 2px ' + gc + ', 0 2px 8px -3px rgba(0,0,0,.5)' } : {}) }}
                             onPointerDown={startPuckDrag(t.number)}
                             onClick={() => { if (justDraggedRef.current) return; if (picked) { seatGuestAt(picked, t); } else { setSeatSelTable(seatSelTable === t.number ? null : t.number); } }}
+                            /* AMBER AUDIT 2026-07-28: the honoree star was rendered
+                               aria-hidden with no mention anywhere in the label, so
+                               "the guest of honour sits here" was communicated by a
+                               coloured glyph ALONE — the one thing UX_02 says a
+                               status may never be. It is spoken now. */
                             aria-label={t.label + ' — ' + (t.count || 0) + ' seated'
+                              + (tHonoree ? ', the guest of honour is at this table' : '')
                               + (caution === 'access' ? ', someone here needs step-free access' : caution === 'full' ? ', fuller than the rest' : '')
                               + '. Drag to move' + (picked ? ', or tap to seat ' + picked.name : ', or tap to see who’s here') + '.'}>
                             {caution && <span className={'tp-caution ' + caution} aria-hidden="true" />}

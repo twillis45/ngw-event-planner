@@ -102,14 +102,15 @@ export const VOICE = {
         : "Knock this out and the home stretch stays calm — I've got the order.",
       // NO "do this" CTAs (host ruling 2026-07-28): a button must name the act it
       // performs. This tier has no idea what the act IS — the engine's own
-      // primaryCta ("Set guest count", "Take me to it") does. Omitting the key
+      // primaryCta ("Set guest count", "Open the list") does. Omitting the key
       // passes that concrete label straight through (OVERRIDE_FIELDS merge).
     }),
     operator: (c) => ({
       consequence: (c && c.moreCount > 0)
         ? `${c.moreCount} more items cluster here — clear this first to keep the schedule moving.`
         : "Clear this now to keep the schedule on track.",
-      primaryCta: 'Handle this',
+      // Same rule as the host tier above: no generic "handle this" — the button
+      // must name the act, and only the engine knows what it is.
     }),
   },
   timeline: {

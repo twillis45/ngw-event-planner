@@ -224,9 +224,16 @@ button{font-family:inherit}
 .tp-caution{position:absolute; top:-2px; right:-2px; width:11px; height:11px; border-radius:50%; background:var(--warn);
   border:2px solid var(--bg-band); box-shadow:0 0 0 1px rgba(0,0,0,.35)}
 .tpuck.caution{border-color:var(--warn)}
-/* honoree marker (the guest of honor's table) + long-table shape by event type (v5). */
-.tp-star{position:absolute; top:-8px; left:-5px; font-size:12px; line-height:1; color:var(--warn); text-shadow:0 1px 2px rgba(0,0,0,.6)}
-.tpuck.honoree{border-color:var(--warn)}
+/* honoree marker (the guest of honor's table) + long-table shape by event type (v5).
+   AMBER AUDIT 2026-07-28: both of these used var(--warn) — the SAME token as
+   .tp-caution / .tpuck.caution right above, and a single puck can carry both
+   classes at once (HostShellV2 ~9628). So one colour said two opposite things on
+   one map: "a problem sits at this table" and "the guest of honour sits here".
+   UX_02's semantic map reserves amber for ATTENTION only, so identification moves
+   to the steel identity tone — which is not a status colour and cannot be read as
+   urgency. Caution keeps amber; the map now has one meaning per colour. */
+.tp-star{position:absolute; top:-8px; left:-5px; font-size:12px; line-height:1; color:var(--steel-soft); text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tpuck.honoree{border-color:var(--steel-soft)}
 .tpuck.long{border-radius:14px; min-width:74px; min-height:44px}
 /* v5 progressive disclosure: calm count tokens by default; the tapped table gets a
    clear ink ring and opens an inline panel of its guests below the floor. */

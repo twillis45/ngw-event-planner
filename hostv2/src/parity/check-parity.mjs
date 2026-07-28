@@ -104,6 +104,25 @@ HOST_LINES.forEach((line, i) => {
   violations.push(`HostShellV2.jsx:${i + 1} inline white plate outside a QR surface ("${line.trim().slice(0, 64)}").`);
 });
 
+// ── ONE MEANING PER STATUS COLOUR (amber audit 2026-07-28) ───────────────────
+// UX_02's semantic map gives amber exactly one job: ATTENTION. The seating map
+// broke that by painting the honoree marker in var(--warn) — the same token as
+// the caution marker, on a puck that can carry both classes at once, so one
+// colour said "a problem sits here" and "the guest of honour sits here". These
+// selectors are IDENTIFICATION and may never wear a status token.
+const ID_SELECTORS = [
+  { sel: /^\.tp-star\{/, name: '.tp-star (honoree glyph)' },
+  { sel: /^\.tpuck\.honoree\{/, name: '.tpuck.honoree (honoree table ring)' },
+];
+const STATUS_TOKEN = /var\(--(warn|danger|ok)\b/;
+for (const r of ID_SELECTORS) {
+  const line = CSS_LINES.find((l) => r.sel.test(l.trim()));
+  if (!line) { violations.push(`styles.css: ${r.name} disappeared — the amber-audit identification rule lost its subject.`); continue; }
+  if (STATUS_TOKEN.test(line)) {
+    violations.push(`styles.css: ${r.name} wears a STATUS colour — identification may not borrow amber/red/green (UX_02 semantic map). Use var(--steel-soft).`);
+  }
+}
+
 if (violations.length) {
   console.error('✗ Parity drift detected:');
   for (const v of violations) console.error('  • ' + v);

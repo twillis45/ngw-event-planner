@@ -947,7 +947,10 @@ export function playbookTasks(event, asOf) {
       consequence:
         p.note ||
         `${p.qtyPerGuest != null ? `~${p.qtyPerGuest}/guest × ${guests} guests. ` : ''}A small buy now keeps the day-of calm.`,
-      primaryCta: 'Take me to it',
+      // NAME THE ACT, NOT THE TRIP (host ruling 2026-07-28: CTAs are the action
+      // needed). "Take me to it" described the host moving; the list is the object
+      // and 'Open the list' is the app's own idiom for this destination.
+      primaryCta: 'Open the list',
       // Deep-link: land on the food plan AND target this exact line (foodFocus = the
       // purchase id, same id the food-plan list uses) so the host can price/check it.
       primaryRoute: { eventId: event.id, tab: 'Planning', foodFocus: p.id },
