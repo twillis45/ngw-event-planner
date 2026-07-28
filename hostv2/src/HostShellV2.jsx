@@ -93,7 +93,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -7826,6 +7826,36 @@ export default function HostShellV2() {
                       </div>
                     );
                   })()}
+                  {/* ── ALL THROUGH THE DAY (host directive 2026-07-28) ──────────────
+                      The playbooks author these as `when: 'during'`; rosWhenOffset
+                      returns null for them (a continuous duty is not a point in
+                      time) and the builder skipped them, so 30 authored rows — one
+                      per event type, several of them SAFETY rows ("keep the fryer
+                      attended at all times") — never reached a host. They cannot
+                      join the timed spine, so they stand beside it and tick off the
+                      same way, on the same rosDone ledger. */}
+                  {(() => {
+                    const during = (() => { try { return playbookDuringCues(event) || []; } catch { return []; } })();
+                    if (!during.length) return null;
+                    const done = event.rosDone || {};
+                    const doneN = during.filter(c => done[c.id]).length;
+                    return (
+                      <div className="then" style={{ marginTop: 'var(--sp-5)' }}>
+                        <div className="eyebrow">All through the day{doneN ? ` · ${doneN} of ${during.length}` : ''}</div>
+                        {during.map(c => (
+                          <button key={c.id} className={'then-row' + (done[c.id] ? ' is-done' : '')}
+                            style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderBottom: '1px solid var(--carbon-line)', color: 'inherit', font: 'inherit', cursor: 'pointer' }}
+                            aria-pressed={!!done[c.id]}
+                            onClick={() => patchEvent({ rosDone: { ...done, [c.id]: !done[c.id] } },
+                              done[c.id] ? null : 'Handled: ' + String(c.segment || '').slice(0, 46) + '…')}>
+                            <span className="dot" aria-hidden="true" />
+                            <span className="d" style={{ minWidth: 54, color: 'var(--carbon-muted)' }}>ongoing</span>
+                            <span>{c.segment}</span>
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                   {/* Quiet count + print (Figma: "4 of 9 done · Print the day sheet"). */}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-5)', alignItems: 'center', gap: 'var(--sp-3)' }}>
                     <span className="of">{ros.filter(r => r && r.done).length} of {ros.length} done</span>
@@ -13770,6 +13800,25 @@ export default function HostShellV2() {
               </span>
             </div>
           ))}
+          {/* ALL THROUGH THE DAY on the printed sheet too (host directive
+              2026-07-28) — these are the continuous duties, several of them
+              safety rows, and the paper on the counter is where a host actually
+              looks while running the event. */}
+          {(() => {
+            const during = (() => { try { return playbookDuringCues(event) || []; } catch { return []; } })();
+            if (!during.length) return null;
+            return (
+              <>
+                <div className="p-head">All through the day</div>
+                {during.map((c) => (
+                  <div className="p-row" key={c.id}>
+                    <span className="p-time">ongoing</span>
+                    <span>{c.segment}</span>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
           {dayHelpers.length > 0 && (
             <>
               <div className="p-head">Who’s helping</div>

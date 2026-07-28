@@ -1195,6 +1195,61 @@ function rosDayToken(when) {
 // ONLY to order rows within a day (never printed as a clock).
 const ROS_DAY_BUCKET_HOUR = { morning: 10, midday: 12, afternoon: 15, evening: 18, night: 19 };
 
+/**
+ * WHAT RUNS ALL THROUGH THE DAY (host directive 2026-07-28: "the checklists and
+ * full agenda seem woefully inadequate on details of the day's responsibility
+ * to make sure nothing is forgotten or missed throughout the event").
+ *
+ * The playbooks already author these — 30 rows across 30 event types, one per
+ * type — as `when: 'during'` / `'ongoing'`. rosWhenOffset correctly returns null
+ * for them (they are not a point in time), and the run-of-show builder then
+ * `continue`d past them. So every one was silently discarded and NONE of it ever
+ * reached a host. What was being thrown away is not filler:
+ *     "Keep the fryer attended at all times"            (fishFry — safety)
+ *     "Keep the burner attended at all times"           (lowCountryBoil — safety)
+ *     "Point-person keeps water + food flowing and watches the groom"
+ *     "Coordinator distributes tip envelopes; collects gifts/cards to a secured spot"
+ *     "Log each gift → giver as the bride opens it"
+ *     "Keep cold food on ice; bag cans for recycling as you go"
+ *
+ * A continuous responsibility has no clock BY NATURE, so it can never join the
+ * timed spine — it belongs beside it, as a standing band the host can tick off.
+ * Same gating as the timed rows (caterer lever, answer-resolved copy), same
+ * both-spellings tolerance.
+ *
+ * @returns {Array<{id,segment,kind,source,generated,playbookType}>} — [] when the
+ *          playbook authors none. Never null-per-row, never invented.
+ */
+export function playbookDuringCues(event) {
+  if (!event) return [];
+  const playbook = getPlaybook(event.type);
+  if (!playbook || !playbook.schedules) return [];
+  const cueText = (entry) => (entry && (entry.what != null ? entry.what : entry.do)) || '';
+  const dropCatererCue = foodApproach(event).usesCaterer === false;
+  const out = [];
+  let seq = 0;
+  for (const kind of ROS_SCHEDULE_KINDS) {
+    const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
+    for (const entry of list) {
+      if (!/^(during|ongoing)\b/i.test(String((entry && entry.when) || '').trim())) continue;
+      if (dropCatererCue && /cater(er|ing)/i.test(cueText(entry))) continue;
+      const segment = resolveAnsweredCopy(cueText(entry), entry.copyByAnswer, event);
+      if (!String(segment || '').trim()) continue;
+      out.push({
+        id: `pb-during-${event.id}-${kind.key}-${seq++}`,
+        segment,
+        kind: kind.key,
+        type: kind.segType,
+        owner: 'Host',
+        source: 'playbook',
+        generated: true,
+        playbookType: playbook.type,
+      });
+    }
+  }
+  return out;
+}
+
 export function playbookRunOfShow(event) {
   if (!event) return null;
   const playbook = getPlaybook(event.type);
