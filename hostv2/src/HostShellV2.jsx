@@ -127,7 +127,7 @@ import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
 import { mergeGuestReplies } from '@app/lib/guestMerge';
 import { detectCoupleNames } from '@app/lib/guestSplit';
-import { venueFor } from '@app/lib/venueFor';
+import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { checklistRouteFor } from '@app/lib/taskRoute';
@@ -887,13 +887,10 @@ export default function HostShellV2() {
     // when Nominatim returned a state) — same strict gate as saveCity so a
     // bare-city result never slips through this second write path either.
     const parsedCity = pendingCity ? parseVenueLocation(pendingCity) : null;
-    patchEvent({
-      venue: v,
-      venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : (event.venueKind || ''),
-      ...(parsedCity
-        ? (parsedCity.zip ? { venueCity: parsedCity.zip } : { venueCity: parsedCity.city, venueState: parsedCity.state })
-        : {}),
-    }, 'Venue on the plan — invites, maps, and the rain note now carry it.');
+    // setVenue (the constitution's ONE write path) owns kind inference + the
+    // strict city gate — this site carried its own copies of both.
+    patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
+      'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
   // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
@@ -1013,6 +1010,10 @@ export default function HostShellV2() {
   // load-time snapshot); they store themselves whole, so no patch overlay.
   const base = activeCustom || ALL_SAMPLES.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId) || FALLBACK;
   const event = useMemo(() => ({ ...(base || FALLBACK), ...(activeCustom ? {} : patch) }), [base, patch, activeCustom]);
+  // ONE venue read for the whole shell (ratchet shrink 2026-07-27): every
+  // venue/city/state/kind question below asks the constitution, never a raw
+  // field — the CITY-LEAK gate and the at-home carve-out ride every consumer.
+  const vf = useMemo(() => venueFor(event), [event]);
 
   // ── Regional price factor (queue item 3) — the production pipeline:
   // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
@@ -1020,7 +1021,7 @@ export default function HostShellV2() {
   const [foodPP, setFoodPP] = useState({ priceFactor: 1, priceContext: null });
   useEffect(() => {
     let dead = false;
-    const m = /,\s*([A-Za-z]{2})\s*$/.exec(String(event.venueCity || ''));
+    const m = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
     const state = (m ? m[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
     if (!isFoodPricesConfigured() || !state) { setFoodPP({ priceFactor: 1, priceContext: null }); return undefined; }
     (async () => {
@@ -1030,7 +1031,7 @@ export default function HostShellV2() {
       } catch { if (!dead) setFoodPP({ priceFactor: 1, priceContext: null }); }
     })();
     return () => { dead = true; };
-  }, [event.id, event.venueCity]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, vf.city]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Experience Context (PC-1 canonical): unlocks blockers + continuity ──
   // ── The production profile (ngw-profile — the SAME key the original app +
@@ -1201,7 +1202,7 @@ export default function HostShellV2() {
       // static playbook default that can CONTRADICT the set venue, e.g. proposing "Restaurant
       // private room" over a booked banquet hall) violates the grounding doctrine. Drop it from
       // the open board when a venue is on file; the venue is the source of truth.
-      if (b && Array.isArray(b.open) && String((event && event.venue) || '').trim()) {
+      if (b && Array.isArray(b.open) && vf.name) {
         return { ...b, open: b.open.filter(d => !(d && (d.id === 'venue' || /at home.*(restaurant|venue|workplace)/i.test(String(d.label || '')))) ) };
       }
       return b;
@@ -1849,7 +1850,7 @@ export default function HostShellV2() {
     (async () => {
       try {
         if (!isWeatherConfigured() || !event.date) return;
-        const out = isLikelyOutdoor(event.venue, event.notes);
+        const out = isLikelyOutdoor(vf.name, event.notes);
         const past = isPastEvent(event);
         const d = daysUntil(event.date);
         // Span-aware window (P1 "weather range"): mid-event the START is past
@@ -1859,14 +1860,15 @@ export default function HostShellV2() {
         if (!out || past || d == null || d > 14 || (dEnd == null ? d < 0 : dEnd < 0)) return;
         // A bare home word ("Backyard") geocodes to junk — the town is the
         // real locator for at-home events; skip entirely when neither exists.
-        const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String(event.venue || '').trim());
+        const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(vf.name);
         // Appends the state the same way legacy's eventGeoQuery does — a bare
         // city geocode (limit=1) can silently resolve to the wrong same-named
         // city in another state; venueState/profile.state disambiguate it.
         // A ZIP is already unambiguous on its own, no state suffix needed.
         const withState = (city, state) => (city && !/^\d{5}$/.test(city) && state) ? `${city}, ${state}, US` : city;
-        const q = withState(String(event.venueCity || '').trim(), String(event.venueState || '').trim())
-          || (!homeish ? String(event.venue || '').trim() : '')
+        const zipRaw = String(event.venueCity || '').trim(); // venue-exempt: ZIP passthrough — the city gate rejects digits by design, but the geocoder accepts a bare ZIP
+        const q = withState(/^\d{5}$/.test(zipRaw) ? zipRaw : vf.city, vf.state)
+          || (!homeish ? vf.name : '')
           || withState(String((profile && profile.city) || '').trim(), String((profile && profile.state) || '').trim()); // your usual area backs up a bare backyard
         if (!q) return;
         const coords = await geocodeVenue(q);
@@ -1881,12 +1883,12 @@ export default function HostShellV2() {
       } catch { /* stay quiet — no forecast beats a wrong one */ }
     })();
     return () => { dead = true; };
-  }, [event.id, event.date, event.endDate, event.venue, event.venueCity, event.venueState, event.notes]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [event.id, event.date, event.endDate, vf.name, vf.city, vf.state, event.notes]); // eslint-disable-line react-hooks/exhaustive-deps
   const wx = useMemo(() => {
     if (liveWx) return liveWx;
     if (isWeatherConfigured()) return null; // live mode: real data or nothing
     // Self-contained reads (this memo sits above the shared outdoor/days consts).
-    const out = (() => { try { return isLikelyOutdoor(event.venue, event.notes); } catch { return false; } })();
+    const out = (() => { try { return isLikelyOutdoor(vf.name, event.notes); } catch { return false; } })();
     const past = (() => { try { return isPastEvent(event); } catch { return false; } })();
     const d = (() => { try { return daysUntil(event.date); } catch { return null; } })();
     // Same 14-day boundary as getEventWeatherRisk — no real forecast reaches
@@ -3275,7 +3277,7 @@ export default function HostShellV2() {
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
   // is the same one the app's weather alert and Where & when read.
-  const outdoor = (() => { try { return isLikelyOutdoor(event.venue || '', event.notes || ''); } catch { return false; } })();
+  const outdoor = (() => { try { return isLikelyOutdoor(vf.name, event.notes || ''); } catch { return false; } })();
 
   // Shopping check-off writes the same foodGot flags the money engine reads —
   // buying an item literally moves real dollars from committed to spent. (This
@@ -3837,7 +3839,7 @@ export default function HostShellV2() {
       // own prior answer (existing venue, or the town they named at create) —
       // grounded data only, never an invented guess.
       if (kind === 'venue' && !String(venueDraft || '').trim()) {
-        try { const seed = String(event.venue || event.venueCity || '').trim(); if (seed) setVenueDraft(seed); } catch { /* blank is fine */ }
+        try { const seed = vf.name || vf.city; if (seed) setVenueDraft(seed); } catch { /* blank is fine */ }
       }
       setEditor(key); spotlight(key); return;
     }
@@ -5262,7 +5264,7 @@ export default function HostShellV2() {
                   {eventTypeLabel(event) || event.type} <span aria-hidden="true">▾</span>
                 </button>
                 <div className="ev-title">{event.name}</div>
-                {(event.venue || event.theme) ? <div className="ev-venue">{[event.venue, event.theme].filter(Boolean).join(' · ')}</div> : null}
+                {(vf.name || event.theme) ? <div className="ev-venue">{[vf.name, event.theme].filter(Boolean).join(' · ')}</div> : null}
               </div>
               )}
               {/* ecenter — DOCTRINE (host "make sure hero doctrine keeps in middle"): the
@@ -6866,7 +6868,7 @@ export default function HostShellV2() {
                   (blockerDecisions) in elegant mode — don't also draw them here, or they'd double. */}
               {blockers.filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
-                const venueSet = !!String(event.venue || '').trim();
+                const venueSet = !!vf.name;
                 return (
                   <article className="card" key={'blk-' + i} style={{ marginTop: i === 0 ? 24 : 0 }}>
                     <div className="card-head">
@@ -6904,7 +6906,7 @@ export default function HostShellV2() {
                       {isVenueBlock && venueSet && needsCity() && (
                         <>
                           <p className="grounding" style={{ marginTop: 6 }}>
-                            “{event.venue}” is named — the venue check also needs the town and state (or a ZIP), so weather and maps find the right one.
+                            “{vf.name}” is named — the venue check also needs the town and state (or a ZIP), so weather and maps find the right one.
                           </p>
                           <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)', alignItems: 'flex-start' }}>
                             <CityField value={cityDraft} onChange={setCityDraft} onPick={setCityDraft} onEnter={saveCity}
@@ -6945,15 +6947,15 @@ export default function HostShellV2() {
                 );
               })}
 
-              {!isPast && event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && (
+              {!isPast && vf.name && !venueBlockerShown && !/\d/.test(vf.name) && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>
-                    {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + String(event.venue).toLowerCase()}
+                    {addressOpen ? 'Where exactly?' : 'Guests will ask where — add the address for ' + vf.name.toLowerCase()}
                   </span>
                   {addressOpen ? null : <button className="mini" onClick={() => setAddressOpen(true)}>Add it</button>}
                 </div>
               )}
-              {!isPast && event.venue && !venueBlockerShown && !/\d/.test(String(event.venue)) && (event.venueKind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(String(event.venue))) && addressOpen && (
+              {!isPast && vf.name && !venueBlockerShown && !/\d/.test(vf.name) && (vf.kind === 'home' || /backyard|house|place|yard|home|garden|farm|cabin/i.test(vf.name)) && addressOpen && (
                 <div className="hc-row" style={{ marginTop: 'var(--sp-2)' }}>
                   <AddressField value={addressDraft} onChange={setAddressDraft} onPick={sg => setAddressDraft(sg.label)}
                     inputStyle={{ maxWidth: 'none' }} placeholder="Street address — invites and rain notes will carry it" ariaLabel="Venue address" />
@@ -6992,7 +6994,7 @@ export default function HostShellV2() {
                 </button>
               )}
 
-              {!String(event.venue || '').trim() && !venueBlockerShown && (
+              {!vf.name && !venueBlockerShown && (
                 <article className="card" style={{ marginTop: 'var(--sp-5)' }}>
                   <div className="card-head">
                     <div className="card-top">
@@ -7212,7 +7214,7 @@ export default function HostShellV2() {
                   From your last {String(event.type).toLowerCase()}: “{lastLesson.lessons.slice(0, 70)}{lastLesson.lessons.length > 70 ? '…' : ''}”
                 </p>
               )}
-              {String(event.venue || '').trim() && needsCity() && !venueBlockerShown && (
+              {vf.name && needsCity() && !venueBlockerShown && (
                 <div className="later-row" style={{ marginTop: 18 }}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>What city, state (or ZIP)? Weather and maps need it.</span>
                   <CityField value={cityDraft} onChange={setCityDraft} onPick={setCityDraft} onEnter={saveCity}
@@ -7423,7 +7425,7 @@ export default function HostShellV2() {
                     </button>
                     <div className="pill-grid" style={{ marginTop: 'var(--gap-chip)' }}>
                       <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
-                      {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
+                      {(vf.name || vf.city) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                     </div>
                   </div>
                 </div>
@@ -7677,7 +7679,7 @@ export default function HostShellV2() {
                   <div className="actions-row" style={{ marginTop: 'var(--sp-5)', alignItems: 'center', gap: 'var(--sp-3)' }}>
                     <span className="of">{ros.filter(r => r && r.done).length} of {ros.length} done</span>
                     <button className="mini" onClick={() => window.print()}>Print the day sheet</button>
-                    {(event.venue || event.venueCity) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
+                    {(vf.name || vf.city) && <button className="mini" onClick={() => { try { openDraft('Parking instructions', draftParkingInstructions(event)); } catch { toast('Couldn’t draft it.'); } }}>Parking note</button>}
                   </div>
                 </>
               )}
@@ -7902,8 +7904,8 @@ export default function HostShellV2() {
             {sheet.kind === 'venue' && (
               <div style={{ padding: 'var(--sp-2) 0' }}>
                 <p className="v-meta" style={{ margin: '0 0 var(--sp-3)' }}>Where the event happens — invites, maps, weather, and the rain note all read from it.</p>
-                {String(event.venue || '').trim() && (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{event.venue}</b>{event.venueCity ? ` · ${event.venueCity}` : ''}. Enter a new place to change it.</p>
+                {vf.name && (
+                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.name}</b>{vf.city ? ` · ${vf.city}` : ''}. Enter a new place to change it.</p>
                 )}
                 <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                   <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
@@ -7921,7 +7923,7 @@ export default function HostShellV2() {
                   </div>
                 )}
                 {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
-                {String(event.venue || '').trim() && needsCity() && (
+                {vf.name && needsCity() && (
                   <div style={{ marginTop: 'var(--sp-3)' }}>
                     <p className="grounding" style={{ marginBottom: 'var(--sp-2)' }}>Add the town and state (or ZIP) so weather and maps find the right place.</p>
                     <div style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'flex-start' }}>
@@ -8225,9 +8227,9 @@ export default function HostShellV2() {
             {sheet.kind === 'space' && (() => {
               // Hero copy (host request 2026-07-11): the helpers count is the
               // star. Real fields only — deriveHelperResponsibilities' deduped
-              // people list and event.venue; nothing sized or claimed beyond them.
+              // people list and the venue name; nothing sized or claimed beyond them.
               const n = helperPeople.length;
-              const venue = String(event.venue || '').trim();
+              const venue = vf.name;
               const venuePhrase = venue
                 ? `${/^(the|a|an)\s/i.test(venue) ? '' : 'The '}${venue} is set — arrival, parking, and the rain plan live here.`
                 : 'No venue named yet — name it and arrival, parking, and the rain plan live here.';
@@ -8407,7 +8409,7 @@ export default function HostShellV2() {
                     <div className="shelf-label" style={{ margin: '2px 0 var(--sp-1)' }}>What to bring</div>
                     <div className="fstat-list">
                 {(capacity.items || []).filter(it => it && !it.skipped).map((it, i) => {
-                  const links = it.owned ? null : (() => { try { return supplyRetailLinks(it.short || it.item, event.venue); } catch { return null; } })();
+                  const links = it.owned ? null : (() => { try { return supplyRetailLinks(it.short || it.item, vf.name); } catch { return null; } })();
                   // Whole units only — nobody rents 3.2 canopies. The engine's
                   // scaled qty rounds UP for the host (short beats stranded).
                   const baseNeed = (() => {
@@ -9733,7 +9735,7 @@ export default function HostShellV2() {
               // the host makes progress (real state, never a static checklist).
               const foundations = [
                 { done: !!String(event.date || '').trim(), label: 'Set the date', route: { tab: 'Event Details', focusField: 'event-date' } },
-                { done: !!String(event.venue || '').trim(), label: 'Add the location', route: { tab: 'Event Details', focusField: 'event-venue' } },
+                { done: !!vf.name, label: 'Add the location', route: { tab: 'Event Details', focusField: 'event-venue' } },
                 { done: guests > 0, label: 'Set the guest count', route: { tab: 'Guests', focusField: 'guests-entry' } },
                 { done: !!money.planned, label: 'Set a budget', route: { tab: 'Budget', focusField: 'budget' } },
               ].filter(f => !f.done);
@@ -9950,7 +9952,7 @@ export default function HostShellV2() {
                           onClick={() => { switchEvent(e.id); setSheet(null); }}>
                           <span className="f-main">
                             <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
-                            <span className="v-meta">{[eventTypeLabel(e), e.venue].filter(Boolean).join(' · ')}</span>
+                            <span className="v-meta">{[eventTypeLabel(e), venueFor(e).name].filter(Boolean).join(' · ')}</span>
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
@@ -10007,7 +10009,7 @@ export default function HostShellV2() {
               // POP-1E: the reusable procurement estimate — an explained band
               // (assumptions/pricing model/region/confidence/cost reducers) plus
               // pickup/storage/cooking logistics. Region from the event's state.
-              const _pm = /,\s*([A-Za-z]{2})\s*$/.exec(String(event.venueCity || ''));
+              const _pm = /,\s*([A-Za-z]{2})\s*$/.exec(vf.city);
               const _pstate = (_pm ? _pm[1].toUpperCase() : null) || (profile && profile.state ? String(profile.state).toUpperCase() : null);
               const proc = (() => { try { return buildCrabProcurement(event, { state: _pstate }); } catch { return null; } })();
               return (
@@ -13252,7 +13254,7 @@ export default function HostShellV2() {
               </div>
               {wx._sample
                 ? <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Sample forecast for this preview — live weather turns on with the API key.</p>
-                : <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {event.venueCity || event.venue}.</p>}
+                : <p className="grounding" style={{ marginTop: 10, opacity: .7 }}>Live forecast for {vf.city || vf.name}.</p>}
             </div>
           )}
         </div>
@@ -13299,7 +13301,7 @@ export default function HostShellV2() {
         const events = evList.map(e => ({
           kind: 'event', id: e.id,
           label: e.name || e.type || 'Event',
-          sub: [eventTypeLabel(e), e.venue].filter(Boolean).join(' · '),
+          sub: [eventTypeLabel(e), venueFor(e).name].filter(Boolean).join(' · '),
           run: () => { switchEvent(e.id); setPaletteOpen(false); },
         }));
         const dRaw = [
@@ -13365,7 +13367,7 @@ export default function HostShellV2() {
           <h1>{event.name}</h1>
           <p className="p-sub">
             {event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }) : ''}
-            {event.venue ? ` · ${event.venue}` : ''}{event.venueCity ? `, ${event.venueCity}` : ''}
+            {vf.name ? ` · ${vf.name}` : ''}{vf.city ? `, ${vf.city}` : ''}
             {event.rainPlan ? ` · If it rains: ${event.rainPlan}` : ''}
           </p>
           <div className="p-head">Run of show</div>

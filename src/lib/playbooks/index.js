@@ -2095,7 +2095,10 @@ export function playbookDecisionBoard(event, asOf, profile) {
     open.push({ id: 'f-date', label: 'Lock the date', status: 'ready', because: 'Everything counts down from the date.', dueDate: null, daysOut: null, weight: 'high', deliversHeartMoment: false, route: { eventId: event.id, tab: 'Event Details', focusField: 'event-date' } });
   }
   if (hasVenue) {
-    locked.push({ id: 'f-venue', label: 'Venue', status: 'locked', because: String(event.venue).trim(), dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
+    // venueFor: displayLine covers the at-home carve-out ("At home in Annapolis")
+    // — the raw name was EMPTY for exactly the home-with-city events hasVenue
+    // (already constitution-read) admits, leaving a blank because.
+    locked.push({ id: 'f-venue', label: 'Venue', status: 'locked', because: venueFor(event).displayLine, dueDate: null, daysOut: null, route: { eventId: event.id, tab: 'Event Details' } });
   }
 
   // Headcount — the count-lock. A roster with replies still out → the hero (honest

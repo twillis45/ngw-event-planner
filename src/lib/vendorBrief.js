@@ -22,6 +22,8 @@
 // the fields a vendor needs to show up in the right place at the right time.
 // (Cue-level `notes` are day-of stage directions — written to be read aloud /
 // followed on site — not host bookkeeping, so they stay.)
+import { venueFor } from './venueFor';
+
 export function vendorRosSlice(ros, vendor) {
   const name = (vendor && vendor.name) || '';
   return (ros || [])
@@ -52,7 +54,7 @@ export function buildVendorBriefPayload(vendor, event, ros, profile) {
     eventId:   e.id,
     eventName: e.name,
     eventDate: e.date,
-    venue:     e.venue,
+    venue:     venueFor(e).name,
     // planner contact + branding — intended for vendor use
     plannerName:     p.name  || '',
     plannerPhone:    p.phone || '',

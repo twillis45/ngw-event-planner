@@ -39,8 +39,8 @@ export function taskSatisfied(event, task) {
   const guests     = Array.isArray(event.guests) ? event.guests : [];
   const hasGuests  = (Number(event.guestCount) || Number(event.guestEstimate) || guests.length) > 0;
   const hasBudget  = (Number(event.totalBudget) || 0) > 0 || (Array.isArray(event.budget) && event.budget.some((b) => Number(b && b.budgeted) > 0));
-  // venueFor: an at-home event with a city IS venued — reading bare event.venue
-  // here told home hosts to go book a venue (audit divergence #2).
+  // venueFor: an at-home event with a city IS venued — reading the bare venue
+  // name here told home hosts to go book a venue (audit divergence #2).
   const hasVenue   = (() => { const v = venueFor(event); return v.isSet && !/^(tbd|tba)$/i.test(v.name); })();
   const hasVendors = hasNamedVendor(event);
   const hasFood    = (event.foodChoices && Object.keys(event.foodChoices).length > 0) || (Array.isArray(event.foodAdd) && event.foodAdd.length > 0);

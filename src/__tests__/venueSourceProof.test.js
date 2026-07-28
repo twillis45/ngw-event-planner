@@ -40,14 +40,14 @@ const BASELINE = {
   'src/lib/weather.js': 0,
   'src/lib/assembleRevealEngines.js': 0,
   'src/lib/startTime.js': 0,
-  'src/lib/webhookService.js': 1,
-  'src/lib/vendorBrief.js': 1,
-  'src/lib/taskEngine.js': 1,
-  'src/lib/playbooks/index.js': 1,
-  'src/lib/placeIntelligence.js': 1,
+  'src/lib/webhookService.js': 0,
+  'src/lib/vendorBrief.js': 0,
+  'src/lib/taskEngine.js': 0,
+  'src/lib/playbooks/index.js': 0,
+  'src/lib/placeIntelligence.js': 0,
   'src/lib/eventSolve.mjs': 0,
-  'hostv2/src/HostShellV2.jsx': 54,
-  'hostv2/src/InviteV2.jsx': 10,
+  'hostv2/src/HostShellV2.jsx': 0,
+  'hostv2/src/InviteV2.jsx': 0,
 };
 
 const walk = (dir, out = []) => {

@@ -50,7 +50,7 @@ export function derivePlaceIntelligence(event = {}) {
   const outdoors = kind === 'outdoor'
     || event.indoorOutdoor === 'outdoor'
     || event.indoorOutdoor === 'both'
-    || (!event.indoorOutdoor && isLikelyOutdoor(event.venue || '', event.notes || ''));
+    || (!event.indoorOutdoor && isLikelyOutdoor(vf.name, event.notes || ''));
   const indoorOnly = event.indoorOutdoor === 'indoor';
   const hasVendors = (event.vendors || []).some((v) => v && has(v.name));
   const rain = rainPlanStatus(event);

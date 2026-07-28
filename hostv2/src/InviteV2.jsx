@@ -326,12 +326,15 @@ export default function InviteV2({ code }) {
   const startNearWatch = async () => {
     try {
       if (!navigator.geolocation) { setNearState('denied'); return; }
-      const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(String((event && event.venue) || '').trim());
-      // Same state-suffix disambiguation as HostShellV2's weather query — a
-      // bare city can silently geocode to the wrong same-named city elsewhere.
-      const vc = String((event && event.venueCity) || '').trim();
-      const vs = String((event && event.venueState) || '').trim();
-      const q = (vc && !/^\d{5}$/.test(vc) && vs ? `${vc}, ${vs}, US` : vc) || (!homeish ? String((event && event.venue) || '').trim() : '');
+      // venueFor constitution (ratchet shrink): name + gated city/state from the
+      // one accessor. Same state-suffix disambiguation as the shell's weather
+      // query — a bare city can silently geocode to the wrong same-named city.
+      const vf = venueFor(event);
+      const zipRaw = String((event && event.venueCity) || '').trim(); // venue-exempt: ZIP passthrough — the city gate rejects digits by design, but the geocoder accepts a bare ZIP
+      const homeish = /^(backyard|back\s?yard|home|house|my place)$/i.test(vf.name);
+      const vc = /^\d{5}$/.test(zipRaw) ? zipRaw : vf.city;
+      const vs = vf.state;
+      const q = (vc && !/^\d{5}$/.test(vc) && vs ? `${vc}, ${vs}, US` : vc) || (!homeish ? vf.name : '');
       if (!q) { setNearState('nocoords'); return; }
       const coords = await geocodeVenue(q);
       if (!coords) { setNearState('nocoords'); return; }
@@ -671,10 +674,13 @@ export default function InviteV2({ code }) {
     const d = new Date(last + 'T12:00:00'); d.setDate(d.getDate() + 1);
     return d.toISOString().slice(0, 10).replace(/-/g, '');
   })();
+  // Calendar location: name + GATED city from the constitution (a polluted
+  // venueCity no longer rides into guests' calendars).
+  const vfLoc = venueFor(event);
   const gcalUrl = event.date
     ? 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(event.name || 'Event')
       + '&dates=' + calDate + '/' + calEnd
-      + (event.venue ? '&location=' + encodeURIComponent(event.venue + (event.venueCity ? ', ' + event.venueCity : '')) : '')
+      + (vfLoc.name ? '&location=' + encodeURIComponent(vfLoc.name + (vfLoc.city ? ', ' + vfLoc.city : '')) : '')
     : null;
   const icsHref = event.date
     ? 'data:text/calendar;charset=utf-8,' + encodeURIComponent([
@@ -682,7 +688,7 @@ export default function InviteV2({ code }) {
       'BEGIN:VEVENT', `UID:invite-${event.id}-${code}@ngw-events`,
       `DTSTART;VALUE=DATE:${calDate}`, `DTEND;VALUE=DATE:${calEnd}`,
       `SUMMARY:${String(event.name || 'Event').replace(/[,;]/g, ' ')}`,
-      ...(event.venue ? [`LOCATION:${String(event.venue).replace(/[,;]/g, ' ')}`] : []),
+      ...(vfLoc.name ? [`LOCATION:${vfLoc.name.replace(/[,;]/g, ' ')}`] : []),
       'END:VEVENT', 'END:VCALENDAR'].join('\r\n'))
     : null;
 

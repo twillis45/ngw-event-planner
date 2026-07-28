@@ -12,7 +12,7 @@
 // raw field reads outside this module are the bug class venueSourceProof exists
 // to catch. (App.js is freeze-exempt until CRA deletion — its raw reads are
 // grandfathered, not sanctioned.)
-import { isPlausibleCityText } from './cityText';
+import { isPlausibleCityText, parseVenueLocation } from './cityText';
 
 // Home-ish venue labels: real to the host ("Backyard") but useless as a maps
 // destination — the city carries the location for those.
@@ -57,4 +57,28 @@ export function venueFor(event) {
   const mapsQuery = address
     || [name && !HOMEISH.test(name) ? name : '', city, state].filter(Boolean).join(', ');
   return { name, kind, isHome, city, state, address, isSet, needsCityForWeather, displayLine, mapsQuery };
+}
+
+// ─── setVenue — THE one venue WRITE path ─────────────────────────────────────
+// Counterpart to venueFor: a surface that stores a venue builds its patch HERE,
+// so home-kind inference and the strict city gate can never fork per call site
+// (the quick-add carried its own copy of both — write-seam wave 4's last hole).
+//   name          the venue string the host typed — kept VERBATIM
+//   locationText  optional "City, ST" / ZIP text; gated through
+//                 parseVenueLocation — a bare/ambiguous city writes NOTHING
+//                 (the manual "Which town?" field's exact rule)
+//   current       the event, so an explicit kind the host already set survives
+//                 a rename instead of being silently flipped.
+export function setVenue(current, { name, locationText } = {}) {
+  const v = String(name || '').trim();
+  const parsed = locationText
+    ? (() => { try { return parseVenueLocation(String(locationText)); } catch { return null; } })()
+    : null;
+  return {
+    venue: v,
+    venueKind: /backyard|house|home|yard|place|garden/i.test(v) ? 'home' : String((current || {}).venueKind || ''),
+    ...(parsed
+      ? (parsed.zip ? { venueCity: parsed.zip } : { venueCity: parsed.city, venueState: parsed.state })
+      : {}),
+  };
 }

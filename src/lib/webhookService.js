@@ -9,6 +9,8 @@
 // Source-of-truth: NGW is the trigger source. The receiving system decides
 // what to do with the payload.
 
+import { venueFor } from './venueFor';
+
 const BASE = process.env.REACT_APP_API_BASE_URL;
 const LOG_KEY  = 'ngw-webhook-log';
 const MAX_LOG  = 50;
@@ -104,7 +106,7 @@ export function buildEventCreatedPayload(event) {
     name:     event.name,
     type:     event.type,
     date:     event.date,
-    venue:    event.venue || null,
+    venue:    venueFor(event).name || null,
     city:     event.city || null,
     guests:   event.guestEstimate || null,
     status:   event.status || 'active',
