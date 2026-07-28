@@ -10,6 +10,8 @@
 // Honest states: delivered ("Thanks!") vs queued-offline ("Saved — we'll send
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
+import PhotoStrip from './PhotoStrip.jsx';
+import { photoList } from '@app/lib/lodgingIntel';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
@@ -315,7 +317,7 @@ export default function InviteV2({ code }) {
       // asked to choose a house from a NAME (host question 2026-07-28: "where are
       // the guests seeing the information, picture, link"). https-only, same gate
       // the host-side engine applies, so a stray string can never become a request.
-      photoUrl: /^https:\/\//i.test(String((o && o.photoUrl) || '').trim()) ? String(o.photoUrl).trim() : '',
+      photos: photoList(o),
       url: /^https:\/\//i.test(String((o && o.url) || '').trim()) ? String(o.url).trim() : '',
       note: String((o && o.notes) || '').trim(),
     }));
@@ -1038,26 +1040,27 @@ export default function InviteV2({ code }) {
                             {lodgingChoices.map(o => {
                               const on = lodgingPick === o.id;
                               return (
-                                <div key={'lodge-' + o.id} className="chip"
+                                <div key={'lodge-' + o.id} className="lodge-opt"
                                   role="radio" aria-checked={on}
                                   tabIndex={0}
                                   onClick={() => setLodgingPick(on ? '' : o.id)}
-                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLodgingPick(on ? '' : o.id); } }}
-                                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', textAlign: 'left',
-                                    width: '100%', cursor: 'pointer', padding: 10, height: 'auto', whiteSpace: 'normal' }}>
-                                  {o.photoUrl ? (
-                                    <img src={o.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
-                                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, flex: '0 0 auto' }}
-                                      onError={e => { e.currentTarget.style.display = 'none'; }} />
-                                  ) : null}
+                                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setLodgingPick(on ? '' : o.id); } }}>
+                                  <PhotoStrip photos={o.photos} alt={o.label} size={56} radius="8px" />
                                   <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     <strong style={{ fontWeight: 650 }}>{o.label}</strong>
                                     {o.sub ? <span className="inv2-fine" style={{ margin: 0 }}>{o.sub}</span> : null}
                                     {o.note ? <span className="inv2-fine" style={{ margin: 0 }}>{o.note}</span> : null}
+                                    {/* SELECTION MUST NOT EAT THE LINK (host report 2026-07-28).
+                                        The card is the radio; the link is a separate act. Click
+                                        alone was not enough — the row also reacts to pointerdown
+                                        and to Enter/Space, so all three are stopped here. */}
                                     {o.url ? (
                                       <a href={o.url} target="_blank" rel="noopener noreferrer"
                                         onClick={e => e.stopPropagation()}
-                                        style={{ fontSize: 12, textDecoration: 'underline' }}>See the listing ↗</a>
+                                        onPointerDown={e => e.stopPropagation()}
+                                        onMouseDown={e => e.stopPropagation()}
+                                        onKeyDown={e => e.stopPropagation()}
+                                        style={{ fontSize: 12, textDecoration: 'underline', width: 'fit-content' }}>See the listing ↗</a>
                                     ) : null}
                                   </span>
                                 </div>

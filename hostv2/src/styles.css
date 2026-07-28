@@ -1898,6 +1898,26 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 .inv2 .rv.in{ opacity:1; transform:none; }
 @media (prefers-reduced-motion: reduce){ .inv2 .rv{ opacity:1; transform:none; transition:none; } }
 /* engraved reply chips + fields on the stock */
+/* ── THE STAY OPTION IS A CARD, NOT A PILL (host report 2026-07-28: "stay
+   selection shapes aren't correct"). It was borrowing .chip, so a card holding a
+   photo, a name, facts and a link rendered with a 999px pill radius wrapped
+   around a 64px image. A chip is a small label; this is a selectable card, and
+   UX_05 says selection is ADDITIVE — a tint and a border on top of the card,
+   never a different shape. Same treatment on both themes and on the host side. */
+.lodge-opt{ display:flex; gap:10px; align-items:flex-start; width:100%; text-align:left;
+  padding:10px; border-radius:10px; cursor:pointer; white-space:normal;
+  background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:#1a1a1a;
+  transition:border-color 150ms ease, background-color 150ms ease; }
+.lodge-opt[aria-checked="true"]{ border-color:#3E7A5A; background:rgba(62,122,90,.10); }
+.lodge-opt:focus-visible{ outline:2px solid #3E7A5A; outline-offset:2px; }
+/* The invite centres its fine print by default (it is stationery). Inside a card
+   the facts sit under a left-aligned name, so centring them reads as a mistake. */
+.lodge-opt, .lodge-opt .inv2-fine, .lodge-opt a{ text-align:left; }
+.lodge-opt .inv2-fine{ margin:0; }
+.inv2-dark .lodge-opt{ background:#22262b; border-color:rgba(255,244,224,.14); color:#ece5d8; }
+.inv2-dark .lodge-opt[aria-checked="true"]{ border-color:#6fbf90; background:rgba(111,191,144,.12); }
+@media (prefers-reduced-motion: reduce){ .lodge-opt{ transition:none } }
+
 .inv2-sheet .chip{ background:rgba(255,255,255,.55); border:1.5px solid rgba(196,178,148,.6); color:#1a1a1a;
   box-shadow:inset 0 1px 0 rgba(255,255,255,.72), inset 0 -1px 1px rgba(120,96,60,.10); }
 /* Audit B1: #3E7A5A is the one white-text-safe "selected" green — a FILL green,

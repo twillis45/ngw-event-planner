@@ -5,6 +5,7 @@
 // Nothing invented — where data is missing, the UI says so.
 import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
 import { buildCrabProcurement } from '@app/lib/procurement';
@@ -8891,11 +8892,9 @@ export default function HostShellV2() {
                         )}
                         {li.options.map((o) => (
                           <div key={o.id} className="frow" style={{ cursor: 'default', flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                            {o.photoUrl ? (
-                              <img src={o.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer"
-                                style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 'var(--r-md)', flex: '0 0 auto' }}
-                                onError={(e) => { try { e.currentTarget.style.display = 'none'; } catch { /* gone */ } }} />
-                            ) : null}
+                            {/* Same component the guest sees on the invite — flip through
+                                in place, tap to enlarge (host ask 2026-07-28). */}
+                            <PhotoStrip photos={o.photos} alt={o.label} size={64} />
                             <span className="f-main" style={{ minWidth: 0 }}>
                               <span className="f-name">{o.label}
                                 {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
@@ -8914,7 +8913,7 @@ export default function HostShellV2() {
                         ))}
                         <div style={{ display: 'grid', gap: 'var(--sp-2)', marginTop: 'var(--sp-2)' }}>
                           <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
-                          <input className="field" style={fldR} placeholder="Photo link — press-and-hold the listing photo, copy the image address" value={rf.photo || ''} onChange={(e) => setRentalForm({ ...rf, photo: e.target.value })} aria-label="Rental photo link" />
+                          <input className="field" style={fldR} placeholder="Photo links — copy image address; paste several, separated by spaces" value={rf.photo || ''} onChange={(e) => setRentalForm({ ...rf, photo: e.target.value })} aria-label="Rental photo link" />
                           <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
                             <input className="field" style={{ ...fldR, flex: 2 }} placeholder="Call it (“Lakefront A-frame”)" value={rf.label} onChange={(e) => setRentalForm({ ...rf, label: e.target.value })} aria-label="Rental name" />
                             <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Sleeps" inputMode="numeric" value={rf.sleeps} onChange={(e) => setRentalForm({ ...rf, sleeps: e.target.value })} aria-label="Sleeps how many" />

@@ -44,6 +44,26 @@ export function lodgingPlatformFor(url) {
 
 const num = (v) => { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; };
 
+// Every https photo the host pasted for one option, in order, deduped. Accepts
+// an array (`photos`), the legacy single `photoUrl`, or one string holding
+// several links — hosts paste in bulk and a comma is not a URL delimiter they
+// think about.
+const HTTPS = /^https:\/\//i;
+export function photoList(raw) {
+  const o = raw || {};
+  const bag = [];
+  const push = (v) => {
+    String(v == null ? '' : v)
+      .split(/[\s,]+/)
+      .map((x) => x.trim())
+      .filter((x) => HTTPS.test(x))
+      .forEach((x) => { if (!bag.includes(x)) bag.push(x); });
+  };
+  if (Array.isArray(o.photos)) o.photos.forEach(push); else push(o.photos);
+  push(o.photoUrl);
+  return bag;
+}
+
 /**
  * Normalize one host-entered option. Pure; unknown fields ride through so the
  * shortlist can grow without this file changing.
@@ -62,10 +82,15 @@ export function normalizeLodgingOption(raw, i = 0) {
     totalPrice: num(o.totalPrice),
     cancellationTier: String(o.cancellationTier || '').toLowerCase().trim(),
     notes: String(o.notes || '').trim(),
-    // The listing photo, HOST-PASTED (copy image address on the listing) —
-    // never fetched from the listing page; https-only so a stray string
-    // can't become a request.
-    photoUrl: /^https:\/\//i.test(String(o.photoUrl || '').trim()) ? String(o.photoUrl).trim() : '',
+    // The listing photos, HOST-PASTED (copy image address on the listing) —
+    // never fetched from the listing page; https-only so a stray string can't
+    // become a request. MULTIPLE now (host ask 2026-07-28: "if the other images
+    // can be pulled in and advance in place for property that would be
+    // helpful"), so a guest can flip through the house instead of judging it
+    // from one shot. `photoUrl` stays as the first one for every existing
+    // reader; `photos` is the strip.
+    photos: photoList(o),
+    photoUrl: photoList(o)[0] || '',
     status: o.status === 'chosen' ? 'chosen' : 'option',
   };
 }

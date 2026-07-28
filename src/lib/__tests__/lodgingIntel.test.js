@@ -2,7 +2,7 @@
 // Locks the doctrine shape: host-entered facts only, platform derived from the
 // URL host, every guidance line source-resolving, arithmetic honest, and the
 // share draft carrying the real options verbatim.
-const { lodgingIntel, lodgingPlatformFor, lodgingGuidanceSourcesResolve } = require('../lodgingIntel');
+const { lodgingIntel, lodgingPlatformFor, lodgingGuidanceSourcesResolve, normalizeLodgingOption } = require('../lodgingIntel');
 
 const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
 
@@ -142,5 +142,41 @@ describe('guest lodging picks', () => {
     const i = withPicks(['ghost-option']);
     expect(i.options.every((o) => o.votes === 0)).toBe(true);
     expect(i.voted).toBe(1);   // they DID answer — we just don't have that option any more
+  });
+});
+
+// ─── Multiple photos per property (host ask 2026-07-28) ──────────────────────
+// Grounded on the repo's OWN real images rather than a placeholder service:
+// public/crab-hero.png and public/catfish-hero.png are sourced through the
+// documented Wikimedia-Commons public-domain pipeline in lib/artworkMarks.
+const { photoList } = require('../lodgingIntel');
+const REAL_A = 'https://twillis45.github.io/ngw-event-planner/crab-hero.png';
+const REAL_B = 'https://twillis45.github.io/ngw-event-planner/catfish-hero.png';
+
+describe('a property can carry a strip of photos', () => {
+  test('an array of https links rides through in order', () => {
+    expect(photoList({ photos: [REAL_A, REAL_B] })).toEqual([REAL_A, REAL_B]);
+  });
+
+  test('one field holding several pasted links is split — hosts paste in bulk', () => {
+    expect(photoList({ photoUrl: `${REAL_A} ${REAL_B}` })).toEqual([REAL_A, REAL_B]);
+    expect(photoList({ photos: `${REAL_A},${REAL_B}` })).toEqual([REAL_A, REAL_B]);
+  });
+
+  test('the legacy single field still works, and never duplicates', () => {
+    expect(photoList({ photoUrl: REAL_A })).toEqual([REAL_A]);
+    expect(photoList({ photos: [REAL_A], photoUrl: REAL_A })).toEqual([REAL_A]);
+  });
+
+  test('anything that is not an https link is dropped, not rendered', () => {
+    expect(photoList({ photos: ['javascript:alert(1)', 'http://x.test/a.png', '', null, REAL_A] })).toEqual([REAL_A]);
+    expect(photoList({})).toEqual([]);
+    expect(photoList(null)).toEqual([]);
+  });
+
+  test('the normalized option exposes the strip and keeps photoUrl as the first', () => {
+    const o = normalizeLodgingOption({ id: 'x', url: 'https://www.airbnb.com/rooms/1', photos: [REAL_A, REAL_B] });
+    expect(o.photos).toEqual([REAL_A, REAL_B]);
+    expect(o.photoUrl).toBe(REAL_A);
   });
 });
