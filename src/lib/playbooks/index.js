@@ -10,6 +10,7 @@
 
 import { rsvpState, rsvpIsSettled } from '../rsvp';
 import { ANCHOR_HOUR, parseStartMinutes } from '../eventWhen';
+import { spanNights } from '../dates';
 import { attendanceAdjustment } from '../hostIntel';
 import dinnerParty from './data/dinnerParty';
 import birthday from './data/birthday';
@@ -1141,6 +1142,11 @@ function rosWhenOffset(when) {
   const w = String(when || '').trim();
   if (/^T-\d+d/i.test(w)) return null;          // pre-day shopping/prep
   if (/during|ongoing/i.test(w)) return null;   // not a point in time
+  // POST-EVENT day offsets ("T0 +5d" — the recap/survey follow-up) are NOT
+  // day-of cues. The hour parser below used to read "+5d" as "+5h" and land
+  // the retreat's day-5 recap FIVE HOURS into day 1 (found by the day-dimension
+  // sweep, 2026-07-28). Follow-ups live on the checklist, not the day board.
+  if (/^T0\s*[+-]\s*\d+\s*d\b/i.test(w)) return null;
   if (/guests?\s*arrive/i.test(w)) return 0;    // at the anchor
   const m = /^T0\s*([+-])\s*(\d+)(?::(\d+))?\s*h?/i.exec(w);
   if (m) {
@@ -1154,6 +1160,20 @@ function rosWhenOffset(when) {
 }
 
 const rosPad2 = (n) => String(((n % 24) + 24) % 24).padStart(2, '0');
+
+// "Day 2 afternoon" → { day: 2, bucket: 'afternoon' } — the multi-day agenda's
+// authored vocabulary (P1 ROS day dimension). Bucket optional ("Day 3" alone).
+// Returns null for anything else so single-day tokens never mis-parse.
+function rosDayToken(when) {
+  const m = /^Day\s+(\d{1,2})\b\s*(morning|midday|afternoon|evening|night)?/i.exec(String(when || '').trim());
+  if (!m) return null;
+  const day = parseInt(m[1], 10);
+  if (!(day >= 1 && day <= 14)) return null;
+  return { day, bucket: m[2] ? m[2].toLowerCase() : null };
+}
+// Ordering hour per bucket — ANCHOR_HOUR's own vocabulary plus midday, used
+// ONLY to order rows within a day (never printed as a clock).
+const ROS_DAY_BUCKET_HOUR = { morning: 10, midday: 12, afternoon: 15, evening: 18, night: 19 };
 
 export function playbookRunOfShow(event) {
   if (!event) return null;
@@ -1242,6 +1262,47 @@ export function playbookRunOfShow(event) {
         generated: true,
         playbookType: playbook.type,
       });
+    }
+  }
+  // ── MULTI-DAY AGENDA (P1 ROS day dimension, 2026-07-28) ────────────────────
+  // schedules.agenda is the playbook's AUTHORED daily program ("Day 2 afternoon
+  // — team-building activity…"). It was written for the multi-day types and
+  // NEVER READ — rosWhenOffset nulls on a Day token, so the whole program
+  // silently vanished (audit 2026-07-26, "prose no engine reads"). Rows carry
+  // the day index + the authored bucket VERBATIM: no clock is ever invented
+  // (days 2+ have no start times in the model), so `time` stays null and `rel`
+  // speaks "Day N · bucket". Order = day, then the bucket's canonical hour —
+  // the same anchor vocabulary the single-day rows use, never printed as time.
+  const agenda = Array.isArray(playbook.schedules.agenda) ? playbook.schedules.agenda : [];
+  for (const entry of agenda) {
+    const dt = rosDayToken(entry.when);
+    if (!dt) continue;
+    const hour = dt.bucket && ROS_DAY_BUCKET_HOUR[dt.bucket] != null ? ROS_DAY_BUCKET_HOUR[dt.bucket] : ROS_DAY_BUCKET_HOUR.afternoon;
+    rows.push({
+      id: `pb-ros-${event.id}-agenda-${seq++}`,
+      time: null,
+      rel: dt.bucket ? `Day ${dt.day} · ${dt.bucket}` : `Day ${dt.day}`,
+      anchorSource: 'day-bucket',
+      day: dt.day,
+      _min: (dt.day - 1) * 1440 + hour * 60,
+      segment: resolveAnsweredCopy(entry.what, entry.copyByAnswer, event),
+      location: '', type: 'event', owner: 'Host',
+      confirmed: false, notes: '', source: 'playbook', generated: true,
+      playbookType: playbook.type,
+    });
+  }
+  // "T0 last day" cues (settle the bill, departures) belong on the LAST day —
+  // they used to land at the day-1 anchor (the bare-T0 catch). Only moves when
+  // the event actually spans days; single-day output is byte-identical.
+  const lastDay = spanNights(event) + 1;
+  if (lastDay > 1) {
+    for (const kind of ROS_SCHEDULE_KINDS) {
+      const list = Array.isArray(playbook.schedules[kind.key]) ? playbook.schedules[kind.key] : [];
+      for (const entry of list) {
+        if (!/last day/i.test(String(entry.when || ''))) continue;
+        const hit = rows.find((r) => r.segment === resolveAnsweredCopy(entry.what, entry.copyByAnswer, event) && (r.day || 1) === 1);
+        if (hit) { hit.day = lastDay; hit._min += (lastDay - 1) * 1440; hit.rel = hit.time ? hit.rel : `Day ${lastDay}`; }
+      }
     }
   }
   if (!rows.length) return null;

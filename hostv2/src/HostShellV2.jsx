@@ -4589,7 +4589,16 @@ export default function HostShellV2() {
 
   // Run of show — the app's single source: playbook-derived (tracks the event's
   // time of day), a stored ros only when the host has taken ownership.
-  const ros = useMemo(() => { try { return effectiveRos(event) || []; } catch { return Array.isArray(event.ros) ? event.ros : []; } }, [event]);
+  const ros = useMemo(() => {
+    try {
+      const all = effectiveRos(event) || [];
+      // ROS day dimension (P1, 2026-07-28): mid-span the Day stage runs TODAY's
+      // rows — day K keeps day-K rows plus the dayless single-day cues on day 1.
+      // Pre-event and single-day: the full program, day labels riding `rel`.
+      const k = dayIndexOf(event);
+      return (k && spanNights(event) > 0) ? all.filter(r => (r.day || 1) === k) : all;
+    } catch { return Array.isArray(event.ros) ? event.ros : []; }
+  }, [event]);
   // Day-of ruling state 3: solemn events drop the count, soften verbs, lean the serif.
   const solemn = useMemo(() => isSolemnEvent(event), [event]);
   // WAVE-B: the ONE ros writer — legacy's exact shape (App.js:43393 setRos):
