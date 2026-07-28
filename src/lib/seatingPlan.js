@@ -88,12 +88,17 @@ export const MEAL_SHORT = { Standard: 'Std', Vegetarian: 'Veg', Vegan: 'Vgn', 'G
  * @returns {number}
  */
 export function tableCountOf(event) {
-  // The host's own number always wins — they are the one standing in the room.
+  // A TABLE IS A WHOLE THING (host report 2026-07-28: "cant have 1.2 tables").
+  // The playbook factor scales per-guest, so it can land on 1.4; the capacity
+  // builder now ceils, and this ceils too — defence in depth, and it also heals
+  // an event that already PERSISTED a fractional count before that fix landed.
+  // Array.from({length: 1.2}) silently drew ONE table while the label said 1.2,
+  // so the map and the copy disagreed with each other as well as with reality.
   const own = num(event && event.tables);
-  if (own) return own;
+  if (own) return Math.max(1, Math.ceil(own));
   // Otherwise the playbook's real factor, not a bare 5.
   const derived = playbookTableCount(event);
-  return derived || DEFAULT_TABLE_COUNT;
+  return derived ? Math.max(1, Math.ceil(derived)) : DEFAULT_TABLE_COUNT;
 }
 
 /** Where the table count came from, so a surface can say so instead of drawing it as fact. */
@@ -109,7 +114,8 @@ export function tableCountBasis(event) {
  * @returns {number}
  */
 export function clampTableCount(value) {
-  return Math.max(1, Number(value) || 1);
+  // Whole tables only — the ± stepper and any host-typed value both land here.
+  return Math.max(1, Math.ceil(Number(value) || 1));
 }
 
 /**
@@ -250,11 +256,19 @@ export function buildSeatingPlan(event) {
   const tables = Array.from({ length: tableCount }, (_, i) => {
     const number = i + 1;
     const guests = confirmed.filter(g => g.table === number); // strict ===, as legacy
+    // A guest who has not told you their meal is NOT a meal choice. The old test
+    // rejected only the '—' sentinel, so a guest with `meal` undefined bucketed
+    // under the key `undefined` and the table row rendered the literal string
+    // "undefined 2" (host report 2026-07-28). Unknown is unknown — it is left out
+    // of the breakdown rather than invented or printed raw.
+    const realMeal = (m) => { const s = String(m == null ? '' : m).trim(); return s && s !== '—' ? s : null; };
     const meals = guests.reduce((acc, g) => {
-      if (g.meal !== '—') acc[g.meal] = (acc[g.meal] || 0) + 1;
+      const m = realMeal(g.meal);
+      if (m) acc[m] = (acc[m] || 0) + 1;
       // The plus-one's plate counts at this table too (their own meal when
       // recorded; never invented).
-      if (String(g.plusOne || '').trim() && g.plusOneMeal && g.plusOneMeal !== '—') acc[g.plusOneMeal] = (acc[g.plusOneMeal] || 0) + 1;
+      const pm = realMeal(g.plusOneMeal);
+      if (String(g.plusOne || '').trim() && pm) acc[pm] = (acc[pm] || 0) + 1;
       return acc;
     }, {});
     const kids = guests.reduce((sum, g) => sum + (g.kids || 0), 0);

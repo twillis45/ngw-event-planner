@@ -9535,9 +9535,10 @@ export default function HostShellV2() {
                     <div className="line" style={{ alignItems: 'center', padding: '0 0 10px' }}>
                       <span>Seats per table <span className="of">optional</span></span>
                       <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
-                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: (Math.max(0, (Number(event.seatsPerTable) || 0) - 1)) || null }, null)} aria-label="Fewer seats per table">−</button>
-                        <span className="step-val" style={{ minWidth: 20 }}>{Number(event.seatsPerTable) || '—'}</span>
-                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: (Number(event.seatsPerTable) || 0) + 1 }, null)} aria-label="More seats per table">+</button>
+                        {/* Whole seats only — same rule as the table count. */}
+                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: (Math.max(0, Math.ceil(Number(event.seatsPerTable) || 0) - 1)) || null }, null)} aria-label="Fewer seats per table">−</button>
+                        <span className="step-val" style={{ minWidth: 20 }}>{Math.ceil(Number(event.seatsPerTable) || 0) || '—'}</span>
+                        <button className="mini" onClick={() => patchEvent({ seatsPerTable: Math.ceil(Number(event.seatsPerTable) || 0) + 1 }, null)} aria-label="More seats per table">+</button>
                       </span>
                     </div>
                   )}
@@ -9572,9 +9573,10 @@ export default function HostShellV2() {
                       if (basis === 'host') return null;
                       return (
                         <p className="grounding" style={{ margin: '2px 0 0' }}>
+                          {/* "1 tables" (host report 2026-07-28) — the plural was hard-coded. */}
                           {basis === 'playbook'
-                            ? `${sp.tables.length} tables — what a ${String(event.type || 'event').toLowerCase()} this size usually needs. Use the ± to change it.`
-                            : `${sp.tables.length} tables — a starting point, not a read of your room. Use the ± to change it.`}
+                            ? `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — what a ${String(event.type || 'event').toLowerCase()} this size usually needs. Use the ± to change it.`
+                            : `${sp.tables.length} ${sp.tables.length === 1 ? 'table' : 'tables'} — a starting point, not a read of your room. Use the ± to change it.`}
                         </p>
                       );
                     })()}

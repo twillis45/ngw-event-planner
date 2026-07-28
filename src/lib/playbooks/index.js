@@ -1524,7 +1524,13 @@ export function playbookCapacity(event) {
     else if (typeof r.qtyFlat === 'number') { factor = r.qtyFlat; factorType = 'flat'; }
     if (baseQty == null || baseQty <= 0) continue;
     const short = shortRental(r.item);
-    const qty = (short in qtyOv) ? Math.max(0, Math.round(Number(qtyOv[short]) || 0)) : baseQty;
+    // WHOLE THINGS ONLY (host report 2026-07-28: "cant have 1.2 tables").
+    // resolveQuantity scales a per-guest factor and is SHARED with the food plan,
+    // where 2.5 lbs of meat is a real answer — but capacity rows are physical
+    // rentals, and 0.7 canopies / 7.2 folding chairs / 1.4 tables are not things
+    // you can get. Coverage rounds UP: you need at least the computed amount, so
+    // 1.4 tables means 2 tables. The food plan is untouched.
+    const qty = (short in qtyOv) ? Math.max(0, Math.round(Number(qtyOv[short]) || 0)) : Math.ceil(baseQty);
     const isOwned = !!owned[short];
     const c = costOf(r.item, qty, isOwned);
     const swaps = capacitySwaps(c.label, c.kind, capacityGroupFor(short, c.label));
