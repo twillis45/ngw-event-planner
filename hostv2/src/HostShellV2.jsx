@@ -74,6 +74,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel } from '@app/lib/lodgingIntel';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
+import { AIRPORTS, nearestAirports, airportByCodeOrName } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -2960,6 +2961,30 @@ export default function HostShellV2() {
       // Unlimited airport options (per-screen audit: was hard-capped at 3).
       airports: ao.length ? ao.map(x => ({ name: (x && x.name) || '', code: (x && x.code) || '', note: (x && x.note) || '' })) : [{ name: '', code: '', note: '' }],
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [airSheetOpen, event.id]);
+  // Nearest-airport proposal (host directive 2026-07-28): geocode the venue
+  // once per event when the air sheet opens, rank the FAA reference table by
+  // straight-line distance, and PROPOSE (never silently write) the closest
+  // set. Labeled honestly — miles as the crow flies, drive time decides.
+  const [airNear, setAirNear] = useState(null); // null = not looked up; [] = lookup failed
+  useEffect(() => {
+    if (!airSheetOpen) { setAirNear(null); return; }
+    if (airNear != null) return;
+    let dead = false;
+    (async () => {
+      try {
+        const vf = venueFor(event);
+        // Same query shape as the weather pipeline: "City, ST, US" — a bare
+        // "City, ST" resolves to null on the geocoder (curl-proved 2026-07-28).
+        const q = vf.city ? [vf.city, vf.state, 'US'].filter(Boolean).join(', ') : '';
+        if (!q) { if (!dead) setAirNear([]); return; }
+        const coords = await geocodeVenue(q);
+        if (dead) return;
+        setAirNear(coords ? nearestAirports(coords.lat, coords.lon, 3) : []);
+      } catch { if (!dead) setAirNear([]); }
+    })();
+    return () => { dead = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [airSheetOpen, event.id]);
   const saveAirports = () => {
@@ -7372,10 +7397,10 @@ export default function HostShellV2() {
                 <div className="now-card" style={nowActive
                   ? { marginTop: 6, borderColor: 'var(--ok)', background: 'var(--ok-tint)', boxShadow: '0 0 28px -8px rgba(79,174,122,.4)' }
                   : { marginTop: 6 }}>
-                  <div className="now-label" style={nowActive ? { color: 'var(--ok)' } : undefined}>{nowActive ? 'Happening now' : (dayStarted ? 'Next up' : 'Up first') + (nowCue.time ? ' · ' + nowCue.time : '')}</div>
+                  <div className="now-label" style={nowActive ? { color: 'var(--ok)' } : undefined}>{nowActive ? 'Happening now' : (dayStarted ? 'Next up' : 'Up first') + (nowCue.time ? ' · ' + fmt12h(nowCue.time) : '')}</div>
                   <h2>{nowCue.segment}</h2>
                   <p className="meta">
-                    {[nowActive && nowCue.time ? 'started ' + nowCue.time : null, nowCue.location, nowCue.owner && ('owner: ' + nowCue.owner), nowCue.vendorName].filter(Boolean).join(' · ')}
+                    {[nowActive && nowCue.time ? 'started ' + fmt12h(nowCue.time) : null, nowCue.location, nowCue.owner && ('owner: ' + nowCue.owner), nowCue.vendorName].filter(Boolean).join(' · ')}
                   </p>
                   {nowCue.notes && <p className="meta">{nowCue.notes}</p>}
                   {/* Vendor operational line — the cue's vendor with their
@@ -7427,7 +7452,7 @@ export default function HostShellV2() {
                         onClick={() => { if (r.id) patchEvent({ rosDone: { ...(event.rosDone || {}), [r.id]: true } }, 'Recorded: ' + String(r.segment || '').slice(0, 44) + '…'); }}>
                         <span className="dot" aria-hidden="true" />
                         <span className="d" style={behind ? { color: 'var(--warn)', fontWeight: 800 } : i === 0 ? { color: 'var(--steel-soft)', fontWeight: 800 } : undefined}>
-                          {behind ? 'BEHIND · ' + (r.time || '') : i === 0 ? 'NEXT · ' + (r.time || '') : r.time}
+                          {behind ? 'BEHIND · ' + fmt12h(r.time || '') : i === 0 ? 'NEXT · ' + fmt12h(r.time || '') : fmt12h(r.time)}
                         </span>
                         <span>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{(() => {
                           const v = (event.vendors || []).find(x => x && (x.id === r.vendorId || (r.vendorName && x.name === r.vendorName)));
@@ -7461,7 +7486,7 @@ export default function HostShellV2() {
                         </span>
                         <span style={{ display: 'block', fontSize: 'var(--t-row-sub)', color: 'var(--carbon-muted)' }}>{h.role}</span>
                       </span>
-                      <span className="d" style={{ minWidth: 0 }}>{h.time || ''}</span>
+                      <span className="d" style={{ minWidth: 0 }}>{h.time ? fmt12h(h.time) : ''}</span>
                     </div>
                   ))}
                   <div style={{ marginTop: 10 }}>
@@ -7614,7 +7639,8 @@ export default function HostShellV2() {
                               ORDER we know and whose HOUR the host has not given us. Show the
                               knowledge we have ("2h before guests arrive"), not an em-dash and
                               not an invented "15:00". */}
-                          <span className="d" style={{ minWidth: 54 }}>{r.time || (r.rel ? '·' : '—')}</span>
+                          {/* 12-hour only on agendas (host order 2026-07-28) — stored HH:MM stays 24h, display never. */}
+                          <span className="d" style={{ minWidth: 54 }}>{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
                           <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
                             {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
@@ -9213,15 +9239,36 @@ export default function HostShellV2() {
                     return (
                     <>
                   <div className="shelf-label">Airports worth flying into</div>
+                  {/* Nearest-airport proposal (host directive 2026-07-28): the FAA
+                      reference table ranked by straight-line miles from the geocoded
+                      venue. Propose-don't-ask — one tap fills the form, labeled
+                      honestly (crow-flies miles; drive time decides). */}
+                  {ar.airportOptions.length === 0 && Array.isArray(airNear) && airNear.length > 0 && (
+                    <div className="lodge-form" style={{ marginBottom: 8 }}>
+                      <div className="lodge-f full">
+                        <span className="of">Closest to {venueFor(event).city || 'the venue'}</span>
+                        <p className="grounding" style={{ margin: '4px 0 6px' }}>
+                          {airNear.map(a => `${a.code} · ${a.name} — ≈${a.distanceMi} mi`).join('  ·  ')} (straight-line — drive time decides).
+                        </p>
+                        <button className="mini" type="button" onClick={() => {
+                          setAirForm(d => ({ ...d, airports: airNear.map(a => ({ name: a.name, code: a.code, note: `≈${a.distanceMi} mi from ${venueFor(event).city || 'the venue'} as the crow flies` })) }));
+                        }}>Use these {airNear.length}</button>
+                      </div>
+                    </div>
+                  )}
+                  {/* Autocomplete (host directive 2026-07-28): native datalists off
+                      the same reference table; an exact pick autofills the sibling. */}
+                  <datalist id="apt-names">{AIRPORTS.map(a => <option key={a.code} value={a.name}>{a.code} · {a.city}, {a.state}</option>)}</datalist>
+                  <datalist id="apt-codes">{AIRPORTS.map(a => <option key={a.code} value={a.code}>{a.name}</option>)}</datalist>
                   <div className="lodge-form">
                     {(f.airports || []).flatMap((ap, ai) => [
                       <label key={'an' + ai} className="lodge-f"><span className="of">{ai === 0 ? 'Airport' : 'Another airport'}</span>
-                        <input className="field" style={fld} placeholder={ai === 0 ? 'Baltimore/Washington Intl' : 'One more option'} value={ap.name}
-                          onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, name: e.target.value } : x) }))}
+                        <input className="field" style={fld} placeholder={ai === 0 ? 'Baltimore/Washington Intl' : 'One more option'} value={ap.name} list="apt-names"
+                          onChange={e => { const v = e.target.value; const hit = airportByCodeOrName(v); setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, name: v, code: hit ? hit.code : x.code } : x) })); }}
                           aria-label={'Airport name ' + (ai + 1)} /></label>,
                       <label key={'ac' + ai} className="lodge-f"><span className="of">Code</span>
-                        <input className="field" style={fld} placeholder="BWI" value={ap.code}
-                          onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, code: e.target.value } : x) }))}
+                        <input className="field" style={fld} placeholder="BWI" value={ap.code} list="apt-codes"
+                          onChange={e => { const v = e.target.value; const hit = airportByCodeOrName(v); setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, code: v, name: hit && !String(x.name || '').trim() ? hit.name : x.name } : x) })); }}
                           aria-label={'Airport code ' + (ai + 1)} /></label>,
                       <label key={'ao' + ai} className="lodge-f full"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Closer? Fewer flights? Cheaper?" value={ap.note}
@@ -13603,7 +13650,7 @@ export default function HostShellV2() {
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
-              <span className="p-time">{r.time || (r.rel ? '·' : '—')}</span>
+              <span className="p-time">{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
               <span>
                 {r.segment}
                 <span className="p-meta">
@@ -13617,7 +13664,7 @@ export default function HostShellV2() {
               <div className="p-head">Who’s helping</div>
               {dayHelpers.map((h, i) => (
                 <div className="p-row" key={i}>
-                  <span className="p-time">{h.time || ''}</span>
+                  <span className="p-time">{h.time ? fmt12h(h.time) : ''}</span>
                   <span>{h.name}<span className="p-meta">{h.role ? ' · ' + h.role : ''}</span></span>
                 </div>
               ))}
