@@ -188,3 +188,46 @@ export function airportByCodeOrName(v) {
     || AIRPORTS.find((a) => a.name.toLowerCase() === s)
     || null;
 }
+
+/**
+ * THE HONEST TRADEOFF, DERIVED (host directive 2026-07-28: "lets source to fill
+ * in the worth knowing section by app. we need to take advantage of DIFM
+ * opportunities").
+ *
+ * "Worth knowing" on an airport row was a blank box with the placeholder
+ * "Closer? Fewer flights? Cheaper?" — the app asking the host a question it can
+ * partly answer itself. It knows where the event is and where every airport is,
+ * so distance and rank are FACTS it can compute.
+ *
+ * What it will NOT claim: flight frequency, fares, or drive time. Those need
+ * data we do not have, and the placeholder asked about all three. So the derived
+ * note answers the one question it can and stays silent on the rest — and it
+ * says "as the crow flies", because a straight line is not a drive.
+ *
+ * @returns {{text: string, why: string}|null} null when we cannot place either end.
+ */
+export function airportTradeoff(airport, venueLat, venueLon, allCodes) {
+  if (!airport || !Number.isFinite(venueLat) || !Number.isFinite(venueLon)) return null;
+  const a = airportByCodeOrName(airport.code || airport.name || '');
+  if (!a) return null;
+  const mi = Math.round(distanceMiles(venueLat, venueLon, a.lat, a.lon));
+  if (!Number.isFinite(mi)) return null;
+
+  // Rank against the OTHER airports the host listed — the comparison she is
+  // actually making. With nothing to compare against, distance alone is honest.
+  const others = (Array.isArray(allCodes) ? allCodes : [])
+    .map((c) => airportByCodeOrName(c))
+    .filter((o) => o && o.code !== a.code)
+    .map((o) => Math.round(distanceMiles(venueLat, venueLon, o.lat, o.lon)));
+
+  let rank = '';
+  if (others.length) {
+    const closest = Math.min(...others);
+    if (mi < closest) rank = 'the closest of the ones you listed';
+    else if (mi > Math.max(...others)) rank = `${mi - closest} miles farther than your closest`;
+  }
+  return {
+    text: [`${mi} miles as the crow flies`, rank].filter(Boolean).join(' · '),
+    why: 'measured from the event location to the airport',
+  };
+}

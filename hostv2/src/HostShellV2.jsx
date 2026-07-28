@@ -78,7 +78,7 @@ import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowe
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
-import { AIRPORTS, nearestAirports, airportByCodeOrName } from '@app/lib/airports';
+import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -3056,6 +3056,9 @@ export default function HostShellV2() {
   // straight-line distance, and PROPOSE (never silently write) the closest
   // set. Labeled honestly — miles as the crow flies, drive time decides.
   const [airNear, setAirNear] = useState(null); // null = not looked up; [] = lookup failed
+  // The geocoded event location, retained so derived airport notes can be
+  // measured from it — it was being computed and thrown away.
+  const [airCoords, setAirCoords] = useState(null);
   useEffect(() => {
     if (!airSheetOpen) { setAirNear(null); return; }
     if (airNear != null) return;
@@ -3069,6 +3072,7 @@ export default function HostShellV2() {
         if (!q) { if (!dead) setAirNear([]); return; }
         const coords = await geocodeVenue(q);
         if (dead) return;
+        setAirCoords(coords || null);
         setAirNear(coords ? nearestAirports(coords.lat, coords.lon, 3) : []);
       } catch { if (!dead) setAirNear([]); }
     })();
@@ -9852,7 +9856,31 @@ export default function HostShellV2() {
                       <label key={'bt' + bi} className="lodge-f"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Farther? Cheaper?" value={bk.note}
                           onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: e.target.value } : x) }))}
-                          aria-label={'Note about backup ' + (bi + 1)} /></label>,
+                          aria-label={'Note about backup ' + (bi + 1)} />
+                        {/* THE SHORTLIST ALREADY KNOWS THIS. If the backup she named is one of
+                            the places she shortlisted, its price and capacity are on file —
+                            asking her to retype "Farther? Cheaper?" is asking for data we
+                            hold. Matched on the name she typed; silent when it isn't one of
+                            hers, because then we genuinely don't know. */}
+                        {(() => {
+                          if (String(bk.note || '').trim()) return null;
+                          const nm = String(bk.name || '').trim().toLowerCase();
+                          if (!nm) return null;
+                          const hit = (li.options || []).find(o => String(o.label || '').trim().toLowerCase() === nm);
+                          if (!hit) return null;
+                          const bits = [
+                            hit.allIn != null ? `$${hit.allIn.toLocaleString()}${hit.feesKnown ? ' all in' : ' before fees'}` : null,
+                            hit.sleeps != null ? `sleeps ${hit.sleeps}` : (hit.beds != null ? `${hit.beds} beds` : null),
+                          ].filter(Boolean);
+                          if (!bits.length) return null;
+                          const text = bits.join(' · ');
+                          return (
+                            <button className="mini" type="button" style={{ justifySelf: 'start', marginTop: 4 }}
+                              onClick={() => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: text } : x) }))}>
+                              Use: {text}
+                            </button>
+                          );
+                        })()}</label>,
                     ])}
                     <label className="lodge-f full">
                       <button className="mini" type="button" onClick={() => setLodgeForm(d => ({ ...d, backups: [...((d && d.backups) || []), { name: '', note: '' }] }))}>+ Add {(f.backups || []).length ? 'another' : 'a'} backup place</button>
@@ -10205,7 +10233,30 @@ export default function HostShellV2() {
                       <label key={'ao' + ai} className="lodge-f full"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Closer? Fewer flights? Cheaper?" value={ap.note}
                           onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, note: e.target.value } : x) }))}
-                          aria-label={'The honest tradeoff of airport ' + (ai + 1)} /></label>,
+                          aria-label={'The honest tradeoff of airport ' + (ai + 1)} />
+                        {/* DON'T ASK WHAT YOU CAN WORK OUT (host: "lets source to fill in the
+                            worth knowing section by app… take advantage of DIFM
+                            opportunities"). This was a blank box whose placeholder asked
+                            three questions — closer? fewer flights? cheaper? The app knows
+                            where the event is and where every airport is, so it answers the
+                            FIRST one from real coordinates and stays silent on the other two
+                            rather than inventing them. Proposed, never written: propose-
+                            don't-ask means she still taps to accept. */}
+                        {(() => {
+                          if (String(ap.note || '').trim()) return null;
+                          const v = airCoords;
+                          if (!v || !Number.isFinite(v.lat) || !Number.isFinite(v.lon)) return null;
+                          const codes = (f.airports || []).map(x => x && x.code).filter(Boolean);
+                          let t = null;
+                          try { t = airportTradeoff(ap, v.lat, v.lon, codes); } catch (_e) { t = null; }
+                          if (!t) return null;
+                          return (
+                            <button className="mini" type="button" style={{ justifySelf: 'start', marginTop: 4 }}
+                              onClick={() => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, note: t.text } : x) }))}>
+                              Use: {t.text}
+                            </button>
+                          );
+                        })()}</label>,
                     ])}
                     <label className="lodge-f full">
                       <button className="mini" type="button" onClick={() => setAirForm(d => ({ ...d, airports: [...((d && d.airports) || []), { name: '', code: '', note: '' }] }))}>+ Add {(f.airports || []).length ? 'another' : 'an'} airport</button>
