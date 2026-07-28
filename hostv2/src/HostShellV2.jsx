@@ -2777,7 +2777,7 @@ export default function HostShellV2() {
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
-  const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '' });
+  const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
   // Add-a-helper form (host report 2026-07-28: the helpers block had no action).
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
@@ -8882,7 +8882,22 @@ export default function HostShellV2() {
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
-                        <div className="shelf-label">The rental shortlist</div>
+                        <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                          <span>The rental shortlist</span>
+                          {/* HOW MANY (host 2026-07-28: "total number of listings
+                              somewhere"). The count of what you are weighing, and how many
+                              of them still fit the group — the second number is the one
+                              that shrinks as the guest list grows. */}
+                          {li.options.length > 0 && (() => {
+                            const fits = li.options.filter((o) => !li.guests || o.sleeps == null || o.sleeps >= li.guests).length;
+                            return (
+                              <span className="of" style={{ fontWeight: 650 }}>
+                                {li.options.length} {li.options.length === 1 ? 'option' : 'options'}
+                                {li.guests && fits < li.options.length ? ` · ${fits} fit your ${li.guests}` : ''}
+                              </span>
+                            );
+                          })()}
+                        </div>
                         {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
                         {/* WHAT IT HAS TO HAVE (host directive 2026-07-28). The host's own
                             requirements — the only criterion they state outright rather than
@@ -8998,10 +9013,37 @@ export default function HostShellV2() {
                                 {isRec && o.status !== 'chosen' ? <span className="tag plan" style={{ color: 'var(--steel-soft)', background: 'var(--steel-tint)' }}>what I&rsquo;d take</span> : null}
                                 {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
                               </span>
-                              {(o.checks || []).map((c) => (
-                                <span key={c.key} className="v-meta" style={{ display: 'block', color: c.ok === false ? 'var(--warn)' : undefined }}>{c.text}</span>
-                              ))}
-                              {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)' }}>Open the listing ↗</a> : null}
+                              {/* NEATER LIST (host 2026-07-28: "a neater option list"). The
+                                  row used to print every check as its own wrapped sentence —
+                                  four paragraphs per house, unscannable side by side. The
+                                  money now reads as ONE line, the fit as one short verdict,
+                                  and the rest are small facts. Nothing is hidden; it is the
+                                  same information, ranked. */}
+                              {(() => {
+                                const fit = (o.checks || []).find((c) => c.key === 'fit');
+                                const money = o.allIn != null
+                                  ? `$${o.allIn.toLocaleString()}${o.feesKnown ? ' all in' : ' + fees'}${li.guests ? ` · $${Math.round(o.allIn / li.guests).toLocaleString()} each` : ''}`
+                                  : null;
+                                const facts = [
+                                  o.sleeps != null ? `sleeps ${o.sleeps}` : null,
+                                  o.beds != null ? `${o.beds} beds` : null,
+                                  o.cancellationTier ? ({ flexible: 'full refund', moderate: 'refund with notice', firm: 'partial refund', strict: 'no refund' }[o.cancellationTier] || o.cancellationTier) : null,
+                                  o.votes ? `${o.votes} ${o.votes === 1 ? 'vote' : 'votes'}` : null,
+                                ].filter(Boolean);
+                                return (
+                                  <>
+                                    {money ? <span className="v-meta" style={{ display: 'block', fontWeight: 650, color: 'var(--ink-soft)' }}>{money}</span> : null}
+                                    {fit ? <span className="v-meta" style={{ display: 'block', color: fit.ok === false ? 'var(--warn)' : undefined }}>{fit.text}</span> : null}
+                                    {facts.length ? (
+                                      <span style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+                                        {facts.map((f) => <span key={f} className="tag plan">{f}</span>)}
+                                      </span>
+                                    ) : null}
+                                    {o.notes ? <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>{o.notes}</span> : null}
+                                    {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)', marginTop: 2 }}>Open the listing ↗</a> : null}
+                                  </>
+                                );
+                              })()}
                             </span>
                             <span style={{ flex: '1 0 100%', display: 'flex', gap: 'var(--sp-2)', flexWrap: 'wrap', marginTop: 'var(--sp-1)' }}>
                               {o.status !== 'chosen'
@@ -9047,6 +9089,25 @@ export default function HostShellV2() {
                                 fees rather than pretending it is the whole number. */}
                             <input className="field" style={{ ...fldR, flex: 1 }} placeholder="Fees $" inputMode="numeric" value={rf.fees || ''} onChange={(e) => setRentalForm({ ...rf, fees: e.target.value })} aria-label="Cleaning and service fees" />
                           </div>
+                          {/* WHAT'S GOOD ABOUT IT — and it is not decoration: the
+                              "has to have" requirements match against THIS text, so
+                              without it the whole requirement feature has nothing to
+                              read. Host directive 2026-07-28. */}
+                          <input className="field" style={fldR} placeholder="What’s good about it — hot tub, dock, one level, sleeps kids…"
+                            value={rf.notes || ''} onChange={(e) => setRentalForm({ ...rf, notes: e.target.value })} aria-label="What is good about this rental" />
+                          {/* CANCELLATION (host 2026-07-28: "provide options such as
+                              cancellation"). It was in the model and drove the ranking,
+                              but the host had no way to enter it. Plain language over the
+                              platforms' own tier names. */}
+                          <div>
+                            <span className="of" style={{ display: 'block', marginBottom: 4 }}>If you had to cancel</span>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                              {[['flexible', 'Full refund'], ['moderate', 'Refund with notice'], ['firm', 'Partial'], ['strict', 'No refund']].map(([id, label]) => (
+                                <button key={id} className="chip" aria-pressed={rf.cancel === id}
+                                  onClick={() => setRentalForm({ ...rf, cancel: rf.cancel === id ? '' : id })}>{label}</button>
+                              ))}
+                            </div>
+                          </div>
                           <button className="cta soft" disabled={!canAdd} style={!canAdd ? { opacity: .45 } : undefined}
                             onClick={() => {
                               const next = (Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).concat([{
@@ -9056,9 +9117,11 @@ export default function HostShellV2() {
                                 totalPrice: rf.total.trim() ? Number(rf.total) : undefined,
                                 fees: String(rf.fees || '').trim() ? Number(rf.fees) : undefined,
                                 photoUrl: (rf.photo || '').trim() || undefined,
+                                notes: String(rf.notes || '').trim() || undefined,
+                                cancellationTier: String(rf.cancel || '').trim() || undefined,
                                 status: 'option',
                               }]);
-                              setRentalForm({ url: '', label: '', sleeps: '', total: '', photo: '' });
+                              setRentalForm({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
                               write(next, 'On the shortlist — the numbers are what the listing says.');
                             }}>Add to the shortlist</button>
                           {li.options.length > 0 && (
