@@ -22,6 +22,7 @@ import { BUDGET_SOURCES } from './budgetContext';
 import { CHILDCARE_SOURCES } from './childcareContext';
 import { MILITARY_SOURCES } from './militaryRetirement';
 import { DESTINATION_SOURCES } from './destinationContext';
+import { INCIDENT_SOURCES } from './incidentContext';
 import { normalizeTier, tierInfo } from './groundingDoctrine';
 
 const REGISTRIES = [
@@ -38,6 +39,7 @@ const REGISTRIES = [
   ['Budget authority', BUDGET_SOURCES],
   ['Childcare', CHILDCARE_SOURCES],
   ['Military ceremony', MILITARY_SOURCES],
+  ['Incident / guest safety', INCIDENT_SOURCES],
   ['Destination / travel', DESTINATION_SOURCES],
 ];
 

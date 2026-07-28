@@ -71,6 +71,7 @@ import { arrivalAsk } from '@app/lib/vendorAsks';
 import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
+import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -7439,6 +7440,29 @@ export default function HostShellV2() {
                   </div>
                 </div>
               )}
+              {/* IF SOMETHING GOES WRONG (host ask 2026-07-28) — the day-of incident
+                  plan, PROCEDURAL only per the FTC/FDA boundary: each line quotes a
+                  cited authority (NIAAA/NHTSA/AHA/CPI/NDPA…), the 911 line carries
+                  the REAL venue address, conditional lines gate on real fields
+                  (outdoor → heat, water+kids → watcher). Never diagnostic. */}
+              {(() => {
+                let ip = null;
+                try { ip = incidentPlanFor(event); } catch { ip = null; }
+                if (!ip || !ip.lines || !ip.lines.length) return null;
+                return (
+                  <details className="latercard" style={{ marginTop: 'var(--sp-3)' }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 650 }}>If something goes wrong</summary>
+                    {ip.lines.map((l) => (
+                      <p key={l.key} className="grounding" style={{ margin: '8px 0 0' }}>
+                        <strong style={{ color: 'var(--ink-soft)' }}>{l.label}</strong> — {l.text}
+                      </p>
+                    ))}
+                    <p className="grounding" style={{ marginTop: 10, opacity: .65 }}>
+                      Grounded to NIAAA, NHTSA, AHA, CPI, and the NDPA — {ip.boundary} Sources listed under You &amp; settings → Grounding.
+                    </p>
+                  </details>
+                );
+              })()}
             </section>
           )}
           {stage === 'day' && !liveDay && (
