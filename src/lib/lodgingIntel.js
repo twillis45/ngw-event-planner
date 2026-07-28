@@ -322,13 +322,34 @@ export async function unfurlListing(url) {
   try {
     const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`);
     const body = await res.json().catch(() => null);
-    if (!res.ok) {
-      return { ok: false, reason: (body && body.detail) || 'Couldn’t read that listing. Copy the page and paste it instead.' };
-    }
+    if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
     return { ok: true, ...body };
   } catch {
     return { ok: false, reason: 'Couldn’t reach the listing. Copy the page and paste it instead.' };
   }
+}
+
+/**
+ * WHY THIS EXISTS: driving the live app on 2026-07-28, "Read the listing" put the
+ * word "Not Found" on the screen. The backend hadn't shipped the route yet, so
+ * FastAPI answered its own framework 404 — `{"detail": "Not Found"}` — and the
+ * client passed `detail` straight through to the host. A raw HTTP reason phrase
+ * is not host language, and it tells the host nothing they can act on.
+ *
+ * Our own router NEVER answers 404: it uses 400 for a bad link and 502/504 for a
+ * refused or slow read, and every one of its messages is a full sentence written
+ * for a person. So a 404 means the endpoint isn't there at all — say that — and
+ * any `detail` that doesn't read like our copy gets replaced rather than shown.
+ */
+export function failureReason(status, body) {
+  const detail = body && typeof body.detail === 'string' ? body.detail.trim() : '';
+  if (status === 404) {
+    return 'Reading listings isn’t switched on here yet — copy the listing page and paste it instead.';
+  }
+  // Host-facing copy from our router: a real sentence, spaces and a full stop.
+  // Framework phrases ("Not Found", "Internal Server Error") have neither.
+  const isHostCopy = detail.length >= 20 && /\s/.test(detail) && /[.!?]$/.test(detail);
+  return isHostCopy ? detail : 'Couldn’t read that listing. Copy the page and paste it instead.';
 }
 
 /**

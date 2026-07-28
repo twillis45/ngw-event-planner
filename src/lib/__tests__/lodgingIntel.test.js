@@ -545,3 +545,37 @@ describe('the stay block derives itself', () => {
     expect(backupFromRunnerUp(ev([{ id: 'a', label: 'A', url: 'https://www.vrbo.com/1', sleeps: 12, status: 'chosen' }]))).toBe(null);
   });
 });
+
+// ─── THE FAILURE PATH SPEAKS HOST LANGUAGE (found live 2026-07-28) ───────────
+// Driving the app, "Read the listing" printed the word "Not Found" — FastAPI's
+// framework 404 for a route the backend hadn't deployed, passed straight through
+// to the screen. A raw HTTP reason phrase is not copy, and it is not actionable.
+describe('unfurl failures never show a raw HTTP phrase', () => {
+  const { failureReason } = require('../lodgingIntel');
+
+  test('a framework 404 says the feature is not switched on, not "Not Found"', () => {
+    const r = failureReason(404, { detail: 'Not Found' });
+    expect(r).not.toMatch(/not found/i);
+    expect(r).toMatch(/paste/i);
+  });
+
+  test('bare framework phrases are replaced at every status', () => {
+    for (const [status, detail] of [[500, 'Internal Server Error'], [405, 'Method Not Allowed'], [502, 'Bad Gateway']]) {
+      const r = failureReason(status, { detail });
+      expect(r).not.toBe(detail);
+      expect(r).toMatch(/paste/i);
+    }
+  });
+
+  test('our router\'s own sentences DO reach the host verbatim', () => {
+    const real = 'The site declined an automated read (this is common). Copy the listing page and paste it — that always works.';
+    expect(failureReason(502, { detail: real })).toBe(real);
+    const bad = 'Only https links to Airbnb, Vrbo or Booking.com listings can be read here.';
+    expect(failureReason(400, { detail: bad })).toBe(bad);
+  });
+
+  test('a missing or malformed body still yields real guidance', () => {
+    expect(failureReason(502, null)).toMatch(/paste/i);
+    expect(failureReason(502, { detail: 42 })).toMatch(/paste/i);
+  });
+});
