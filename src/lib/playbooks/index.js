@@ -1451,10 +1451,48 @@ export function effectiveRos(event) {
   // freeze the schedule into a snapshot that then stops tracking timeOfDay.
   const derived = playbookRunOfShow(event);
   const owned = stored.length && ((event && event.rosEdited) || !derived || !derived.length);
+  // See withheldPlaybookBeats() below — the ownership contract is correct, but
+  // it is INVISIBLE, and a host looking at her own short sheet cannot tell the
+  // difference between "the playbook has nothing" and "the playbook is standing
+  // down because I touched this."
   const base = owned ? stored : (derived || stored);
   const doneMap = event && event.rosDone;
   if (!doneMap || !base.length) return base;
   return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
+}
+
+/**
+ * withheldPlaybookBeats(event) → { owned, count, program }
+ *
+ * WHAT THE OWNERSHIP CONTRACT IS HIDING (found by re-running the day model,
+ * 2026-07-29). effectiveRos correctly refuses to overwrite a run of show the
+ * host has touched — but silently. Driven live on a host-created BBQ, the Full
+ * agenda was four rows with NOTHING during the event, while the playbook held
+ * seven program beats it had quietly stood down from. That is correct behaviour
+ * that READS as a broken day sheet, and the host has no way to tell the two
+ * apart or to ask for the beats.
+ *
+ * This reports the difference so a surface can say so honestly. It never
+ * changes what effectiveRos returns — the contract is unchanged, only visible.
+ *   owned  – true when the stored sheet is winning
+ *   count  – how many derived rows are standing down
+ *   program – how many of those are inside the event window (the ones whose
+ *             absence is actually felt: the meal, the photo, the send-off)
+ */
+export function withheldPlaybookBeats(event) {
+  const none = { owned: false, count: 0, program: 0 };
+  try {
+    const stored = Array.isArray(event && event.ros) ? event.ros : [];
+    if (!stored.length) return none;
+    const derived = playbookRunOfShow(event) || [];
+    const owned = !!((event && event.rosEdited) || !derived.length);
+    if (!owned || !derived.length) return none;
+    // Only count what the stored sheet does NOT already cover, by moment text —
+    // a host who kept the playbook's own rows is not missing them.
+    const have = new Set(stored.map((r) => String((r && r.segment) || '').trim().toLowerCase()).filter(Boolean));
+    const missing = derived.filter((r) => !have.has(String((r && r.segment) || '').trim().toLowerCase()));
+    return { owned: true, count: missing.length, program: missing.filter((r) => r && r.type === 'event').length };
+  } catch (_e) { return none; }
 }
 
 // classifyRos — determines which Day tab state to render.

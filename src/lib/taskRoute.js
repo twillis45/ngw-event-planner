@@ -122,6 +122,18 @@ export function checklistRouteFor(task, meta = {}, event = null) {
   if (/\bairports?\b|\bflight|\bterminal\b|airport code/.test(t))
     return { label: 'Open the airports', route: { focusField: 'air' } };
 
+  // ── PAPERWORK LANDS ON THE PAPERWORK (click-through audit 2026-07-28) ──────
+  // "Collect all vendor COIs for M-NCPPC" routed to { tab:'Vendors', vendorId }
+  // with NO vendorSection — so it resolved to the vendor CARD TOP. Driven live,
+  // the host arrived at arrival times and the agreed fee, with the insurance
+  // block nowhere in sight, on a task that is about exactly one thing.
+  // resolveRoute has carried vendorSection ('payment' | 'documents') since it
+  // was written; this route simply never named one. Row-level CTA rule: route to
+  // the field, not the surface that contains it.
+  if (/\bcois?\b|certificates? of insurance|\binsurance\b|\bliability\b/.test(t)) {
+    const r = firstUndoneVendorRoute(event);
+    return { label: 'Open the paperwork', route: { ...r, vendorSection: 'documents' } };
+  }
   if (/room block/.test(t))
     return { label: 'Open the stay', route: { focusField: 'lodging' } };
   if (/gift log|who-gave-what/.test(t))

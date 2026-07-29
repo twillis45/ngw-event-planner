@@ -97,7 +97,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, getPlaybook, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -7714,6 +7714,28 @@ export default function HostShellV2() {
               )}
               {ros.length > 0 && dayView === 'list' ? (
                 <>
+                  {/* ── SAY WHAT THE CONTRACT IS HOLDING BACK (re-run of the day model,
+                      2026-07-29) ────────────────────────────────────────────────────
+                      effectiveRos refuses to overwrite a run of show the host has
+                      touched. That is right, and it was SILENT: driven live on a
+                      host-made BBQ, the Full agenda was four rows with nothing during
+                      the event, while the playbook held beats it had quietly stood
+                      down from. Correct behaviour that reads as a broken day sheet.
+                      One line, only when there is genuinely something withheld. It
+                      does not offer to overwrite her sheet — the contract is the
+                      point — it just stops the silence. */}
+                  {(() => {
+                    let w = null;
+                    try { w = withheldPlaybookBeats(event); } catch (_e) { w = null; }
+                    if (!w || !w.owned || !w.count) return null;
+                    return (
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
+                        This is your run of show, so it stays as you wrote it.
+                        {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
+                        {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
+                      </p>
+                    );
+                  })()}
                   {/* Day-Preview agenda-list (task #54 candidate): the whole day as
                       one scannable list — a planner can see gaps, ownership, and
                       collisions at a glance instead of stepping one moment at a time.
