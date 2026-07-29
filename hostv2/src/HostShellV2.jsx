@@ -13884,8 +13884,15 @@ export default function HostShellV2() {
               // engine already returns, and each routes to the surface that owns it.
               const hostRows = (() => {
                 const rows = hostRowsGo();
-                const owed = Math.round(money.vendorOwed || 0);
-                const stays = Math.round(money.lodgingCommitted || 0);
+                // READ `spend`, NOT `money` (self-inflicted, caught by driving it
+                // 2026-07-29). `money` is a NARROWED object built at ~2250 —
+                // { planned, committed, spent, spentEstimated, lines } — and never
+                // carried these two. Reading money.vendorOwed gave undefined → 0 →
+                // the rows silently never rendered, on the very event with $87,639
+                // spoken for. I shipped it and called it done without opening the
+                // sheet. `spend` is the full hostSpending result these live on.
+                const owed = Math.round(spend.vendorOwed || 0);
+                const stays = Math.round(spend.lodgingCommitted || 0);
                 if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
                 if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => setSheet({ kind: 'lodging', focus: null }) });
                 return rows;
@@ -14017,6 +14024,27 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
+                      {/* THE REST OF THE MONEY (same click-through, 2026-07-29).
+                          Even with vendors and lodging added, the rows only price
+                          what the PLAN prices. `committed` also contains rowsActual
+                          — money the host logged as spent straight onto their own
+                          budget lines (lib/hostSpending ~181). On the wedding that
+                          left four rows summing to ~$33,209 sitting under an
+                          "$87,639 spoken for" headline with no account of the other
+                          $54,430. Stating it is the whole point of this section.
+                          No CTA and no glyph: nothing in hostv2 lists those raw
+                          budget lines, so there is nowhere honest to send them. */}
+                      {(() => {
+                        const shown = hostRows.reduce((s, r) => s + (Number(r.est) || 0), 0);
+                        const rest = Math.round((money.committed || 0) - shown);
+                        if (rest < 50) return null;
+                        return (
+                          <p className="grounding" style={{ margin: '8px 0 0', borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
+                            The rows above are what your plan prices. The other {fmt(rest)} is money you logged
+                            straight onto your own budget lines, so it has no row here.
+                          </p>
+                        );
+                      })()}
                     </>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (
