@@ -58,6 +58,29 @@ describe('the reveal states one headcount', () => {
     if (nums.size === 1) expect([...nums][0]).toBe(resolveGuestCount(evt()));
   });
 
+  // Host ruling, 2026-07-29: "keep the derivation for the overage, just be
+  // consistent with information to host so they understand what is an estimate."
+  // So the overage is NOT hidden — it is named, in its own words, as an estimate.
+  // Deleting it to make the first two tests pass would be the wrong fix.
+  it('keeps the overage and marks it as an estimate', () => {
+    const stages = buildAssembleRevealStages(evt(), null, null, {}) || [];
+    const food = stages.find(s => s && s.key === 'food');
+    expect(food).toBeTruthy();
+    const planFor = require('../playbooks').sizingGuests(evt());
+    expect(planFor).toBeGreaterThan(resolveGuestCount(evt())); // fixture must actually plan up
+    expect(food.why).toMatch(/estimate/i);
+    expect(food.why).toMatch(new RegExp('\\b' + planFor + '\\b'));
+    // …and the overage is never phrased as a second headcount.
+    expect(food.why).not.toMatch(new RegExp(planFor + '\\s+guests'));
+  });
+
+  it('marks estimated shopping prices as estimated', () => {
+    const stages = buildAssembleRevealStages(evt(), null, null, {}) || [];
+    const shop = stages.find(s => s && s.key === 'shopping');
+    expect(shop).toBeTruthy();
+    expect(shop.why).toMatch(/estimated price/i);
+  });
+
   it('states the host’s own number, not the food plan’s planned-for figure', () => {
     const stages = buildAssembleRevealStages(evt(), null, null, {}) || [];
     const food = stages.find(s => s && s.key === 'food');

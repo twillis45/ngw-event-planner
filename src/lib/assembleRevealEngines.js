@@ -267,7 +267,10 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (fp && fp.itemCount > 0) {
       domains.push({
         type: 'food',
-        data: { fp, guestCount: resolveGuestCount(event) }
+        // guestCount = the host's headcount (the truth). planFor = what the plan
+        // BUYS for (sizingGuests' plan-to ceiling). Both ride along so the stage
+        // can state the first and explain the second — see buildDomainStage.food.
+        data: { fp, guestCount: resolveGuestCount(event), planFor: Number(fp.guests) || 0 }
       });
     }
   } catch {}
@@ -331,25 +334,33 @@ function buildDomainStage(domain) {
     food: {
       icon: 'cloche',
       title: 'Sizing the Food & Drink',
-      // ONE HEADCOUNT ON THE SCREEN (frame 17 audit, driven 2026-07-29; host ruling
-      // "single points of truth"). This printed data.guestEstimate — the food plan's
-      // own internal planned-for figure — so on "45 people" the stage read "6 items
-      // for 47 guests" three lines above Guest Planning's "45 guests". Two headcounts
-      // on one screen, on the screen that promises "nothing made up".
-      // The 47 is not a second truth, it is a DERIVATION: the plan buys to the high
-      // end of likely attendance so the host doesn't run short. The truth is the
-      // headcount, resolved once (resolvedGuestCount, ~line 119, the app's own
-      // resolution order) and used by every stage. The buying headroom belongs to
-      // the Food surface that owns it, not to a competing number here.
+      // ONE HEADCOUNT, AND THE OVERAGE NAMED AS AN ESTIMATE (frames 16-17 audit,
+      // driven 2026-07-29; host rulings "single points of truth" then "keep the
+      // derivation for the overage, just be consistent so they understand what
+      // is an estimate").
+      // This used to print the food plan's internal planned-for figure as if it
+      // were the headcount, so on "45 people" the stage read "6 items for 47
+      // guests" three lines above Guest Planning's "45 guests" — two headcounts,
+      // no way to tell which was theirs, on the screen that promises "nothing
+      // made up".
+      // The 47 is real and worth keeping: sizingGuests' plan-to ceiling, what to
+      // BUY so the host doesn't run short. It is just not a headcount. So the
+      // headline states the ONE headcount, and the line beneath names the
+      // overage in its own words, marked as the estimate it is.
       buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestCount} guests.`,
-      buildWhy: (data) => 'Menu is built. Quantities scale with headcount. Choose sourcing next.',
+      buildWhy: (data) => (data.planFor > data.guestCount
+        ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
+        : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.'),
       status: 'Ready to fill'
     },
     shopping: {
       icon: 'store',
       title: 'Writing Your Shopping List',
       buildWhat: (data) => `${data.itemCount} item${data.itemCount === 1 ? '' : 's'}, ready to check off.`,
-      buildWhy: (data) => 'Every ingredient mapped to a store and price. Check items off as you shop.',
+      // Same rule as the food stage: a price the host hasn't paid yet is an
+      // ESTIMATE, and this screen says so rather than implying a looked-up
+      // figure. "mapped to a store and price" read as precision it doesn't have.
+      buildWhy: (data) => 'Every ingredient mapped to a store, with an estimated price. Check items off as you shop.',
       status: 'Ready'
     },
     guests: {
