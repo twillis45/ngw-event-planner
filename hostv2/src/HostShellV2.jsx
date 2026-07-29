@@ -4994,7 +4994,10 @@ export default function HostShellV2() {
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
+      {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
+          so the container reserves room for it exactly while it shows — same
+          condition as its render below. See the note at .next-bar in styles.css. */}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it

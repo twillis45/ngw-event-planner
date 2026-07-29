@@ -2250,6 +2250,20 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   box-shadow:0 16px 44px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
 }
+/* ── THE BAR MUST NOT SIT ON THE CONTENT (Figma-vs-live audit, 2026-07-29) ──
+   .next-bar is position:absolute at z-index 22, and NOTHING reserved room for
+   it. It appears exactly when `!heroInView` — i.e. the moment the host starts
+   reading the below-fold — so it lands on the last rows of WORTH KEEPING AN EYE
+   ON. Driven live: "A key vendor cancels — and more…" was sitting behind it,
+   and it had quietly occluded the last rows in most of today's captures.
+   The Figma boards have no dock at all, so the below-fold was designed without
+   allowing for one; this is the cost of adding it after the fact.
+   Reserving the space is the right fix rather than hiding the bar — the bar is
+   deliberately persistent (host request 2026-07-16), so the CONTENT gives way,
+   not the affordance. Height = 15+15 padding + ~20 line + the 16px offset. */
+   (.escreen is display:contents when inactive, so the padding belongs on the
+   SCROLL CONTAINER — .app — where it simply adds scrollable room at the end.) */
+.app.has-nextbar{ padding-bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
 .next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--carbon-text); opacity:.72}
