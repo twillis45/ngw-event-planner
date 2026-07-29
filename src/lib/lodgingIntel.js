@@ -32,6 +32,18 @@ import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
 import { isAllowedMedia } from './lodgingBookmarklet';
 
+// ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
+// Opening a listing's gallery keeps the listing URL and swaps the title, so a
+// pasted link can arrive named "Photo gallery for Golden Crest". The right
+// repair is to recover the property's name, never to reject the row — the URL
+// was always correct. Module-level so BOTH readers share it (the results-page
+// card parser and the single-listing og:title path); it lived inside the card
+// parser alone, which is why single links still showed the raw gallery name.
+const ungalleryName = (l) => String(l || '')
+  .replace(/^\s*(photo gallery|photos?|image gallery|gallery)\s+(for|of)\s+/i, '')
+  .trim();
+
+
 // URL host → platform id. Anything else is 'other' — named honestly, never
 // upgraded to a platform we have no policy grounding for.
 export function lodgingPlatformFor(url) {
@@ -386,10 +398,15 @@ export function extractListingMeta(payload) {
   url = url.split('?')[0];
 
   // The name: og:title or <title>, with the platform's own suffix trimmed off
-  // ("… - Pensacola Beach | Vrbo" → "…").
+  // ("… - Pensacola Beach | Vrbo" → "…") — and the gallery prefix stripped by
+  // the SAME helper the results-page parser uses. It only ran on that path, so
+  // a link pasted from an open photo viewer still landed on the shortlist as
+  // "Photo gallery for Serendipity by the Slopes: hot tub", and that junk then
+  // rode into the recommendation sentence and the CTA ("Go with Photo gallery
+  // for …"). One cleaner, both paths.
   let title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
     || pick(/<title[^>]*>([^<]+)<\/title>/i);
-  title = title
+  title = ungalleryName(title)
     .replace(/\s*[|·—-]\s*(Vrbo|Airbnb|Booking\.com).*$/i, '')
     .replace(/\s+/g, ' ')
     .trim()
@@ -562,9 +579,7 @@ export function candidatesFromGroups(groups) {
     // Golden Crest"). Opening a listing's gallery keeps the listing URL and
     // swaps the title, so the right repair is to recover the property's name,
     // not to reject the row — the URL was always correct.
-    const ungallery = (l) => String(l || '')
-      .replace(/^\s*(photo gallery|photos?|image gallery|gallery)\s+(for|of)\s+/i, '')
-      .trim();
+    const ungallery = ungalleryName;
     const name = ungallery(lines.slice(typeIdx + 1).find((l) => l.length > 3 && !isFact(l))
       || lines.find((l) => l.length > 3 && !isFact(l) && !TYPE_LINE.test(l))
       || '').slice(0, 70);
