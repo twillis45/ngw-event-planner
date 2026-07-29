@@ -826,6 +826,19 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   border:none; border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
 }
 
+/* ── A FOLDED CONFLICT KID (host click-through, 2026-07-28) ──────────────────
+   The kid pairs a full sentence ("Heritage Table Catering setup runs into guest
+   arrival") with a CTA that NAMES its destination ("Open vendors → Heritage
+   Table Catering"). .mini is white-space:nowrap, so on a phone the button won
+   the width fight: the title collapsed to ONE WORD PER LINE and the button's own
+   label clipped mid-word, overflowing the card — both explicit UI-QA failures.
+   Shortening the label was the wrong fix (a CTA names the act). The ROW gives
+   way instead: title and button share a line when there's room, and the button
+   drops beneath it when there isn't, wrapping rather than clipping. */
+.line.kid-row{ flex-wrap:wrap; align-items:center; row-gap:var(--sp-2); }
+.line.kid-row .vc-detail{ min-width:0; flex:1 1 16ch; }
+.line.kid-row .mini{ flex:0 1 auto; max-width:100%; white-space:normal; text-align:left; }
+
 .fold-btn{
   display:flex; align-items:center; gap:10px; width:100%; margin:var(--break-section) 0 0;
   background:none; border:none; border-top:1px solid var(--line); padding:var(--sp-4) 2px;

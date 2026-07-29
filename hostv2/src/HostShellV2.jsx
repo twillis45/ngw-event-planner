@@ -4056,8 +4056,8 @@ export default function HostShellV2() {
       );
     }
     return (
-      <div key={rowKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-        <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{title}</span>
+      <div key={rowKey} className="line kid-row" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+        <span className="vc-detail" style={{ margin: 0 }}>{title}</span>
         <button className="mini" onClick={() => onCta(c, rowKey)}>{ctaLabelFor(c && c.cta, c && c.route, event)}</button>
       </div>
     );
