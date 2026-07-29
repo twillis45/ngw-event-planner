@@ -6369,7 +6369,18 @@ export default function HostShellV2() {
                   <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')} aria-hidden="true">
                     <div className="eprog-rule"><span style={{ width: pct + '%' }} /></div>
                     <div className="eprog-labels">
-                      <span>{done} of {total} settled</span>
+                      {/* "settled" was this shell's own word, and it collided (frame 4
+                          audit, driven 2026-07-29). The decision flow settles things —
+                          a settled pick literally prints "— settled." — but this
+                          hairline counts lib/phaseProgress's PLAN PARTS (date,
+                          location, headcount, food, budget, the moment), a different
+                          ledger. Live on Game Night: settle a decision and the one
+                          progress line on screen says "3 of 7 settled" before AND
+                          after. Nothing was broken; the word was borrowed. Now it
+                          uses the engine's own noun ("…parts of your plan handled",
+                          phaseProgress ~220), which also frees "settled" to mean
+                          decisions only. */}
+                      <span>{done} of {total} plan parts handled</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
                       <span>{done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait')}</span>
