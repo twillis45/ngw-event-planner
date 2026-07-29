@@ -11181,7 +11181,11 @@ export default function HostShellV2() {
                       {askResult.basis.map((b, i) => <p key={i} className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>{b}</p>)}
                       {askResult.matched && askResult.route && (
                         <div className="actions-row" style={{ marginTop: 8 }}>
-                          <button className="mini" onClick={() => goAnswer(askResult.route)}>Take me there</button>
+                          {/* NAMES THE DESTINATION (click-through audit 2026-07-28): this read
+                              "Take me there" — a trip, not the work — and the CTA gate missed it
+                              because /^take me to/ doesn't match "take me there". The answer
+                              already carries its own route, so say where it goes. */}
+                          <button className="mini" onClick={() => goAnswer(askResult.route)}>{ctaLabelFor(null, askResult.route, event)}</button>
                           <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
                         </div>
                       )}

@@ -19,7 +19,9 @@ const { ALL_PLAYBOOKS, playbookChecklist } = require('../playbooks');
 const BANNED = [
   /^do (this|it)\b/i,
   /^handle (this|it)\b/i,
-  /^take me to/i,
+  // "take me to it" AND "take me there" — the second slipped past a /^take me to/
+  // pattern and shipped live on Ask the Boss (found by clicking, 2026-07-28).
+  /^take me\b/i,
   /^go\b/i,
   /^continue$/i,
   /^click here/i,
@@ -176,6 +178,7 @@ describe('no CTA describes a trip instead of the work', () => {
     expect(isBanned('Do this first')).toBe(true);
     expect(isBanned('Handle this')).toBe(true);
     expect(isBanned('Take me to it')).toBe(true);
+    expect(isBanned('Take me there')).toBe(true);   // the variant that shipped
     expect(isBanned('Open')).toBe(true);
     // …and real labels pass
     expect(isBanned('Open the list')).toBe(false);
