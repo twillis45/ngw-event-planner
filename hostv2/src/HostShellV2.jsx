@@ -342,6 +342,26 @@ function heroAskFor(a, event) {
     // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
     // the real job in plain words.
     if (a && a.route && a.route.foodFocus) return 'Get the food.';
+    // ── OPEN: A 26-CHARACTER CUTOFF DECIDES WHETHER THE HOST SEES THE ASK ──
+    // Frames 25/26 audit, driven 2026-07-29 on the retirement party. Its open
+    // decision is authored as a question — retirementParty.js venue:
+    // "At home, a restaurant, or the workplace?" (40 chars) — and the host got
+    // the placeholder "Your next step." with the options as a card label under
+    // it. Game Night's "What kind of games?" (20 chars) IS promoted to the hero.
+    // Same kind of item, opposite treatment, decided by string length alone.
+    //
+    // Two things block the obvious fix, both confirmed by driving it:
+    //  1. `a.title` reaches here with the question mark already gone —
+    //     decisionShortLabel (playbooks/index ~1990) strips it deliberately,
+    //     correctly, for the SHORT CARD form. So a /\?$/ test never fires.
+    //  2. Adding `ask: d.label` to playbooks' `open.push` (~2602) did NOT reach
+    //     this item — this queue entry is built by some other path, so the
+    //     authored question never arrives. Both attempts were reverted rather
+    //     than left in as a producer with no consumer.
+    // The fix needs that path identified first, then the AUTHORED question
+    // carried through as its own field. It must not be re-derived from the
+    // short label, and the cutoff must not be widened blindly — a long
+    // declarative title genuinely does not read as a hero; a question does.
     return t.length <= 26 ? t + '.' : 'Your next step.';
   } catch { return 'Your next step.'; }
 }
