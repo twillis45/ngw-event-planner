@@ -6393,7 +6393,22 @@ export default function HostShellV2() {
               {/* THEN — the wired hero's path (queue positions 2+), folded below the first
                   screen (host "push THEN rows below fold"). Same rows, same routes — just not
                   competing with the one thing. */}
-              {elegantMode && askMode && (() => {
+              {/* ── INSIDE THE DAY-BEFORE WINDOW THIS FOLD STANDS DOWN (frame 2
+                  audit, 2026-07-29). The board already declares the rule at
+                  nearDayPlan: "inside the day-before window the board simplifies,
+                  not busies" — but this block never honoured it. Driven live on
+                  Game Night at T-2d, the board said everything twice: six expanded
+                  "Then, in order" rows (guest count, rain backup, the store run),
+                  then the day-before plan restating all three in its own words,
+                  then a collapsed "the rest of your list · 6 more" pointing back at
+                  the list already shown in full above it. Same `queue.slice(1)` set
+                  both times (see the tail's filter).
+                  Frame 2 (5:20) resolves it: at T-2d the day-before plan IS the
+                  board and the generic path collapses to one line. So when the
+                  digest is leading and the host hasn't expanded the queue, this
+                  expanded copy stands down — the collapsed tail below still opens
+                  the same rows on tap, and expanding brings this back. */}
+              {elegantMode && askMode && !(nearDayPlan && !queueOpen) && (() => {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
@@ -6552,7 +6567,17 @@ export default function HostShellV2() {
               )}
               {/* RUNWAY-ADAPTIVE QUIET (T-2d, host evidence 2026-07-17): inside the
                   day-before window the plan above IS the path — the ranked rows fold
-                  to one line (never hidden: one tap opens the full list as cards). */}
+                  to one line (never hidden: one tap opens the full list as cards).
+                  OPEN, and known (2026-07-29): the rows unfold ABOVE this line, so
+                  from the foot of the digest the tap reads as "the row vanished and
+                  nothing happened" — the host has to scroll back up to find what they
+                  opened. That mattered little while the expanded fold was also on the
+                  page; this line is now the only way to those rows. Three attempts to
+                  bring them into view (scrollIntoView, then scrollTo on .app, single
+                  and double rAF) all no-opped when driven — the click lands and the
+                  tail collapses, but .app is evidently not the scroll container. Left
+                  un-scrolled rather than shipping code that does nothing; the fix
+                  needs the real scroller identified first. */}
               {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (
                 <button className="path-row" onClick={() => setQueueOpen(true)}>
                   <span className="then">then</span>
