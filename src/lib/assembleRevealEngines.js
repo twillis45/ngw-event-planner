@@ -10,6 +10,23 @@ import { playbookFoodPlan, effectiveRos } from './playbooks';
 import { daysUntil as daysToEvent } from './dates';
 import { venueFor } from './venueFor';
 
+// ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
+// This file resolved the guest count in three places: once for the blockers
+// rule, once inline for the guests stage, and — differently — for the food
+// stage, which printed the food plan's own planned-for figure instead. On a
+// "45 people" event the reveal therefore showed "6 items for 47 guests" three
+// lines above "45 guests": two headcounts on one screen, on the screen whose
+// closing line promises "nothing made up". Neither number was wrong; having
+// two was. The 47 is a DERIVATION (buy to the high end of likely attendance so
+// the host doesn't run short) and belongs to the Food surface that owns it.
+// Every stage here now reads this one resolver, in the app's own resolution
+// order — guestCount once locked, else the creation-time estimate, else the
+// roster length (see HostHome's computation).
+export const resolveGuestCount = (event) => {
+  const ev = event || {};
+  return Number(ev.guestCount) || Number(ev.guestEstimate) || (ev.guests && ev.guests.length) || 0;
+};
+
 // ─── Card Contract ─────────────────────────────────────────────────────────
 // Every stage (identity, timeline, food, risks, blockers) uses this shape:
 // {
@@ -40,9 +57,13 @@ function buildIdentityStage(event, eventIdentity, persona) {
   } = eventIdentity;
 
   // Translate to natural language
+  // "A anniversary." — driven 2026-07-29 on a real create. The article was
+  // hardcoded, so every vowel-initial type (anniversary, engagement, open house,
+  // induction) read wrong on the first screen of the app.
+  const article = (word) => (/^[aeiou]/i.test(String(word || '').trim()) ? 'An' : 'A');
   const eventDesc = isCompound
-    ? `A ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
-    : `A ${primaryEventType.toLowerCase()}.`;
+    ? `${article(primaryEventType)} ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
+    : `${article(primaryEventType)} ${primaryEventType.toLowerCase()}.`;
 
   const compoundExplanation = isCompound
     ? ' Two milestones, one event. We\'ll handle both.'
@@ -114,9 +135,9 @@ function deriveDecisionBlockers(event, eventIdentity) {
   // RULE: No confirmed guest count = budget is meaningless
   // IS-1 fix: the event object stores this as guestEstimate at creation time
   // (App.js NewEventModal) and guestCount once locked later (HostHome/Guests tab).
-  // Match the app's own resolution order (see HostHome's guestCount computation)
-  // instead of reading guestCount alone, which is unset for every fresh event.
-  const resolvedGuestCount = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests && event.guests.length) || 0;
+  // Resolution order now lives in resolveGuestCount (module head) so this rule and
+  // the stages below cannot drift apart.
+  const resolvedGuestCount = resolveGuestCount(event);
   if (!resolvedGuestCount) {
     blockers.push({
       type: 'guest-count-confirmation',
@@ -246,7 +267,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (fp && fp.itemCount > 0) {
       domains.push({
         type: 'food',
-        data: { fp, guestEstimate: fp.guests }
+        data: { fp, guestCount: resolveGuestCount(event) }
       });
     }
   } catch {}
@@ -264,7 +285,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
 
   // === GUESTS (if meaningful) ===
   try {
-    const guestCount = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests && event.guests.length) || 0;
+    const guestCount = resolveGuestCount(event);
     if (guestCount > 0) {
       domains.push({
         type: 'guests',
@@ -310,7 +331,17 @@ function buildDomainStage(domain) {
     food: {
       icon: 'cloche',
       title: 'Sizing the Food & Drink',
-      buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestEstimate} guests.`,
+      // ONE HEADCOUNT ON THE SCREEN (frame 17 audit, driven 2026-07-29; host ruling
+      // "single points of truth"). This printed data.guestEstimate — the food plan's
+      // own internal planned-for figure — so on "45 people" the stage read "6 items
+      // for 47 guests" three lines above Guest Planning's "45 guests". Two headcounts
+      // on one screen, on the screen that promises "nothing made up".
+      // The 47 is not a second truth, it is a DERIVATION: the plan buys to the high
+      // end of likely attendance so the host doesn't run short. The truth is the
+      // headcount, resolved once (resolvedGuestCount, ~line 119, the app's own
+      // resolution order) and used by every stage. The buying headroom belongs to
+      // the Food surface that owns it, not to a competing number here.
+      buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestCount} guests.`,
       buildWhy: (data) => 'Menu is built. Quantities scale with headcount. Choose sourcing next.',
       status: 'Ready to fill'
     },

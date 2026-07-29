@@ -5392,7 +5392,20 @@ export default function HostShellV2() {
                           <div className="rv-spine-col">
                             {revealStages.map((st, i) => {
                               const cls = i === focus ? ' focus' : (i < focus ? ' lit' : '');
-                              const prov = [st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ');
+                              // ENGINE NAMES ARE NOT HOST COPY (frame 17 audit, driven
+                              // 2026-07-29). This joined st.sourceEngines into the
+                              // visible line, so a host finishing the create flow —
+                              // the single most important screen we have — read
+                              // "ASSEMBLED · READY TO FILL · PLAYBOOK ENGINE" and
+                              // "REQUIRED · AWAITING DECISION · DECISION DERIVATION
+                              // EVENT IDENTITY". Those are our architecture's nouns,
+                              // not this host's. The STATE words are real and stay
+                              // (Ready / Awaiting decision / High confidence — that is
+                              // the honesty the screen promises two lines later with
+                              // "nothing made up"). sourceEngines stays ON the object
+                              // for anything that needs provenance; it just no longer
+                              // shouts itself at the host.
+                              const prov = [st.confidenceLabel, st.status].filter(Boolean).join(' · ');
                               return (
                                 <div key={st.key || i} className={'rv-snode' + cls} style={{ '--n': i }}>
                                   <span className="rv-shalo" aria-hidden="true" />
