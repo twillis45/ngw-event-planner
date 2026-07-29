@@ -3968,9 +3968,19 @@ export default function HostShellV2() {
     return null;
   };
 
-  const onCta = (a, key) => {
+  // ── SETTLING IS OPT-IN (dead-row class, 2026-07-28) ─────────────────────────
+  // The settle branch below writes setEditor(key), and the editor slot renders
+  // at ONE site — inside the ask-card loop, where `editor === key` mounts it.
+  // A caller with no slot for its key got silence: state nothing rendered, a
+  // spotlight scroll to a node that didn't exist. Four "Then, in order" rows
+  // died that way and a code sweep of the routes never saw it.
+  // So settling is now EXPLICIT: `opts.canSettle` may only be passed by a site
+  // that actually renders the slot. Every other caller falls through to the
+  // routing below and lands on the surface that owns the field — which is the
+  // right behaviour off the hero anyway, and is honest when it can't.
+  const onCta = (a, key, opts) => {
     const kind = wiredKind(a);
-    if (kind) {
+    if (kind && opts && opts.canSettle) {
       // Propose-don't-ask: the venue editor opens pre-filled with the host's
       // own prior answer (existing venue, or the town they named at create) —
       // grounded data only, never an invented guess.
@@ -6219,7 +6229,9 @@ export default function HostShellV2() {
                           // non-navigating CTA) — which also makes them visible to the
                           // Layer-2 loop-advance probe (2026-07-22).
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
-                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key)}>{
+                          // canSettle: this button lives INSIDE the card loop, so
+                          // `editor === key` at the slot above genuinely mounts an editor.
+                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
@@ -6361,22 +6373,9 @@ export default function HostShellV2() {
                     if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
                     if (/conflict/i.test(String(a.title || ''))) { setSheet({ kind: 'vendors' }); return; }
                   }
-                  // ── THE THEN ROWS HAD NOTHING TO OPEN (host click-through, 2026-07-28) ──
-                  // onCta's settle-in-place branch does `setEditor(key); spotlight(key)`,
-                  // and the editor slot renders at exactly ONE site — inside the HERO
-                  // card. A Then row passes its OWN row key, so setEditor set state that
-                  // nothing rendered and spotlight scrolled to an element that did not
-                  // exist. The row dimmed, drifted, and did nothing. Four of the six rows
-                  // were dead this way, silently: no editor, no sheet, not even a toast.
-                  // Below the fold there is no "in place" to settle into, so a Then row
-                  // ROUTES to the surface that owns the field — the real destination, one
-                  // tap — and says so honestly if it can't.
-                  if (wiredKind(a)) {
-                    if (routeSheet(a.route)) return;
-                    const dest = describeRoute(a.route, event);
-                    toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
-                    return;
-                  }
+                  // A Then row renders no editor slot, so it does NOT pass canSettle —
+                  // onCta routes it to the surface that owns the field. (Four rows here
+                  // were silently dead before settling became opt-in; see onCta.)
                   onCta(a, key);
                 };
                 // DO zone (host redesign 2026-07-18): the "then" per-row eyebrow was
@@ -6810,7 +6809,11 @@ export default function HostShellV2() {
                     // the phase cue disagreed — e.g. a vendor COI action named here
                     // routes to that vendor's documents, but the phase cue pointed at
                     // a generic area sheet (host-reported wrong-location bug).
-                    if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0)); return; }
+                    // canSettle: the key here is the HERO CARD's own key, and that card
+                    // renders on this stage — so `editor === key` mounts its slot. (Unlike
+                    // the Then rows / path-rows / bundle kids, which pass keys no slot
+                    // listens for; see onCta. Behaviour here is unchanged.)
+                    if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0), { canSettle: true }); return; }
                     // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
                     document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });

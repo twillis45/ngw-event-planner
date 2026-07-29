@@ -250,22 +250,30 @@ describe('the then-in-order rows only promise what they deliver', () => {
     expect(shell).not.toMatch(/<span className="ef-g" aria-hidden="true">→<\/span><\/span>\s*\n\s*<\/button>/);
   });
 
-  test('a then-row never takes the settle-in-place path', () => {
-    // ── THE FOUR DEAD ROWS (host click-through, 2026-07-28) ──────────────────
+  test('settling in place is opt-in, and only where a slot exists', () => {
+    // ── THE DEAD-ROW CLASS (host click-through, 2026-07-28) ──────────────────
     // onCta's settle branch does `setEditor(key); spotlight(key)`, and the
-    // editor slot renders at exactly ONE site — inside the HERO card. A Then
-    // row passes its own row key, so setEditor set state nothing rendered and
-    // spotlight scrolled to an element that did not exist: rain, food,
-    // shopping and seats all dimmed and did nothing. Below the fold there is
-    // no "in place" to settle into, so openThen must ROUTE a wiredKind row.
-    const body = (shell.match(/const openThen = \(a, key\) => \{[\s\S]*?\n                \};/) || [''])[0];
-    expect(body).toBeTruthy();
-    expect(body).toMatch(/if \(wiredKind\(a\)\) \{[\s\S]*?routeSheet\(a\.route\)/);
-    // …and it must say so honestly when it cannot, never fall through silently.
-    expect(body).toMatch(/toast\(/);
-    // The editor slot is hero-only — if a second slot is ever added below the
-    // fold this assertion should be revisited deliberately, not drift.
+    // editor slot mounts at ONE site — inside the ask-card loop, via
+    // `editor === key`. Any caller passing a key with no slot got SILENCE:
+    // rain, food, shopping and seats all dimmed and did nothing, and a sweep
+    // of their routes never saw it because the routes were fine.
+    // The fix is structural: settling requires an explicit canSettle, so a new
+    // call site is safe (routes) by default instead of silently dead.
+    expect(shell).toMatch(/const onCta = \(a, key, opts\) =>/);
+    expect(shell).toMatch(/if \(kind && opts && opts\.canSettle\) \{/);
+
+    // One slot, and only the callers whose key that slot actually listens for.
+    // TWO qualify: the in-card CTA, and the Plan tile (which passes the hero
+    // CARD's key, so `editor === key` mounts it). Everything else routes.
     expect((shell.match(/className="editor-slot"/g) || []).length).toBe(1);
+    // Take the rest of the LINE after each `onCta(` — a `)` matcher stops early
+    // on nested calls like String(queue[0].id || 0) and silently undercounts.
+    const calls = shell.split('onCta(').slice(1).map((s) => s.split('\n')[0]);
+    expect(calls.length).toBeGreaterThanOrEqual(4);
+    const settlers = calls.filter((c) => /canSettle/.test(c));
+    expect(settlers.length).toBe(2);
+    // A new call site defaults to routing — it cannot be silently dead.
+    expect(calls.filter((c) => !/canSettle/.test(c)).length).toBeGreaterThanOrEqual(2);
   });
 
   test('every route the then-list can emit still resolves', () => {
