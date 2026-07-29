@@ -6361,6 +6361,22 @@ export default function HostShellV2() {
                     if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
                     if (/conflict/i.test(String(a.title || ''))) { setSheet({ kind: 'vendors' }); return; }
                   }
+                  // ── THE THEN ROWS HAD NOTHING TO OPEN (host click-through, 2026-07-28) ──
+                  // onCta's settle-in-place branch does `setEditor(key); spotlight(key)`,
+                  // and the editor slot renders at exactly ONE site — inside the HERO
+                  // card. A Then row passes its OWN row key, so setEditor set state that
+                  // nothing rendered and spotlight scrolled to an element that did not
+                  // exist. The row dimmed, drifted, and did nothing. Four of the six rows
+                  // were dead this way, silently: no editor, no sheet, not even a toast.
+                  // Below the fold there is no "in place" to settle into, so a Then row
+                  // ROUTES to the surface that owns the field — the real destination, one
+                  // tap — and says so honestly if it can't.
+                  if (wiredKind(a)) {
+                    if (routeSheet(a.route)) return;
+                    const dest = describeRoute(a.route, event);
+                    toast(dest ? 'Not wired here yet — in the app this opens: ' + dest : 'Not wired here yet.');
+                    return;
+                  }
                   onCta(a, key);
                 };
                 // DO zone (host redesign 2026-07-18): the "then" per-row eyebrow was
@@ -6377,16 +6393,12 @@ export default function HostShellV2() {
                         const t = String(a.title || '').replace(/\s+—\s.*$/, '').replace(/\.+$/, '');
                         // ── THE GLYPH WAS UNCONDITIONAL (dead-link audit 2026-07-28) ──
                         // Every row rendered a → whether or not anything was behind it.
-                        // Swept all 39 playbooks at T-45/14/3 and found ZERO rows that
-                        // currently fail to resolve — but the promise was structural, not
-                        // earned, so the first row with a missing route would have shown
-                        // an arrow and then toasted "Not wired here yet".
-                        // Now the arrow is rendered only when the tap genuinely NAVIGATES:
-                        // a bundle opens its sheet, a resolvable route opens a surface. A
-                        // row that settles in place (wiredKind → the inline editor) is not
-                        // navigation and wears no arrow — the same rule the hero follows.
+                        // Now the arrow is earned: a bundle opens its sheet, any other row
+                        // opens the surface its route resolves to. Below the fold there is
+                        // no settle-in-place case to exclude — openThen routes every Then
+                        // row (see the note there) — so a row that cannot resolve wears no
+                        // arrow and says so on tap rather than promising silently.
                         const goes = a.kind === 'bundle' || (() => {
-                          if (wiredKind(a)) return false;
                           try { return !!resolveRoute(a.route); } catch (_e) { return false; }
                         })();
                         return (

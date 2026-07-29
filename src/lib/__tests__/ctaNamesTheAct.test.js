@@ -250,11 +250,22 @@ describe('the then-in-order rows only promise what they deliver', () => {
     expect(shell).not.toMatch(/<span className="ef-g" aria-hidden="true">→<\/span><\/span>\s*\n\s*<\/button>/);
   });
 
-  test('a row that settles in place earns no arrow', () => {
-    // wiredKind → the inline editor. Settling is not navigating; the hero has
-    // followed this rule since the 2026-07-22 glyph audit and the list now does.
-    expect(shell).toMatch(/if \(wiredKind\(a\)\) return false;/);
-    expect(shell).toMatch(/return !!resolveRoute\(a\.route\);/);
+  test('a then-row never takes the settle-in-place path', () => {
+    // ── THE FOUR DEAD ROWS (host click-through, 2026-07-28) ──────────────────
+    // onCta's settle branch does `setEditor(key); spotlight(key)`, and the
+    // editor slot renders at exactly ONE site — inside the HERO card. A Then
+    // row passes its own row key, so setEditor set state nothing rendered and
+    // spotlight scrolled to an element that did not exist: rain, food,
+    // shopping and seats all dimmed and did nothing. Below the fold there is
+    // no "in place" to settle into, so openThen must ROUTE a wiredKind row.
+    const body = (shell.match(/const openThen = \(a, key\) => \{[\s\S]*?\n                \};/) || [''])[0];
+    expect(body).toBeTruthy();
+    expect(body).toMatch(/if \(wiredKind\(a\)\) \{[\s\S]*?routeSheet\(a\.route\)/);
+    // …and it must say so honestly when it cannot, never fall through silently.
+    expect(body).toMatch(/toast\(/);
+    // The editor slot is hero-only — if a second slot is ever added below the
+    // fold this assertion should be revisited deliberately, not drift.
+    expect((shell.match(/className="editor-slot"/g) || []).length).toBe(1);
   });
 
   test('every route the then-list can emit still resolves', () => {
