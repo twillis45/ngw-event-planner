@@ -2267,7 +2267,7 @@ export default function HostShellV2() {
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
-  const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  const money = { planned: spend.total, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
@@ -6875,7 +6875,15 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
+                      {/* "spoken for" carries its own est. marker now (app-wide
+                          estimate pass, 2026-07-29). It is the biggest number on
+                          the tile and a MIXTURE — real spend plus every not-yet-
+                          bought term, all guesses — so a fully-estimated plan
+                          read exactly as firm as one paid in full. Same marker
+                          vocabulary as `spent` right beside it: "(est.)" when the
+                          whole figure is a guess, "· $N est." when only part is.
+                          Never a second vocabulary (UX_08). */}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>
@@ -8188,10 +8196,14 @@ export default function HostShellV2() {
                 {isPast ? 'How it landed.' : 'How it’ll land.'}
               </h1>
               <p className="mega-sub">
+                {/* Headroom and overage are BOTH derived from `committed`, so when
+                    committed is part guess so are they (app-wide estimate pass,
+                    2026-07-29). Stating "$X of headroom" as a flat fact hid that
+                    the figure moves the moment a real price replaces a guess. */}
                 {money.planned
                   ? (money.committed <= money.planned
-                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far.`
-                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan.`)
+                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
+                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
                   : 'No budget yet — nothing to settle up when it’s over.'}
               </p>
 
@@ -8216,7 +8228,12 @@ export default function HostShellV2() {
                     <div className="line total">
                       <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
                       <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
-                        {fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
+                        {/* The rows above each wear "~" (est.); this total is the
+                            sum of them, so it wears the marker too (app-wide
+                            estimate pass 2026-07-29) — a total is not firmer than
+                            its parts. Suppressed once the event is past, where
+                            "Spent, all in" is real money, not a projection. */}
+                        {!isPast && money.committedEstimated > 0 ? '~' : ''}{fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
                       </span>
                     </div>
                   </div></div>
@@ -14008,7 +14025,13 @@ export default function HostShellV2() {
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
                       grounding={<>
-                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                        {/* The sheet states the estimated share of BOTH numbers
+                            (app-wide estimate pass, 2026-07-29). "Spoken for" is
+                            a mixture — real spend plus every not-yet-bought term
+                            — and this is the surface that exists to be honest
+                            about money, so it says so in full rather than
+                            leaving the host to infer it from the rows. */}
+                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.committedEstimated > 0 ? <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</> : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );

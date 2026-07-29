@@ -196,6 +196,26 @@ export function hostSpending(event, priceFactor) {
   // belong in spentEstimated too. (crabBought stays firm — real entered prices.)
   const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated + suppliesBought + capacityBought));
   const spentFirm = Math.max(0, spent - spentEstimated);
+  // committedEstimated — how much of the "spoken for" headline is still a GUESS.
+  // Added in the app-wide estimate-honesty pass (2026-07-29, host ruling: "be
+  // consistent with information to host so they understand what is an estimate";
+  // UX_08: "Never display an estimate without the marker").
+  // `committed` is the biggest, boldest number the host reads, and it is a
+  // MIXTURE: real money already spent, plus every not-yet-bought term, which are
+  // all estimates. It rendered bare in three places, so a plan whose food and
+  // supplies are entirely guessed looked exactly as firm as one paid in full.
+  // Derived HERE for the same reason `uncommitted` is: a reader holding
+  // committed + foodEstimate cannot compose this correctly (foodRemaining is
+  // clamped against foodBought), and two readers composing it would drift.
+  //   • the estimated part of what's already spent (spentEstimated), PLUS
+  //   • every remaining term that is a plan-priced guess.
+  // vendorOwed and lodgingCommitted_ are deliberately EXCLUDED: a vendor balance
+  // is a contracted figure and a chosen stay is a real listed price. Neither is
+  // this app guessing.
+  const committedEstimated = Math.max(0, Math.min(
+    committed,
+    Math.round(spentEstimated + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining)
+  ));
   // `uncommitted` — the headroom, DERIVED HERE so no reader has to compose it.
   //
   // Why this field exists: `committed` ALREADY CONTAINS foodEstimate, suppliesEstimate,
@@ -213,7 +233,7 @@ export function hostSpending(event, priceFactor) {
   // because "no budget" and "no room left" are different facts. Can go negative when the
   // plan commits past the budget; that overage is the truth and is NOT clamped.
   const uncommitted = total > 0 ? Math.round(total - committed) : null;
-  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;
