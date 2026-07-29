@@ -13651,6 +13651,56 @@ export default function HostShellV2() {
                               <p key="more" className="vc-detail" style={{ opacity: .7 }}>+{more} more open — the vendor's own brief covers the rest.</p>
                             ) : null];
                           })()}
+                          {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
+                              Found by clicking: "Collect all vendor COIs for M-NCPPC" landed
+                              here (once its route named the documents section) and there was
+                              no insurance row to land ON — the proofs were load-in time,
+                              start/end and capacity. A task about exactly one thing arrived
+                              at a screen that never mentions it.
+                              Nothing is invented: getVendorCOIState + coiNextAction are the
+                              existing engine, already driving the hero resolve and the
+                              day-before. It is service-mode aware (COI-LOGIC-1), so a pickup
+                              order reads "probably not needed", never "COI missing", and an
+                              informal helper is never gated at all
+                              (host-appropriate-vendor-ui). Where the data cannot say, it
+                              says CHECK — never a false alarm.
+                              The action is the engine's own ctaCopy, so this row and the
+                              hero can never disagree about what the next step is. Anchored
+                              as v-coi-<id> so a COI route can land on the row itself. */}
+                          {(() => {
+                            let coi = null, next = null;
+                            try { coi = getVendorCOIState(v, event); } catch (_e) { coi = null; }
+                            if (!coi || coi.status === 'not_required') return null;
+                            try { next = coiNextAction(v, event, v.name || 'this vendor'); } catch (_e) { next = null; }
+                            const tone = coi.level === 'critical' ? 'var(--crit)' : coi.level === 'attention' ? 'var(--warn)' : 'var(--muted)';
+                            return (
+                              <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6, scrollMarginTop: 12 }}>
+                                <span className="of" style={{ flexShrink: 0, color: tone }}>insurance</span>
+                                <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>
+                                  {coi.label}{coi.hostCopy ? ' — ' + coi.hostCopy : ''}
+                                </span>
+                                {next && (
+                                  <button className="mini" onClick={() => {
+                                    // The engine names the step; the write matches it exactly.
+                                    const patch = coi.status === 'requested' ? { coiStatus: 'received' }
+                                      : coi.status === 'received' ? { coiVerified: true }
+                                      : { coiStatus: 'requested' };
+                                    writeVendor(v.id, patch, next.ctaCopy + ' — noted.');
+                                  }}>{next.ctaCopy}</button>
+                                )}
+                                {/* The waive is only offered while the certificate is still
+                                    OUTSTANDING. Driven live on M-NCPPC — already "Verified ·
+                                    valid through 2026-12-09" — it rendered "Not needed" next
+                                    to a good record, i.e. a one-tap way to throw away proof
+                                    the host had already chased down. Waiving is for a COI you
+                                    have decided not to pursue, never for one you hold. */}
+                                {coi.required && !v.coiWaived && !coi.verified
+                                  && coi.status !== 'received' && (
+                                  <button className="mini" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {/* Contract file — the destination for the "attach the file"
                               conflict fix. A host keeps the signed contract in their own
                               drive; this holds a LINK to it (not an upload), which is what
