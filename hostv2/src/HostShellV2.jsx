@@ -75,6 +75,7 @@ import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2828,8 +2829,13 @@ export default function HostShellV2() {
     if (!raw) return;
     try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_e) { /* hash stays, staging still guards */ }
     let cands = [];
+    // B3 — the bookmarklet's own arm of the funnel. Rams' kill criterion is
+    // literally the ratio of THIS method to paste, so it must be counted where
+    // it actually arrives, not inferred later.
+    try { trackEvent(ANALYTICS.LODGING_PASTE_ATTEMPTED, { method: 'bookmarklet' }); } catch (_e) { /* never block intake on a counter */ }
     try { cands = candidatesFromGroups(parseBookmarkletPayload(raw)); } catch (_e) { cands = []; }
     if (!cands.length) { toast('Nothing readable came across — open a results page and click it again.'); return; }
+    try { trackEvent(ANALYTICS.LODGING_PASTE_PARSED, { method: 'bookmarklet', found: cands.length }); } catch (_e) { /* as above */ }
     const known = new Set((event.lodgingOptions || []).map((o) => String(o.url || '').split('?')[0]));
     const fresh = cands.filter((c) => !known.has(c.url));
     let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
@@ -9218,6 +9224,31 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
+                        {/* ── "WHERE DO MY HOUSES LIVE?" (B1, board 2026-07-28) ────────────
+                            Asked independently by the canary AND by Rafanelli from logistics
+                            — "where do my houses live and will they be there tomorrow." The
+                            board scored this surface 6/10 against a 10+ bar with this named
+                            as the gap that could not close. Grandmother: "That is your
+                            competition. Not Airbnb's save-to-wishlist. The envelope. The
+                            envelope has never once failed to open."
+                            Neither of them will type it in to find out, so it is one line,
+                            always visible once she has houses. It reads the REAL sync state
+                            (lib/api/syncState) rather than reassuring her — "on this phone"
+                            when that is the truth, "in your account" when it is. A promise
+                            about tomorrow that we cannot check is exactly what the board
+                            said not to write. */}
+                        {li.options.length > 0 && (() => {
+                          let st = null;
+                          try { st = getEventSyncStatus(event); } catch (_e) { st = null; }
+                          const line = st === SYNC_STATUS.SYNCED
+                            ? 'Saved in your account — they’ll be here tomorrow, on any device you sign in on.'
+                            : st === SYNC_STATUS.PENDING || st === SYNC_STATUS.SYNC_FAILED
+                              ? 'Saved on this phone, and still trying to reach your account — they’ll be here tomorrow either way.'
+                              : 'Saved on this phone — they’ll be here tomorrow. Sign in and they follow you to any device.';
+                          return (
+                            <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>{line}</p>
+                          );
+                        })()}
                         {/* ── THE RETURN TRIP (host 2026-07-28: "why does the host have to
                             pull a url?") ───────────────────────────────────────────────
                             The app can't search those platforms — that's the never-build
@@ -9230,8 +9261,39 @@ export default function HostShellV2() {
                         {(() => {
                           const staged = lodgeStaged;
                           const budget = Number(event.totalBudget || 0) || 0;
-                          const readPage = (text) => {
+                          // ONE PATH ONTO THE SHORTLIST — used by the confirm button AND by
+                          // the single-link auto-add below, so the two can never diverge in
+                          // what they write or what they let the host undo.
+                          const commitLodging = (cands, msg) => {
+                            const add = (cands || []).map((c) => ({
+                              id: 'lodge-' + Math.random().toString(36).slice(2, 8),
+                              url: c.url,
+                              label: c.name || '',
+                              beds: c.beds != null ? c.beds : undefined,
+                              totalPrice: c.priceShown != null ? c.priceShown : undefined,
+                              photoUrl: c.photo || undefined,
+                              notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                                c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
+                              status: 'option',
+                            }));
+                            if (!add.length) return 0;
+                            // B3 · step 3 — it reached the shortlist. `auto` marks the
+                            // single-link path (B2) so the two can be compared.
+                            try { trackEvent(ANALYTICS.LODGING_OPTION_ADDED, { count: add.length, auto: add.length === 1 && !!(lodgeStaged && lodgeStaged.auto) }); } catch (_e) { /* as above */ }
+                            const before = event.lodgingOptions || [];
+                            patchEvent({ lodgingOptions: [...before, ...add] }, null);
+                            // REVERSIBILITY IS CHEAPER THAN CONFIRMATION — the row is on the
+                            // shortlist to be looked at, and Undo is one tap on the receipt.
+                            toast(msg || `Added ${add.length} to your shortlist.`,
+                              { label: 'Undo', fn: () => patchEvent({ lodgingOptions: before }, null) }, 'ok');
+                            return add.length;
+                          };
+                          const readPage = (text, method) => {
                             let out = { candidates: [], source: null, linksOnly: false };
+                            // B3 · step 1 — something arrived to interpret. Counted BEFORE we
+                            // try to read it, so "she pasted and we got nothing" is visible
+                            // as a gap between this and PARSED rather than silence.
+                            try { trackEvent(ANALYTICS.LODGING_PASTE_ATTEMPTED, { method: method || 'paste' }); } catch (_e) { /* a counter never blocks intake */ }
                             try { out = extractListingCandidates(text) || out; } catch (_e) { /* nothing readable */ }
                             if (!out.candidates.length) {
                               // ADVICE SHE CAN ACT ON, ON THE DEVICE SHE IS HOLDING.
@@ -9250,14 +9312,35 @@ export default function HostShellV2() {
                                 : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
                               return;
                             }
+                            // B3 · step 2 — we got something out of it.
+                            try { trackEvent(ANALYTICS.LODGING_PASTE_PARSED, { method: method || 'paste', found: out.candidates.length, source: out.source || null, links_only: !!out.linksOnly }); } catch (_e) { /* as above */ }
                             const known = new Set((li.options || []).map((o) => String(o.url || '').split('?')[0]));
                             const fresh = out.candidates.filter((c) => !known.has(c.url));
                             let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
                             try { ranked = rankCandidates(fresh, event, { budget }); } catch (_e) { /* unranked is still useful */ }
+                            // ── SHE COPIED ONE LINK. SHE MEANT ONE HOUSE. (B2, board
+                            // 2026-07-28) ──────────────────────────────────────────────
+                            // Ive: "The app made her tap twice more to agree with herself."
+                            // Rafanelli dissented — the confirm is the audit trail — and the
+                            // competitive teardown settled it: every product ships a confirm
+                            // because EXTRACTION IS UNRELIABLE. So the confirm survives as
+                            // REVIEW OF WHAT WE FILLED, not permission to do what she asked.
+                            // For a single listing that means: still stage (the unfurl fill
+                            // is what makes the row worth having — name, beds, photo), then
+                            // put it on the shortlist ourselves once the fill settles. She
+                            // reviews the finished row, with Undo, instead of approving a
+                            // half-filled one. A results page with many candidates still
+                            // asks — that IS a real choice about which houses to keep.
+                            const single = ranked.ranked.length === 1 && !out.linksOnly;
                             setLodgeStaged({ ...ranked, source: out.source, linksOnly: out.linksOnly,
                               dupes: out.candidates.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)),
-                              filling: 0 });
-                            fillFromListings(ranked.ranked);
+                              filling: 0, auto: single });
+                            fillFromListings(ranked.ranked).then((enriched) => {
+                              if (!single) return;
+                              const one = (enriched && enriched[0]) || ranked.ranked[0];
+                              setLodgeStaged(null);
+                              commitLodging([one], one.name ? `${one.name} — added to your shortlist.` : 'Added to your shortlist.');
+                            });
                           };
                           // ── THE PHONE PATH (host 2026-07-28: "Grandmother is supposed to do
                           //    that on her phone?") ────────────────────────────────────────
@@ -9273,27 +9356,35 @@ export default function HostShellV2() {
                           // button, so it must never look like a burst of traffic. Anything
                           // that fails just stays as it was; a row is never lost to a failed
                           // read, and Vrbo (which declines) simply keeps the link it had.
+                          // Returns the ENRICHED rows as well as writing them into the staged
+                          // state — the single-link auto-add commits from the return value,
+                          // so it can never race the setState and save a half-filled row.
                           async function fillFromListings(list) {
-                            if (!isUnfurlConfigured()) return;
-                            const need = (list || []).filter((c) => !c.name || !c.photo).slice(0, 8);
-                            if (!need.length) return;
+                            const acc = (list || []).slice();
+                            if (!isUnfurlConfigured()) return acc;
+                            const need = acc.filter((c) => !c.name || !c.photo).slice(0, 8);
+                            if (!need.length) return acc;
                             for (const c of need) {
                               let r = null;
                               try { r = await unfurlListing(c.url); } catch (_e) { r = null; }
                               if (!r || !r.ok) continue;
                               const f = r.facts || {};
+                              const enrich = (x) => ({
+                                ...x,
+                                name: x.name || String(r.title || '').slice(0, 70),
+                                photo: x.photo || (isAllowedMedia(r.image) ? r.image : ''),
+                                beds: x.beds != null ? x.beds : (f.beds != null ? f.beds : null),
+                                bedrooms: x.bedrooms != null ? x.bedrooms : (f.bedrooms != null ? f.bedrooms : null),
+                                baths: x.baths != null ? x.baths : (f.baths != null ? f.baths : null),
+                              });
+                              const i = acc.findIndex((x) => x.url === c.url);
+                              if (i >= 0) acc[i] = enrich(acc[i]);
                               setLodgeStaged((st) => (st ? {
                                 ...st,
-                                ranked: st.ranked.map((x) => (x.url !== c.url ? x : {
-                                  ...x,
-                                  name: x.name || String(r.title || '').slice(0, 70),
-                                  photo: x.photo || (isAllowedMedia(r.image) ? r.image : ''),
-                                  beds: x.beds != null ? x.beds : (f.beds != null ? f.beds : null),
-                                  bedrooms: x.bedrooms != null ? x.bedrooms : (f.bedrooms != null ? f.bedrooms : null),
-                                  baths: x.baths != null ? x.baths : (f.baths != null ? f.baths : null),
-                                })),
+                                ranked: st.ranked.map((x) => (x.url !== c.url ? x : enrich(x))),
                               } : st));
                             }
+                            return acc;
                           }
                           return (
                             <div style={{ margin: '0 0 14px' }}>
@@ -9320,7 +9411,7 @@ export default function HostShellV2() {
                                     <button className="cta" style={{ marginBottom: 8 }}
                                       onClick={() => {
                                         navigator.clipboard.readText().then((t) => {
-                                          if (t && t.trim()) readPage(t);
+                                          if (t && t.trim()) readPage(t, 'clipboard');
                                           else toast('Nothing copied yet — tap Share, then Copy Link, then press this again.');
                                         }).catch(() => toast('I couldn’t read the clipboard — paste into the box below instead.'));
                                       }}>
@@ -9344,7 +9435,7 @@ export default function HostShellV2() {
                                       const text = html || cd.getData('text/plain');
                                       if (!text) return;
                                       e.preventDefault();
-                                      readPage(text);
+                                      readPage(text, 'paste');
                                     }}
                                     /* DON'T STAGE MID-KEYSTROKE (found by driving it 2026-07-28).
                                        Firing on every change past 40 characters read a HALF-TYPED
@@ -9356,7 +9447,7 @@ export default function HostShellV2() {
                                       const v = e.target.value;
                                       clearTimeout(lodgePasteTimer.current);
                                       if (v.trim().length < 20) return;
-                                      lodgePasteTimer.current = setTimeout(() => readPage(v), 800);
+                                      lodgePasteTimer.current = setTimeout(() => readPage(v, 'typed'), 800);
                                     }} />
                                   <p className="grounding" style={{ margin: '4px 0 0' }}>
                                     One link or twenty — on your phone, tap Share → Copy Link and paste it here. I’ll look up the name, the beds and a photo.
@@ -9435,25 +9526,9 @@ export default function HostShellV2() {
                                         // right: the reader is `totalPrice`, and nothing reads `total`.
                                         // Numbers stay numbers; a bed count is NOT a sleeps count, so
                                         // `beds` is written as `beds` and sleeps is left for the host.
-                                        const add = staged.ranked.filter((c) => staged.pick.has(c.url)).map((c) => ({
-                                          id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-                                          url: c.url,
-                                          label: c.name || '',
-                                          beds: c.beds != null ? c.beds : undefined,
-                                          totalPrice: c.priceShown != null ? c.priceShown : undefined,
-                                          photoUrl: c.photo || undefined,
-                                          notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-                                            c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
-                                          status: 'option',
-                                        }));
-                                        const before = event.lodgingOptions || [];
-                                        patchEvent({ lodgingOptions: [...before, ...add] }, null);
+                                        const chosen = staged.ranked.filter((c) => staged.pick.has(c.url));
                                         setLodgeStaged(null);
-                                        // REVERSIBILITY IS CHEAPER THAN CONFIRMATION, and the
-                                        // toast signature already took an action — we were
-                                        // passing null. Undoing meant scrolling and hunting.
-                                        toast(`Added ${add.length} to your shortlist.`,
-                                          { label: 'Undo', fn: () => patchEvent({ lodgingOptions: before }, null) }, 'ok');
+                                        commitLodging(chosen);
                                       }}>
                                       Add {staged.pick.size} to the shortlist
                                     </button>

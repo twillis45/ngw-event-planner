@@ -216,8 +216,29 @@ describe('bulk-added options use the shape the engine reads', () => {
   const path = require('path');
   const SHELL = fs.readFileSync(
     path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
-  const block = SHELL.slice(SHELL.indexOf('staged.ranked.filter((c) => staged.pick.has(c.url))'));
+  // Retargeted 2026-07-29: the row-building used to live inline in the confirm
+  // button, and this gate sliced from that button. B2 (single-link auto-add)
+  // gave the confirm path and the auto path ONE shared committer, so the shape
+  // now lives in commitLodging — and the gate follows the shape, not the site.
+  // Sharing it is also the stronger guarantee: there is exactly one place a
+  // wrong key could be introduced, and this asserts that.
+  const block = SHELL.slice(SHELL.indexOf('const commitLodging = (cands, msg) =>'));
   const add = block.slice(0, block.indexOf('}));') + 4);
+
+  test('every builder of a shortlist row writes the engine’s key', () => {
+    // ONE committer for everything EXTRACTED (paste, clipboard, bookmarklet and
+    // the B2 single-link auto-add all share commitLodging), so a wrong key has
+    // exactly one place to enter that path.
+    expect((SHELL.match(/const commitLodging = /g) || []).length).toBe(1);
+    // The manual form is a SECOND, legitimate builder — the host types the
+    // numbers herself rather than us extracting them — so it is exempt from
+    // sharing the committer but NOT from the schema. It was the original scar's
+    // neighbour; assert it too rather than assuming.
+    const builders = SHELL.match(/status: 'option',/g) || [];
+    expect(builders.length).toBe(2);
+    expect(SHELL).toMatch(/totalPrice: rf\.total\.trim\(\) \? Number\(rf\.total\) : undefined/);
+    expect(SHELL).not.toMatch(/\btotal: rf\.total/);
+  });
 
   test('it writes totalPrice, not the form field name', () => {
     expect(add).toMatch(/totalPrice:/);
