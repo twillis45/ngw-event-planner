@@ -139,6 +139,7 @@ import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { checklistRouteFor } from '@app/lib/taskRoute';
+import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -3406,6 +3407,11 @@ export default function HostShellV2() {
   // The 5 readiness signals — Basics (foundations) + the four pillars the
   // production readiness engine computes: decisions, people, checklist, paperwork.
   const readiness = useMemo(() => { try { return applicableReadinessAxes(event); } catch { return null; } }, [event]);
+  // The "Make it yours" examples, keyed to THIS event's type — see the note at
+  // their render site and lib/heartPrompts. Examples only; never written.
+  const heartPh = useMemo(() => {
+    try { return heartPlaceholders(event.type || event.label); } catch { return heartPlaceholders(''); }
+  }, [event.type, event.label]);
   const wins = useMemo(() => { try { return positiveAttention(event, readiness) || { items: [] }; } catch { return { items: [] }; } }, [event, readiness]);
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
@@ -6086,7 +6092,23 @@ export default function HostShellV2() {
                 // the honest-but-wrong "in the full app" chip and refused to move —
                 // the tag exists to warn about surfaces hostv2 genuinely lacks, and
                 // this one it has. Found by driving the host's own report.
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks', 'Travel'].includes(a.route.tab));
+                // ── DERIVED, NOT MIRRORED (host "fix dead Assign it", 2026-07-29) ──
+                // This was a hand-kept TAB LIST, and it drifted twice. Travel was the
+                // first (fixed 2026-07-28). The second: "Assign it" routes to
+                // tab:'Event Details' + focusField:'space' — which resolveRoute has
+                // ALWAYS handled (the /^space/ branch, which deliberately wins before
+                // the Event-Details catch) — but the list only knew tab names, so the
+                // hero wore "in the full app" and refused to move. A host was looking
+                // at a CTA that named a real act and did nothing.
+                // A list that mirrors the resolver can always fall behind it, which is
+                // the precise bug-factory lib/routeResolver was written to kill. So ASK
+                // THE RESOLVER: if it can land the route, the CTA lands. 'Communication'
+                // still resolves to null, so its honest tag survives — the tag now means
+                // exactly what it says (hostv2 has no surface for this) instead of
+                // meaning "nobody added this tab to a list yet".
+                const lands = wired || (() => {
+                  try { return !!resolveRoute(a.route); } catch (_e) { return false; }
+                })();
                 // REBALANCE (dedup): the hero panel — the ask above owns the VERB;
                 // the panel names the NOUN (record) only when it adds information.
                 const isHero = askMode && i === 0;
@@ -10891,12 +10913,20 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
+                {/* EXAMPLES THAT BELONG TO THIS EVENT (click-through audit 2026-07-28):
+                    these five shipped hardcoded to a retirement for "Margaret — my mom".
+                    Driven live on a WEDDING, that is what the host was asked to fill in —
+                    someone else's mother, on the surface that asks what the day is really
+                    about. A repast was prompted "warm, loud, unhurried". heartPlaceholders
+                    keys them off the event's own type; unknown types get a deliberately
+                    unspecific set rather than a stranger's life. Still EXAMPLES — nothing
+                    here is ever written to the event. */}
                 {[
-                  ['honoree', 'Who is it for?', 'Margaret — my mom', false],
-                  ['honoree_story', 'Their story, in a line or two', '32 years at the library; she taught half the county to read', true],
-                  ['meaning_why', 'Why this matters', 'She never lets anyone celebrate her — this time we are', false],
-                  ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
-                  ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
+                  ['honoree', 'Who is it for?', heartPh.honoree, false],
+                  ['honoree_story', 'Their story, in a line or two', heartPh.honoree_story, true],
+                  ['meaning_why', 'Why this matters', heartPh.meaning_why, false],
+                  ['feeling_words', 'How the day should feel', heartPh.feeling_words, false],
+                  ['must_have_moment', 'The one moment that must happen', heartPh.must_have_moment, false],
                   ['hostName', 'Who is the invitation from?', 'Todd — or “Todd & Sarah”', false],
                   ['deckLine', 'The line under your event’s name on the invite', 'Good food, good people', false],
                 ].map(([key, label, ph, multi]) => (
@@ -10964,11 +10994,22 @@ export default function HostShellV2() {
                   // Money-Safe Date Chain: in elegant mode this Sections row is the
                   // travel wayfinding, so a closing money deadline surfaces HERE —
                   // the one fact that can cost real dollars this week leads the sub.
-                  ...(travel && travel.relevant ? [(() => {
+                  // ── A SHORTLIST MUST HAVE A DOOR (click-through audit 2026-07-28) ──
+                  // This row was gated on travel.relevant ALONE. But a host can build a
+                  // rental shortlist — or pick a house — on an event the travel engine
+                  // doesn't consider a travel event, and then the only way back to those
+                  // houses is the one row on the ask board that raised them. Given the
+                  // pick now moves real money into `committed` (see the outlet wire), a
+                  // surface holding thousands of dollars cannot be reachable by one
+                  // transient row. Her own saved houses always get a door.
+                  ...((travel && travel.relevant) || (event.lodgingOptions || []).length > 0 || event.lodging ? [(() => {
                     const md = moneyDatesFor(event);
                     const due = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
+                    const shortlist = (event.lodgingOptions || []).length;
                     return { k: 'lodging', label: 'Travel & where everyone stays',
-                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days') : 'Lodging, rides, arrivals' };
+                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days')
+                        : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
+                        : 'Lodging, rides, arrivals' };
                   })()] : []),
                   ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
                   ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
@@ -13081,7 +13122,16 @@ export default function HostShellV2() {
                   {/* Port of Figma 416:60 — hero composes the parity kit
                       (Eyebrow → BigValue → Newsreader GuideLine), same as the
                       food/budget heroes. Anti-drift; see parity/MANIFEST. */}
-                  <Eyebrow>Ready for the day</Eyebrow>
+                  {/* THE NUMBER COUNTS BOOKED, SO THE LABEL SAYS BOOKED (click-through
+                      audit 2026-07-28). This read "Ready for the day" over rc.ready — the
+                      rollup's BOOKED bar — while the guide line right under it admitted
+                      "All booked — 4 still to confirm." A host reading 9 of 9 under
+                      "Ready" believes their vendors are handled; four of them have not
+                      confirmed. Same host words the other heroes use for a running
+                      count: "Bought so far", "Seated so far". The green only lands when
+                      CONFIRMED === total (below), so the colour was already honest —
+                      it was the label that overreached. */}
+                  <Eyebrow>Booked so far</Eyebrow>
                   <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? { color: 'var(--ok)' } : null) }}>
                     {rc.ready} of {rc.total}
                   </BigValue>
@@ -13672,7 +13722,24 @@ export default function HostShellV2() {
               // the After tab's identical summary) routes every allocation row
               // to the surface that prices it — the spread (food/supplies),
               // the space list, the crab order.
-              const hostRows = hostRowsGo();
+              // ── "WHERE IT'S GOING" HAD TO ACCOUNT FOR THE MONEY (click-through
+              // audit 2026-07-28). hostSpendRows() prices what the PLAN prices —
+              // food, supplies, capacity, crab. But `committed` is that PLUS
+              // vendorOwed PLUS lodgingCommitted (see lib/hostSpending ~188), and
+              // neither had a row. Live on the wedding that read: "Over by $32,639"
+              // above a breakdown listing ~$2,469 of $87,639 — the section that
+              // promises where it's going was silent about 97% of it, and about the
+              // whole reason the host is over.
+              // These are NOT invented category rows: both are components the money
+              // engine already returns, and each routes to the surface that owns it.
+              const hostRows = (() => {
+                const rows = hostRowsGo();
+                const owed = Math.round(money.vendorOwed || 0);
+                const stays = Math.round(money.lodgingCommitted || 0);
+                if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
+                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => setSheet({ kind: 'lodging', focus: null }) });
+                return rows;
+              })();
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.

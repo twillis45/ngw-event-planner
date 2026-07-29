@@ -2532,7 +2532,15 @@ export function playbookDecisionBoard(event, asOf, profile) {
       const od = Math.abs(daysOut);
       if (wasReachable) {
         status = 'overdue';
-        because = `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+        // SAY IT IN A HUMAN UNIT (click-through audit 2026-07-28). A raw day
+        // count is right and readable at a few weeks; at 291 it reads as broken
+        // data, especially sitting on an event that is still MONTHS away. The
+        // fact is unchanged — a long-lead decision (book the venue, set the
+        // budget) genuinely has a window that closed long ago — so we keep it
+        // and change the unit, rather than hiding the number or capping it.
+        because = od >= 60
+          ? `Its easy window closed about ${Math.round(od / 30)} months ago.`
+          : `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
       } else {
         // never in the easy window — surface as an open, do-this-first item,
         // NOT a blameworthy "overdue" that inflates the "N past their easy

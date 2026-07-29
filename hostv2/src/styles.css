@@ -2115,7 +2115,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   display:flex; align-items:center; justify-content:center;
   font-size:16px/*monogram glyph*/; font-weight:800; letter-spacing:-.02em}
 .vc-id{min-width:0; flex:1}
-.vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
+   white-space:nowrap + ellipsis, so on a phone — where the status pill and the
+   money take the right of the card — real names clipped mid-word: "Oxon Hill
+   Manor (…", "Heritage Table …". Two vendors from the same caterer become the
+   same string. Now it WRAPS to at most two lines: the host reads who it is, and
+   the card still can't be run away with by a long name. */
+.vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em;
+  white-space:normal; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .vc-cat{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
 .vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
   padding:var(--sp-1) 10px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band)}

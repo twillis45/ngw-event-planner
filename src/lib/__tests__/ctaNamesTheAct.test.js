@@ -306,3 +306,33 @@ describe('the then-in-order rows only promise what they deliver', () => {
     expect(dead).toEqual([]);
   });
 });
+
+// ─── THE "in the full app" CHIP MUST BE DERIVED, NOT MIRRORED ────────────────
+// The hero's `lands` check was a hand-kept TAB LIST and it drifted twice: Travel
+// (fixed 2026-07-28) and then "Assign it" → tab:'Event Details' + focusField:
+// 'space', which resolveRoute has always landed on the space sheet. The host saw
+// a CTA naming a real act that refused to move. A mirror of the resolver can
+// always fall behind it — the exact bug-factory lib/routeResolver was built to
+// kill — so `lands` now ASKS the resolver.
+describe('the unwired chip tells the truth', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const shell = fs.readFileSync(
+    path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('lands is derived from resolveRoute, not a tab allowlist', () => {
+    expect(shell).toMatch(/const lands = wired \|\| \(\(\) => \{[\s\S]{0,240}?resolveRoute\(a\.route\)/);
+    // The old mirror must be gone — if it comes back it will drift again.
+    expect(shell).not.toMatch(/const lands = wired \|\| \(a\.route && \[/);
+  });
+
+  test("the routes that shipped dead now resolve", () => {
+    const { resolveRoute } = require('../routeResolver');
+    // "Assign it" (taskRoute) — the one the host reported.
+    expect(resolveRoute({ tab: 'Event Details', focusField: 'space' })).toBeTruthy();
+    // Travel — the previous drift, kept as a regression guard.
+    expect(resolveRoute({ tab: 'Travel' })).toBeTruthy();
+    // …and the deliberately-unroutable one still is, so the chip stays honest.
+    expect(resolveRoute({ tab: 'Communication' })).toBeNull();
+  });
+});
