@@ -26,6 +26,7 @@ import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '
 import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
+import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -308,77 +309,6 @@ function isSolemnEvent(event) {
   catch { return false; }
 }
 
-// REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
-// action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
-// panel beneath carries the specifics. Raw queue titles are card copy and can
-// be proper nouns ("Confirm Semper Catering Co") — never display material.
-const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
-function heroAskFor(a, event) {
-  try {
-    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
-    const d = String((a && a.domain) || '').toLowerCase();
-    if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
-    if (d === 'food' || /serving|menu|food/i.test(t)) return 'Decide the menu.';
-    if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
-    if (/start time/i.test(t)) return 'Confirm the start time.';
-    if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
-    if (/location|venue|where/i.test(t)) return 'Add the location.';
-    if (/conflict/i.test(t)) return 'Untangle your vendors.';
-    const am = t.match(/^ask\s+.+?\s+about\s+(.{3,24})$/i);
-    if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
-    if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
-    if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
-    const vm = t.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
-    if (vm) {
-      const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
-      const rest = vm[2].toLowerCase();
-      const v = ((event && event.vendors) || []).find(x => x && x.name && rest.includes(String(x.name).toLowerCase().slice(0, 6)));
-      const catKey = v ? String(v.category || v.type || '').toLowerCase() : '';
-      const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
-      return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
-    }
-    // A food-line buy ("Fried or baked chicken & baked ham — 28.5 lbs in 2 days")
-    // carries an item title, never an instruction — the fallback rendered the dead
-    // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
-    // the real job in plain words.
-    if (a && a.route && a.route.foodFocus) return 'Get the food.';
-    // ── OPEN: A 26-CHARACTER CUTOFF DECIDES WHETHER THE HOST SEES THE ASK ──
-    // Frames 25/26 audit, driven 2026-07-29 on the retirement party. Its open
-    // decision is authored as a question — retirementParty.js venue:
-    // "At home, a restaurant, or the workplace?" (40 chars) — and the host got
-    // the placeholder "Your next step." with the options as a card label under
-    // it. Game Night's "What kind of games?" (20 chars) IS promoted to the hero.
-    // Same kind of item, opposite treatment, decided by string length alone.
-    //
-    // Two things block the obvious fix, both confirmed by driving it:
-    //  1. `a.title` reaches here with the question mark already gone —
-    //     decisionShortLabel (playbooks/index ~1990) strips it deliberately,
-    //     correctly, for the SHORT CARD form. So a /\?$/ test never fires.
-    //  2. Adding `ask: d.label` to playbooks' `open.push` (~2602) did NOT reach
-    //     this item — this queue entry is built by some other path, so the
-    //     authored question never arrives. Both attempts were reverted rather
-    //     than left in as a producer with no consumer.
-    // The fix needs that path identified first, then the AUTHORED question
-    // carried through as its own field. It must not be re-derived from the
-    // short label, and the cutoff must not be widened blindly — a long
-    // declarative title genuinely does not read as a hero; a question does.
-    return t.length <= 26 ? t + '.' : 'Your next step.';
-  } catch { return 'Your next step.'; }
-}
-// The record the panel names — only when it adds info beyond the ask (dedup:
-// the ask owns the VERB, the panel owns the NOUN).
-function heroRecord(a, ask) {
-  try {
-    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
-    // Strip the leading verb AND the surrounding quotes: a decision-board "call" arrives
-    // titled Resolve "the label", and dropping only the verb left the bare "quoted" name
-    // showing in the hero (host "why is this in quotes" 2026-07-18).
-    const record = t.replace(/^(confirm|book|call|pay|chase|set|plan|add|decide|pick|reconfirm|nudge|ask|fix|buy|resolve|settle)\s+/i, '').replace(/^["“”"']+|["“”"']+$/g, '').trim();
-    const askTok = new Set(String(ask || '').toLowerCase().replace(/[^a-z\s’']/g, '').split(/\s+/));
-    const adds = record.split(/\s+/).some(w => w.length > 2 && !askTok.has(w.toLowerCase()));
-    return adds ? record.charAt(0).toUpperCase() + record.slice(1) : null;
-  } catch { return null; }
-}
 // Path whisper labels for the panel's horizon footer.
 function horizonLabel(a) {
   const d = String((a && a.domain) || '').toLowerCase();
@@ -2354,6 +2284,40 @@ export default function HostShellV2() {
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
   // past, no date) the countdown keeps the display — the date IS the story then.
   const askMode = days !== null && days >= 0 && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
+  // ── THE ONE ASK STRING (board ruling C, 2026-07-30) ──
+  // The loud line is the FIRST real ITEM, not the generic bundle verb — the per-item
+  // intelligence surfacing where the host looks first. Conflicts → the clash; decisions
+  // (bundle OR a lone card) → the actual call to make, framed as a question (parenthetical
+  // meta + quotes stripped).
+  //
+  // WHY THIS IS HOISTED, not inlined in the <h2>: three surfaces spoke the ask and only one
+  // of them computed it. The <h2> ran this ladder; the card-title dedup and the browser tab
+  // both called heroAskFor() directly — which has NO decision branch. On Game Night the h2
+  // said "Who provides the food?" while the dedup compared against "Decide the menu."
+  // ({decide,the,menu} vs record `who provides the food` → adds → the title rendered → the
+  // host read the same ask TWICE). Reunion's record ("indoor or outdoor") happened to overlap
+  // its heroAskFor output → suppressed → once. Same component, opposite result, decided by a
+  // coincidence of vocabulary. Every consumer now reads THE STRING THAT IS ON SCREEN, so the
+  // dedup is structural instead of textual.
+  const heroAskText = (askMode && queue[0]) ? (() => {
+    // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
+    // its own card below (is-dayof unhides the h3).
+    if (elegantMode && days === 0) return 'It’s today.';
+    const q0 = queue[0];
+    // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
+    // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
+    if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
+    if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
+    // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
+    if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+    if (elegantMode) {
+      const decRow = /^decision:/.test(String(q0.id || ''))
+        ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
+        : (/decision/i.test(String(q0.title || '')) ? callsOrdered[0] : null);
+      if (decRow) return String(decRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
+    }
+    return heroAskFor(q0, event);
+  })() : null;
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
   // bar fades in as the echo. (The dock already auto-hides on scroll — the two
@@ -2407,12 +2371,12 @@ export default function HostShellV2() {
   useEffect(() => {
     try {
       const base = 'Event Boss';
-      if (stage === 'plan' && askMode && queue[0]) document.title = heroAskFor(queue[0], event) + ' — ' + base;
+      if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
       else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
       else document.title = base;
     } catch { /* title is cosmetic */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, askMode, listIsCalm, queue.length && queue[0] && queue[0].id, event.id]);
+  }, [stage, askMode, listIsCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id]);
   useEffect(() => {
     try {
       const crit = queue.filter(a => a && a.level === 'critical').length;
@@ -5597,31 +5561,9 @@ export default function HostShellV2() {
                 const dateLong = event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
                 if (askMode) {
                   return (<>
-                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{
-                      /* The loud line is the FIRST real ITEM, not the generic bundle verb —
-                         the per-item intelligence surfacing where the host looks first.
-                         Conflicts → the clash; decisions (bundle OR a lone card) → the actual
-                         call to make, framed as a question (parenthetical meta + quotes stripped). */
-                      (() => {
-                        // Day-of (T2 ruling): the loud line is the DAY, not the item — the
-                        // item speaks from its own card below (is-dayof unhides the h3).
-                        if (elegantMode && days === 0) return 'It\u2019s today.';
-                        const q0 = queue[0];
-                        // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its
-                        // own ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
-                        if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
-                        if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
-                        // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-                        if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
-                        if (elegantMode) {
-                          const decRow = /^decision:/.test(String(q0.id || ''))
-                            ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
-                            : (/decision/i.test(String(q0.title || '')) ? callsOrdered[0] : null);
-                          if (decRow) return String(decRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
-                        }
-                        return heroAskFor(q0, event);
-                      })()
-                    }</h2>
+                    {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
+                        dedup and the browser tab speak exactly what is rendered here. */}
+                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{heroAskText}</h2>
                     <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>
                     {!statusOnTrack && statusNode}
                   </>);
@@ -6154,8 +6096,11 @@ export default function HostShellV2() {
                 // REBALANCE (dedup): the hero panel — the ask above owns the VERB;
                 // the panel names the NOUN (record) only when it adds information.
                 const isHero = askMode && i === 0;
-                const heroAsk0 = isHero ? heroAskFor(a, event) : null;
-                const rec = isHero ? heroRecord(a, heroAsk0) : null;
+                // Dedup against THE ASK THAT IS ACTUALLY ON SCREEN (heroAskText), never a
+                // second, independently-derived guess at it. Calling heroAskFor() here is the
+                // exact bug ruling C fixed: it has no decision branch, so it disagreed with the
+                // rendered h2 and the title double-spoke the ask on some events, not others.
+                const rec = isHero ? heroRecord(a, heroAskText) : null;
                 // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
                 // 2026-07-18): once decisions thin out they stop bundling and a lone one
                 // becomes its own hero card — which used to route ("Take me to it"). Resolve
@@ -6191,11 +6136,14 @@ export default function HostShellV2() {
                 // repeats it. Suppress the subhead here so the hero reads like Figma 344:61's
                 // single-explanation card (host 2026-07-19). Hero only — below-fold unaffected.
                 const heroBudgetAsk = isHero && (String(a.domain || '').toLowerCase() === 'budget' || /^set your budget/i.test(String(a.title || '').trim()));
-                // Food/menu decision (editor path): the decopt rows below carry per-option notes +
-                // our-pick, so the generic "N of M already handled" consequence AND the redundant
-                // "What you're serving · N open" record both just compete. Suppress them so the ask
-                // reads like Figma 369:60 (title → rows). Hero only (2026-07-20).
-                const heroDecisionAsk = isHero && (String(a.domain || '').toLowerCase() === 'food' || /serving|decide the menu|the menu\b|the spread/i.test(String(a.title || '')));
+                // NOTE (ruling C, 2026-07-30): the old `heroDecisionAsk` title-prose regex
+                // (/serving|decide the menu|the menu\b|the spread/) is GONE. It existed to
+                // suppress a redundant record + consequence on a food/menu decision, and it was
+                // the same failure mode already documented for COI above — classification rides
+                // the ACTION, not the title. The record is now deduped structurally against
+                // heroAskText, and `decHeroActions` is the honest signal for "the option rows
+                // below carry the meaning" (Figma 369:60, title → rows). Where there are no
+                // rows, the consequence IS the only explanation and correctly renders.
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
                     style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
@@ -6206,13 +6154,13 @@ export default function HostShellV2() {
                         {!lands && !coiHero && !coiTaskDone && !decHeroActions && <span className="tag plan">in the full app</span>}
                         {!coiHero && !coiTaskDone && dueChip(a)}
                       </div>
-                      {isHero ? ((rec && !coiHero && !coiTaskDone && !heroDecisionAsk) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
+                      {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
                       {coiTaskDone
                         ? <p className="because">Every vendor's proof is on file — you're clear here.</p>
                         /* When the hero renders a decision (decopt), suppress the action's own
                            consequence line — otherwise vendor-status copy ("Currently quoted…")
                            bleeds onto a menu decision. The decision's options carry the meaning. */
-                        : (!decHeroActions && !heroBudgetAsk && !heroDecisionAsk && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
+                        : (!decHeroActions && !heroBudgetAsk && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
                       {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
                           been for a while, and it never once said WHY — the host was handed a
                           ranking and asked to trust it. Every line below is true of the item's
