@@ -177,3 +177,49 @@ describe('ruling C — the ask has ONE derivation (structural: the shell itself)
     expect(src).not.toMatch(/heroDecisionAsk/);
   });
 });
+
+// ─── AN AUTHORED ASK BEATS PROSE CLASSIFICATION ──────────────────────────────
+//
+// Host-reported 2026-07-30, driven: the hero read "Add who's coming." above
+// "2 confirmed guests still need seats / 0 of 2 confirmed guests are seated",
+// and offered a headcount stepper. The guests were already added and confirmed —
+// the stepper could not act on the thing being raised.
+//
+// ROOT CAUSE, same family as ruling C: heroAskFor classifies by domain and title
+// PROSE, and surfaceRegistry's `seating` surface declares domain 'guests' because
+// seating is guest work. Its title contains "guests", so the guests branch matched
+// and named the wrong job. A surface's domain is not always its job.
+//
+// THE RULE: a surface that knows its own job may author `ask`, and that always wins.
+describe('an authored ask wins over domain/title classification', () => {
+  it('the seating raise names seating, not adding guests', () => {
+    const seatingRaise = {
+      title: '2 confirmed guests still need seats',
+      domain: 'guests',              // the exact collision — domain is not the job
+      ask: 'Seat your guests.',
+    };
+    expect(heroAskFor(seatingRaise, {})).toBe('Seat your guests.');
+  });
+
+  it('WITHOUT the authored ask it still misfires — proving the ask is what fixes it', () => {
+    const { ask, ...noAsk } = {
+      title: '2 confirmed guests still need seats',
+      domain: 'guests',
+      ask: 'Seat your guests.',
+    };
+    // This is the bug as the host saw it. Kept as a live demonstration so nobody
+    // "simplifies" the authored-ask branch away believing the ladder handles it.
+    expect(heroAskFor(noAsk, {})).toBe('Add who’s coming.');
+  });
+
+  it('classification still runs for every raise that authors nothing', () => {
+    expect(heroAskFor({ title: 'Set the budget', domain: 'budget' }, {})).toBe('Set your budget.');
+    expect(heroAskFor({ title: 'Pick the day', domain: 'date' }, {})).toBe('Pick the day.');
+  });
+
+  it('the seating surface actually carries the ask', () => {
+    const reg = fs.readFileSync(path.join(__dirname, '..', 'surfaceRegistry.js'), 'utf8');
+    const block = reg.slice(reg.indexOf("id: 'seating'"), reg.indexOf("id: 'seating'") + 2200);
+    expect(block).toMatch(/ask: 'Seat your guests\.'/);
+  });
+});

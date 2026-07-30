@@ -305,6 +305,14 @@ export const SURFACES = [
         severity: 'attention',
         title: n === 1 ? '1 confirmed guest still needs a seat' : `${n} confirmed guests still need seats`,
         why: `${plan.totals.seated} of ${plan.totals.confirmed} confirmed guests are seated`,
+        // THIS SURFACE'S DOMAIN IS NOT ITS JOB (host report, 2026-07-30). `domain` is
+        // 'guests' because seating is guest work, but the JOB is seating, and
+        // heroAskFor's guests branch matched the title's "guests" and asked
+        // "Add who's coming." — so a host whose guests were already confirmed got a
+        // headcount stepper that could not touch the thing being raised. The ask is
+        // authored here, where the job is actually known, and heroAskFor prefers it
+        // over its own prose classification.
+        ask: 'Seat your guests.',
         // The route still lands ON the first unassigned guest's row (row-level or not
         // at all) — but that guest is NOT this raise's identity.
         route: { tab: 'Seating', guestId: first.id },

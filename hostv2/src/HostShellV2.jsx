@@ -8342,7 +8342,16 @@ export default function HostShellV2() {
                             <div key={ph.id} style={{ flex: 1, height: 3, borderRadius: 2, overflow: 'hidden',
                               background: 'var(--carbon-line)' }}>
                               <div style={{ height: '100%', width: `${ph.total ? Math.round((ph.done / ph.total) * 100) : 0}%`,
-                                background: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--steel-soft)',
+                                /* 'now' is IN PROGRESS, not a warning. --warn means "needs
+                                   attention / approaching / incomplete" (UX_02), so painting
+                                   the phase the host is currently standing in amber tells them
+                                   something is wrong at the exact moment they are simply doing
+                                   the thing. --progress exists for precisely this tier — its
+                                   own comment in theme.js says it carries ONLY in-progress,
+                                   added so steel could stop doing triple duty. It had never
+                                   been used from the shell. Same trap the competitive read
+                                   flagged in Blink, which tints its current row amber. */
+                                background: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--progress)' : 'var(--steel-soft)',
                                 transition: 'width 260ms var(--ease-out)' }} />
                             </div>
                           ))}

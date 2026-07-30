@@ -15,6 +15,18 @@
 const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
 export function heroAskFor(a, event) {
   try {
+    // AN AUTHORED ASK ALWAYS WINS (2026-07-30). Everything below classifies an item
+    // by its domain and its title prose, which is exactly the mechanism ruling C had
+    // to unpick elsewhere — and it misfires whenever a surface's DOMAIN is not its
+    // JOB. Live case: surfaceRegistry's `seating` surface declares domain 'guests',
+    // so "2 confirmed guests still need seats" fell into the guests branch below and
+    // the hero asked "Add who's coming." The guests were already added and confirmed;
+    // they needed seats. The host got a headcount stepper that could not act on the
+    // thing being raised, which is what a false ask always produces.
+    // A surface that knows its own job can now say so (`ask` on the raise) and this
+    // reads it first. Structural, and it generalises: any future surface whose domain
+    // and job differ authors one line instead of teaching this ladder a new regex.
+    if (a && a.ask) return String(a.ask);
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
