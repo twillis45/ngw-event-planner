@@ -105,7 +105,11 @@ body{font-family:var(--sans); color:var(--ink); background:var(--bg-band); -webk
 button{font-family:inherit}
 :focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:var(--r-sm)}
 
-.stagewrap{position:relative; margin:0 auto}
+/* background-color here is what lets .app.has-nextbar SHRINK (see :2312) without
+   opening a seam: the strip .app vacates for the next-bar paints the same ground.
+   Safe on every stage — .app is height:100% everywhere else and paints over this,
+   and the bar (hence the shrink) only ever exists on the plan stage. */
+.stagewrap{position:relative; margin:0 auto; background-color:var(--bg)}
 .app{
   /* overflow-x:clip mirrors the .sheet guard for the MAIN surfaces (Command
      Center, The Day, After, create/welcome) — a scroller with overflow-y:auto
@@ -2300,16 +2304,35 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    Reserving the space is the right fix rather than hiding the bar — the bar is
    deliberately persistent (host request 2026-07-16), so the CONTENT gives way,
    not the affordance. Height = 15+15 padding + ~20 line + the 16px offset.
-   (.escreen is display:contents when inactive, so the padding belongs on the
-   SCROLL CONTAINER — .app — where it simply adds scrollable room at the end.)
-   FIXED 2026-07-30: a stray comment-terminator used to sit at the end of the
-   "16px offset." line above, closing this comment early. The two lines that
-   followed then parsed as part of a SELECTOR, so the parser swallowed the
-   .app.has-nextbar rule below entirely — proven in isolation: the broken form
-   parsed to [".next-bar:hover"] alone, the fixed form to both rules. This
-   audit's own fix had therefore never shipped. Do not write a comment
-   terminator inside this comment; that is precisely how it broke. */
-.app.has-nextbar{ padding-bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
+
+   ── CORRECTION 2026-07-30, and the note above OVERSTATED the fix ──
+   padding-bottom reserved the space at the END OF THE CONTENT, but .next-bar is
+   position:absolute against .stagewrap (.app is not positioned), so the bar is
+   pinned to the FRAME. The two only coincide at max scroll. Driven on the
+   elegant plan surface, bar band fixed at 767-832 while the frame bottom is 848:
+       scrollTop 0     -> under the bar: .ef-sect   (live)
+       scrollTop 510   -> under the bar: .bento     (live)
+       scrollTop 1019  -> under the bar: .app       (the reservation)
+   So content was occluded at EVERY position except the very bottom. The content
+   was not giving way; it was passing underneath.
+
+   THE FIX: shrink the SCROLLPORT instead of padding its content. .app is a
+   height:100% scroller, so trimming its height lifts the whole visible area
+   clear of the bar and nothing can be occluded at any scroll position. The
+   strip .app vacates is painted by .stagewrap's background-color (:108) so no
+   seam opens. A small padding-bottom stays purely for breathing room above the
+   scrollport edge — it is no longer load-bearing.
+
+   Earlier the same day: a stray comment-terminator sat at the end of the "16px
+   offset." line, closing this comment early; the following lines then parsed as
+   part of a SELECTOR and the parser swallowed the rule below entirely. Proven in
+   isolation — the broken form parsed to [".next-bar:hover"] alone, the fixed form
+   to both rules — so this audit's own fix had never shipped at all. Do not write
+   a comment terminator inside this comment; that is exactly how it broke. */
+.app.has-nextbar{
+  height:calc(100% - (84px + env(safe-area-inset-bottom,0px)));
+  padding-bottom:12px;
+}
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
 .next-bar .nb-label{font-size:var(--t-overline); font-weight:700; letter-spacing:var(--tracking-4); text-transform:uppercase; color:var(--carbon-text); opacity:.72}
