@@ -2569,7 +2569,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
 
     const deps = Array.isArray(d.dependsOn) ? d.dependsOn : [];
     const unmet = deps.filter((x) => !depMet(x));
-    let status; let because;
+    let status; let because; let assurance = null;
     if (daysOut !== null && daysOut < 0) {
       // OVERDUE-ON-CREATION FIX: a decision is only genuinely "past its easy
       // window" if it was ever REACHABLE — i.e. there was runway between when
@@ -2593,6 +2593,29 @@ export function playbookDecisionBoard(event, asOf, profile) {
         because = od >= 60
           ? `Its easy window closed about ${Math.round(od / 30)} months ago.`
           : `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+        // ── THE HERO SAYS WHAT IS TRUE FORWARD; THE SHEET KEEPS THE STATUS ──
+        // Board re-sit 2026-07-30. `because` above is a FILING line and stays that
+        // way in the Calls-to-make sheet, where a status column is legitimate. It
+        // must not be the hero's voice, for two reasons the board proved:
+        //  1. IT COLLIDES WITH THE COUNTDOWN. od = lead - daysToEvent, so it exceeds
+        //     the eyebrow whenever lead > 2x daysToEvent. At T-6d every authored lead
+        //     >= 14 collides -- ~71% of overdue-capable decisions. "6 DAYS" over
+        //     "Was due 54 days ago." reads as a date bug, not a caution.
+        //  2. IT IS INACCURATE AS WELL AS UNKIND. Nothing stalled. choicePickFor()
+        //     (~:505) returns `picks[id] || dec.default`, and the doctrine at ~:534
+        //     is explicit that those helpers "fall back to the playbook's authored
+        //     default so quantities/visibility render sensibly before any pick is
+        //     made". The plan HAS been running -- on our pick, not the host's.
+        // Says OUR pick, never "you chose": the same comment draws that line, so an
+        // unanswered decision never reads as though the host answered it.
+        // No number, so the eyebrow stays the one clock on the screen.
+        // NULL when there is no default to have been running on (a genuine either/or,
+        // ask-mode) -- the hero then prints nothing rather than a generic reassurance.
+        assurance = d.default
+          ? (d.reversibility === 'costly'
+            ? 'The plan’s been running on our pick — swapping it now costs more than it did.'
+            : 'Nothing’s stalled — the plan’s been running on our pick.')
+          : null;
       } else {
         // never in the easy window — surface as an open, do-this-first item,
         // NOT a blameworthy "overdue" that inflates the "N past their easy
@@ -2613,7 +2636,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, ...derived, route });
+    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is

@@ -5553,6 +5553,8 @@ export default function HostShellV2() {
                     statusNode = <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
                   } else {
                     const slips = [];
+                    // Hoisted out of the try below: the frame around the slips depends on it too.
+                    const heroSpeaksThisOverdue = !!(heroDecisionRow && heroDecisionRow.status === 'overdue');
                     try {
                       const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
                       // RULING B (2026-07-30, Rams' dissent sustained): when the hero IS the
@@ -5564,20 +5566,39 @@ export default function HostShellV2() {
                       // covers BOTH shapes — a lone decision hero and a decisions bundle whose
                       // first call is the one rendering. Other slips (time, spending) are
                       // untouched; only the clause that NAMES DECISIONS is suppressed.
-                      const heroSpeaksThisOverdue = !!(heroDecisionRow && heroDecisionRow.status === 'overdue');
                       if (od && !heroSpeaksThisOverdue) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
                     if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
                     if (slips.length) {
-                      statusNode = (
+                      // ── THE FRAME GOES, THE FACT STAYS (Grandmother, board re-sit 2026-07-30) ──
+                      // She read "Mostly on course — time got tight. Worth a look today." sitting
+                      // directly on the hero's own line and ruled that one of the two was lying.
+                      // Ruling B suppressed only the clause that NAMES DECISIONS, so this frame
+                      // survived and kept competing.
+                      // When the hero already carries its own assurance, this line must not
+                      // re-reassure: "Mostly on course" restates "Nothing's stalled", and
+                      // "Worth a look today." is the vague CTA 04 bans (the Review-status /
+                      // Check-details class). Both are dropped.
+                      // WHAT IS NOT DROPPED IS THE FACT. `compression.headline` renders in full
+                      // only at the non-elegant block (~:7380), and elegant is the DEFAULT — so
+                      // this fragment is the ONLY place an elegant host is told time got tight.
+                      // Suppressing the clause would delete the information, not the duplication.
+                      // So the slips stand alone as a plain statement, and the reassurance is left
+                      // to the one line that earned it.
+                      const slipText = slips.slice(0, 2).join(', and ');
+                      statusNode = heroSpeaksThisOverdue ? (
+                        <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
+                          {slipText.charAt(0).toUpperCase() + slipText.slice(1)}.
+                        </p>
+                      ) : (
                         // AMBER RESTRAINT (host 2026-07-18): a "mostly on course · worth a look"
                         // NUDGE is not a warning — painting the whole reassuring line amber
                         // over-signals and cries wolf. In elegant, keep it the calm serif guide
                         // voice (the WORDS carry the caution); amber stays reserved for the
                         // genuinely can't-wait (critical) verdict above. Non-elegant unchanged.
                         <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
-                          Mostly on course — {slips.slice(0, 2).join(', and ')}. Worth a look today.
+                          Mostly on course — {slipText}. Worth a look today.
                         </p>
                       );
                     } else if (listIsCalm) {
@@ -5975,7 +5996,10 @@ export default function HostShellV2() {
                                actions for attention (host 2026-07-18). */
                             <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
                               onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
-                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ›')}</span>
+                              {/* In-place toggle → disclosure triangle, never a routing glyph
+                                  (the rule ruling A enforced on decopt-disc; this control was
+                                  missed and shipped a false › the same day). */}
+                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ▸')}</span>
                             </button>
                           )}
                           {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
@@ -5997,7 +6021,19 @@ export default function HostShellV2() {
                       <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
-                          {dec.because && <p className="because">{dec.because}</p>}
+                          {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
+                              `because` is the FILING line ("Was due 54 days ago.") and stays
+                              in the Calls-to-make sheet, where a status column is legitimate.
+                              On the hero it collided with the eyebrow's countdown — "6 DAYS"
+                              over "54 days ago", the same unit measured from two different
+                              zeros — and it was inaccurate besides: nothing stalled, the plan
+                              has been running on the authored default all along. `assurance`
+                              (playbooks/index.js, next to `because`) says that, says OUR pick
+                              rather than implying the host chose, and carries no number so the
+                              eyebrow stays the one clock. It is NULL for a genuine either/or
+                              with no default — then this slot prints nothing rather than a
+                              generic reassurance. */}
+                          {dec.assurance && <p className="because">{dec.assurance}</p>}
                           {renderDecisionActions(dec) || (
                             <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
                               <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
@@ -6010,13 +6046,39 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
                             </div>
                           )}
-                          {(a.count != null ? a.count : kids.length) > 1 && (
-                            <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
-                              onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
-                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + (a.count != null ? a.count : kids.length) + '  ›')}</span>
-                            </button>
-                          )}
-                          {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
+                          {/* ── REPOINTED: AN EXPANDER BECAME THE DOOR (board re-sit 2026-07-30) ──
+                              Ruling A ordered this deleted. Both re-sits refused, for different
+                              reasons, and the event pros overrode on lived grounds: deleting it
+                              strips the only first-screen path to the OTHER overdue calls two
+                              days out (the .efold handle renders no rows, and "Then, in order"
+                              maps queue.slice(1) — this bundle IS queue[0], so its kids are
+                              structurally excluded from it).
+                              So it changes KIND instead of disappearing. It no longer expands the
+                              bundle in place; it opens the Calls-to-make sheet — the same target
+                              the app ALREADY uses for a decisions bundle everywhere else
+                              (openThen), and a far better surface: every call with its options,
+                              its visible grounded reasoning, and a one-tap accept.
+                              Three consequences, all deliberate:
+                               • it ROUTES, so it has earned its › (the in-place controls around
+                                 it now wear ▸ — one rule, applied everywhere).
+                               • it wears the sheet's OWN NAME. "See all N" and "Calls to make"
+                                 were one place with two vocabularies.
+                               • the count EXCLUDES the on-screen one. "See all 3" offered 3 where
+                                 only 2 were new — the count that made this indistinguishable from
+                                 the "Other ways" control beside it.
+                              Result: two controls, two shapes, two vocabularies — `Other ways ▸`
+                              (other answers to THIS question, in place) vs `Calls to make (N) ›`
+                              (every OTHER question, routes). */}
+                          {(() => {
+                            const others = (a.count != null ? a.count : kids.length) - 1;
+                            if (others < 1) return null;
+                            return (
+                              <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
+                                onClick={() => setSheet({ kind: 'decisions' })}>
+                                <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{'Calls to make (' + others + ')  ›'}</span>
+                              </button>
+                            );
+                          })()}
                         </div>
                       </article>
                     );
@@ -6359,7 +6421,10 @@ export default function HostShellV2() {
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
                   onClick={() => setQueueOpen(true)}>
                   <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
-                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
+                      route (board re-sit 2026-07-30 — the third survivor of the glyph
+                      rule ruling A enforced on decopt-disc only). */}
+                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>▸</span>
                 </button>
               )}
                 </>);
@@ -15132,11 +15197,28 @@ export default function HostShellV2() {
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
-              <span className="p-time">{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
+              {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).
+                  This cell used to collapse every clockless row to a bare '·', so an
+                  event whose ROS has no anchor printed a whole column of dots — the
+                  sheet knew "2h before" and refused to say it. playbooks/index.js is
+                  explicit that when `time` is null, "`rel` carries the knowledge we
+                  actually have". Print it. The p-rel class sets a lighter treatment so
+                  a known offset still reads as weaker than a known clock. */}
+              <span className={'p-time' + (r.time ? '' : ' p-rel')}>
+                {r.time ? fmt12h(r.time) : (r.rel || 'Not set')}
+              </span>
               <span>
                 {r.segment}
                 <span className="p-meta">
-                  {[r.location, r.owner && ('owner: ' + r.owner), r.vendorName, r.notes].filter(Boolean).map(x => ' · ' + x).join('')}
+                  {[
+                    r.location,
+                    // `owner: 'Host'` is the generator's hardcoded default on every
+                    // playbook row — printing it 15 times said nothing. A real
+                    // delegation (a helper's name) still prints.
+                    r.owner && r.owner !== 'Host' && ('owner: ' + r.owner),
+                    r.vendorName,
+                    r.notes,
+                  ].filter(Boolean).join(' · ')}
                 </span>
               </span>
             </div>
@@ -15181,10 +15263,17 @@ export default function HostShellV2() {
             return (
               <>
                 <div className="p-head">If something goes wrong</div>
+                {/* The gutter carries WHAT KIND OF TIME a row has, and now says so for
+                    every kind: a clock when we know one, a relative label when we only
+                    know the offset, "ongoing" for continuous duties, and "if" here —
+                    these rows aren't timed at all, they're conditional. The old bare '·'
+                    was a spacer pretending to be a time. The em-dash before the text is
+                    gone too: .p-meta prints on its own line now, so an inline separator
+                    just orphaned a dash at the start of it. */}
                 {ip.lines.map((l) => (
                   <div className="p-row" key={l.key}>
-                    <span className="p-time">·</span>
-                    <span><b>{l.label}</b><span className="p-meta"> — {l.text}</span></span>
+                    <span className="p-time p-rel p-when">if</span>
+                    <span><b>{l.label}</b><span className="p-meta">{l.text}</span></span>
                   </div>
                 ))}
               </>

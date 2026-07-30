@@ -80,10 +80,14 @@ describe('ruling A — one disclosure, and no glyph on a handler that does not r
   //   • the section chips offer Date & time / Venue / Guests / Food / Shopping / Rain
   //     plan / Budget — there is NO decisions door
   //   • expanding "the rest of your list · 6 more" did not surface them either
-  // So on that screen "See all 3 ›" is the ONLY path to 2 of 3 open decisions.
-  // Deleting it strips access. This test PINS the row in place so a future pass cannot
-  // delete it on the stale premise — remove this test only together with a real door.
-  it('the sibling-decisions disclosure REMAINS until a decisions door exists', () => {
+  // So on that screen "See all 3 ›" was the ONLY path to 2 of 3 open decisions, and
+  // deleting it would strip access.
+  //
+  // RESOLVED AT THE RE-SIT: it was not deleted and not left alone — it was REPOINTED at
+  // the Calls-to-make sheet (see the "repointed door" describe below). What this test
+  // still pins is the CONFLICT hero's expander, which has no such door yet and must not
+  // be deleted on the same stale premise.
+  it('the conflict hero keeps its in-place expander until it too has a door', () => {
     const laterRows = src.match(/setBundleOpen\(m => \(\{ \.\.\.m, \[key\]: !open \}\)\)/g) || [];
     expect(laterRows.length).toBeGreaterThanOrEqual(2); // decision hero + conflict hero
     expect(src).toMatch(/Fold them away/);
@@ -124,9 +128,162 @@ describe('ruling B — the overdue scold is said once, not twice', () => {
     expect(src).toMatch(/slips\.push\('spending is past your number'\)/);
   });
 
-  it('the specific instance is KEPT — the hero still prints the decision because-line', () => {
-    // "Was due 5 days ago." comes from dec.because on the decision hero. B cuts the
-    // generalisation ABOVE it, never this.
-    expect(src).toMatch(/dec\.because && <p className="because">\{dec\.because\}<\/p>/);
+  it('a specific instance is KEPT in the hero — B cut the generalisation, not the slot', () => {
+    // B cuts the vague clause ABOVE the specificity line, never the line itself. The
+    // STRING in that slot changed at the board re-sit (see the next describe): it is
+    // now `assurance`, not `because`. What B guarantees is that the slot still speaks.
+    expect(src).toMatch(/dec\.assurance && <p className="because">\{dec\.assurance\}<\/p>/);
+  });
+});
+
+// ─── BOARD RE-SIT (2026-07-30) — the disclosures and the overdue line ────────
+//
+// Both panels re-sat on the two halves left open. They converged on the diagnosis and
+// split on the remedy for the disclosures; the event pros overrode on lived grounds
+// (roster: they go second and may override where practice beats theory) and the host
+// took the override. Recorded here so the reasoning survives the next reader.
+describe('re-sit — one glyph rule, applied everywhere', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  // Ruling A enforced "render › ONLY when the handler routes" on ONE control
+  // (decopt-disc) and shipped three violations of the same rule on the same screen.
+  // The original gate was scoped to decopt-disc, so it could not catch them. This is
+  // the widened version: EVERY hero disclosure whose handler only sets state.
+  const IN_PLACE = [
+    { name: 'conflict-hero bundle expander', handler: 'setBundleOpen' },
+    { name: '"+ N more — show the rest"', handler: 'setQueueOpen(true)' },
+  ];
+
+  it.each(IN_PLACE)('$name toggles in place, so it wears ▸ and never ›', ({ handler }) => {
+    // Find each button that owns this handler and assert on its rendered label.
+    const buttons = src.match(/<button[\s\S]*?<\/button>/g) || [];
+    const owning = buttons.filter(b => b.includes(handler) && /later-row|decopt-disc/.test(b));
+    expect(owning.length).toBeGreaterThan(0);
+    for (const b of owning) {
+      expect(b).not.toContain('›');
+    }
+  });
+
+  it('the ONE control that routes keeps its › — the glyph means something again', () => {
+    // The repointed door opens the Calls-to-make sheet, so the chevron is earned.
+    const buttons = src.match(/<button[\s\S]*?<\/button>/g) || [];
+    const door = buttons.filter(b => b.includes("setSheet({ kind: 'decisions' })") && b.includes('Calls to make ('));
+    expect(door.length).toBe(1);
+    expect(door[0]).toContain('›');
+  });
+});
+
+describe('re-sit — the repointed door (ruling A, resolved by override)', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('the decision hero routes to the sheet instead of expanding in place', () => {
+    // A ordered this deleted; deleting strips the only first-screen path to the other
+    // overdue calls (.efold renders no rows; "Then, in order" maps queue.slice(1) and
+    // this bundle IS queue[0]). It changed KIND instead: expander -> door.
+    expect(src).toMatch(/const others = \(a\.count != null \? a\.count : kids\.length\) - 1;/);
+    expect(src).toMatch(/if \(others < 1\) return null;/);
+  });
+
+  it('it wears the SHEET\'S OWN NAME — one place, one vocabulary', () => {
+    expect(src).toMatch(/'Calls to make \(' \+ others \+ '/);
+    expect(src).not.toMatch(/'See all ' \+ \(a\.count != null \? a\.count : kids\.length\)/);
+  });
+
+  it('the count EXCLUDES the on-screen call — N new, not N total', () => {
+    // "See all 3" offered 3 where only 2 were new. That inflated count is what made it
+    // indistinguishable from the "Other ways" control beside it.
+    expect(src).toMatch(/kids\.length\) - 1/);
+  });
+});
+
+// ─── THE OVERDUE LINE — what the hero says vs what the sheet files ───────────
+//
+// "Was due 54 days ago." on an event SIX DAYS away. The arithmetic was correct
+// (od = lead - daysToEvent) and the string was still wrong, twice over:
+//   1. IT COLLIDED WITH THE COUNTDOWN. od exceeds the eyebrow whenever
+//      lead > 2x daysToEvent. At T-6d every authored lead >= 14 collides --
+//      ~71% of overdue-capable decisions. The majority case, not an edge.
+//   2. IT WAS INACCURATE. Nothing stalled: choicePickFor() returns
+//      `picks[id] || dec.default`, and the doctrine comment above it says those
+//      helpers "fall back to the playbook's authored default so quantities/
+//      visibility render sensibly before any pick is made".
+// So the hero speaks forward (`assurance`) and the sheet keeps the status
+// (`because`) -- a filing view legitimately carries one.
+const { playbookDecisionBoard } = require('../playbooks');
+
+describe('re-sit — the hero says what is true forward', () => {
+  const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+  const EVENTS = [
+    { id: 'as-re6', name: 'Family Reunion', type: 'family reunion', date: iso(6), guestMode: 'count', guestCount: 45, venueKind: 'venue', venue: 'Fort Smallwood Park', guests: [], vendors: [], timeline: [] },
+    { id: 'as-gn2', name: 'Game Night', type: 'game night', date: iso(2), guestMode: 'count', guestCount: 12, venueKind: 'home', venueCity: 'Atlanta', venueState: 'GA', guests: [], vendors: [], timeline: [] },
+    { id: 'as-ck5', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] },
+  ];
+  const overdueRows = EVENTS.flatMap(ev =>
+    (playbookDecisionBoard(ev).open || []).filter(r => r && r.status === 'overdue').map(r => ({ ev: ev.name, r })));
+
+  it('really has overdue decisions to police (never a vacuous pass)', () => {
+    expect(overdueRows.length).toBeGreaterThan(3);
+  });
+
+  it('the assurance NEVER carries a day-count — the eyebrow is the one clock', () => {
+    for (const { ev, r } of overdueRows) {
+      if (!r.assurance) continue;
+      expect(`${ev}: ${r.assurance}`).not.toMatch(/\d+\s*(day|days|month|months|week|weeks)/i);
+    }
+  });
+
+  it('the assurance never scolds — no "due", no deadline the host never set', () => {
+    for (const { ev, r } of overdueRows) {
+      if (!r.assurance) continue;
+      expect(`${ev}: ${r.assurance}`.toLowerCase()).not.toContain('due');
+      expect(`${ev}: ${r.assurance}`.toLowerCase()).not.toContain('overdue');
+      expect(`${ev}: ${r.assurance}`.toLowerCase()).not.toContain('late');
+    }
+  });
+
+  it('it is NULL without a default — no invented reassurance', () => {
+    // The claim "the plan's been running on our pick" is only true when there IS a
+    // pick to have been running on. A genuine either/or prints nothing instead.
+    for (const { r } of overdueRows) {
+      if (r.assurance) continue;
+      expect(r.assurance).toBeNull();
+    }
+    // And where it IS set, it must be the grounded claim, not a generic softener.
+    const set = overdueRows.filter(x => x.r.assurance);
+    expect(set.length).toBeGreaterThan(0);
+    for (const { r } of set) expect(r.assurance).toMatch(/running on our pick/);
+  });
+
+  it('the SHEET keeps the status line — because is untouched', () => {
+    // The filing view legitimately carries "Was due N days ago."; only the hero moved.
+    expect(overdueRows.some(x => /Was due|easy window closed/.test(x.r.because))).toBe(true);
+  });
+});
+
+describe('re-sit — the guide stops re-reassuring, but keeps its one fact', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('drops the frame and the vague CTA when the hero carries its own assurance', () => {
+    // "Mostly on course" restates "Nothing's stalled"; "Worth a look today." is the
+    // Review-status/Check-details vagueness 04 bans. Both go — but only on the frame
+    // where the hero already reassures.
+    expect(src).toMatch(/statusNode = heroSpeaksThisOverdue \? \(/);
+    expect(src).toMatch(/slipText\.charAt\(0\)\.toUpperCase\(\) \+ slipText\.slice\(1\)/);
+  });
+
+  it('KEEPS the slip fact — suppressing it would delete information, not duplication', () => {
+    // compression.headline renders in full ONLY in the non-elegant block, and elegant is
+    // the default, so this fragment is an elegant host's only telling that time got tight.
+    expect(src).toMatch(/slips\.push\('time got tight'\)/);
+    expect(src).toMatch(/const slipText = slips\.slice\(0, 2\)\.join\(', and '\)/);
+  });
+
+  it('the full frame SURVIVES where the hero is not the overdue decision', () => {
+    // Driven: Wanda still reads "Mostly on course — spending is past your number.
+    // Worth a look today." Its hero is not a board decision, so heroDecisionRow is null.
+    expect(src).toMatch(/Mostly on course — \{slipText\}\. Worth a look today\./);
   });
 });
