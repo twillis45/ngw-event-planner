@@ -2998,6 +2998,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .app-elegant .decopt.pick .decopt-badge{ grid-column:2; grid-row:1; justify-self:end; }
   .app-elegant .decopt.pick .decopt-why{
     position:static; grid-column:1 / -1; grid-row:2;
+    /* transition:none is load-bearing, not tidiness. The base rule animates opacity
+       and visibility because there it IS a reveal. Here it is not — it is static row
+       content that must simply be readable. Leaving the transition in place makes the
+       text depend on an animation FRAME ever running to become visible, and anything
+       that suspends animation (a backgrounded tab, a throttled or low-power device)
+       leaves it occupying its full height at opacity 0 — taking the space and saying
+       nothing, which is worse than the trap it replaces. Caught by measuring: forcing
+       these rules left it hidden until the transition was removed. */
+    transition:none;
     opacity:1; visibility:visible; transform:none; pointer-events:auto;
     width:auto; max-width:none; background:none; border:0; box-shadow:none;
     padding:7px 0 0; z-index:auto; text-align:left;
