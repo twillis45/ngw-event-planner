@@ -1559,7 +1559,16 @@ export default function HostShellV2() {
                 {alts.map(o => optRow(o, false))}
               </>
             ) : (
-              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>{'See ' + alts.length + ' other way' + (alts.length > 1 ? 's' : '') + '  ›'}</button>
+              /* RULING A (2026-07-30). Two fixes, both about telling the truth:
+                 • NO GLYPH. This handler toggles decDiscloseId IN PLACE — it settles
+                   nothing and routes nowhere, so a `›` was false navigation under the
+                   standing rule (render →/› ONLY when the handler routes). `▸` is a
+                   disclosure triangle, the closed twin of the `▾` this same control
+                   wears when open, so the two states now read as one control.
+                 • NO COUNT. The rows it reveals carry their own number, and the count
+                   here collided with the sibling-bundle disclosure's identical "3" —
+                   two grey links a few px apart both offering "3" different things. */
+              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>
             ))}
           </>
         ) : (
@@ -2299,6 +2308,24 @@ export default function HostShellV2() {
   // its heroAskFor output → suppressed → once. Same component, opposite result, decided by a
   // coincidence of vocabulary. Every consumer now reads THE STRING THAT IS ON SCREEN, so the
   // dedup is structural instead of textual.
+  // THE DECISION THE HERO IS SPEAKING, or null. Derived ONCE and shared by the ask
+  // ladder below and ruling B's duplicate-scold guard (~:5543) — the same
+  // one-derivation discipline ruling C had to impose on the ask string itself.
+  // Returns null whenever an EARLIER rung of the ask ladder wins (day-of speaks the
+  // DAY, a blocker/conflict/COI item speaks its own line), so this can never claim a
+  // hero that is in fact talking about something else.
+  const heroDecisionRow = (() => {
+    if (!elegantMode || !askMode || !queue[0]) return null;
+    const q0 = queue[0];
+    if (days === 0) return null;
+    if (/^blocker:/.test(String(q0.id || '')) && q0.ask) return null;
+    if (/conflict/i.test(String(q0.title || '')) && conflictItems[0]) return null;
+    if (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''))) return null;
+    // A lone decision carries its own id; a decisions BUNDLE speaks its first call.
+    return /^decision:/.test(String(q0.id || ''))
+      ? ((decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id) || null)
+      : (/decision/i.test(String(q0.title || '')) ? (callsOrdered[0] || null) : null);
+  })();
   const heroAskText = (askMode && queue[0]) ? (() => {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
@@ -2310,11 +2337,8 @@ export default function HostShellV2() {
     if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
     if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
-    if (elegantMode) {
-      const decRow = /^decision:/.test(String(q0.id || ''))
-        ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
-        : (/decision/i.test(String(q0.title || '')) ? callsOrdered[0] : null);
-      if (decRow) return String(decRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
+    if (elegantMode && heroDecisionRow) {
+      return String(heroDecisionRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
     }
     return heroAskFor(q0, event);
   })() : null;
@@ -5531,7 +5555,17 @@ export default function HostShellV2() {
                     const slips = [];
                     try {
                       const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
-                      if (od) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
+                      // RULING B (2026-07-30, Rams' dissent sustained): when the hero IS the
+                      // overdue decision, it already says the SPECIFIC thing one line below
+                      // ("Was due 5 days ago.", from dec.because). Saying "a few decisions are
+                      // past their easy window" above that is the same scold twice — once
+                      // vaguely, once with a number. Keep the instance, cut the generalisation.
+                      // Structural, via heroDecisionRow (~:2311): never a title regex, and it
+                      // covers BOTH shapes — a lone decision hero and a decisions bundle whose
+                      // first call is the one rendering. Other slips (time, spending) are
+                      // untouched; only the clause that NAMES DECISIONS is suppressed.
+                      const heroSpeaksThisOverdue = !!(heroDecisionRow && heroDecisionRow.status === 'overdue');
+                      if (od && !heroSpeaksThisOverdue) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
                     if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
