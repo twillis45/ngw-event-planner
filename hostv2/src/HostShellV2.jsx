@@ -5964,8 +5964,14 @@ export default function HostShellV2() {
                               {res.options.map((o, oi) => (
                                 <button key={oi} className="confrow" onClick={() => applyFix(o)}><span className="t">{o.label}</span>{o.route ? <span className="g" aria-hidden="true">→</span> : null}</button>
                               ))}
+                              {/* setConflictTime opens an inline picker IN PLACE — it routes
+                                  nowhere, so the closed row takes the disclosure triangle, not
+                                  a chevron (the glyph rule ruling A enforced; this was its
+                                  fourth survivor, found while driving the wedding conflict
+                                  hero 2026-07-30). Comment sits ABOVE the guard: inside a
+                                  ternary branch it would be a second child and break the build. */}
                               {custom && (conflictTime == null ? (
-                                <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">›</span></button>
+                                <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">▸</span></button>
                               ) : (
                                 <div className="confrow confrow-open">
                                   <span className="t" style={{ flex: '1 0 100%' }}>{custom.label || 'Set a different time'}</span>
@@ -6417,10 +6423,27 @@ export default function HostShellV2() {
                   </article>
                 );
               })}
-              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && (
+              {/* ── PROVEN INERT IN THE ELEGANT ASK LOOP, SO IT NO LONGER RENDERS THERE ──
+                  Board re-sit 2026-07-30 flagged this as *suspected* dead; driven on
+                  Reunion T-6d and confirmed. Clicking it left the DOM byte-identical:
+                  same card count, same six "Then, in order" rows, same sections — and
+                  the button still offering "+ 2 more".
+                  Why: it sets queueOpen, but the elegant branch returns null for every
+                  non-critical position past the hero REGARDLESS of queueOpen, so no card
+                  can appear. And its own guard is backwards for this mode — `!(nearDayPlan
+                  && !queueOpen)` renders it exactly when the "Then, in order" block is
+                  ALREADY on screen, and hides it at T-2d where un-standing-down that block
+                  is the one thing it could usefully do. So in elegant ask mode it is either
+                  absent or inert; there is no frame where it pays for itself.
+                  Nothing is lost: `thenItems` is queue.slice(1), so the block below already
+                  lists everything this claimed to reveal.
+                  It still renders elsewhere (non-elegant shows real cards), where the label
+                  now matches the disclosure scale of its siblings instead of out-typing
+                  them — it was --muted/550 at body size against their --faint/450/12.5px. */}
+              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
                   {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
                       route (board re-sit 2026-07-30 — the third survivor of the glyph
                       rule ruling A enforced on decopt-disc only). */}
@@ -8644,7 +8667,16 @@ export default function HostShellV2() {
                   const canAccept = !!(approach && approach.mode === 'propose' && approach.proposed && opts && opts.options.length);
                   const acceptBtn = canAccept ? (
                     <button type="button" className="mini" onClick={(e) => { e.stopPropagation(); settleDecision(r, approach.proposed); }}
-                      style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--steel)', fontWeight: 700 }}>Sounds good</button>
+                      /* THE ACCEPT MUST NOT LOOK WEAKER THAN THE BOOKMARK (board re-sit
+                         2026-07-30, both panels; measured live rather than judged off a JPG).
+                         `.mini` paints --steel-soft rgb(138,163,176) on a --steel tint; this
+                         button overrode color to --steel rgb(78,104,119) — DARKER than the
+                         secondary beside it and nearly the hue of its own background. The one
+                         tap that settles the decision read as disabled next to "Pin to top",
+                         inverting UX_05's primary/secondary and undercutting propose-don't-ask
+                         at the exact moment it pays off. --ink is the brightest text token, so
+                         the accept now clearly outweighs the bookmark. */
+                      style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--ink)', fontWeight: 700 }}>Sounds good</button>
                   ) : null;
                   if (opts && opts.options.length) {
                     return (

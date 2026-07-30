@@ -287,3 +287,46 @@ describe('re-sit — the guide stops re-reassuring, but keeps its one fact', () 
     expect(src).toMatch(/Mostly on course — \{slipText\}\. Worth a look today\./);
   });
 });
+
+// ─── THE THREE LEFT OPEN AT THE RE-SIT, CLOSED BY DRIVING THEM ───────────────
+describe('re-sit follow-ups — verified live, then fixed', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('"+ N more" no longer renders in the elegant ask loop — it was PROVEN inert', () => {
+    // Driven on Reunion T-6d: clicking it left the DOM byte-identical (same card count,
+    // same six "Then, in order" rows, same sections) and the button still offered "+2
+    // more". It sets queueOpen, but elegant returns null for every non-critical position
+    // past the hero regardless, and its guard renders it only when the block it would
+    // reveal is ALREADY on screen. thenItems = queue.slice(1) already lists everything.
+    expect(src).toMatch(/hiddenCount > 0 && !\(nearDayPlan && !queueOpen\) && !\(elegantMode && askMode\)/);
+  });
+
+  it('the accept is BRIGHTER than the bookmark beside it', () => {
+    // Measured live, not judged off a JPG: .mini paints --steel-soft rgb(138,163,176)
+    // and this button overrode to --steel rgb(78,104,119) -- DARKER than its own
+    // secondary. Now --ink rgb(238,240,244), verified brighter in computed styles.
+    const buttons = src.match(/<button[\s\S]*?<\/button>/g) || [];
+    const accept = buttons.find(b => b.includes('Sounds good'));
+    expect(accept).toBeTruthy();
+    expect(accept).toMatch(/color: 'var\(--ink\)'/);
+    expect(accept).not.toMatch(/color: 'var\(--steel\)'/);
+  });
+
+  it('the conflict hero\'s inline time picker wears ▸, not ›', () => {
+    // setConflictTime opens a picker IN PLACE. Fourth survivor of the glyph rule,
+    // found while driving the wedding conflict hero.
+    const buttons = src.match(/<button className="confrow"[\s\S]*?<\/button>/g) || [];
+    const custom = buttons.find(b => b.includes('setConflictTime'));
+    expect(custom).toBeTruthy();
+    expect(custom).not.toContain('›');
+    expect(custom).toContain('▸');
+  });
+
+  it('the conflict hero KEEPS its expander — its kids settle in place, a sheet would be a downgrade', () => {
+    // Unlike the decisions bundle (whose sheet is richer), the 12 conflict kids carry
+    // one-tap inline settles ("Confirm early access", "Signed — attach the file").
+    // Driven on the wedding. Repointing it would trade action for navigation.
+    expect(src).toMatch(/Fold them away/);
+  });
+});
