@@ -2213,20 +2213,59 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
 /* ── Print: the day sheet — a paper cue sheet a helper can hold. On paper the
    palette is ink-on-paper by definition; screen tokens don't apply. ── */
+/* Derived from an Adobe-rendered reference (Acumin Pro + Adelle, 2026-07-30).
+   FONT NOTE — deliberate substitution: the reference used Adobe Fonts, this does NOT
+   load them. index.html already puts two render-blocking Google Fonts requests on the
+   critical path; a third-party font host for a PRINT-ONLY surface would be a
+   regression. System sans stands in for Acumin (operational spine), Georgia for Adelle
+   (guidance voice). Nothing is fetched — the sheet prints identically offline. */
 .printsheet{display:none}
 @media print{
+  @page{ size:letter portrait; margin:0.5in 0.55in 0.45in; }
+
   body *{visibility:hidden}
   .printsheet, .printsheet *{visibility:visible}
+  /* PRE-EXISTING BUG, found by driving print emulation live (2026-07-30):
+     .printsheet is a child of .stagewrap — a 393px, position:relative, TRANSFORMED
+     phone frame. An absolutely-positioned child resolves against it, and a transform
+     also captures position:fixed — so the day sheet printed as a ~393px column on an
+     8.5in page, roughly 40% of the width, for every host who ever printed it.
+     Neutralising the frame for print only hands .printsheet the initial containing
+     block, so left/top/width:100% finally mean the page. Screen is untouched. */
+  .stagewrap{ position:static !important; transform:none !important; width:auto !important }
   .printsheet{
-    display:block; position:absolute; left:0; top:0; width:100%;
-    color:#000; background:#fff; font:13px/1.5 Georgia, 'Times New Roman', serif; padding:24px;
+    display:block; position:absolute; left:0; top:0; width:100%; padding:0;
+    color:#14161a; background:#fff; orphans:3; widows:3;
+    font:10pt/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
-  .printsheet h1{font-size:22px; margin:0 0 2px}
-  .printsheet .p-sub{font-size:13px; margin:0 0 18px; color:#333}
-  .printsheet .p-row{display:flex; gap:14px; padding:7px 0; border-bottom:1px solid #ccc; break-inside:avoid}
-  .printsheet .p-time{min-width:70px; font-weight:700; font-variant-numeric:tabular-nums}
-  .printsheet .p-meta{color:#444; font-size:12px}
-  .printsheet .p-head{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin:20px 0 6px; color:#333}
+  .printsheet h1{ font-family:Georgia,'Times New Roman',serif; font-weight:600;
+    font-size:21pt; line-height:1.02; letter-spacing:-.005em; color:#14161a; margin:0 }
+  /* The one heavy rule on the sheet — masthead closes with 2pt, sections with 0.75pt. */
+  .printsheet .p-sub{ font-size:9pt; line-height:1.35; color:#4a4f57;
+    margin:3pt 0 0; padding-bottom:7pt; border-bottom:2pt solid #14161a }
+  .printsheet .p-head{ font-size:7.5pt; font-weight:700; letter-spacing:.155em;
+    text-transform:uppercase; color:#14161a; margin:15pt 0 0; padding-bottom:3.5pt;
+    border-bottom:.75pt solid #14161a; break-after:avoid }
+  .printsheet .p-row{ display:flex; gap:11pt; padding:5.5pt 0;
+    border-bottom:.5pt solid #cfd2d6; align-items:baseline; break-inside:avoid }
+  .printsheet .p-time{ flex:0 0 62pt; font-size:10pt; font-weight:700;
+    font-variant-numeric:tabular-nums; letter-spacing:-.005em; color:#14161a }
+  /* THE GUTTER SAYS WHAT KIND OF TIME A ROW HAS — and every kind now says it, so no
+     row prints a bare '·' pretending to be a time:
+       clock ("2:05 PM")            full weight, tabular
+       relative label (r.rel)       .p-rel — real knowledge, weaker grade
+       "ongoing"                    .p-rel
+       "if" (conditional/risk)      .p-rel .p-when
+     A known OFFSET is not a known CLOCK, so it prints lighter and may wrap. */
+  .printsheet .p-time.p-rel{ font-weight:500; font-size:8.5pt; color:#6b7078;
+    letter-spacing:0; line-height:1.25 }
+  .printsheet .p-time.p-when{ letter-spacing:.1em; text-transform:lowercase }
+  .printsheet .p-time:empty::after{ content:'Not set'; color:#8b9096; font-weight:500 }
+  /* Was inline, so meta ran on after the segment; on paper it needs its own line. */
+  .printsheet .p-meta{ display:block; font-size:8pt; line-height:1.35; font-weight:400;
+    color:#5c626a; margin-top:1.5pt }
+  .printsheet a{ color:#14161a; text-decoration:none }
 }
 
 /* Auto-hiding dock: slides away on scroll-down so it never traps a CTA */
@@ -2260,9 +2299,16 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    allowing for one; this is the cost of adding it after the fact.
    Reserving the space is the right fix rather than hiding the bar — the bar is
    deliberately persistent (host request 2026-07-16), so the CONTENT gives way,
-   not the affordance. Height = 15+15 padding + ~20 line + the 16px offset. */
+   not the affordance. Height = 15+15 padding + ~20 line + the 16px offset.
    (.escreen is display:contents when inactive, so the padding belongs on the
-   SCROLL CONTAINER — .app — where it simply adds scrollable room at the end.) */
+   SCROLL CONTAINER — .app — where it simply adds scrollable room at the end.)
+   FIXED 2026-07-30: a stray comment-terminator used to sit at the end of the
+   "16px offset." line above, closing this comment early. The two lines that
+   followed then parsed as part of a SELECTOR, so the parser swallowed the
+   .app.has-nextbar rule below entirely — proven in isolation: the broken form
+   parsed to [".next-bar:hover"] alone, the fixed form to both rules. This
+   audit's own fix had therefore never shipped. Do not write a comment
+   terminator inside this comment; that is precisely how it broke. */
 .app.has-nextbar{ padding-bottom:calc(84px + env(safe-area-inset-bottom,0px)); }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
