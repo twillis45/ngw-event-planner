@@ -321,8 +321,19 @@ button{font-family:inherit}
 /* Hero receipt — muted sentence, green done-dot; ring pulse = the beat */
 .card.hero-card.receipted{animation:okring 700ms var(--ease-out) both}
 @keyframes okring{0%{box-shadow:0 0 0 2px color-mix(in srgb, var(--ok) 55%, transparent)}100%{box-shadow:0 0 0 2px transparent}}
-.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); transition:opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
-@starting-style{ .receipt{opacity:0; translate:0 5px} }
+/* THE RECEIPT UNFOLDS; IT DOES NOT POP (host, 2026-07-30: "moves the whole screen…
+   nothing smooth about the transition"). Measured before the fix: height went 0 → 78px
+   in a SINGLE frame while opacity/translate animated — so the text faded in politely
+   while the box shoved the layout. And because the hero cluster is optically centred,
+   78px of new box re-centres the whole composition at once, which is why it read as the
+   screen moving rather than a row appearing.
+   The fix is the idiom .editor-slot already uses eleven lines above — height:auto is
+   animatable under the :root interpolate-size opt-in, browsers without it simply show
+   instantly, exactly as that comment says. margin/padding/border are animated too:
+   they are 23px of the jump on their own, so transitioning height alone would still
+   step. overflow:clip keeps the sentence from spilling while the box is short. */
+.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); height:auto; overflow:clip; transition:height 260ms var(--ease-out), margin-top 260ms var(--ease-out), padding-top 260ms var(--ease-out), border-top-color 260ms var(--ease-out), opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
+@starting-style{ .receipt{height:0; margin-top:0; padding-top:0; border-top-color:transparent; opacity:0; translate:0 5px} }
 .receipt .rdot{width:7px; height:7px; border-radius:999px; background:var(--ok); flex:0 0 auto}
 .receipt .rmsg{flex:1; min-width:0; font-size:13.5px; line-height:1.4; color:var(--muted)}
 @media (prefers-reduced-motion: reduce){ .card.hero-card.receipted{animation:none} }
