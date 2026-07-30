@@ -3085,9 +3085,16 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    than a position. It never clips: over budget the whole track rescales so the
    overspend is visible instead of a bar pinned reassuringly at 100%. */
 .mbar{
-  position:relative; display:flex; height:8px; border-radius:5px; overflow:hidden;
+  /* 10px, not the 8px the allocation bars use. This is the summary chart for the
+     whole surface and it sat directly above a stack of 4px allocation tracks that
+     it was previously indistinguishable from — same height, same near-invisible
+     fill. A summary must not look like one of the rows it summarises. */
+  position:relative; display:flex; height:10px; border-radius:5px; overflow:hidden;
   background:var(--bg-band); border:1px solid var(--line);
 }
+/* A segment that exists but rounds to a hairline still has to be findable — a $12
+   spend against a $6,000 ceiling is real information, not a rendering error. */
+.mbar i:not([style*="width: 0%"]){ min-width:3px; }
 .mbar i{ display:block; height:100%; transition:width var(--ms-reveal) var(--ease-out); }
 @media(prefers-reduced-motion:reduce){ .mbar i{ transition:none } }
 /* The budget line marks the ceiling while headroom still exists. Once the plan is

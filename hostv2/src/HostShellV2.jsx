@@ -14379,14 +14379,26 @@ export default function HostShellV2() {
                       <div style={{ margin: '2px 0 var(--sp-4)' }}>
                         <div className="mbar" role="img"
                           aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
-                          <i style={{ width: pct(spent) + '%', background: over ? 'var(--danger)' : 'var(--steel)' }} />
-                          <i style={{ width: pct(pledged) + '%', background: over ? 'var(--danger-tint)' : 'var(--steel-tint)' }} />
+                          {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
+                              looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
+                              alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
+                              text, and as a standalone data mark on the #25262A track it was
+                              invisible. The bar read as an empty track with a grey nub, and was
+                              indistinguishable from the allocation bars directly beneath it.
+                              A chart fill has to be legible on its own, so the two segments are now
+                              separated by VALUE: money actually gone is the brighter tone, money
+                              spoken for but not yet paid is the dimmer one. Reading brightness as
+                              "how real is this" needs no legend to guess at. */}
+                          <i style={{ width: pct(spent) + '%', background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />
+                          <i style={{ width: pct(pledged) + '%', background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />
                           {/* The budget line only exists while there is headroom to mark. */}
                           {!over && free > 0 && <span className="mbar-line" style={{ left: '100%' }} />}
                         </div>
                         <div className="mbar-key">
-                          <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel)' }} />{fmt(spent)} spent</span>
-                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-tint)' : 'var(--steel-tint)' }} />{fmt(pledged)} spoken for</span>}
+                          {/* The key swatches must be the SAME values the bar paints, or the legend
+                              explains a chart the host is not looking at. */}
+                          <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
                           <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' left'}</span>
                         </div>
                       </div>
