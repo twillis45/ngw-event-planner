@@ -14391,8 +14391,20 @@ export default function HostShellV2() {
                               "how real is this" needs no legend to guess at. */}
                           <i style={{ width: pct(spent) + '%', background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />
                           <i style={{ width: pct(pledged) + '%', background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />
-                          {/* The budget line only exists while there is headroom to mark. */}
-                          {!over && free > 0 && <span className="mbar-line" style={{ left: '100%' }} />}
+                          {/* THE BUDGET LINE MATTERS MOST WHEN IT HAS BEEN CROSSED (fixed
+                              2026-07-30). It used to render only while headroom existed, on
+                              the reasoning that an over-budget track "states it instead" —
+                              it does not. Rescaling to `committed` means the segments always
+                              sum to exactly 100%, so the over state drew a completely full
+                              red bar with nothing marking where the ceiling had been: the
+                              chart carried no proportion at all and the overspend survived
+                              only as text. Now the line sits at the ceiling in both states —
+                              at the right edge while there is room, and inside the bar once
+                              there is not, where everything past it IS the overspend. */}
+                          {(over || free > 0) && (
+                            <span className={'mbar-line' + (over ? ' is-over' : '')}
+                              style={{ left: over ? (planned / committed) * 100 + '%' : '100%' }} />
+                          )}
                         </div>
                         <div className="mbar-key">
                           {/* The key swatches must be the SAME values the bar paints, or the legend
@@ -14431,7 +14443,12 @@ export default function HostShellV2() {
                                     ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
                                     : <span className="amt">~{fmt(r.est)}</span>}
                               </div>
-                              <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
+                              {/* The 4% floor keeps a small-but-real category findable. It must
+                                  not apply to a category costing nothing: while the fill was
+                                  invisible that floor was harmless, but now that it paints, a
+                                  $0 line would draw a visible claim on the budget. Floor only
+                                  what actually has a cost. */}
+                              <div className="bline"><i style={{ width: (r.est > 0 ? Math.max(alloc, 4) : 0) + '%' }}><b style={{ width: got + '%' }} /></i></div>
                             </button>
                             {/* Food-cost detail (audit gap fix): per-head cost, real-priced
                                 vs. still-estimated item count, and the regional pricing

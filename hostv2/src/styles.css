@@ -1171,12 +1171,23 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
 .brow{padding:11px 0 var(--sp-3); border-top:1px solid var(--line-soft)}
 .bline{height:8px; border-radius:5px; background:var(--bg-band); overflow:hidden}
+/* The allocation fill (share of the plan this line claims) was --steel-tint: the
+   SAME chip-background token, at 16% alpha, that made the summary bar unreadable
+   (fixed 2026-07-30). On the --bg-band track it composites to roughly #2A2C31
+   against #25262A — about a 4% lightness step, which is below what the eye
+   separates at 8px tall. Food's line showed a 4%-wide fill that could not be seen
+   at all, so every category read as an empty track. Same rule as the summary bar:
+   a chart fill has to be legible on its own ground, and alpha is not a value scale.
+   The two fills now separate by VALUE and carry the same meaning they do up top:
+   the dimmer tone is money claimed, the brighter one (b, nested inside) is money
+   actually spent. Brightness has to run the SAME direction on both charts or the
+   host has to relearn the scale halfway down one surface. */
 .bline i{
-  display:block; height:100%; border-radius:5px; background:var(--steel-tint);
-  border:1px solid var(--steel-tint); position:relative;
+  display:block; height:100%; border-radius:5px; background:var(--steel);
+  position:relative;
   transition:width .7s var(--ease-standard);
 }
-.bline b{display:block; height:100%; border-radius:5px; background:var(--steel); transition:width .7s var(--ease-standard)}
+.bline b{display:block; height:100%; border-radius:5px; background:var(--steel-soft); transition:width .7s var(--ease-standard)}
 
 /* ── The spread & shopping: check-off rows (real foodGot flags) ── */
 .frow{
@@ -3097,9 +3108,13 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .mbar i:not([style*="width: 0%"]){ min-width:3px; }
 .mbar i{ display:block; height:100%; transition:width var(--ms-reveal) var(--ease-out); }
 @media(prefers-reduced-motion:reduce){ .mbar i{ transition:none } }
-/* The budget line marks the ceiling while headroom still exists. Once the plan is
-   over there is no headroom to mark, and the rescaled track states it instead. */
-.mbar-line{ position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--ink-soft); opacity:.5; }
+/* The budget line marks the ceiling in BOTH states — at the right edge while there
+   is headroom, and inside the bar once the plan has passed it. */
+.mbar-line{ position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--ink-soft); opacity:.5; z-index:1; }
+/* Crossed: a faint blue hairline is unreadable lying on a red fill, and this is the
+   one moment the mark has to be unmissable. Cut it as a notch in the page ground
+   instead — reads as the bar having run past its own end, which is the fact. */
+.mbar-line.is-over{ background:var(--bg); opacity:1; width:2px; }
 .mbar-key{
   display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 14px; margin-top:7px;
   font-size:var(--t-note); color:var(--muted); font-variant-numeric:tabular-nums;

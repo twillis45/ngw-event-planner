@@ -22,7 +22,20 @@ const tint = (hex, a) => {
 
 export function applyStudioMatte() {
   const r = document.documentElement.style;
-  const set = (k, v) => r.setProperty(k, v);
+  // setProperty stringifies whatever it is handed, so a palette key that does not
+  // exist writes the literal string "undefined" as the token's value. That is not
+  // an error anywhere: CSS parses it as an invalid value, the declaration is
+  // dropped, and the element simply paints nothing — which reads on screen as a
+  // design choice rather than a bug. --danger-solid shipped that way (2026-07-30).
+  // Refuse the write instead, so the token falls back to its stylesheet default
+  // and the console names the token that is missing.
+  const set = (k, v) => {
+    if (v == null || v === 'undefined') {
+      console.warn('[theme] refusing to set ' + k + ' — palette value is missing');
+      return;
+    }
+    r.setProperty(k, v);
+  };
 
   // ── Host surfaces: the de-blued NEUTRAL CARBON ramp (the carbon gray the
   // production shell runs — palette.js carbonNeutral, user-locked 2026-06-23).
