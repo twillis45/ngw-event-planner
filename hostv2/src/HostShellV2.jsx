@@ -11419,6 +11419,34 @@ export default function HostShellV2() {
                         : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
                         : 'Lodging, rides, arrivals' };
                   })()] : []),
+                  // ── TWO SURFACES THAT HAD NO DOOR (competitive-read audit, 2026-07-30) ──
+                  // This directory's own comment above calls it "a door to EVERY surface",
+                  // but it carried exactly one travel row — routing to `lodging` — while
+                  // its sub advertised "Lodging, rides, arrivals". The `air` ("Getting
+                  // here") and `ground` ("Getting around") sheets both exist, both are
+                  // titled, and both RAISE through surfaceRegistry (travel-air,
+                  // travel-ground) — so on a calm event, where nothing is raised, neither
+                  // could be reached at all. Same class as the shortlist-without-a-door
+                  // finding: a surface reachable only from a transient worry row is not
+                  // reachable. Gated on the plan actually having that leg, the way the
+                  // rain row is gated on the event being outdoors — a door to an empty
+                  // surface would be its own kind of lie.
+                  ...(travel && travel.relevant && travel.air ? [(() => {
+                    const unset = (travel.air.roster || []).filter(r => r && !r.arriveDate).length;
+                    const conflicts = (travel.air.conflicts || []).length;
+                    return { k: 'air', label: 'Getting here',
+                      sub: conflicts ? conflicts + (conflicts === 1 ? ' arrival clashes' : ' arrivals clash')
+                        : unset ? unset + (unset === 1 ? ' hasn’t said when' : ' haven’t said when')
+                        : 'Flights and arrival times' };
+                  })()] : []),
+                  ...(travel && travel.relevant && travel.ground ? [(() => {
+                    const need = (travel.ground.needRide || []).length;
+                    const unmatched = (travel.ground.unmatched || []).length;
+                    return { k: 'ground', label: 'Getting around',
+                      sub: unmatched ? unmatched + (unmatched === 1 ? ' still needs a ride' : ' still need rides')
+                        : need ? need + (need === 1 ? ' asked for a ride' : ' asked for rides')
+                        : 'Rides, pickups, who drives' };
+                  })()] : []),
                   ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
                   ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
                 ] },
