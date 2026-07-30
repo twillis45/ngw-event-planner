@@ -6649,7 +6649,25 @@ export default function HostShellV2() {
                       : soonest === 1 ? 'none till tomorrow'
                         : `none due for ${soonest}d`;
                 return (
-                  <button className="path-row" onClick={() => setQueueOpen(true)}>
+                  <button className="path-row" onClick={(e) => {
+                    // ROOT CAUSE of the three no-ops (found 2026-07-29): capture the
+                    // scroller BEFORE the state flip. This row's own guard is
+                    // `!queueOpen`, so setQueueOpen UNMOUNTS it — and a detached
+                    // node's closest('.app') returns null. Every earlier attempt read
+                    // the scroller inside the deferred callback, by which time the row
+                    // was gone, so the query found nothing and the page never moved.
+                    // .app is the real scroller (styles.css ~114: overflow-y:auto).
+                    const app = e.currentTarget.closest('.app');
+                    setQueueOpen(true);
+                    // TWO frames: a single rAF still runs before React commits, so
+                    // .then-fold does not exist yet.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                      const list = app && app.querySelector('.then-fold');
+                      if (!app || !list) return;
+                      const top = app.scrollTop + (list.getBoundingClientRect().top - app.getBoundingClientRect().top) - 8;
+                      app.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                    }));
+                  }}>
                     <span className="then">then</span>
                     <span className="t">the rest of your list · {hidden.length} more{when ? ` · ${when}` : ''}</span>
                     <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
