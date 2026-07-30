@@ -218,13 +218,49 @@ export const TEST_ROSTER_RSVP = mkTest('test-roster-rsvp', 'Test — Reunion (ro
   ],
 });
 
+// 3 · ROSTER + UNANSWERED REPLIES, INSIDE THE FINAL-COUNT WINDOW (2026-07-29).
+//
+// The third state QA could not reach. playbooks' count decision only presses to
+// LOCK a final count when pending RSVPs sit inside FINAL_LOCK_LEAD (10 days) —
+// further out, a planned count is enough to shop to and pressing early would
+// outrank the real next task. TEST_ROSTER_RSVP is the roster case but at +30d,
+// so the press is correctly suppressed there and its CTA never renders.
+//
+// Result: the count decision's own button was unreachable in every sample. That
+// is the exact blind spot this file already names for the dayBefore vendors row
+// — a surface QA cannot reach is a surface that can lie for months — and it bit
+// immediately: the review board's Q1b graft (the number in the CTA, from frame
+// 6/STAGE) shipped suite-green but undriveable.
+//
+// Deliberately 6 days out: inside the 10-day window with room to spare, so the
+// seed does not sit on the boundary and flip when FINAL_LOCK_LEAD is tuned.
+// The mix is real: some answered, several never asked, one bare '' — so the
+// pending count is >1 and the CTA has to pluralise ("Chase 4 maybes").
+export const TEST_ROSTER_FINAL_COUNT = mkTest('test-roster-final-count', 'Test — Reunion (replies out, 6 days)', /family reunion|reunion/i, 6, {
+  venue: 'Fort Smallwood Park', venueKind: 'venue', venueCity: 'Pasadena', venueState: 'MD',
+  guestMode: 'list',
+  guestCount: 0, guestEstimate: 0,   // the ROSTER is the source — no typed count to lean on
+  totalBudget: 3000,
+  guests: [
+    { id: 'trfc-g1', name: 'Denise & Ray',   rsvp: 'Yes' },
+    { id: 'trfc-g2', name: 'The Okafors',    rsvp: 'Yes', kids: 2 },
+    { id: 'trfc-g3', name: 'Aunt Cee',       rsvp: 'No' },
+    // ↓ four still outstanding with the day close — what makes the final-count
+    //   press fire, and what the CTA has to count.
+    { id: 'trfc-g4', name: 'Marcus',         rsvp: 'Maybe' },
+    { id: 'trfc-g5', name: 'Cousin Jerome',  rsvp: 'Pending' },
+    { id: 'trfc-g6', name: 'The Whitfields', rsvp: 'Pending' },
+    { id: 'trfc-g7', name: 'Nia + guest',    rsvp: '' },
+  ],
+});
+
 // Exported for the public invite page (InviteV2) — it resolves rsvpCode links
 // against the SAME pool + patch layers the host shell reads (one truth).
 // Includes the created-event store (load-time read — fresh on every invite
 // page load) so every created event's invite link resolves, not just one.
-export const ALL_SAMPLES = [WANDA_GOLD_EVENT, REPAST_SAMPLE_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
+export const ALL_SAMPLES = [WANDA_GOLD_EVENT, REPAST_SAMPLE_EVENT, ...SAMPLE_EVENTS_EXTRA, ...SAMPLE_EVENTS_DMV, MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT, ...REAL_EVENTS, ...CUSTOM_EVENTS_AT_LOAD];
 
-export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP];
+export const ROSTER = [...ROSTER_IDS.map(id => ALL_SAMPLES.find(e => e.id === id)).filter(Boolean), MY_CRAB_FEAST, TEST_DAY_OF, TEST_TWO_DAYS, TEST_DAY_BEFORE_VENDORS, TEST_ROSTER_RSVP, TEST_ROSTER_FINAL_COUNT];
 export const FALLBACK = ROSTER[0] || ALL_SAMPLES[0];
 
 // Boot on the last event the host was working when it still exists on this
