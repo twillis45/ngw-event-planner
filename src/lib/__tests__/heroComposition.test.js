@@ -130,9 +130,23 @@ describe('ruling B — the overdue scold is said once, not twice', () => {
 
   it('a specific instance is KEPT in the hero — B cut the generalisation, not the slot', () => {
     // B cuts the vague clause ABOVE the specificity line, never the line itself. The
-    // STRING in that slot changed at the board re-sit (see the next describe): it is
-    // now `assurance`, not `because`. What B guarantees is that the slot still speaks.
-    expect(src).toMatch(/dec\.assurance && <p className="because">\{dec\.assurance\}<\/p>/);
+    // STRING in that slot changed at the board re-sit: it is now `assurance`, not
+    // `because`. What B guarantees is that the slot still SPEAKS.
+    //
+    // GATE WIDENED 2026-07-30, and why it is not a convenience edit. This used to pin
+    // one literal — `dec.assurance && <p …>` — which asserted the assurance was spoken
+    // FROM THAT SLOT. The follow-up fix ("one sentence, one author") kept the hero
+    // speaking the assurance but moved it INTO the slip sentence above, because two
+    // stacked sentences from two files read as a contradiction ("Time got tight." over
+    // "Nothing's stalled…"). The old literal would have failed a change that honours
+    // its own stated intent, so the gate now guards the INVARIANT instead: the hero
+    // speaks the assurance, and speaks it exactly ONCE. Both halves are required —
+    // delete either and this goes red, which is the property the literal was proxying.
+    expect(src).toMatch(/heroAssuranceSpoken = true/);                        // the join happens
+    expect(src).toMatch(/', but ' \+ String\(heroDecisionRow\.assurance\)/);  // …into the slip sentence
+    expect(src).toMatch(                                                      // …and the slot defers to it
+      /dec\.assurance && !heroAssuranceSpoken && <p className="because">\{dec\.assurance\}<\/p>/
+    );
   });
 });
 

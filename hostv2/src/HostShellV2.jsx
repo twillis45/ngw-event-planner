@@ -1550,6 +1550,15 @@ export default function HostShellV2() {
     }
     return (
       <div className="decopts">
+        {/* THE QUESTION HAD NO VISIBLE ANSWER (board re-sit, the Grandmother seat's top
+            finding — no other list carried it). The hero asks "Indoor or outdoor?" and
+            then shows rows reading "Outdoor park pavilion" with nothing saying those ARE
+            the answers, or what happens if you touch one. The sheet one tap away has a
+            button that plainly says "Sounds good"; the hero had no equivalent.
+            The arrow stays banned (host 2026-07-21: tapping settles in place, it does not
+            navigate, and a glyph here would be false navigation). So the act is NAMED in
+            words instead — the row is still the whole affordance, it just says so now. */}
+        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
@@ -2326,6 +2335,18 @@ export default function HostShellV2() {
       ? ((decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id) || null)
       : (/decision/i.test(String(q0.title || '')) ? (callsOrdered[0] || null) : null);
   })();
+  // ── ONE SENTENCE, ONE AUTHOR (board re-sit follow-up, 2026-07-30) ──
+  // "Time got tight." (the shell's slip line) sat directly above "Nothing's
+  // stalled — the plan's been running on our pick." (playbooks' assurance), and
+  // the board read the pair as a contradiction. Both are true; they were simply
+  // written by two files that cannot see each other, and nothing joined them.
+  // The status line and the decision hero card live in different scopes — the
+  // status block is an IIFE that closes long before the card renders — so this
+  // flag is the handshake between them. The status block sets it when it folds
+  // the assurance into its own sentence; the card then does not say it twice.
+  // ORDER-DEPENDENT BY DESIGN: the status IIFE runs earlier in the same render
+  // pass than the card, so the flag is always settled before the card reads it.
+  let heroAssuranceSpoken = false;
   const heroAskText = (askMode && queue[0]) ? (() => {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
@@ -5616,9 +5637,21 @@ export default function HostShellV2() {
                       // So the slips stand alone as a plain statement, and the reassurance is left
                       // to the one line that earned it.
                       const slipText = slips.slice(0, 2).join(', and ');
+                      // ONE SENTENCE, ONE AUTHOR: when the hero is the overdue decision AND
+                      // that decision has an assurance, the slip and the reassurance are two
+                      // halves of one thought — "time got tight, BUT nothing's stalled". Said
+                      // as two stacked sentences by two files, they read as a contradiction.
+                      // Joined here (the shell owns the slip, playbooks owns the assurance,
+                      // and this is the only place that sees both), then flagged so the hero
+                      // card below does not repeat the second half.
+                      const joinAssurance = heroSpeaksThisOverdue && heroDecisionRow && heroDecisionRow.assurance;
+                      if (joinAssurance) heroAssuranceSpoken = true;
                       statusNode = heroSpeaksThisOverdue ? (
                         <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
-                          {slipText.charAt(0).toUpperCase() + slipText.slice(1)}.
+                          {slipText.charAt(0).toUpperCase() + slipText.slice(1)}
+                          {joinAssurance
+                            ? ', but ' + String(heroDecisionRow.assurance).charAt(0).toLowerCase() + String(heroDecisionRow.assurance).slice(1)
+                            : '.'}
                         </p>
                       ) : (
                         // AMBER RESTRAINT (host 2026-07-18): a "mostly on course · worth a look"
@@ -6068,7 +6101,12 @@ export default function HostShellV2() {
                               eyebrow stays the one clock. It is NULL for a genuine either/or
                               with no default — then this slot prints nothing rather than a
                               generic reassurance. */}
-                          {dec.assurance && <p className="because">{dec.assurance}</p>}
+                          {/* ONE SENTENCE, ONE AUTHOR (2026-07-30): when the status line above
+                              already folded this assurance into its own sentence ("Time got
+                              tight, but nothing's stalled — …"), saying it again here is the
+                              contradiction the board actually saw. heroAssuranceSpoken is set
+                              by that line earlier in this same render pass. */}
+                          {dec.assurance && !heroAssuranceSpoken && <p className="because">{dec.assurance}</p>}
                           {renderDecisionActions(dec) || (
                             <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
                               <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
@@ -7242,9 +7280,27 @@ export default function HostShellV2() {
                     // (vendors.length / documents.length), not one blanket gate
                     // tied to vendor count alone. readiness.vendor/.document
                     // already arrive pre-nulled where inapplicable.
-                    const anyOverdue = (decisionBoard.open || []).some(r => r && r.status === 'overdue');
+                    // ONE THEORY OF THE DELAY ON BOTH SURFACES (board re-sit follow-up,
+                    // 2026-07-30). The hero says "Nothing's stalled — the plan's been
+                    // running on our pick"; one tap later this pillar stamped red AT_RISK
+                    // on the same decision. Two surfaces, two theories, and the board was
+                    // explicit that they must not diverge.
+                    //
+                    // The hero's claim is the accurate one, and it is not a mood — it is a
+                    // FACT about the data: choicePickFor() falls back to the playbook's
+                    // authored default, so a decision WITH a default has been driving the
+                    // plan all along. `assurance` is non-null exactly when that default
+                    // exists (playbooks/index.js ~:2614). So the pillar now reads the SAME
+                    // field the hero speaks from, instead of judging overdue-ness twice:
+                    //   default running  -> ATTENTION. Waiting, not blocking. UX_02 amber
+                    //                       is "incomplete / waiting"; red is "blocking".
+                    //   no default       -> AT_RISK. A genuine either/or with nothing
+                    //                       running IS blocked, and there the hero prints
+                    //                       no assurance, so both surfaces agree again.
+                    const blockedOverdue = (decisionBoard.open || []).some(r =>
+                      r && r.status === 'overdue' && !r.assurance);
                     const callsPill = (decisionBoard.open || []).length
-                      ? { status: anyOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
+                      ? { status: blockedOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
                       : null;
                     // HOST WORDS, never percentages: the engine's checklist note can
                     // read "73%" — remap it to the honest count from the SAME
@@ -8601,9 +8657,22 @@ export default function HostShellV2() {
                   // Empty-open but decisions parked: calm "nothing needs you yet" state,
                   // never "All settled" (which would read as done and hide the horizon).
                   const star = openN ? `${openN} to settle` : (deferredN ? 'Nothing needs you yet' : 'All settled');
+                  // ONE THEORY OF THE DELAY (board re-sit follow-up, 2026-07-30). The hero
+                  // says "Nothing's stalled — the plan's been running on our pick." This
+                  // line used to answer "start there", so one tap turned reassurance into
+                  // urgency about the SAME decision. Both are reading the same fact now:
+                  // `assurance` is non-null exactly when an authored default has been
+                  // driving the plan, so when every overdue call has one, nothing is
+                  // blocked and the sheet says what the hero said. When any of them has
+                  // no default, that one genuinely IS waiting on the host — "start there"
+                  // is then true, and the hero prints no assurance either.
+                  const overdueBlocked = (decisionBoard.open || [])
+                    .filter(r => r && r.status === 'overdue' && !r.assurance).length;
                   const sub = openN
                     ? (overdueN
-                      ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
+                      ? (overdueBlocked
+                        ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
+                        : `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — the plan’s been running on our pick meanwhile. Settle ${overdueN === 1 ? 'it' : 'them'} in a tap below; your answer reshapes the plan.`)
                       : 'Each one settles in a tap below — your answer reshapes the plan.')
                     : (deferredN
                       ? `${deferredN} ${deferredN === 1 ? 'decision comes' : 'decisions come'} up closer to the date — you’ll see ${deferredN === 1 ? 'it' : 'them'} here when the time’s right.${lockedN ? ` ${lockedN} already settled.` : ''}`
@@ -15165,7 +15234,15 @@ export default function HostShellV2() {
           <span className="nb-label">Next</span>
           <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
           {days !== 0 && !listIsCalm && queue.length > 1 && (
-            <span className="nb-more" title={(queue.length - 1) + ' more after this'}>+{queue.length - 1}</span>
+            /* LABEL THE COUNT, DO NOT RENUMBER IT (both panels ruled, 2026-07-30).
+               This badge counts QUEUE ITEMS while the sentence beside it counts
+               DECISIONS, so "+6" next to "3 open" read as a contradiction — and the
+               only thing explaining it was a `title` tooltip, which a phone cannot
+               summon. Both numbers are true against their own denominator, so
+               renumbering either would ship a lie. Naming the denominator is what
+               was missing: "+6 after this" is unambiguously about the queue, and it
+               is now visible text rather than a hover-only affordance. */
+            <span className="nb-more" aria-label={(queue.length - 1) + ' more after this one'}>+{queue.length - 1} after this</span>
           )}
           <span className="nb-chev" aria-hidden="true">›</span>
         </button>

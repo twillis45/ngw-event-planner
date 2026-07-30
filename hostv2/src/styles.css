@@ -550,7 +550,19 @@ button{font-family:inherit}
 .app-elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
 .app-elegant .decopt-badge-wrap:hover .decopt-why, .app-elegant .decopt-badge-wrap:focus-visible .decopt-why, .app-elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
 .app-elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
-.app-elegant .decopt-disc{ align-self:flex-start; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
+/* WORDS APART, STILL TWINS (board re-sit, 2026-07-30 — flagged as a CSS-side fix).
+   The repoint gave this control and the bundle's "See all N ▸" different words, but
+   left them visually identical: 13px/--muted/500 here against 12.5px/--faint/450
+   there. Half a pixel and one weight step apart is not a difference a host can see,
+   and the two do different things — THIS one reveals other answers to the question
+   already on screen; that one reveals other questions entirely.
+   Differentiated structurally rather than with colour, so the accent budget is
+   untouched (UX_02: one accent per section, and .decopt.pick already spends it):
+   a hairline and full width bind this control to the option stack above it, so it
+   reads as the tail of THIS decision. The bundle's control keeps floating free. */
+.app-elegant .decopt-disc{ align-self:stretch; width:100%; text-align:left;
+  border-top:1px solid var(--line-soft); margin-top:2px; background:none; border-left:none;
+  border-right:none; border-bottom:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
 .app-elegant .decopt-disc:hover{ color:var(--ink); }
 /* WATCH zone (Figma parity 2026-07-18): worries as steel-dot rows — distinct from the
    action rows above, muted, no arrows (a heads-up, not a thing to go do). */
@@ -3046,4 +3058,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .qidx-row:focus-visible .qidx-l{ color:var(--ink); }
   .req-row:focus-visible .req-label{ color:var(--ink); }
   .hero.elegant .watch-row:focus-visible .t{ color:#c7ced4; }
+}
+
+/* The lead-in that names the act above a decision's options (board re-sit: "the
+   question has no visible answer"). Quiet by design — it orients, it does not
+   compete with the options themselves or with the ask above them. */
+.app-elegant .decopts-lead{
+  font-size:var(--t-note); font-weight:500; color:var(--faint);
+  margin:0 0 var(--sp-2); letter-spacing:0;
 }
