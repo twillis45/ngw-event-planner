@@ -26,6 +26,7 @@ import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '
 import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
+import { isSolemnEvent } from '@app/lib/solemn';
 import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
@@ -304,11 +305,8 @@ const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors:
 // "Continue when ready"), lean the calm serif, more void. Grounded in the event TYPE:
 // Repast is a real, fully-authored somber playbook (repast.js), not a guess. Feeds the
 // parity kit's `tone="solemn"`. See parity/MANIFEST.md fast-follow #1.
-const SOLEMN_RE = /repast|memorial|funeral|celebration of life|homegoing|in memoriam/i;
-function isSolemnEvent(event) {
-  try { return SOLEMN_RE.test(String((event && event.type) || '') + ' ' + String((event && event.name) || '')); }
-  catch { return false; }
-}
+// isSolemnEvent now lives in @app/lib/solemn — ONE derivation, read by the shell AND
+// by planHeroCopy, which was event-type-agnostic and scolded a grieving family.
 
 // Path whisper labels for the panel's horizon footer.
 function horizonLabel(a) {
@@ -8745,12 +8743,32 @@ export default function HostShellV2() {
                     : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
                   return line ? <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p> : null;
                 })()}
-                {/* heartAtRisk nudge (task 5): protect the moment before it defaults. */}
-                {decisionBoard.heartAtRisk && (decisionBoard.open || []).length ? (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)', background: 'color-mix(in srgb, var(--steel-soft) 10%, transparent)', borderRadius: '8px', paddingLeft: 11, fontWeight: 600 }}>
-                    One of these is the moment your guests will remember. Give it your own call — don’t let it settle on a default.
-                  </p>
-                ) : null}
+                {/* heartAtRisk nudge (task 5): protect the moment before it defaults.
+                    ── REWRITTEN AT THE BOARD RE-SIT (2026-07-30). Two defects, both real: ──
+                    1. IT SCOLDED THE HOST FOR THE APP'S OWN CHOICE. "don't let it settle on a
+                       default" sat directly under the summary line saying "the plan's been
+                       running on our pick meanwhile". Three statements, three theories, 200px:
+                       the plan is fine / don't let it default / it already has. The one place
+                       the copy turned on the user, and it turned on her for something she never
+                       did. The nudge's real point survives — some calls deserve the host's own
+                       voice rather than a sensible default — said without blame, and agreeing
+                       with the assurance instead of contradicting it.
+                    2. "ONE OF THESE" COULD POINT OUTSIDE ITS SET. decisionBoard.heartAtRisk is
+                       `active.concat(deferred).some(...)` (playbooks/index.js:2724), so it fires
+                       on a DEFERRED decision that is not in the list below — and the aside's own
+                       tint is byte-identical to the heart row's, so the pointer and the
+                       pointed-at look the same and the host hunts. Now scoped to the VISIBLE
+                       rows and it NAMES the row, so "these" can never dangle. */}
+                {/* DELETED, not rewritten (event pros, board re-sit 2026-07-30). I first
+                    rewrote it to stop the blame and name its referent; the board ruled the
+                    whole line out and they are right. This is RULING B one surface over:
+                    "keep the instance, cut the generalisation." The instance already exists,
+                    is attached to the correct row, and is better written — rankReasonForV2
+                    renders "This is the moment your guests will remember — worth deciding
+                    yourself." on the heart row itself (~:8827). An anonymous banner above the
+                    list could only ever re-say it worse, and it collapsed the sheet's voice
+                    from two postures to four: reassure (:8709) -> alarm (here) -> the row's
+                    own status -> the row's own reason. Gone. */}
                 {(() => {
                   // Host override (task 3): float pinned decisions to the top; the board's
                   // own priority order holds for the rest. Order + fold both come from
@@ -8769,6 +8787,31 @@ export default function HostShellV2() {
                   // and the board re-derives, moving the row to Settled.
                   const opts = (() => { try { return playbookDecisionOptions(event, r.id); } catch { return null; } })();
                   const focused = sheet.focus && sheet.focus === r.id;
+                  // ── ONE THEORY OF THE DELAY, AT BOTH ALTITUDES (board re-sit 2026-07-30) ──
+                  // The Grandmother's caveat: the two surfaces must not use different theories.
+                  // The sheet's SUMMARY was taught the hero's forward voice ("the plan's been
+                  // running on our pick meanwhile", :8709 — gated on the same `!r.assurance`
+                  // predicate). The ROWS were not: eight lines later each one stamped a --danger
+                  // "overdue" and printed `because` = "Was due 54 days ago." So the split was not
+                  // resolved, it was moved INSIDE one screen — both halves co-visible ~120px
+                  // apart, which is worse than the seam it replaced (design panel, verbatim).
+                  //
+                  // `assurance` is non-null exactly when an authored default has been driving the
+                  // plan, and it already rides the row (playbooks/index.js). So the row now reads
+                  // the SAME field the summary reads:
+                  //   assurance present -> nothing stalled. The window passed, which is a FACT and
+                  //     stays visible for filing, but it is not an alarm and not the host's fault.
+                  //     Warn tint + the app's own neutral vocabulary, and the line says what is
+                  //     true forward.
+                  //   assurance absent  -> nothing has been holding this. It genuinely IS waiting
+                  //     on the host, "overdue" is honest, and the hero prints no assurance either,
+                  //     so both surfaces still agree.
+                  // One predicate, both altitudes, no third vocabulary.
+                  const runningOnOurPick = !!r.assurance;
+                  const lateChip = r.status !== 'overdue' ? null : (runningOnOurPick
+                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>past its window</span>
+                    : <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>);
+                  const lateLine = (r.status === 'overdue' && r.assurance) ? r.assurance : r.because;
                   // Wave-2a per-row consumers: the rank's work, the difm propose/ask
                   // note (only when modelled), the heart accent, and the pin control.
                   const rankWhy = rankReasonForV2(r);
@@ -8816,12 +8859,12 @@ export default function HostShellV2() {
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
-                            {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
                             {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
-                          {r.because && <span className="v-meta">{r.because}</span>}
+                          {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
                         <div style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                           {opts.options.map(opt => (
@@ -8848,10 +8891,10 @@ export default function HostShellV2() {
                           ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
-                              {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                              {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
-                            {r.because && <span className="v-meta">{r.because}</span>}
+                            {lateLine && <span className="v-meta">{lateLine}</span>}
                             {renderEditor(r)}
                           </span>
                         </div>
@@ -8871,12 +8914,12 @@ export default function HostShellV2() {
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
-                            {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
                             {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
-                          {r.because && <span className="v-meta">{r.because}</span>}
+                          {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
                       </button>
                       {(meta || true) && (

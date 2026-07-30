@@ -270,9 +270,59 @@ describe('re-sit — the hero says what is true forward', () => {
     for (const { r } of set) expect(r.assurance).toMatch(/running on our pick/);
   });
 
-  it('the SHEET keeps the status line — because is untouched', () => {
-    // The filing view legitimately carries "Was due N days ago."; only the hero moved.
+  it('`because` still EXISTS on the row — the fact is kept, not deleted', () => {
+    // The arithmetic remains available to any surface that legitimately files status.
+    // What changed is who renders it: see the one-theory gate below.
     expect(overdueRows.some(x => /Was due|easy window closed/.test(x.r.because))).toBe(true);
+  });
+});
+
+// ─── ONE THEORY OF THE DELAY, AT BOTH ALTITUDES ──────────────────────────────
+//
+// This describe REPLACES an earlier assertion of mine that read "the SHEET keeps the
+// status line". That test was wrong, and the event pros caught it in the sharpest terms
+// available: *"a gate that protects the defect is further from blessing than the defect
+// alone."* It pinned the very split the Grandmother said blocks blessing — hero forward,
+// rows filing-voice — and turned an oversight into an enforced contract.
+//
+// The rule now: the ROW reads the SAME `assurance` predicate the sheet's SUMMARY reads.
+//   assurance present -> a default has been driving the plan. Nothing is stalled, so no
+//     --danger alarm and no backwards day-count; the window passing stays visible as a
+//     fact ("past its window") because a filing view still has to rank.
+//   assurance absent  -> nothing has been holding it. It genuinely IS waiting on the
+//     host, "overdue" is honest, and the hero prints no assurance either — so the two
+//     surfaces still agree.
+describe('re-sit — the sheet rows use the hero’s theory', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('one predicate drives both the chip and the line', () => {
+    expect(src).toMatch(/const runningOnOurPick = !!r\.assurance;/);
+    expect(src).toMatch(/const lateLine = \(r\.status === 'overdue' && r\.assurance\) \? r\.assurance : r\.because;/);
+  });
+
+  it('no row hard-codes the danger chip any more — all three sites read lateChip', () => {
+    // Three render branches (settle / editor / routed) each stamped their own
+    // --danger "overdue". A per-site literal is how the theory diverged in the first place.
+    const hardCoded = (src.match(/background: 'var\(--danger-tint\)' \}\}>overdue<\/span>/g) || []).length;
+    expect(hardCoded).toBe(1); // the single definition inside lateChip, nowhere else
+    expect((src.match(/\{lateChip\}/g) || []).length).toBe(3);
+    expect((src.match(/\{lateLine && <span className="v-meta">/g) || []).length).toBe(3);
+  });
+
+  it('danger is reserved for a call nothing is holding', () => {
+    const block = src.slice(src.indexOf('const lateChip'), src.indexOf('const lateLine'));
+    expect(block).toMatch(/runningOnOurPick[\s\S]*--warn-tint[\s\S]*past its window/);
+    expect(block).toMatch(/--danger-tint[\s\S]*overdue/);
+  });
+
+  it('the anonymous heart banner stays deleted — keep the instance, cut the generalisation', () => {
+    // Ruling B, one surface over. The instance lives on the heart ROW via
+    // rankReasonForV2; a banner above the list could only re-say it worse, and it
+    // scolded the host for the default the same screen said was holding fine.
+    expect(src).not.toMatch(/One of these is the moment your guests will remember/);
+    expect(src).not.toMatch(/don’t let it settle on a default/);
+    expect(raw).toMatch(/This is the moment your guests will remember — worth deciding yourself\./);
   });
 });
 
@@ -388,5 +438,79 @@ describe('re-sit — the heroInView subscription rides the node', () => {
 
   it('the observer is disconnected on detach and on unmount', () => {
     expect(src).toMatch(/if \(heroIoRef\.current\) \{ heroIoRef\.current\.disconnect\(\); heroIoRef\.current = null; \}/);
+  });
+});
+
+// ─── A SOLEMN DAY IS NOT LATE ────────────────────────────────────────────────
+//
+// Found by the Spine Stress recruitment, 2026-07-30, and reproduced end-to-end before
+// any fix. A repast four days out rendered, verbatim, to a family that had just buried
+// someone:
+//
+//   "Settle: Who provides the food."
+//   "2 decisions are past their easy window — this one first.
+//    The spread and shopping list size from them."
+//
+// Both halves false. repast.js — same repo, verificationStatus:'researched' — records
+// why in its own culturalContext: "the family does NOT cook — a church, repast
+// committee, or neighbors carry the meal." So the app scolded the bereaved for being
+// slow to accept food already on its way, and told them to go shopping.
+//
+// THE ARCHITECTURAL POINT, and the reason this test lives here rather than in a copy
+// suite: the repast author could not have prevented it. There is no `when`, `weight`,
+// or `emotionalWeight` that reaches a global copy string in planHeroCopy. Per-playbook
+// authoring cannot express "this event type has no overdue state". That is evidence in
+// the per-playbook vs per-capability ruling, produced by the codebase itself.
+const { planHeroCopy } = require('../planHeroCopy');
+const { isSolemnEvent } = require('../solemn');
+
+describe('a solemn day is not late', () => {
+  const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+  const repast = () => ({
+    id: 'rp-gate', name: 'Repast for Deacon Willie Hayes', type: 'repast',
+    date: iso(4), createdAt: iso(-2), guestMode: 'count', guestCount: 50,
+    venueKind: 'venue', venue: 'Mount Zion Baptist Church — Fellowship Hall',
+    guests: [], vendors: [], timeline: [],
+  });
+
+  it('really produces overdue rows — the scenario is not vacuous', () => {
+    const { playbookDecisionBoard } = require('../playbooks');
+    const overdue = (playbookDecisionBoard(repast()).open || []).filter(r => r.status === 'overdue');
+    expect(overdue.length).toBeGreaterThan(0);
+  });
+
+  it('never says the bereaved are past a window, and never sends them shopping', () => {
+    const c = planHeroCopy(repast());
+    const blob = `${c.title} ${c.line} ${c.cta}`.toLowerCase();
+    for (const banned of ['easy window', 'past their', 'past its', 'overdue', 'shopping list', 'the spread']) {
+      expect(blob).not.toContain(banned);
+    }
+    expect(c.title).not.toMatch(/^Settle:/); // no imperative on a grief clock
+  });
+
+  it('anchors FORWARD to the runway, never backward to an overshoot', () => {
+    const c = planHeroCopy(repast());
+    expect(c.line).toMatch(/days to go|day to go|the day is here/);
+  });
+
+  it('the classifier is SHARED — one derivation, shell and copy engine', () => {
+    expect(isSolemnEvent({ type: 'repast' })).toBe(true);
+    expect(isSolemnEvent({ type: 'birthday', name: 'Memorial for Dad' })).toBe(true);
+    expect(isSolemnEvent({ type: 'juneteenth cookout' })).toBe(false);
+    const shell = fs.readFileSync(SHELL, 'utf8');
+    expect(shell).toMatch(/import \{ isSolemnEvent \} from '@app\/lib\/solemn'/);
+    expect(shell).not.toMatch(/const SOLEMN_RE = /); // the local copy is gone
+  });
+
+  it('a NON-solemn event keeps its original voice — this was surgical', () => {
+    const cookout = { id: 'ck-gate', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] };
+    const c = planHeroCopy(cookout);
+    expect(c.title).toMatch(/^Settle:/);
+    expect(c.line).toMatch(/easy window/);
+  });
+
+  it('a label already ending in ? does not gain a period', () => {
+    const cookout = { id: 'ck-p', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW', guests: [], vendors: [], timeline: [] };
+    expect(planHeroCopy(cookout).title).not.toMatch(/[?!]\./);
   });
 });
