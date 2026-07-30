@@ -3076,3 +3076,29 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   font-size:var(--t-note); font-weight:500; color:var(--faint);
   margin:0 0 var(--sp-2); letter-spacing:0;
 }
+
+/* ── THE MONEY BAR ────────────────────────────────────────────────────────────
+   One chart, on the one surface where the host's question ("am I OK?") is a
+   proportion rather than a number. Segments are steel — this is identity and
+   structure, not a status — and only turn --danger when the plan is genuinely
+   over, which is the single case where the bar is reporting a problem rather
+   than a position. It never clips: over budget the whole track rescales so the
+   overspend is visible instead of a bar pinned reassuringly at 100%. */
+.mbar{
+  position:relative; display:flex; height:8px; border-radius:5px; overflow:hidden;
+  background:var(--bg-band); border:1px solid var(--line);
+}
+.mbar i{ display:block; height:100%; transition:width var(--ms-reveal) var(--ease-out); }
+@media(prefers-reduced-motion:reduce){ .mbar i{ transition:none } }
+/* The budget line marks the ceiling while headroom still exists. Once the plan is
+   over there is no headroom to mark, and the rescaled track states it instead. */
+.mbar-line{ position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--ink-soft); opacity:.5; }
+.mbar-key{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 14px; margin-top:7px;
+  font-size:var(--t-note); color:var(--muted); font-variant-numeric:tabular-nums;
+}
+.mbar-key span{ display:inline-flex; align-items:center; gap:6px; }
+.mbar-dot{ width:8px; height:8px; border-radius:2px; flex:0 0 auto; }
+/* The cap states the headroom (or the overspend) in words, so the bar is never the
+   only carrier of the fact — UX_02: a colour must not be the sole signal. */
+.mbar-cap{ margin-left:auto; color:var(--ink-soft); font-weight:600; }

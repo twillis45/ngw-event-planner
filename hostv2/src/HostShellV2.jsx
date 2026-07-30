@@ -14297,6 +14297,46 @@ export default function HostShellV2() {
                   })() : (
                     heroCopy && heroCopy.title ? <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p> : null
                   )}
+                  {/* ── THE MONEY BAR ────────────────────────────────────────────────
+                      From the competitive read: planned → committed → spent is already
+                      tracked in three places and rendered only as prose. Finance and
+                      fitness apps chart this; the consumer event category charts nothing,
+                      and the enterprise one (Blink) charts heavily — the boundary is
+                      whether someone is paid to watch the numbers. A host is not, so this
+                      is the ONE chart on this surface and it earns its place only because
+                      the number moves and the answer ("am I OK?") is a proportion.
+                      HONESTY RULES IT INHERITS: it renders only inside the money.planned
+                      branch, so an unset budget can never show as an empty track — that
+                      would read as "you've spent nothing" when the truth is "you haven't
+                      said". Every segment carries its number in the key below. Over-budget
+                      does not clip: the track turns and the overspend is stated, because a
+                      bar pinned at 100% would hide exactly the fact that matters most. */}
+                  {money.planned > 0 && (() => {
+                    const planned = money.planned;
+                    const spent = Math.max(0, Math.round(money.spent || 0));
+                    const committed = Math.max(0, Math.round(money.committed || 0));
+                    const pledged = Math.max(0, committed - spent);   // spoken for, not yet paid
+                    const over = committed > planned;
+                    const scale = over ? committed : planned;         // over-budget rescales, never clips
+                    const pct = (n) => scale > 0 ? Math.max(0, Math.min(100, (n / scale) * 100)) : 0;
+                    const free = Math.max(0, planned - committed);
+                    return (
+                      <div style={{ margin: '2px 0 var(--sp-4)' }}>
+                        <div className="mbar" role="img"
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          <i style={{ width: pct(spent) + '%', background: over ? 'var(--danger)' : 'var(--steel)' }} />
+                          <i style={{ width: pct(pledged) + '%', background: over ? 'var(--danger-tint)' : 'var(--steel-tint)' }} />
+                          {/* The budget line only exists while there is headroom to mark. */}
+                          {!over && free > 0 && <span className="mbar-line" style={{ left: '100%' }} />}
+                        </div>
+                        <div className="mbar-key">
+                          <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel)' }} />{fmt(spent)} spent</span>
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-tint)' : 'var(--steel-tint)' }} />{fmt(pledged)} spoken for</span>}
+                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' left'}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {hostRows.length > 0 && (
                     <>
                       {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
