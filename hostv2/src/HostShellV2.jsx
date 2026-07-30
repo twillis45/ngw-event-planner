@@ -6622,13 +6622,40 @@ export default function HostShellV2() {
                   tail collapses, but .app is evidently not the scroll container. Left
                   un-scrolled rather than shipping code that does nothing; the fix
                   needs the real scroller identified first. */}
-              {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (
-                <button className="path-row" onClick={() => setQueueOpen(true)}>
-                  <span className="then">then</span>
-                  <span className="t">the rest of your list · {queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length} more</span>
-                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
-                </button>
-              )}
+              {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (() => {
+                const hidden = queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical');
+                // ── Q1a, REVIEW BOARD 2026-07-29: HIDE BY TIME, NOT JUST BY RANK ──
+                // The board rejected all seven alternate board models but grafted
+                // one thing from HORIZON: of every string on those frames, the only
+                // one a host can VERIFY is the time-grounded tail ("Nothing here is
+                // due before the weekend — it'll surface when it's time"). A bare
+                // count says how much is hidden; it never says whether hiding it is
+                // safe. Grandmother's note: "'Six more' makes me feel behind."
+                // Ruling was "where a date computation backs it" — so this speaks
+                // only from real dueInDays values, which queue items carry
+                // OPTIONALLY (see the dueChip note ~5879: absent = say nothing).
+                // And it never soothes over an overdue row: if something in the
+                // hidden set is already past its window, the tail says THAT.
+                const due = hidden.map(a => Number(a && a.dueInDays)).filter(Number.isFinite);
+                const overdue = due.filter(d => d < 0).length;
+                const soonest = due.length ? Math.min(...due) : null;
+                // Kept SHORT because this is a single clipped row — driven
+                // 2026-07-29, "1 already past" ellipsised to "1 already p…".
+                const when = overdue > 0
+                  ? `${overdue} past due`      // never "nothing due" over an overdue row
+                  : soonest == null
+                    ? null                     // no dates → the count alone, as before
+                    : soonest === 0 ? '1 due today'
+                      : soonest === 1 ? 'none till tomorrow'
+                        : `none due for ${soonest}d`;
+                return (
+                  <button className="path-row" onClick={() => setQueueOpen(true)}>
+                    <span className="then">then</span>
+                    <span className="t">the rest of your list · {hidden.length} more{when ? ` · ${when}` : ''}</span>
+                    <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  </button>
+                );
+              })()}
 
               {worries.length > 0 && (() => {
                 const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);

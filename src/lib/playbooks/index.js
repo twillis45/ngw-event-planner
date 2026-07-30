@@ -1079,7 +1079,21 @@ export function topPlaybookDecision(event, asOf) {
       title: 'Confirm final guest count',
       consequence: `Food, drinks, ice, and rentals all scale from headcount. ${pendingMsg}`,
       level: 'attention',
-      primaryCta: gc.reason === 'pending-rsvps' ? 'Chase RSVPs' : 'Set guest count',
+      // ── Q1b, REVIEW BOARD 2026-07-29: THE NUMBER GOES IN THE CTA ──────────
+      // Grafted from frame 6 (STAGE), the one pattern the board took from the
+      // seven rejected board models: its CTA reads "Set catering to 41", not
+      // "Set the count". A button carrying the actual figure is more truthful
+      // than a generic verb — the host can see what they are agreeing to before
+      // they tap, which is the same propose-don't-ask rule the hero already
+      // follows for decisions.
+      // The ACT is deliberately unchanged: the pending case still chases, it
+      // just says how many. Swapping it to "Set the count to N" would quietly
+      // change what the button DOES (settle instead of chase) under cover of a
+      // copy graft. The no-count case has no number to carry, so it keeps its
+      // plain label rather than inventing one.
+      primaryCta: gc.reason === 'pending-rsvps'
+        ? (gc.pending > 0 ? `Chase ${gc.pending} ${gc.pending === 1 ? 'maybe' : 'maybes'}` : 'Chase RSVPs')
+        : 'Set guest count',
       // Deep-link doctrine: the count decision RESOLVES at the count entry/lock
       // hero (guests-entry anchor), never at the tab top.
       primaryRoute: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
