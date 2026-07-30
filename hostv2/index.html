@@ -27,7 +27,15 @@
          (App.js) — this URL is shared, don't drop weights the other app needs. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,500;1,700;1,800&display=swap" fetchpriority="high" />
+    <!-- Playfair weight 900 dropped 2026-07-30: a whole-source sweep of styles.css,
+         HostShellV2.jsx and InviteV2.jsx (stationery CSS and JSX included) found ZERO
+         demand for it — no font-weight:900, no fontWeight 900, nothing inheriting one.
+         A live computed-style sweep of the plan surfaces resolved only 500-italic, but
+         that could not reach the ?rsvp invite, so the source grep is the load-bearing
+         evidence here, not the render. The remaining five are all still claimed:
+         roman 700/800 explicitly, italic 500 explicitly, italic 700/800 by inheritance
+         at styles.css:1472 and :1876. Do not trim further without re-running both. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,500;1,700;1,800&display=swap" fetchpriority="high" />
     <!-- NEWSREADER — the host HUMAN VOICE (elegant-minimal command language). Host rulings
          2026-07-17: serif beat sans (guide voice test), then unified Newsreader beat Fraunces
          (family test) for the Apple-register calm — warmth from the italic, not the letterform.

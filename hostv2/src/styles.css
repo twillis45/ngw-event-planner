@@ -105,10 +105,10 @@ body{font-family:var(--sans); color:var(--ink); background:var(--bg-band); -webk
 button{font-family:inherit}
 :focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:var(--r-sm)}
 
-/* background-color here is what lets .app.has-nextbar SHRINK (see :2312) without
-   opening a seam: the strip .app vacates for the next-bar paints the same ground.
-   Safe on every stage — .app is height:100% everywhere else and paints over this,
-   and the bar (hence the shrink) only ever exists on the plan stage. */
+/* background-color here backs .app's bottom FADE (see .app.has-nextbar): the mask
+   fades .app's own background along with its content, so without an identical
+   ground beneath, the fade would expose the page behind it. Safe on every stage —
+   .app paints over this everywhere, and the fade only exists on the plan stage. */
 .stagewrap{position:relative; margin:0 auto; background-color:var(--bg)}
 .app{
   /* overflow-x:clip mirrors the .sheet guard for the MAIN surfaces (Command
@@ -2316,12 +2316,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    So content was occluded at EVERY position except the very bottom. The content
    was not giving way; it was passing underneath.
 
-   THE FIX: shrink the SCROLLPORT instead of padding its content. .app is a
-   height:100% scroller, so trimming its height lifts the whole visible area
-   clear of the bar and nothing can be occluded at any scroll position. The
-   strip .app vacates is painted by .stagewrap's background-color (:108) so no
-   seam opens. A small padding-bottom stays purely for breathing room above the
-   scrollport edge — it is no longer load-bearing.
+   FIRST ATTEMPT, REVERTED SAME DAY — do not try it again. Shrinking the
+   scrollport (.app.has-nextbar{height:calc(100% - 84px)}) did clear the bar
+   geometrically, but .has-nextbar TOGGLES ON SCROLL, so the canvas visibly
+   changed size mid-scroll. Host caught it in local within minutes. A layout
+   that moves while you are reading it is worse than the overlap it fixed.
+   Anything keyed to .has-nextbar must not alter .app's BOX.
+
+   THE FIX: keep the reservation (so the last row can always be scrolled clear
+   of the bar) and add a bottom fade so content is never silently hidden — it
+   visibly dissolves before it reaches the bar instead of sliding under an opaque
+   pill. The mask is on .app's own box, so it rides the viewport and costs no
+   layout. Nothing resizes, and at max scroll the faded band is the reservation,
+   which is empty anyway.
 
    Earlier the same day: a stray comment-terminator sat at the end of the "16px
    offset." line, closing this comment early; the following lines then parsed as
@@ -2330,8 +2337,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    to both rules — so this audit's own fix had never shipped at all. Do not write
    a comment terminator inside this comment; that is exactly how it broke. */
 .app.has-nextbar{
-  height:calc(100% - (84px + env(safe-area-inset-bottom,0px)));
-  padding-bottom:12px;
+  /* The reservation: guarantees the last row can be scrolled clear of the bar. */
+  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  /* The fade: content dissolves before it reaches the bar rather than sliding
+     under it. Opaque down to the reservation line, gone by the bar's mid-point.
+     Masking .app's own box costs no layout and nothing resizes — and because
+     .stagewrap carries the same background-color (:108), fading .app's own
+     background reveals an identical ground, so no seam appears. */
+  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
+          mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
 }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
@@ -2941,3 +2955,95 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* Dropping one is a quiet, reversible act — the row dims rather than shouting. */
 .req-row:active{ opacity:.6 }
 @media (prefers-reduced-motion:reduce){ .req-row, .req-label{ transition:none } }
+
+/* ══ POINTER CAPABILITY — what the app owes a device with no hover ═════════════
+   Audit 2026-07-30. styles.css carried 46 :hover rules and ZERO @media (hover:*)
+   guards. A prior audit added :active press feedback for touch, so the gap left
+   was the other two halves: information hidden behind hover, and hover styles
+   that STICK after a tap, because nothing ever un-hovers on a touchscreen. */
+
+/* ── 1. THE HOVER TRAP (board item; both review panels found it independently) ──
+   .decopt-why holds the REASONING for "our pick" and is opacity:0 until :hover.
+   Its wrapper (.decopt-badge-wrap, tabIndex=0) is nested INSIDE the .decopt
+   <button> whose onClick is nd.settle(). A touchscreen has no hover, so the only
+   gesture that could reveal the reasoning IS the gesture that accepts it — a
+   false capability under UX_07: the badge implies more, and on the primary
+   platform delivers nothing.
+
+   Fixed here rather than in the JSX so the settle handler is untouched:
+   display:contents dissolves the two wrapper boxes, promoting .decopt-badge and
+   .decopt-why to direct grid children of .decopt. The reasoning then takes a
+   full-width second row, in flow, always visible — no gesture required, nothing
+   overlapping the next option, and no reliance on a tooltip a phone cannot summon. */
+@media (hover:none){
+  .app-elegant .decopt.pick{
+    display:grid; grid-template-columns:1fr auto; align-items:center;
+    column-gap:12px; row-gap:7px;
+  }
+  .app-elegant .decopt.pick .decopt-right,
+  .app-elegant .decopt.pick .decopt-badge-wrap{ display:contents; }
+  .app-elegant .decopt.pick .decopt-main{ grid-column:1; grid-row:1; }
+  .app-elegant .decopt.pick .decopt-badge{ grid-column:2; grid-row:1; justify-self:end; }
+  .app-elegant .decopt.pick .decopt-why{
+    position:static; grid-column:1 / -1; grid-row:2;
+    opacity:1; visibility:visible; transform:none; pointer-events:auto;
+    width:auto; max-width:none; background:none; border:0; box-shadow:none;
+    padding:7px 0 0; z-index:auto; text-align:left;
+    font-size:var(--t-note); line-height:1.42; color:var(--muted);
+    border-top:1px solid var(--line-soft);
+  }
+}
+
+/* ── 2. STICKY HOVER ───────────────────────────────────────────────────────────
+   On a touchscreen :hover latches on tap and stays latched until the user taps
+   something else — a row you have already moved on from keeps reading as
+   "selected". Every rule below is DECORATIVE emphasis (background / colour /
+   opacity), verified rule-by-rule: only .decopt-why hid information, and that is
+   handled above. Press feedback is unaffected — :active is what should confirm a
+   tap on touch, and a prior audit already wired it across these same surfaces. */
+@media (hover:none){
+  .chip:hover, .cta:hover:not(:disabled), .cta.soft:hover, .cta.ghost:hover,
+  .card:hover, .lens:hover, .grow:hover, .frow:hover, .fold-btn:hover,
+  .tile-d:hover:not(:disabled), .tile-d.allset:hover, .wchip:hover,
+  .food-act:hover, .settled-card:hover, .toast-undo:hover, .next-bar:hover,
+  .floor-addland:hover, .palette-row:hover, .decopt:hover,
+  .app-elegant .decopt:hover, .app-elegant .decopt.pick:hover,
+  .app-elegant .decopt-disc:hover, .hero.elegant .cta:hover:not(:disabled),
+  .hero.elegant .whytog:hover, .hero.elegant .confrow:hover,
+  .hero.elegant .confrow.confrow-open:hover, .hero.elegant .ef-row:hover,
+  .hero.elegant .bento .tile-b:hover, .hero.elegant .bento .tile-c:hover,
+  .hero.elegant .cp-look:hover, .hero.elegant .ac-next:hover,
+  .ev-eyebrow:hover, .ev-kicker:hover{
+    background:inherit; filter:none; transform:none;
+  }
+  /* Child-emphasis hovers: the parent lit a descendant. Return it to its resting
+     colour so a tapped row does not stay brightened behind the host's thumb. */
+  .ev-eyebrow:hover .eb-menu > span{ background:var(--faint); }
+  .efold:hover .efold-grab{ opacity:.55; width:44px; }
+  .efold:hover .efold-label{ color:var(--faint); }
+  .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  .hero.elegant .returnbeat:hover .rb-t{ color:var(--muted); }
+  .db-row:hover .db-lead{ color:var(--carbon-muted); }
+  .qidx-row:hover .qidx-l{ color:var(--ink-soft); }
+  .req-row:hover .req-label{ color:var(--ink-soft); }
+}
+
+/* ── 3. FOCUS PARITY ───────────────────────────────────────────────────────────
+   46 :hover rules against 5 :focus-visible — a keyboard or switch user got about
+   a ninth of the state feedback a mouse user gets. The global :focus-visible ring
+   (:106) already marks WHERE focus is; what was missing is the surface responding
+   the way it does to a pointer, so the two inputs feel like one product. Given to
+   the row/card/button surfaces that carry a hover state worth matching. */
+@media (hover:hover){
+  .chip:focus-visible, .cta:focus-visible:not(:disabled), .card:focus-visible,
+  .lens:focus-visible, .grow:focus-visible, .frow:focus-visible,
+  .fold-btn:focus-visible, .wchip:focus-visible, .food-act:focus-visible,
+  .decopt:focus-visible, .app-elegant .decopt:focus-visible,
+  .hero.elegant .ef-row:focus-visible, .hero.elegant .confrow:focus-visible{
+    background:var(--steel-tint);
+  }
+  .db-row:focus-visible .db-lead{ color:var(--carbon-text); }
+  .qidx-row:focus-visible .qidx-l{ color:var(--ink); }
+  .req-row:focus-visible .req-label{ color:var(--ink); }
+  .hero.elegant .watch-row:focus-visible .t{ color:#c7ced4; }
+}
