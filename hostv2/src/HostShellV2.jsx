@@ -66,6 +66,7 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
+import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
@@ -2005,6 +2006,30 @@ export default function HostShellV2() {
     // has picked here, stop auto-following any older cloud pointer.
     didResume.current = true;
     if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
+  };
+  // ── RUN IT AGAIN (competitive read, 2026-07-30) ──────────────────────────────
+  // Partiful, Linear and Blink all ship this and we shipped none of it, so the
+  // repeat host — the annual crab feast, the reunion that rotates hosts — began
+  // from nothing every year. lib/duplicateEvent owns the one decision that matters
+  // (plan carries, state resets) and is gated by its own tests; this just gives it
+  // an id, persists the copy the same way a created event is persisted, and lands
+  // the host on it. The copy arrives WITHOUT A DATE on purpose: that is the single
+  // thing that must be re-decided, and leaving it blank is what makes every
+  // date-relative engine say "not yet" instead of reckoning against last year.
+  const runItAgain = (src) => {
+    if (!src) return;
+    const newId = 'ev-copy-' + Date.now().toString(36);
+    let copy = null;
+    try { copy = duplicateEvent(src, { id: newId, now: new Date().toISOString() }); }
+    catch { toast('Couldn’t copy that event.'); return; }
+    setCustoms(list => [...list, copy]);
+    setEventId(newId); setPatch({}); setSheet(null); setStage('plan'); setDayIdx(0);
+    didResume.current = true;
+    if (session) { try { patchProfile({ lastEventId: newId }); } catch { /* local pointer holds it */ } }
+    if (session) { cloudSaveEvent(copy).then(res => recordSaveResult(copy, res)).catch(() => {}); }
+    // Say what was kept AND what was not — a copy that quietly dropped the RSVPs
+    // without saying so would be its own small dishonesty.
+    toast('Copied the plan — guests, vendors and your picks. Replies, payments and the date start fresh.');
   };
   // Follow the account's resume pointer on a fresh device: once the target event
   // is available (sample, custom, or hydrated real event) AND the host hasn't
@@ -11770,8 +11795,18 @@ export default function HostShellV2() {
                     {[...REAL_EVENTS, ...hydratedEvents.filter(he => !REAL_EVENTS.some(re => re.id === he.id))].map((e, i) => {
                       const isActive = e.id === eventId;
                       const d = daysUntil(e.date);
+                      // RUN IT AGAIN sits only on events that have ALREADY HAPPENED — the
+                      // case this exists for (the annual feast, the reunion that rotates
+                      // hosts). Gating it there keeps the list calm rather than hanging a
+                      // second control off every future event a host is mid-way through.
+                      // It is a SIBLING of the row, never nested: the row is itself a
+                      // <button>, and interactive content inside interactive content is
+                      // invalid and reads unpredictably to a screen reader — the same
+                      // defect the "our pick" badge had.
+                      const isPast = d !== null && d < 0;
                       return (
-                        <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                        <Fragment key={e.id}>
+                        <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
                           onClick={() => { switchEvent(e.id); setSheet(null); }}>
                           <span className="f-main">
                             <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -11779,6 +11814,13 @@ export default function HostShellV2() {
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
+                        {isPast && (
+                          <button className="mini runagain" onClick={() => runItAgain(e)}
+                            aria-label={'Start a new event from ' + (e.name || 'this one')}>
+                            Run it again
+                          </button>
+                        )}
+                        </Fragment>
                       );
                     })}
                     <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples</div>
@@ -11795,8 +11837,14 @@ export default function HostShellV2() {
                   // shelf is synthetic EXCEPT MY_CRAB_FEAST when it's been promoted to the
                   // host's real crab-feast event (appCrab) — a real "Sample" tag, not invented.
                   const isSample = !e._custom && !(e === MY_CRAB_FEAST && appCrab);
+                  // Run it again belongs to the HOST'S OWN past events, which live here as
+                  // well as in the cloud shelf above — a locally-created event is no less
+                  // the host's. Samples are excluded: copying a seeded demo would produce a
+                  // second demo, not a plan the host has any stake in.
+                  const canRunAgain = !!e._custom && d !== null && d < 0;
                   return (
-                    <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                    <Fragment key={e.id}>
+                    <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
                       onClick={() => { switchEvent(e.id); setSheet(null); }}>
                       <span className="f-main">
                         <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', padding: '1px 8px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -11804,6 +11852,13 @@ export default function HostShellV2() {
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                     </button>
+                    {canRunAgain && (
+                      <button className="mini runagain" onClick={() => runItAgain(src)}
+                        aria-label={'Start a new event from ' + (src.name || label)}>
+                        Run it again
+                      </button>
+                    )}
+                    </Fragment>
                   );
                 })}
                 {!activeCustom && Object.keys(patch).length > 0 && (

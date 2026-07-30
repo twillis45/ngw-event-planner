@@ -3102,3 +3102,8 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 /* The cap states the headroom (or the overspend) in words, so the bar is never the
    only carrier of the fact — UX_02: a colour must not be the sole signal. */
 .mbar-cap{ margin-left:auto; color:var(--ink-soft); font-weight:600; }
+
+/* "Run it again" — the copy-forward control under a past event. Deliberately quiet:
+   it is a secondary act on a row whose primary act is opening the event, so it must
+   not compete with the row above it. Indented to read as belonging to that row. */
+.runagain{ margin:2px 0 10px 12px; color:var(--steel-soft); }
