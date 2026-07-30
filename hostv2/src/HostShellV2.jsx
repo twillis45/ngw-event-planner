@@ -3,7 +3,7 @@
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
@@ -2409,13 +2409,42 @@ export default function HostShellV2() {
   }, [queue]);
   const heroZoneRef = useRef(null);
   const [heroInView, setHeroInView] = useState(true);
-  useEffect(() => {
-    const el = heroZoneRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setHeroInView(false); return; }
+  // ── THE OBSERVER FOLLOWS THE NODE, NOT A GUESSED DEP LIST ───────────────────
+  // Board re-sit 2026-07-30, found by the event pros in code and then confirmed live
+  // on production: a host who arrives via the WELCOME GATE got a pinned "NEXT" bar
+  // sitting over their content, permanently.
+  //
+  // The old shape was a useEffect with deps [stage, event.id] that ran
+  //   if (!el) { setHeroInView(false); return; }
+  // On the welcome gate `.hzone` does not exist yet, so that branch LATCHED false.
+  // Dismissing the gate flips the separate `welcome` state — it does not touch
+  // `stage` or `event.id` (dismissWelcome only sets a stage for 'create') — so the
+  // effect never re-ran, never subscribed, and nothing ever set the flag back.
+  // Proven by the entry path alone, same tab / same event / same scrollTop 0:
+  //   via welcome gate -> bar present (wrong)   direct load -> bar absent (right)
+  // That is the FIRST-RUN path, so every new host hit it.
+  //
+  // Adding `welcome` to the deps would fix this one entry and leave the class open —
+  // any other reason the hero mounts late would re-latch it. A dep list that mirrors
+  // the conditions can always fall behind them (the same bug-factory the route
+  // resolver was written to kill). So the subscription now rides the NODE's own
+  // lifetime via a callback ref: React calls it with the element on mount and with
+  // null on unmount, which is exactly when the observer should attach and detach.
+  //
+  // And the null branch no longer lies: NO HERO ON SCREEN IS NOT "HERO SCROLLED
+  // AWAY". The bar is an echo of a hero that has left the viewport; with no hero
+  // there is nothing to echo, so absence means "don't show it" (true), matching the
+  // useState(true) initial value.
+  const heroIoRef = useRef(null);
+  const attachHeroZone = useCallback((el) => {
+    heroZoneRef.current = el;
+    if (heroIoRef.current) { heroIoRef.current.disconnect(); heroIoRef.current = null; }
+    if (!el || typeof IntersectionObserver === 'undefined') { setHeroInView(true); return; }
     const io = new IntersectionObserver((es) => { es.forEach(e => setHeroInView(e.isIntersecting)); }, { threshold: 0.05 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [stage, event.id]);
+    heroIoRef.current = io;
+  }, []);
+  useEffect(() => () => { if (heroIoRef.current) { heroIoRef.current.disconnect(); heroIoRef.current = null; } }, []);
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -5503,7 +5532,7 @@ export default function HostShellV2() {
                   branches: one honest sentence, no arithmetic. In askMode the
                   calm "On track" folds into the truth line; a non-calm verdict
                   keeps its full sentence and its color. */}
-              <div ref={heroZoneRef} className="hzone">{(() => {
+              <div ref={attachHeroZone} className="hzone">{(() => {
                 // ALL-CLEAR PAYOFF — a whole bundle just went quiet on this event.
                 // Owns the hero until the host taps the handoff. Conflicts show the
                 // grounded run-of-show (the proof the clash is gone); other bundles

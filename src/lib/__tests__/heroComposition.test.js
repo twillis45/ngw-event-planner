@@ -330,3 +330,49 @@ describe('re-sit follow-ups — verified live, then fixed', () => {
     expect(src).toMatch(/Fold them away/);
   });
 });
+
+// ─── THE PINNED BAR'S GATE MUST FOLLOW THE NODE, NOT A DEP LIST ──────────────
+//
+// Board re-sit 2026-07-30. A host arriving via the WELCOME GATE got a pinned "NEXT"
+// bar sitting over their content, permanently — the first-run path.
+//
+// The old shape: useEffect(..., [stage, event.id]) containing
+//   if (!el) { setHeroInView(false); return; }
+// On the welcome gate `.hzone` does not exist, so that branch LATCHED false.
+// Dismissing the gate flips the separate `welcome` state — it does NOT touch
+// `stage` or `event.id` — so the effect never re-ran and nothing set it back.
+//
+// Proven live on production, same tab / same event / same scrollTop 0, entry path
+// the only variable:   via welcome gate -> bar present (wrong)
+//                      direct load      -> bar absent  (right)
+// After the fix, driven on both paths plus a scroll:
+//   welcome gate, scrollTop 0    -> hero top 276, bar ABSENT
+//   scrolled, scrollTop 1000     -> hero bottom -684, bar PRESENT
+describe('re-sit — the heroInView subscription rides the node', () => {
+  const raw = fs.readFileSync(SHELL, 'utf8');
+  const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('the observer attaches via a callback ref, not a dep-list effect', () => {
+    expect(src).toMatch(/const attachHeroZone = useCallback\(\(el\) => \{/);
+    expect(src).toMatch(/<div ref=\{attachHeroZone\} className="hzone">/);
+  });
+
+  it('NO dep-list effect may own the hero observer again', () => {
+    // The regression class: any [stage, event.id]-style list will fall behind the
+    // reasons a hero can mount late. If this returns, the first-run bug returns.
+    expect(src).not.toMatch(/setHeroInView\(false\); return; \}[\s\S]{0,400}\}, \[stage, event\.id\]\)/);
+  });
+
+  it('a MISSING hero never reads as "hero scrolled away"', () => {
+    // The bar is an echo of a hero that LEFT the viewport. With no hero there is
+    // nothing to echo, so absence must mean "don't show it" — matching useState(true).
+    expect(src).toMatch(/useState\(true\)/);
+    const cb = src.slice(src.indexOf('const attachHeroZone'), src.indexOf('heroIoRef.current = io;'));
+    expect(cb).toMatch(/if \(!el \|\| typeof IntersectionObserver === 'undefined'\) \{ setHeroInView\(true\); return; \}/);
+    expect(cb).not.toMatch(/setHeroInView\(false\)/);
+  });
+
+  it('the observer is disconnected on detach and on unmount', () => {
+    expect(src).toMatch(/if \(heroIoRef\.current\) \{ heroIoRef\.current\.disconnect\(\); heroIoRef\.current = null; \}/);
+  });
+});
