@@ -5639,7 +5639,15 @@ export default function HostShellV2() {
                       // covers BOTH shapes — a lone decision hero and a decisions bundle whose
                       // first call is the one rendering. Other slips (time, spending) are
                       // untouched; only the clause that NAMES DECISIONS is suppressed.
-                      if (od && !heroSpeaksThisOverdue) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
+                      // ── AND NEVER ON A SOLEMN DAY (2026-07-30) ──────────────────────
+                      // Same defect as planHeroCopy's, on the other surface. "Past its
+                      // easy window" is shame grammar measured backwards from a deadline
+                      // the host never agreed to — on a repast, nobody was late, somebody
+                      // died. repast.js authors T-5d leads because a burial is on
+                      // Saturday. The count is suppressed here rather than softened:
+                      // there is no gentle way to tell the bereaved they are behind, and
+                      // the decisions themselves still render below with their own rows.
+                      if (od && !heroSpeaksThisOverdue && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
                     if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
@@ -5961,11 +5969,25 @@ export default function HostShellV2() {
                 // actions MAY carry dueInDays; absent = say nothing).
                 // AMBER RESTRAINT (host 2026-07-18): in the elegant loop the due chip — including
                 // "past its window" (overdue) — is amber, the single urgency accent (.of default).
-                const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
-                  <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                    {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
-                  </span>
-                ) : null;
+                // ── AND NEVER BACKWARD ON A SOLEMN DAY (2026-07-31) ─────────────────
+                // The slips clause below was already guarded, but this chip is a
+                // SECOND backward-looking surface and it still printed "past its
+                // window" over a repast hero — caught by driving the built shell, not
+                // by reading source. repast.js authors T-5d leads because a burial
+                // lands on Saturday, so a family four days out is "late" the moment
+                // the app opens. Only the OVERSHOOT is dropped: due today / tomorrow /
+                // in N days still print, because those point forward and are true. The
+                // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
+                // true is lost — only the blame.
+                const dueChip = (a) => {
+                  if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
+                  if (solemn && a.dueInDays < 0) return null;
+                  return (
+                    <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
+                    </span>
+                  );
+                };
                 return (<>
               {/* Name the state — but ONLY when the board on screen IS actually paced.
                   Gated on queueFolded, which is the same predicate that computed
@@ -8808,7 +8830,12 @@ export default function HostShellV2() {
                   //     so both surfaces still agree.
                   // One predicate, both altitudes, no third vocabulary.
                   const runningOnOurPick = !!r.assurance;
-                  const lateChip = r.status !== 'overdue' ? null : (runningOnOurPick
+                  // SOLEMN (2026-07-31): the same suppression the hero chip takes, one
+                  // altitude down. A row a tap away from the hero must not say what the
+                  // hero refuses to say — "past its window" and "overdue" are the same
+                  // shame grammar on a grief clock. The row keeps `lateLine` below, so
+                  // the state is still explained; only the accusing badge goes.
+                  const lateChip = (r.status !== 'overdue' || solemn) ? null : (runningOnOurPick
                     ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>past its window</span>
                     : <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>);
                   const lateLine = (r.status === 'overdue' && r.assurance) ? r.assurance : r.because;

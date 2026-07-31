@@ -101,7 +101,11 @@ describe('ruling B — the overdue scold is said once, not twice', () => {
 
   it('the vague decisions clause is suppressed when the hero IS that overdue decision', () => {
     expect(src).toMatch(/heroSpeaksThisOverdue\s*=\s*!!\(heroDecisionRow && heroDecisionRow\.status === 'overdue'\)/);
-    expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue\) slips\.push\(/);
+    // The guard has since gained a second suppressor (`!solemn`, 2026-07-30 — a repast
+    // is never "past its easy window"). Assert both conditions rather than the exact
+    // expression, so a THIRD legitimate suppressor doesn't read as a regression.
+    expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue[^)]*\) slips\.push\(/);
+    expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\) slips\.push\(/);
   });
 
   it('the guard is STRUCTURAL — heroDecisionRow, never a title regex', () => {
@@ -524,5 +528,37 @@ describe('a solemn day is not late', () => {
   it('a label already ending in ? does not gain a period', () => {
     const cookout = { id: 'ck-p', name: 'Cookout', type: 'juneteenth cookout', date: daysFromNow(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW', guests: [], vendors: [], timeline: [] };
     expect(planHeroCopy(cookout).title).not.toMatch(/[?!]\./);
+  });
+});
+
+describe('a solemn day is not late — the hostv2 hero too', () => {
+  const raw2 = fs.readFileSync(SHELL, 'utf8');
+  const src2 = raw2.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+
+  it('the overdue-count clause is suppressed on a solemn event', () => {
+    // The planHeroCopy fix reached the CRA Plan tab only — hostv2 does NOT consume
+    // planHeroCopy (a grep matched a comment, not a call). This is the same defect on
+    // the other surface, and it needed its own guard.
+    expect(src2).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\) slips\.push\(/);
+  });
+
+  it('solemn is derived from the SHARED classifier, not a local regex', () => {
+    expect(src2).toMatch(/const solemn = useMemo\(\(\) => isSolemnEvent\(event\)/);
+    expect(src2).not.toMatch(/const SOLEMN_RE = /);
+  });
+
+  // Caught by DRIVING the built shell, not by reading source (2026-07-31): the slips
+  // clause above was guarded, but two *other* surfaces still printed backward blame
+  // over a repast hero — the hero's due chip ("past its window") and the decision
+  // row's late chip ("past its window" / "overdue"). Source-only review missed both
+  // because each is a separate expression. These pin all three altitudes.
+  it('the hero due chip drops the OVERSHOOT on a solemn event, keeping forward states', () => {
+    expect(src2).toMatch(/if \(solemn && a\.dueInDays < 0\) return null;/);
+    // forward states must survive — only the negative branch is suppressed
+    expect(src2).toMatch(/a\.dueInDays === 0 \? 'due today'/);
+  });
+
+  it('the decision row late chip is suppressed on a solemn event', () => {
+    expect(src2).toMatch(/const lateChip = \(r\.status !== 'overdue' \|\| solemn\) \? null/);
   });
 });
