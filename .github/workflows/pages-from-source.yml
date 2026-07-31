@@ -1,0 +1,99 @@
+# Source-built GitHub Pages deployment — Release Integrity C4 (2026-07-30).
+#
+# STATUS: STAGED, NOT YET THE LIVE PATH. Trigger is `workflow_dispatch` only.
+#
+# WHY IT IS NOT AUTOMATIC YET
+# ---------------------------
+# The live path today is: a developer runs `npm run deploy` on their laptop,
+# which builds and force-pushes the `gh-pages` branch, and pages.yml publishes
+# that branch's contents. That flow is untouched by this file.
+#
+# Making THIS workflow automatic is a one-line change (add the `push:` trigger
+# below and retire pages.yml), but it cannot be verified without actually
+# deploying — and a broken deploy takes the public site down. So it ships
+# dispatch-only: run it by hand once, confirm the published site, then flip.
+# The migration steps and rollback are in docs/release/RELEASE_INTEGRITY.md.
+#
+# WHAT IT FIXES
+# -------------
+# The laptop flow has no gate between "source" and "published". It is how the
+# tracked hostv2 bundle went stale: a green Pages run happily shipped a
+# HostShellV2 bundle built from source nobody could identify. Here the artifact
+# is built from a known commit SHA, in CI, after the tests that guard it.
+name: Deploy Pages (from source)
+
+on:
+  workflow_dispatch:
+  # ── To make this the live path, uncomment and retire pages.yml: ──
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Shares pages.yml's group so the two can never publish concurrently.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      # ── the gates, before anything is published ──────────────────────────
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+        working-directory: backend
+      - name: Backend tests (incl. AI auth + SSRF gates)
+        run: python -m pytest tests/ --strict-markers
+        working-directory: backend
+
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv2
+      - name: Unit suite
+        run: CI=true npx react-scripts test --watchAll=false
+
+      # ── build the release artifact from THIS commit ──────────────────────
+      # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
+      # Nothing here depends on the tracked artifact being fresh: it is
+      # regenerated from source, so a stale commit cannot publish a stale
+      # bundle.
+      - name: Build release artifact
+        run: npm run release
+
+      - name: Record the deployed commit
+        run: |
+          echo "${GITHUB_SHA}" > build/RELEASE_SHA.txt
+          echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA}" >> build/RELEASE_SHA.txt
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
