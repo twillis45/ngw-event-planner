@@ -59,10 +59,20 @@ const str = (v) => (v == null ? null : String(v).trim() || null);
 
 // ── Lodging booking status — the 3-step cycle the UI walks ────────────────────
 export const LODGING_STATUSES = ['not_started', 'booked', 'confirmed'];
+// ── ONE MEANING PER STATUS WORD (host ruling 2026-07-28) ────────────────────
+// "Confirmed" already means something else, one surface away: on the guest list
+// it means THEY ARE COMING. Here it meant THE ROOM IS VERIFIED. Same word, two
+// meanings, and a host reading "confirmed" on two screens has no way to know
+// they aren't the same fact. Same class the amber audit closed for colours —
+// it applies to status WORDS too.
+//
+// The keys are untouched (stored data, migrations, tests all read them); only
+// what the host READS changes. "Confirmation in hand" cannot be mistaken for an
+// RSVP, and it says exactly what separates it from "Booked": you have seen it.
 export const LODGING_STATUS_LABEL = {
-  not_started: 'Not started',
+  not_started: 'No room yet',
   booked: 'Booked',
-  confirmed: 'Confirmed',
+  confirmed: 'Confirmation in hand',
 };
 export function normalizeLodgingStatus(status) {
   const s = String(status || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
@@ -89,13 +99,17 @@ export const CARE_UNIT_STATUSES = [
   'caregiver_declined',   // the named caregiver declined the invite — real problem, surfaced
   'caregiver_unknown',    // caregiver isn't on the roster (name-only or dangling id) — status unknowable
 ];
+// These read the COLLAPSED sense (booked OR confirmation in hand), so they must
+// not say "booked" — that is one specific state, and saying it here would tell a
+// host who has the confirmation in hand that their pairing is merely booked.
+// "Has a room" is what these actually know.
 export const CARE_UNIT_STATUS_LABEL = {
-  both_booked: 'Both booked',
-  caregiver_not_booked: 'Caregiver not booked yet',
-  elder_not_booked: 'Guest not booked yet — caregiver is',
-  neither_booked: 'Neither booked yet',
+  both_booked: 'Both have a room',
+  caregiver_not_booked: 'Caregiver has no room yet',
+  elder_not_booked: 'Guest has no room yet — caregiver does',
+  neither_booked: 'Neither has a room yet',
   caregiver_declined: 'Caregiver declined the invite',
-  caregiver_unknown: 'Caregiver not on the guest list — booking unknown',
+  caregiver_unknown: 'Caregiver not on the guest list — can’t tell',
 };
 
 // ── Ride status — the 4-step cycle the ride board walks ──────────────────────

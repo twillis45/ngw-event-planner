@@ -130,6 +130,18 @@ export const EVENTS = {
   GUEST_RSVP_RECEIVED:    'guest_rsvp_received',     // a guest RSVP arrives back to the host
   PLAN_YOURS_TAPPED:      'plan_yours_tapped',       // a guest taps the "make one free" recruit CTA on the confirmation (recruitment top-of-funnel)
 
+  // ── Rental capture funnel (B3, board 2026-07-28) ────────────────────────
+  // Rams made this his price for keeping the bookmarklet at all: "If it is over
+  // 10% of adds, it has earned its place and I withdraw. Ship the counter before
+  // you ship anything else." Without it the next board argues from anecdote.
+  // Three steps, because the interesting failure is BETWEEN them: she pasted and
+  // we read nothing (parse problem), or we read it and she walked away (trust
+  // problem). One number cannot tell those apart.
+  // `method` distinguishes paste vs bookmarklet — that is the kill criterion.
+  LODGING_PASTE_ATTEMPTED: 'lodging_paste_attempted', // something arrived to interpret
+  LODGING_PASTE_PARSED:    'lodging_paste_parsed',    // we got ≥1 candidate out of it
+  LODGING_OPTION_ADDED:    'lodging_option_added',    // it reached the shortlist
+
   // Activation funnel (Sprint 55N) — denominator → setup → value → retention
   SIGNED_UP:              'signed_up',
   INTAKE_COMMITTED:       'intake_committed',

@@ -48,3 +48,44 @@ describe('airports reference', () => {
     expect(d).toBeLessThan(60);
   });
 });
+
+// ─── THE DERIVED "WORTH KNOWING" NOTE (host DIFM directive 2026-07-28) ───────
+describe('the airport tradeoff the app can compute for itself', () => {
+  const { airportTradeoff } = require('../airports');
+  // Deep Creek Lake, MD — the running fixture for this engine.
+  const LAT = 39.52, LON = -79.30;
+
+  test('it states the distance it can actually measure', () => {
+    const t = airportTradeoff({ code: 'PIT' }, LAT, LON, ['PIT']);
+    expect(t.text).toMatch(/^\d+ miles as the crow flies/);
+    expect(t.why).toMatch(/measured from the event location/);
+  });
+
+  test('it never claims flights or fares — the things it cannot know', () => {
+    const t = airportTradeoff({ code: 'PIT' }, LAT, LON, ['PIT', 'BWI', 'IAD']);
+    expect(t.text).not.toMatch(/flight|fare|cheap|price|\$|drive time/i);
+  });
+
+  test('it ranks against the airports SHE listed, not all 119', () => {
+    const codes = ['PIT', 'BWI', 'IAD'];
+    const notes = codes.map((c) => airportTradeoff({ code: c }, LAT, LON, codes));
+    const closest = notes.filter((n) => /the closest of the ones you listed/.test(n.text));
+    expect(closest).toHaveLength(1);
+  });
+
+  test('one airport alone gets distance and no comparison', () => {
+    const t = airportTradeoff({ code: 'BWI' }, LAT, LON, ['BWI']);
+    expect(t.text).toMatch(/miles as the crow flies/);
+    expect(t.text).not.toMatch(/closest|farther/);
+  });
+
+  test('it says "as the crow flies" — a straight line is not a drive', () => {
+    expect(airportTradeoff({ code: 'BWI' }, LAT, LON, ['BWI']).text).toMatch(/crow flies/);
+  });
+
+  test('unplaceable input yields null, never a guess', () => {
+    expect(airportTradeoff(null, LAT, LON, [])).toBeNull();
+    expect(airportTradeoff({ code: 'ZZZ' }, LAT, LON, [])).toBeNull();
+    expect(airportTradeoff({ code: 'BWI' }, NaN, LON, [])).toBeNull();
+  });
+});

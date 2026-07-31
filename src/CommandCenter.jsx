@@ -2598,13 +2598,37 @@ export function _selectEventNextActionInner(event) {
     // to a quiet consequence; route STRAIGHT to that task (less friction, no extra
     // "which one?" question). The vague headline only survives as a last-resort fallback
     // when the engine somehow has no named first task.
-    const first = compression.doNow[0];
-    let firstText = first && (first.task || first.title)
-      ? String(first.task || first.title).trim().replace(/[.\s]+$/, '')
-      : null;
-    let firstRoute = (first && first.id)
-      ? { tab: 'Planning Tasks', taskId: first.id }
-      : { tab: 'Planning Tasks', taskId: '__compressed__' };
+    // ── THE HERO NEVER LANDS ON THE CHECKLIST (host ruling 2026-07-28) ────────
+    // "dont have the hero CTAs go to the checklist. They should have final
+    // destination. not 2 click to get to the deal."
+    //
+    // The tier used to lead with doNow[0] and route to that row on the tasks
+    // sheet — so the hero's one button opened a LIST, and the host still had to
+    // find and tap the thing. Two clicks to reach the work, and the second one
+    // was hers to figure out.
+    //
+    // Now the tier leads with the first do-now row the checklist router can
+    // actually place, and takes that row's real destination. A row the router
+    // cannot place does not get to be the hero at all — better to fall through
+    // to the next tier than to hand her a list and call it an action.
+    const _placeable = (row) => {
+      const txt = row && (row.task || row.title)
+        ? String(row.task || row.title).trim().replace(/[.\s]+$/, '') : null;
+      if (!txt) return null;
+      let hit = null;
+      try { hit = checklistRouteFor(txt, { week: row.week, category: row.category }, event) || null; }
+      catch (_e) { hit = null; }
+      // A route back onto the tasks sheet is the very thing this ruling forbids.
+      if (!hit || !hit.route || hit.route.tab === 'Planning Tasks' || hit.route.tab === 'Timeline') return null;
+      return { row, txt, hit };
+    };
+    const _lead = (compression.doNow || []).map(_placeable).find(Boolean) || null;
+    const first = _lead ? _lead.row : compression.doNow[0];
+    let firstText = _lead ? _lead.txt
+      : (first && (first.task || first.title)
+        ? String(first.task || first.title).trim().replace(/[.\s]+$/, '')
+        : null);
+    let firstRoute = _lead ? _lead.hit.route : null;
     // A "Set date, headcount, menu" composite bundles sub-goals the host handles one at a
     // time — it must never lead as a "do now" once any part is handled. Decompose it to the
     // ATOMIC remaining foundational domino ("Set the date." / "Set your budget.", with its
@@ -2632,6 +2656,10 @@ export function _selectEventNextActionInner(event) {
     }
     if (!_skipCompression) {
       const more = Math.max(0, doNow - 1);
+      // The lead row was chosen BECAUSE the router could place it, so label and
+      // route come from that same resolution. No placeable row → no hero here.
+      const routerHit = _lead ? _lead.hit : null;
+      if (!routerHit) return null;   // fall through to the next tier, per the ruling
       return {
         level: 'attention',
         category: 'compression',
@@ -2639,26 +2667,23 @@ export function _selectEventNextActionInner(event) {
         consequence: firstText
           ? `${more > 0 ? `${more} more cluster around the same time — do this one first and the rest stay in order. ` : ''}${compression.meta.sub}`
           : `${doNow} ${doNow === 1 ? 'task' : 'tasks'} to handle now. ${compression.meta.sub}`,
-        // NAME THE ACT, NOT THE TRIP (host report 2026-07-28, seen live on the
-        // hero: "Call your vendor." → a button reading "Do this"). This tier
-        // KNOWS the row it leads with, so the label comes from the same router
-        // that names every checklist row's act — "Open the details", "Line them
-        // up", "Build the day". The route is unchanged: it still deep-links to
-        // the specific task, which is tighter than the router's tab-level one.
-        // A row with no app surface at all (real-world kitchen prep — the router
-        // honestly returns null) falls back to naming the list it lives on.
-        primaryCta: firstText
-          ? ((() => {
-            try {
-              const hit = checklistRouteFor(firstText, { week: first && first.week, category: first && first.category }, event);
-              return (hit && hit.label) || null;
-            } catch (_e) { return null; }
-          })() || 'Open your checklist')
-          : 'Review tasks',
+        // NAME THE ACT — AND GO WHERE THE NAME SAYS (host reports 2026-07-28).
+        // First pass took the LABEL from the checklist router but deliberately
+        // kept the task deep-link as the route, with a comment calling the task
+        // row "tighter". That was wrong, and the host caught it: the button read
+        // "Open travel & stays" and landed on the plan list. A label that names
+        // one destination while the route goes to another is a lying CTA — the
+        // exact class "CTAs name the act" exists to prevent.
+        //
+        // The router's whole purpose is to send her where the WORK happens, not
+        // to the checklist row describing the work. So label and route now come
+        // from the SAME resolution, always. The task deep-link survives only as
+        // the fallback for rows the router cannot place.
+        primaryCta: routerHit.label,
         // Surfaced so the persona voice can lead with the action without re-deriving it.
         firstAction: firstText,
         moreCount: more,
-        primaryRoute: firstRoute,
+        primaryRoute: routerHit.route,
         // WAVE-5 RANKING (2026-07-15): built from a timeline task → carries its
         // authored lead so the snooze cap can bind. Null when no task/lead exists.
         leadDays: firstLead,

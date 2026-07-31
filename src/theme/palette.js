@@ -41,7 +41,10 @@
 // Each token name maps to a value per mode. Use modeToken('carbonBody',
 // 'mid') or import the `palette.mid.carbonBody` shortcut.
 
-const TOKENS = {
+// Exported ONLY so paletteBundle.test.js can assert that bundleForMode() below
+// exposes every key declared here. dangerSolid was declared and never bundled,
+// which no layer between this file and the pixel treated as an error.
+export const TOKENS = {
   // Carbon surfaces ----------------------------------------------------
   carbonBody:     { dark: '#070809', mid: '#111519', light: '#e4ecf3' },
   carbonPanel:    { dark: '#121518', mid: '#1C2227', light: '#ffffff' },
@@ -133,6 +136,12 @@ const bundleForMode = (mode) => ({
   steelBlueGradientTop:    TOKENS.steelBlueGradientTop[mode],
   steelBlueGradientBottom: TOKENS.steelBlueGradientBottom[mode],
   dangerRed:    TOKENS.dangerRed[mode],
+  // dangerSolid was declared in TOKENS but never bundled here (found 2026-07-30),
+  // so `dark.dangerSolid` was undefined and theme.js wrote the LITERAL STRING
+  // "undefined" into --danger-solid. Every consumer of that token painted nothing.
+  // A missing key in this bundle is silent at every layer between here and the
+  // pixel — see the guard in theme.js, which now makes the next one loud.
+  dangerSolid:  TOKENS.dangerSolid[mode],
   amber:        TOKENS.amber[mode],
   successGreen: TOKENS.successGreen[mode],
   textPrimary:   TOKENS.textPrimary[mode],

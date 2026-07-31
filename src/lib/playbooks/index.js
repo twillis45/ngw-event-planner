@@ -1079,7 +1079,21 @@ export function topPlaybookDecision(event, asOf) {
       title: 'Confirm final guest count',
       consequence: `Food, drinks, ice, and rentals all scale from headcount. ${pendingMsg}`,
       level: 'attention',
-      primaryCta: gc.reason === 'pending-rsvps' ? 'Chase RSVPs' : 'Set guest count',
+      // ── Q1b, REVIEW BOARD 2026-07-29: THE NUMBER GOES IN THE CTA ──────────
+      // Grafted from frame 6 (STAGE), the one pattern the board took from the
+      // seven rejected board models: its CTA reads "Set catering to 41", not
+      // "Set the count". A button carrying the actual figure is more truthful
+      // than a generic verb — the host can see what they are agreeing to before
+      // they tap, which is the same propose-don't-ask rule the hero already
+      // follows for decisions.
+      // The ACT is deliberately unchanged: the pending case still chases, it
+      // just says how many. Swapping it to "Set the count to N" would quietly
+      // change what the button DOES (settle instead of chase) under cover of a
+      // copy graft. The no-count case has no number to carry, so it keeps its
+      // plain label rather than inventing one.
+      primaryCta: gc.reason === 'pending-rsvps'
+        ? (gc.pending > 0 ? `Chase ${gc.pending} ${gc.pending === 1 ? 'maybe' : 'maybes'}` : 'Chase RSVPs')
+        : 'Set guest count',
       // Deep-link doctrine: the count decision RESOLVES at the count entry/lock
       // hero (guests-entry anchor), never at the tab top.
       primaryRoute: { eventId: event.id, tab: 'Guests', focusField: 'guests-entry' },
@@ -1451,10 +1465,48 @@ export function effectiveRos(event) {
   // freeze the schedule into a snapshot that then stops tracking timeOfDay.
   const derived = playbookRunOfShow(event);
   const owned = stored.length && ((event && event.rosEdited) || !derived || !derived.length);
+  // See withheldPlaybookBeats() below — the ownership contract is correct, but
+  // it is INVISIBLE, and a host looking at her own short sheet cannot tell the
+  // difference between "the playbook has nothing" and "the playbook is standing
+  // down because I touched this."
   const base = owned ? stored : (derived || stored);
   const doneMap = event && event.rosDone;
   if (!doneMap || !base.length) return base;
   return base.map((r) => (doneMap[r.id] && !r.done ? { ...r, done: true } : r));
+}
+
+/**
+ * withheldPlaybookBeats(event) → { owned, count, program }
+ *
+ * WHAT THE OWNERSHIP CONTRACT IS HIDING (found by re-running the day model,
+ * 2026-07-29). effectiveRos correctly refuses to overwrite a run of show the
+ * host has touched — but silently. Driven live on a host-created BBQ, the Full
+ * agenda was four rows with NOTHING during the event, while the playbook held
+ * seven program beats it had quietly stood down from. That is correct behaviour
+ * that READS as a broken day sheet, and the host has no way to tell the two
+ * apart or to ask for the beats.
+ *
+ * This reports the difference so a surface can say so honestly. It never
+ * changes what effectiveRos returns — the contract is unchanged, only visible.
+ *   owned  – true when the stored sheet is winning
+ *   count  – how many derived rows are standing down
+ *   program – how many of those are inside the event window (the ones whose
+ *             absence is actually felt: the meal, the photo, the send-off)
+ */
+export function withheldPlaybookBeats(event) {
+  const none = { owned: false, count: 0, program: 0 };
+  try {
+    const stored = Array.isArray(event && event.ros) ? event.ros : [];
+    if (!stored.length) return none;
+    const derived = playbookRunOfShow(event) || [];
+    const owned = !!((event && event.rosEdited) || !derived.length);
+    if (!owned || !derived.length) return none;
+    // Only count what the stored sheet does NOT already cover, by moment text —
+    // a host who kept the playbook's own rows is not missing them.
+    const have = new Set(stored.map((r) => String((r && r.segment) || '').trim().toLowerCase()).filter(Boolean));
+    const missing = derived.filter((r) => !have.has(String((r && r.segment) || '').trim().toLowerCase()));
+    return { owned: true, count: missing.length, program: missing.filter((r) => r && r.type === 'event').length };
+  } catch (_e) { return none; }
 }
 
 // classifyRos — determines which Day tab state to render.
@@ -2517,7 +2569,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
 
     const deps = Array.isArray(d.dependsOn) ? d.dependsOn : [];
     const unmet = deps.filter((x) => !depMet(x));
-    let status; let because;
+    let status; let because; let assurance = null;
     if (daysOut !== null && daysOut < 0) {
       // OVERDUE-ON-CREATION FIX: a decision is only genuinely "past its easy
       // window" if it was ever REACHABLE — i.e. there was runway between when
@@ -2532,7 +2584,38 @@ export function playbookDecisionBoard(event, asOf, profile) {
       const od = Math.abs(daysOut);
       if (wasReachable) {
         status = 'overdue';
-        because = `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+        // SAY IT IN A HUMAN UNIT (click-through audit 2026-07-28). A raw day
+        // count is right and readable at a few weeks; at 291 it reads as broken
+        // data, especially sitting on an event that is still MONTHS away. The
+        // fact is unchanged — a long-lead decision (book the venue, set the
+        // budget) genuinely has a window that closed long ago — so we keep it
+        // and change the unit, rather than hiding the number or capping it.
+        because = od >= 60
+          ? `Its easy window closed about ${Math.round(od / 30)} months ago.`
+          : `Was due ${od} ${od === 1 ? 'day' : 'days'} ago.`;
+        // ── THE HERO SAYS WHAT IS TRUE FORWARD; THE SHEET KEEPS THE STATUS ──
+        // Board re-sit 2026-07-30. `because` above is a FILING line and stays that
+        // way in the Calls-to-make sheet, where a status column is legitimate. It
+        // must not be the hero's voice, for two reasons the board proved:
+        //  1. IT COLLIDES WITH THE COUNTDOWN. od = lead - daysToEvent, so it exceeds
+        //     the eyebrow whenever lead > 2x daysToEvent. At T-6d every authored lead
+        //     >= 14 collides -- ~71% of overdue-capable decisions. "6 DAYS" over
+        //     "Was due 54 days ago." reads as a date bug, not a caution.
+        //  2. IT IS INACCURATE AS WELL AS UNKIND. Nothing stalled. choicePickFor()
+        //     (~:505) returns `picks[id] || dec.default`, and the doctrine at ~:534
+        //     is explicit that those helpers "fall back to the playbook's authored
+        //     default so quantities/visibility render sensibly before any pick is
+        //     made". The plan HAS been running -- on our pick, not the host's.
+        // Says OUR pick, never "you chose": the same comment draws that line, so an
+        // unanswered decision never reads as though the host answered it.
+        // No number, so the eyebrow stays the one clock on the screen.
+        // NULL when there is no default to have been running on (a genuine either/or,
+        // ask-mode) -- the hero then prints nothing rather than a generic reassurance.
+        assurance = d.default
+          ? (d.reversibility === 'costly'
+            ? 'The plan’s been running on our pick — swapping it now costs more than it did.'
+            : 'Nothing’s stalled — the plan’s been running on our pick.')
+          : null;
       } else {
         // never in the easy window — surface as an open, do-this-first item,
         // NOT a blameworthy "overdue" that inflates the "N past their easy
@@ -2553,7 +2636,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, dueDate, daysOut, ...priority, ...derived, route });
+    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is

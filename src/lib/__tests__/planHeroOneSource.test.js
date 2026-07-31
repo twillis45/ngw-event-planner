@@ -94,7 +94,13 @@ describe('planHeroCopy — BUD-1 grammar for the Plan tab', () => {
     const copy = planHeroCopy(ev);
     expect(copy.state).toBe('settle_overdue');
     const first = playbookDecisionBoard(ev).open.filter(r => r.status === 'overdue')[0];
-    expect(copy.title).toBe(`Settle: ${first.label}.`);
+    // ONE sentence-ender (2026-07-30). This previously asserted `${label}.` verbatim,
+    // which enshrined a defect: a label already ending in '?' ("How will you honor the
+    // history?") rendered as "…history?." — the test was protecting the bug. The rule
+    // is now: keep an existing ? or !, otherwise add a period.
+    const ender = /[?!]\s*$/.test(first.label) ? first.label.trim() : `${first.label}.`;
+    expect(copy.title).toBe(`Settle: ${ender}`);
+    expect(copy.title).not.toMatch(/[?!]\./);
     expect(copy.route).toEqual({ tab: 'Planning', focusField: 'host-decisions' });
   });
 

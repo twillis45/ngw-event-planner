@@ -30,6 +30,19 @@
 import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
+import { isAllowedMedia } from './lodgingBookmarklet';
+
+// ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
+// Opening a listing's gallery keeps the listing URL and swaps the title, so a
+// pasted link can arrive named "Photo gallery for Golden Crest". The right
+// repair is to recover the property's name, never to reject the row — the URL
+// was always correct. Module-level so BOTH readers share it (the results-page
+// card parser and the single-listing og:title path); it lived inside the card
+// parser alone, which is why single links still showed the raw gallery name.
+const ungalleryName = (l) => String(l || '')
+  .replace(/^\s*(photo gallery|photos?|image gallery|gallery)\s+(for|of)\s+/i, '')
+  .trim();
+
 
 // URL host → platform id. Anything else is 'other' — named honestly, never
 // upgraded to a platform we have no policy grounding for.
@@ -385,16 +398,267 @@ export function extractListingMeta(payload) {
   url = url.split('?')[0];
 
   // The name: og:title or <title>, with the platform's own suffix trimmed off
-  // ("… - Pensacola Beach | Vrbo" → "…").
+  // ("… - Pensacola Beach | Vrbo" → "…") — and the gallery prefix stripped by
+  // the SAME helper the results-page parser uses. It only ran on that path, so
+  // a link pasted from an open photo viewer still landed on the shortlist as
+  // "Photo gallery for Serendipity by the Slopes: hot tub", and that junk then
+  // rode into the recommendation sentence and the CTA ("Go with Photo gallery
+  // for …"). One cleaner, both paths.
   let title = pick(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
     || pick(/<title[^>]*>([^<]+)<\/title>/i);
-  title = title
+  title = ungalleryName(title)
     .replace(/\s*[|·—-]\s*(Vrbo|Airbnb|Booking\.com).*$/i, '')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, 60);
 
   return { url: /^https:\/\//i.test(url) ? url : '', title };
+}
+
+// ─── ONE PASTE, THE WHOLE SHORTLIST ─────────────────────────────────────────
+//
+// Host question 2026-07-28: "if you initially tested by creating a search on the
+// vrbo and airbnb platforms to create a list and used the list to find listings
+// that fit our criteria, why can't you do the same here? why does the host have
+// to pull a url?"
+//
+// Fair question, and the answer is about WHO does the searching. During testing
+// the searching was done by the host's own browser — their profile, their IP, a
+// page already open in front of them. For the app to do it, Render would have to
+// hit the search endpoint from a datacenter, which is (a) the harvesting the
+// never-build list names, and (b) mostly futile: Vrbo already refuses our
+// single-page read in production, and that is the easy case.
+//
+// So the app doesn't search. It makes the RETURN TRIP cost one action. The app
+// already builds the search with the host's own answers in it; this reads the
+// results page they copied back.
+//
+// WHAT A COPIED RESULTS PAGE ACTUALLY CONTAINS (measured against a live Airbnb
+// McHenry search, 2026-07-28 — not assumed):
+//   · the `/rooms/` anchors have EMPTY text, and a text/plain copy is mostly
+//     chrome ("Prices include all fees" ×11). Plain text CANNOT pair a name to a
+//     link, so the HTML flavour of the clipboard is the one that carries meaning.
+//   · linearised, each card reads:
+//       [link ×7] "Top guest favorite" "Cabin in McHenry" "Spacious 5BR Family
+//       Cabin" "5 bedrooms" "5 bedrooms" "," "·" "8 beds" "8 beds" "$1,997"
+//       "$1,668" "Show price breakdown" "for 2 nights"
+//     — the link repeats, accessibility text duplicates, and the card's own text
+//     FOLLOWS its link. Grouping by "most recent link seen" recovers each card.
+//
+// Nothing here fetches. It reads a document the host copied, exactly like
+// extractListingMeta does for a single page — this one just yields many.
+
+// Chrome the cards carry that is never a property name.
+const CARD_NOISE = /^(top guest favorite|guest favorite|superhost|rare find|show price breakdown|for \d+ nights?|book early to save|prices include all fees|add to wishlist|save this home|new|check availability|\d+ nights?|[,·|+]|)$/i;
+// "Cabin in McHenry" / "Home in Deep Creek Lake" — Airbnb's type line, not a name.
+const TYPE_LINE = /^(home|cabin|condo|cottage|villa|townhouse|apartment|guesthouse|guest suite|chalet|loft|bungalow|tiny home|camper|farm stay|houseboat|place|room|barn|treehouse|tent)\b.*\bin\b\s+(.+)$/i;
+
+/** Linearise HTML into an ordered stream of {link} / {text} tokens. */
+function tokenStream(html) {
+  const toks = [];
+  if (typeof DOMParser === 'undefined') return toks;
+  let doc;
+  try { doc = new DOMParser().parseFromString(html, 'text/html'); } catch (_e) { return toks; }
+  if (!doc || !doc.body) return toks;
+  const walk = (node) => {
+    for (const child of node.childNodes) {
+      if (child.nodeType === 1) {
+        const href = child.getAttribute && child.getAttribute('href');
+        if (child.tagName === 'A' && href) toks.push({ link: href });
+        // The card's thumbnail rides in the same pasted HTML as its words.
+        if (child.tagName === 'IMG' && child.getAttribute) {
+          toks.push({ img: child.getAttribute('src') || '' });
+        }
+        walk(child);
+      } else if (child.nodeType === 3) {
+        const t = String(child.nodeValue || '').replace(/\s+/g, ' ').trim();
+        if (t) toks.push({ text: t });
+      }
+    }
+  };
+  walk(doc.body);
+  return toks;
+}
+
+/** A listing page URL on a platform we model — absolute or site-relative. */
+function listingUrl(href) {
+  const h = String(href || '').trim();
+  const abs = /^https?:\/\//i.test(h) ? h
+    : h.startsWith('/rooms/') ? `https://www.airbnb.com${h}`
+      : '';
+  if (!abs) return '';
+  const clean = abs.split('?')[0].split('#')[0];
+  if (!/^https:\/\//i.test(clean)) return '';
+  // Booking.com removed 2026-07-28 (review board): its terms uniquely name
+  // browser-based assistants, and this gate feeds the same collector path.
+  return /(^|\.)airbnb\.[a-z.]+\/rooms\/\d/i.test(clean)
+    || /(^|\.)vrbo\.com\/\d/i.test(clean)
+    ? clean : '';
+}
+
+const numFrom = (lines, re) => {
+  for (const l of lines) { const m = l.match(re); if (m) return Number(m[1]); }
+  return null;
+};
+
+/**
+ * Read a copied SEARCH RESULTS page into shortlist candidates.
+ *
+ * @returns {{candidates: Array, source: string|null, linksOnly: boolean}}
+ *   `linksOnly` is true when all we could recover were URLs (a plain-text paste)
+ *   — the caller must say so rather than presenting nameless rows as a read.
+ */
+export function extractListingCandidates(payload) {
+  const html = String(payload == null ? '' : payload);
+  if (!html.trim()) return { candidates: [], source: null, linksOnly: false };
+
+  const toks = tokenStream(html);
+  const byUrl = new Map();
+  const imgByUrl = new Map();
+  let current = '';
+  for (const t of toks) {
+    if (t.link !== undefined) {
+      const u = listingUrl(t.link);
+      if (u) { current = u; if (!byUrl.has(u)) byUrl.set(u, []); }
+      continue;
+    }
+    if (!current) continue;
+    // FIRST image per card wins — later ones are carousel frames or badges.
+    if (t.img !== undefined) { if (!imgByUrl.has(current) && t.img) imgByUrl.set(current, t.img); continue; }
+    if (t.text) byUrl.get(current).push(t.text);
+  }
+
+  // A plain-text paste (or a page with no card markup) still yields URLs — say so.
+  if (!byUrl.size) {
+    const urls = (html.match(/https:\/\/[^\s"'<>)\]]+/gi) || [])
+      .map(listingUrl).filter(Boolean);
+    const uniq = [...new Set(urls)];
+    return {
+      candidates: uniq.map((url) => ({ url, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null })),
+      source: uniq.length ? platformOf(uniq[0]) : null,
+      linksOnly: uniq.length > 0,
+    };
+  }
+
+  const candidates = candidatesFromGroups(
+    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })));
+  return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
+}
+
+/**
+ * THE ONE INTERPRETER.
+ *
+ * Both entry points land here: a pasted results page (tokenised above) and the
+ * bookmarklet (which ships this exact shape, already grouped, so it can stay a
+ * dumb collector — see lib/lodgingBookmarklet). Two copies of this reasoning
+ * would drift the first time a platform changed a label, and the copy running in
+ * the host's browser is the one we could never re-deploy.
+ *
+ * @param {Array<{url:string, lines:string[]}>} groups
+ */
+export function candidatesFromGroups(groups) {
+  const candidates = [];
+  for (const { url, lines: raw, img } of (Array.isArray(groups) ? groups : [])) {
+    if (!listingUrl(url)) continue;
+    // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
+    const lines = [];
+    for (const l of raw) { if (!CARD_NOISE.test(l) && lines[lines.length - 1] !== l) lines.push(l); }
+
+    let kind = '', place = '';
+    const typeIdx = lines.findIndex((l) => TYPE_LINE.test(l));
+    if (typeIdx >= 0) {
+      const m = lines[typeIdx].match(TYPE_LINE);
+      kind = m[1]; place = m[2].trim();
+    }
+    // The NAME is the first substantial line after the type line that isn't a
+    // count or a price. Airbnb writes it there; Vrbo puts it first, so a card
+    // with no type line falls back to the first substantial line.
+    const isFact = (l) => /^\$|\d+\s*(bed|bedroom|bath|guest)/i.test(l);
+    // A PHOTO VIEWER IS NOT A DIFFERENT HOUSE (found in the host's own data,
+    // 2026-07-28: seven of eight shortlist rows were named "Photo gallery for
+    // Golden Crest"). Opening a listing's gallery keeps the listing URL and
+    // swaps the title, so the right repair is to recover the property's name,
+    // not to reject the row — the URL was always correct.
+    const ungallery = ungalleryName;
+    const name = ungallery(lines.slice(typeIdx + 1).find((l) => l.length > 3 && !isFact(l))
+      || lines.find((l) => l.length > 3 && !isFact(l) && !TYPE_LINE.test(l))
+      || '').slice(0, 70);
+
+    // PRICE: cards show a strike-through original then the discounted figure
+    // ("$1,997 $1,668"). The LAST one is what the platform is actually asking.
+    // Named `priceShown`, never `total` — we did not see a checkout, and the
+    // page's own "prices include all fees" claim is theirs, not ours to repeat.
+    const money = lines.join(' ').match(/\$[\d,]+/g) || [];
+    const priceShown = money.length ? Number(money[money.length - 1].replace(/[$,]/g, '')) : null;
+
+    candidates.push({
+      url,
+      name,
+      kind,
+      place,
+      // Gated on BOTH paths (paste and bookmarklet) by the one media allowlist —
+      // the paste path reads arbitrary HTML too, so it needs the same guard.
+      photo: isAllowedMedia(img) ? String(img).trim() : '',
+      bedrooms: numFrom(lines, /(\d+)\s*bedrooms?/i),
+      beds: numFrom(lines, /(\d+)\s*beds?\b/i),
+      baths: numFrom(lines, /(\d+(?:\.\d)?)\s*baths?\b/i),
+      priceShown: Number.isFinite(priceShown) ? priceShown : null,
+    });
+  }
+
+  // A card with neither a name nor a single fact is markup we misread — drop it
+  // rather than offering the host a blank row.
+  return candidates.filter((c) => c.name || c.bedrooms || c.beds || c.priceShown);
+}
+
+function platformOf(url) {
+  if (/airbnb\./i.test(url)) return 'Airbnb';
+  if (/vrbo\./i.test(url)) return 'Vrbo';
+  if (/booking\./i.test(url)) return 'Booking.com';
+  return null;
+}
+
+/**
+ * Rank pasted candidates against what the event says the house needs.
+ *
+ * HONEST LIMITS, and they matter because this decides what the host looks at:
+ *   · a results card carries bedrooms, beds and a price — NOT amenities. So a
+ *     must-have like "hot tub" can only be judged from the NAME ("…Hot Tub!"),
+ *     and absence of the word is NOT absence of the feature. Unmatched
+ *     requirements are reported as `unknown`, never as failed.
+ *   · the only hard filters are ones the card can actually answer: real beds for
+ *     the party, and the budget the host set. Everything else informs the order.
+ */
+export function rankCandidates(candidates, event, opts) {
+  const list = Array.isArray(candidates) ? candidates : [];
+  const wants = mustHavesFor(event || {});
+  const guests = Number((event && (event.guestCount || event.guests)) || 0) || 0;
+  const budget = Number((opts && opts.budget) || 0) || 0;
+
+  const scored = list.map((c) => {
+    const hay = `${c.name || ''} ${c.kind || ''} ${c.place || ''}`;
+    const matched = wants.filter((w) => w.match && w.match.test(hay)).map((w) => w.label);
+    const unknown = wants.filter((w) => !(w.match && w.match.test(hay))).map((w) => w.label);
+
+    // REAL BEDS, not headline capacity — the researched guidance this engine
+    // already carries (book under stated capacity so nobody is on an air bed).
+    const bedsShort = guests > 0 && c.beds != null && c.beds < guests;
+    const overBudget = budget > 0 && c.priceShown != null && c.priceShown > budget;
+
+    return {
+      ...c,
+      matched,
+      unknown,
+      clears: !bedsShort && !overBudget,
+      why: bedsShort ? `${c.beds} beds for ${guests} — someone's on a sofa`
+        : overBudget ? `$${c.priceShown.toLocaleString()} is over the $${budget.toLocaleString()} you set`
+          : null,
+      score: matched.length * 10 + (c.beds || 0) - (overBudget ? 100 : 0) - (bedsShort ? 100 : 0),
+    };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  return { ranked: scored, clearing: scored.filter((c) => c.clears), considered: scored.length };
 }
 
 /**
@@ -598,9 +862,25 @@ export function lodgingSearchLinks(event) {
   if (end) vr.set('endDate', end);
   if (guests) vr.set('adults', String(guests));
 
+  // ── WHY VRBO'S LINK IS DIFFERENT (review board, Liability ruling 2026-07-28) ──
+  // Airbnb's terms carry no deep-link prohibition; Vrbo's §2 does, verbatim:
+  // "deep link to any part of our Service". We were emitting a constructed URL
+  // into a non-homepage path with parameters we chose — if "deep link" means
+  // anything it means that, and we are the party who read the clause and shipped
+  // it anyway. (The clause is widely regarded as unenforceable post-Ticketmaster
+  // v. Tickets.com and is near-universally violated; that is a reason not to
+  // panic, not a reason to be the one violating it by construction.)
+  //
+  // The proportionate answer is not to drop Vrbo — hosts genuinely use it, and
+  // removing it would harm them for our comfort. It is to send them to the front
+  // door with their own answers in hand to paste. She loses a few seconds; we
+  // stop violating the one clause we violate by construction rather than by
+  // interpretation. Treating different terms differently is what reading them is
+  // for. `criteria` is rendered for the host to copy.
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
-    { id: 'vrbo', label: 'Search Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said },
+    { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
+      criteria: [place, start && end ? `${start} to ${end}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
   ];
 }
 
@@ -725,6 +1005,61 @@ export function lodgingRecommendation(event, intel) {
  * Returns a proposal, never a write. `from` names where each value came from so
  * the surface can show it as ours rather than as fact.
  */
+/**
+ * WHAT THE CHOSEN HOUSE COSTS THE PLAN (review board, 2026-07-28).
+ *
+ * The board's finding, verified by grep: `lodgingOptions` was read by NOTHING —
+ * not travelPlan, not hostSpending, not surfaceRegistry, not phaseProgress. The
+ * host could shortlist eighteen houses, pick a $6,400 one, and read a toast
+ * saying "the plan reads it now" while the budget stayed at zero. The intake was
+ * a pipe into a display component.
+ *
+ * This is the outlet. It reports the ALL-IN cost of the chosen option — sticker
+ * plus fees, the same `allIn` the recommendation already compares on, because a
+ * cheaper listing with a $600 cleaning fee is not the cheaper house.
+ *
+ * HONEST LIMITS, because this feeds money:
+ *   · only the CHOSEN option counts. Shortlisted-but-not-picked is not a
+ *     commitment and must never move the budget.
+ *   · a chosen option with no price returns 0, not a guess. The host sees "I
+ *     couldn't weigh what it costs" elsewhere; inventing a number here would
+ *     contradict that to the penny.
+ *   · this is a COMMITMENT, not spend — the same class as vendorOwed. If the
+ *     host ALSO types the rental as a budget line by hand it will double-count,
+ *     exactly as vendor balances can. That is a known shape in this engine, not
+ *     a new one (see hostSpending's C1 note), and the fix if it bites is
+ *     de-duplication at the source, not silently dropping the term.
+ */
+export function lodgingCommitted(event) {
+  let li = null;
+  try { li = lodgingIntel(event); } catch (_e) { return 0; }
+  const chosen = li && li.chosen;
+  if (!chosen || chosen.allIn == null) return 0;
+  const n = Number(chosen.allIn);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+
+  // ── DON'T CHARGE HER TWICE (audit finding, 2026-07-28) ────────────────────
+  // The first cut of this documented the double-count risk and shipped it
+  // anyway. Measured: a host with the house on her shortlist AND typed as a
+  // budget row read `committed = 4,848` for a $2,200 house. Documenting a money
+  // bug is not the same as it being acceptable.
+  //
+  // vendorOwed can never double-count structurally — outstanding money cannot
+  // already be in a paid row. Lodging has no such protection, so it needs an
+  // explicit check. When a budget row already accounts for the house, THE ROW
+  // WINS: it is the host's own record, and skipping the derived term is
+  // correct rather than under-counting.
+  const rows = Array.isArray(event && event.budget) ? event.budget : [];
+  const label = String(chosen.label || '').trim().toLowerCase();
+  const already = rows.some((r) => {
+    const l = String((r && r.label) || '').trim().toLowerCase();
+    if (!l) return false;
+    if (label && (l === label || l.includes(label) || label.includes(l))) return true;
+    return /\b(rental|lodging|airbnb|vrbo|the house|house rental|cabin|stay)\b/.test(l);
+  });
+  return already ? 0 : Math.round(n);
+}
+
 export function stayFromPick(event, intel) {
   const li = intel || lodgingIntel(event);
   const chosen = li.chosen;

@@ -32,15 +32,20 @@ const src = raw.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g,
 
 describe('a solemn day is never told it is late', () => {
   it('the shell can tell a solemn event from an ordinary one', () => {
-    expect(src).toMatch(/const SOLEMN_RE = \/repast\|memorial\|funeral/);
-    expect(src).toMatch(/function isSolemnEvent\(event\)/);
+    // CONVERGED 2026-07-31: the shell now reads the SHARED classifier
+    // (@app/lib/solemn) instead of defining its own regex — one derivation for
+    // the shell and the copy engine. Stronger than the local copy it replaced.
+    expect(src).toMatch(/import \{ isSolemnEvent \} from '@app\/lib\/solemn'/);
+    expect(src).not.toMatch(/const SOLEMN_RE = /);
     // …and the render path holds that answer, which is what the guards read.
     expect(src).toMatch(/const solemn = useMemo\(\(\) => isSolemnEvent\(event\)/);
   });
 
   it('SURFACE 1 — the overdue-count clause is suppressed on a solemn event', () => {
-    expect(src).toMatch(/if \(od && !solemn\) slips\.push\(/);
-    // The unguarded form must be gone entirely, not merely shadowed.
+    // The converged guard carries a second suppressor (heroSpeaksThisOverdue,
+    // so the scold is said once). Assert BOTH conditions rather than the exact
+    // expression, so a third legitimate suppressor is not read as a regression.
+    expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\) slips\.push\(/);
     expect(src).not.toMatch(/if \(od\) slips\.push\(/);
   });
 
@@ -59,7 +64,7 @@ describe('a solemn day is never told it is late', () => {
   it('non-solemn events are untouched — every guard only ADDS a condition', () => {
     // Each guard is a narrowing of an existing condition, never a rewrite of the
     // non-solemn path, so ordinary events cannot change behaviour.
-    expect(src).toMatch(/if \(od && !solemn\)/);
+    expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\)/);
     expect(src).toMatch(/if \(solemn && a\.dueInDays < 0\) return null;/);
     // The blame strings still EXIST for non-solemn events to use.
     expect(src).toMatch(/past their easy window/);

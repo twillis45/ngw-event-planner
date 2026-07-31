@@ -42,6 +42,7 @@
 import { playbookFoodPlan, playbookCapacity, guestCountResolved } from './playbooks';
 import { buildCrabPlan } from './crabPlan';
 import { vendorOutstanding } from './vendorMoney';
+import { lodgingCommitted } from './lodgingIntel';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const mid = (lo, hi) => {
@@ -163,6 +164,19 @@ export function hostSpending(event, priceFactor) {
   // disclose it instead of silently folding it in.
   const vendorOwed = (() => { try { return Math.max(0, Math.round(vendorOutstanding(ev))); } catch (_e) { return 0; } })();
 
+  // ── THE RENTAL HOUSE (review board 2026-07-28) ─────────────────────────────
+  // The board's grep: `lodgingOptions` was read by NOTHING. A host could pick a
+  // $6,400 house and the budget stayed at zero while a toast told her "the plan
+  // reads it now." A rental is usually the single largest line in a destination
+  // event — its absence here was the biggest hole in this function.
+  //
+  // Same class as vendorOwed: a COMMITMENT, not spend. Only the CHOSEN option,
+  // only when it carries a real all-in price (sticker + fees). A chosen house
+  // with no price contributes 0 rather than a guess — the shortlist already says
+  // out loud when it couldn't weigh a cost, and inventing one here would
+  // contradict that to the penny.
+  const lodgingCommitted_ = (() => { try { return Math.max(0, lodgingCommitted(ev)); } catch (_e) { return 0; } })();
+
   // Spent = manual actuals + everything actually bought/checked off.
   const spent = Math.max(0, Math.round(rowsActual + foodBought + suppliesBought + capacityBought + crabBought));
   // Committed adds what's still PLANNED but not yet bought (each term clamped —
@@ -171,7 +185,7 @@ export function hostSpending(event, priceFactor) {
   const suppliesRemaining = Math.max(0, suppliesEstimate - suppliesBought);
   const capacityRemaining = Math.max(0, capacityEstimate - capacityBought);
   const crabRemaining = Math.max(0, crabEstimate - crabBought);
-  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining + vendorOwed));
+  const committed = Math.max(spent, Math.round(spent + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining + vendorOwed + lodgingCommitted_));
 
   // spentEstimated: how much of `spent` is still an estimate, NOT a firm number.
   // Food's estimated portion is granular (foodBoughtEstimated). But supplies and
@@ -182,6 +196,26 @@ export function hostSpending(event, priceFactor) {
   // belong in spentEstimated too. (crabBought stays firm — real entered prices.)
   const spentEstimated = Math.max(0, Math.round(foodBoughtEstimated + suppliesBought + capacityBought));
   const spentFirm = Math.max(0, spent - spentEstimated);
+  // committedEstimated — how much of the "spoken for" headline is still a GUESS.
+  // Added in the app-wide estimate-honesty pass (2026-07-29, host ruling: "be
+  // consistent with information to host so they understand what is an estimate";
+  // UX_08: "Never display an estimate without the marker").
+  // `committed` is the biggest, boldest number the host reads, and it is a
+  // MIXTURE: real money already spent, plus every not-yet-bought term, which are
+  // all estimates. It rendered bare in three places, so a plan whose food and
+  // supplies are entirely guessed looked exactly as firm as one paid in full.
+  // Derived HERE for the same reason `uncommitted` is: a reader holding
+  // committed + foodEstimate cannot compose this correctly (foodRemaining is
+  // clamped against foodBought), and two readers composing it would drift.
+  //   • the estimated part of what's already spent (spentEstimated), PLUS
+  //   • every remaining term that is a plan-priced guess.
+  // vendorOwed and lodgingCommitted_ are deliberately EXCLUDED: a vendor balance
+  // is a contracted figure and a chosen stay is a real listed price. Neither is
+  // this app guessing.
+  const committedEstimated = Math.max(0, Math.min(
+    committed,
+    Math.round(spentEstimated + foodRemaining + suppliesRemaining + capacityRemaining + crabRemaining)
+  ));
   // `uncommitted` — the headroom, DERIVED HERE so no reader has to compose it.
   //
   // Why this field exists: `committed` ALREADY CONTAINS foodEstimate, suppliesEstimate,
@@ -199,7 +233,7 @@ export function hostSpending(event, priceFactor) {
   // because "no budget" and "no room left" are different facts. Can go negative when the
   // plan commits past the budget; that overage is the truth and is NOT clamped.
   const uncommitted = total > 0 ? Math.round(total - committed) : null;
-  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, uncommitted, vendorOwed, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
+  return { total: Math.round(total), spent, spentFirm, spentEstimated, committed, committedEstimated, uncommitted, vendorOwed, lodgingCommitted: lodgingCommitted_, foodEstimate, foodBought, foodBoughtFirm, foodBoughtEstimated, hasFood, suppliesEstimate, suppliesBought, capacityEstimate, capacityBought, hasCapacity: !!(cap && cap.hasCost), crabEstimate, crabBought };
 }
 
 export default hostSpending;
