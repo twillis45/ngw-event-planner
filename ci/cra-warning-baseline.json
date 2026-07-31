@@ -20,51 +20,23 @@
       "no-unreachable",
       "no-script-url"
     ],
-    "count": 5,
+    "count": 0,
     "blocks": "Slice C4 (source-built Pages deployment activation)",
-    "entries": [
-      {
-        "rule": "no-dupe-keys",
-        "file": "src/App.js",
-        "message": "Duplicate key 'color'",
-        "count": 2
-      },
-      {
-        "rule": "no-dupe-keys",
-        "file": "src/components/MembersModal.jsx",
-        "message": "Duplicate key 'border'",
-        "count": 1
-      },
-      {
-        "rule": "no-script-url",
-        "file": "src/lib/lodgingBookmarklet.js",
-        "message": "Script URL is a form of eval",
-        "count": 1
-      },
-      {
-        "rule": "no-unreachable",
-        "file": "src/lib/knowledge/simulation.js",
-        "message": "Unreachable code",
-        "count": 1
-      }
-    ]
+    "entries": []
   },
   "generatedFrom": "npx react-scripts build",
   "fingerprint": "rule|file|message (no line numbers — they shift on unrelated edits)",
-  "totalWarnings": 250,
+  "totalWarnings": 245,
   "byRule": {
     "no-unused-vars": 227,
     "react-hooks/exhaustive-deps": 9,
     "no-mixed-operators": 6,
-    "no-dupe-keys": 3,
     "no-useless-escape": 1,
     "no-lone-blocks": 1,
-    "import/no-anonymous-default-export": 1,
-    "no-unreachable": 1,
-    "no-script-url": 1
+    "import/no-anonymous-default-export": 1
   },
   "byFile": {
-    "src/App.js": 135,
+    "src/App.js": 133,
     "src/admin/AdminConsole.jsx": 57,
     "src/plan/CommunicationHub.jsx": 6,
     "src/plan/VendorPlanningWorkspace.jsx": 5,
@@ -80,7 +52,6 @@
     "src/lib/playbooks/index.js": 2,
     "src/plan/ChecklistGenerator.jsx": 2,
     "src/components/EventDayMode.jsx": 1,
-    "src/components/MembersModal.jsx": 1,
     "src/lib/assembleRevealEngines.js": 1,
     "src/lib/contactFormat.js": 1,
     "src/lib/doItForMe.js": 1,
@@ -90,9 +61,7 @@
     "src/lib/knowledge/batchTracking.js": 1,
     "src/lib/knowledge/campaignRunner.js": 1,
     "src/lib/knowledge/domain.js": 1,
-    "src/lib/knowledge/simulation.js": 1,
     "src/lib/locationAssist.js": 1,
-    "src/lib/lodgingBookmarklet.js": 1,
     "src/lib/lodgingIntel.js": 1,
     "src/lib/playbooks/playbookRegistry.js": 1,
     "src/lib/vendorAccountability/conflicts.js": 1,
@@ -443,12 +412,6 @@
       "file": "src/admin/AdminConsole.jsx",
       "message": "'whyQuestionUnansswered' is defined but never used",
       "count": 1
-    },
-    {
-      "rule": "no-dupe-keys",
-      "file": "src/App.js",
-      "message": "Duplicate key 'color'",
-      "count": 2
     },
     {
       "rule": "no-mixed-operators",
@@ -1231,12 +1194,6 @@
       "count": 1
     },
     {
-      "rule": "no-dupe-keys",
-      "file": "src/components/MembersModal.jsx",
-      "message": "Duplicate key 'border'",
-      "count": 1
-    },
-    {
       "rule": "no-unused-vars",
       "file": "src/lib/assembleRevealEngines.js",
       "message": "'complexity' is assigned a value but never used",
@@ -1381,21 +1338,9 @@
       "count": 1
     },
     {
-      "rule": "no-unreachable",
-      "file": "src/lib/knowledge/simulation.js",
-      "message": "Unreachable code",
-      "count": 1
-    },
-    {
       "rule": "no-unused-vars",
       "file": "src/lib/locationAssist.js",
       "message": "'_isPlausibleCity' is assigned a value but never used",
-      "count": 1
-    },
-    {
-      "rule": "no-script-url",
-      "file": "src/lib/lodgingBookmarklet.js",
-      "message": "Script URL is a form of eval",
       "count": 1
     },
     {

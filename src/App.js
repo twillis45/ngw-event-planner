@@ -7087,7 +7087,7 @@ function VendorModal({ vendor, budgetCategories, onClose, onChange: onSave, onDe
                     data-testid="vm-unmark-deposit-paid"
                     onClick={() => setConfirmKind('unmark-deposit')}
                     title="Reverse the deposit-paid record"
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: T.caption, padding: '2px 4px', minHeight: 0, color: C.muted }}>
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: FW.semibold, fontSize: T.caption, padding: '2px 4px', minHeight: 0, color: C.muted }}>
                     Unmark
                   </button>
                 )}
@@ -44929,7 +44929,7 @@ function EventPlanner({ event, setEvent, client, setClient, allEvents = [], onBa
               <div style={{ position: 'relative' }}>
                 <button
                   onClick={e => { e.stopPropagation(); setDesktopEvtOverflow(o => !o); }}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: C.accent, fontWeight: FW.semibold, fontSize: T.caption, padding: '2px 4px', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: desktopEvtOverflow ? C.accent : C.border, color: desktopEvtOverflow ? C.accent : C.text }}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: FW.semibold, fontSize: T.caption, padding: '2px 4px', minHeight: 0, display: 'inline-flex', alignItems: 'center', gap: 6, borderColor: desktopEvtOverflow ? C.accent : C.border, color: desktopEvtOverflow ? C.accent : C.text }}
                   title="Event details"
                   aria-label="Event details"
                   aria-expanded={desktopEvtOverflow}

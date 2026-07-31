@@ -105,6 +105,13 @@ for(var i=0;i<L.length;i++){
 if(!O.length){alert('No rental listings found on this page. Open a search results page or a listing, then click this again.');return;}
 window.open('${target}#lodging='+encodeURIComponent(JSON.stringify(O)),'_blank');
 })();`;
+  // A bookmarklet IS a javascript: URL — this is the one place in the app where
+  // the scheme is the deliverable rather than a smell. The string is returned for
+  // the host to drag to their bookmarks bar: it is never assigned to location,
+  // never injected into the DOM by this module, and never evaluated here. `src` is
+  // built entirely from module-local template literals and numeric caps, so no
+  // caller input reaches it. Disabled on this ONE line, not relaxed for the file.
+  // eslint-disable-next-line no-script-url
   return 'javascript:' + encodeURIComponent(src.replace(/\n\s*/g, ''));
 }
 
