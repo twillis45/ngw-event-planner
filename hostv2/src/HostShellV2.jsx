@@ -5453,7 +5453,15 @@ export default function HostShellV2() {
                     const slips = [];
                     try {
                       const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
-                      if (od) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
+                      // ── NEVER ON A SOLEMN DAY (2026-07-31) ──────────────────────────
+                      // "Past its easy window" is shame grammar measured backwards from a
+                      // deadline the host never agreed to. On a repast nobody was late —
+                      // somebody died. repast.js authors T-5d leads because a burial lands
+                      // on Saturday, so a grieving family is "behind" the moment they open
+                      // the app. Suppressed rather than softened: there is no gentle way to
+                      // tell the bereaved they are late, and the decisions still render
+                      // below with their own rows and reasons. Nothing is hidden.
+                      if (od && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
                     if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
@@ -5765,11 +5773,23 @@ export default function HostShellV2() {
                 // actions MAY carry dueInDays; absent = say nothing).
                 // AMBER RESTRAINT (host 2026-07-18): in the elegant loop the due chip — including
                 // "past its window" (overdue) — is amber, the single urgency accent (.of default).
-                const dueChip = (a) => (a && a.dueInDays != null && Number.isFinite(Number(a.dueInDays))) ? (
-                  <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                    {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
-                  </span>
-                ) : null;
+                // ── AND NEVER BACKWARD ON A SOLEMN DAY (2026-07-31) ─────────────────
+                // The slips clause above is one surface; this chip is a SECOND, and it
+                // printed "past its window" over a repast hero even when the first was
+                // guarded. Found by driving the built shell, not by reading source —
+                // each is a separate expression with its own condition.
+                // Only the OVERSHOOT is dropped: due today / tomorrow / in N days still
+                // print, because those point forward and are true. The eyebrow already
+                // carries the runway ("4 DAYS · REPAST"), so nothing true is lost.
+                const dueChip = (a) => {
+                  if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
+                  if (solemn && a.dueInDays < 0) return null;
+                  return (
+                    <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
+                    </span>
+                  );
+                };
                 return (<>
               {/* Name the state — but ONLY when the board on screen IS actually paced.
                   Gated on queueFolded, which is the same predicate that computed
