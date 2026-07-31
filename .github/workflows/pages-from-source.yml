@@ -24,6 +24,13 @@ name: Deploy Pages (from source)
 
 on:
   workflow_dispatch:
+    inputs:
+      release_profile:
+        description: 'demo = open, localStorage-only (current public product). live = authenticated + backend-connected. Choosing live CHANGES WHAT THE PRODUCT IS for every visitor.'
+        required: true
+        default: demo
+        type: choice
+        options: [demo, live]
   # ── To make this the live path, uncomment and retire pages.yml: ──
   # push:
   #   branches: [main]
@@ -52,13 +59,21 @@ jobs:
     # `secrets.*` and referencing it here would leak it into the artifact —
     # scripts/validate-production-config.mjs fails the build if anyone tries.
     #
+    # HOST RULING 2026-07-31: the public site ships as the OPEN, localStorage-only
+    # demo. .env.production.local omits the live values DELIBERATELY — that is
+    # product behaviour, not missing configuration. So these are only consumed
+    # when release_profile=live is explicitly chosen; on the demo profile they are
+    # forced empty and their ABSENCE is asserted, so a demo release can never
+    # quietly acquire sign-in because someone set a repository variable.
+    #
     # Set them at: Settings → Secrets and variables → Actions → Variables.
     env:
-      REACT_APP_API_BASE_URL: ${{ vars.REACT_APP_API_BASE_URL }}
-      REACT_APP_SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
-      REACT_APP_SUPABASE_ANON_KEY: ${{ vars.REACT_APP_SUPABASE_ANON_KEY }}
-      REACT_APP_AUTH_REDIRECT: ${{ vars.REACT_APP_AUTH_REDIRECT }}
-      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ vars.REACT_APP_ENABLE_GOOGLE_AUTH }}
+      RELEASE_PROFILE: ${{ inputs.release_profile }}
+      REACT_APP_API_BASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_API_BASE_URL || '' }}
+      REACT_APP_SUPABASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_URL || '' }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_ANON_KEY || '' }}
+      REACT_APP_AUTH_REDIRECT: ${{ inputs.release_profile == 'live' && vars.REACT_APP_AUTH_REDIRECT || '' }}
+      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ inputs.release_profile == 'live' && vars.REACT_APP_ENABLE_GOOGLE_AUTH || '' }}
       REACT_APP_SENTRY_DSN: ${{ vars.REACT_APP_SENTRY_DSN }}
       REACT_APP_POSTHOG_KEY: ${{ vars.REACT_APP_POSTHOG_KEY }}
       REACT_APP_POSTHOG_HOST: ${{ vars.REACT_APP_POSTHOG_HOST }}
@@ -103,8 +118,8 @@ jobs:
       # fails rather than letting the release degrade silently to the
       # localStorage-only demo. Also rejects prohibited browser variables and
       # server-secret shapes. Prints names only, never values.
-      - name: Validate public production configuration
-        run: node scripts/validate-production-config.mjs --mode=production
+      - name: Validate release configuration for the chosen profile
+        run: node scripts/validate-production-config.mjs --mode="${RELEASE_PROFILE}"
 
       # ── build the release artifact from THIS commit ──────────────────────
       # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
@@ -119,7 +134,13 @@ jobs:
       - name: Record the deployed commit
         run: |
           echo "${GITHUB_SHA}" > build/RELEASE_SHA.txt
+          echo "release_profile=${RELEASE_PROFILE}" >> build/RELEASE_SHA.txt
           echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA}" >> build/RELEASE_SHA.txt
+          if [ "${RELEASE_PROFILE}" = "demo" ]; then
+            echo "capability=open-demo-localstorage-only (NOT live-production capable)" >> build/RELEASE_SHA.txt
+          else
+            echo "capability=live-authenticated-backend-connected" >> build/RELEASE_SHA.txt
+          fi
 
       # ── prove BOTH bundles received the intended configuration ───────────
       # CRA and hostv2 are compiled by different toolchains from different
@@ -127,6 +148,7 @@ jobs:
       # looks completely normal until a host signs in on one surface and not
       # the other. Assert the API base reached both.
       - name: Verify CRA and hostv2 configuration parity
+        if: ${{ inputs.release_profile == 'live' }}
         run: |
           set -euo pipefail
           api="${REACT_APP_API_BASE_URL}"
@@ -137,6 +159,28 @@ jobs:
           test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
             || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
           echo "both bundles carry the intended public configuration; artifact stamped ${GITHUB_SHA}"
+
+      # ── demo profile: prove the live values are NOT in the bundle ────────
+      # The mirror of the live parity check. A demo artifact that contained a
+      # Supabase project URL or the API origin would be live-capable while
+      # claiming not to be, which is the dishonest state this whole contract
+      # exists to prevent.
+      - name: Verify demo artifact carries no live configuration
+        if: ${{ inputs.release_profile == 'demo' }}
+        run: |
+          set -uo pipefail
+          # A CONCRETE project host (https://<ref>.supabase.co), not the wildcard
+          # "*.supabase.co" allowlist pattern that legitimately lives in source —
+          # matching the wildcard would false-fail every clean demo build.
+          if grep -rIlE 'https://[a-z0-9]{8,}\.supabase\.co|onrender\.com|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.' build/static/js/ build/hostv2/assets/ ; then
+            echo "::error::demo artifact contains live auth/backend configuration — it is not an open demo"
+            exit 1
+          fi
+          grep -q 'release_profile=demo' build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped release_profile=demo"; exit 1; }
+          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
+          echo "demo artifact verified: no live configuration, stamped ${GITHUB_SHA} / release_profile=demo"
 
       # ── final net: no server secret may leave in the artifact ────────────
       # VALUE shapes only, deliberately. The control on NAMES lives in

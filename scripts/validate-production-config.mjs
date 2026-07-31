@@ -35,10 +35,13 @@ const args = process.argv.slice(2);
 const modeArg = args.find((a) => a.startsWith('--mode='));
 const MODE = modeArg ? modeArg.slice('--mode='.length) : null;
 
-if (!MODE || !['verification', 'production'].includes(MODE)) {
-  console.error('usage: validate-production-config.mjs --mode=verification|production');
+// `production` is kept as a deprecated alias for `live`.
+const MODES = ['verification', 'demo', 'live', 'production'];
+if (!MODE || !MODES.includes(MODE)) {
+  console.error('usage: validate-production-config.mjs --mode=verification|demo|live');
   process.exit(2);
 }
+const PROFILE = MODE === 'production' ? 'live' : MODE;
 
 // ── Required for a PRODUCTION release ────────────────────────────────────────
 // All three are public by design (the Supabase key is the anon/publishable one;
@@ -133,13 +136,63 @@ for (const [name, rawValue] of Object.entries(process.env)) {
   }
 }
 
-// 3 — required values, production mode only
-if (MODE === 'production') {
+// 3a — DEMO RELEASE: the live values must be ABSENT.
+//
+// Host ruling 2026-07-31: the public site ships as the open, localStorage-only
+// demo, and .env.production.local omits these DELIBERATELY. That omission is
+// product behaviour, not missing configuration. A demo release that quietly
+// acquired live auth would change what the product IS for every visitor, so
+// their absence is asserted rather than assumed.
+if (PROFILE === 'demo') {
+  const present3 = REQUIRED_PRODUCTION.filter(present);
+  for (const n of present3) {
+    errors.push(`NOT ALLOWED IN A DEMO RELEASE  ${n} — setting it turns the open demo into an authenticated, backend-connected product. Use --mode=live deliberately if that is the intent.`);
+  }
+  if (!present3.length) {
+    notes.push('demo release: live auth/backend configuration is absent, as intended.');
+    notes.push('This artifact is the OPEN, localStorage-only demo. It is NOT live-production capable.');
+  }
+}
+
+// 3b — LIVE RELEASE: every required value present, and coherent.
+if (PROFILE === 'live') {
   const missing = REQUIRED_PRODUCTION.filter((n) => !present(n));
   for (const n of missing) {
     errors.push(`MISSING  ${n} — required for a production release; without it the app silently degrades to the localStorage demo`);
   }
-} else {
+  // The anon key must be the publishable one, and must belong to the SAME
+  // project as the URL — a mismatched pair fails at runtime in a way that looks
+  // like "sign-in is broken" rather than "the config is wrong".
+  const key = process.env.REACT_APP_SUPABASE_ANON_KEY;
+  const url = process.env.REACT_APP_SUPABASE_URL;
+  if (key && url) {
+    const parts = String(key).split('.');
+    if (parts.length !== 3) {
+      errors.push('INVALID  REACT_APP_SUPABASE_ANON_KEY — not a JWT; a live release needs the anon/publishable key');
+    } else {
+      try {
+        const claims = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+        if (claims.role === 'service_role') {
+          errors.push('PROHIBITED  REACT_APP_SUPABASE_ANON_KEY — this is a service_role key (bypasses RLS), never the anon key');
+        } else if (claims.role !== 'anon') {
+          errors.push(`INVALID  REACT_APP_SUPABASE_ANON_KEY — role is "${claims.role}", expected "anon"`);
+        }
+        if (claims.ref && !String(url).includes(claims.ref)) {
+          errors.push('MISMATCH  REACT_APP_SUPABASE_ANON_KEY does not belong to the project in REACT_APP_SUPABASE_URL');
+        }
+      } catch {
+        errors.push('INVALID  REACT_APP_SUPABASE_ANON_KEY — claims could not be decoded');
+      }
+    }
+  }
+  if (url && !/^https:\/\//.test(String(url))) errors.push('INVALID  REACT_APP_SUPABASE_URL — must be https');
+  const api = process.env.REACT_APP_API_BASE_URL;
+  if (api) {
+    if (!/^https:\/\//.test(String(api))) errors.push('INVALID  REACT_APP_API_BASE_URL — must be https');
+    if (/localhost|127\.0\.0\.1/.test(String(api))) errors.push('INVALID  REACT_APP_API_BASE_URL — points at localhost');
+    if (/\/api\/?$/.test(String(api))) errors.push('INVALID  REACT_APP_API_BASE_URL — ends in /api; callers append /api and would double it');
+  }
+} else if (PROFILE === 'verification') {
   const blank = REQUIRED_PRODUCTION.filter((n) => !present(n));
   if (blank.length) {
     notes.push(`This build is NOT production-capable: ${blank.join(', ')} ${blank.length === 1 ? 'is' : 'are'} unset.`);
@@ -148,7 +201,7 @@ if (MODE === 'production') {
 }
 
 // ── report ──────────────────────────────────────────────────────────────────
-console.log(`config check — mode=${MODE}`);
+console.log(`config check — mode=${MODE}${MODE === 'production' ? ' (deprecated alias for live)' : ''}`);
 if (notes.length) for (const n of notes) console.log(`  note: ${n}`);
 
 if (errors.length) {
@@ -161,7 +214,14 @@ if (errors.length) {
 }
 
 const capable = REQUIRED_PRODUCTION.every(present);
-console.log(capable
-  ? '✓ all required public production values present; no prohibited or secret-shaped variables.'
-  : '✓ verification build: public config intentionally blank, no prohibited or secret-shaped variables.');
+if (PROFILE === 'demo') {
+  console.log('✓ demo release: open, localStorage-only. NOT live-production capable — by design.');
+} else if (PROFILE === 'live') {
+  console.log('✓ live release: all required public values present and coherent (anon key, matching project, https API).');
+  console.log('  NOTE: a live release changes the product from an open demo to authenticated, backend-connected operation.');
+} else {
+  console.log(capable
+    ? '✓ verification build: config present; no prohibited or secret-shaped variables.'
+    : '✓ verification build: public config intentionally blank, no prohibited or secret-shaped variables.');
+}
 process.exit(0);
