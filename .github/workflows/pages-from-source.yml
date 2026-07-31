@@ -172,7 +172,14 @@ jobs:
           # A CONCRETE project host (https://<ref>.supabase.co), not the wildcard
           # "*.supabase.co" allowlist pattern that legitimately lives in source —
           # matching the wildcard would false-fail every clean demo build.
-          if grep -rIlE 'https://[a-z0-9]{8,}\.supabase\.co|onrender\.com|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.' build/static/js/ build/hostv2/assets/ ; then
+          # Executed bundles only. Source maps carry the dependencies' own JSDoc,
+          # which includes example hosts like https://xyzcompany.supabase.co — real
+          # library documentation, not this deployment's configuration. Scanning
+          # them would fail every clean demo build for a comment in someone else's
+          # package.
+          if grep -rIlE --include='*.js' --exclude='*.map' \
+               'https://[a-z0-9]{8,}\.supabase\.co|onrender\.com|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.' \
+               build/static/js/ build/hostv2/assets/ ; then
             echo "::error::demo artifact contains live auth/backend configuration — it is not an open demo"
             exit 1
           fi

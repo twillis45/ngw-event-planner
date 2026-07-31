@@ -264,6 +264,25 @@ developer runs:  npm run deploy
 The one improvement: `predeploy` now runs `npm run release` instead of
 `npm run build`, so a laptop deploy always rebuilds and re-syncs hostv2 first.
 
+### Release profiles (2026-07-31)
+
+`pages-from-source.yml` takes a `release_profile` input, default **`demo`**:
+
+- **`demo`** — the live values are forced empty regardless of repository
+  variables, and their absence is asserted. The artifact is stamped
+  `release_profile=demo` / `capability=open-demo-localstorage-only`, and the
+  executed bundles are scanned to prove no concrete Supabase project host, API
+  origin, or JWT reached them. This is the current public product.
+- **`live`** — requires all three public values and checks coherence (anon role,
+  matching project ref, https API without a trailing `/api`). Opt-in per run,
+  and gated on [`LIVE_MODE_READINESS.md`](LIVE_MODE_READINESS.md), which is not
+  yet worked.
+
+⚠️ **Dispatch is currently blocked by a GitHub platform rule:** `workflow_dispatch`
+only registers workflows present on the **default branch** (`main`).
+`pages-from-source.yml` exists only on `grounded-decision-surface`, so the API
+returns 404. It must reach `main` before any manual run is possible.
+
 ### Staged path — `pages-from-source.yml` (NOT yet live)
 
 Added this sprint, triggered by **`workflow_dispatch` only**. It runs backend

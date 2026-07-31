@@ -10,16 +10,38 @@ Enforced by `scripts/validate-production-config.mjs`.
 
 ---
 
-## Two explicit build modes
+## There are TWO productions, not one
+
+**Host ruling, 2026-07-31.** The public site is the **open, localStorage-only
+demo**, and `.env.production.local` omits the live values *deliberately*. That
+omission is product behaviour, not missing configuration. Anything that treats a
+blank config as a defect is asking the wrong question.
+
+| | **Public demo production** | **Live production** |
+|---|---|---|
+| What it is | Open; anyone can try it | Authenticated, backend-connected |
+| Sign-in | None | Supabase auth |
+| Storage | localStorage only | Supabase, per-account |
+| Live config | **must be absent** | **must be present** |
+| Profile | `release_profile=demo` (default) | `release_profile=live` (opt-in) |
+| Status | **current public site** | **not enabled** — see [LIVE_MODE_READINESS.md](LIVE_MODE_READINESS.md) |
+
+Selecting `live` changes what the product *is* for every visitor. It is opt-in
+per workflow run and is gated on a readiness checklist that is not yet worked.
+
+## Build modes
 
 | Mode | Command | Public config | Result |
 |---|---|---|---|
-| **Verification / demo** | `node scripts/validate-production-config.mjs --mode=verification` | May be blank | Compiles, runs as the **open, localStorage-only demo**. Explicitly **not production-capable**. Correct for ordinary CI. |
-| **Production release** | `node scripts/validate-production-config.mjs --mode=production` | **Required** | Fails loudly if any required value is missing. Never degrades silently. |
+| **verification** | `--mode=verification` | May be blank | Ordinary CI compile. Explicitly **not** production-capable. |
+| **demo** | `--mode=demo` | **Must be absent** | A demo release. Fails if a live value is set, so the open demo cannot silently acquire sign-in. |
+| **live** | `--mode=live` | **Required + coherent** | Fails closed on anything missing; also checks the key decodes to `role=anon` (never `service_role`), the key's project ref matches the Supabase URL, and the API base is https, not localhost, and does not end in `/api`. |
 
-The failure this prevents: a release built with no Supabase/API values still
-compiles and looks completely normal, but has no sign-in and no backend. Before
-this contract, nothing distinguished that from a real release.
+`--mode=production` remains a deprecated alias for `live`.
+
+Two failures this prevents: a release with no config that looks normal but has
+no sign-in and no backend; and a *demo* release that quietly gained live auth
+because somebody set a repository variable.
 
 ---
 
