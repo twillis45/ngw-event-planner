@@ -4,6 +4,16 @@
 
 **Owner:** Todd. **Adopted:** 2026-07-02, ratifying the "freeze the audit, build the missing layer" decision.
 
+> **EXTENDED 2026-07-31 — read alongside this document, in this order:**
+> 1. [`WHERE_WE_ARE.md`](./WHERE_WE_ARE.md) — the live status board (branch, gates, next action). Always current.
+> 2. [`2026-07-31_INTELLIGENCE_MEASURED_STATE.md`](./2026-07-31_INTELLIGENCE_MEASURED_STATE.md) — what the system
+>    *measurably* is: 922 files censused, ~230 intelligence-bearing modules (this framework was written against
+>    ~20), behavioural proof across 117 plans, and the governing number — **4% of the priced canon is cited**.
+>
+> The framework below is not re-invented and does not need to be. What changed is that its scale and its
+> grounding are now measured rather than assumed, and three claims made in later audits were **wrong** and are
+> corrected in the supplement (abstention exists; weather does reach actions; the engine count was ~5x low).
+
 > **The thesis in one line:** Everyone else automates *templates you author* or *reminders off a date*. NGW automates *the plan itself* — and the plan gets smarter two ways: **Context Intelligence** makes the **first** event smart (culture + place + season), **Host Intelligence** makes the **tenth** event smart (learned reality). Together they compound into a moat neither has alone.
 
 ---
