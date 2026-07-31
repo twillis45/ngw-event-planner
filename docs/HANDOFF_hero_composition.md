@@ -191,10 +191,16 @@ The board re-sits after A, B and C.
 ## Verification recipe (do not shortcut)
 
 ```
-cd demo/hostv2 && npx vite build && rsync -a --delete dist/ ../public/hostv2/
+cd demo && npm run sync:hostv2      # SUPERSEDES the manual rsync below
 cd demo && CI=true npx react-scripts test --watchAll=false
-cd demo && npm run build && npm run deploy && gh workflow run pages.yml
+cd demo && npm run deploy           # predeploy = npm run release (hostv2 → sync → CRA)
 ```
+
+> **Updated 2026-07-30 (Release Integrity sprint).** This recipe used to read
+> `npx vite build && rsync -a --delete dist/ ../public/hostv2/`. That manual step
+> is why the tracked bundle went stale. It is now `npm run sync:hostv2`, and CI
+> fails on any drift (`npm run gate:hostv2`). Canonical runbook:
+> [docs/release/RELEASE_INTEGRITY.md](release/RELEASE_INTEGRITY.md).
 
 Then **curl-prove the chunk, not index.html**:
 

@@ -171,8 +171,10 @@ Board re-sits on a **driven render**, never a diff.
 
 1. **Commit when the gates go green, not at session end.** Your law; I'm adopting it.
 2. **Never revert a file your session did not write.** Mine, learned expensively.
-3. **Rebuild + rsync `public/hostv2` in the same commit as any `hostv2/src` change** —
+3. **Rebuild + sync `public/hostv2` in the same commit as any `hostv2/src` change** —
    otherwise prod runs source you already fixed (`2d505864` exists only because of this).
+   *(2026-07-30: now `npm run sync:hostv2`, and CI enforces it — the `hostv2-drift`
+   job fails on any mismatch. See docs/release/RELEASE_INTEGRITY.md.)*
 4. **File ownership for now:** `styles.css` + print = yours. `HostShellV2.jsx` hero zone,
    `heroAsk.js`, `playbooks/index.js` decision rows, the two hero test files = mine.
    Anything crossing that line, say so first.
