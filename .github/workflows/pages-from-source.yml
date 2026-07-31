@@ -41,6 +41,33 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # PUBLIC production configuration, job-scoped so BOTH builds inherit it.
+    #
+    # These are GitHub repository (or environment) VARIABLES — `vars.*`, not
+    # `secrets.*`. That is deliberate: CRA compiles every REACT_APP_* into the
+    # public bundle, so a value placed here is published to every visitor by
+    # definition. Only values that are public by design belong in this list
+    # (the Supabase key is the anon/publishable one; the real boundary is the
+    # JWT + per-event ownership + Postgres RLS). Putting a real secret in
+    # `secrets.*` and referencing it here would leak it into the artifact —
+    # scripts/validate-production-config.mjs fails the build if anyone tries.
+    #
+    # Set them at: Settings → Secrets and variables → Actions → Variables.
+    env:
+      REACT_APP_API_BASE_URL: ${{ vars.REACT_APP_API_BASE_URL }}
+      REACT_APP_SUPABASE_URL: ${{ vars.REACT_APP_SUPABASE_URL }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ vars.REACT_APP_SUPABASE_ANON_KEY }}
+      REACT_APP_AUTH_REDIRECT: ${{ vars.REACT_APP_AUTH_REDIRECT }}
+      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ vars.REACT_APP_ENABLE_GOOGLE_AUTH }}
+      REACT_APP_SENTRY_DSN: ${{ vars.REACT_APP_SENTRY_DSN }}
+      REACT_APP_POSTHOG_KEY: ${{ vars.REACT_APP_POSTHOG_KEY }}
+      REACT_APP_POSTHOG_HOST: ${{ vars.REACT_APP_POSTHOG_HOST }}
+      REACT_APP_INVITE_ONLY: ${{ vars.REACT_APP_INVITE_ONLY }}
+      REACT_APP_BILLING_LIVE: ${{ vars.REACT_APP_BILLING_LIVE }}
+      REACT_APP_GOOGLE_MAPS_KEY: ${{ vars.REACT_APP_GOOGLE_MAPS_KEY }}
+      REACT_APP_OPENWEATHER_KEY: ${{ vars.REACT_APP_OPENWEATHER_KEY }}
+      # REACT_APP_PLANNER_TOKEN / _AUTH_BYPASS / _BYPASS_ROLE are deliberately
+      # ABSENT and are rejected by the validator if ever introduced.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -71,11 +98,21 @@ jobs:
       - name: Unit suite
         run: CI=true npx react-scripts test --watchAll=false
 
+      # ── the public configuration contract ────────────────────────────────
+      # Production mode: every required public value must be present, or this
+      # fails rather than letting the release degrade silently to the
+      # localStorage-only demo. Also rejects prohibited browser variables and
+      # server-secret shapes. Prints names only, never values.
+      - name: Validate public production configuration
+        run: node scripts/validate-production-config.mjs --mode=production
+
       # ── build the release artifact from THIS commit ──────────────────────
       # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
-      # Nothing here depends on the tracked artifact being fresh: it is
-      # regenerated from source, so a stale commit cannot publish a stale
-      # bundle.
+      # Both builds run in this same job, so both inherit the job-level env
+      # above — hostv2 bakes its own config at ITS build time (vite loadEnv
+      # merges prefixed process.env), so this is what keeps the two bundles in
+      # configuration parity. Nothing depends on the tracked artifact being
+      # fresh: it is regenerated from source.
       - name: Build release artifact
         run: npm run release
 
@@ -83,6 +120,41 @@ jobs:
         run: |
           echo "${GITHUB_SHA}" > build/RELEASE_SHA.txt
           echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA}" >> build/RELEASE_SHA.txt
+
+      # ── prove BOTH bundles received the intended configuration ───────────
+      # CRA and hostv2 are compiled by different toolchains from different
+      # entry points. A release where one is configured and the other is not
+      # looks completely normal until a host signs in on one surface and not
+      # the other. Assert the API base reached both.
+      - name: Verify CRA and hostv2 configuration parity
+        run: |
+          set -euo pipefail
+          api="${REACT_APP_API_BASE_URL}"
+          grep -rqF "$api" build/static/js/ \
+            || { echo "::error::CRA bundle is missing REACT_APP_API_BASE_URL"; exit 1; }
+          grep -rqF "$api" build/hostv2/assets/ \
+            || { echo "::error::hostv2 bundle is missing REACT_APP_API_BASE_URL — the two surfaces would disagree"; exit 1; }
+          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
+          echo "both bundles carry the intended public configuration; artifact stamped ${GITHUB_SHA}"
+
+      # ── final net: no server secret may leave in the artifact ────────────
+      # VALUE shapes only, deliberately. The control on NAMES lives in
+      # validate-production-config.mjs, which refuses to build when a prohibited
+      # variable is set — that is the right place for it, because a bundler
+      # leaves the bare identifier in the output even when the variable is
+      # UNSET (`process.env.X` compiles to `{}.X`, so the name appears with no
+      # value attached). Scanning names here would fail every clean build and
+      # train people to ignore the gate. This layer therefore catches values
+      # that reached the artifact by ANY route, including ones no env check saw.
+      - name: Scan artifact for server secrets
+        run: |
+          set -uo pipefail
+          if grep -rIlE 'sk-[A-Za-z0-9_-]{16,}|sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|postgres(ql)?://[^"'"'"' ]*:[^"'"'"' ]*@|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----' build/ ; then
+            echo "::error::artifact contains a server-secret value pattern — refusing to publish"
+            exit 1
+          fi
+          echo "artifact clean: no server-secret value patterns"
 
       - uses: actions/upload-pages-artifact@v3
         with:
