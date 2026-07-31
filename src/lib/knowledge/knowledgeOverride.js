@@ -5,6 +5,8 @@
 // through the pipeline, not hand-edited. Admin-scoped, reversible (rollback = drop the
 // override). Pure resolver + thin store.
 
+import { publishedEntry } from './publishedSnapshot';
+
 const KEY = 'ngw-kas-overrides';
 
 // Resolve the AUTHORED value of a field on a playbook. Supports two path shapes for the
@@ -33,11 +35,38 @@ export function overrideFromPublishedKCR(kcr) {
   };
 }
 
-// The effective value the platform serves: an active override wins over the authored file.
+// The effective value the platform serves, in strict precedence order:
+//
+//   1. host-locked values   — resolved upstream, in effectiveItem (never reaches here)
+//   2. explicit overrides   — a live local override; an admin testing a publish
+//   3. published knowledge  — the BAKED SNAPSHOT (Conveyor 1 transport)
+//   4. authored defaults    — the source file
+//
+// Tier 3 is the new one. It is deliberately BELOW the local override: an admin
+// with a live override is mid-flight on that field and must not be overtaken by
+// the artifact they are about to produce. It is deliberately ABOVE authored: that
+// is the whole point of governed knowledge.
+//
+// `source` distinguishes 'override' from 'published' rather than collapsing them,
+// because the two differ in a way a reader must be able to state: a local override
+// is reversible in place, a baked value is reversible only by rebuilding. Reporting
+// both as 'override' would promise a rollback the transport cannot honour.
 export function effectiveValue(pb, fieldPath, overrides) {
   const list = overrides || loadOverrides();
   const ovr = list.find((o) => o.assetId === (pb && pb.type) && o.fieldPath === fieldPath);
   if (ovr) return { value: ovr.value, source: 'override', overrideId: ovr.id, provenance: ovr.provenance };
+  const pub = publishedEntry(pb && pb.type, fieldPath);
+  if (pub) {
+    return {
+      value: pub.value,
+      source: 'published',
+      overrideId: null,
+      provenance: pub.provenance,
+      kcrId: pub.kcrId,
+      versionId: pub.versionId,
+      evidenceIds: pub.evidenceIds || [],
+    };
+  }
   return { value: readAuthored(pb, fieldPath), source: 'authored' };
 }
 

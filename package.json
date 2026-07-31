@@ -33,7 +33,9 @@
     "grounding:audit": "node scripts/groundingAudit.mjs",
     "grounding:json": "node scripts/groundingAudit.mjs --json",
     "grounding:proteins": "node scripts/proteinCoverage.mjs",
-    "knowledge:impact": "node scripts/knowledgeImpactIndex.mjs"
+    "knowledge:impact": "node scripts/knowledgeImpactIndex.mjs",
+    "bake:knowledge": "node scripts/bake-published-knowledge.mjs",
+    "gate:knowledge": "node scripts/bake-published-knowledge.mjs --check"
   },
   "eslintConfig": {
     "extends": "react-app"
