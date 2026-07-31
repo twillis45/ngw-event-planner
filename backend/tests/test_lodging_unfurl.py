@@ -14,6 +14,20 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 import app.routers.lodging as lodging_mod
+from app import safe_fetch
+
+
+@pytest.fixture(autouse=True)
+def _no_live_dns(monkeypatch):
+    """The guarded fetch resolves hosts before connecting. Stub that resolution
+    so the suite performs NO real DNS lookup — every allowlisted listing host
+    answers with a public address, which is the case under test here."""
+    import ipaddress
+
+    async def fake_resolve(host):
+        return [ipaddress.ip_address("93.184.216.34")]
+
+    monkeypatch.setattr(safe_fetch, "_resolve_all", fake_resolve)
 
 
 def _client():
@@ -23,10 +37,28 @@ def _client():
 
 
 class _Resp:
-    """Just enough of httpx.Response for the router."""
+    """Just enough of httpx.Response for the guarded fetch path.
+
+    2026-07-30: /unfurl now fetches through app.safe_fetch.safe_get (which
+    re-validates every redirect hop and caps the body) instead of calling
+    client.get() directly, so this fake speaks the streaming protocol
+    safe_get uses. Every assertion in this file is unchanged — only the shape
+    of the stubbed transport moved with the seam.
+    """
     def __init__(self, status_code=200, text=""):
         self.status_code = status_code
         self.text = text
+        self.headers = {"content-type": "text/html; charset=utf-8"}
+
+    @property
+    def is_redirect(self):
+        return self.status_code in (301, 302, 303, 307, 308)
+
+    async def aiter_bytes(self):
+        yield self.text.encode("utf-8")
+
+    async def aclose(self):
+        return None
 
 
 def _stub_get(monkeypatch, resp_or_exc):
@@ -35,7 +67,9 @@ def _stub_get(monkeypatch, resp_or_exc):
         def __init__(self, *a, **k): pass
         async def __aenter__(self): return self
         async def __aexit__(self, *a): return False
-        async def get(self, url):
+        def build_request(self, method, url, headers=None):
+            return {"url": str(url), "headers": headers or {}}
+        async def send(self, req, stream=False):
             if isinstance(resp_or_exc, Exception):
                 raise resp_or_exc
             return resp_or_exc
