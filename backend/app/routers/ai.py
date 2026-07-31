@@ -6,8 +6,18 @@ Frontend BYOK (vendor copilot) still uses the planner's own Anthropic key
 directly in the browser — that path is unchanged.
 
 This server-side proxy handles:
-  - General completions (/api/ai/complete) via gpt-4o-mini
+  - Named, server-owned AI features (/api/ai/feature) via gpt-4o-mini
   - Document AI extraction (/api/ai/extract-document) via gpt-4o (vision)
+
+REMOVED 2026-07-30 — /api/ai/complete. It accepted a caller-supplied `system`
+prompt and so was a general-purpose LLM running on the server's key: exactly
+the "unrestricted endpoint" /feature's docstring says cannot exist. It also had
+no reachable consumer — its only call site (App.js askClaude) sat behind a
+condition that could never be true, because askNGW() routes to /feature
+whenever REACT_APP_API_BASE_URL is set, and that is the same variable the
+askClaude branch required. Every real AI path names a server-owned feature from
+FEATURE_SYSTEM_PROMPTS, so the route was deleted rather than kept behind auth.
+See docs/security/AI_PROXY_AND_DOCUMENT_FETCH_SECURITY.md.
 
 Environment variables (set in Render dashboard):
   OPENAI_API_KEY    — OpenAI API key (platform.openai.com → API Keys)
@@ -29,6 +39,12 @@ from typing import Optional
 
 from ..auth import require_planner
 from ..error_log import record_error
+from ..safe_fetch import SafeFetchError, safe_get, storage_allowed_hosts
+
+# Vision/document types /extract-document is willing to hand to the model.
+DOCUMENT_CONTENT_TYPES = (
+    "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp",
+)
 
 log = logging.getLogger("ngw.ai")
 router = APIRouter(prefix="/api/ai", tags=["ai"])
@@ -424,13 +440,6 @@ async def orchestrate(
         raise HTTPException(status_code=500, detail="Unexpected error")
 
 
-class CompletionRequest(BaseModel):
-    prompt: str
-    system: Optional[str] = None
-    max_tokens: Optional[int] = None
-    context: Optional[str] = None
-
-
 class DocumentExtractRequest(BaseModel):
     document_url: str
     document_type: str = "contract"
@@ -438,79 +447,53 @@ class DocumentExtractRequest(BaseModel):
     event_name: Optional[str] = None
 
 
-@router.post("/complete")
-async def complete(body: CompletionRequest):
-    """
-    Proxy a text completion through OpenAI gpt-4o-mini.
-    Frontend falls back to BYOK when this returns 503.
-    """
-    if not is_ai_configured():
-        raise HTTPException(
-            status_code=503,
-            detail="AI proxy not configured — set OPENAI_API_KEY on the server"
-        )
-
-    max_tok = min(body.max_tokens or MAX_TOKENS, MAX_TOKENS)
-
-    messages = []
-    if body.system:
-        messages.append({"role": "system", "content": body.system})
-    messages.append({"role": "user", "content": body.prompt})
-
-    payload = {
-        "model":      COMPLETIONS_MODEL,
-        "max_tokens": max_tok,
-        "messages":   messages,
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(OPENAI_URL, headers=openai_headers(), json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-
-        text  = data["choices"][0]["message"]["content"]
-        usage = data.get("usage", {})
-        log.info(
-            "AI complete context=%s in=%d out=%d",
-            body.context or "unknown",
-            usage.get("prompt_tokens", 0),
-            usage.get("completion_tokens", 0),
-        )
-        return {
-            "ok":    True,
-            "text":  text,
-            "model": data.get("model"),
-            "usage": usage,
-        }
-    except httpx.HTTPStatusError as e:
-        log.error("OpenAI API error: %s — %s", e.response.status_code, e.response.text)
-        raise HTTPException(status_code=502, detail="AI service error")
-    except Exception as e:
-        log.error("AI proxy exception: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 @router.post("/extract-document")
-async def extract_document(body: DocumentExtractRequest):
+async def extract_document(
+    body: DocumentExtractRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
     """
     Sprint 62: Fetch a document from Storage and extract structured data
     using GPT-4o vision. Returns tasks, key dates, contacts, payment terms.
 
     All AI output is labeled as AI-generated and requires planner review.
+
+    SECURITY (2026-07-30): this route was unauthenticated, unmetered, and
+    fetched ANY caller-supplied URL with follow_redirects=True and no size
+    limit — a server-side request forgery primitive that could reach private
+    hosts and cloud instance metadata, with the network error echoed back as
+    an oracle. It now requires a planner, shares the /feature rate limiter,
+    and fetches only through safe_fetch (see that module's header).
     """
+    principal = await require_planner(authorization, x_planner_token)
+    user_id = principal.get("id") or "unknown"
+
     if not is_ai_configured():
         raise HTTPException(status_code=503, detail="AI proxy not configured — set OPENAI_API_KEY")
 
-    # Fetch document bytes
+    allowed, retry_after = _rate_check(user_id)
+    if not allowed:
+        log.warning("ai.extract_document RATE_LIMIT user=%s", user_id)
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded — try again shortly",
+            headers={"Retry-After": str(retry_after)},
+        )
+
+    # Fetch document bytes through the guarded path. Errors carry safe_fetch's
+    # fixed reason strings — never internal exception text.
     try:
-        async with httpx.AsyncClient(timeout=20, follow_redirects=True) as client:
-            r = await client.get(body.document_url)
-            r.raise_for_status()
-            doc_bytes = r.content
-            content_type = r.headers.get("content-type", "application/pdf")
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Could not fetch document: {e}")
+        doc_bytes, content_type, _final = await safe_get(
+            body.document_url,
+            allowed_hosts=storage_allowed_hosts(),
+            allowed_content_types=DOCUMENT_CONTENT_TYPES,
+        )
+    except SafeFetchError as e:
+        log.info("extract-document refused user=%s reason=%s", user_id, e.reason)
+        raise HTTPException(status_code=e.status_code, detail=e.reason)
+    if not content_type:
+        content_type = "application/pdf"
 
     import base64
     doc_b64 = base64.standard_b64encode(doc_bytes).decode()

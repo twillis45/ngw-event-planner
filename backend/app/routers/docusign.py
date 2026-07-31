@@ -26,6 +26,8 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
+from ..auth import require_planner
+from ..safe_fetch import SafeFetchError, safe_get, storage_allowed_hosts
 from ..docusign_client import (
     is_docusign_configured,
     get_oauth_url,
@@ -106,23 +108,35 @@ class SendEnvelopeRequest(BaseModel):
 
 
 @router.post("/send-envelope")
-async def send_envelope(body: SendEnvelopeRequest):
+async def send_envelope(
+    body: SendEnvelopeRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
     """
     Download the contract from storage, create a DocuSign envelope with
     two signers (vendor first, planner second), return the envelope ID.
+
+    SECURITY (2026-07-30): this route was unauthenticated and fetched ANY
+    caller-supplied contract_url — the same SSRF primitive as
+    /api/ai/extract-document, and it also echoed the network error back to
+    the caller. It now requires a planner and fetches only via safe_fetch.
     """
+    await require_planner(authorization, x_planner_token)
+
     if not is_docusign_configured():
         raise HTTPException(status_code=503, detail="DocuSign not configured on this server")
 
-    # Fetch contract bytes from URL
+    # Fetch contract bytes through the guarded path (see app/safe_fetch.py).
     try:
-        async with httpx.AsyncClient(timeout=20) as client:
-            r = await client.get(body.contract_url)
-            r.raise_for_status()
-            doc_bytes = r.content
-    except Exception as e:
-        log.error("Could not fetch contract document: %s", e)
-        raise HTTPException(status_code=400, detail=f"Could not fetch contract: {e}")
+        doc_bytes, _ctype, _final = await safe_get(
+            body.contract_url,
+            allowed_hosts=storage_allowed_hosts(),
+            allowed_content_types=("application/pdf",),
+        )
+    except SafeFetchError as e:
+        log.info("send-envelope refused: %s", e.reason)
+        raise HTTPException(status_code=e.status_code, detail=e.reason)
 
     subject = f"Contract for signature: {body.event_name} — {body.vendor_name}"
 

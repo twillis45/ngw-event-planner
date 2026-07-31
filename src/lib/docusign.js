@@ -13,6 +13,7 @@
  *   declined  — a signer declined
  *   voided    — cancelled by sender
  */
+import { authHeaders } from './apiAuth';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -78,9 +79,11 @@ export async function sendForSignature({
   if (!contractUrl) return { ok: false, error: 'No contract file attached — upload a contract first' };
 
   try {
+    // /api/docusign/send-envelope now requires a planner and fetches the
+    // contract only from the approved storage host (2026-07-30 security fix).
     const res = await fetch(`${BASE}/api/docusign/send-envelope`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         access_token: accessToken,
         contract_url: contractUrl,
