@@ -27,12 +27,12 @@ export function simulatePublish({ asset, fieldPath, proposedValue }, opts = {}) 
     magnitude: impact.magnitude,
     // Host-level diff: what the runtime reader actually renders before vs after (§ "what
     // host experience changes"). Only for item-cost fields (<purchaseId>.unitCostRange).
-    hostDiff: simulateHostCostDiff(asset, fieldPath, proposedValue, opts),
+    hostDiff: simulateHostCostDiff(asset, fieldPath, proposedValue),
   };
 }
 
 // Resolve the effective item cost with the SIMULATED override layered, vs. without.
-function simulateHostCostDiff(asset, fieldPath, proposedValue, opts) {
+function simulateHostCostDiff(asset, fieldPath, proposedValue) {
   const m = /^(p_[^.]+)\.unitCostRange$/.exec(fieldPath || '');
   if (!m || !Array.isArray(proposedValue)) return null;
   const purchaseId = m[1];
@@ -48,7 +48,6 @@ function simulateHostCostDiff(asset, fieldPath, proposedValue, opts) {
     afterCost: [afterItem.cost.low, afterItem.cost.high],
     changes: changed([beforeItem.cost.low, beforeItem.cost.high], [afterItem.cost.low, afterItem.cost.high]),
   };
-  void opts;
 }
 
 // Simulate a whole finding/campaign (many fields) → the combined diff (batch preview).

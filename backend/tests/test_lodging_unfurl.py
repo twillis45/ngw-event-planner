@@ -104,8 +104,25 @@ def test_only_allowlisted_https_listing_hosts_are_fetched(url, monkeypatch):
 
 
 def test_allowlisted_hosts_are_accepted():
-    for host in ("www.airbnb.com", "vrbo.com", "www.booking.com"):
+    for host in ("www.airbnb.com", "vrbo.com"):
         assert lodging_mod._host_ok(f"https://{host}/rooms/1") is True
+
+
+def test_booking_com_is_refused(monkeypatch):
+    """Removed 2026-07-28 (review board).
+
+    Booking's terms (A15) uniquely name automated assistants that work "by
+    interacting with or otherwise making use of your browser" — and THIS path is
+    the worse of the two places it appeared: the bookmarklet at least runs in the
+    host's own browser on her own IP, while this runs from a datacenter under a
+    self-identifying non-browser UA, which is exactly the fact pattern that
+    clause was drafted to catch. Booking is also a hotel platform and this engine
+    is for whole-home group rentals, so the trade bought us nothing.
+    """
+    assert lodging_mod._host_ok("https://www.booking.com/hotel/x.html") is False
+    r = _client().get("/api/lodging/unfurl", params={"url": "https://www.booking.com/hotel/x.html"})
+    assert r.status_code == 400
+    assert "Booking" not in r.json()["detail"]
 
 
 # ── An error page is not a listing (caught in testing against a fake room id) ─
@@ -217,3 +234,35 @@ def test_reversed_meta_attribute_order_is_still_read(monkeypatch):
         200, '<meta content="A big lake house for everyone" property="og:title" />'))
     body = _client().get("/api/lodging/unfurl", params={"url": "https://vrbo.com/1"}).json()
     assert body["title"] == "A big lake house for everyone"
+
+
+# ── The egress guard: a generic homepage title is not a listing ──────────────
+
+@pytest.mark.parametrize("title", [
+    "Vacation Rentals, Homes, Experiences & Places",
+    "Holiday Rentals, Cabins, Beach Houses & More",
+    "Book your next stay",
+    "Find and book your perfect getaway",
+])
+def test_a_generic_front_page_title_is_refused(title, monkeypatch):
+    """The failure nobody would notice.
+
+    If a platform starts answering datacenter traffic with its homepage metadata
+    instead of the listing's, every field still parses and nothing errors — the
+    host just gets a shortlist row named after the website. We would learn about
+    it from a confused host, not from an alarm. Refuse it like any other
+    confident wrong answer.
+    """
+    _stub_get(monkeypatch, _Resp(200, f'<meta property="og:title" content="{title}" />'
+                                      '<meta property="og:image" content="https://a0.muscache.com/x.jpg" />'))
+    r = _client().get("/api/lodging/unfurl", params={"url": "https://www.airbnb.com/rooms/1"})
+    assert r.status_code == 502
+    assert "front page" in r.json()["detail"].lower()
+
+
+def test_a_real_listing_title_is_not_mistaken_for_a_front_page(monkeypatch):
+    # The guard must not eat legitimate listings that happen to contain the words.
+    _stub_get(monkeypatch, _Resp(200, '<meta property="og:title" content="Cabin in McHenry · 5 bedrooms · 8 beds" />'))
+    r = _client().get("/api/lodging/unfurl", params={"url": "https://www.airbnb.com/rooms/1"})
+    assert r.status_code == 200
+    assert r.json()["facts"]["beds"] == 8

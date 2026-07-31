@@ -9,11 +9,40 @@ harvesting a listing's gallery or search results is scraping. The host has
 explicitly overridden that for ONE narrow case, and this router is that case,
 scoped as tightly as the decision allows.
 
-What this does: given a single listing URL the host pasted and pressed a button
-on, fetch that one page and read its OWN PUBLISHED SHARING METADATA — the
-Open Graph tags a site publishes precisely so that links can be unfurled. This
-is the same behaviour every messaging app performs when you paste a link, and
-the page is one the host is already looking at.
+WHAT WE ACTUALLY CLAIM (rewritten 2026-07-28 after the review board).
+
+The first version of this docstring argued that reading a page's Open Graph tags
+"is the same behaviour every messaging app performs when you paste a link." That
+is true and irrelevant, and it was doing rhetorical work it had not earned: it
+smuggled in the claim that because the mechanism is common, it is PERMITTED.
+Research settled that it is not. There is no oEmbed endpoint on these platforms
+and no OpenGraph/preview/unfurl carve-out in any of their terms. Nobody has
+permitted this. Messaging apps do it from a position of scale and mutual
+commercial interest — platforms WANT their links to unfurl in iMessage because it
+drives bookings. That is tolerance, not permission, and tolerance is a
+relationship we do not have.
+
+So the honest statement is about our CONDUCT, not our rights:
+
+  We read one page's published sharing metadata, on the host's explicit action,
+  on a link she gave us. No platform's terms permit it. Airbnb's forbid automated
+  collection; Vrbo's forbid automated AND manual copying. We do it anyway, in the
+  narrowest form we could build — one page, one request, host-initiated, a
+  self-identifying user agent, on a path robots.txt allows for our agent class,
+  no crawling, no gallery, no search harvest, nothing retained server-side. Any
+  of these platforms could ask us to stop. If asked, we will. The paste path
+  exists so the product still works the day that happens.
+
+That last sentence is the load-bearing one, and it is testable: the error copy
+below sends the host back to pasting, and the product survives losing this
+endpoint entirely.
+
+Note also (verified 2026-07-28): Airbnb's robots.txt disallows `/rooms/*/photos`,
+`/rooms/*/amenities`, `/rooms/*/reviews` and `/rooms/*/description` for our agent
+class but NOT the bare `/rooms/<id>` page this fetches. Every sub-path they
+forbid is one we already refused to build. If a UA containing `ClaudeBot` or
+`anthropic-ai` ever reaches here, that changes — those agents get an explicit
+`Disallow: /rooms/` that ours does not.
 
 What this deliberately does NOT do:
   · no crawling — one URL, one request, only on an explicit host action
@@ -32,7 +61,7 @@ HONEST LIMITS the host should hear rather than discover:
   · Automated access is contrary to those platforms' terms of use. That exposure
     is the product owner's decision, taken knowingly on 2026-07-28. It is
     recorded here so the next reader knows it was a decision and not an
-    oversight.
+    oversight — stated plainly, without the defence the earlier draft attached.
 """
 
 import logging
@@ -49,10 +78,16 @@ router = APIRouter(prefix="/api/lodging", tags=["lodging"])
 
 # Only listing pages on platforms the rental engine already models. An open
 # fetcher would be an SSRF hole and a genuine crawler; this is neither.
+# BOOKING.COM REMOVED 2026-07-28 (review board). Its terms (A15) specifically
+# name automated assistants that work "by interacting with or otherwise making
+# use of your browser" — and the SERVER path is the worse of the two places it
+# appeared: the bookmarklet at least runs in the host's own browser on her own
+# IP, while this runs from a datacenter under a self-identifying non-browser
+# user agent, which is the exact fact pattern that clause was written to catch.
+# The board's note: "the audit found one exposure and there were two."
 ALLOWED_HOSTS = (
     "airbnb.com", "www.airbnb.com",
     "vrbo.com", "www.vrbo.com",
-    "booking.com", "www.booking.com",
 )
 
 TIMEOUT = httpx.Timeout(8.0, connect=4.0)
@@ -91,7 +126,7 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
     if not _host_ok(url):
         raise HTTPException(
             status_code=400,
-            detail="Only https links to Airbnb, Vrbo or Booking.com listings can be read here.",
+            detail="Only https links to an Airbnb or Vrbo listing can be read here.",
         )
 
     # SECURITY (2026-07-30): _host_ok gates the FIRST url, but follow_redirects=True
@@ -160,6 +195,29 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
         raise HTTPException(
             status_code=502,
             detail="That link doesn’t open a live listing. Check the link, or copy the page and paste it.",
+        )
+
+    # ── THE EGRESS GUARD (review board, Engineering Realist 2026-07-28) ──────
+    # "You verified 4 listings on one day. That is not a passing test, it is a
+    # weather report." The failure mode nobody would notice: a platform that
+    # decides it dislikes datacenter traffic can answer 200 with its GENERIC
+    # HOMEPAGE metadata instead of the listing's. Every field parses, nothing
+    # errors, and the host gets a shortlist row named "Vacation Rentals, Homes,
+    # Experiences & Places". A confident wrong answer is the thing this endpoint
+    # exists to refuse — same reason the error-page guard above exists.
+    #
+    # (Tested against production 2026-07-28: three distinct listings returned
+    # three distinct titles matching what the host's own browser saw, so this is
+    # not currently firing. It is here because we would not find out if it did.)
+    GENERIC_TITLES = (
+        "vacation rentals", "holiday rentals", "cabins", "beach houses",
+        "book your", "find and book", "unique places to stay",
+    )
+    low = title.lower().strip()
+    if low and any(low.startswith(g) or low == g for g in GENERIC_TITLES):
+        raise HTTPException(
+            status_code=502,
+            detail="That came back as the site's front page, not the listing. Copy the listing page and paste it instead.",
         )
 
     if not (title or image):

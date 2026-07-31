@@ -21,6 +21,8 @@
     "eject": "react-scripts eject",
     "sync:hostv2": "node scripts/hostv2-artifact.mjs --sync",
     "gate:hostv2": "node scripts/hostv2-artifact.mjs --check",
+    "gate:cra": "node scripts/cra-build-gate.mjs",
+    "gate:cra:update": "node scripts/cra-build-gate.mjs --update",
     "release": "npm run sync:hostv2 && npm run build",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build --dotfiles && gh workflow run pages.yml",
