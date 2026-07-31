@@ -74,6 +74,12 @@ Used by `/api/ai/complete` (text completions) and `/api/ai/extract-document` (vi
 |---|---|---|---|
 | `OPENAI_API_KEY` | optional | OpenAI API key. Without it, AI routes return `503` and the frontend falls back to BYOK (see `AI_PROVIDER_REALITY.md`). | `app/routers/ai.py:30` |
 | `AI_MAX_TOKENS` | optional | Per-request token ceiling. Default `500`. | `app/routers/ai.py:31` |
+| `DOCUMENT_FETCH_ALLOWED_HOSTS` | optional | Comma-separated extra hostnames the server may fetch planner documents from, beyond the `SUPABASE_URL` host. Empty **and** no `SUPABASE_URL` means document fetch is refused (fail-closed), never "any host". | `app/safe_fetch.py` |
+
+Both `/api/ai/complete` and `/api/ai/extract-document` require an authenticated
+planner and share the `/feature` rate limiter (2026-07-30). Document fetches are
+restricted to the allowlist above and guarded against SSRF — see
+[`../security/AI_PROXY_AND_DOCUMENT_FETCH_SECURITY.md`](../security/AI_PROXY_AND_DOCUMENT_FETCH_SECURITY.md).
 
 ### DocuSign (eSignature)
 

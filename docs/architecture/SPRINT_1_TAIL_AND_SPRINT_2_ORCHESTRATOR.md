@@ -12,7 +12,7 @@ A code pass on 2026-07-16 found Sprint 2 is **not greenfield**:
 
 | Piece | File | State |
 |---|---|---|
-| Secure server-side AI proxy | `backend/app/routers/ai.py` | **Exists.** Routes: `/status`, `/feature`, `/complete`, `/extract-document`, `/parse-vendor-reply`. Rate-limited, key server-side. |
+| Secure server-side AI proxy | `backend/app/routers/ai.py` | **Exists.** Routes: `/status`, `/feature`, `/complete`, `/extract-document`, `/parse-vendor-reply`. Key server-side. Authenticated + rate-limited — note this row previously claimed "Rate-limited" for all routes, which was **false** for `/complete` and `/extract-document` until 2026-07-30; see `docs/security/AI_PROXY_AND_DOCUMENT_FETCH_SECURITY.md`. |
 | Frontend AI client | `src/lib/aiProxy.js` | **Exists.** POSTs `{feature, prompt, context}`; 8 features (`event_brief`, `vendor_followup`, `document_summary`, `checklist_help`, `proposal`, `budget`, `schedule`, `readiness`). |
 | "Ask the plan" Q&A | `src/lib/askPlan.js` | **Exists — deterministic, no LLM.** Maps a question to an answer COMPUTED from engine outputs, always naming its `basis`. This is the honest floor to build the LLM version *on top of*, not replace. |
 | Vendor-reply parser | `src/lib/vendorReplyParse.js` + `/api/ai/parse-vendor-reply` | **Exists — real AI, null-unless-stated, evidence-quoted, manual apply.** |
