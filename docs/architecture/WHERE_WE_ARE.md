@@ -50,8 +50,13 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 GROUNDING COVERAGE -- 4% cited   (8 cited - 40 consensus - 131 synthesized - 541 priced)
 ```
 
-34 of 39 playbooks are 0% cited. **This is the binding constraint.** Everything about
-provenance, explanation and trust is downstream of it.
+Mind the denominator. 4% is `cited / labeled`. The figure that matters for host trust is
+**8 of 541 priced items cited = 1.5%**, and **73% of priced items carry no provenance
+block at all**. 34 of 39 playbooks are 0% cited; `wedding` has zero provenance on any of
+its 7 priced items; one `lastVerified` stamp exists in the whole canon.
+
+**This is a SUPPLY problem, not a carriage problem, and it is the binding constraint.**
+Perfect delivery of an absent citation is still "nobody researched this".
 
 ---
 
@@ -63,7 +68,7 @@ Four things to hold in your head:
 1. **~230 intelligence-bearing modules**, 131 in the decision path. The system is big and
    mostly connected -- 12 of 15 planning domains reach a recommendation.
 2. **Evidence does not travel.** 13 grounded axes computed per decision, zero consumers.
-   1 of 20 provenance registries reaches the host UI.
+   1 of the 5 provenance registries checked reaches the host UI (15 unverified).
 3. **`phaseProgress.js` emits 47% of all actions.** It carries no evidence envelope.
 4. **~14,000 lines are stranded in the frozen CRA** (`orchestration/`, `plan/`, `slices/`)
    -- either port to hostv2 or delete; leaving them is the dishonest option.
@@ -72,8 +77,11 @@ Four things to hold in your head:
 
 ## 5. Next actions, in order
 
-1. **Point the research factory at the 34 zero-cited playbooks.** The factory works, is
-   governed, and now has transport. It has produced 8 cited items.
+1. **Label the 397 unlabeled priced items**, then point the research factory at the 34
+   zero-cited playbooks (`wedding` first -- 7 priced, zero provenance). Labeling costs no
+   research and makes the gap measurable. The factory works, is governed, and now has
+   transport; it has produced 8 cited items. Gate `grounding:audit` in CI with a
+   ratcheting floor. Full queue: `review-artifacts/.../11-GROUNDING-AUDIT.md`.
 2. **Extend the evidence envelope to ladder + phase actions** (`phaseProgress` = 47%).
 3. **Prove or retire the 6 silent registry surfaces** (`helpers`, `lodging`,
    `lodging-unpicked`, `money-dates`, `travel-air`, `travel-ground`).
@@ -100,8 +108,11 @@ Four things to hold in your head:
   (`hostv2/e2e/decisionIdentity.spec.mjs`) for true device geometry.
 - **A JSX comment directly after `return (` breaks the build** -- put it above the return.
 - **hostv2-drift**: rebuild with `npm run sync:hostv2` (Node 20) before trusting the gate.
-- **Never claim absent/dead/disconnected from one probe.** Three such claims were wrong in
-  the 2026-07-31 audit. Close the search space first.
+- **Never claim absent/dead/disconnected from one probe.** Four such claims were wrong or
+  imprecise in the 2026-07-31 audit. Close the search space first.
+- **Every number ships with its command.** Proof ledger:
+  `review-artifacts/2026-07-31-intelligence-audits/12-PROOF-LEDGER.md`. If a figure is not
+  in the ledger, it is unproven -- say so.
 
 ---
 

@@ -10,6 +10,10 @@ reachability roots; depth-1 engine roster; 15-domain sweep; behavioural proof ac
 plans. Full working papers in `review-artifacts/2026-07-31-intelligence-audits/` (that
 directory is **gitignored** -- this file is the durable record).
 
+**Every number here is reproducible.** Commands + verbatim output:
+`review-artifacts/2026-07-31-intelligence-audits/12-PROOF-LEDGER.md`, which also lists the
+claims that are NOT proven.
+
 **Read with:** [`KNOWLEDGE_FACTORY.md`](./KNOWLEDGE_FACTORY.md),
 [`INTELLIGENCE_READERS_REGISTRY.md`](./INTELLIGENCE_READERS_REGISTRY.md),
 [`CONTEXT_INTELLIGENCE.md`](./CONTEXT_INTELLIGENCE.md).
@@ -47,7 +51,21 @@ GROUNDING COVERAGE -- 4% cited
 ```
 
 **Only 5 of 39 playbooks have even one cited item. 34 are 0%.**
-**96% of the priced canon is model-authored estimate or trade consensus.**
+
+**Read the denominator carefully -- three are in play and they tell different stories:**
+
+| Statement | Figure | Denominator |
+|---|---|---|
+| The repo's headline metric | **4% cited** | cited / (cited + synthesized + consensus) = 8/179 |
+| Priced items carrying ANY provenance block | **27%** | 144 / 541 |
+| **Priced items cited to a real source** | **1.5%** | **8 / 541** |
+
+**73% of priced items (397 of 541) carry no provenance block whatsoever** -- not cited,
+not consensus, not even declared synthesized. The dominant state is *unlabeled*, not
+"declared estimate", and that is worse: an unlabeled price cannot be found by a
+provenance sweep, cannot be prioritised for research, and reads exactly like a researched
+one. `wedding` -- highest budget, highest stakes -- has 7 priced items and zero
+provenance. One `lastVerified` stamp exists in the entire canon.
 
 This is the binding constraint on intelligence quality. Carriage, provenance and
 explanation work are all downstream of it: perfect delivery of a citation that does not
@@ -66,9 +84,10 @@ vendors, weather, the day, risk, people, place (barely), travel (partial), meani
 
 1. **Evidence does not travel with intelligence.** `playbooks/index.js:2528-2578` computes
    **13 grounded axes per decision** (factor, tier, verification status, cited source ids)
-   and attaches them to every board row. **Zero consumers outside that file.** Of 20
-   provenance registries unioned by `groundingSources.js`, exactly one
-   (`DESTINATION_SOURCES`) reaches the host shell.
+   and attaches them to every board row. **Zero consumers outside that file** (proof C5).
+   Of the **5** provenance registries checked, exactly one (`DESTINATION_SOURCES`) reaches
+   the host shell (proof C6). `groundingSources.js` unions 20; the other 15 are
+   **unverified**, not proven absent.
 2. **Location is the sharpest gap.** ~15 modules and a live geocode/forecast backend;
    exactly **two doors** into the decision pipeline (`venueFor`, `travelPlan`).
    **`venueCity` has zero consumers** in `playbooks` / `CommandCenter` / `surfaceRegistry`.
@@ -136,8 +155,13 @@ blocks - 216 `difmCapable` - **`culturalContext` in only 5 of 39** - **zero `src
 - **"Weather raises nothing"** -- WRONG. Weather reaches actions via `dayBefore` +
   `phaseProgress`. True statement: no weather import in `surfaceRegistry`.
 - **"~20 engines"** -- WRONG by ~5x. See section 1.
+- **"96% of the priced canon is model-authored estimate"** -- WRONG denominator. The 4% is
+  `cited / labeled`, not `cited / priced`. Accurate: 73% of priced items are UNLABELED,
+  27% labeled, 1.5% cited. See section 2 and proof C2/C3.
+- **"1 of 20 provenance registries reaches the UI"** -- UNPROVEN. 5 checked, 1 reaches.
 
 **Method lesson, recorded so it does not recur:** a positive finding needs one witness; a
-**negative finding needs the search space closed**. All three errors were absence claims
-from a single probe. Census, never "classify the leftovers" -- a fully disconnected
-cluster is invisible to a leftovers sweep.
+**negative finding needs the search space closed**. Every one of these was an absence or a
+ratio asserted from a single probe. Census, never "classify the leftovers" -- a fully
+disconnected cluster is invisible to a leftovers sweep. **And every number ships with its
+command**: see the proof ledger. A figure not in the ledger is unproven and must say so.
