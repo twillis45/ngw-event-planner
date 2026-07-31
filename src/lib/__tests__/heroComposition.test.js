@@ -23,6 +23,7 @@
 //   number. Rams' dissent sustained: keep the instance, cut the generalisation.
 const fs = require('fs');
 const path = require('path');
+const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
 
 const SHELL = path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx');
 
@@ -226,30 +227,36 @@ describe('re-sit — the repointed door (ruling A, resolved by override)', () =>
 // So the hero speaks forward (`assurance`) and the sheet keeps the status
 // (`because`) -- a filing view legitimately carries one.
 const { playbookDecisionBoard } = require('../playbooks');
+const { daysUntil } = require('../dates');
 
 describe('re-sit — the hero says what is true forward', () => {
-  const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
-  const EVENTS = [
-    { id: 'as-re6', name: 'Family Reunion', type: 'family reunion', date: iso(6), guestMode: 'count', guestCount: 45, venueKind: 'venue', venue: 'Fort Smallwood Park', guests: [], vendors: [], timeline: [] },
-    { id: 'as-gn2', name: 'Game Night', type: 'game night', date: iso(2), guestMode: 'count', guestCount: 12, venueKind: 'home', venueCity: 'Atlanta', venueState: 'GA', guests: [], vendors: [], timeline: [] },
-    { id: 'as-ck5', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] },
+  useFrozenClock();
+  // LAZY (2026-07-31): these were module-collection-time constants, which run
+  // BEFORE beforeEach installs the frozen clock — so they would still have read
+  // the real wall clock. Built per test instead.
+  const EVENTS = () => [
+    { id: 'as-re6', name: 'Family Reunion', type: 'family reunion', date: daysFromNow(6), guestMode: 'count', guestCount: 45, venueKind: 'venue', venue: 'Fort Smallwood Park', guests: [], vendors: [], timeline: [] },
+    { id: 'as-gn2', name: 'Game Night', type: 'game night', date: daysFromNow(2), guestMode: 'count', guestCount: 12, venueKind: 'home', venueCity: 'Atlanta', venueState: 'GA', guests: [], vendors: [], timeline: [] },
+    { id: 'as-ck5', name: 'Cookout', type: 'juneteenth cookout', date: daysFromNow(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] },
   ];
-  const overdueRows = EVENTS.flatMap(ev =>
+  const overdueRows = () => EVENTS().flatMap(ev =>
     (playbookDecisionBoard(ev).open || []).filter(r => r && r.status === 'overdue').map(r => ({ ev: ev.name, r })));
 
   it('really has overdue decisions to police (never a vacuous pass)', () => {
-    expect(overdueRows.length).toBeGreaterThan(3);
+    // Precondition: all three fixtures are future-dated at the leads they claim.
+    expect(EVENTS().map(e => daysUntil(e.date))).toEqual([6, 2, 5]);
+    expect(overdueRows().length).toBeGreaterThan(3);
   });
 
   it('the assurance NEVER carries a day-count — the eyebrow is the one clock', () => {
-    for (const { ev, r } of overdueRows) {
+    for (const { ev, r } of overdueRows()) {
       if (!r.assurance) continue;
       expect(`${ev}: ${r.assurance}`).not.toMatch(/\d+\s*(day|days|month|months|week|weeks)/i);
     }
   });
 
   it('the assurance never scolds — no "due", no deadline the host never set', () => {
-    for (const { ev, r } of overdueRows) {
+    for (const { ev, r } of overdueRows()) {
       if (!r.assurance) continue;
       expect(`${ev}: ${r.assurance}`.toLowerCase()).not.toContain('due');
       expect(`${ev}: ${r.assurance}`.toLowerCase()).not.toContain('overdue');
@@ -260,12 +267,12 @@ describe('re-sit — the hero says what is true forward', () => {
   it('it is NULL without a default — no invented reassurance', () => {
     // The claim "the plan's been running on our pick" is only true when there IS a
     // pick to have been running on. A genuine either/or prints nothing instead.
-    for (const { r } of overdueRows) {
+    for (const { r } of overdueRows()) {
       if (r.assurance) continue;
       expect(r.assurance).toBeNull();
     }
     // And where it IS set, it must be the grounded claim, not a generic softener.
-    const set = overdueRows.filter(x => x.r.assurance);
+    const set = overdueRows().filter(x => x.r.assurance);
     expect(set.length).toBeGreaterThan(0);
     for (const { r } of set) expect(r.assurance).toMatch(/running on our pick/);
   });
@@ -273,7 +280,7 @@ describe('re-sit — the hero says what is true forward', () => {
   it('`because` still EXISTS on the row — the fact is kept, not deleted', () => {
     // The arithmetic remains available to any surface that legitimately files status.
     // What changed is who renders it: see the one-theory gate below.
-    expect(overdueRows.some(x => /Was due|easy window closed/.test(x.r.because))).toBe(true);
+    expect(overdueRows().some(x => /Was due|easy window closed/.test(x.r.because))).toBe(true);
   });
 });
 
@@ -465,16 +472,21 @@ const { planHeroCopy } = require('../planHeroCopy');
 const { isSolemnEvent } = require('../solemn');
 
 describe('a solemn day is not late', () => {
-  const iso = (d) => { const x = new Date(); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+  useFrozenClock();
   const repast = () => ({
     id: 'rp-gate', name: 'Repast for Deacon Willie Hayes', type: 'repast',
-    date: iso(4), createdAt: iso(-2), guestMode: 'count', guestCount: 50,
+    date: daysFromNow(4), createdAt: daysFromNow(-2), guestMode: 'count', guestCount: 50,
     venueKind: 'venue', venue: 'Mount Zion Baptist Church — Fellowship Hall',
     guests: [], vendors: [], timeline: [],
   });
 
   it('really produces overdue rows — the scenario is not vacuous', () => {
     const { playbookDecisionBoard } = require('../playbooks');
+    // Preconditions FIRST: a solemn event, genuinely future-dated at 4 days.
+    // Without these the "not late" assertions below could pass vacuously on a
+    // fixture that had quietly drifted into the past.
+    expect(isSolemnEvent(repast())).toBe(true);
+    expect(daysUntil(repast().date)).toBe(4);
     const overdue = (playbookDecisionBoard(repast()).open || []).filter(r => r.status === 'overdue');
     expect(overdue.length).toBeGreaterThan(0);
   });
@@ -503,14 +515,14 @@ describe('a solemn day is not late', () => {
   });
 
   it('a NON-solemn event keeps its original voice — this was surgical', () => {
-    const cookout = { id: 'ck-gate', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] };
+    const cookout = { id: 'ck-gate', name: 'Cookout', type: 'juneteenth cookout', date: daysFromNow(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW Post 3150', guests: [], vendors: [], timeline: [] };
     const c = planHeroCopy(cookout);
     expect(c.title).toMatch(/^Settle:/);
     expect(c.line).toMatch(/easy window/);
   });
 
   it('a label already ending in ? does not gain a period', () => {
-    const cookout = { id: 'ck-p', name: 'Cookout', type: 'juneteenth cookout', date: iso(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW', guests: [], vendors: [], timeline: [] };
+    const cookout = { id: 'ck-p', name: 'Cookout', type: 'juneteenth cookout', date: daysFromNow(5), guestMode: 'count', guestCount: 30, venueKind: 'venue', venue: 'VFW', guests: [], vendors: [], timeline: [] };
     expect(planHeroCopy(cookout).title).not.toMatch(/[?!]\./);
   });
 });
