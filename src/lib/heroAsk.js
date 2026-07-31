@@ -7,12 +7,30 @@
 // the dedup predicate over real seeded events instead of a hand-copied mirror of it.
 //
 // PURE display mappers: no React, no component state, no event mutation.
+import { normalizeAsk, isCircularAsk } from './askVoice';
 
 // REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
 // action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
 // panel beneath carries the specifics. Raw queue titles are card copy and can
 // be proper nouns ("Confirm Semper Catering Co") — never display material.
 const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
+
+// The food dimensions a host actually decides between, most-blocking first.
+// Provider comes before service style, which comes before the dishes: you cannot
+// choose a menu before you know who is cooking it, and a repast whose provider is
+// open is asking a sourcing question, not a culinary one.
+// Ordered, so a title naming two dimensions is asked about the one that gates.
+const FOOD_DIMENSION = [
+  { re: /\b(who|provider|providers|provid\w*|source|sourcing|cater\w*|potluck|cook(s|ing)?)\b/i, ask: 'Decide who provides the food.' },
+  { re: /\b(service|style|buffet|plated|seated|family[- ]style|passed|stationed|format)\b/i, ask: 'Choose how the food is served.' },
+  { re: /\b(dietary|allerg\w*|vegetarian|vegan|halal|kosher|gluten)\b/i, ask: 'Note the dietary needs.' },
+  { re: /\b(count|headcount|quantit\w*|how much|per guest|portions?)\b/i, ask: 'Fix the catering count.' },
+  { re: /\b(menu|dish\w*|serving|entree|main|sides?)\b/i, ask: 'Decide the menu.' },
+];
+function foodAsk(title) {
+  for (const d of FOOD_DIMENSION) if (d.re.test(title)) return d.ask;
+  return null;
+}
 export function heroAskFor(a, event) {
   try {
     // AN AUTHORED ASK ALWAYS WINS (2026-07-30). Everything below classifies an item
@@ -26,11 +44,29 @@ export function heroAskFor(a, event) {
     // A surface that knows its own job can now say so (`ask` on the raise) and this
     // reads it first. Structural, and it generalises: any future surface whose domain
     // and job differ authors one line instead of teaching this ladder a new regex.
-    if (a && a.ask) return String(a.ask);
+    if (a && a.ask) return normalizeAsk(a.ask) || 'Your next step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
-    if (d === 'food' || /serving|menu|food/i.test(t)) return 'Decide the menu.';
+    // ── THE FOOD BRANCH USED TO RESTATE ITS OWN ITEM ──────────────────────────
+    // Host report, 2026-07-31: a repast whose open decision is "Who provides the
+    // food" was asked "Decide the menu." — an instruction to do the thing the
+    // card is already named after, and one that names the WRONG dimension: the
+    // provider was the open question, not the dishes.
+    //
+    // The defect was the rule, not the string. This branch matched any title
+    // containing food/menu/serving and answered with a single fixed sentence, so
+    // every distinct food question collapsed into the same ask. It now reads the
+    // title to name the dimension actually missing, and foodAsk() returns null
+    // when it cannot tell — a null falls through to the ladder below rather than
+    // inventing a dimension the event has no evidence for.
+    if (d === 'food' || /serving|menu|food/i.test(t)) {
+      const ask = foodAsk(t);
+      if (ask && !isCircularAsk(ask, t)) return ask;
+      // Nothing narrower is known. Say the general thing ONLY if it still adds
+      // information; otherwise fall through and let a later rung speak.
+      if (!isCircularAsk('Decide the menu.', t)) return 'Decide the menu.';
+    }
     if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
     if (/start time/i.test(t)) return 'Confirm the start time.';
     if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
@@ -74,7 +110,7 @@ export function heroAskFor(a, event) {
     // carried through as its own field. It must not be re-derived from the
     // short label, and the cutoff must not be widened blindly — a long
     // declarative title genuinely does not read as a hero; a question does.
-    return t.length <= 26 ? t + '.' : 'Your next step.';
+    return (t.length <= 26 ? normalizeAsk(t + '.') : null) || 'Your next step.';
   } catch { return 'Your next step.'; }
 }
 // The record the panel names — only when it adds info beyond the ask (dedup:

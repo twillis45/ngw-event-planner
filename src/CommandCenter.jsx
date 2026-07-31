@@ -1659,6 +1659,38 @@ export function _topActionId(cmd) {
 }
 
 // eventPlan(event) — the public single source. Exported and consumed by every surface.
+// ─── THE BAND-1 RANKING SEQUENCE — exported so the gates test what ships ──────
+// Ordered by what a planner actually defers to. Returns 0 for a true tie, which
+// leaves the caller's stable sort to preserve PRODUCER order — itself curated
+// (the foundational dominoes are pushed in their canonical sequence).
+const _rankOverdue = (a) => Number.isFinite(a.dueInDays) && a.dueInDays < 0;
+// Consequence from signals the raisers already declare — no new scores, and no
+// invented precision. An action that unblocks others, or that the decision
+// board itself ranked highly, is more consequential than one that does not.
+export function actionConsequence(a) {
+  if (!a) return 0;
+  let c = 0;
+  if (a.gateHolder === true) c += 2;                                              // settling it frees other work
+  if (Number.isFinite(a.unlocks) && a.unlocks > 0) c += Math.min(2, a.unlocks);   // how much it frees
+  if (Number.isFinite(a.priorityScore)) c += a.priorityScore / 100;               // the board's own ranking, bounded
+  return c;
+}
+export function compareNextActions(a, b) {
+  // 2 — real lateness leads. Past-due is not a timing artifact; it is the event
+  //     telling the host something has already slipped. Most-late first.
+  const oa = _rankOverdue(a), ob = _rankOverdue(b);
+  if (oa !== ob) return oa ? -1 : 1;
+  if (oa && ob && a.dueInDays !== b.dueInDays) return a.dueInDays - b.dueInDays;
+  // 3/4 — consequence and unlock value, for everything merely scheduled.
+  const ca = actionConsequence(a), cb = actionConsequence(b);
+  if (ca !== cb) return cb - ca;
+  // 5 — runway: among equally consequential items, soonest first, nulls last.
+  const da = Number.isFinite(a.dueInDays) ? a.dueInDays : Infinity;
+  const db = Number.isFinite(b.dueInDays) ? b.dueInDays : Infinity;
+  if (da !== db) return da - db;
+  return 0;
+}
+
 export function eventPlan(event, ctx = null) {
   if (!event) return {
     nextActions: [], setAside: [], worries: [], progress: { done: 0, total: 0 }, handled: [],
@@ -2004,6 +2036,19 @@ export function eventPlan(event, ctx = null) {
         if (survivor) {
           if (survivor.dueInDays == null && r.dueInDays != null) survivor.dueInDays = r.dueInDays;
           if (survivor.leadDays == null && r.leadDays != null) survivor.leadDays = r.leadDays;
+          // ── THE SAME LOSS, ONE FIELD OVER (2026-07-31) ─────────────────────
+          // Wave-8 fixed the clock here because the collapsing twin carried a
+          // deadline the survivor lacked. The authored ask and the board's
+          // consequence signals were lost the identical way: the ladder builds
+          // the surviving 'decision:<id>' card from event fields and knows
+          // nothing about the playbook's authored question, while the registry
+          // twin — the one that DOES carry it — is the row being dropped. So the
+          // one place the authored question existed was also the only place it
+          // died. Fill gaps only; never overwrite what the survivor already has.
+          if (survivor.ask == null && r.ask != null) survivor.ask = r.ask;
+          if (survivor.priorityScore == null && Number.isFinite(r.priorityScore)) survivor.priorityScore = r.priorityScore;
+          if (!survivor.gateHolder && r.gateHolder === true) survivor.gateHolder = true;
+          if (!survivor.unlocks && Number.isFinite(r.unlocks)) survivor.unlocks = r.unlocks;
         }
         continue;
       }
@@ -2019,6 +2064,15 @@ export function eventPlan(event, ctx = null) {
         // action to the shell — the shell must never re-sniff it from title
         // prose (the Layer-2 harness caught this exact field dropping here).
         sourceCategory: r.sourceCategory != null ? r.sourceCategory : null,
+        // AUTHORED ASK TRANSPORT (2026-07-31). Same doctrine as sourceCategory
+        // directly above, and it was missing: a raiser that knows its own job may
+        // author the host-facing ask, and heroAskFor prefers `a.ask` over its own
+        // prose classification. That preference had NO producer reaching it —
+        // this object never copied `r.ask`, so the one authored ask in the repo
+        // ('Seat your guests.') was dropped here and the shell fell back to
+        // sniffing the title, which is exactly what authoring the ask was meant
+        // to stop. A consumer with no producer reads as a working feature.
+        ask: r.ask != null ? r.ask : null,
         consequence: r.why,
         route: r.route, primaryRoute: r.route,
         cta: 'Go', ctaLabel: 'Go',
@@ -2030,6 +2084,12 @@ export function eventPlan(event, ctx = null) {
         // (the wave-6 proof: 4 past-window decisions were offered "back Jul 20").
         dueInDays: r.dueInDays != null ? r.dueInDays : null,
         leadDays: r.leadDays != null ? r.leadDays : null,
+        // Consequence signals from the raiser, null where it has none. The
+        // ranking below reads these; a raiser that declares nothing ranks on
+        // time alone exactly as before, so this is additive.
+        priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
+        gateHolder: r.gateHolder === true,
+        unlocks: Number.isFinite(r.unlocks) ? r.unlocks : 0,
       });
     }
     // ── Pass 2: per-item snoozes drop children BEFORE bundling ─────────────────
@@ -2118,6 +2178,10 @@ export function eventPlan(event, ctx = null) {
     nextActions.splice(1); // only fillers: one calm line, never a stack of them
   }
   const _severityBand = (a) => (a && a.level === 'critical') ? 0 : (_isCalmFiller(a) ? 2 : 1);
+  // The shipped comparator lives at module scope (compareNextActions) so the
+  // ranking gates test THE FUNCTION THAT RUNS, not a copy of it. A local
+  // reimplementation in the test file passed happily while the real comparator
+  // was mutated — a gate that cannot fail is not a gate.
   // WAVE-6 shell contract: every ranked action exposes dueInDays and leadDays as
   // number|null — a uniform read, never a sometimes-missing field. Null stays
   // null: no invented numbers, only normalization of absence.
@@ -2130,14 +2194,37 @@ export function eventPlan(event, ctx = null) {
   // dueInDays ascending (most past-due first, then soonest), nulls last, stable
   // within ties so each producer's internal ranking survives. Criticals stay band
   // 0 (their urgency is categorical, not a date race); the calm band stays 2.
-  nextActions.sort((a, b) => {                    // Array.prototype.sort is stable (V8)
+  // ── THE EXPLICIT RANKING SEQUENCE (2026-07-31) ──────────────────────────────
+  // The band-1 comparator used to be `dueInDays` and nothing else, ending in
+  // `return 0`. Two consequences, both live:
+  //
+  //  1. FLATTENING. Every tie fell through to `return 0`, and a stable sort then
+  //     kept ARRAY ORDER — so which producer happened to push first decided what
+  //     the host was told to do next. Not a tie-breaker: the absence of one.
+  //  2. TIMING ARTIFACTS OUTRANKING CONSEQUENCE. With time as the only term, an
+  //     incidental item due in 1 day beat a consequential one due in 2, forever.
+  //
+  // The sequence below is ordered by what a planner actually defers to. Time is
+  // still the loudest signal where time is real — a genuinely past-due item still
+  // leads — but among items that are merely SCHEDULED, consequence decides, and a
+  // deterministic identity breaks true ties so the order is stable across runs.
+  nextActions.sort((a, b) => {
+    // 1 — hard gating: severity band is categorical and still dominant.
     const ba = _severityBand(a), bb = _severityBand(b);
     if (ba !== bb) return ba - bb;
     if (ba === 1) {
-      const da = Number.isFinite(a.dueInDays) ? a.dueInDays : Infinity;
-      const db = Number.isFinite(b.dueInDays) ? b.dueInDays : Infinity;
-      if (da !== db) return da - db;
+      const r = compareNextActions(a, b);
+      if (r !== 0) return r;
     }
+    // 6 — stable tie-break: PRODUCER ORDER, deliberately.
+    //     Array.prototype.sort is stable in V8, so returning 0 keeps the order the
+    //     producers emitted — and that order is itself curated (the foundational
+    //     dominoes are pushed in their canonical sequence: guests, then budget,
+    //     then food). An identity tie-break was tried here and was worse: sorting
+    //     ties by id is deterministic but alphabetical, so it silently reordered
+    //     the foundation set on a fresh event and "Set your budget." led over
+    //     "Add your guest list." Determinism comes from stability over
+    //     deterministic producers, not from imposing an unrelated ordering.
     return 0;
   });
 

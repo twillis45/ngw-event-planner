@@ -587,6 +587,20 @@ export const SURFACES = [
           // proof caught 4 of them being offered "back Jul 20".
           dueInDays: Number.isFinite(r.daysOut) ? r.daysOut : null,
           leadDays: Number.isFinite(r.daysOut) ? r.daysOut - days : null,
+          // ── THE BOARD'S CONSEQUENCE SURVIVES THE BOUNDARY (2026-07-31) ──────
+          // playbookDecisionBoard scores every row on weight, reversibility,
+          // heart, and how much it unblocks (gateHolder / _dependedOnCount), then
+          // sorts on it. Until now only `daysOut` crossed this boundary, so all
+          // of that ranking was computed and thrown away: downstream, every
+          // decision was just a date, and the action list re-sorted them on the
+          // date alone. The consequential call and the incidental one arrived
+          // indistinguishable, and whichever had the nearer window won.
+          // These are the board's OWN numbers, not new ones invented here.
+          priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
+          gateHolder: r.gateHolder === true,
+          unlocks: Number.isFinite(r._dependedOnCount) ? r._dependedOnCount : 0,
+          // The authored question, so the host reads the decision as written.
+          ask: r.ask || null,
         }));
     },
   },

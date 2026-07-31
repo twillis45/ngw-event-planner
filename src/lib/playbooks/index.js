@@ -78,6 +78,7 @@ import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
+import { authoredQuestion } from '../askVoice';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -2002,12 +2003,26 @@ function decisionDepNoun(id, decisions) {
 }
 // "Seated dinner or buffet / family-style?" → trimmed, no trailing '?', capped.
 function decisionShortLabel(label) {
-  let s = String(label || '').trim().replace(/\?+\s*$/, '');
   // A trailing parenthetical is guide voice ("game night skews light — people
   // need to think"), never label material — and truncating THROUGH it left an
   // unbalanced "(game night skews ligh…" no display transform could strip
   // (audit 2026-07-22). The rationale still reaches the host via `why`.
-  s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  //
+  // NEITHER ORDER IS SUFFICIENT — STRIP UNTIL STABLE (2026-07-31).
+  // Authored labels come in both shapes, and a fixed order breaks one of them:
+  //   "Alcohol? (adult parties)"        — '?' hides BEHIND the parenthetical
+  //   "Is this corporate (name tags…)?" — the parenthetical hides behind the '?'
+  // Stripping '?' first left the first shape's mark in place, and the render
+  // boundary appended a second one: "Alcohol??". Stripping the parenthetical
+  // first left the second shape's paren in place, which the host-string lint
+  // catches as an unbalanced paren. Looping settles both, and any future label
+  // that alternates them, without either strip having to know about the other.
+  let s = String(label || '').trim();
+  for (let i = 0; i < 4; i++) {
+    const before = s;
+    s = s.replace(/\s*\([^)]*\)\s*$/, '').replace(/\?+\s*$/, '').trim();
+    if (s === before) break;
+  }
   if (s.length > 52) s = s.slice(0, 50).trim() + '…';
   return s;
 }
@@ -2563,7 +2578,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 
@@ -2636,7 +2651,14 @@ export function playbookDecisionBoard(event, asOf, profile) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+    // `ask` carries the AUTHORED question, derived from d.label — the full
+    // authored string, never the short card label. The short label is a display
+    // truncation (52 chars, parenthetical peeled) and re-deriving a question from
+    // it loses exactly the authored labels this is meant to preserve. One
+    // Only a label AUTHORED as a question becomes an ask — authoredQuestion()
+    // returns null for a declarative decision NAME, which then falls through to
+    // the builder ladder rather than being punctuated into a fake question.
+    open.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is
