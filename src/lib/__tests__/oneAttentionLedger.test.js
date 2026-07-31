@@ -20,10 +20,19 @@
 
 import { eventPlan } from '../../CommandCenter';
 import { deriveEventPhaseProgress } from '../phaseProgress';
+import { useFrozenClock, daysFromNow } from '../../testUtils/frozenClock';
+
+// DETERMINISM (2026-07-31): this fixture hardcoded `date: '2026-08-04'` and
+// measured it against the real now. Written on 2026-07-15 that was a 20-day
+// lead; by 2026-07-31 it had shrunk to 4 and the suite started failing in UTC
+// while still passing in America/New_York — same commit, different answer.
+// The lead is now derived from a frozen clock, so the scenario is 20 days out
+// forever and in every timezone.
+const LEAD_DAYS = 20;
 
 const feast = (over = {}) => ({
   id: 'ledger-1', type: 'Crab Feast', name: 'My Crab Feast',
-  date: '2026-08-04', venue: 'Backyard', venueCity: 'Annapolis', venueState: 'MD',
+  date: daysFromNow(LEAD_DAYS), venue: 'Backyard', venueCity: 'Annapolis', venueState: 'MD',
   guestMode: 'count', guestCount: 18, guestEstimate: 18,
   totalBudget: 1500,
   foodChoices: {
@@ -37,12 +46,25 @@ const feast = (over = {}) => ({
   ...over,
 });
 
+const daysUntil = require('../dates').daysUntil;
+
 const openPhaseIds = (ev) =>
   (deriveEventPhaseProgress(ev).items || [])
     .filter(i => i && !i.handled && i.cueLabel && i.route)
     .map(i => i.id);
 
 describe('one ledger — nextActions cannot be blind to what phaseProgress knows', () => {
+  useFrozenClock();
+
+  test('the fixture really is the scenario these assertions were written for', () => {
+    // Guards the class of rot that broke this suite: if the fixture stops being a
+    // future-dated event with open phase work, every assertion below turns vacuous.
+    const ev = feast();
+    expect(daysUntil(ev.date)).toBe(LEAD_DAYS);
+    expect(openPhaseIds(ev).length).toBeGreaterThan(0);
+    expect(openPhaseIds(ev)).toContain('rain');
+  });
+
   test('THE REGRESSION: a missing rain plan reaches the action list', () => {
     const ev = feast();
     expect(openPhaseIds(ev)).toContain('rain');           // the phase engine knows
