@@ -3,7 +3,7 @@
 // The browser POSTs {feature, prompt, context} to /api/ai/feature with the
 // planner's Supabase token; the backend validates, builds a server-owned system
 // prompt, calls the model, and returns only the text. No key reaches the client.
-import { supabase, isSupabaseConfigured } from './supabaseClient';
+import { authHeaders } from './apiAuth';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 
@@ -17,17 +17,11 @@ export function isAiProxyConfigured() {
   return !!BASE;
 }
 
-async function authHeaders() {
-  const headers = { 'Content-Type': 'application/json' };
-  if (isSupabaseConfigured() && supabase) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const token = data?.session?.access_token;
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-    } catch { /* unauthenticated — backend will 401 */ }
-  }
-  return headers;
-}
+// The planner identity now lives in lib/apiAuth.js so /api/ai/feature,
+// /api/ai/extract-document and /api/docusign/send-envelope (the last two
+// secured 2026-07-30) share ONE derivation instead of growing copies.
+// Re-exported here because existing callers already import it from aiProxy.
+export { authHeaders };
 
 // callAiFeature(feature, prompt, context?) → { ok, text, usage } | throws Error.
 // Honest failure surface: throws with a friendly message the UI can show.

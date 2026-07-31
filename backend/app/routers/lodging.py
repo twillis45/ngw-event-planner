@@ -42,6 +42,8 @@ from urllib.parse import urlparse
 import httpx
 from fastapi import APIRouter, HTTPException, Query
 
+from ..safe_fetch import SafeFetchError, safe_get
+
 log = logging.getLogger("ngw.lodging")
 router = APIRouter(prefix="/api/lodging", tags=["lodging"])
 
@@ -92,29 +94,39 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
             detail="Only https links to Airbnb, Vrbo or Booking.com listings can be read here.",
         )
 
+    # SECURITY (2026-07-30): _host_ok gates the FIRST url, but follow_redirects=True
+    # meant an allowlisted listing could 302 the server anywhere — including a
+    # private address or 169.254.169.254. safe_get re-validates every hop against
+    # the same allowlist and rejects non-public resolved addresses.
     try:
-        async with httpx.AsyncClient(
+        html_bytes, _ctype, _final = await safe_get(
+            url,
+            allowed_hosts=ALLOWED_HOSTS,
+            allowed_content_types=("text/html", "application/xhtml+xml"),
+            max_bytes=MAX_BYTES,
             timeout=TIMEOUT,
-            follow_redirects=True,
-            headers={"User-Agent": UA, "Accept": "text/html,application/xhtml+xml"},
-        ) as client:
-            resp = await client.get(url)
+            user_agent=UA,
+        )
+    except SafeFetchError as exc:
+        up = exc.upstream_status
+        if exc.status_code == 504:
+            raise HTTPException(status_code=504, detail="The listing took too long to answer. Copy the page and paste it instead.")
+        if up in (401, 403, 429):
+            # The expected, honest failure — say so rather than dressing it up.
+            raise HTTPException(
+                status_code=502,
+                detail="The site declined an automated read (this is common). Copy the listing page and paste it — that always works.",
+            )
+        if up is not None:
+            raise HTTPException(status_code=502, detail=f"The listing answered {up}. Copy the page and paste it instead.")
+        raise HTTPException(status_code=exc.status_code, detail=exc.reason)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="The listing took too long to answer. Copy the page and paste it instead.")
     except Exception as exc:  # network-level failure
         log.info("unfurl transport failure: %s", exc)
         raise HTTPException(status_code=502, detail="Couldn’t reach the listing. Copy the page and paste it instead.")
 
-    if resp.status_code in (401, 403, 429):
-        # The expected, honest failure — say so rather than dressing it up.
-        raise HTTPException(
-            status_code=502,
-            detail="The site declined an automated read (this is common). Copy the listing page and paste it — that always works.",
-        )
-    if resp.status_code >= 400:
-        raise HTTPException(status_code=502, detail=f"The listing answered {resp.status_code}. Copy the page and paste it instead.")
-
-    html = resp.text[:MAX_BYTES]
+    html = html_bytes.decode("utf-8", errors="replace")[:MAX_BYTES]
 
     meta = {}
     for pat in (_META, _META_REV):
