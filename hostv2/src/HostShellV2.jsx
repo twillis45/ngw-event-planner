@@ -28,6 +28,9 @@ import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyP
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
 import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+// ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
+import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
+import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
@@ -1592,93 +1595,62 @@ export default function HostShellV2() {
   };
   // ADAPTER — a playbook `decision:*` board row → NormalizedDecision (its authored
   // options/optionNotes/defaultWhy, and the difm propose/ask approach as the pick).
+  // The PAYLOAD moved to lib/decisionND (PR #70) so the gates can run the same
+  // builder the shell renders; only the write half stays here.
   const playbookDecisionND = (dec) => {
-    const dopts = (() => { try { return playbookDecisionOptions(event, dec.id); } catch { return null; } })();
-    if (!dopts || !Array.isArray(dopts.options) || !dopts.options.length) return null;
-    const notes = (dopts.optionNotes && typeof dopts.optionNotes === 'object') ? dopts.optionNotes : {};
-    const dapproach = dec.difmCapable ? (() => { try { return decisionApproach(dec, dopts); } catch { return null; } })() : null;
-    // Propose-don't-ask: prefer the DIFM-derived pick, but when a decision carries no
-    // difmCapable (injected military/destination sets) fall back to its AUTHORED grounded
-    // default — those rows have default+why+src, so a blank ask over a real default is wrong.
-    const proposed = (dapproach && dapproach.mode === 'propose' && dapproach.proposed)
-      ? dapproach.proposed
-      : (dopts.default || null);
-    return {
-      id: dec.id,
-      options: dopts.options.map(o => ({ value: o, label: o, note: notes[o] || null })),
-      proposed: proposed ? { value: proposed, why: dopts.defaultWhy || dopts.why || null } : null,
-      why: dopts.why || null,
-      settle: (v) => settleDecision(dec, v),
-    };
+    const nd = boardDecisionND(event, dec);
+    return nd ? { ...nd, settle: (v) => settleDecision(dec, v) } : null;
   };
   // ADAPTER — the phase:food "how is the food handled" decision → NormalizedDecision.
   // Propose-don't-ask ONLY when grounded: at a real headcount, cooking for that many is a
   // lot to own on the day, so most hosts hand it to a caterer. Below that, honest ask-mode.
-  const foodDecisionND = () => {
-    // WIRE (audit 2026-07-22, W8 "doesn't continue"): when the playbook authors its
-    // own food-approach decision (repast `food_source` — culturally specific options,
-    // committee-brings default), THAT decision IS the food decision. The generic
-    // cook/cater/potluck trio both contradicted its doctrine and wrote a key the
-    // engine ignores whenever an authored lever exists — settling changed nothing.
-    // settleDecision writes foodChoices[<lever id>], the exact store foodApproach
-    // reads, so the pick now reshapes buys/tasks/costs. Trio = lever-less types only.
-    try {
-      const fa = foodApproach(event);
-      if (fa && fa.decisionId) {
-        const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]
-          .find(x => x && x.id === fa.decisionId);
-        const nd = row ? playbookDecisionND(row) : null;
-        if (nd) return { ...nd, selected: (event.foodChoices || {})[fa.decisionId] || null };
-      }
-    } catch { /* fall through to the generic trio */ }
-    const OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
-    const NOTES = {
-      'host cooks': 'Most control, most work on the day — best when the count is small.',
-      'caterer': 'Hands-off on the day; the biggest line in the food budget.',
-      'potluck': 'Low cost and communal — but you can’t plan the exact spread.',
-    };
-    const gn = Number(guests) || 0;
-    const proposed = gn >= 40
-      ? { value: 'caterer', why: `At about ${gn} guests, most hosts hand the food to a caterer — cooking for that many is a lot to own on the day.` }
-      : null;
-    return {
-      id: 'phase:food',
-      options: OPTS.map(([label, value]) => ({ value, label, note: NOTES[value] || null })),
-      proposed,
-      selected: (event.foodChoices || {}).sourcing || null,
-      why: proposed ? null : 'How you handle the food shapes both the budget and your day-of workload.',
-      settle: (v) => {
-        const label = (OPTS.find(([, val]) => val === v) || ['it'])[0];
-        patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
-          'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
-      },
-    };
+  // The trio/lever choice moved to lib/decisionND (PR #70). WIRE (audit
+  // 2026-07-22, W8): when the playbook authors its own food-approach decision
+  // (repast `food_source`) THAT decision IS the food decision, and settling it
+  // writes the key foodApproach actually reads.
+  const foodND = () => {
+    const nd = foodDecisionND(event, guests, [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]);
+    return { ...nd, settle: (v) => settleND(nd, v) };
   };
-  // DISPATCHER — any decision-like hero action → its NormalizedDecision (or null when the
-  // action isn't a pick-style decision, e.g. a free-entry editor). Add a source here once.
+  // THE ONE WRITE PATH for any NormalizedDecision the shell renders. The generic
+  // trio writes foodChoices.sourcing; an authored lever or board row goes through
+  // settleDecision (which writes foodChoices[<row id>]); a blocker writes its own
+  // field. Keyed on the decision's OWN id, so the write can never land on a
+  // different decision than the one whose options were tapped.
+  const settleND = (nd, v) => {
+    if (!nd) return;
+    if (nd.id === 'phase:food') {
+      const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
+      patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
+        'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
+      return;
+    }
+    if (/^blocker:/.test(String(nd.id || ''))) {
+      const key = String(nd.id).slice('blocker:'.length);
+      const b = (blockers || []).find(x => x && x.fieldKey === key);
+      patchEvent({ [key]: v }, ((b && b.title) || 'Decided') + ' — set.');
+      return;
+    }
+    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
+    if (row) settleDecision(row, v);
+  };
+  // The canonical payload's write half — same dispatcher, reached through the
+  // selection so the hero panel has no private path to a store.
+  const settleSelection = (sel, v) => { if (sel && sel.decision) settleND(sel.decision, v); };
+  // DISPATCHER — any decision-like action → its NormalizedDecision, or null.
+  // IDENTITY-GATED (PR #70): it asks decisionIdentityFor first, so it can never
+  // answer for an action that does not declare a decision. Add a source here once.
   const decisionFor = (a) => {
-    if (!a) return null;
-    const id = String(a.id || '');
-    if (/^decision:/.test(id)) {
-      const dec = (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === id);
-      return dec ? playbookDecisionND(dec) : null;
+    const idn = decisionIdentityFor(a);
+    if (!idn) return null;
+    if (idn.decisionId === 'phase:food') return foodND();
+    if (idn.source === 'blocker') {
+      const nd = blockerDecisionND((blockers || []).find(x => x && ('blocker:' + x.fieldKey) === idn.decisionId));
+      return nd ? { ...nd, settle: (v) => settleND(nd, v) } : null;
     }
-    if (id === 'phase:food') return foodDecisionND();
-    if (/^blocker:/.test(id)) {
-      const b = (blockers || []).find(x => x && ('blocker:' + x.fieldKey) === id);
-      if (!b) return null;
-      return {
-        id,
-        options: (b.options || []).map(o => ({ value: o.value, label: o.label, note: o.note || null })),
-        proposed: null,
-        why: b.what || null,
-        settle: (v) => patchEvent({ [b.fieldKey]: v }, (b.title || 'Decided') + ' — set.'),
-      };
-    }
-    return null;
+    const dec = (decisionBoard.open || []).find(x => x && String(x.id) === String(idn.decisionId));
+    return dec ? playbookDecisionND(dec) : null;
   };
-  // Back-compat: the decisions BUNDLE + single-decision hero still call this with a board row.
-  const renderDecisionActions = (dec) => renderDecision(playbookDecisionND(dec));
   // Host override (task 3): the ranking is a PROPOSAL the host can correct. Pinning
   // floats an open decision to the top; persists via the same patchEvent path every
   // edit uses. Toggling re-pins/unpins.
@@ -2347,18 +2319,51 @@ export default function HostShellV2() {
   // Returns null whenever an EARLIER rung of the ask ladder wins (day-of speaks the
   // DAY, a blocker/conflict/COI item speaks its own line), so this can never claim a
   // hero that is in fact talking about something else.
-  const heroDecisionRow = (() => {
-    if (!elegantMode || !askMode || !queue[0]) return null;
+  // ── THE ONE CANONICAL SELECTION (PR #70, driven on Game Night 2026-07-31) ──
+  // queue[0] is resolved ONCE, here, into a single payload that the hero ask,
+  // the decision panel and the CTA all read. Before this, each of the three
+  // asked its own question in its own scope: the ask ran a title-prose ladder,
+  // the panel came from wiredKind reading the route's `foodFocus` (a SHOPPING-LINE
+  // id) as a food decision, and the CTA was whatever survived. On Game Night that
+  // produced "Decide the menu." over a snack-quantity item over a food-provider
+  // choice the host had already made — three subjects, one card, zero open
+  // decisions on the board.
+  //
+  // resolveSelection (lib/selectedAction) owns the rule: an action is a decision
+  // only when it DECLARES one. The resolvers below only fetch; they never decide
+  // whether there is something to fetch.
+  const heroSelection = (() => {
     const q0 = queue[0];
-    if (days === 0) return null;
-    if (/^blocker:/.test(String(q0.id || '')) && q0.ask) return null;
-    if (/conflict/i.test(String(q0.title || '')) && conflictItems[0]) return null;
-    if (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''))) return null;
-    // A lone decision carries its own id; a decisions BUNDLE speaks its first call.
-    return /^decision:/.test(String(q0.id || ''))
-      ? ((decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id) || null)
-      : (/decision/i.test(String(q0.title || '')) ? (callsOrdered[0] || null) : null);
+    if (!q0) return null;
+    // An EARLIER rung of the ask ladder can own the hero outright — the DAY, a
+    // foundational blocker's authored ask, a conflict, a COI step. When one does,
+    // the selection still resolves (the ask string has exactly one author, always),
+    // but it is denied any decision identity — so the panel can never claim a hero
+    // that is in fact talking about something else.
+    const rungOwnsHero = !elegantMode || !askMode || days === 0
+      || (/^blocker:/.test(String(q0.id || '')) && !!q0.ask)
+      || (/conflict/i.test(String(q0.title || '')) && !!conflictItems[0])
+      || q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''));
+    const open = decisionBoard.open || [];
+    return resolveSelection(q0, {
+      boardRow: rungOwnsHero ? null : (idn) => open.find(r => r && String(r.id) === String(idn.decisionId)) || null,
+      decisionND: rungOwnsHero ? null : (idn) => {
+        if (idn.decisionId === 'phase:food') return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])]);
+        if (idn.source === 'blocker') return blockerDecisionND((blockers || []).find(b => b && ('blocker:' + b.fieldKey) === idn.decisionId));
+        const row = open.find(r => r && String(r.id) === String(idn.decisionId));
+        return row ? boardDecisionND(event, row) : null;
+      },
+      actionAsk: (a) => heroAskFor(a, event),
+    });
   })();
+  // The board ROW behind the selection (authored assurance, overdue status) — the
+  // two status-line consumers below read it. Null whenever there is no decision.
+  const heroDecisionRow = (heroSelection && heroSelection.decisionId) ? heroSelection.row : null;
+  // The renderable decision, with the shell's write half attached. ONE object:
+  // the panel cannot look anything up for itself.
+  const heroDecisionND = (heroSelection && heroSelection.decision)
+    ? { ...heroSelection.decision, settle: (v) => settleSelection(heroSelection, v) }
+    : null;
   // ── ONE SENTENCE, ONE AUTHOR (board re-sit follow-up, 2026-07-30) ──
   // "Time got tight." (the shell's slip line) sat directly above "Nothing's
   // stalled — the plan's been running on our pick." (playbooks' assurance), and
@@ -2388,21 +2393,12 @@ export default function HostShellV2() {
     if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
     if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
-    if (elegantMode && heroDecisionRow) {
-      // THE AUTHORED QUESTION FIRST (2026-07-31). `ask` is built by playbooks from
-      // the FULL authored label; `label` is the short card form, already truncated
-      // and stripped. Reading the authored field means the host sees the question
-      // as written instead of a question re-derived from a display truncation.
-      // Both paths land on questionFrom/normalizeAsk, which guarantee exactly one
-      // terminal mark — this line used to append a bare '?' to a label that could
-      // still be carrying its own, which is where "Alcohol??" came from.
-      // ONE heroAskFor CALL SITE (ruling C). This branch returns only when it
-      // actually has a question; a null falls through to the single tail call
-      // below rather than adding a second derivation of the ask here.
-      const authored = heroDecisionRow.ask || questionFrom(heroDecisionRow.label);
-      if (authored) return authored;
-    }
-    return heroAskFor(q0, event);
+    // THE CANONICAL SELECTION SPEAKS (PR #70). resolveSelection already ran the
+    // whole ask ladder for this item — the authored question for the decision it
+    // actually carries, else the identity-free wording fallback (heroAskFor, the
+    // ONE call site in this file) — so there is one derivation, and the words on
+    // screen are guaranteed to be about the same thing the panel below is about.
+    return heroSelection ? heroSelection.ask : null;
   })()) : null;
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
@@ -4071,7 +4067,16 @@ export default function HostShellV2() {
     if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
     if (f === 'guests-entry') return 'guests';
     if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
-    if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
+    // ── A ROW POINTER IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────
+    // `route.foodFocus` is the id of an unbought LINE in the spread — it says
+    // "scroll to this row and highlight it". Mapping it to the food editor
+    // handed the food SOURCING decision to every shopping action that carried
+    // one: on Game Night the host got "We'll cook it · A caterer handles it ·
+    // Potluck", with their own months-old answer already marked chosen, under
+    // an item about how many snack servings to buy. The board had no open
+    // decision at all. `food-plan` stays — that focusField genuinely names the
+    // food plan itself, not a row inside it.
+    if (f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
     if (/final (guest|catering) count|confirm .*(guest|catering) count/i.test(a.title || '')) return 'lockcount';
     if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
@@ -4466,7 +4471,7 @@ export default function HostShellV2() {
       // renderDecision(foodDecisionND()) — full-width option rows with our-pick (unsettled) or the
       // chosen row highlighted (settled) + notes, NOT a parallel inline-chip render. One source of
       // truth for the food decision; the "Open the spread" detail link stays as a subtle secondary.
-      const fndBase = foodDecisionND();
+      const fndBase = foodND();
       // ADVANCE ON SELECTION (host ruling 2026-07-23 "once this is selection, go to
       // the next step"): the editor's settle used to write + receipt but leave the
       // editor open — a dead end after the choice. Now it mirrors the hero settle:
@@ -5922,7 +5927,9 @@ export default function HostShellV2() {
                 // When the lead is a decision, its decopt options + "our pick" why carry the
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
-                if (elegantMode && decisionFor(firstCard)) return null;
+                // (Reads the canonical selection, so "is the lead a decision" has the
+                // same answer here as it does on the card — PR #70.)
+                if (elegantMode && heroDecisionND) return null;
                 // Calm state has no "first" to reason about — a leftover reasoning line
                 // (often vendor copy like "Currently quoted…") contradicts "nothing needs you".
                 if (elegantMode && (listIsCalm || !firstCard)) return null;
@@ -6146,8 +6153,13 @@ export default function HostShellV2() {
                   // receipt → the board re-derives → the next decision rises). The
                   // proposal + why + accept path already exist in the decisions sheet;
                   // this brings them to the hero instead of gating behind "See all N".
-                  if (elegantMode && askMode && i === 0 && /decision/i.test(String(a.title || '')) && callsOrdered[0]) {
-                    const dec = callsOrdered[0];
+                  // IDENTITY, NOT PROSE (PR #70): this used to fire on any bundle
+                  // whose TITLE contained "decision" and then render the globally
+                  // top-ranked callsOrdered[0] — a row this bundle need not even
+                  // contain. It now renders the decision the canonical selection
+                  // carries, which for a bundle is its own first child's.
+                  if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
+                    const dec = heroDecisionRow;
                     return (
                       <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
@@ -6170,11 +6182,10 @@ export default function HostShellV2() {
                               contradiction the board actually saw. heroAssuranceSpoken is set
                               by that line earlier in this same render pass. */}
                           {dec.assurance && !heroAssuranceSpoken && <p className="because">{dec.assurance}</p>}
-                          {renderDecisionActions(dec) || (
-                            <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-                              <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
-                            </div>
-                          )}
+                          {/* Same one object the hero ask was built from — no second
+                              lookup, so the options here always belong to the decision
+                              the line above is asking about. */}
+                          {renderDecision(heroDecisionND)}
                           {heroReceipt && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
@@ -6336,15 +6347,19 @@ export default function HostShellV2() {
                 // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
                 // 2026-07-18): once decisions thin out they stop bundling and a lone one
                 // becomes its own hero card — which used to route ("Take me to it"). Resolve
-                // it RIGHT HERE via the same shared renderDecisionActions (options / proposed
-                // default → settleDecision → receipt → next). Only in the elegant hero, only
+                // it RIGHT HERE via the shared renderDecision (options / proposed default
+                // → settleDecision → receipt → next). Only in the elegant hero, only
                 // when the decision actually has authored options (else keep its route).
                 // UNIFIED: every decision-like hero action (playbook decision:* OR a phase
                 // decision like phase:food) resolves through the one dispatcher + renderer,
                 // so all of them get the decopt / "our pick" treatment — no more chip-vs-row split.
-                const decHeroActions = (elegantMode && isHero) ? (() => {
-                  const nd = decisionFor(a);
-                  if (!nd) return null;
+                // ONE LOOKUP (PR #70): the panel renders the decision the CANONICAL
+                // SELECTION carries — it no longer dispatches its own. heroDecisionND
+                // is null unless queue[0] declares an ACTIVE decision, so a
+                // non-decision action (and a decision the host already settled) gets
+                // no panel at all, and its own CTA renders instead.
+                const decHeroActions = (elegantMode && isHero && heroDecisionND) ? (() => {
+                  const nd = heroDecisionND;
                   // Roll to next when satisfied: settling drops this action from the hero queue,
                   // so the hero advances even if its phase (food, etc.) still has other parts.
                   return renderDecision({ ...nd, settle: (v) => { nd.settle(v); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });

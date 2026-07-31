@@ -48,6 +48,20 @@ export function heroAskFor(a, event) {
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
+    // ── A BUY LINE IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────────
+    // "Buy chips, crackers, pretzels & popcorn — 13 snack servings tomorrow"
+    // reached the food branch below on the word "servings", which is a QUANTITY
+    // word the dimension ladder files under the menu. The host was told to
+    // "Decide the menu." over an item whose menu was long since decided and
+    // whose actual job is a shopping run.
+    //
+    // The foodFocus route says what this is: it points at an unbought LINE in
+    // the spread. That rung already existed — it just sat below the dimension
+    // ladder, so it never got to speak for any title containing a food word,
+    // which is every title it was written for. Ordering is the whole fix: an
+    // execution item is answered as execution before anything tries to read a
+    // decision out of its prose.
+    if (a && a.route && a.route.foodFocus) return 'Get the food.';
     // ── THE FOOD BRANCH USED TO RESTATE ITS OWN ITEM ──────────────────────────
     // Host report, 2026-07-31: a repast whose open decision is "Who provides the
     // food" was asked "Decide the menu." — an instruction to do the thing the
@@ -102,11 +116,8 @@ export function heroAskFor(a, event) {
       const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
       return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
     }
-    // A food-line buy ("Fried or baked chicken & baked ham — 28.5 lbs in 2 days")
-    // carries an item title, never an instruction — the fallback rendered the dead
-    // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
-    // the real job in plain words.
-    if (a && a.route && a.route.foodFocus) return 'Get the food.';
+    // (The foodFocus rung — a food-line buy carries an item title, never an
+    // instruction — now runs ABOVE the food dimension ladder; see the note there.)
     // ── OPEN: A 26-CHARACTER CUTOFF DECIDES WHETHER THE HOST SEES THE ASK ──
     // Frames 25/26 audit, driven 2026-07-29 on the retirement party. Its open
     // decision is authored as a question — retirementParty.js venue:
