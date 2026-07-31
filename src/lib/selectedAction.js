@@ -26,6 +26,7 @@
 // PURE: no React, no event mutation. The shell injects the resolvers, so the
 // identity rules are the same ones the gates run.
 import { normalizeAsk, questionFrom } from './askVoice';
+import { evidenceFromDecisionRow } from './decisionEvidence';
 
 export const DECISION_SOURCE = { BOARD: 'board', PHASE: 'phase', BLOCKER: 'blocker' };
 
@@ -112,6 +113,15 @@ export function resolveSelection(action, resolvers = {}) {
     completionState: !identity || !hasOptions ? 'none' : (settled ? 'settled' : 'open'),
     route: action.route || null,
     source: identity ? identity.source : null,
+    // ── WHY THIS? (2026-07-31) ──────────────────────────────────────────────
+    // The board's evidence envelope, carried to the render boundary. Preference
+    // order is deliberate: the ACTION's own envelope first (it survived the
+    // registry seam and belongs to this exact recommendation), then one built
+    // from the resolved board row when the action has none — a lone
+    // `decision:*` hero resolves its row here and nowhere upstream.
+    // Null when neither exists, which is the honest answer for an execution
+    // item: a shopping line has no decision evidence to show.
+    evidence: action.evidence || (row ? evidenceFromDecisionRow(row) : null),
     // The renderable decision, or null. One object, so the panel cannot look
     // anything up for itself.
     decision: nd,

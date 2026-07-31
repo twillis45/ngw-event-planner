@@ -2049,6 +2049,11 @@ export function eventPlan(event, ctx = null) {
           if (survivor.priorityScore == null && Number.isFinite(r.priorityScore)) survivor.priorityScore = r.priorityScore;
           if (!survivor.gateHolder && r.gateHolder === true) survivor.gateHolder = true;
           if (!survivor.unlocks && Number.isFinite(r.unlocks)) survivor.unlocks = r.unlocks;
+          // Same gap-fill for the evidence envelope: the ladder-built survivor is
+          // assembled from event fields and has no board row behind it, so the
+          // registry twin being dropped here is the ONLY carrier of the axes and
+          // citations. Losing it was the whole defect one layer down.
+          if (survivor.evidence == null && r.evidence) survivor.evidence = r.evidence;
         }
         continue;
       }
@@ -2090,6 +2095,11 @@ export function eventPlan(event, ctx = null) {
         priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
         gateHolder: r.gateHolder === true,
         unlocks: Number.isFinite(r.unlocks) ? r.unlocks : 0,
+        // THE EVIDENCE ENVELOPE (2026-07-31) — the board's rank sentence, its
+        // grounded axes and their cited sources, carried whole so a selected
+        // recommendation can say what it stands on. Null where the raiser has
+        // none; nothing is invented here.
+        evidence: r.evidence || null,
       });
     }
     // ── Pass 2: per-item snoozes drop children BEFORE bundling ─────────────────

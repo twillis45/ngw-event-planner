@@ -30,6 +30,7 @@ import { isSolemnEvent } from '@app/lib/solemn';
 import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 // ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
 import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
+import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
 import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
 import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
@@ -2364,6 +2365,12 @@ export default function HostShellV2() {
   const heroDecisionND = (heroSelection && heroSelection.decision)
     ? { ...heroSelection.decision, settle: (v) => settleSelection(heroSelection, v) }
     : null;
+  // THE EVIDENCE BEHIND THE ONE RECOMMENDATION (2026-07-31). Derived here, beside
+  // the selection it belongs to, so the card cannot render evidence for a different
+  // decision than the one it is asking about — the identity discipline PR #70
+  // imposed on the ask and the panel, applied to the "why".
+  const heroEvidence = (heroSelection && heroSelection.evidence) || null;
+  const heroWhy = heroEvidence ? explainEvidence(heroEvidence) : [];
   // ── ONE SENTENCE, ONE AUTHOR (board re-sit follow-up, 2026-07-30) ──
   // "Time got tight." (the shell's slip line) sat directly above "Nothing's
   // stalled — the plan's been running on our pick." (playbooks' assurance), and
@@ -6391,8 +6398,20 @@ export default function HostShellV2() {
                 // heroAskText, and `decHeroActions` is the honest signal for "the option rows
                 // below carry the meaning" (Figma 369:60, title → rows). Where there are no
                 // rows, the consequence IS the only explanation and correctly renders.
+                // WHY THIS? (2026-07-31) — the hero carries its evidence envelope as
+                // inspectable data: the board's rank sentence, its grounded axes, the
+                // cited sources and the honest confidence/uncertainty state. No visual
+                // change; a reviewer opens devtools on the hero card and can answer
+                // "why did NGW recommend this?" without reading source. Hero only —
+                // the below-fold cards are not the recommendation.
+                // (Comment sits ABOVE the return: a {/* … */} after `return (` is a
+                // second expression and breaks the build — the same trap documented
+                // on the conflict-hero disclosure ~:6100.)
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                    data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
+                    data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
+                    data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
                     style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     {!isHero && <span className="idx">{i + 1}</span>}
                     <div className="card-head">
