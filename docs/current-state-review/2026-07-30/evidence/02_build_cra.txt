@@ -1,0 +1,24 @@
+COMMAND: npm run build
+EXIT: 1
+  Line 294:9:    'needsReplyByTab' is assigned a value but never used  no-unused-vars
+  Line 299:9:    'totalNeedsReply' is assigned a value but never used  no-unused-vars
+  Line 1341:10:  'ContextPanel' is defined but never used              no-unused-vars
+  Line 1555:9:   'workspaceHeader' is assigned a value but never used  no-unused-vars
+
+src/plan/DecisionApprovalCenter.jsx
+  Line 341:10:  'reassigning' is assigned a value but never used  no-unused-vars
+
+src/plan/VendorPlanningWorkspace.jsx
+  Line 81:3:    'getSignedUrl' is defined but never used                 no-unused-vars
+  Line 83:3:    'fmtFileSize' is defined but never used                  no-unused-vars
+  Line 94:3:    'conflictsForVendor' is defined but never used           no-unused-vars
+  Line 728:10:  'getVendorLastContacted' is defined but never used       no-unused-vars
+  Line 3925:9:  'hasReadinessSignal' is assigned a value but never used  no-unused-vars
+
+src/slices/OrchestrationSlice.jsx
+  Line 38:3:  'isObserving' is defined but never used  no-unused-vars
+
+src/slices/VendorEscalationSlice.jsx
+  Line 70:9:  'focal' is assigned a value but never used  no-unused-vars
+
+

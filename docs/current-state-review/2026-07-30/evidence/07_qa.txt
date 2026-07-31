@@ -1,0 +1,18 @@
+== JEST ==
+EXIT=0
+Test Suites: 282 passed, 282 total
+Tests:       4229 passed, 4229 total
+Snapshots:   0 total
+Time:        8.076 s
+Ran all test suites.
+
+== HOSTV2 PARITY GATE ==
+✓ Parity gate passed — 3 kit atoms locked + 5 hero CSS selectors token-clean; nothing re-inlined outside askKit.jsx.
+EXIT=0
+== HOSTV2 BUILD (incl parity) ==
+EXIT=0
+✓ built in 6.88s
+
+== PLAYWRIGHT E2E (hostv2) ==
+EXIT=127
+(eval):8: command not found: timeout

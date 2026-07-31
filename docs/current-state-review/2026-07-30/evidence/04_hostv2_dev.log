@@ -1,0 +1,9 @@
+
+  VITE v4.5.14  ready in 301 ms
+
+  ➜  Local:   http://127.0.0.1:5199/
+  ➜  Network: use --host to expose
+[BABEL] Note: The code generator has deoptimised the styling of /Users/toddwillis/Code/ngw-event-planner/demo/hostv2/src/HostShellV2.jsx as it exceeds the max of 500KB.
+7:26:29 PM [vite] page reload dist/loop-motion.html
+7:26:29 PM [vite] page reload dist/loop-motion.html
+7:26:29 PM [vite] page reload dist/index.html

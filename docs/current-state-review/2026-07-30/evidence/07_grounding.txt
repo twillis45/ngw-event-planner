@@ -1,0 +1,21 @@
+
+> ngw-event-boss@0.1.0 grounding:audit
+> node scripts/groundingAudit.mjs
+
+
+  GROUNDING COVERAGE — 4% cited  (8 cited · 40 consensus · 131 synthesized · 541 priced items · 39 playbooks)
+
+  Lowest-grounded playbooks (research these first):
+      0%  anniversary              0 cited / 18 priced
+      0%  babyShower               0 cited / 12 priced
+      0%  bachelorParty            0 cited / 12 priced
+      0%  bacheloretteParty        0 cited / 15 priced
+      0%  birthday                 0 cited / 12 priced
+      0%  boardMeeting             0 cited / 7 priced
+      0%  bridalShower             0 cited / 15 priced
+      0%  cardParty                0 cited / 15 priced
+      0%  conference               0 cited / 7 priced
+      0%  crawfishBoil             0 cited / 13 priced
+      0%  dayParty                 0 cited / 12 priced
+      0%  elopement                0 cited / 7 priced
+

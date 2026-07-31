@@ -1,0 +1,818 @@
+PASS src/lib/__tests__/heroComposition.test.js
+PASS src/lib/__tests__/ctaStateTransitions.test.js
+PASS src/lib/__tests__/surfaceRegistryCoverage.test.js
+PASS src/lib/__tests__/workstreams.test.js
+PASS src/__tests__/dayBeforeCoverageProof.test.js
+PASS src/lib/__tests__/wave6IdentityPolicy.test.js
+PASS src/lib/__tests__/snoozeIntegrity.test.js
+PASS src/lib/__tests__/eventPlan.test.js
+PASS src/plan/__tests__/policyForkEnforcement.test.js
+PASS src/lib/__tests__/identityRecordKeyed.test.js
+PASS src/__tests__/decisionWireProof.test.js
+PASS src/lib/__tests__/severityBand.test.js
+PASS src/lib/playbooks/__tests__/decisionBoard.test.js
+PASS src/lib/__tests__/planHeroOneSource.test.js
+PASS src/lib/__tests__/reAuditFixes.test.js
+PASS src/lib/__tests__/f4AssembleReveal.test.js
+PASS src/__tests__/lifecycleProof.test.js
+  ● Console
+
+    console.log
+      
+      ===== LIFECYCLE PROOF (creation → conclusion) =====
+
+      at Object.<anonymous> (src/__tests__/lifecycleProof.test.js:119:13)
+
+    console.log
+      
+      [retirement]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 8→0 in 1 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 8→0 in 1 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 8→0 in 1 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 8→0 in 1 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 8→0 in 1 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [birthday]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 5→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 5→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 5→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 5→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 5→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [graduation]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 6→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 6→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 6→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 6→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 6→1 in 2 round(s)  conflicts@start=5  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [reunion]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 4→0 in 1 round(s)  conflicts@start=1  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 4→0 in 1 round(s)  conflicts@start=1  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 4→0 in 1 round(s)  conflicts@start=1  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 4→0 in 1 round(s)  conflicts@start=1  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 4→0 in 1 round(s)  conflicts@start=1  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [product-launch]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 0→0 in 0 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 0→0 in 0 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 0→0 in 0 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 0→0 in 0 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 0→0 in 0 round(s)  conflicts@start=3  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [wedding]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 9→0 in 1 round(s)  conflicts@start=12  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 9→0 in 1 round(s)  conflicts@start=12  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 9→0 in 1 round(s)  conflicts@start=12  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 9→0 in 1 round(s)  conflicts@start=12  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 9→0 in 1 round(s)  conflicts@start=12  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [wanda-military]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 9→0 in 1 round(s)  conflicts@start=2  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 9→0 in 1 round(s)  conflicts@start=2  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 9→0 in 1 round(s)  conflicts@start=2  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 9→0 in 1 round(s)  conflicts@start=2  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 9→0 in 1 round(s)  conflicts@start=2  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [repast-solemn]
+
+      at forEach (src/__tests__/lifecycleProof.test.js:122:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        first    open 4→0 in 1 round(s)  conflicts@start=0  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        last     open 4→0 in 1 round(s)  conflicts@start=0  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        middle   open 4→0 in 1 round(s)  conflicts@start=0  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        byRound  open 4→0 in 1 round(s)  conflicts@start=0  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+    console.log
+        hash     open 4→0 in 1 round(s)  conflicts@start=0  ✓ concluded
+
+      at forEach (src/__tests__/lifecycleProof.test.js:125:17)
+          at Array.forEach (<anonymous>)
+          at Array.forEach (<anonymous>)
+
+PASS src/__tests__/ctaSourceOfTruth.test.js
+PASS src/__tests__/lifecycleVerdictAgreement.test.js
+PASS src/lib/playbooks/__tests__/reader.test.js
+PASS src/lib/__tests__/ctaDeepLinks.test.js
+PASS src/__tests__/phaseHero.test.js
+PASS src/__tests__/hostStringLint.test.js
+PASS src/lib/__tests__/ctaNamesTheAct.test.js
+PASS src/lib/__tests__/lodgingCandidates.test.js
+PASS src/lib/__tests__/lodgingOutlet.test.js
+PASS src/lib/__tests__/exhaleGate.test.js
+PASS src/__tests__/pathProof.test.js
+  ● Console
+
+    console.log
+      
+      ===== PATH PROOF TABLE =====
+
+      at Object.<anonymous> (src/__tests__/pathProof.test.js:111:13)
+
+    console.log
+      
+      [retirement]  paths=25  in-place=5  routes=20  dead=0
+         families: {"raise":11,"conflict":6,"decision":2,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [birthday]  paths=17  in-place=7  routes=10  dead=0
+         families: {"conflict":10,"decision":1,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [graduation]  paths=17  in-place=8  routes=9  dead=0
+         families: {"conflict":10,"decision":1,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [reunion]  paths=14  in-place=1  routes=13  dead=0
+         families: {"raise":6,"conflict":2,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [product-launch]  paths=17  in-place=3  routes=14  dead=0
+         families: {"raise":5,"conflict":6,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [wedding]  paths=56  in-place=16  routes=40  dead=0
+         families: {"raise":25,"conflict":24,"decision":1,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [wanda-military]  paths=17  in-place=4  routes=13  dead=0
+         families: {"raise":5,"conflict":4,"decision":2,"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+    console.log
+      
+      [repast-solemn]  paths=6  in-place=0  routes=6  dead=0
+         families: {"canonical":6}   ✓ every path lands
+
+      at forEach (src/__tests__/pathProof.test.js:114:15)
+          at Array.forEach (<anonymous>)
+
+PASS src/lib/__tests__/surfaceRegistry.test.js
+PASS src/lib/__tests__/oneAttentionLedger.test.js
+PASS src/lib/__tests__/returnNarration.test.js
+PASS src/lib/__tests__/effectiveItem.test.js
+PASS src/lib/__tests__/smartParseEvent.test.js
+PASS src/lib/knowledge/kop1.test.js
+PASS src/lib/__tests__/helperResponsibility.test.js
+PASS src/lib/__tests__/recommendationLifecycle.test.js
+PASS src/lib/playbooks/__tests__/decisionBoardWave2b.test.js
+PASS src/lib/playbooks/__tests__/hostAdaptation.test.js
+PASS src/lib/playbooks/__tests__/rosterKids.test.js
+PASS src/lib/__tests__/heroAskDedup.test.js
+PASS src/lib/__tests__/phaseProgress.test.js
+PASS src/lib/__tests__/vendorReadinessRollup.test.js
+PASS src/__tests__/routeExecution.test.js
+PASS src/lib/__tests__/nextActionRenderer.test.js
+PASS src/lib/knowledge/kpp1.test.js
+PASS src/lib/knowledge/researchExecution.golden.test.js
+PASS src/lib/__tests__/budgetRecovery.test.js
+PASS src/lib/__tests__/progressDoctrine.test.js
+PASS src/lib/__tests__/vendors.test.js
+PASS src/lib/__tests__/dayBefore.test.js
+PASS src/lib/__tests__/lodgingAudit.test.js
+PASS src/lib/playbooks/__tests__/reactivity.test.js
+PASS src/lib/knowledge/knowledgeFactory.test.js
+PASS src/lib/knowledge/weatherHuman.test.js
+PASS src/plan/__tests__/timelinePlacement.test.js
+PASS src/lib/__tests__/attentionRanksAndLands.test.js
+PASS src/lib/experience/xip1.test.js
+PASS src/lib/knowledge/missionControl.test.js
+  ● Console
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 6 with campaign: 0 total HIGH: 6
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 5 with campaign: 0 total HIGH: 5
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 6 with campaign: 0 total HIGH: 6
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 5 with campaign: 0 total HIGH: 5
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 1
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG: Sample campaign keys: [ 'Crab Feast::p_crabs.unitCostRange' ]
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:122:13)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 5 with campaign: 1 total HIGH: 6
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 5 with campaign: 0 total HIGH: 5
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 9 with campaign: 0 total HIGH: 9
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+    console.log
+      DEBUG: campaignsByKey size: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:120:11)
+
+    console.log
+      DEBUG KPI summary - HIGH items without campaign: 0 with campaign: 0 total HIGH: 0
+
+      at buildManufacturingQueue (src/lib/knowledge/missionControl.js:217:11)
+
+PASS src/lib/knowledge/budgetChildcare.test.js
+PASS src/lib/playbooks/__tests__/militaryBoard.test.js
+PASS src/lib/__tests__/guestsAnswerTheCrabQuestion.test.js
+PASS src/lib/__tests__/shoppingEffectiveItemsParity.test.js
+PASS src/lib/playbooks/_costAudit.test.js
+  ● Console
+
+    console.error
+      
+      === COST-EFFECTIVENESS AUDIT ===
+      factors=106  works=98  NO-OP=6  WRONG-DIR=2  decisions-with-all-affects-unreachable=2
+      
+      NON-WORKING (8):
+      NO-OP     Vow Renewal · food_style="Restaurant" (×1.15) 960-2465→960-2465 [affects unreachable: p_apps,p_protein,p_sides,p_bread]
+      NO-OP     Fish Fry · starch="Grits" (×0.95) 145-360→145-360
+      WRONG-DIR Fish Fry · starch="Fries only" (×0.8) 145-360→140-360
+      NO-OP     Crab Feast · where_buy="Jessie Taylor Seafood — Maine Ave Fish Market (DC Wharf)" (×1) 565-2465→565-2465
+      WRONG-DIR Crawfish Boil · heat="Mild (family / kids)" (×0.9) 520-1235→515-1235
+      NO-OP     Low Country Boil · seasoning="Mild (family-friendly)" (×0.9) 315-680→315-680
+      NO-OP     Low Country Boil · seasoning="Spicy (extra crab boil + cayenne)" (×1.2) 315-680→315-680
+      NO-OP     Repast · food_source="Friends and neighbors sign up to bring dishes" (×0.9) 35-100→35-100 [affects unreachable: p_protein,p_sides,p_bread,p_dessert]
+
+    [0m [90m 37 |[39m     }
+     [90m 38 |[39m   }
+    [31m[1m>[22m[39m[90m 39 |[39m   console[33m.[39merror([32m`\n=== COST-EFFECTIVENESS AUDIT ===\nfactors=${nFactors}  works=${nWorks}  NO-OP=${nNoop}  WRONG-DIR=${nWrong}  decisions-with-all-affects-unreachable=${nUnreachable}\n\nNON-WORKING (${rows.length}):\n${rows.join('\n')}\n`[39m)[33m;[39m
+     [90m    |[39m           [31m[1m^[22m[39m
+     [90m 40 |[39m   expect(nFactors)[33m.[39mtoBeGreaterThan([35m0[39m)[33m;[39m
+     [90m 41 |[39m })[33m;[39m
+     [90m 42 |[39m[0m
+
+      at Object.<anonymous> (src/lib/playbooks/_costAudit.test.js:39:11)
+
+PASS src/lib/__tests__/groundedDefaults.test.js
+PASS src/lib/orchestratorTools.test.js
+PASS src/lib/__tests__/surfaceRegistryReconfirm.test.js
+PASS src/__tests__/checklistDestinationTruth.test.js
+PASS src/lib/__tests__/dayModelAudit.test.js
+PASS src/lib/playbooks/playbookRegistry.test.js
+PASS src/plan/__tests__/storedSchemaParity.test.js
+PASS src/__tests__/nextUpActionable.test.js
+PASS src/lib/playbooks/__tests__/foodAdd.test.js
+PASS src/lib/knowledge/researchBlueprint.test.js
+PASS src/lib/knowledge/dietaryContext.test.js
+PASS src/lib/knowledge/accessibilityContext.test.js
+PASS src/lib/__tests__/pop1aVendorConsolidation.test.js
+PASS src/__tests__/checklistRouteResolution.test.js
+PASS src/lib/__tests__/hostSpending.test.js
+PASS src/plan/__tests__/overTimeOverdueGate.test.js
+PASS src/lib/__tests__/vendorPlan.test.js
+PASS src/__tests__/vidaIntakeParse.test.js
+PASS src/lib/knowledge/dimensions.test.js
+PASS src/lib/__tests__/hostSpendingSeesVendors.test.js
+PASS src/lib/knowledge/researchIntake.test.js
+PASS src/lib/knowledge/costProvenance.test.js
+PASS src/lib/knowledge/evidencePipeline.test.js
+PASS src/lib/api/__tests__/syncState.test.js
+PASS src/lib/__tests__/pickersSizeTheShellfish.test.js
+PASS src/lib/knowledge/culturalContext.test.js
+PASS src/lib/__tests__/budgetCopy.test.js
+PASS src/lib/__tests__/seatingPlan.test.js
+PASS src/lib/__tests__/analyticsReader.test.js
+PASS src/lib/knowledge/kmp1.test.js
+PASS src/lib/knowledge/knowledgeChange.test.js
+PASS src/lib/__tests__/taskLeadVocabulary.test.js
+PASS src/lib/knowledge/firstRealTrace.test.js
+PASS src/lib/__tests__/lodgingIntel.test.js
+PASS src/lib/__tests__/registryCompleteness.test.js
+PASS src/lib/knowledge/timingProvenance.test.js
+PASS src/lib/__tests__/deepLinkConsumer.test.js
+PASS src/__tests__/spanProof.test.js
+PASS src/lib/knowledge/campaignRunner.test.js
+PASS src/lib/knowledge/legalContext.test.js
+PASS src/__tests__/wcgwRoute.test.js
+PASS src/lib/knowledge/kasVerticalSlice.test.js
+PASS src/lib/playbooks/__tests__/gateHolder.test.js
+PASS src/lib/__tests__/rosWhenUnits.test.js
+PASS src/lib/__tests__/overTimePlaybookLeads.test.js
+PASS src/lib/__tests__/pc1ExperienceContext.test.js
+PASS src/lib/knowledge/kra1.test.js
+PASS src/lib/knowledge/kcrStore.test.js
+PASS src/lib/__tests__/revealOneHeadcount.test.js
+PASS src/lib/playbooks/__tests__/vegDoubleBuy.test.js
+PASS src/lib/__tests__/estimateHonesty.test.js
+PASS src/lib/playbooks/__tests__/foodCostBand.test.js
+PASS src/lib/__tests__/intelligenceObservatory.test.js
+PASS src/lib/playbooks/__tests__/destinationModifier.test.js
+PASS src/lib/__tests__/hostVendorChip.test.js
+PASS src/lib/playbooks/__tests__/portionSkew.test.js
+PASS src/lib/__tests__/guestMode.test.js
+PASS src/lib/__tests__/wholeThingsOnly.test.js
+PASS src/lib/playbooks/__tests__/headcountMemory.test.js
+PASS src/lib/__tests__/progressReadiness.test.js
+PASS src/lib/playbooks/__tests__/supplies.test.js
+PASS src/lib/knowledge/kcrRoles.test.js
+PASS src/lib/knowledge/venueContext.test.js
+PASS src/lib/__tests__/startTime.test.js
+PASS src/lib/playbooks/__tests__/parity.test.js
+PASS src/lib/__tests__/dayAlertsBehavior.test.js
+PASS src/lib/__tests__/standardLeadProvenance.test.js
+PASS src/lib/__tests__/decisionConfidence.test.js
+PASS src/lib/__tests__/hq2FoodPricingConsistency.test.js
+PASS src/lib/__tests__/duringCues.test.js
+PASS src/lib/__tests__/applicableReadinessAxes.test.js
+PASS src/lib/playbooks/__tests__/playbookDayOfChecklist.test.js
+PASS src/lib/orchestrator.test.js
+PASS src/lib/playbooks/__tests__/dietFlags.test.js
+PASS src/lib/playbooks/__tests__/overwhelm.test.js
+PASS src/lib/__tests__/momentProtect.test.js
+PASS src/lib/playbooks/__tests__/destinationPacing.test.js
+PASS src/lib/knowledge/quantityProvenance.test.js
+PASS src/lib/knowledge/simulation.test.js
+PASS src/lib/__tests__/doItForMe.test.js
+PASS src/lib/__tests__/qaMemorySeed.test.js
+PASS src/lib/playbooks/__tests__/foodApproach.test.js
+PASS src/lib/__tests__/leadTimesAreReal.test.js
+PASS src/lib/__tests__/guestSplit.test.js
+PASS src/__tests__/rosDayProof.test.js
+PASS src/lib/playbooks/__tests__/decisionTiebreak.test.js
+PASS src/lib/knowledge/kaw1.test.js
+PASS src/lib/knowledge/runtimeKnowledge.test.js
+PASS src/lib/playbooks/__tests__/foodSourcingTasks.test.js
+PASS src/lib/playbooks/__tests__/retirementSurprise.test.js
+PASS src/lib/knowledge/kepCampaign.test.js
+PASS src/lib/playbooks/__tests__/supplySkip.test.js
+PASS src/lib/__tests__/tableTypes.test.js
+PASS src/lib/__tests__/pc2RiskMergeDedup.test.js
+PASS src/lib/playbooks/playbookContract.test.js
+PASS src/lib/__tests__/hostRunOfShowStates.test.js
+PASS src/lib/knowledge/kcrGovernance.test.js
+PASS src/lib/__tests__/foodCountsAreNotCompletion.test.js
+PASS src/lib/__tests__/rsvpPendingIsNotSettled.test.js
+PASS src/lib/__tests__/budgetSwap.test.js
+PASS src/__tests__/hostLanguage.test.js
+PASS src/lib/__tests__/locationAssist.test.js
+PASS src/lib/playbooks/__tests__/playbookRisks.test.js
+PASS src/lib/__tests__/hq2RiskLoopAndTasks.test.js
+PASS src/lib/__tests__/heartPrompts.test.js
+PASS src/lib/__tests__/intelEval.test.js
+PASS src/lib/playbooks/__tests__/playbookMilestones.test.js
+PASS src/lib/__tests__/itinerary.test.js
+PASS src/lib/__tests__/eventContextNudges.test.js
+PASS src/lib/__tests__/csvParsers.test.js
+PASS src/lib/__tests__/vendorReplyParse.test.js
+PASS src/__tests__/venueSourceProof.test.js
+PASS src/lib/__tests__/orchestratorStream.test.js
+PASS src/lib/__tests__/placeIntelligence.test.js
+PASS src/lib/knowledge/providerExecutors.test.js
+PASS src/lib/knowledge/destinationContext.test.js
+PASS src/lib/knowledge/playbookSchema.test.js
+PASS src/lib/__tests__/hostIntel.test.js
+PASS src/lib/knowledge/researchPolicies.test.js
+PASS src/lib/knowledge/groundingSources.test.js
+PASS src/lib/__tests__/travelPlan.test.js
+PASS src/lib/api/__tests__/eventsSyncContract.test.js
+PASS src/lib/__tests__/destinationBudgetBand.test.js
+PASS src/lib/__tests__/closeoutIntel.test.js
+PASS src/lib/__tests__/vendorBriefConfirm.test.js
+PASS src/lib/__tests__/guestUpdate.test.js
+PASS src/lib/__tests__/coiLogic.test.js
+PASS src/lib/__tests__/operatorMode.test.js
+PASS src/lib/__tests__/airports.test.js
+PASS src/lib/__tests__/shellTabs.test.js
+PASS src/lib/knowledge/kcrServerStore.test.js
+PASS src/lib/__tests__/taskEngine.test.js
+PASS src/lib/__tests__/presentationNav.test.js
+PASS src/lib/knowledge/incidentContext.test.js
+PASS src/lib/__tests__/costSharing.test.js
+PASS src/lib/__tests__/destinationVendorCategories.test.js
+PASS src/lib/knowledge/vendorPricing.test.js
+PASS src/lib/__tests__/payCopy.test.js
+PASS src/lib/__tests__/guestBrief.test.js
+PASS src/lib/__tests__/rainAssist.test.js
+PASS src/lib/__tests__/duplicateEvent.test.js
+PASS src/lib/orchestratorClient.test.js
+PASS src/lib/__tests__/taskInferenceProof.test.js
+PASS src/lib/__tests__/actionRow.test.js
+PASS src/lib/__tests__/guestMerge.test.js
+PASS src/lib/__tests__/briefAssist.test.js
+PASS src/lib/__tests__/vendorBriefApi.test.js
+PASS src/lib/api/__tests__/kas.test.js
+PASS src/lib/__tests__/weatherImpact.test.js
+PASS src/lib/__tests__/contactFormat.test.js
+PASS src/lib/__tests__/decisionPayoff.test.js
+PASS src/lib/__tests__/rainPlanReadiness.test.js
+PASS src/__tests__/mobileLayout.test.js
+PASS src/lib/knowledge/groundingDoctrine.test.js
+PASS src/lib/__tests__/dayPhases.test.js
+PASS src/lib/__tests__/vendorAsks.test.js
+PASS src/lib/__tests__/attendanceModel.test.js
+PASS src/lib/__tests__/edtCondensing.test.js
+PASS src/lib/__tests__/importHistory.test.js
+PASS src/lib/__tests__/inviteToneBehavior.test.js
+PASS src/lib/__tests__/cityText.test.js
+PASS src/lib/__tests__/bookedVsConfirmed.test.js
+PASS src/lib/__tests__/taskRouteActWins.test.js
+PASS src/lib/__tests__/timeIntelligence.test.js
+PASS src/lib/__tests__/dateChips.test.js
+PASS src/lib/__tests__/syncStatus.test.js
+PASS src/lib/__tests__/download.test.js
+PASS src/lib/__tests__/confidenceGrammar.test.js
+PASS src/lib/__tests__/crabPlan.test.js
+PASS src/lib/__tests__/guestFacingHonesty.test.js
+PASS src/lib/__tests__/procurement.test.js
+PASS src/lib/__tests__/decisionMemory.test.js
+PASS src/lib/__tests__/venueFor.test.js
+PASS src/lib/__tests__/demoSeed.test.js
+PASS src/lib/__tests__/eventIdentityEngine.test.js
+PASS src/lib/__tests__/presentationLabels.test.js
+PASS src/lib/__tests__/eventTaxonomyDestination.test.js
+PASS src/lib/__tests__/positiveAttention.test.js
+PASS src/lib/__tests__/eventMemory.test.js
+PASS src/__tests__/wxSpanProof.test.js
+PASS src/lib/__tests__/intel-r1-induction.test.js
+PASS src/lib/__tests__/eventDaysAndEvidence.test.js
+PASS src/lib/__tests__/activationAnalytics.test.js
+PASS src/__tests__/shellPolish.test.js
+PASS src/lib/knowledge/militaryRetirement.test.js
+PASS src/lib/__tests__/snooze.test.js
+PASS src/lib/__tests__/narrowedProjectionProof.test.js
+PASS src/lib/__tests__/disclosure.test.js
+PASS src/lib/__tests__/weatherLogistics.test.js
+PASS src/lib/__tests__/eventIdentity.test.js
+PASS src/lib/__tests__/askPlan.test.js
+PASS src/lib/__tests__/untrackedIsNotPassing.test.js
+PASS src/lib/__tests__/rosOverlap.test.js
+PASS src/theme/__tests__/paletteBundle.test.js
+PASS src/lib/__tests__/vendorBrief.test.js
+PASS src/glassIcons.test.js
+PASS src/lib/__tests__/homeNav.test.js
+PASS src/lib/__tests__/moneyDates.test.js
+PASS src/lib/knowledge/militaryCeremony.test.js
+PASS src/lib/__tests__/dates.test.js
+PASS src/lib/__tests__/is1NameStripping.test.js
+PASS src/lib/__tests__/artworkMarks.test.js
+PASS src/lib/api/__tests__/studioGuard.test.js
+PASS src/lib/__tests__/welcomeGate.test.js
+PASS src/lib/__tests__/momentLibrary.test.js
+PASS src/lib/__tests__/replyBy.test.js
+PASS src/plan/__tests__/storedSchemaFixture.js
+PASS src/lib/__tests__/sourcing.test.js
+PASS src/lib/__tests__/notificationSound.test.js
+PASS src/lib/__tests__/cvbIntel.test.js
+PASS src/lib/__tests__/meaningfulMustHave.test.js
+PASS src/lib/__tests__/vendorBriefPublicUrl.test.js
+PASS src/lib/knowledge/effectiveItemKnowledge.test.js
+PASS src/lib/__tests__/legacyCopy.test.js
+PASS src/lib/__tests__/eventDocuments.test.js
+PASS src/lib/__tests__/f4AssembleRevealFixtures.js
+PASS src/lib/__tests__/parseVenueLocation.test.js
+PASS src/lib/quantities/__tests__/quantityBasis.test.js
+PASS src/lib/__tests__/presenceCannotSatisfyAnAct.test.js
+
+Test Suites: 282 passed, 282 total
+Tests:       4229 passed, 4229 total
+Snapshots:   0 total
+Time:        8.076 s
+Ran all test suites.

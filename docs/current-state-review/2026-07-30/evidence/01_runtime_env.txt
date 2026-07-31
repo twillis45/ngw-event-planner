@@ -1,0 +1,42 @@
+### Phase 1 runtime evidence — captured 2026-07-30T23:18:30Z
+
+## node / npm
+v16.16.0
+9.6.6
+
+## env var NAMES referenced in client code (values never printed)
+process.env.REACT_APP_API_BASE_URL
+process.env.REACT_APP_AUTH_BYPASS
+process.env.REACT_APP_AUTH_REDIRECT
+process.env.REACT_APP_BILLING_LIVE
+process.env.REACT_APP_BYPASS_ROLE
+process.env.REACT_APP_ENABLE_GOOGLE_AUTH
+process.env.REACT_APP_FDA_API_KEY
+process.env.REACT_APP_GOOGLE_MAPS_KEY
+process.env.REACT_APP_INVITE_ONLY
+process.env.REACT_APP_OPENWEATHER_KEY
+process.env.REACT_APP_PI_ATTENTION
+process.env.REACT_APP_PI_CONFIDENCE
+process.env.REACT_APP_PI_DECISIONS
+process.env.REACT_APP_PI_IDENTITY
+process.env.REACT_APP_PI_LABELS
+process.env.REACT_APP_PI_MEMORY
+process.env.REACT_APP_PI_MOMENTS
+process.env.REACT_APP_PI_NAV
+process.env.REACT_APP_PI_PLANV2
+process.env.REACT_APP_PI_SHELL
+process.env.REACT_APP_PI_VOICE
+process.env.REACT_APP_PLANNER_TOKEN
+process.env.REACT_APP_POSTHOG_HOST
+process.env.REACT_APP_POSTHOG_KEY
+process.env.REACT_APP_SENTRY_DSN
+process.env.REACT_APP_SUPABASE_ANON_KEY
+process.env.REACT_APP_SUPABASE_URL
+
+## .env.example keys (names only)
+REACT_APP_API_BASE_URL
+REACT_APP_AUTH_REDIRECT
+REACT_APP_PLANNER_TOKEN
+REACT_APP_SENTRY_DSN
+REACT_APP_SUPABASE_ANON_KEY
+REACT_APP_SUPABASE_URL
