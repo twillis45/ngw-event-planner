@@ -129,6 +129,18 @@ jobs:
       # configuration parity. Nothing depends on the tracked artifact being
       # fresh: it is regenerated from source.
       - name: Build release artifact
+        # GitHub Actions ALWAYS sets CI=true, and react-scripts turns every ESLint
+        # warning into a build error under it — so `npm run release` would fail
+        # here on a tree that builds perfectly well locally. Verified: exit 1,
+        # "Treating warnings as errors because process.env.CI = true."
+        #
+        # This step's job is to produce the artifact, not to police lint. Warning
+        # policy lives in its own gate (scripts/cra-build-gate.mjs, run by the
+        # Checks workflow on the release branch) where a reviewed baseline decides
+        # what is acceptable. Unsetting CI here restores the intended build
+        # behaviour without weakening any gate this workflow owns.
+        env:
+          CI: ''
         run: npm run release
 
       - name: Record the deployed commit
