@@ -105,11 +105,20 @@ describe('ruling C — the ask is spoken once (behavioural: heroRecord vs the re
 
   it('FAILS when the bug is reintroduced — deduping against a second derivation', () => {
     // Proving the gate has teeth (discipline: a new gate must fail when you put the bug
-    // back). heroAskFor is that second derivation: it has no decision branch, so on a food
-    // decision it says "Decide the menu." while the screen says "Who provides the food?".
+    // back). The second derivation is any ask computed independently of the one on
+    // screen — dedup against it and the title comes back re-speaking the ask.
+    //
+    // UPDATED 2026-07-31. This used to obtain that second derivation by CALLING
+    // heroAskFor, which reliably disagreed because its food branch answered every
+    // food decision with the single fixed sentence "Decide the menu." — the
+    // circular-ask defect. That branch now names the dimension actually missing,
+    // so it often AGREES with the rendered ask and the probe stopped diverging.
+    // The gate's teeth are the dedup behaviour, not heroAskFor's brokenness, so
+    // the divergent string is stated outright: this is the exact sentence the old
+    // branch produced, kept as the historical shape of the bug.
     const gn = rows.find(r => r.ev === 'Game Night' && /food/i.test(r.id));
     const rendered = askFromLabel(gn.label);
-    const secondDerivation = heroAskFor({ title: gn.label, domain: 'food' }, {});
+    const secondDerivation = 'Decide the menu.';
 
     // The premise of the whole bug: the two strings genuinely disagree.
     expect(secondDerivation).not.toBe(rendered);

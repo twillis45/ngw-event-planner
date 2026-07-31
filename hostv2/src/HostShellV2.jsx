@@ -28,6 +28,7 @@ import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyP
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
 import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -2370,7 +2371,13 @@ export default function HostShellV2() {
   // ORDER-DEPENDENT BY DESIGN: the status IIFE runs earlier in the same render
   // pass than the card, so the flag is always settled before the card reads it.
   let heroAssuranceSpoken = false;
-  const heroAskText = (askMode && queue[0]) ? (() => {
+  // EVERY branch of the ladder below leaves through normalizeAsk (2026-07-31).
+  // Five rungs return strings from five different producers — a raiser's authored
+  // ask, a conflict's ask, a COI task title, the authored decision question, the
+  // heroAskFor ladder — and each used to be trusted to have already settled its
+  // own punctuation. Normalizing per-rung is how the boundary drifts; normalizing
+  // at the single exit is how it cannot.
+  const heroAskText = (askMode && queue[0]) ? normalizeAsk((() => {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
     if (elegantMode && days === 0) return 'It’s today.';
@@ -2382,10 +2389,21 @@ export default function HostShellV2() {
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
     if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
     if (elegantMode && heroDecisionRow) {
-      return String(heroDecisionRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
+      // THE AUTHORED QUESTION FIRST (2026-07-31). `ask` is built by playbooks from
+      // the FULL authored label; `label` is the short card form, already truncated
+      // and stripped. Reading the authored field means the host sees the question
+      // as written instead of a question re-derived from a display truncation.
+      // Both paths land on questionFrom/normalizeAsk, which guarantee exactly one
+      // terminal mark — this line used to append a bare '?' to a label that could
+      // still be carrying its own, which is where "Alcohol??" came from.
+      // ONE heroAskFor CALL SITE (ruling C). This branch returns only when it
+      // actually has a question; a null falls through to the single tail call
+      // below rather than adding a second derivation of the ask here.
+      const authored = heroDecisionRow.ask || questionFrom(heroDecisionRow.label);
+      if (authored) return authored;
     }
     return heroAskFor(q0, event);
-  })() : null;
+  })()) : null;
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
   // bar fades in as the echo. (The dock already auto-hides on scroll — the two
