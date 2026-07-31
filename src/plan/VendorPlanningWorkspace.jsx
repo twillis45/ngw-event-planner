@@ -56,6 +56,7 @@ import {
 } from '../lib/vendorIntelligence';
 import { getVendorRequiredQuestions } from '../lib/vendorQuestions';
 import { parseVendorReply, isAiProxyConfigured } from '../lib/aiProxy';
+import { authHeaders } from '../lib/apiAuth';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '../lib/vendorReplyParse';
 // Sprint 58C — Decision Memory: surface the captured "why this vendor" rationale.
 import { memoryOn, latestRationaleForSubject, decisionPayoffSummary } from '../lib/decisionMemory';
@@ -2343,9 +2344,12 @@ async function extractDocumentAI({ contractUrl, vendorName, eventName, documentT
   const BASE = process.env.REACT_APP_API_BASE_URL;
   if (!BASE || !contractUrl) return null;
   try {
+    // /api/ai/extract-document now requires a planner and only accepts document
+    // URLs on the approved storage host (2026-07-30 security fix). Send the same
+    // Supabase identity the rest of the AI proxy uses.
     const res = await fetch(`${BASE}/api/ai/extract-document`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: await authHeaders(),
       body: JSON.stringify({
         document_url: contractUrl,
         document_type: documentType,

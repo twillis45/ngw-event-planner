@@ -828,31 +828,20 @@ const AICtx = createContext(''); // stores the planner's Anthropic API key
 const useAIKey = () => useContext(AICtx);
 
 async function askClaude(apiKey, prompt, { maxTokens = 700, onChunk, signal, system, context } = {}) {
-  // Sprint 61: try backend AI proxy first — keeps API key server-side.
-  // Falls back to BYOK (direct browser call) when proxy returns 503 or
-  // when apiKey is available but BASE_URL isn't.
-  const BASE = process.env.REACT_APP_API_BASE_URL;
-  if (BASE) {
-    try {
-      const proxyRes = await fetch(`${BASE}/api/ai/status`);
-      if (proxyRes.ok) {
-        const { configured } = await proxyRes.json();
-        if (configured) {
-          const r = await fetch(`${BASE}/api/ai/complete`, {
-            method: 'POST', signal,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, system, max_tokens: maxTokens, context }),
-          });
-          if (r.ok) {
-            const data = await r.json();
-            if (onChunk) onChunk(data.text || '');
-            return data.text || '';
-          }
-        }
-      }
-    } catch { /* fall through to BYOK */ }
-  }
-  // BYOK fallback
+  // BYOK ONLY (the planner's own Anthropic key, in their own browser).
+  //
+  // 2026-07-30 security sprint: this function used to try `/api/ai/complete`
+  // first. That branch was UNREACHABLE. Its only caller is askNGW(), which
+  // returns via callAiFeature() whenever isAiProxyConfigured() is true — and
+  // that is the exact same `REACT_APP_API_BASE_URL` this branch required. So
+  // BASE truthy meant askClaude was never called, and BASE falsy meant the
+  // branch was skipped. Nothing could reach it.
+  //
+  // The endpoint it called accepted a caller-supplied `system` prompt, making
+  // it a general-purpose LLM on the project's key. No caller ever passed one
+  // (all 12 askNGW call sites name a server-owned AI_FEATURES feature), so the
+  // route was removed rather than kept as an authenticated generic proxy.
+  // `system` remains in the signature for the BYOK path's callers only.
   if (!apiKey) throw new Error('no-key');
   const streaming = !!onChunk;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
