@@ -76,7 +76,24 @@ export function heroAskFor(a, event) {
     if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
     if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
     if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
-    const vm = t.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
+    // "Send payment to Hearthstone Catering Co" reached the host as the dead
+    // placeholder "Your next step." (driven 2026-07-31, retirement party at
+    // T-29). The title is 39 chars so it fell past the 26-char cutoff, and it
+    // missed this branch for one reason: the verb list had no `send`.
+    //
+    // Adding the word alone would have produced "Send your caterer." — the verb
+    // is carried through to the ask, and the act here is not sending, it is
+    // PAYING. A payment title is normalized to its real verb first, so the
+    // money item says what the host actually does.
+    //
+    // The rewrite is the WHOLE fix — `send` is deliberately NOT added to the
+    // verb list below. Adding it regressed "Send the invites" to "Send your
+    // vendor.", because that branch appends a vendor noun to whatever verb it
+    // matched. Rewriting to a `Pay …` title instead feeds the branch a verb it
+    // already handles, and every non-payment `send` keeps falling through to
+    // the short-title path that was already saying the right thing.
+    const t2 = t.replace(/^send\s+(?:the\s+|a\s+)?(?:payment|balance|deposit|check|invoice)\s+(?:to|for)\s+/i, 'Pay ');
+    const vm = t2.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
     if (vm) {
       const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
       const rest = vm[2].toLowerCase();

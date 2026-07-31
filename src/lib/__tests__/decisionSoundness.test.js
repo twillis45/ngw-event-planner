@@ -369,3 +369,30 @@ describe('determinism — the fixtures do not read the wall clock', () => {
     expect(ev.date).toBe(daysFromNow(4));
   });
 });
+
+describe('rule 5 — a money item says what the host actually does', () => {
+  // Driven 2026-07-31 on the retirement party at T-29: the hero read the dead
+  // placeholder "Your next step." over "Send payment to Hearthstone Catering Co".
+  // 39 chars, so it fell past the 26-char cutoff, and it missed the vendor verb
+  // branch because that list had no `send`.
+  const ev = { vendors: [{ id: 'v1', name: 'Hearthstone Catering Co', category: 'Catering' }] };
+
+  test('a payment title never falls to the placeholder', () => {
+    const ask = heroAskFor({ title: 'Send payment to Hearthstone Catering Co', domain: 'vendors' }, ev);
+    expect(ask).not.toBe('Your next step.');
+  });
+
+  test('and it names PAYING, not sending', () => {
+    expect(heroAskFor({ title: 'Send payment to Hearthstone Catering Co', domain: 'vendors' }, ev))
+      .toBe('Pay your caterer.');
+    expect(heroAskFor({ title: 'Send the balance to Hearthstone Catering Co', domain: 'vendors' }, ev))
+      .toBe('Pay your caterer.');
+  });
+
+  test('`send` elsewhere still means send', () => {
+    // Narrow by design — only the send-a-payment phrasing is rewritten.
+    // Regression guard: adding `send` to the verb list turned this into
+    // "Send your vendor." The rewrite is scoped to payments for that reason.
+    expect(heroAskFor({ title: 'Send the invites', domain: '' }, {})).toBe('Send the invites.');
+  });
+});
