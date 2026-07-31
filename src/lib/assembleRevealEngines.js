@@ -10,6 +10,23 @@ import { playbookFoodPlan, effectiveRos } from './playbooks';
 import { daysUntil as daysToEvent } from './dates';
 import { venueFor } from './venueFor';
 
+// ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
+// This file resolved the guest count in three places: once for the blockers
+// rule, once inline for the guests stage, and — differently — for the food
+// stage, which printed the food plan's own planned-for figure instead. On a
+// "45 people" event the reveal therefore showed "6 items for 47 guests" three
+// lines above "45 guests": two headcounts on one screen, on the screen whose
+// closing line promises "nothing made up". Neither number was wrong; having
+// two was. The 47 is a DERIVATION (buy to the high end of likely attendance so
+// the host doesn't run short) and belongs to the Food surface that owns it.
+// Every stage here now reads this one resolver, in the app's own resolution
+// order — guestCount once locked, else the creation-time estimate, else the
+// roster length (see HostHome's computation).
+export const resolveGuestCount = (event) => {
+  const ev = event || {};
+  return Number(ev.guestCount) || Number(ev.guestEstimate) || (ev.guests && ev.guests.length) || 0;
+};
+
 // ─── Card Contract ─────────────────────────────────────────────────────────
 // Every stage (identity, timeline, food, risks, blockers) uses this shape:
 // {
@@ -40,9 +57,13 @@ function buildIdentityStage(event, eventIdentity, persona) {
   } = eventIdentity;
 
   // Translate to natural language
+  // "A anniversary." — driven 2026-07-29 on a real create. The article was
+  // hardcoded, so every vowel-initial type (anniversary, engagement, open house,
+  // induction) read wrong on the first screen of the app.
+  const article = (word) => (/^[aeiou]/i.test(String(word || '').trim()) ? 'An' : 'A');
   const eventDesc = isCompound
-    ? `A ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
-    : `A ${primaryEventType.toLowerCase()}.`;
+    ? `${article(primaryEventType)} ${primaryEventType.toLowerCase()} + ${secondaryEventTypes.map(t => t.toLowerCase()).join(' + ')}.`
+    : `${article(primaryEventType)} ${primaryEventType.toLowerCase()}.`;
 
   const compoundExplanation = isCompound
     ? ' Two milestones, one event. We\'ll handle both.'
@@ -114,9 +135,9 @@ function deriveDecisionBlockers(event, eventIdentity) {
   // RULE: No confirmed guest count = budget is meaningless
   // IS-1 fix: the event object stores this as guestEstimate at creation time
   // (App.js NewEventModal) and guestCount once locked later (HostHome/Guests tab).
-  // Match the app's own resolution order (see HostHome's guestCount computation)
-  // instead of reading guestCount alone, which is unset for every fresh event.
-  const resolvedGuestCount = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests && event.guests.length) || 0;
+  // Resolution order now lives in resolveGuestCount (module head) so this rule and
+  // the stages below cannot drift apart.
+  const resolvedGuestCount = resolveGuestCount(event);
   if (!resolvedGuestCount) {
     blockers.push({
       type: 'guest-count-confirmation',
@@ -246,7 +267,10 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (fp && fp.itemCount > 0) {
       domains.push({
         type: 'food',
-        data: { fp, guestEstimate: fp.guests }
+        // guestCount = the host's headcount (the truth). planFor = what the plan
+        // BUYS for (sizingGuests' plan-to ceiling). Both ride along so the stage
+        // can state the first and explain the second — see buildDomainStage.food.
+        data: { fp, guestCount: resolveGuestCount(event), planFor: Number(fp.guests) || 0 }
       });
     }
   } catch {}
@@ -264,7 +288,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
 
   // === GUESTS (if meaningful) ===
   try {
-    const guestCount = Number(event.guestCount) || Number(event.guestEstimate) || (event.guests && event.guests.length) || 0;
+    const guestCount = resolveGuestCount(event);
     if (guestCount > 0) {
       domains.push({
         type: 'guests',
@@ -310,15 +334,33 @@ function buildDomainStage(domain) {
     food: {
       icon: 'cloche',
       title: 'Sizing the Food & Drink',
-      buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestEstimate} guests.`,
-      buildWhy: (data) => 'Menu is built. Quantities scale with headcount. Choose sourcing next.',
+      // ONE HEADCOUNT, AND THE OVERAGE NAMED AS AN ESTIMATE (frames 16-17 audit,
+      // driven 2026-07-29; host rulings "single points of truth" then "keep the
+      // derivation for the overage, just be consistent so they understand what
+      // is an estimate").
+      // This used to print the food plan's internal planned-for figure as if it
+      // were the headcount, so on "45 people" the stage read "6 items for 47
+      // guests" three lines above Guest Planning's "45 guests" — two headcounts,
+      // no way to tell which was theirs, on the screen that promises "nothing
+      // made up".
+      // The 47 is real and worth keeping: sizingGuests' plan-to ceiling, what to
+      // BUY so the host doesn't run short. It is just not a headcount. So the
+      // headline states the ONE headcount, and the line beneath names the
+      // overage in its own words, marked as the estimate it is.
+      buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestCount} guests.`,
+      buildWhy: (data) => (data.planFor > data.guestCount
+        ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
+        : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.'),
       status: 'Ready to fill'
     },
     shopping: {
       icon: 'store',
       title: 'Writing Your Shopping List',
       buildWhat: (data) => `${data.itemCount} item${data.itemCount === 1 ? '' : 's'}, ready to check off.`,
-      buildWhy: (data) => 'Every ingredient mapped to a store and price. Check items off as you shop.',
+      // Same rule as the food stage: a price the host hasn't paid yet is an
+      // ESTIMATE, and this screen says so rather than implying a looked-up
+      // figure. "mapped to a store and price" read as precision it doesn't have.
+      buildWhy: (data) => 'Every ingredient mapped to a store, with an estimated price. Check items off as you shop.',
       status: 'Ready'
     },
     guests: {

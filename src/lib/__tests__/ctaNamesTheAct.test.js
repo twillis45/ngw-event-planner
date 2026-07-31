@@ -19,7 +19,9 @@ const { ALL_PLAYBOOKS, playbookChecklist } = require('../playbooks');
 const BANNED = [
   /^do (this|it)\b/i,
   /^handle (this|it)\b/i,
-  /^take me to/i,
+  // "take me to it" AND "take me there" — the second slipped past a /^take me to/
+  // pattern and shipped live on Ask the Boss (found by clicking, 2026-07-28).
+  /^take me\b/i,
   /^go\b/i,
   /^continue$/i,
   /^click here/i,
@@ -176,11 +178,161 @@ describe('no CTA describes a trip instead of the work', () => {
     expect(isBanned('Do this first')).toBe(true);
     expect(isBanned('Handle this')).toBe(true);
     expect(isBanned('Take me to it')).toBe(true);
+    expect(isBanned('Take me there')).toBe(true);   // the variant that shipped
     expect(isBanned('Open')).toBe(true);
     // …and real labels pass
     expect(isBanned('Open the list')).toBe(false);
     expect(isBanned('Make the call')).toBe(false);
     expect(isBanned('Set the start time')).toBe(false);
     expect(isBanned('Build the day')).toBe(false);
+  });
+});
+
+// ─── THE LABEL AND THE ROUTE MUST COME FROM ONE RESOLUTION ───────────────────
+//
+// Host, 2026-07-28: "this CTA destination is not correct." The hero read
+// "Open travel & stays" and landed on the plan list. Cause: the compression
+// tier took the LABEL from the checklist router but kept the task deep-link as
+// its ROUTE — I had even written a comment calling the task row "tighter".
+//
+// A label naming one destination while the route goes to another is a lying CTA
+// wearing an honest name, which is worse than the generic label it replaced:
+// "Do this" at least promised nothing.
+describe('a hero CTA goes where its label says', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const cc = fs.readFileSync(path.resolve(__dirname, '../..', 'CommandCenter.jsx'), 'utf8');
+
+  test('label and route both read the same resolution', () => {
+    expect(cc).toMatch(/const routerHit = _lead \? _lead\.hit : null;/);
+    expect(cc).toMatch(/primaryCta: routerHit\.label,/);
+    expect(cc).toMatch(/primaryRoute: routerHit\.route,/);
+  });
+
+  // ── THE HERO NEVER LANDS ON A LIST (host ruling 2026-07-28) ────────────────
+  // "dont have the hero CTAs go to the checklist. They should have final
+  // destination. not 2 click to get to the deal."
+  test('a row the router cannot PLACE never becomes the hero', () => {
+    // The tier leads with the first do-now row that resolves to a real
+    // destination, and explicitly refuses routes back onto the task list.
+    expect(cc).toMatch(/hit\.route\.tab === 'Planning Tasks' \|\| hit\.route\.tab === 'Timeline'/);
+    expect(cc).toMatch(/if \(!routerHit\) return null;/);
+  });
+
+  test('no checklist fallback label survives in this tier', () => {
+    const tier = cc.slice(cc.indexOf('THE HERO NEVER LANDS ON THE CHECKLIST'));
+    const block = tier.slice(0, tier.indexOf('// Tier 5'));
+    expect(block).not.toMatch(/'Open your checklist'/);
+  });
+
+  test('the label is never taken from the router while the route ignores it', () => {
+    // The exact shape of the defect: hit.label used with firstRoute alongside.
+    expect(cc).not.toMatch(/hit && hit\.label\)[\s\S]{0,400}primaryRoute: firstRoute,/);
+  });
+});
+
+// ─── "THEN, IN ORDER" — NO ARROW WITHOUT A DESTINATION ───────────────────────
+//
+// Host ask 2026-07-28: "audit Then in Order for dead links."
+//
+// Result of the sweep — 39 playbooks × T-45/14/3, every row's route through
+// resolveRoute: ZERO dead links. Nothing in that list currently fails to open.
+//
+// But the arrow was rendered UNCONDITIONALLY, so the promise was structural
+// rather than earned: the first row to arrive without a resolvable route would
+// have shown a → and then toasted "Not wired here yet". This gate keeps the
+// glyph tied to the navigation, so the class cannot appear at all.
+describe('the then-in-order rows only promise what they deliver', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const shell = fs.readFileSync(
+    path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('the row arrow is conditional, not hard-coded', () => {
+    expect(shell).toMatch(/\{goes && <span className="ef-g" aria-hidden="true">→<\/span>\}/);
+    expect(shell).not.toMatch(/<span className="ef-g" aria-hidden="true">→<\/span><\/span>\s*\n\s*<\/button>/);
+  });
+
+  test('settling in place is opt-in, and only where a slot exists', () => {
+    // ── THE DEAD-ROW CLASS (host click-through, 2026-07-28) ──────────────────
+    // onCta's settle branch does `setEditor(key); spotlight(key)`, and the
+    // editor slot mounts at ONE site — inside the ask-card loop, via
+    // `editor === key`. Any caller passing a key with no slot got SILENCE:
+    // rain, food, shopping and seats all dimmed and did nothing, and a sweep
+    // of their routes never saw it because the routes were fine.
+    // The fix is structural: settling requires an explicit canSettle, so a new
+    // call site is safe (routes) by default instead of silently dead.
+    expect(shell).toMatch(/const onCta = \(a, key, opts\) =>/);
+    expect(shell).toMatch(/if \(kind && opts && opts\.canSettle\) \{/);
+
+    // One slot, and only the callers whose key that slot actually listens for.
+    // TWO qualify: the in-card CTA, and the Plan tile (which passes the hero
+    // CARD's key, so `editor === key` mounts it). Everything else routes.
+    expect((shell.match(/className="editor-slot"/g) || []).length).toBe(1);
+    // Take the rest of the LINE after each `onCta(` — a `)` matcher stops early
+    // on nested calls like String(queue[0].id || 0) and silently undercounts.
+    const calls = shell.split('onCta(').slice(1).map((s) => s.split('\n')[0]);
+    expect(calls.length).toBeGreaterThanOrEqual(4);
+    const settlers = calls.filter((c) => /canSettle/.test(c));
+    expect(settlers.length).toBe(2);
+    // A new call site defaults to routing — it cannot be silently dead.
+    expect(calls.filter((c) => !/canSettle/.test(c)).length).toBeGreaterThanOrEqual(2);
+  });
+
+  test('every route the then-list can emit still resolves', () => {
+    // The sweep, kept as a live gate rather than a one-off finding.
+    const { eventPlan } = require('../../CommandCenter');
+    const { resolveRoute } = require('../routeResolver');
+    const { ALL_PLAYBOOKS } = require('../playbooks');
+    const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); d.setHours(12); return d.toISOString().slice(0, 10); };
+    const dead = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      const type = pb.label || pb.type || pb.id;
+      for (const days of [45, 14, 3]) {
+        let plan = null;
+        try {
+          plan = eventPlan({ id: 'dl', type, date: iso(days), guestCount: 24,
+            venueCity: 'McHenry', venueState: 'MD', totalBudget: 5000 });
+        } catch (_e) { continue; }
+        for (const a of ((plan && plan.queue) || []).slice(1).filter((x) => x && x.level !== 'critical')) {
+          if (a.kind === 'bundle') continue;            // bundles open their own sheet
+          let r = null;
+          try { r = resolveRoute(a.route); } catch (_e) { r = null; }
+          // A row with no route at all is allowed — it simply wears no arrow now.
+          if (a.route && !r) dead.push(`${type} @T-${days} :: ${String(a.title || '').slice(0, 50)}`);
+        }
+      }
+    }
+    expect(dead).toEqual([]);
+  });
+});
+
+// ─── THE "in the full app" CHIP MUST BE DERIVED, NOT MIRRORED ────────────────
+// The hero's `lands` check was a hand-kept TAB LIST and it drifted twice: Travel
+// (fixed 2026-07-28) and then "Assign it" → tab:'Event Details' + focusField:
+// 'space', which resolveRoute has always landed on the space sheet. The host saw
+// a CTA naming a real act that refused to move. A mirror of the resolver can
+// always fall behind it — the exact bug-factory lib/routeResolver was built to
+// kill — so `lands` now ASKS the resolver.
+describe('the unwired chip tells the truth', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const shell = fs.readFileSync(
+    path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+
+  test('lands is derived from resolveRoute, not a tab allowlist', () => {
+    expect(shell).toMatch(/const lands = wired \|\| \(\(\) => \{[\s\S]{0,240}?resolveRoute\(a\.route\)/);
+    // The old mirror must be gone — if it comes back it will drift again.
+    expect(shell).not.toMatch(/const lands = wired \|\| \(a\.route && \[/);
+  });
+
+  test("the routes that shipped dead now resolve", () => {
+    const { resolveRoute } = require('../routeResolver');
+    // "Assign it" (taskRoute) — the one the host reported.
+    expect(resolveRoute({ tab: 'Event Details', focusField: 'space' })).toBeTruthy();
+    // Travel — the previous drift, kept as a regression guard.
+    expect(resolveRoute({ tab: 'Travel' })).toBeTruthy();
+    // …and the deliberately-unroutable one still is, so the chip stays honest.
+    expect(resolveRoute({ tab: 'Communication' })).toBeNull();
   });
 });

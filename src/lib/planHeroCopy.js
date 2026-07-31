@@ -19,6 +19,8 @@
 // "past its easy window" is the strongest phrasing.
 
 import { playbookDecisionBoard, playbookFoodPlan } from './playbooks';
+import { isSolemnEvent } from './solemn';
+import { daysUntil } from './dates';
 
 const money = (n) => '$' + Math.round(Math.abs(Number(n) || 0)).toLocaleString();
 
@@ -39,15 +41,48 @@ export function planHeroCopy(event, priceFactor) {
   // leads — rides along on the hero so the lead decision explains itself here too
   // (prefers an authored priorityBasis.rationale). Additive + nullable: an
   // un-ranked board simply carries no reason.
+  // A decision label may already end in '?' ('How will you honor the history?') — the
+  // template's trailing '.' made "…history?." Strip any existing ender first.
+  const endStop = (t) => String(t || '').replace(/[.?!]+\s*$/, '') + (/[?!]\s*$/.test(String(t || '')) ? String(t).trim().slice(-1) : '.');
   const leadReason = (r) => (r && typeof r.rankReason === 'string' && r.rankReason.trim())
     ? r.rankReason.trim() : null;
 
   const overdue = open.filter((r) => r.status === 'overdue');
   if (overdue.length) {
     const first = overdue[0];
+    // ── A SOLEMN DAY GETS A DIFFERENT VOICE (2026-07-30) ──────────────────────
+    // This function was event-type-agnostic, so a repast four days out rendered
+    // "Settle: Who provides the food." over "…past their easy window — the spread and
+    // shopping list size from them." Both halves are wrong on a funeral meal:
+    //  • "past its easy window" is shame grammar on a grief clock. Nobody was late;
+    //    somebody died. The window framing measures backwards from a deadline the host
+    //    never agreed to, and this file's own header already bans that register.
+    //  • "the spread and shopping list size from them" assumes the host is BUYING the
+    //    food. repast.js states the opposite as researched cultural fact: the family
+    //    does not cook — the church or committee carries the meal. So the sentence
+    //    scolded a grieving family for being slow to accept help already on its way.
+    // The solemn voice keeps every true thing and drops both false ones: it names the
+    // decision without an imperative, counts what is still open without calling it
+    // late, and anchors FORWARD to the days remaining rather than backward to an
+    // overshoot — the same correction the destination `assurance` line made.
+    if (isSolemnEvent(event)) {
+      const d = daysUntil(event && event.date);
+      const runway = (Number.isFinite(d) && d >= 0) ? (d === 0 ? 'the day is here' : d === 1 ? '1 day to go' : `${d} days to go`) : '';
+      return {
+        state: 'settle_overdue',
+        title: endStop(first.label),
+        line: overdue.length === 1
+          ? (runway ? `Still to sort — ${runway}.` : 'Still to sort.')
+          : (runway ? `${overdue.length} still to sort — this one first, ${runway}.` : `${overdue.length} still to sort — this one first.`),
+        cta: 'See what’s left',
+        route: { tab: 'Planning', focusField: 'host-decisions' },
+        reason: leadReason(first),
+        numbers: { overdue: overdue.length, open: open.length },
+      };
+    }
     return {
       state: 'settle_overdue',
-      title: `Settle: ${first.label}.`,
+      title: `Settle: ${endStop(first.label)}`,
       line: overdue.length === 1
         ? 'It’s past its easy window — the spread and shopping list size from it.'
         : `${overdue.length} decisions are past their easy window — this one first. The spread and shopping list size from them.`,
@@ -62,7 +97,7 @@ export function planHeroCopy(event, priceFactor) {
   if (ready.length) {
     return {
       state: 'settle_ready',
-      title: `Good to settle: ${ready[0].label}.`,
+      title: `Good to settle: ${endStop(ready[0].label)}`,
       line: open.length === 1
         ? 'No rush — it’s ready when you are.'
         : `No rush — ${open.length} open, each in its own time.`,

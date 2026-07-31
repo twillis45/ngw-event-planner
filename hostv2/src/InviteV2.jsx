@@ -12,6 +12,7 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
 import PhotoStrip from './PhotoStrip.jsx';
 import { photoList } from '@app/lib/lodgingIntel';
+import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
 import { eventStartLabel } from '@app/lib/eventWhen';
@@ -1310,6 +1311,29 @@ export default function InviteV2({ code }) {
             </div>
           )}
           {!isPast && <p className="grounding" style={{ marginTop: 18, textAlign: 'center', opacity: .7 }}>Your reply goes straight to your host’s plan — nothing to install, no account. Only your host sees it; the guest list stays private.</p>}
+          {/* ── RECRUIT — IN THE FOOTER (host ruling 2026-07-29: "footer") ────────
+              Growth loop half (b). Half (a) — the host sharing the link — has been
+              live and measured for a while; this is the other end: a guest who
+              just admired someone's invite is the warmest possible future host.
+              The ruling was footer, NOT the post-RSVP payoff card, so it stays a
+              quiet line under the guest's own actions rather than a card competing
+              with them. (Both shapes exist in the FROZEN src/App.js; this is the
+              V2 invite, which carried neither.)
+              SUPPRESSED FOR SOMBER EVENTS — the same line the legacy invite draws.
+              Nobody gets marketed to at a repast. That is not a toggle, it is the
+              rule; see the solemn register in lib/heartPrompts.
+              Fires PLAN_YOURS_TAPPED with its surface so footer-vs-card can be
+              compared honestly if the payoff card is ever built. */}
+          {!isPast && !/repast|memorial|funeral|celebration of life|wake|shiva|homegoing/i.test(String((event && event.type) || '')) && (
+            <p className="grounding" style={{ marginTop: 16, textAlign: 'center' }}>
+              <a
+                href={typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '/'}
+                onClick={() => { try { trackInvite(INVITE_EVENTS.PLAN_YOURS_TAPPED, { event_type: event && event.type, surface: 'invite_footer_v2' }); } catch (_e) { /* a counter never blocks a guest */ } }}
+                style={{ color: 'inherit', fontWeight: 650, textDecoration: 'none' }}>
+                Planning something of your own? Make it with Event Boss →
+              </a>
+            </p>
+          )}
           {/* Guest-visible brand moment (build-map #6): the locked identity — the
               wordmark + machined brand period — on the one surface every guest
               touches. Tuned to the stationery's own palette, not the app steel. */}

@@ -305,6 +305,14 @@ export const SURFACES = [
         severity: 'attention',
         title: n === 1 ? '1 confirmed guest still needs a seat' : `${n} confirmed guests still need seats`,
         why: `${plan.totals.seated} of ${plan.totals.confirmed} confirmed guests are seated`,
+        // THIS SURFACE'S DOMAIN IS NOT ITS JOB (host report, 2026-07-30). `domain` is
+        // 'guests' because seating is guest work, but the JOB is seating, and
+        // heroAskFor's guests branch matched the title's "guests" and asked
+        // "Add who's coming." — so a host whose guests were already confirmed got a
+        // headcount stepper that could not touch the thing being raised. The ask is
+        // authored here, where the job is actually known, and heroAskFor prefers it
+        // over its own prose classification.
+        ask: 'Seat your guests.',
         // The route still lands ON the first unassigned guest's row (row-level or not
         // at all) — but that guest is NOT this raise's identity.
         route: { tab: 'Seating', guestId: first.id },
@@ -367,6 +375,36 @@ export const SURFACES = [
     bundleTitle: (n) => `${n} lodging deadlines to watch`,
     raise(event) {
       if (isPastEvent(event && event.date)) return [];
+      // ── THE RENTAL SHORTLIST IS AN OPEN DECISION (review board 2026-07-28) ──
+      // This surface only ever knew the HOTEL ROOM-BLOCK model: it keyed on
+      // notBookedCount and a deadline. A host could shortlist eighteen rental
+      // houses and the plan raised nothing at all, because `lodgingOptions` was
+      // read by no engine anywhere. Weighing options and never choosing is a real
+      // open decision — usually the largest one in the event — and it belongs in
+      // the same ledger as every other thing waiting on her.
+      //
+      // Raised ONLY while she is genuinely mid-decision: two or more options and
+      // none chosen. One option is not a comparison, and a made choice is not a
+      // question. Nothing is invented — the count is hers.
+      //
+      // DELIBERATELY ABOVE the destination-relevance gate. That gate exists for
+      // the hotel room-block model, and it was swallowing this row: a host who
+      // has shortlisted two rental houses has PROVEN lodging matters by her own
+      // action, whatever the engine has classified her event as. Self-gating on
+      // opts.length >= 2 is the honest condition here.
+      const opts = Array.isArray(event && event.lodgingOptions) ? event.lodgingOptions.filter(Boolean) : [];
+      const picked = opts.some((o) => o && o.status === 'chosen');
+      if (opts.length >= 2 && !picked) {
+        return [{
+          severity: 'attention',
+          title: `${opts.length} places on your shortlist — none picked yet`,
+          why: 'Until one is the pick, the plan can’t count what it costs',
+          route: { tab: 'Travel', focusField: 'lodging' },
+          id: 'lodging-unpicked',
+          domain: 'travel',
+        }];
+      }
+
       let travel = null;
       try { travel = buildTravelPlan(event); } catch (_e) { return []; }
       if (!travel || !travel.relevant) return [];          // destination events only — the engine's own gate

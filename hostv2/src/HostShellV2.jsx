@@ -3,7 +3,7 @@
 // the production engines: eventPlan() (CommandCenter.jsx), identityStatement()
 // (lib/eventIdentity), real sample events, real budget + run-of-show data.
 // Nothing invented — where data is missing, the UI says so.
-import { Fragment, useMemo, useState, useEffect, useRef } from 'react';
+import { Fragment, useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
@@ -26,6 +26,8 @@ import { METRO_MARKETS, METRO_TIER_LABEL, getMetroFactor, getRushFactor } from '
 import { parseVendorReply, isAiProxyConfigured } from '@app/lib/aiProxy';
 import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyParse';
 import { positiveAttention } from '@app/lib/positiveAttention';
+import { isSolemnEvent } from '@app/lib/solemn';
+import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -65,6 +67,7 @@ import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
 import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
+import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
 import { proposeStartTime, defaultStartTime, startTimeIsConfirmed } from '@app/lib/startTime';
@@ -73,11 +76,13 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
+import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
-import { AIRPORTS, nearestAirports, airportByCodeOrName } from '@app/lib/airports';
+import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
 import { isPastEvent } from '@app/lib/closeoutIntel';
 import { setLesson, getLesson } from '@app/lib/eventMemory';
@@ -95,7 +100,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
-import { ALL_PLAYBOOKS, getPlaybook, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
+import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
@@ -138,6 +143,7 @@ import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { checklistRouteFor } from '@app/lib/taskRoute';
+import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
@@ -299,63 +305,9 @@ const DOMAIN_LENS = { guests: 'Guests', budget: 'Budget', food: 'Food', vendors:
 // "Continue when ready"), lean the calm serif, more void. Grounded in the event TYPE:
 // Repast is a real, fully-authored somber playbook (repast.js), not a guess. Feeds the
 // parity kit's `tone="solemn"`. See parity/MANIFEST.md fast-follow #1.
-const SOLEMN_RE = /repast|memorial|funeral|celebration of life|homegoing|in memoriam/i;
-function isSolemnEvent(event) {
-  try { return SOLEMN_RE.test(String((event && event.type) || '') + ' ' + String((event && event.name) || '')); }
-  catch { return false; }
-}
+// isSolemnEvent now lives in @app/lib/solemn — ONE derivation, read by the shell AND
+// by planHeroCopy, which was event-type-agnostic and scolded a grieving family.
 
-// REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
-// action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
-// panel beneath carries the specifics. Raw queue titles are card copy and can
-// be proper nouns ("Confirm Semper Catering Co") — never display material.
-const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
-function heroAskFor(a, event) {
-  try {
-    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
-    const d = String((a && a.domain) || '').toLowerCase();
-    if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
-    if (d === 'food' || /serving|menu|food/i.test(t)) return 'Decide the menu.';
-    if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
-    if (/start time/i.test(t)) return 'Confirm the start time.';
-    if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
-    if (/location|venue|where/i.test(t)) return 'Add the location.';
-    if (/conflict/i.test(t)) return 'Untangle your vendors.';
-    const am = t.match(/^ask\s+.+?\s+about\s+(.{3,24})$/i);
-    if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
-    if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
-    if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
-    const vm = t.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
-    if (vm) {
-      const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
-      const rest = vm[2].toLowerCase();
-      const v = ((event && event.vendors) || []).find(x => x && x.name && rest.includes(String(x.name).toLowerCase().slice(0, 6)));
-      const catKey = v ? String(v.category || v.type || '').toLowerCase() : '';
-      const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
-      return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
-    }
-    // A food-line buy ("Fried or baked chicken & baked ham — 28.5 lbs in 2 days")
-    // carries an item title, never an instruction — the fallback rendered the dead
-    // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
-    // the real job in plain words.
-    if (a && a.route && a.route.foodFocus) return 'Get the food.';
-    return t.length <= 26 ? t + '.' : 'Your next step.';
-  } catch { return 'Your next step.'; }
-}
-// The record the panel names — only when it adds info beyond the ask (dedup:
-// the ask owns the VERB, the panel owns the NOUN).
-function heroRecord(a, ask) {
-  try {
-    const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
-    // Strip the leading verb AND the surrounding quotes: a decision-board "call" arrives
-    // titled Resolve "the label", and dropping only the verb left the bare "quoted" name
-    // showing in the hero (host "why is this in quotes" 2026-07-18).
-    const record = t.replace(/^(confirm|book|call|pay|chase|set|plan|add|decide|pick|reconfirm|nudge|ask|fix|buy|resolve|settle)\s+/i, '').replace(/^["“”"']+|["“”"']+$/g, '').trim();
-    const askTok = new Set(String(ask || '').toLowerCase().replace(/[^a-z\s’']/g, '').split(/\s+/));
-    const adds = record.split(/\s+/).some(w => w.length > 2 && !askTok.has(w.toLowerCase()));
-    return adds ? record.charAt(0).toUpperCase() + record.slice(1) : null;
-  } catch { return null; }
-}
 // Path whisper labels for the panel's horizon footer.
 function horizonLabel(a) {
   const d = String((a && a.domain) || '').toLowerCase();
@@ -1438,7 +1390,7 @@ export default function HostShellV2() {
       if (travel.relevant && travel.lodging && travel.lodging.deadline && (travel.lodging.notBookedCount || 0) > 0) {
         let dd = null; try { dd = daysUntil(travel.lodging.deadline); } catch { dd = null; }
         out.push({
-          label: 'Group rate ends — ' + travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked a room yet',
+          label: 'Group rate ends — ' + travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet',
           due: travel.lodging.deadline, days: dd, kind: 'lodging',
         });
       }
@@ -1597,6 +1549,15 @@ export default function HostShellV2() {
     }
     return (
       <div className="decopts">
+        {/* THE QUESTION HAD NO VISIBLE ANSWER (board re-sit, the Grandmother seat's top
+            finding — no other list carried it). The hero asks "Indoor or outdoor?" and
+            then shows rows reading "Outdoor park pavilion" with nothing saying those ARE
+            the answers, or what happens if you touch one. The sheet one tap away has a
+            button that plainly says "Sounds good"; the hero had no equivalent.
+            The arrow stays banned (host 2026-07-21: tapping settles in place, it does not
+            navigate, and a glyph here would be false navigation). So the act is NAMED in
+            words instead — the row is still the whole affordance, it just says so now. */}
+        <p className="decopts-lead">Tap one to settle it — nothing else changes.</p>
         {proposedOpt ? (
           <>
             {optRow(proposedOpt, true)}
@@ -1606,7 +1567,16 @@ export default function HostShellV2() {
                 {alts.map(o => optRow(o, false))}
               </>
             ) : (
-              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>{'See ' + alts.length + ' other way' + (alts.length > 1 ? 's' : '') + '  ›'}</button>
+              /* RULING A (2026-07-30). Two fixes, both about telling the truth:
+                 • NO GLYPH. This handler toggles decDiscloseId IN PLACE — it settles
+                   nothing and routes nowhere, so a `›` was false navigation under the
+                   standing rule (render →/› ONLY when the handler routes). `▸` is a
+                   disclosure triangle, the closed twin of the `▾` this same control
+                   wears when open, so the two states now read as one control.
+                 • NO COUNT. The rows it reveals carry their own number, and the count
+                   here collided with the sibling-bundle disclosure's identical "3" —
+                   two grey links a few px apart both offering "3" different things. */
+              <button className="decopt-disc" onClick={() => setDecDiscloseId(nd.id)}>Other ways  ▸</button>
             ))}
           </>
         ) : (
@@ -2035,6 +2005,30 @@ export default function HostShellV2() {
     didResume.current = true;
     if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
   };
+  // ── RUN IT AGAIN (competitive read, 2026-07-30) ──────────────────────────────
+  // Partiful, Linear and Blink all ship this and we shipped none of it, so the
+  // repeat host — the annual crab feast, the reunion that rotates hosts — began
+  // from nothing every year. lib/duplicateEvent owns the one decision that matters
+  // (plan carries, state resets) and is gated by its own tests; this just gives it
+  // an id, persists the copy the same way a created event is persisted, and lands
+  // the host on it. The copy arrives WITHOUT A DATE on purpose: that is the single
+  // thing that must be re-decided, and leaving it blank is what makes every
+  // date-relative engine say "not yet" instead of reckoning against last year.
+  const runItAgain = (src) => {
+    if (!src) return;
+    const newId = 'ev-copy-' + Date.now().toString(36);
+    let copy = null;
+    try { copy = duplicateEvent(src, { id: newId, now: new Date().toISOString() }); }
+    catch { toast('Couldn’t copy that event.'); return; }
+    setCustoms(list => [...list, copy]);
+    setEventId(newId); setPatch({}); setSheet(null); setStage('plan'); setDayIdx(0);
+    didResume.current = true;
+    if (session) { try { patchProfile({ lastEventId: newId }); } catch { /* local pointer holds it */ } }
+    if (session) { cloudSaveEvent(copy).then(res => recordSaveResult(copy, res)).catch(() => {}); }
+    // Say what was kept AND what was not — a copy that quietly dropped the RSVPs
+    // without saying so would be its own small dishonesty.
+    toast('Copied the plan — guests, vendors and your picks. Replies, payments and the date start fresh.');
+  };
   // Follow the account's resume pointer on a fresh device: once the target event
   // is available (sample, custom, or hydrated real event) AND the host hasn't
   // already switched here, land on it. Runs at most once (didResume).
@@ -2244,7 +2238,7 @@ export default function HostShellV2() {
     // resolved async after mount, this stale figure and the recovery panel's
     // fresh one could show two different "how far over" dollar amounts on
     // the same sheet (found in the per-screen audit).
-  const money = { planned: spend.total, committed: spend.committed, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
+  const money = { planned: spend.total, committed: spend.committed, committedEstimated: spend.committedEstimated || 0, spent: spend.spent, spentEstimated: spend.spentEstimated || 0, lines: Array.isArray(event.budget) ? event.budget.length : 0 };
   // The HOST money breakdown — hostSpending's own plan-priced terms, shared by
   // the Budget sheet and After. NEVER planner category rows (Rule 4): the host
   // model is one number plus where the plan says it's going.
@@ -2331,6 +2325,67 @@ export default function HostShellV2() {
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
   // past, no date) the countdown keeps the display — the date IS the story then.
   const askMode = days !== null && days >= 0 && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
+  // ── THE ONE ASK STRING (board ruling C, 2026-07-30) ──
+  // The loud line is the FIRST real ITEM, not the generic bundle verb — the per-item
+  // intelligence surfacing where the host looks first. Conflicts → the clash; decisions
+  // (bundle OR a lone card) → the actual call to make, framed as a question (parenthetical
+  // meta + quotes stripped).
+  //
+  // WHY THIS IS HOISTED, not inlined in the <h2>: three surfaces spoke the ask and only one
+  // of them computed it. The <h2> ran this ladder; the card-title dedup and the browser tab
+  // both called heroAskFor() directly — which has NO decision branch. On Game Night the h2
+  // said "Who provides the food?" while the dedup compared against "Decide the menu."
+  // ({decide,the,menu} vs record `who provides the food` → adds → the title rendered → the
+  // host read the same ask TWICE). Reunion's record ("indoor or outdoor") happened to overlap
+  // its heroAskFor output → suppressed → once. Same component, opposite result, decided by a
+  // coincidence of vocabulary. Every consumer now reads THE STRING THAT IS ON SCREEN, so the
+  // dedup is structural instead of textual.
+  // THE DECISION THE HERO IS SPEAKING, or null. Derived ONCE and shared by the ask
+  // ladder below and ruling B's duplicate-scold guard (~:5543) — the same
+  // one-derivation discipline ruling C had to impose on the ask string itself.
+  // Returns null whenever an EARLIER rung of the ask ladder wins (day-of speaks the
+  // DAY, a blocker/conflict/COI item speaks its own line), so this can never claim a
+  // hero that is in fact talking about something else.
+  const heroDecisionRow = (() => {
+    if (!elegantMode || !askMode || !queue[0]) return null;
+    const q0 = queue[0];
+    if (days === 0) return null;
+    if (/^blocker:/.test(String(q0.id || '')) && q0.ask) return null;
+    if (/conflict/i.test(String(q0.title || '')) && conflictItems[0]) return null;
+    if (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''))) return null;
+    // A lone decision carries its own id; a decisions BUNDLE speaks its first call.
+    return /^decision:/.test(String(q0.id || ''))
+      ? ((decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id) || null)
+      : (/decision/i.test(String(q0.title || '')) ? (callsOrdered[0] || null) : null);
+  })();
+  // ── ONE SENTENCE, ONE AUTHOR (board re-sit follow-up, 2026-07-30) ──
+  // "Time got tight." (the shell's slip line) sat directly above "Nothing's
+  // stalled — the plan's been running on our pick." (playbooks' assurance), and
+  // the board read the pair as a contradiction. Both are true; they were simply
+  // written by two files that cannot see each other, and nothing joined them.
+  // The status line and the decision hero card live in different scopes — the
+  // status block is an IIFE that closes long before the card renders — so this
+  // flag is the handshake between them. The status block sets it when it folds
+  // the assurance into its own sentence; the card then does not say it twice.
+  // ORDER-DEPENDENT BY DESIGN: the status IIFE runs earlier in the same render
+  // pass than the card, so the flag is always settled before the card reads it.
+  let heroAssuranceSpoken = false;
+  const heroAskText = (askMode && queue[0]) ? (() => {
+    // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
+    // its own card below (is-dayof unhides the h3).
+    if (elegantMode && days === 0) return 'It’s today.';
+    const q0 = queue[0];
+    // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
+    // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
+    if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
+    if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
+    // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
+    if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
+    if (elegantMode && heroDecisionRow) {
+      return String(heroDecisionRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
+    }
+    return heroAskFor(q0, event);
+  })() : null;
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
   // bar fades in as the echo. (The dock already auto-hides on scroll — the two
@@ -2384,12 +2439,12 @@ export default function HostShellV2() {
   useEffect(() => {
     try {
       const base = 'Event Boss';
-      if (stage === 'plan' && askMode && queue[0]) document.title = heroAskFor(queue[0], event) + ' — ' + base;
+      if (stage === 'plan' && askMode && heroAskText) document.title = heroAskText + ' — ' + base;
       else if (stage === 'plan' && listIsCalm) document.title = 'All quiet — ' + base;
       else document.title = base;
     } catch { /* title is cosmetic */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, askMode, listIsCalm, queue.length && queue[0] && queue[0].id, event.id]);
+  }, [stage, askMode, listIsCalm, heroAskText, queue.length && queue[0] && queue[0].id, event.id]);
   useEffect(() => {
     try {
       const crit = queue.filter(a => a && a.level === 'critical').length;
@@ -2398,13 +2453,42 @@ export default function HostShellV2() {
   }, [queue]);
   const heroZoneRef = useRef(null);
   const [heroInView, setHeroInView] = useState(true);
-  useEffect(() => {
-    const el = heroZoneRef.current;
-    if (!el || typeof IntersectionObserver === 'undefined') { setHeroInView(false); return; }
+  // ── THE OBSERVER FOLLOWS THE NODE, NOT A GUESSED DEP LIST ───────────────────
+  // Board re-sit 2026-07-30, found by the event pros in code and then confirmed live
+  // on production: a host who arrives via the WELCOME GATE got a pinned "NEXT" bar
+  // sitting over their content, permanently.
+  //
+  // The old shape was a useEffect with deps [stage, event.id] that ran
+  //   if (!el) { setHeroInView(false); return; }
+  // On the welcome gate `.hzone` does not exist yet, so that branch LATCHED false.
+  // Dismissing the gate flips the separate `welcome` state — it does not touch
+  // `stage` or `event.id` (dismissWelcome only sets a stage for 'create') — so the
+  // effect never re-ran, never subscribed, and nothing ever set the flag back.
+  // Proven by the entry path alone, same tab / same event / same scrollTop 0:
+  //   via welcome gate -> bar present (wrong)   direct load -> bar absent (right)
+  // That is the FIRST-RUN path, so every new host hit it.
+  //
+  // Adding `welcome` to the deps would fix this one entry and leave the class open —
+  // any other reason the hero mounts late would re-latch it. A dep list that mirrors
+  // the conditions can always fall behind them (the same bug-factory the route
+  // resolver was written to kill). So the subscription now rides the NODE's own
+  // lifetime via a callback ref: React calls it with the element on mount and with
+  // null on unmount, which is exactly when the observer should attach and detach.
+  //
+  // And the null branch no longer lies: NO HERO ON SCREEN IS NOT "HERO SCROLLED
+  // AWAY". The bar is an echo of a hero that has left the viewport; with no hero
+  // there is nothing to echo, so absence means "don't show it" (true), matching the
+  // useState(true) initial value.
+  const heroIoRef = useRef(null);
+  const attachHeroZone = useCallback((el) => {
+    heroZoneRef.current = el;
+    if (heroIoRef.current) { heroIoRef.current.disconnect(); heroIoRef.current = null; }
+    if (!el || typeof IntersectionObserver === 'undefined') { setHeroInView(true); return; }
     const io = new IntersectionObserver((es) => { es.forEach(e => setHeroInView(e.isIntersecting)); }, { threshold: 0.05 });
     io.observe(el);
-    return () => io.disconnect();
-  }, [stage, event.id]);
+    heroIoRef.current = io;
+  }, []);
+  useEffect(() => () => { if (heroIoRef.current) { heroIoRef.current.disconnect(); heroIoRef.current = null; } }, []);
   const handled = plan.handled || [];
   const rollup = plan.vendorReadinessRollup;
 
@@ -2799,6 +2883,50 @@ export default function HostShellV2() {
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
+  // Candidates read off a pasted results page or handed over by the bookmarklet,
+  // staged for the host to confirm. NEVER written straight to the event: one of
+  // the two sources is a URL fragment, which is untrusted input by definition.
+  // How many staged candidates the list renders. Stated in the header whenever
+  // it truncates — a count contradicted by the list below it is a small lie.
+  const STAGED_SHOWN = 12;
+  const [lodgeStaged, setLodgeStaged] = useState(null);
+  // Typing must not stage on every keystroke — see the paste box below.
+  const lodgePasteTimer = useRef(null);
+
+  // ── THE BOOKMARKLET LANDS HERE (#6, host 2026-07-28) ──────────────────────
+  // "Send to Event Boss" opens the app with the listings it collected in the URL
+  // FRAGMENT. A fragment is the right carrier: browsers never transmit it to a
+  // server, so the listings the host was browsing stay on their device.
+  //
+  // It is still untrusted input — the host can click that bookmark on any page,
+  // and a crafted page could stuff the payload. So it is validated hard
+  // (parseBookmarkletPayload: https + platform allowlist, every string and the
+  // array itself capped), interpreted by the SAME code the paste path uses, and
+  // then STAGED for confirmation. Nothing reaches the event until the host says
+  // so. The hash is cleared immediately so a refresh can't replay it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const raw = lodgingHashPayload(window.location.hash);
+    if (!raw) return;
+    try { window.history.replaceState(null, '', window.location.pathname + window.location.search); } catch (_e) { /* hash stays, staging still guards */ }
+    let cands = [];
+    // B3 — the bookmarklet's own arm of the funnel. Rams' kill criterion is
+    // literally the ratio of THIS method to paste, so it must be counted where
+    // it actually arrives, not inferred later.
+    try { trackEvent(ANALYTICS.LODGING_PASTE_ATTEMPTED, { method: 'bookmarklet' }); } catch (_e) { /* never block intake on a counter */ }
+    try { cands = candidatesFromGroups(parseBookmarkletPayload(raw)); } catch (_e) { cands = []; }
+    if (!cands.length) { toast('Nothing readable came across — open a results page and click it again.'); return; }
+    try { trackEvent(ANALYTICS.LODGING_PASTE_PARSED, { method: 'bookmarklet', found: cands.length }); } catch (_e) { /* as above */ }
+    const known = new Set((event.lodgingOptions || []).map((o) => String(o.url || '').split('?')[0]));
+    const fresh = cands.filter((c) => !known.has(c.url));
+    let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
+    try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
+    setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
+      linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+    setSheet({ kind: 'lodging' });
+    // Mount only: the hash is consumed and cleared on arrival.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Add-a-helper form (host report 2026-07-28: the helpers block had no action).
   // Writes a real timeline row with an owner — the shape deriveHelperResponsibilities
   // already reads (source: 'timeline.owner'), so one write reaches every surface.
@@ -3016,6 +3144,9 @@ export default function HostShellV2() {
   // straight-line distance, and PROPOSE (never silently write) the closest
   // set. Labeled honestly — miles as the crow flies, drive time decides.
   const [airNear, setAirNear] = useState(null); // null = not looked up; [] = lookup failed
+  // The geocoded event location, retained so derived airport notes can be
+  // measured from it — it was being computed and thrown away.
+  const [airCoords, setAirCoords] = useState(null);
   useEffect(() => {
     if (!airSheetOpen) { setAirNear(null); return; }
     if (airNear != null) return;
@@ -3029,6 +3160,7 @@ export default function HostShellV2() {
         if (!q) { if (!dead) setAirNear([]); return; }
         const coords = await geocodeVenue(q);
         if (dead) return;
+        setAirCoords(coords || null);
         setAirNear(coords ? nearestAirports(coords.lat, coords.lon, 3) : []);
       } catch { if (!dead) setAirNear([]); }
     })();
@@ -3362,6 +3494,11 @@ export default function HostShellV2() {
   // The 5 readiness signals — Basics (foundations) + the four pillars the
   // production readiness engine computes: decisions, people, checklist, paperwork.
   const readiness = useMemo(() => { try { return applicableReadinessAxes(event); } catch { return null; } }, [event]);
+  // The "Make it yours" examples, keyed to THIS event's type — see the note at
+  // their render site and lib/heartPrompts. Examples only; never written.
+  const heartPh = useMemo(() => {
+    try { return heartPlaceholders(event.type || event.label); } catch { return heartPlaceholders(''); }
+  }, [event.type, event.label]);
   const wins = useMemo(() => { try { return positiveAttention(event, readiness) || { items: [] }; } catch { return { items: [] }; } }, [event, readiness]);
 
   // Rain backup — the weather lib's real outdoor heuristic; the rainPlan field
@@ -3924,9 +4061,19 @@ export default function HostShellV2() {
     return null;
   };
 
-  const onCta = (a, key) => {
+  // ── SETTLING IS OPT-IN (dead-row class, 2026-07-28) ─────────────────────────
+  // The settle branch below writes setEditor(key), and the editor slot renders
+  // at ONE site — inside the ask-card loop, where `editor === key` mounts it.
+  // A caller with no slot for its key got silence: state nothing rendered, a
+  // spotlight scroll to a node that didn't exist. Four "Then, in order" rows
+  // died that way and a code sweep of the routes never saw it.
+  // So settling is now EXPLICIT: `opts.canSettle` may only be passed by a site
+  // that actually renders the slot. Every other caller falls through to the
+  // routing below and lands on the surface that owns the field — which is the
+  // right behaviour off the hero anyway, and is honest when it can't.
+  const onCta = (a, key, opts) => {
     const kind = wiredKind(a);
-    if (kind) {
+    if (kind && opts && opts.canSettle) {
       // Propose-don't-ask: the venue editor opens pre-filled with the host's
       // own prior answer (existing venue, or the town they named at create) —
       // grounded data only, never an invented guess.
@@ -4002,8 +4149,8 @@ export default function HostShellV2() {
       );
     }
     return (
-      <div key={rowKey} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
-        <span className="vc-detail" style={{ margin: 0, flex: 1 }}>{title}</span>
+      <div key={rowKey} className="line kid-row" style={{ alignItems: 'center', padding: 'var(--sp-1) 0' }}>
+        <span className="vc-detail" style={{ margin: 0 }}>{title}</span>
         <button className="mini" onClick={() => onCta(c, rowKey)}>{ctaLabelFor(c && c.cta, c && c.route, event)}</button>
       </div>
     );
@@ -4812,7 +4959,19 @@ export default function HostShellV2() {
     if (/guests/i.test(to)) { setSheet({ kind: 'guests' }); return; }
     if (/task/i.test(to)) { setSheet({ kind: 'tasks', focus: null }); return; }
     if (/communication/i.test(to)) { toast('Approvals live in the app’s messages — not wired here yet.'); return; }
-    // Event Day Schedule → we're already looking at it.
+    // ── "See the day plan" WAS A DEAD BUTTON (found by driving it, 2026-07-28) ──
+    // This case was a comment and nothing else: "we're already looking at it."
+    // The premise was half-true and the behaviour was wrong. On the live day the
+    // host IS on the day board — but the schedule is below the fold, and the
+    // nudge's own route says `focusField: 'ros-now'`, an anchor that existed
+    // NOWHERE in the shell. So a real click did nothing at all, silently, which
+    // is exactly the class "Glyph only when it navigates" exists to prevent.
+    // The anchor is now on the now-card; take her to it.
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('ros-now');
+      if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); return; }
+    }
+    toast('The day plan is on this screen, just below.');
   };
   // Handled whispers — ONLY facts the data proves (original Focus semantics).
   const dayWhispers = useMemo(() => {
@@ -4916,7 +5075,10 @@ export default function HostShellV2() {
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
+      {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
+          so the container reserves room for it exactly while it shows — same
+          condition as its render below. See the note at .next-bar in styles.css. */}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
@@ -5311,7 +5473,20 @@ export default function HostShellV2() {
                           <div className="rv-spine-col">
                             {revealStages.map((st, i) => {
                               const cls = i === focus ? ' focus' : (i < focus ? ' lit' : '');
-                              const prov = [st.confidenceLabel, st.status, ...(st.sourceEngines || [])].filter(Boolean).join(' · ');
+                              // ENGINE NAMES ARE NOT HOST COPY (frame 17 audit, driven
+                              // 2026-07-29). This joined st.sourceEngines into the
+                              // visible line, so a host finishing the create flow —
+                              // the single most important screen we have — read
+                              // "ASSEMBLED · READY TO FILL · PLAYBOOK ENGINE" and
+                              // "REQUIRED · AWAITING DECISION · DECISION DERIVATION
+                              // EVENT IDENTITY". Those are our architecture's nouns,
+                              // not this host's. The STATE words are real and stay
+                              // (Ready / Awaiting decision / High confidence — that is
+                              // the honesty the screen promises two lines later with
+                              // "nothing made up"). sourceEngines stays ON the object
+                              // for anything that needs provenance; it just no longer
+                              // shouts itself at the host.
+                              const prov = [st.confidenceLabel, st.status].filter(Boolean).join(' · ');
                               return (
                                 <div key={st.key || i} className={'rv-snode' + cls} style={{ '--n': i }}>
                                   <span className="rv-shalo" aria-hidden="true" />
@@ -5401,7 +5576,7 @@ export default function HostShellV2() {
                   branches: one honest sentence, no arithmetic. In askMode the
                   calm "On track" folds into the truth line; a non-calm verdict
                   keeps its full sentence and its color. */}
-              <div ref={heroZoneRef} className="hzone">{(() => {
+              <div ref={attachHeroZone} className="hzone">{(() => {
                 // ALL-CLEAR PAYOFF — a whole bundle just went quiet on this event.
                 // Owns the hero until the host taps the handoff. Conflicts show the
                 // grounded run-of-show (the proof the clash is gone); other bundles
@@ -5451,29 +5626,72 @@ export default function HostShellV2() {
                     statusNode = <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
                   } else {
                     const slips = [];
+                    // Hoisted out of the try below: the frame around the slips depends on it too.
+                    const heroSpeaksThisOverdue = !!(heroDecisionRow && heroDecisionRow.status === 'overdue');
                     try {
                       const od = (decisionBoard.open || []).filter(r => r && r.status === 'overdue').length;
-                      // ── NEVER ON A SOLEMN DAY (2026-07-31) ──────────────────────────
-                      // "Past its easy window" is shame grammar measured backwards from a
-                      // deadline the host never agreed to. On a repast nobody was late —
-                      // somebody died. repast.js authors T-5d leads because a burial lands
-                      // on Saturday, so a grieving family is "behind" the moment they open
-                      // the app. Suppressed rather than softened: there is no gentle way to
-                      // tell the bereaved they are late, and the decisions still render
-                      // below with their own rows and reasons. Nothing is hidden.
-                      if (od && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
+                      // RULING B (2026-07-30, Rams' dissent sustained): when the hero IS the
+                      // overdue decision, it already says the SPECIFIC thing one line below
+                      // ("Was due 5 days ago.", from dec.because). Saying "a few decisions are
+                      // past their easy window" above that is the same scold twice — once
+                      // vaguely, once with a number. Keep the instance, cut the generalisation.
+                      // Structural, via heroDecisionRow (~:2311): never a title regex, and it
+                      // covers BOTH shapes — a lone decision hero and a decisions bundle whose
+                      // first call is the one rendering. Other slips (time, spending) are
+                      // untouched; only the clause that NAMES DECISIONS is suppressed.
+                      // ── AND NEVER ON A SOLEMN DAY (2026-07-30) ──────────────────────
+                      // Same defect as planHeroCopy's, on the other surface. "Past its
+                      // easy window" is shame grammar measured backwards from a deadline
+                      // the host never agreed to — on a repast, nobody was late, somebody
+                      // died. repast.js authors T-5d leads because a burial is on
+                      // Saturday. The count is suppressed here rather than softened:
+                      // there is no gentle way to tell the bereaved they are behind, and
+                      // the decisions themselves still render below with their own rows.
+                      if (od && !heroSpeaksThisOverdue && !solemn) slips.push(od === 1 ? 'one decision is past its easy window' : 'a few decisions are past their easy window');
                     } catch { /* board unavailable */ }
                     if (compression && compression.headline) slips.push('time got tight');
                     if (money.planned && money.committed > money.planned) slips.push('spending is past your number');
                     if (slips.length) {
-                      statusNode = (
+                      // ── THE FRAME GOES, THE FACT STAYS (Grandmother, board re-sit 2026-07-30) ──
+                      // She read "Mostly on course — time got tight. Worth a look today." sitting
+                      // directly on the hero's own line and ruled that one of the two was lying.
+                      // Ruling B suppressed only the clause that NAMES DECISIONS, so this frame
+                      // survived and kept competing.
+                      // When the hero already carries its own assurance, this line must not
+                      // re-reassure: "Mostly on course" restates "Nothing's stalled", and
+                      // "Worth a look today." is the vague CTA 04 bans (the Review-status /
+                      // Check-details class). Both are dropped.
+                      // WHAT IS NOT DROPPED IS THE FACT. `compression.headline` renders in full
+                      // only at the non-elegant block (~:7380), and elegant is the DEFAULT — so
+                      // this fragment is the ONLY place an elegant host is told time got tight.
+                      // Suppressing the clause would delete the information, not the duplication.
+                      // So the slips stand alone as a plain statement, and the reassurance is left
+                      // to the one line that earned it.
+                      const slipText = slips.slice(0, 2).join(', and ');
+                      // ONE SENTENCE, ONE AUTHOR: when the hero is the overdue decision AND
+                      // that decision has an assurance, the slip and the reassurance are two
+                      // halves of one thought — "time got tight, BUT nothing's stalled". Said
+                      // as two stacked sentences by two files, they read as a contradiction.
+                      // Joined here (the shell owns the slip, playbooks owns the assurance,
+                      // and this is the only place that sees both), then flagged so the hero
+                      // card below does not repeat the second half.
+                      const joinAssurance = heroSpeaksThisOverdue && heroDecisionRow && heroDecisionRow.assurance;
+                      if (joinAssurance) heroAssuranceSpoken = true;
+                      statusNode = heroSpeaksThisOverdue ? (
+                        <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
+                          {slipText.charAt(0).toUpperCase() + slipText.slice(1)}
+                          {joinAssurance
+                            ? ', but ' + String(heroDecisionRow.assurance).charAt(0).toLowerCase() + String(heroDecisionRow.assurance).slice(1)
+                            : '.'}
+                        </p>
+                      ) : (
                         // AMBER RESTRAINT (host 2026-07-18): a "mostly on course · worth a look"
                         // NUDGE is not a warning — painting the whole reassuring line amber
                         // over-signals and cries wolf. In elegant, keep it the calm serif guide
                         // voice (the WORDS carry the caution); amber stays reserved for the
                         // genuinely can't-wait (critical) verdict above. Non-elegant unchanged.
                         <p className={'verdict' + (elegantMode ? '' : ' slipping')}>
-                          Mostly on course — {slips.slice(0, 2).join(', and ')}. Worth a look today.
+                          Mostly on course — {slipText}. Worth a look today.
                         </p>
                       );
                     } else if (listIsCalm) {
@@ -5491,31 +5709,9 @@ export default function HostShellV2() {
                 const dateLong = event.date ? new Date(event.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) : '';
                 if (askMode) {
                   return (<>
-                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{
-                      /* The loud line is the FIRST real ITEM, not the generic bundle verb —
-                         the per-item intelligence surfacing where the host looks first.
-                         Conflicts → the clash; decisions (bundle OR a lone card) → the actual
-                         call to make, framed as a question (parenthetical meta + quotes stripped). */
-                      (() => {
-                        // Day-of (T2 ruling): the loud line is the DAY, not the item — the
-                        // item speaks from its own card below (is-dayof unhides the h3).
-                        if (elegantMode && days === 0) return 'It\u2019s today.';
-                        const q0 = queue[0];
-                        // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its
-                        // own ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
-                        if (elegantMode && /^blocker:/.test(String(q0.id || '')) && q0.ask) return q0.ask;
-                        if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
-                        // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
-                        if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
-                        if (elegantMode) {
-                          const decRow = /^decision:/.test(String(q0.id || ''))
-                            ? (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id)
-                            : (/decision/i.test(String(q0.title || '')) ? callsOrdered[0] : null);
-                          if (decRow) return String(decRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
-                        }
-                        return heroAskFor(q0, event);
-                      })()
-                    }</h2>
+                    {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
+                        dedup and the browser tab speak exactly what is rendered here. */}
+                    <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{heroAskText}</h2>
                     <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>
                     {!statusOnTrack && statusNode}
                   </>);
@@ -5774,13 +5970,15 @@ export default function HostShellV2() {
                 // AMBER RESTRAINT (host 2026-07-18): in the elegant loop the due chip — including
                 // "past its window" (overdue) — is amber, the single urgency accent (.of default).
                 // ── AND NEVER BACKWARD ON A SOLEMN DAY (2026-07-31) ─────────────────
-                // The slips clause above is one surface; this chip is a SECOND, and it
-                // printed "past its window" over a repast hero even when the first was
-                // guarded. Found by driving the built shell, not by reading source —
-                // each is a separate expression with its own condition.
-                // Only the OVERSHOOT is dropped: due today / tomorrow / in N days still
-                // print, because those point forward and are true. The eyebrow already
-                // carries the runway ("4 DAYS · REPAST"), so nothing true is lost.
+                // The slips clause below was already guarded, but this chip is a
+                // SECOND backward-looking surface and it still printed "past its
+                // window" over a repast hero — caught by driving the built shell, not
+                // by reading source. repast.js authors T-5d leads because a burial
+                // lands on Saturday, so a family four days out is "late" the moment
+                // the app opens. Only the OVERSHOOT is dropped: due today / tomorrow /
+                // in N days still print, because those point forward and are true. The
+                // eyebrow already carries the runway ("4 DAYS · REPAST"), so nothing
+                // true is lost — only the blame.
                 const dueChip = (a) => {
                   if (!a || a.dueInDays == null || !Number.isFinite(Number(a.dueInDays))) return null;
                   if (solemn && a.dueInDays < 0) return null;
@@ -5873,8 +6071,14 @@ export default function HostShellV2() {
                               {res.options.map((o, oi) => (
                                 <button key={oi} className="confrow" onClick={() => applyFix(o)}><span className="t">{o.label}</span>{o.route ? <span className="g" aria-hidden="true">→</span> : null}</button>
                               ))}
+                              {/* setConflictTime opens an inline picker IN PLACE — it routes
+                                  nowhere, so the closed row takes the disclosure triangle, not
+                                  a chevron (the glyph rule ruling A enforced; this was its
+                                  fourth survivor, found while driving the wedding conflict
+                                  hero 2026-07-30). Comment sits ABOVE the guard: inside a
+                                  ternary branch it would be a second child and break the build. */}
                               {custom && (conflictTime == null ? (
-                                <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">›</span></button>
+                                <button className="confrow" onClick={() => setConflictTime(custom.suggest ? to24(custom.suggest) : '')}><span className="t">{custom.label || 'Set a different time'}</span><span className="g" aria-hidden="true">▸</span></button>
                               ) : (
                                 <div className="confrow confrow-open">
                                   <span className="t" style={{ flex: '1 0 100%' }}>{custom.label || 'Set a different time'}</span>
@@ -5905,7 +6109,10 @@ export default function HostShellV2() {
                                actions for attention (host 2026-07-18). */
                             <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
                               onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
-                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ›')}</span>
+                              {/* In-place toggle → disclosure triangle, never a routing glyph
+                                  (the rule ruling A enforced on decopt-disc; this control was
+                                  missed and shipped a false › the same day). */}
+                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + count + '  ▸')}</span>
                             </button>
                           )}
                           {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
@@ -5927,7 +6134,24 @@ export default function HostShellV2() {
                       <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
                         <div className="card-head">
-                          {dec.because && <p className="because">{dec.because}</p>}
+                          {/* THE HERO SAYS WHAT IS TRUE FORWARD (board re-sit 2026-07-30).
+                              `because` is the FILING line ("Was due 54 days ago.") and stays
+                              in the Calls-to-make sheet, where a status column is legitimate.
+                              On the hero it collided with the eyebrow's countdown — "6 DAYS"
+                              over "54 days ago", the same unit measured from two different
+                              zeros — and it was inaccurate besides: nothing stalled, the plan
+                              has been running on the authored default all along. `assurance`
+                              (playbooks/index.js, next to `because`) says that, says OUR pick
+                              rather than implying the host chose, and carries no number so the
+                              eyebrow stays the one clock. It is NULL for a genuine either/or
+                              with no default — then this slot prints nothing rather than a
+                              generic reassurance. */}
+                          {/* ONE SENTENCE, ONE AUTHOR (2026-07-30): when the status line above
+                              already folded this assurance into its own sentence ("Time got
+                              tight, but nothing's stalled — …"), saying it again here is the
+                              contradiction the board actually saw. heroAssuranceSpoken is set
+                              by that line earlier in this same render pass. */}
+                          {dec.assurance && !heroAssuranceSpoken && <p className="because">{dec.assurance}</p>}
                           {renderDecisionActions(dec) || (
                             <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
                               <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
@@ -5940,13 +6164,39 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => { const f = heroReceipt && heroReceipt.fn; setHeroReceipt(null); try { if (f) f(); } catch { /* undo failed */ } }}>Undo</button>
                             </div>
                           )}
-                          {(a.count != null ? a.count : kids.length) > 1 && (
-                            <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
-                              onClick={() => setBundleOpen(m => ({ ...m, [key]: !open }))} aria-expanded={open}>
-                              <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{open ? 'Fold them away' : ('See all ' + (a.count != null ? a.count : kids.length) + '  ›')}</span>
-                            </button>
-                          )}
-                          {open && kids.map((c, ci) => renderBundleKid(c, String((c && c.id) || key + ':' + ci)))}
+                          {/* ── REPOINTED: AN EXPANDER BECAME THE DOOR (board re-sit 2026-07-30) ──
+                              Ruling A ordered this deleted. Both re-sits refused, for different
+                              reasons, and the event pros overrode on lived grounds: deleting it
+                              strips the only first-screen path to the OTHER overdue calls two
+                              days out (the .efold handle renders no rows, and "Then, in order"
+                              maps queue.slice(1) — this bundle IS queue[0], so its kids are
+                              structurally excluded from it).
+                              So it changes KIND instead of disappearing. It no longer expands the
+                              bundle in place; it opens the Calls-to-make sheet — the same target
+                              the app ALREADY uses for a decisions bundle everywhere else
+                              (openThen), and a far better surface: every call with its options,
+                              its visible grounded reasoning, and a one-tap accept.
+                              Three consequences, all deliberate:
+                               • it ROUTES, so it has earned its › (the in-place controls around
+                                 it now wear ▸ — one rule, applied everywhere).
+                               • it wears the sheet's OWN NAME. "See all N" and "Calls to make"
+                                 were one place with two vocabularies.
+                               • the count EXCLUDES the on-screen one. "See all 3" offered 3 where
+                                 only 2 were new — the count that made this indistinguishable from
+                                 the "Other ways" control beside it.
+                              Result: two controls, two shapes, two vocabularies — `Other ways ▸`
+                              (other answers to THIS question, in place) vs `Calls to make (N) ›`
+                              (every OTHER question, routes). */}
+                          {(() => {
+                            const others = (a.count != null ? a.count : kids.length) - 1;
+                            if (others < 1) return null;
+                            return (
+                              <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '18px 0 2px' }}
+                                onClick={() => setSheet({ kind: 'decisions' })}>
+                                <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>{'Calls to make (' + others + ')  ›'}</span>
+                              </button>
+                            );
+                          })()}
                         </div>
                       </article>
                     );
@@ -6034,12 +6284,37 @@ export default function HostShellV2() {
                 // they must stop wearing the honest "in the app" tag — the tag exists to warn
                 // a host that a CTA does not land HERE, and these now do. ('Communication'
                 // stays off the list: V2 has no messages surface, so its tag is still true.)
-                const lands = wired || (a.route && ['Vendors', 'Budget', 'Guests', 'Planning', 'Planning Tasks', 'Timeline', 'Decisions', 'Event Day Schedule', 'Risks'].includes(a.route.tab));
+                // 'Travel' added 2026-07-28: resolveRoute has handled tab:'Travel'
+                // (→ the lodging sheet) since the resolver was written, but this
+                // allowlist never learned it. So a hero routed to Travel rendered
+                // the honest-but-wrong "in the full app" chip and refused to move —
+                // the tag exists to warn about surfaces hostv2 genuinely lacks, and
+                // this one it has. Found by driving the host's own report.
+                // ── DERIVED, NOT MIRRORED (host "fix dead Assign it", 2026-07-29) ──
+                // This was a hand-kept TAB LIST, and it drifted twice. Travel was the
+                // first (fixed 2026-07-28). The second: "Assign it" routes to
+                // tab:'Event Details' + focusField:'space' — which resolveRoute has
+                // ALWAYS handled (the /^space/ branch, which deliberately wins before
+                // the Event-Details catch) — but the list only knew tab names, so the
+                // hero wore "in the full app" and refused to move. A host was looking
+                // at a CTA that named a real act and did nothing.
+                // A list that mirrors the resolver can always fall behind it, which is
+                // the precise bug-factory lib/routeResolver was written to kill. So ASK
+                // THE RESOLVER: if it can land the route, the CTA lands. 'Communication'
+                // still resolves to null, so its honest tag survives — the tag now means
+                // exactly what it says (hostv2 has no surface for this) instead of
+                // meaning "nobody added this tab to a list yet".
+                const lands = wired || (() => {
+                  try { return !!resolveRoute(a.route); } catch (_e) { return false; }
+                })();
                 // REBALANCE (dedup): the hero panel — the ask above owns the VERB;
                 // the panel names the NOUN (record) only when it adds information.
                 const isHero = askMode && i === 0;
-                const heroAsk0 = isHero ? heroAskFor(a, event) : null;
-                const rec = isHero ? heroRecord(a, heroAsk0) : null;
+                // Dedup against THE ASK THAT IS ACTUALLY ON SCREEN (heroAskText), never a
+                // second, independently-derived guess at it. Calling heroAskFor() here is the
+                // exact bug ruling C fixed: it has no decision branch, so it disagreed with the
+                // rendered h2 and the title double-spoke the ask on some events, not others.
+                const rec = isHero ? heroRecord(a, heroAskText) : null;
                 // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
                 // 2026-07-18): once decisions thin out they stop bundling and a lone one
                 // becomes its own hero card — which used to route ("Take me to it"). Resolve
@@ -6075,11 +6350,14 @@ export default function HostShellV2() {
                 // repeats it. Suppress the subhead here so the hero reads like Figma 344:61's
                 // single-explanation card (host 2026-07-19). Hero only — below-fold unaffected.
                 const heroBudgetAsk = isHero && (String(a.domain || '').toLowerCase() === 'budget' || /^set your budget/i.test(String(a.title || '').trim()));
-                // Food/menu decision (editor path): the decopt rows below carry per-option notes +
-                // our-pick, so the generic "N of M already handled" consequence AND the redundant
-                // "What you're serving · N open" record both just compete. Suppress them so the ask
-                // reads like Figma 369:60 (title → rows). Hero only (2026-07-20).
-                const heroDecisionAsk = isHero && (String(a.domain || '').toLowerCase() === 'food' || /serving|decide the menu|the menu\b|the spread/i.test(String(a.title || '')));
+                // NOTE (ruling C, 2026-07-30): the old `heroDecisionAsk` title-prose regex
+                // (/serving|decide the menu|the menu\b|the spread/) is GONE. It existed to
+                // suppress a redundant record + consequence on a food/menu decision, and it was
+                // the same failure mode already documented for COI above — classification rides
+                // the ACTION, not the title. The record is now deduped structurally against
+                // heroAskText, and `decHeroActions` is the honest signal for "the option rows
+                // below carry the meaning" (Figma 369:60, title → rows). Where there are no
+                // rows, the consequence IS the only explanation and correctly renders.
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
                     style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
@@ -6090,13 +6368,13 @@ export default function HostShellV2() {
                         {!lands && !coiHero && !coiTaskDone && !decHeroActions && <span className="tag plan">in the full app</span>}
                         {!coiHero && !coiTaskDone && dueChip(a)}
                       </div>
-                      {isHero ? ((rec && !coiHero && !coiTaskDone && !heroDecisionAsk) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
+                      {isHero ? ((rec && !coiHero && !coiTaskDone) ? <h3>{rec}</h3> : null) : <h3>{String(a.title || '').replace(/\s*—\s*they'?re past their easy window$/i, '')}</h3>}
                       {coiTaskDone
                         ? <p className="because">Every vendor's proof is on file — you're clear here.</p>
                         /* When the hero renders a decision (decopt), suppress the action's own
                            consequence line — otherwise vendor-status copy ("Currently quoted…")
                            bleeds onto a menu decision. The decision's options carry the meaning. */
-                        : (!decHeroActions && !heroBudgetAsk && !heroDecisionAsk && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
+                        : (!decHeroActions && !heroBudgetAsk && (coiHero ? coiHero.consequence : a.consequence) && <p className="because">{coiHero ? coiHero.consequence : ((askMode && i === 0) ? (String(a.consequence).match(/^[^.!?]{10,}?[.!?]/) || [String(a.consequence)])[0] : a.consequence)}</p>)}
                       {/* WHY THIS ONE IS FIRST (host, 2026-07-14). The list is ordered and has
                           been for a while, and it never once said WHY — the host was handed a
                           ranking and asked to trust it. Every line below is true of the item's
@@ -6177,7 +6455,9 @@ export default function HostShellV2() {
                           // non-navigating CTA) — which also makes them visible to the
                           // Layer-2 loop-advance probe (2026-07-22).
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
-                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key)}>{
+                          // canSettle: this button lives INSIDE the card loop, so
+                          // `editor === key` at the slot above genuinely mounts an editor.
+                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
@@ -6255,11 +6535,31 @@ export default function HostShellV2() {
                   </article>
                 );
               })}
-              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && (
+              {/* ── PROVEN INERT IN THE ELEGANT ASK LOOP, SO IT NO LONGER RENDERS THERE ──
+                  Board re-sit 2026-07-30 flagged this as *suspected* dead; driven on
+                  Reunion T-6d and confirmed. Clicking it left the DOM byte-identical:
+                  same card count, same six "Then, in order" rows, same sections — and
+                  the button still offering "+ 2 more".
+                  Why: it sets queueOpen, but the elegant branch returns null for every
+                  non-critical position past the hero REGARDLESS of queueOpen, so no card
+                  can appear. And its own guard is backwards for this mode — `!(nearDayPlan
+                  && !queueOpen)` renders it exactly when the "Then, in order" block is
+                  ALREADY on screen, and hides it at T-2d where un-standing-down that block
+                  is the one thing it could usefully do. So in elegant ask mode it is either
+                  absent or inert; there is no frame where it pays for itself.
+                  Nothing is lost: `thenItems` is queue.slice(1), so the block below already
+                  lists everything this claimed to reveal.
+                  It still renders elsewhere (non-elegant shows real cards), where the label
+                  now matches the disclosure scale of its siblings instead of out-typing
+                  them — it was --muted/550 at body size against their --faint/450/12.5px. */}
+              {hiddenCount > 0 && !(nearDayPlan && !queueOpen) && !(elegantMode && askMode) && (
                 <button className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', borderTop: 'none', cursor: 'pointer', padding: '9px 0' }}
                   onClick={() => setQueueOpen(true)}>
-                  <span className="t" style={{ color: 'var(--muted)', fontWeight: 550 }}>+ {hiddenCount} more — show the rest</span>
-                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  <span className="t" style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>+ {hiddenCount} more — show the rest</span>
+                  {/* setQueueOpen is an in-place expand, so this is a disclosure, not a
+                      route (board re-sit 2026-07-30 — the third survivor of the glyph
+                      rule ruling A enforced on decopt-disc only). */}
+                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>▸</span>
                 </button>
               )}
                 </>);
@@ -6284,7 +6584,18 @@ export default function HostShellV2() {
                   <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')} aria-hidden="true">
                     <div className="eprog-rule"><span style={{ width: pct + '%' }} /></div>
                     <div className="eprog-labels">
-                      <span>{done} of {total} settled</span>
+                      {/* "settled" was this shell's own word, and it collided (frame 4
+                          audit, driven 2026-07-29). The decision flow settles things —
+                          a settled pick literally prints "— settled." — but this
+                          hairline counts lib/phaseProgress's PLAN PARTS (date,
+                          location, headcount, food, budget, the moment), a different
+                          ledger. Live on Game Night: settle a decision and the one
+                          progress line on screen says "3 of 7 settled" before AND
+                          after. Nothing was broken; the word was borrowed. Now it
+                          uses the engine's own noun ("…parts of your plan handled",
+                          phaseProgress ~220), which also frees "settled" to mean
+                          decisions only. */}
+                      <span>{done} of {total} plan parts handled</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
                       <span>{done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait')}</span>
@@ -6308,7 +6619,22 @@ export default function HostShellV2() {
               {/* THEN — the wired hero's path (queue positions 2+), folded below the first
                   screen (host "push THEN rows below fold"). Same rows, same routes — just not
                   competing with the one thing. */}
-              {elegantMode && askMode && (() => {
+              {/* ── INSIDE THE DAY-BEFORE WINDOW THIS FOLD STANDS DOWN (frame 2
+                  audit, 2026-07-29). The board already declares the rule at
+                  nearDayPlan: "inside the day-before window the board simplifies,
+                  not busies" — but this block never honoured it. Driven live on
+                  Game Night at T-2d, the board said everything twice: six expanded
+                  "Then, in order" rows (guest count, rain backup, the store run),
+                  then the day-before plan restating all three in its own words,
+                  then a collapsed "the rest of your list · 6 more" pointing back at
+                  the list already shown in full above it. Same `queue.slice(1)` set
+                  both times (see the tail's filter).
+                  Frame 2 (5:20) resolves it: at T-2d the day-before plan IS the
+                  board and the generic path collapses to one line. So when the
+                  digest is leading and the host hasn't expanded the queue, this
+                  expanded copy stands down — the collapsed tail below still opens
+                  the same rows on tap, and expanding brings this back. */}
+              {elegantMode && askMode && !(nearDayPlan && !queueOpen) && (() => {
                 // Include a SECOND bundle here (host 2026-07-18): "Resolve 9 decisions" behind
                 // the conflict hero drops below the fold as a path-row, so the first screen isn't
                 // two stacked bundles. A bundle routes to its own sheet on tap.
@@ -6319,6 +6645,9 @@ export default function HostShellV2() {
                     if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
                     if (/conflict/i.test(String(a.title || ''))) { setSheet({ kind: 'vendors' }); return; }
                   }
+                  // A Then row renders no editor slot, so it does NOT pass canSettle —
+                  // onCta routes it to the surface that owns the field. (Four rows here
+                  // were silently dead before settling became opt-in; see onCta.)
                   onCta(a, key);
                 };
                 // DO zone (host redesign 2026-07-18): the "then" per-row eyebrow was
@@ -6333,10 +6662,20 @@ export default function HostShellV2() {
                       {thenItems.map((a, i) => {
                         const cnt = a.kind === 'bundle' ? (a.count != null ? a.count : (Array.isArray(a.items) ? a.items.length : null)) : null;
                         const t = String(a.title || '').replace(/\s+—\s.*$/, '').replace(/\.+$/, '');
+                        // ── THE GLYPH WAS UNCONDITIONAL (dead-link audit 2026-07-28) ──
+                        // Every row rendered a → whether or not anything was behind it.
+                        // Now the arrow is earned: a bundle opens its sheet, any other row
+                        // opens the surface its route resolves to. Below the fold there is
+                        // no settle-in-place case to exclude — openThen routes every Then
+                        // row (see the note there) — so a row that cannot resolve wears no
+                        // arrow and says so on tap rather than promising silently.
+                        const goes = a.kind === 'bundle' || (() => {
+                          try { return !!resolveRoute(a.route); } catch (_e) { return false; }
+                        })();
                         return (
                           <button key={String(a.id || i)} className="ef-row" onClick={() => openThen(a, String(a.id || (i + 1)))}>
                             <span className="t">{t}</span>
-                            <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}<span className="ef-g" aria-hidden="true">→</span></span>
+                            <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
                           </button>
                         );
                       })}
@@ -6454,14 +6793,69 @@ export default function HostShellV2() {
               )}
               {/* RUNWAY-ADAPTIVE QUIET (T-2d, host evidence 2026-07-17): inside the
                   day-before window the plan above IS the path — the ranked rows fold
-                  to one line (never hidden: one tap opens the full list as cards). */}
-              {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (
-                <button className="path-row" onClick={() => setQueueOpen(true)}>
-                  <span className="then">then</span>
-                  <span className="t">the rest of your list · {queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length} more</span>
-                  <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
-                </button>
-              )}
+                  to one line (never hidden: one tap opens the full list as cards).
+                  OPEN, and known (2026-07-29): the rows unfold ABOVE this line, so
+                  from the foot of the digest the tap reads as "the row vanished and
+                  nothing happened" — the host has to scroll back up to find what they
+                  opened. That mattered little while the expanded fold was also on the
+                  page; this line is now the only way to those rows. Three attempts to
+                  bring them into view (scrollIntoView, then scrollTo on .app, single
+                  and double rAF) all no-opped when driven — the click lands and the
+                  tail collapses, but .app is evidently not the scroll container. Left
+                  un-scrolled rather than shipping code that does nothing; the fix
+                  needs the real scroller identified first. */}
+              {nearDayPlan && !queueOpen && queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical').length > 0 && (() => {
+                const hidden = queue.slice(1).filter(a => a && a.kind !== 'bundle' && a.level !== 'critical');
+                // ── Q1a, REVIEW BOARD 2026-07-29: HIDE BY TIME, NOT JUST BY RANK ──
+                // The board rejected all seven alternate board models but grafted
+                // one thing from HORIZON: of every string on those frames, the only
+                // one a host can VERIFY is the time-grounded tail ("Nothing here is
+                // due before the weekend — it'll surface when it's time"). A bare
+                // count says how much is hidden; it never says whether hiding it is
+                // safe. Grandmother's note: "'Six more' makes me feel behind."
+                // Ruling was "where a date computation backs it" — so this speaks
+                // only from real dueInDays values, which queue items carry
+                // OPTIONALLY (see the dueChip note ~5879: absent = say nothing).
+                // And it never soothes over an overdue row: if something in the
+                // hidden set is already past its window, the tail says THAT.
+                const due = hidden.map(a => Number(a && a.dueInDays)).filter(Number.isFinite);
+                const overdue = due.filter(d => d < 0).length;
+                const soonest = due.length ? Math.min(...due) : null;
+                // Kept SHORT because this is a single clipped row — driven
+                // 2026-07-29, "1 already past" ellipsised to "1 already p…".
+                const when = overdue > 0
+                  ? `${overdue} past due`      // never "nothing due" over an overdue row
+                  : soonest == null
+                    ? null                     // no dates → the count alone, as before
+                    : soonest === 0 ? '1 due today'
+                      : soonest === 1 ? 'none till tomorrow'
+                        : `none due for ${soonest}d`;
+                return (
+                  <button className="path-row" onClick={(e) => {
+                    // ROOT CAUSE of the three no-ops (found 2026-07-29): capture the
+                    // scroller BEFORE the state flip. This row's own guard is
+                    // `!queueOpen`, so setQueueOpen UNMOUNTS it — and a detached
+                    // node's closest('.app') returns null. Every earlier attempt read
+                    // the scroller inside the deferred callback, by which time the row
+                    // was gone, so the query found nothing and the page never moved.
+                    // .app is the real scroller (styles.css ~114: overflow-y:auto).
+                    const app = e.currentTarget.closest('.app');
+                    setQueueOpen(true);
+                    // TWO frames: a single rAF still runs before React commits, so
+                    // .then-fold does not exist yet.
+                    requestAnimationFrame(() => requestAnimationFrame(() => {
+                      const list = app && app.querySelector('.then-fold');
+                      if (!app || !list) return;
+                      const top = app.scrollTop + (list.getBoundingClientRect().top - app.getBoundingClientRect().top) - 8;
+                      app.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+                    }));
+                  }}>
+                    <span className="then">then</span>
+                    <span className="t">the rest of your list · {hidden.length} more{when ? ` · ${when}` : ''}</span>
+                    <span className="chev" aria-hidden="true" style={{ position: 'static', color: 'var(--faint)' }}>›</span>
+                  </button>
+                );
+              })()}
 
               {worries.length > 0 && (() => {
                 const rows = worries.flatMap(w => (w && w.kind === 'bundle' && Array.isArray(w.items)) ? w.items : [w]);
@@ -6708,7 +7102,15 @@ export default function HostShellV2() {
                     {/* over-budget warn moved from inline style to the .over class so
                         the numeral <b> rule can defer to it (b stays warn, not gray). */}
                     <div className={'t-sub' + (money.planned && money.committed > money.planned && !isPast ? ' over' : '')}>
-                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
+                      {/* "spoken for" carries its own est. marker now (app-wide
+                          estimate pass, 2026-07-29). It is the biggest number on
+                          the tile and a MIXTURE — real spend plus every not-yet-
+                          bought term, all guesses — so a fully-estimated plan
+                          read exactly as firm as one paid in full. Same marker
+                          vocabulary as `spent` right beside it: "(est.)" when the
+                          whole figure is a guess, "· $N est." when only part is.
+                          Never a second vocabulary (UX_08). */}
+                      {money.planned ? <><b>{fmt(money.committed)}</b> spoken for{money.committedEstimated > 0 ? (money.committedEstimated >= money.committed ? ' (est.)' : ` · ${fmt(money.committedEstimated)} est.`) : ''} · <b>{fmt(money.spent)}</b> spent{money.spentEstimated > 0 ? (money.spentEstimated >= money.spent ? ' (est.)' : ` · ${fmt(money.spentEstimated)} est.`) : ''}{money.committed > money.planned ? <span className="over-seg">{' · ' + fmt(money.committed - money.planned) + ' over'}</span> : ''}</> : 'no number yet — tap to set one'}
                     </div>
                   </div>
                 </button>
@@ -6742,7 +7144,11 @@ export default function HostShellV2() {
                     // the phase cue disagreed — e.g. a vendor COI action named here
                     // routes to that vendor's documents, but the phase cue pointed at
                     // a generic area sheet (host-reported wrong-location bug).
-                    if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0)); return; }
+                    // canSettle: the key here is the HERO CARD's own key, and that card
+                    // renders on this stage — so `editor === key` mounts its slot. (Unlike
+                    // the Then rows / path-rows / bundle kids, which pass keys no slot
+                    // listens for; see onCta. Behaviour here is unchanged.)
+                    if (queue.length && !listIsCalm) { onCta(queue[0], String(queue[0].id || 0), { canSettle: true }); return; }
                     // Calm / no urgent action: the sub names the next dated cue — honor it.
                     if (phaseCues && phaseCues.nextCue && phaseCues.nextCue.route && routeSheet(phaseCues.nextCue.route)) return;
                     document.getElementById('actionsAnchor')?.scrollIntoView({ behavior: 'smooth' });
@@ -6919,9 +7325,27 @@ export default function HostShellV2() {
                     // (vendors.length / documents.length), not one blanket gate
                     // tied to vendor count alone. readiness.vendor/.document
                     // already arrive pre-nulled where inapplicable.
-                    const anyOverdue = (decisionBoard.open || []).some(r => r && r.status === 'overdue');
+                    // ONE THEORY OF THE DELAY ON BOTH SURFACES (board re-sit follow-up,
+                    // 2026-07-30). The hero says "Nothing's stalled — the plan's been
+                    // running on our pick"; one tap later this pillar stamped red AT_RISK
+                    // on the same decision. Two surfaces, two theories, and the board was
+                    // explicit that they must not diverge.
+                    //
+                    // The hero's claim is the accurate one, and it is not a mood — it is a
+                    // FACT about the data: choicePickFor() falls back to the playbook's
+                    // authored default, so a decision WITH a default has been driving the
+                    // plan all along. `assurance` is non-null exactly when that default
+                    // exists (playbooks/index.js ~:2614). So the pillar now reads the SAME
+                    // field the hero speaks from, instead of judging overdue-ness twice:
+                    //   default running  -> ATTENTION. Waiting, not blocking. UX_02 amber
+                    //                       is "incomplete / waiting"; red is "blocking".
+                    //   no default       -> AT_RISK. A genuine either/or with nothing
+                    //                       running IS blocked, and there the hero prints
+                    //                       no assurance, so both surfaces agree again.
+                    const blockedOverdue = (decisionBoard.open || []).some(r =>
+                      r && r.status === 'overdue' && !r.assurance);
                     const callsPill = (decisionBoard.open || []).length
-                      ? { status: anyOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
+                      ? { status: blockedOverdue ? 'AT_RISK' : 'ATTENTION', note: decisionBoard.open.length + ' open' }
                       : null;
                     // HOST WORDS, never percentages: the engine's checklist note can
                     // read "73%" — remap it to the honest count from the SAME
@@ -7248,7 +7672,7 @@ export default function HostShellV2() {
                             ? dueSoon[0].label.toLowerCase() + ' in ' + dueSoon[0].daysLeft + (dueSoon[0].daysLeft === 1 ? ' day' : ' days')
                             : (travel.lodging.notBookedCount != null && travel.lodging.roster.length > 0
                               ? (travel.lodging.notBookedCount > 0
-                                  ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' haven’t booked yet'
+                                  ? travel.lodging.notBookedCount + ' of ' + travel.lodging.roster.length + ' have no room yet'
                                   : 'everyone has a room lined up')
                               : (travel.lodging.hotelName || 'no place picked yet')),
                           // WAVE-6 (one number per row): raises here are aggregates —
@@ -7463,7 +7887,7 @@ export default function HostShellV2() {
                 // ~34667: live-bordered card, tinted background, glow) so the
                 // ONE moment actually happening now reads unmistakably
                 // different from "up next"/"up first", which stay neutral.
-                <div className="now-card" style={nowActive
+                <div className="now-card" id="ros-now" style={nowActive
                   ? { marginTop: 6, borderColor: 'var(--ok)', background: 'var(--ok-tint)', boxShadow: '0 0 28px -8px rgba(79,174,122,.4)' }
                   : { marginTop: 6 }}>
                   <div className="now-label" style={nowActive ? { color: 'var(--ok)' } : undefined}>{nowActive ? 'Happening now' : (dayStarted ? 'Next up' : 'Up first') + (nowCue.time ? ' · ' + fmt12h(nowCue.time) : '')}</div>
@@ -7615,6 +8039,28 @@ export default function HostShellV2() {
               )}
               {ros.length > 0 && dayView === 'list' ? (
                 <>
+                  {/* ── SAY WHAT THE CONTRACT IS HOLDING BACK (re-run of the day model,
+                      2026-07-29) ────────────────────────────────────────────────────
+                      effectiveRos refuses to overwrite a run of show the host has
+                      touched. That is right, and it was SILENT: driven live on a
+                      host-made BBQ, the Full agenda was four rows with nothing during
+                      the event, while the playbook held beats it had quietly stood
+                      down from. Correct behaviour that reads as a broken day sheet.
+                      One line, only when there is genuinely something withheld. It
+                      does not offer to overwrite her sheet — the contract is the
+                      point — it just stops the silence. */}
+                  {(() => {
+                    let w = null;
+                    try { w = withheldPlaybookBeats(event); } catch (_e) { w = null; }
+                    if (!w || !w.owned || !w.count) return null;
+                    return (
+                      <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>
+                        This is your run of show, so it stays as you wrote it.
+                        {' '}The {String(event.type || 'event').toLowerCase()} playbook has {w.count} more {w.count === 1 ? 'moment' : 'moments'} it didn’t add
+                        {w.program > 0 ? `, ${w.program} of them during the event itself` : ''}.
+                      </p>
+                    );
+                  })()}
                   {/* Day-Preview agenda-list (task #54 candidate): the whole day as
                       one scannable list — a planner can see gaps, ownership, and
                       collisions at a glance instead of stepping one moment at a time.
@@ -7935,26 +8381,49 @@ export default function HostShellV2() {
                     const phases = (() => { try { return dayPhases(ros, anchorMin, event.rosDone || {}); } catch { return []; } })();
                     if (phases.length < 2) return null;   // one phase is not a spine
                     return (
-                      <div style={{ marginTop: 'var(--sp-5)' }}>
+                      <div style={{ marginTop: 34 }}>
                         <div style={{ display: 'flex', gap: 6 }}>
                           {phases.map(ph => (
                             <div key={ph.id} style={{ flex: 1, height: 3, borderRadius: 2, overflow: 'hidden',
                               background: 'var(--carbon-line)' }}>
                               <div style={{ height: '100%', width: `${ph.total ? Math.round((ph.done / ph.total) * 100) : 0}%`,
-                                background: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--steel-soft)',
+                                /* 'now' is IN PROGRESS, not a warning. --warn means "needs
+                                   attention / approaching / incomplete" (UX_02), so painting
+                                   the phase the host is currently standing in amber tells them
+                                   something is wrong at the exact moment they are simply doing
+                                   the thing. --progress exists for precisely this tier — its
+                                   own comment in theme.js says it carries ONLY in-progress,
+                                   added so steel could stop doing triple duty. It had never
+                                   been used from the shell. Same trap the competitive read
+                                   flagged in Blink, which tints its current row amber. */
+                                background: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--progress)' : 'var(--steel-soft)',
                                 transition: 'width 260ms var(--ease-out)' }} />
                             </div>
                           ))}
                         </div>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                          {phases.map(ph => (
-                            <span key={ph.id} style={{ flex: 1, fontSize: 'var(--t-caption-min)', fontWeight: ph.state === 'now' ? 750 : 600,
-                              letterSpacing: '.04em',
-                              color: ph.state === 'done' ? 'var(--ok)' : ph.state === 'now' ? 'var(--warn)' : 'var(--carbon-muted)' }}>
-                              {ph.label}
-                            </span>
-                          ))}
-                        </div>
+                        {/* ── NOT A LEGEND (host 2026-07-28: "doesn't look like the latest
+                            innovative designs we did in Figma") ─────────────────────────
+                            Figma 39:60 "15 · ELEGANT — T-0 day-of" labels the spine ONCE:
+                            the phase just finished on the left, in green, and the work
+                            remaining on the right. I had put a caption under every segment,
+                            which turns a glanceable bar into a chart legend and spends the
+                            void the frame deliberately keeps. One line, two facts. */}
+                        {(() => {
+                          const lastDone = [...phases].reverse().find(p => p.state === 'done');
+                          const now = phases.find(p => p.state === 'now');
+                          const left = lastDone ? `${lastDone.label} done` : (now ? now.label : '');
+                          const beats = phases.reduce((n, p) => n + Math.max(0, (p.total || 0) - (p.done || 0)), 0);
+                          return (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+                              gap: 12, marginTop: 8 }}>
+                              <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650,
+                                color: lastDone ? 'var(--ok)' : 'var(--warn)' }}>{left}</span>
+                              <span style={{ fontSize: 'var(--t-caption)', color: 'var(--carbon-muted)' }}>
+                                {beats} {beats === 1 ? 'beat' : 'beats'} to go
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
@@ -7981,10 +8450,14 @@ export default function HostShellV2() {
                 {isPast ? 'How it landed.' : 'How it’ll land.'}
               </h1>
               <p className="mega-sub">
+                {/* Headroom and overage are BOTH derived from `committed`, so when
+                    committed is part guess so are they (app-wide estimate pass,
+                    2026-07-29). Stating "$X of headroom" as a flat fact hid that
+                    the figure moves the moment a real price replaces a guess. */}
                 {money.planned
                   ? (money.committed <= money.planned
-                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far.`
-                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan.`)
+                    ? `${fmt(money.planned - money.committed)} of headroom against the ${fmt(money.planned)} plan so far${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`
+                    : `Running ${fmt(money.committed - money.planned)} over the ${fmt(money.planned)} plan${money.committedEstimated > 0 ? ' — some of what’s spoken for is still an estimate' : ''}.`)
                   : 'No budget yet — nothing to settle up when it’s over.'}
               </p>
 
@@ -8009,7 +8482,12 @@ export default function HostShellV2() {
                     <div className="line total">
                       <span>{isPast ? 'Spent, all in' : 'Spoken for so far'}</span>
                       <span className={'amt' + (money.planned && money.committed <= money.planned ? ' under' : '')}>
-                        {fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
+                        {/* The rows above each wear "~" (est.); this total is the
+                            sum of them, so it wears the marker too (app-wide
+                            estimate pass 2026-07-29) — a total is not firmer than
+                            its parts. Suppressed once the event is past, where
+                            "Spent, all in" is real money, not a projection. */}
+                        {!isPast && money.committedEstimated > 0 ? '~' : ''}{fmt(money.committed)}{money.planned ? ' · ' + (money.committed <= money.planned ? fmt(money.planned - money.committed) + ' under' : fmt(money.committed - money.planned) + ' over') : ''}
                       </span>
                     </div>
                   </div></div>
@@ -8233,9 +8711,22 @@ export default function HostShellV2() {
                   // Empty-open but decisions parked: calm "nothing needs you yet" state,
                   // never "All settled" (which would read as done and hide the horizon).
                   const star = openN ? `${openN} to settle` : (deferredN ? 'Nothing needs you yet' : 'All settled');
+                  // ONE THEORY OF THE DELAY (board re-sit follow-up, 2026-07-30). The hero
+                  // says "Nothing's stalled — the plan's been running on our pick." This
+                  // line used to answer "start there", so one tap turned reassurance into
+                  // urgency about the SAME decision. Both are reading the same fact now:
+                  // `assurance` is non-null exactly when an authored default has been
+                  // driving the plan, so when every overdue call has one, nothing is
+                  // blocked and the sheet says what the hero said. When any of them has
+                  // no default, that one genuinely IS waiting on the host — "start there"
+                  // is then true, and the hero prints no assurance either.
+                  const overdueBlocked = (decisionBoard.open || [])
+                    .filter(r => r && r.status === 'overdue' && !r.assurance).length;
                   const sub = openN
                     ? (overdueN
-                      ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
+                      ? (overdueBlocked
+                        ? `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — start there. Each one settles in a tap below; your answer reshapes the plan.`
+                        : `${overdueN} ${overdueN === 1 ? 'is' : 'are'} past ${overdueN === 1 ? 'its' : 'their'} easy window — the plan’s been running on our pick meanwhile. Settle ${overdueN === 1 ? 'it' : 'them'} in a tap below; your answer reshapes the plan.`)
                       : 'Each one settles in a tap below — your answer reshapes the plan.')
                     : (deferredN
                       ? `${deferredN} ${deferredN === 1 ? 'decision comes' : 'decisions come'} up closer to the date — you’ll see ${deferredN === 1 ? 'it' : 'them'} here when the time’s right.${lockedN ? ` ${lockedN} already settled.` : ''}`
@@ -8274,12 +8765,32 @@ export default function HostShellV2() {
                     : band === 'easy' ? 'This is a light one — a few quick calls and you’re set.' : null;
                   return line ? <p className="v-meta" style={{ margin: '0 0 var(--sp-2)' }}>{line}</p> : null;
                 })()}
-                {/* heartAtRisk nudge (task 5): protect the moment before it defaults. */}
-                {decisionBoard.heartAtRisk && (decisionBoard.open || []).length ? (
-                  <p className="grounding" style={{ margin: '0 0 var(--sp-2)', background: 'color-mix(in srgb, var(--steel-soft) 10%, transparent)', borderRadius: '8px', paddingLeft: 11, fontWeight: 600 }}>
-                    One of these is the moment your guests will remember. Give it your own call — don’t let it settle on a default.
-                  </p>
-                ) : null}
+                {/* heartAtRisk nudge (task 5): protect the moment before it defaults.
+                    ── REWRITTEN AT THE BOARD RE-SIT (2026-07-30). Two defects, both real: ──
+                    1. IT SCOLDED THE HOST FOR THE APP'S OWN CHOICE. "don't let it settle on a
+                       default" sat directly under the summary line saying "the plan's been
+                       running on our pick meanwhile". Three statements, three theories, 200px:
+                       the plan is fine / don't let it default / it already has. The one place
+                       the copy turned on the user, and it turned on her for something she never
+                       did. The nudge's real point survives — some calls deserve the host's own
+                       voice rather than a sensible default — said without blame, and agreeing
+                       with the assurance instead of contradicting it.
+                    2. "ONE OF THESE" COULD POINT OUTSIDE ITS SET. decisionBoard.heartAtRisk is
+                       `active.concat(deferred).some(...)` (playbooks/index.js:2724), so it fires
+                       on a DEFERRED decision that is not in the list below — and the aside's own
+                       tint is byte-identical to the heart row's, so the pointer and the
+                       pointed-at look the same and the host hunts. Now scoped to the VISIBLE
+                       rows and it NAMES the row, so "these" can never dangle. */}
+                {/* DELETED, not rewritten (event pros, board re-sit 2026-07-30). I first
+                    rewrote it to stop the blame and name its referent; the board ruled the
+                    whole line out and they are right. This is RULING B one surface over:
+                    "keep the instance, cut the generalisation." The instance already exists,
+                    is attached to the correct row, and is better written — rankReasonForV2
+                    renders "This is the moment your guests will remember — worth deciding
+                    yourself." on the heart row itself (~:8827). An anonymous banner above the
+                    list could only ever re-say it worse, and it collapsed the sheet's voice
+                    from two postures to four: reassure (:8709) -> alarm (here) -> the row's
+                    own status -> the row's own reason. Gone. */}
                 {(() => {
                   // Host override (task 3): float pinned decisions to the top; the board's
                   // own priority order holds for the rest. Order + fold both come from
@@ -8298,6 +8809,36 @@ export default function HostShellV2() {
                   // and the board re-derives, moving the row to Settled.
                   const opts = (() => { try { return playbookDecisionOptions(event, r.id); } catch { return null; } })();
                   const focused = sheet.focus && sheet.focus === r.id;
+                  // ── ONE THEORY OF THE DELAY, AT BOTH ALTITUDES (board re-sit 2026-07-30) ──
+                  // The Grandmother's caveat: the two surfaces must not use different theories.
+                  // The sheet's SUMMARY was taught the hero's forward voice ("the plan's been
+                  // running on our pick meanwhile", :8709 — gated on the same `!r.assurance`
+                  // predicate). The ROWS were not: eight lines later each one stamped a --danger
+                  // "overdue" and printed `because` = "Was due 54 days ago." So the split was not
+                  // resolved, it was moved INSIDE one screen — both halves co-visible ~120px
+                  // apart, which is worse than the seam it replaced (design panel, verbatim).
+                  //
+                  // `assurance` is non-null exactly when an authored default has been driving the
+                  // plan, and it already rides the row (playbooks/index.js). So the row now reads
+                  // the SAME field the summary reads:
+                  //   assurance present -> nothing stalled. The window passed, which is a FACT and
+                  //     stays visible for filing, but it is not an alarm and not the host's fault.
+                  //     Warn tint + the app's own neutral vocabulary, and the line says what is
+                  //     true forward.
+                  //   assurance absent  -> nothing has been holding this. It genuinely IS waiting
+                  //     on the host, "overdue" is honest, and the hero prints no assurance either,
+                  //     so both surfaces still agree.
+                  // One predicate, both altitudes, no third vocabulary.
+                  const runningOnOurPick = !!r.assurance;
+                  // SOLEMN (2026-07-31): the same suppression the hero chip takes, one
+                  // altitude down. A row a tap away from the hero must not say what the
+                  // hero refuses to say — "past its window" and "overdue" are the same
+                  // shame grammar on a grief clock. The row keeps `lateLine` below, so
+                  // the state is still explained; only the accusing badge goes.
+                  const lateChip = (r.status !== 'overdue' || solemn) ? null : (runningOnOurPick
+                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>past its window</span>
+                    : <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>);
+                  const lateLine = (r.status === 'overdue' && r.assurance) ? r.assurance : r.because;
                   // Wave-2a per-row consumers: the rank's work, the difm propose/ask
                   // note (only when modelled), the heart accent, and the pin control.
                   const rankWhy = rankReasonForV2(r);
@@ -8328,7 +8869,16 @@ export default function HostShellV2() {
                   const canAccept = !!(approach && approach.mode === 'propose' && approach.proposed && opts && opts.options.length);
                   const acceptBtn = canAccept ? (
                     <button type="button" className="mini" onClick={(e) => { e.stopPropagation(); settleDecision(r, approach.proposed); }}
-                      style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--steel)', fontWeight: 700 }}>Sounds good</button>
+                      /* THE ACCEPT MUST NOT LOOK WEAKER THAN THE BOOKMARK (board re-sit
+                         2026-07-30, both panels; measured live rather than judged off a JPG).
+                         `.mini` paints --steel-soft rgb(138,163,176) on a --steel tint; this
+                         button overrode color to --steel rgb(78,104,119) — DARKER than the
+                         secondary beside it and nearly the hue of its own background. The one
+                         tap that settles the decision read as disabled next to "Pin to top",
+                         inverting UX_05's primary/secondary and undercutting propose-don't-ask
+                         at the exact moment it pays off. --ink is the brightest text token, so
+                         the accept now clearly outweighs the bookmark. */
+                      style={{ flex: '0 0 auto', alignSelf: 'flex-start', color: 'var(--ink)', fontWeight: 700 }}>Sounds good</button>
                   ) : null;
                   if (opts && opts.options.length) {
                     return (
@@ -8336,12 +8886,12 @@ export default function HostShellV2() {
                         ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
-                            {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
                             {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
-                          {r.because && <span className="v-meta">{r.because}</span>}
+                          {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
                         <div style={{ flex: '1 0 100%', display: 'flex', flexWrap: 'wrap', gap: 7 }}>
                           {opts.options.map(opt => (
@@ -8368,10 +8918,10 @@ export default function HostShellV2() {
                           ref={el => { if (el && focused) el.scrollIntoView({ block: 'center' }); }}>
                           <span className="f-main">
                             <span className="f-name">{r.label}
-                              {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                              {lateChip}
                               {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                             </span>
-                            {r.because && <span className="v-meta">{r.because}</span>}
+                            {lateLine && <span className="v-meta">{lateLine}</span>}
                             {renderEditor(r)}
                           </span>
                         </div>
@@ -8391,12 +8941,12 @@ export default function HostShellV2() {
                         onClick={() => { if (r.route && routeSheet(r.route)) return; toast(r.because || r.label); }}>
                         <span className="f-main">
                           <span className="f-name">{r.label}
-                            {r.status === 'overdue' && <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>}
+                            {lateChip}
                             {/* Wave-2b short-runway escalation: a subtle time-sensitive cue in
                                 the existing tag vocabulary (warn), only when not already overdue. */}
                             {r.timeCritical && r.status !== 'overdue' && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>time-sensitive</span>}
                           </span>
-                          {r.because && <span className="v-meta">{r.because}</span>}
+                          {lateLine && <span className="v-meta">{lateLine}</span>}
                         </span>
                       </button>
                       {(meta || true) && (
@@ -8916,7 +9466,52 @@ export default function HostShellV2() {
                   {(() => {
                     let li = null; try { li = lodgingIntel(event); } catch { li = null; }
                     if (!li) return null;
-                    const write = (opts, msg) => patchEvent({ lodgingOptions: opts }, msg);
+                    // ── THE OUTLET (review board 2026-07-28) ───────────────────────
+                    // The board proved by grep that `lodgingOptions` was read by NOTHING —
+                    // not travelPlan, not hostSpending, not surfaceRegistry. Marking a pick
+                    // toasted "the plan reads it now", which was false: her $6,400 house
+                    // touched no budget, no task, no readiness row. The only bridge was
+                    // `stayFromPick`, wired to a manual "Fill it from my shortlist" button
+                    // that wrote FORM state and only rendered when the stay was empty —
+                    // four steps, three undiscoverable, behind a toast claiming it had
+                    // already happened.
+                    //
+                    // Now the pick writes `event.lodging` in the SAME patch, so travelPlan
+                    // reads it and hostSpending counts its all-in cost. The toast stops
+                    // being a lie by becoming true, which is the better repair.
+                    const write = (opts, msg) => {
+                      const patch = { lodgingOptions: opts };
+                      // stayFromPick reads the CHOSEN option, so it must run against the
+                      // options we are about to write, not the stale ones on `event`.
+                      let stay = null;
+                      try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
+                      const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+                      if (stay && stay.hotelName) {
+                        // Never clobber what the host typed herself: a hand-entered stay
+                        // outranks a derived one. Fill only what is empty.
+                        patch.lodging = {
+                          ...cur,
+                          hotelName: cur.hotelName || stay.hotelName,
+                          rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
+                          url: cur.url || stay.url,
+                        };
+                      } else {
+                        // ── A STAY MUST NOT OUTLIVE THE PICK IT CAME FROM ──────────
+                        // Audit finding 2026-07-28: un-picking cleared `chosen` but left
+                        // `event.lodging` standing, so the travel plan kept naming a house
+                        // the host had just walked away from — a stale claim with nothing
+                        // behind it, which is worse than an empty field.
+                        //
+                        // Only what WE derived is withdrawn: the stay is cleared solely
+                        // when its name still matches an option on the shortlist. A stay
+                        // she typed herself is hers and survives untouched.
+                        const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
+                        const wasDerived = prevLabel && (li.options || []).some(
+                          (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
+                        if (wasDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
+                      }
+                      patchEvent(patch, msg);
+                    };
                     const rf = rentalForm;
                     const canAdd = rf.url.trim() || rf.label.trim();
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
@@ -8955,8 +9550,17 @@ export default function HostShellV2() {
                           const toggle = (id) => patchEvent(
                             { lodgingMustHaves: on.includes(id) ? on.filter((x) => x !== id) : [...on, id] }, null);
                           const chosen = LODGING_MUST_HAVES.filter((m) => on.includes(m.id));
+                          const rest = LODGING_MUST_HAVES.filter((m) => !on.includes(m.id));
+                          // The engine's reason for each item, read whether or not the host
+                          // has since edited the list — a requirement doesn't stop having a
+                          // reason because the host added one of their own next to it.
+                          const whyFor = {};
+                          try { for (const s of suggestedMustHaves(event)) whyFor[s.id] = s.why; } catch (_e) { /* no reasons, rows still render */ }
+                          // Naming two of seven ("Table for everyone, Washer & dryer +5") is
+                          // an arbitrary pair that reads like the list only half-loaded. The
+                          // count is the honest one-line answer.
                           const summary = chosen.length
-                            ? chosen.slice(0, 2).map((m) => m.label).join(', ') + (chosen.length > 2 ? ` +${chosen.length - 2}` : '')
+                            ? `${chosen.length} thing${chosen.length === 1 ? '' : 's'}`
                             : 'anything';
                           return (
                             <details className="lodge-req" style={{ margin: '2px 0 10px' }}>
@@ -8974,24 +9578,53 @@ export default function HostShellV2() {
                                   {summary} ▾
                                 </span>
                               </summary>
-                              {suggestions.length > 0 && (
-                                <div style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                                  {suggestions.map((sg) => (
-                                    <p key={sg.id} className="grounding" style={{ margin: 0 }}>
-                                      <strong style={{ color: 'var(--ink-soft)' }}>{sg.label}</strong> — {sg.why}
-                                    </p>
-                                  ))}
-                                  <p className="grounding" style={{ margin: 0, color: 'var(--muted)' }}>
-                                    Yours to change — tap any of them off. Sources under You &amp; settings → Grounding.
-                                  </p>
-                                </div>
-                              )}
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingTop: 8 }}>
-                                {LODGING_MUST_HAVES.map((m) => (
-                                  <button key={m.id} className="chip" aria-pressed={on.includes(m.id)}
-                                    onClick={() => toggle(m.id)}>{m.label}</button>
+                              {/* ONE LIST, TWO DENSITIES (host 2026-07-28: "clean up the pills.
+                                  come up with something else here").
+                                  What was here said everything TWICE: seven reasons as prose
+                                  paragraphs, then all fourteen requirements again as identical
+                                  chips — and because the on-state was only a background tint on
+                                  a pill in a fourteen-pill blob, you could not see at a glance
+                                  which seven the engine had actually chosen.
+                                  Now a requirement appears exactly ONCE, and where it appears
+                                  IS its state. Chosen ones are rows carrying their own reason
+                                  (tap to drop). The rest sit below as small "+" chips (tap to
+                                  add). The reason lives with the requirement instead of in a
+                                  separate wall of prose you have to cross-reference. */}
+                              <ul className="req-list">
+                                {chosen.map((m) => (
+                                  <li key={m.id}>
+                                    <button type="button" className="req-row" aria-pressed="true"
+                                      onClick={() => toggle(m.id)}
+                                      aria-label={`${m.label} — asked for. Tap to drop it.`}>
+                                      <span className="req-tick" aria-hidden="true">✓</span>
+                                      <span className="req-body">
+                                        <span className="req-label">{m.label}</span>
+                                        {whyFor[m.id] && <span className="req-why">{whyFor[m.id]}</span>}
+                                      </span>
+                                    </button>
+                                  </li>
                                 ))}
-                              </div>
+                              </ul>
+                              {chosen.length === 0 && (
+                                <p className="grounding" style={{ margin: '8px 0 0' }}>
+                                  Nothing required — every place will pass. Add what matters below.
+                                </p>
+                              )}
+                              {rest.length > 0 && (
+                                <>
+                                  <div className="of" style={{ margin: '12px 0 6px' }}>Add if you want it</div>
+                                  <div className="chips">
+                                    {rest.map((m) => (
+                                      <button key={m.id} type="button" className="chip" aria-pressed="false"
+                                        onClick={() => toggle(m.id)}
+                                        aria-label={`Add ${m.label} to what the house needs`}>+ {m.label}</button>
+                                    ))}
+                                  </div>
+                                </>
+                              )}
+                              <p className="grounding" style={{ margin: '10px 0 0', color: 'var(--muted)' }}>
+                                Yours to change. Sources under You &amp; settings → Grounding.
+                              </p>
                             </details>
                           );
                         })()}
@@ -9012,8 +9645,384 @@ export default function HostShellV2() {
                                 ))}
                               </div>
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring back the two or three you like and I’ll compare them.
+                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
+                              {/* Vrbo opens at the front door (its terms forbid deep linking
+                                  where Airbnb's don't), so hand the host her own criteria to
+                                  type in rather than silently giving her less. */}
+                              {(() => {
+                                const v = links.find((l) => l.id === 'vrbo' && l.criteria);
+                                return v ? (
+                                  <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
+                                    Vrbo opens at its own search — put in {v.criteria}.
+                                  </p>
+                                ) : null;
+                              })()}
+                            </div>
+                          );
+                        })()}
+                        {/* ── "WHERE DO MY HOUSES LIVE?" (B1, board 2026-07-28) ────────────
+                            Asked independently by the canary AND by Rafanelli from logistics
+                            — "where do my houses live and will they be there tomorrow." The
+                            board scored this surface 6/10 against a 10+ bar with this named
+                            as the gap that could not close. Grandmother: "That is your
+                            competition. Not Airbnb's save-to-wishlist. The envelope. The
+                            envelope has never once failed to open."
+                            Neither of them will type it in to find out, so it is one line,
+                            always visible once she has houses. It reads the REAL sync state
+                            (lib/api/syncState) rather than reassuring her — "on this phone"
+                            when that is the truth, "in your account" when it is. A promise
+                            about tomorrow that we cannot check is exactly what the board
+                            said not to write. */}
+                        {li.options.length > 0 && (() => {
+                          let st = null;
+                          try { st = getEventSyncStatus(event); } catch (_e) { st = null; }
+                          const line = st === SYNC_STATUS.SYNCED
+                            ? 'Saved in your account — they’ll be here tomorrow, on any device you sign in on.'
+                            : st === SYNC_STATUS.PENDING || st === SYNC_STATUS.SYNC_FAILED
+                              ? 'Saved on this phone, and still trying to reach your account — they’ll be here tomorrow either way.'
+                              : 'Saved on this phone — they’ll be here tomorrow. Sign in and they follow you to any device.';
+                          return (
+                            <p className="grounding" style={{ margin: '0 0 var(--sp-3)', color: 'var(--muted)' }}>{line}</p>
+                          );
+                        })()}
+                        {/* ── THE RETURN TRIP (host 2026-07-28: "why does the host have to
+                            pull a url?") ───────────────────────────────────────────────
+                            The app can't search those platforms — that's the never-build
+                            line, and it would fail from a datacenter anyway (Vrbo refuses
+                            even our single-page read in production). What it CAN do is
+                            stop charging the host one paste per listing. A copied results
+                            page carries every card's name, bedrooms, beds and price, so
+                            one paste builds the whole shortlist with no server call at all.
+                            The bookmarklet below removes even that paste. */}
+                        {(() => {
+                          const staged = lodgeStaged;
+                          const budget = Number(event.totalBudget || 0) || 0;
+                          // ONE PATH ONTO THE SHORTLIST — used by the confirm button AND by
+                          // the single-link auto-add below, so the two can never diverge in
+                          // what they write or what they let the host undo.
+                          const commitLodging = (cands, msg) => {
+                            const add = (cands || []).map((c) => ({
+                              id: 'lodge-' + Math.random().toString(36).slice(2, 8),
+                              url: c.url,
+                              label: c.name || '',
+                              beds: c.beds != null ? c.beds : undefined,
+                              totalPrice: c.priceShown != null ? c.priceShown : undefined,
+                              photoUrl: c.photo || undefined,
+                              notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                                c.place ? `in ${c.place}` : null].filter(Boolean).join(' · ') || undefined,
+                              status: 'option',
+                            }));
+                            if (!add.length) return 0;
+                            // B3 · step 3 — it reached the shortlist. `auto` marks the
+                            // single-link path (B2) so the two can be compared.
+                            try { trackEvent(ANALYTICS.LODGING_OPTION_ADDED, { count: add.length, auto: add.length === 1 && !!(lodgeStaged && lodgeStaged.auto) }); } catch (_e) { /* as above */ }
+                            const before = event.lodgingOptions || [];
+                            patchEvent({ lodgingOptions: [...before, ...add] }, null);
+                            // REVERSIBILITY IS CHEAPER THAN CONFIRMATION — the row is on the
+                            // shortlist to be looked at, and Undo is one tap on the receipt.
+                            toast(msg || `Added ${add.length} to your shortlist.`,
+                              { label: 'Undo', fn: () => patchEvent({ lodgingOptions: before }, null) }, 'ok');
+                            return add.length;
+                          };
+                          const readPage = (text, method) => {
+                            let out = { candidates: [], source: null, linksOnly: false };
+                            // B3 · step 1 — something arrived to interpret. Counted BEFORE we
+                            // try to read it, so "she pasted and we got nothing" is visible
+                            // as a gap between this and PARSED rather than silence.
+                            try { trackEvent(ANALYTICS.LODGING_PASTE_ATTEMPTED, { method: method || 'paste' }); } catch (_e) { /* a counter never blocks intake */ }
+                            try { out = extractListingCandidates(text) || out; } catch (_e) { /* nothing readable */ }
+                            if (!out.candidates.length) {
+                              // ADVICE SHE CAN ACT ON, ON THE DEVICE SHE IS HOLDING.
+                              // This line used to say "copy the whole results page (⌘A then
+                              // ⌘C)". The review board called it the single documented
+                              // abandonment point in the feature, and they were right: it
+                              // fires at the moment she has ALREADY failed once, and it tells
+                              // a woman holding a phone to press a key that is not on it.
+                              // Her account: "That is when I put it down. Not angry. I just
+                              // decided it wasn't for me." NN/g: seniors blame themselves for
+                              // failure 90% of the time and quit 30 seconds sooner.
+                              const touch = typeof window !== 'undefined' && window.matchMedia
+                                && window.matchMedia('(pointer:coarse)').matches;
+                              toast(touch
+                                ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+                                : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+                              return;
+                            }
+                            // B3 · step 2 — we got something out of it.
+                            try { trackEvent(ANALYTICS.LODGING_PASTE_PARSED, { method: method || 'paste', found: out.candidates.length, source: out.source || null, links_only: !!out.linksOnly }); } catch (_e) { /* as above */ }
+                            const known = new Set((li.options || []).map((o) => String(o.url || '').split('?')[0]));
+                            const fresh = out.candidates.filter((c) => !known.has(c.url));
+                            let ranked = { ranked: fresh, clearing: fresh, considered: fresh.length };
+                            try { ranked = rankCandidates(fresh, event, { budget }); } catch (_e) { /* unranked is still useful */ }
+                            // ── SHE COPIED ONE LINK. SHE MEANT ONE HOUSE. (B2, board
+                            // 2026-07-28) ──────────────────────────────────────────────
+                            // Ive: "The app made her tap twice more to agree with herself."
+                            // Rafanelli dissented — the confirm is the audit trail — and the
+                            // competitive teardown settled it: every product ships a confirm
+                            // because EXTRACTION IS UNRELIABLE. So the confirm survives as
+                            // REVIEW OF WHAT WE FILLED, not permission to do what she asked.
+                            // For a single listing that means: still stage (the unfurl fill
+                            // is what makes the row worth having — name, beds, photo), then
+                            // put it on the shortlist ourselves once the fill settles. She
+                            // reviews the finished row, with Undo, instead of approving a
+                            // half-filled one. A results page with many candidates still
+                            // asks — that IS a real choice about which houses to keep.
+                            const single = ranked.ranked.length === 1 && !out.linksOnly;
+                            setLodgeStaged({ ...ranked, source: out.source, linksOnly: out.linksOnly,
+                              dupes: out.candidates.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)),
+                              filling: 0, auto: single });
+                            fillFromListings(ranked.ranked).then((enriched) => {
+                              if (!single) return;
+                              const one = (enriched && enriched[0]) || ranked.ranked[0];
+                              setLodgeStaged(null);
+                              commitLodging([one], one.name ? `${one.name} — added to your shortlist.` : 'Added to your shortlist.');
+                            });
+                          };
+                          // ── THE PHONE PATH (host 2026-07-28: "Grandmother is supposed to do
+                          //    that on her phone?") ────────────────────────────────────────
+                          // On a phone there is no bookmarks bar and no ⌘A — what a host
+                          // actually does is tap Share → Copy Link in the Airbnb app and paste
+                          // ONE link. That paste carries a URL and nothing else, so the rows
+                          // would sit there nameless and pictureless while the desktop paste
+                          // got everything. The server read (now deployed) closes that gap: it
+                          // fills the name, the beds, the baths and the sharing photo from the
+                          // listing's own published metadata.
+                          //
+                          // Capped and sequential on purpose — this fires off a paste, not a
+                          // button, so it must never look like a burst of traffic. Anything
+                          // that fails just stays as it was; a row is never lost to a failed
+                          // read, and Vrbo (which declines) simply keeps the link it had.
+                          // Returns the ENRICHED rows as well as writing them into the staged
+                          // state — the single-link auto-add commits from the return value,
+                          // so it can never race the setState and save a half-filled row.
+                          async function fillFromListings(list) {
+                            const acc = (list || []).slice();
+                            if (!isUnfurlConfigured()) return acc;
+                            const need = acc.filter((c) => !c.name || !c.photo).slice(0, 8);
+                            if (!need.length) return acc;
+                            for (const c of need) {
+                              let r = null;
+                              try { r = await unfurlListing(c.url); } catch (_e) { r = null; }
+                              if (!r || !r.ok) continue;
+                              const f = r.facts || {};
+                              const enrich = (x) => ({
+                                ...x,
+                                name: x.name || String(r.title || '').slice(0, 70),
+                                photo: x.photo || (isAllowedMedia(r.image) ? r.image : ''),
+                                beds: x.beds != null ? x.beds : (f.beds != null ? f.beds : null),
+                                bedrooms: x.bedrooms != null ? x.bedrooms : (f.bedrooms != null ? f.bedrooms : null),
+                                baths: x.baths != null ? x.baths : (f.baths != null ? f.baths : null),
+                              });
+                              const i = acc.findIndex((x) => x.url === c.url);
+                              if (i >= 0) acc[i] = enrich(acc[i]);
+                              setLodgeStaged((st) => (st ? {
+                                ...st,
+                                ranked: st.ranked.map((x) => (x.url !== c.url ? x : enrich(x))),
+                              } : st));
+                            }
+                            return acc;
+                          }
+                          return (
+                            <div style={{ margin: '0 0 14px' }}>
+                              {!staged && (
+                                <>
+                                  {/* A LABEL THAT DOESN'T VANISH. It was placeholder-only, so
+                                      the instruction disappeared the instant she touched the
+                                      field — the oldest mobile-form failure, in our highest-
+                                      value input. */}
+                                  <div className="of" style={{ marginBottom: 6 }}>Paste a link from Airbnb or Vrbo</div>
+                                  {/* ── GIVE HER A BUTTON (review board, Grandmother's one ask) ──
+                                      "Don't make me hold my finger down on a box and wait for a
+                                      bubble — that's the part I get wrong, and when I get it
+                                      wrong I feel like the problem. Give me a button. I have
+                                      never once failed to press a button."
+                                      The barrier was never the tap COUNT, it was the long-press
+                                      gesture with a timing requirement — she reported getting it
+                                      wrong about one try in three. readText() must be called
+                                      synchronously inside the tap handler to keep the user
+                                      gesture, and iOS then shows its OWN one-tap Allow Paste —
+                                      an Apple affordance she already trusts.
+                                      Degrades to the plain field, never to a dead control. */}
+                                  {typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.readText && (
+                                    <button className="cta" style={{ marginBottom: 8 }}
+                                      onClick={() => {
+                                        navigator.clipboard.readText().then((t) => {
+                                          if (t && t.trim()) readPage(t, 'clipboard');
+                                          else toast('Nothing copied yet — tap Share, then Copy Link, then press this again.');
+                                        }).catch(() => toast('I couldn’t read the clipboard — paste into the box below instead.'));
+                                      }}>
+                                      Paste the link you copied
+                                    </button>
+                                  )}
+                                  <textarea className="field" rows={3} style={{ width: '100%', resize: 'vertical', minHeight: 88 }}
+                                    placeholder="…or paste it here"
+                                    aria-label="Paste a search results page"
+                                    onPaste={(e) => {
+                                      // THE HTML FLAVOUR IS THE ONE THAT CARRIES MEANING.
+                                      // Measured on a live Airbnb search: the /rooms/ anchors
+                                      // have EMPTY text and a text/plain copy is mostly chrome
+                                      // ("Prices include all fees" ×11), so plain text cannot
+                                      // pair a name to a link. Read HTML when the clipboard
+                                      // offers it; fall back to plain text, which still yields
+                                      // the links (and says so).
+                                      const cd = e.clipboardData;
+                                      if (!cd) return;
+                                      const html = cd.getData('text/html');
+                                      const text = html || cd.getData('text/plain');
+                                      if (!text) return;
+                                      e.preventDefault();
+                                      readPage(text, 'paste');
+                                    }}
+                                    /* DON'T STAGE MID-KEYSTROKE (found by driving it 2026-07-28).
+                                       Firing on every change past 40 characters read a HALF-TYPED
+                                       url — the box swapped itself for the results list while the
+                                       rest of the link was still arriving, and the row showed
+                                       rooms/132529631954 instead of the real id. A paste arrives
+                                       complete and is handled above; typing waits for a pause. */
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      clearTimeout(lodgePasteTimer.current);
+                                      if (v.trim().length < 20) return;
+                                      lodgePasteTimer.current = setTimeout(() => readPage(v, 'typed'), 800);
+                                    }} />
+                                  <p className="grounding" style={{ margin: '4px 0 0' }}>
+                                    One link or twenty — on your phone, tap Share → Copy Link and paste it here. I’ll look up the name, the beds and a photo.
+                                  </p>
+                                </>
+                              )}
+                              {staged && (
+                                <div>
+                                  <div className="of" style={{ marginBottom: 6 }}>
+                                    {staged.considered} listing{staged.considered === 1 ? '' : 's'}
+                                    {staged.source ? ' from ' + staged.source : ''}
+                                    {staged.clearing.length < staged.considered
+                                      ? ` · ${staged.clearing.length} clear what the house needs` : ''}
+                                    {staged.dupes > 0 ? ` · ${staged.dupes} already on your list` : ''}
+                                    {/* NEVER PRINT A COUNT YOU THEN CONTRADICT. The header said
+                                        18 and the list rendered 12 — a silent truncation reads
+                                        as "we showed you everything" when it didn't. */}
+                                    {staged.ranked.length > STAGED_SHOWN
+                                      ? ` · showing the first ${STAGED_SHOWN}` : ''}
+                                  </div>
+                                  {staged.linksOnly && (
+                                    <p className="grounding" style={{ margin: '0 0 8px' }}>
+                                      {/* The old copy told a phone host to press ⌘A — advice for a
+                                          keyboard they don't have, on the one path that exists FOR
+                                          the phone. It also predates the listing read, which now
+                                          fills these in. */}
+                                      A link on its own carries no name or price, so I’m looking each one up now.
+                                    </p>
+                                  )}
+                                  <ul className="req-list">
+                                    {staged.ranked.slice(0, STAGED_SHOWN).map((c) => (
+                                      <li key={c.url}>
+                                        <button type="button" className="req-row" aria-pressed={staged.pick.has(c.url)}
+                                          onClick={() => setLodgeStaged((s) => {
+                                            const pick = new Set(s.pick);
+                                            if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
+                                            return { ...s, pick };
+                                          })}>
+                                          <span className="req-tick" aria-hidden="true"
+                                            style={staged.pick.has(c.url) ? undefined : { color: 'var(--faint)' }}>
+                                            {staged.pick.has(c.url) ? '✓' : '○'}
+                                          </span>
+                                          {/* The card's OWN thumbnail — the picture the host was
+                                              already judging the house by on the results page. It
+                                              drops out silently if it fails to load, so a dead
+                                              image never makes a real listing look broken. */}
+                                          {c.photo && (
+                                            <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer"
+                                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                              style={{ width: 66, height: 44, objectFit: 'cover', flex: '0 0 auto', display: 'block' }} />
+                                          )}
+                                          <span className="req-body">
+                                            <span className="req-label">{c.name || c.url.replace(/^https:\/\/(www\.)?/, '')}</span>
+                                            <span className="req-why">
+                                              {[c.beds ? c.beds + ' beds' : null,
+                                                c.bedrooms ? c.bedrooms + ' bedrooms' : null,
+                                                c.priceShown ? '$' + c.priceShown.toLocaleString() + ' shown' : null,
+                                              ].filter(Boolean).join(' · ') || 'no details on the card'}
+                                              {/* The card cannot answer amenities, so an unmatched
+                                                  requirement is never reported as failed. */}
+                                              {c.why ? ' — ' + c.why : (c.matched && c.matched.length ? ' — ' + c.matched.join(', ') : '')}
+                                            </span>
+                                          </span>
+                                        </button>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                  <div className="actions-row" style={{ marginTop: 10, gap: 'var(--sp-2)' }}>
+                                    <button className="cta" disabled={staged.pick.size === 0}
+                                      style={staged.pick.size === 0 ? { opacity: .45 } : undefined}
+                                      onClick={() => {
+                                        // THE CANONICAL OPTION SHAPE, not the form's field names.
+                                        // First cut wrote `total` and a string `sleeps` — the form's
+                                        // INPUT names — and the engine promptly said "I couldn't weigh
+                                        // what any of them cost" next to three visible prices. It was
+                                        // right: the reader is `totalPrice`, and nothing reads `total`.
+                                        // Numbers stay numbers; a bed count is NOT a sleeps count, so
+                                        // `beds` is written as `beds` and sleeps is left for the host.
+                                        const chosen = staged.ranked.filter((c) => staged.pick.has(c.url));
+                                        setLodgeStaged(null);
+                                        commitLodging(chosen);
+                                      }}>
+                                      Add {staged.pick.size} to the shortlist
+                                    </button>
+                                    <button className="mini" onClick={() => setLodgeStaged(null)}>Never mind</button>
+                                  </div>
+                                </div>
+                              )}
+                              {/* #6 — ZERO PASTE. The host's own browser does the reading, on a
+                                  page they're already looking at, on a click they make. It is
+                                  a collector, not a parser (see lib/lodgingBookmarklet): it
+                                  contacts nothing, stores nothing, and the payload rides in a
+                                  URL fragment, which browsers never send to a server. */}
+                              {/* SAY WHO THIS IS FOR (host 2026-07-28: "Grandmother is supposed
+                                  to do that on her phone?"). Fair hit. A bookmarks bar does not
+                                  exist on a phone, and installing a bookmarklet on mobile means
+                                  saving a bookmark, editing it, and pasting a javascript: URL
+                                  into it — which no host is doing. This is a COMPUTER
+                                  convenience, and the label now says so instead of quietly
+                                  wasting a phone host's time. The phone path is the paste box
+                                  above, which fills itself from the listing. */}
+                              <details style={{ marginTop: 10 }}>
+                                <summary className="grounding" style={{ cursor: 'pointer', listStyle: 'none' }}>
+                                  On a computer? Skip the pasting altogether ▾
+                                </summary>
+                                <p className="grounding" style={{ margin: '6px 0' }}>
+                                  This one needs a bookmarks bar, so it’s a laptop trick — on a phone, paste the link above instead and I’ll fill in the rest.
+                                  Drag this to your bookmarks bar, then click it on any Airbnb or Vrbo page and every listing comes straight here.
+                                </p>
+                                {/* REACT WILL NOT LET A javascript: URL THROUGH href (found by
+                                    driving it, 2026-07-28 — the host asked to test #6 in Chrome).
+                                    Passing it as a JSX prop silently rewrites the whole thing to
+                                    `javascript:throw new Error('React has blocked a javascript:
+                                    URL as a security precaution.')`, so a bookmark dragged to the
+                                    bar would have THROWN instead of collecting. The unit test
+                                    never saw it: it exercised buildBookmarklet in isolation and
+                                    stopped short of the render.
+                                    A callback ref writes the attribute directly. React does not
+                                    manage attributes it was never handed as a prop, so it stays
+                                    put across re-renders — and no hook is needed, which matters
+                                    because this sits inside a render-time IIFE. */}
+                                {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
+                                <a className="mini" draggable="true"
+                                  ref={(el) => {
+                                    if (!el) return;
+                                    try {
+                                      el.setAttribute('href', buildBookmarklet(
+                                        typeof window !== 'undefined' ? window.location.href.split('#')[0] : ''));
+                                    } catch (_e) { /* degrade to an inert drag target, never to a throw */ }
+                                  }}
+                                  onClick={(e) => { e.preventDefault(); toast('Drag this up to your bookmarks bar — clicking it here does nothing.'); }}
+                                  style={{ textDecoration: 'none', display: 'inline-block' }}>
+                                  Send to Event Boss
+                                </a>
+                                <p className="grounding" style={{ margin: '6px 0 0', color: 'var(--muted)' }}>
+                                  It reads only the page you click it on, and only listings. Nothing is sent to us — you can read the whole thing in the bookmark itself.
+                                </p>
+                              </details>
                             </div>
                           );
                         })()}
@@ -9231,7 +10240,7 @@ export default function HostShellV2() {
                                   label: prev.label.trim() || r.title || prev.label,
                                   sleeps: prev.sleeps.trim() || (f.guests ? String(f.guests) : prev.sleeps),
                                   beds: f.beds ? String(f.beds) : prev.beds,
-                                  notes: prev.notes || [r.description, f.baths ? `${f.baths} baths` : null, f.bedrooms ? `${f.bedrooms} bedrooms` : null].filter(Boolean).join(' · '),
+                                  notes: prev.notes || [f.baths ? `${f.baths} baths` : null, f.bedrooms ? `${f.bedrooms} bedrooms` : null].filter(Boolean).join(' · '),
                                   photo: prev.photo || r.image || '',
                                 }));
                                 const got = [r.title ? 'the name' : null, f.beds ? `${f.beds} beds` : null, f.baths ? `${f.baths} baths` : null, r.image ? 'a photo' : null].filter(Boolean);
@@ -9254,7 +10263,7 @@ export default function HostShellV2() {
                                   write((Array.isArray(event.lodgingOptions) ? event.lodgingOptions : []).map((o) => (
                                     o.url === rf.url.trim() && !String(o.label || '').trim().replace(/^Option \d+$/, '')
                                       ? { ...o, label: r.title || o.label, beds: f.beds || o.beds,
-                                          notes: o.notes || [r.description, f.baths ? `${f.baths} baths` : null].filter(Boolean).join(' · '),
+                                          notes: o.notes || [f.baths ? `${f.baths} baths` : null].filter(Boolean).join(' · '),
                                           photoUrl: o.photoUrl || r.image || undefined }
                                       : o)), `Read the listing — ${r.title || 'details'} filled in.`);
                                 }).catch(() => {});
@@ -9290,12 +10299,19 @@ export default function HostShellV2() {
                       figures from lib/travelPlan — the roster summary line below
                       was PROMOTED here, not duplicated. */}
                   {travel.rosterMode && lg.roster.length > 0 ? (
+                    /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
+                       booked and confirmed"). notBookedCount counts ONLY 'not_started'
+                       — its own comment says "booked here means booked OR confirmation
+                       in hand" — so this headline labelled a two-state number with a
+                       one-state word. A host who had already cycled someone to
+                       "Confirmation in hand" saw them tallied under "booked", which
+                       reads as a demotion. The arithmetic was right; the noun wasn't. */
                     <SheetHero
                       eyebrow="Rooms lined up"
-                      star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} booked`}
+                      star={`${lg.roster.length - (lg.notBookedCount || 0)} of ${lg.roster.length} have a room`}
                       tone={lg.notBookedCount === 0 ? 'ok' : undefined}
                       sub={lg.notBookedCount > 0
-                        ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'hasn’t' : 'haven’t'} booked yet — tap a name each time you hear where they stand.`
+                        ? `${lg.notBookedCount} ${lg.notBookedCount === 1 ? 'has no room' : 'have no room'} yet — tap a name each time you hear where they stand.`
                         : 'Everyone has a room lined up — tap a name if anything changes.'}
                     />
                   ) : (
@@ -9449,7 +10465,31 @@ export default function HostShellV2() {
                       <label key={'bt' + bi} className="lodge-f"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Farther? Cheaper?" value={bk.note}
                           onChange={e => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: e.target.value } : x) }))}
-                          aria-label={'Note about backup ' + (bi + 1)} /></label>,
+                          aria-label={'Note about backup ' + (bi + 1)} />
+                        {/* THE SHORTLIST ALREADY KNOWS THIS. If the backup she named is one of
+                            the places she shortlisted, its price and capacity are on file —
+                            asking her to retype "Farther? Cheaper?" is asking for data we
+                            hold. Matched on the name she typed; silent when it isn't one of
+                            hers, because then we genuinely don't know. */}
+                        {(() => {
+                          if (String(bk.note || '').trim()) return null;
+                          const nm = String(bk.name || '').trim().toLowerCase();
+                          if (!nm) return null;
+                          const hit = (li.options || []).find(o => String(o.label || '').trim().toLowerCase() === nm);
+                          if (!hit) return null;
+                          const bits = [
+                            hit.allIn != null ? `$${hit.allIn.toLocaleString()}${hit.feesKnown ? ' all in' : ' before fees'}` : null,
+                            hit.sleeps != null ? `sleeps ${hit.sleeps}` : (hit.beds != null ? `${hit.beds} beds` : null),
+                          ].filter(Boolean);
+                          if (!bits.length) return null;
+                          const text = bits.join(' · ');
+                          return (
+                            <button className="mini" type="button" style={{ justifySelf: 'start', marginTop: 4 }}
+                              onClick={() => setLodgeForm(d => ({ ...d, backups: (d.backups || []).map((x, j) => j === bi ? { ...x, note: text } : x) }))}>
+                              Use: {text}
+                            </button>
+                          );
+                        })()}</label>,
                     ])}
                     <label className="lodge-f full">
                       <button className="mini" type="button" onClick={() => setLodgeForm(d => ({ ...d, backups: [...((d && d.backups) || []), { name: '', note: '' }] }))}>+ Add {(f.backups || []).length ? 'another' : 'a'} backup place</button>
@@ -9802,7 +10842,30 @@ export default function HostShellV2() {
                       <label key={'ao' + ai} className="lodge-f full"><span className="of">Worth knowing</span>
                         <input className="field" style={fld} placeholder="Closer? Fewer flights? Cheaper?" value={ap.note}
                           onChange={e => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, note: e.target.value } : x) }))}
-                          aria-label={'The honest tradeoff of airport ' + (ai + 1)} /></label>,
+                          aria-label={'The honest tradeoff of airport ' + (ai + 1)} />
+                        {/* DON'T ASK WHAT YOU CAN WORK OUT (host: "lets source to fill in the
+                            worth knowing section by app… take advantage of DIFM
+                            opportunities"). This was a blank box whose placeholder asked
+                            three questions — closer? fewer flights? cheaper? The app knows
+                            where the event is and where every airport is, so it answers the
+                            FIRST one from real coordinates and stays silent on the other two
+                            rather than inventing them. Proposed, never written: propose-
+                            don't-ask means she still taps to accept. */}
+                        {(() => {
+                          if (String(ap.note || '').trim()) return null;
+                          const v = airCoords;
+                          if (!v || !Number.isFinite(v.lat) || !Number.isFinite(v.lon)) return null;
+                          const codes = (f.airports || []).map(x => x && x.code).filter(Boolean);
+                          let t = null;
+                          try { t = airportTradeoff(ap, v.lat, v.lon, codes); } catch (_e) { t = null; }
+                          if (!t) return null;
+                          return (
+                            <button className="mini" type="button" style={{ justifySelf: 'start', marginTop: 4 }}
+                              onClick={() => setAirForm(d => ({ ...d, airports: (d.airports || []).map((x, j) => j === ai ? { ...x, note: t.text } : x) }))}>
+                              Use: {t.text}
+                            </button>
+                          );
+                        })()}</label>,
                     ])}
                     <label className="lodge-f full">
                       <button className="mini" type="button" onClick={() => setAirForm(d => ({ ...d, airports: [...((d && d.airports) || []), { name: '', code: '', note: '' }] }))}>+ Add {(f.airports || []).length ? 'another' : 'an'} airport</button>
@@ -10362,12 +11425,20 @@ export default function HostShellV2() {
                     </div>
                   );
                 })()}
+                {/* EXAMPLES THAT BELONG TO THIS EVENT (click-through audit 2026-07-28):
+                    these five shipped hardcoded to a retirement for "Margaret — my mom".
+                    Driven live on a WEDDING, that is what the host was asked to fill in —
+                    someone else's mother, on the surface that asks what the day is really
+                    about. A repast was prompted "warm, loud, unhurried". heartPlaceholders
+                    keys them off the event's own type; unknown types get a deliberately
+                    unspecific set rather than a stranger's life. Still EXAMPLES — nothing
+                    here is ever written to the event. */}
                 {[
-                  ['honoree', 'Who is it for?', 'Margaret — my mom', false],
-                  ['honoree_story', 'Their story, in a line or two', '32 years at the library; she taught half the county to read', true],
-                  ['meaning_why', 'Why this matters', 'She never lets anyone celebrate her — this time we are', false],
-                  ['feeling_words', 'How the day should feel', 'warm, loud, unhurried', false],
-                  ['must_have_moment', 'The one moment that must happen', 'Everyone on the lawn for the sunset photo', false],
+                  ['honoree', 'Who is it for?', heartPh.honoree, false],
+                  ['honoree_story', 'Their story, in a line or two', heartPh.honoree_story, true],
+                  ['meaning_why', 'Why this matters', heartPh.meaning_why, false],
+                  ['feeling_words', 'How the day should feel', heartPh.feeling_words, false],
+                  ['must_have_moment', 'The one moment that must happen', heartPh.must_have_moment, false],
                   ['hostName', 'Who is the invitation from?', 'Todd — or “Todd & Sarah”', false],
                   ['deckLine', 'The line under your event’s name on the invite', 'Good food, good people', false],
                 ].map(([key, label, ph, multi]) => (
@@ -10435,11 +11506,50 @@ export default function HostShellV2() {
                   // Money-Safe Date Chain: in elegant mode this Sections row is the
                   // travel wayfinding, so a closing money deadline surfaces HERE —
                   // the one fact that can cost real dollars this week leads the sub.
-                  ...(travel && travel.relevant ? [(() => {
+                  // ── A SHORTLIST MUST HAVE A DOOR (click-through audit 2026-07-28) ──
+                  // This row was gated on travel.relevant ALONE. But a host can build a
+                  // rental shortlist — or pick a house — on an event the travel engine
+                  // doesn't consider a travel event, and then the only way back to those
+                  // houses is the one row on the ask board that raised them. Given the
+                  // pick now moves real money into `committed` (see the outlet wire), a
+                  // surface holding thousands of dollars cannot be reachable by one
+                  // transient row. Her own saved houses always get a door.
+                  ...((travel && travel.relevant) || (event.lodgingOptions || []).length > 0 || event.lodging ? [(() => {
                     const md = moneyDatesFor(event);
                     const due = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
+                    const shortlist = (event.lodgingOptions || []).length;
                     return { k: 'lodging', label: 'Travel & where everyone stays',
-                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days') : 'Lodging, rides, arrivals' };
+                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days')
+                        : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
+                        : 'Lodging, rides, arrivals' };
+                  })()] : []),
+                  // ── TWO SURFACES THAT HAD NO DOOR (competitive-read audit, 2026-07-30) ──
+                  // This directory's own comment above calls it "a door to EVERY surface",
+                  // but it carried exactly one travel row — routing to `lodging` — while
+                  // its sub advertised "Lodging, rides, arrivals". The `air` ("Getting
+                  // here") and `ground` ("Getting around") sheets both exist, both are
+                  // titled, and both RAISE through surfaceRegistry (travel-air,
+                  // travel-ground) — so on a calm event, where nothing is raised, neither
+                  // could be reached at all. Same class as the shortlist-without-a-door
+                  // finding: a surface reachable only from a transient worry row is not
+                  // reachable. Gated on the plan actually having that leg, the way the
+                  // rain row is gated on the event being outdoors — a door to an empty
+                  // surface would be its own kind of lie.
+                  ...(travel && travel.relevant && travel.air ? [(() => {
+                    const unset = (travel.air.roster || []).filter(r => r && !r.arriveDate).length;
+                    const conflicts = (travel.air.conflicts || []).length;
+                    return { k: 'air', label: 'Getting here',
+                      sub: conflicts ? conflicts + (conflicts === 1 ? ' arrival clashes' : ' arrivals clash')
+                        : unset ? unset + (unset === 1 ? ' hasn’t said when' : ' haven’t said when')
+                        : 'Flights and arrival times' };
+                  })()] : []),
+                  ...(travel && travel.relevant && travel.ground ? [(() => {
+                    const need = (travel.ground.needRide || []).length;
+                    const unmatched = (travel.ground.unmatched || []).length;
+                    return { k: 'ground', label: 'Getting around',
+                      sub: unmatched ? unmatched + (unmatched === 1 ? ' still needs a ride' : ' still need rides')
+                        : need ? need + (need === 1 ? ' asked for a ride' : ' asked for rides')
+                        : 'Rides, pickups, who drives' };
                   })()] : []),
                   ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
                   ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
@@ -10652,7 +11762,11 @@ export default function HostShellV2() {
                       {askResult.basis.map((b, i) => <p key={i} className="grounding" style={{ margin: '2px 0 0', color: 'var(--faint)' }}>{b}</p>)}
                       {askResult.matched && askResult.route && (
                         <div className="actions-row" style={{ marginTop: 8 }}>
-                          <button className="mini" onClick={() => goAnswer(askResult.route)}>Take me there</button>
+                          {/* NAMES THE DESTINATION (click-through audit 2026-07-28): this read
+                              "Take me there" — a trip, not the work — and the CTA gate missed it
+                              because /^take me to/ doesn't match "take me there". The answer
+                              already carries its own route, so say where it goes. */}
+                          <button className="mini" onClick={() => goAnswer(askResult.route)}>{ctaLabelFor(null, askResult.route, event)}</button>
                           <button className="mini" onClick={() => { setAskQ(''); setAskResult(null); setAskLLM(null); }}>Ask another</button>
                         </div>
                       )}
@@ -10751,8 +11865,18 @@ export default function HostShellV2() {
                     {[...REAL_EVENTS, ...hydratedEvents.filter(he => !REAL_EVENTS.some(re => re.id === he.id))].map((e, i) => {
                       const isActive = e.id === eventId;
                       const d = daysUntil(e.date);
+                      // RUN IT AGAIN sits only on events that have ALREADY HAPPENED — the
+                      // case this exists for (the annual feast, the reunion that rotates
+                      // hosts). Gating it there keeps the list calm rather than hanging a
+                      // second control off every future event a host is mid-way through.
+                      // It is a SIBLING of the row, never nested: the row is itself a
+                      // <button>, and interactive content inside interactive content is
+                      // invalid and reads unpredictably to a screen reader — the same
+                      // defect the "our pick" badge had.
+                      const isPast = d !== null && d < 0;
                       return (
-                        <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                        <Fragment key={e.id}>
+                        <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
                           onClick={() => { switchEvent(e.id); setSheet(null); }}>
                           <span className="f-main">
                             <span className="f-name">{e.name}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -10760,6 +11884,13 @@ export default function HostShellV2() {
                           </span>
                           <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                         </button>
+                        {isPast && (
+                          <button className="mini runagain" onClick={() => runItAgain(e)}
+                            aria-label={'Start a new event from ' + (e.name || 'this one')}>
+                            Run it again
+                          </button>
+                        )}
+                        </Fragment>
                       );
                     })}
                     <div className="shelf-label" style={{ margin: '10px 0 6px' }}>Samples</div>
@@ -10776,8 +11907,14 @@ export default function HostShellV2() {
                   // shelf is synthetic EXCEPT MY_CRAB_FEAST when it's been promoted to the
                   // host's real crab-feast event (appCrab) — a real "Sample" tag, not invented.
                   const isSample = !e._custom && !(e === MY_CRAB_FEAST && appCrab);
+                  // Run it again belongs to the HOST'S OWN past events, which live here as
+                  // well as in the cloud shelf above — a locally-created event is no less
+                  // the host's. Samples are excluded: copying a seeded demo would produce a
+                  // second demo, not a plan the host has any stake in.
+                  const canRunAgain = !!e._custom && d !== null && d < 0;
                   return (
-                    <button key={e.id} className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
+                    <Fragment key={e.id}>
+                    <button className={'frow' + (isActive ? ' rowfocus' : '')} style={{ animation: `cardin 260ms var(--ease-out) ${Math.min(i, 8) * 30}ms both` }}
                       onClick={() => { switchEvent(e.id); setSheet(null); }}>
                       <span className="f-main">
                         <span className="f-name">{label}{isSample ? <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650, color: 'var(--ink-soft)', background: 'var(--bg-band)', border: '1px solid var(--line)', borderRadius: 'var(--r-pill)', padding: '1px 8px', marginLeft: 6, opacity: 0.7 }}>Sample</span> : null}{isActive ? <span className="tag plan">current</span> : null}</span>
@@ -10785,6 +11922,13 @@ export default function HostShellV2() {
                       </span>
                       <span className="of" style={{ whiteSpace: 'nowrap' }}>{d === null ? 'no date' : d === 0 ? 'today' : d < 0 ? `${-d}d ago` : 'in ' + d + 'd'}</span>
                     </button>
+                    {canRunAgain && (
+                      <button className="mini runagain" onClick={() => runItAgain(src)}
+                        aria-label={'Start a new event from ' + (src.name || label)}>
+                        Run it again
+                      </button>
+                    )}
+                    </Fragment>
                   );
                 })}
                 {!activeCustom && Object.keys(patch).length > 0 && (
@@ -12548,7 +13692,16 @@ export default function HostShellV2() {
                   {/* Port of Figma 416:60 — hero composes the parity kit
                       (Eyebrow → BigValue → Newsreader GuideLine), same as the
                       food/budget heroes. Anti-drift; see parity/MANIFEST. */}
-                  <Eyebrow>Ready for the day</Eyebrow>
+                  {/* THE NUMBER COUNTS BOOKED, SO THE LABEL SAYS BOOKED (click-through
+                      audit 2026-07-28). This read "Ready for the day" over rc.ready — the
+                      rollup's BOOKED bar — while the guide line right under it admitted
+                      "All booked — 4 still to confirm." A host reading 9 of 9 under
+                      "Ready" believes their vendors are handled; four of them have not
+                      confirmed. Same host words the other heroes use for a running
+                      count: "Bought so far", "Seated so far". The green only lands when
+                      CONFIRMED === total (below), so the colour was already honest —
+                      it was the label that overreached. */}
+                  <Eyebrow>Booked so far</Eyebrow>
                   <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...((rc.total > 0 && (rc.confirmed || 0) >= rc.total) ? { color: 'var(--ok)' } : null) }}>
                     {rc.ready} of {rc.total}
                   </BigValue>
@@ -12971,6 +14124,56 @@ export default function HostShellV2() {
                               <p key="more" className="vc-detail" style={{ opacity: .7 }}>+{more} more open — the vendor's own brief covers the rest.</p>
                             ) : null];
                           })()}
+                          {/* ── THE COI ROW (host: "create the COI piece", 2026-07-29) ──────
+                              Found by clicking: "Collect all vendor COIs for M-NCPPC" landed
+                              here (once its route named the documents section) and there was
+                              no insurance row to land ON — the proofs were load-in time,
+                              start/end and capacity. A task about exactly one thing arrived
+                              at a screen that never mentions it.
+                              Nothing is invented: getVendorCOIState + coiNextAction are the
+                              existing engine, already driving the hero resolve and the
+                              day-before. It is service-mode aware (COI-LOGIC-1), so a pickup
+                              order reads "probably not needed", never "COI missing", and an
+                              informal helper is never gated at all
+                              (host-appropriate-vendor-ui). Where the data cannot say, it
+                              says CHECK — never a false alarm.
+                              The action is the engine's own ctaCopy, so this row and the
+                              hero can never disagree about what the next step is. Anchored
+                              as v-coi-<id> so a COI route can land on the row itself. */}
+                          {(() => {
+                            let coi = null, next = null;
+                            try { coi = getVendorCOIState(v, event); } catch (_e) { coi = null; }
+                            if (!coi || coi.status === 'not_required') return null;
+                            try { next = coiNextAction(v, event, v.name || 'this vendor'); } catch (_e) { next = null; }
+                            const tone = coi.level === 'critical' ? 'var(--crit)' : coi.level === 'attention' ? 'var(--warn)' : 'var(--muted)';
+                            return (
+                              <div id={'v-coi-' + v.id} className="line" style={{ alignItems: 'center', padding: 'var(--sp-1) 0', flexWrap: 'wrap', gap: 6, scrollMarginTop: 12 }}>
+                                <span className="of" style={{ flexShrink: 0, color: tone }}>insurance</span>
+                                <span className="vc-detail" style={{ margin: 0, flex: 1, minWidth: 120 }}>
+                                  {coi.label}{coi.hostCopy ? ' — ' + coi.hostCopy : ''}
+                                </span>
+                                {next && (
+                                  <button className="mini" onClick={() => {
+                                    // The engine names the step; the write matches it exactly.
+                                    const patch = coi.status === 'requested' ? { coiStatus: 'received' }
+                                      : coi.status === 'received' ? { coiVerified: true }
+                                      : { coiStatus: 'requested' };
+                                    writeVendor(v.id, patch, next.ctaCopy + ' — noted.');
+                                  }}>{next.ctaCopy}</button>
+                                )}
+                                {/* The waive is only offered while the certificate is still
+                                    OUTSTANDING. Driven live on M-NCPPC — already "Verified ·
+                                    valid through 2026-12-09" — it rendered "Not needed" next
+                                    to a good record, i.e. a one-tap way to throw away proof
+                                    the host had already chased down. Waiving is for a COI you
+                                    have decided not to pursue, never for one you hold. */}
+                                {coi.required && !v.coiWaived && !coi.verified
+                                  && coi.status !== 'received' && (
+                                  <button className="mini" onClick={() => writeVendor(v.id, { coiWaived: true }, 'Insurance waived for ' + (v.name || 'this vendor') + '.')}>Not needed</button>
+                                )}
+                              </div>
+                            );
+                          })()}
                           {/* Contract file — the destination for the "attach the file"
                               conflict fix. A host keeps the signed contract in their own
                               drive; this holds a LINK to it (not an upload), which is what
@@ -13139,7 +14342,31 @@ export default function HostShellV2() {
               // the After tab's identical summary) routes every allocation row
               // to the surface that prices it — the spread (food/supplies),
               // the space list, the crab order.
-              const hostRows = hostRowsGo();
+              // ── "WHERE IT'S GOING" HAD TO ACCOUNT FOR THE MONEY (click-through
+              // audit 2026-07-28). hostSpendRows() prices what the PLAN prices —
+              // food, supplies, capacity, crab. But `committed` is that PLUS
+              // vendorOwed PLUS lodgingCommitted (see lib/hostSpending ~188), and
+              // neither had a row. Live on the wedding that read: "Over by $32,639"
+              // above a breakdown listing ~$2,469 of $87,639 — the section that
+              // promises where it's going was silent about 97% of it, and about the
+              // whole reason the host is over.
+              // These are NOT invented category rows: both are components the money
+              // engine already returns, and each routes to the surface that owns it.
+              const hostRows = (() => {
+                const rows = hostRowsGo();
+                // READ `spend`, NOT `money` (self-inflicted, caught by driving it
+                // 2026-07-29). `money` is a NARROWED object built at ~2250 —
+                // { planned, committed, spent, spentEstimated, lines } — and never
+                // carried these two. Reading money.vendorOwed gave undefined → 0 →
+                // the rows silently never rendered, on the very event with $87,639
+                // spoken for. I shipped it and called it done without opening the
+                // sheet. `spend` is the full hostSpending result these live on.
+                const owed = Math.round(spend.vendorOwed || 0);
+                const stays = Math.round(spend.lodgingCommitted || 0);
+                if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
+                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => setSheet({ kind: 'lodging', focus: null }) });
+                return rows;
+              })();
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }
               // Queue item 7 — the recovery engine: source-backed ways OUT of
               // an overage (safe cuts / tradeoffs / protected), never invented $.
@@ -13182,13 +14409,83 @@ export default function HostShellV2() {
                       tone={over ? 'danger' : hcState === 'near' ? 'warn' : 'ok'}
                       sub={warmSub}
                       grounding={<>
-                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                        {/* The sheet states the estimated share of BOTH numbers
+                            (app-wide estimate pass, 2026-07-29). "Spoken for" is
+                            a mixture — real spend plus every not-yet-bought term
+                            — and this is the surface that exists to be honest
+                            about money, so it says so in full rather than
+                            leaving the host to infer it from the rows. */}
+                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.committedEstimated > 0 ? <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</> : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );
                   })() : (
                     heroCopy && heroCopy.title ? <p className="grounding" style={{ margin: '2px 0 var(--sp-2)' }}>{heroCopy.title}{heroCopy.line ? ' ' + heroCopy.line : ''}</p> : null
                   )}
+                  {/* ── THE MONEY BAR ────────────────────────────────────────────────
+                      From the competitive read: planned → committed → spent is already
+                      tracked in three places and rendered only as prose. Finance and
+                      fitness apps chart this; the consumer event category charts nothing,
+                      and the enterprise one (Blink) charts heavily — the boundary is
+                      whether someone is paid to watch the numbers. A host is not, so this
+                      is the ONE chart on this surface and it earns its place only because
+                      the number moves and the answer ("am I OK?") is a proportion.
+                      HONESTY RULES IT INHERITS: it renders only inside the money.planned
+                      branch, so an unset budget can never show as an empty track — that
+                      would read as "you've spent nothing" when the truth is "you haven't
+                      said". Every segment carries its number in the key below. Over-budget
+                      does not clip: the track turns and the overspend is stated, because a
+                      bar pinned at 100% would hide exactly the fact that matters most. */}
+                  {money.planned > 0 && (() => {
+                    const planned = money.planned;
+                    const spent = Math.max(0, Math.round(money.spent || 0));
+                    const committed = Math.max(0, Math.round(money.committed || 0));
+                    const pledged = Math.max(0, committed - spent);   // spoken for, not yet paid
+                    const over = committed > planned;
+                    const scale = over ? committed : planned;         // over-budget rescales, never clips
+                    const pct = (n) => scale > 0 ? Math.max(0, Math.min(100, (n / scale) * 100)) : 0;
+                    const free = Math.max(0, planned - committed);
+                    return (
+                      <div style={{ margin: '2px 0 var(--sp-4)' }}>
+                        <div className="mbar" role="img"
+                          aria-label={`${fmt(spent)} spent, ${fmt(pledged)} spoken for, of a ${fmt(planned)} budget`}>
+                          {/* TWO SOLID VALUES, NOT A COLOUR AND ITS TINT (fixed 2026-07-30 after
+                              looking at it at 2.4x). The pledged segment was --steel-tint: a 16%
+                              alpha fill, which is a CHIP BACKGROUND token — it exists to sit behind
+                              text, and as a standalone data mark on the #25262A track it was
+                              invisible. The bar read as an empty track with a grey nub, and was
+                              indistinguishable from the allocation bars directly beneath it.
+                              A chart fill has to be legible on its own, so the two segments are now
+                              separated by VALUE: money actually gone is the brighter tone, money
+                              spoken for but not yet paid is the dimmer one. Reading brightness as
+                              "how real is this" needs no legend to guess at. */}
+                          <i style={{ width: pct(spent) + '%', background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />
+                          <i style={{ width: pct(pledged) + '%', background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />
+                          {/* THE BUDGET LINE MATTERS MOST WHEN IT HAS BEEN CROSSED (fixed
+                              2026-07-30). It used to render only while headroom existed, on
+                              the reasoning that an over-budget track "states it instead" —
+                              it does not. Rescaling to `committed` means the segments always
+                              sum to exactly 100%, so the over state drew a completely full
+                              red bar with nothing marking where the ceiling had been: the
+                              chart carried no proportion at all and the overspend survived
+                              only as text. Now the line sits at the ceiling in both states —
+                              at the right edge while there is room, and inside the bar once
+                              there is not, where everything past it IS the overspend. */}
+                          {(over || free > 0) && (
+                            <span className={'mbar-line' + (over ? ' is-over' : '')}
+                              style={{ left: over ? (planned / committed) * 100 + '%' : '100%' }} />
+                          )}
+                        </div>
+                        <div className="mbar-key">
+                          {/* The key swatches must be the SAME values the bar paints, or the legend
+                              explains a chart the host is not looking at. */}
+                          <span><i className="mbar-dot" style={{ background: over ? 'var(--danger)' : 'var(--steel-soft)' }} />{fmt(spent)} spent</span>
+                          {pledged > 0 && <span><i className="mbar-dot" style={{ background: over ? 'var(--danger-solid)' : 'var(--steel)' }} />{fmt(pledged)} spoken for</span>}
+                          <span className="mbar-cap">{over ? fmt(committed - planned) + ' over ' + fmt(planned) : fmt(free) + ' of ' + fmt(planned) + ' left'}</span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   {hostRows.length > 0 && (
                     <>
                       {/* BUDGET-CONTRADICTION FIX: "priced by your plan" reads as a
@@ -13216,7 +14513,12 @@ export default function HostShellV2() {
                                     ? <span className="amt">{fmt(r.got)} <span className="of">of ~{fmt(r.est)}</span></span>
                                     : <span className="amt">~{fmt(r.est)}</span>}
                               </div>
-                              <div className="bline"><i style={{ width: Math.max(alloc, 4) + '%' }}><b style={{ width: got + '%' }} /></i></div>
+                              {/* The 4% floor keeps a small-but-real category findable. It must
+                                  not apply to a category costing nothing: while the fill was
+                                  invisible that floor was harmless, but now that it paints, a
+                                  $0 line would draw a visible claim on the budget. Floor only
+                                  what actually has a cost. */}
+                              <div className="bline"><i style={{ width: (r.est > 0 ? Math.max(alloc, 4) : 0) + '%' }}><b style={{ width: got + '%' }} /></i></div>
                             </button>
                             {/* Food-cost detail (audit gap fix): per-head cost, real-priced
                                 vs. still-estimated item count, and the regional pricing
@@ -13267,6 +14569,27 @@ export default function HostShellV2() {
                           </div>
                         );
                       })}
+                      {/* THE REST OF THE MONEY (same click-through, 2026-07-29).
+                          Even with vendors and lodging added, the rows only price
+                          what the PLAN prices. `committed` also contains rowsActual
+                          — money the host logged as spent straight onto their own
+                          budget lines (lib/hostSpending ~181). On the wedding that
+                          left four rows summing to ~$33,209 sitting under an
+                          "$87,639 spoken for" headline with no account of the other
+                          $54,430. Stating it is the whole point of this section.
+                          No CTA and no glyph: nothing in hostv2 lists those raw
+                          budget lines, so there is nowhere honest to send them. */}
+                      {(() => {
+                        const shown = hostRows.reduce((s, r) => s + (Number(r.est) || 0), 0);
+                        const rest = Math.round((money.committed || 0) - shown);
+                        if (rest < 50) return null;
+                        return (
+                          <p className="grounding" style={{ margin: '8px 0 0', borderTop: '1px solid var(--line-soft)', paddingTop: 8 }}>
+                            The rows above are what your plan prices. The other {fmt(rest)} is money you logged
+                            straight onto your own budget lines, so it has no row here.
+                          </p>
+                        );
+                      })()}
                     </>
                   )}
                   {recovery && recovery.status === 'recovery_available' && (
@@ -14142,7 +15465,15 @@ export default function HostShellV2() {
           <span className="nb-label">Next</span>
           <span className="nb-title">{days === 0 ? 'Run the day' : (listIsCalm ? 'All quiet' : String(queue[0].title || '').replace(/\.+$/, ''))}</span>
           {days !== 0 && !listIsCalm && queue.length > 1 && (
-            <span className="nb-more" title={(queue.length - 1) + ' more after this'}>+{queue.length - 1}</span>
+            /* LABEL THE COUNT, DO NOT RENUMBER IT (both panels ruled, 2026-07-30).
+               This badge counts QUEUE ITEMS while the sentence beside it counts
+               DECISIONS, so "+6" next to "3 open" read as a contradiction — and the
+               only thing explaining it was a `title` tooltip, which a phone cannot
+               summon. Both numbers are true against their own denominator, so
+               renumbering either would ship a lie. Naming the denominator is what
+               was missing: "+6 after this" is unambiguously about the queue, and it
+               is now visible text rather than a hover-only affordance. */
+            <span className="nb-more" aria-label={(queue.length - 1) + ' more after this one'}>+{queue.length - 1} after this</span>
           )}
           <span className="nb-chev" aria-hidden="true">›</span>
         </button>
@@ -14235,11 +15566,28 @@ export default function HostShellV2() {
           <div className="p-head">Run of show</div>
           {ros.map((r, i) => (
             <div className="p-row" key={r.id || i}>
-              <span className="p-time">{r.time ? fmt12h(r.time) : (r.rel ? '·' : '—')}</span>
+              {/* PRINT HONESTY (2026-07-30, found by driving print emulation live).
+                  This cell used to collapse every clockless row to a bare '·', so an
+                  event whose ROS has no anchor printed a whole column of dots — the
+                  sheet knew "2h before" and refused to say it. playbooks/index.js is
+                  explicit that when `time` is null, "`rel` carries the knowledge we
+                  actually have". Print it. The p-rel class sets a lighter treatment so
+                  a known offset still reads as weaker than a known clock. */}
+              <span className={'p-time' + (r.time ? '' : ' p-rel')}>
+                {r.time ? fmt12h(r.time) : (r.rel || 'Not set')}
+              </span>
               <span>
                 {r.segment}
                 <span className="p-meta">
-                  {[r.location, r.owner && ('owner: ' + r.owner), r.vendorName, r.notes].filter(Boolean).map(x => ' · ' + x).join('')}
+                  {[
+                    r.location,
+                    // `owner: 'Host'` is the generator's hardcoded default on every
+                    // playbook row — printing it 15 times said nothing. A real
+                    // delegation (a helper's name) still prints.
+                    r.owner && r.owner !== 'Host' && ('owner: ' + r.owner),
+                    r.vendorName,
+                    r.notes,
+                  ].filter(Boolean).join(' · ')}
                 </span>
               </span>
             </div>
@@ -14284,10 +15632,17 @@ export default function HostShellV2() {
             return (
               <>
                 <div className="p-head">If something goes wrong</div>
+                {/* The gutter carries WHAT KIND OF TIME a row has, and now says so for
+                    every kind: a clock when we know one, a relative label when we only
+                    know the offset, "ongoing" for continuous duties, and "if" here —
+                    these rows aren't timed at all, they're conditional. The old bare '·'
+                    was a spacer pretending to be a time. The em-dash before the text is
+                    gone too: .p-meta prints on its own line now, so an inline separator
+                    just orphaned a dash at the start of it. */}
                 {ip.lines.map((l) => (
                   <div className="p-row" key={l.key}>
-                    <span className="p-time">·</span>
-                    <span><b>{l.label}</b><span className="p-meta"> — {l.text}</span></span>
+                    <span className="p-time p-rel p-when">if</span>
+                    <span><b>{l.label}</b><span className="p-meta">{l.text}</span></span>
                   </div>
                 ))}
               </>

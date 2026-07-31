@@ -4,6 +4,20 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Event Boss — Host Shell V2 (wired prototype)</title>
+    <!-- ── PWA: ICONS ONLY (B4, board 2026-07-28) ────────────────────────────
+         The board verified: manifest.json declared only favicon.ico (Chromium
+         needs 192 + 512), /hostv2/ carried NO manifest link at all, and the
+         CRA manifest's scope:"." pointed at the CRA root — so an install would
+         have launched the FROZEN App.js shell. This manifest is hostv2's own:
+         start_url and scope both point here, so the icon on her home screen
+         opens the app she was actually using.
+         Deliberately NOT shipped, per the same ruling: no service worker (this
+         deploy pipeline should not grow one), and no Web Share Target — it does
+         not work on iOS at any version (WebKit bug 194593, open since 2019),
+         so shipping it would be a promise the phone cannot keep. -->
+    <link rel="manifest" href="/ngw-event-planner/hostv2-manifest.json" />
+    <link rel="apple-touch-icon" href="/ngw-event-planner/icon-192.png" />
+    <meta name="theme-color" content="#141518" />
     <!-- Playfair Display — the production display face (FF_SERIF in App.js),
          used on hero titles + the countdown numeral. Same URL, same weights,
          PLUS italic 500 (audit finding: the splash tagline asks for italic
@@ -13,7 +27,15 @@
          (App.js) — this URL is shared, don't drop weights the other app needs. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,500;1,700;1,800&display=swap" fetchpriority="high" />
+    <!-- Playfair weight 900 dropped 2026-07-30: a whole-source sweep of styles.css,
+         HostShellV2.jsx and InviteV2.jsx (stationery CSS and JSX included) found ZERO
+         demand for it — no font-weight:900, no fontWeight 900, nothing inheriting one.
+         A live computed-style sweep of the plan surfaces resolved only 500-italic, but
+         that could not reach the ?rsvp invite, so the source grep is the load-bearing
+         evidence here, not the render. The remaining five are all still claimed:
+         roman 700/800 explicitly, italic 500 explicitly, italic 700/800 by inheritance
+         at styles.css:1472 and :1876. Do not trim further without re-running both. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;1,500;1,700;1,800&display=swap" fetchpriority="high" />
     <!-- NEWSREADER — the host HUMAN VOICE (elegant-minimal command language). Host rulings
          2026-07-17: serif beat sans (guide voice test), then unified Newsreader beat Fraunces
          (family test) for the Apple-register calm — warmth from the italic, not the letterform.

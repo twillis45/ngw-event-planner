@@ -105,7 +105,11 @@ body{font-family:var(--sans); color:var(--ink); background:var(--bg-band); -webk
 button{font-family:inherit}
 :focus-visible{outline:2px solid var(--steel); outline-offset:2px; border-radius:var(--r-sm)}
 
-.stagewrap{position:relative; margin:0 auto}
+/* background-color here backs .app's bottom FADE (see .app.has-nextbar): the mask
+   fades .app's own background along with its content, so without an identical
+   ground beneath, the fade would expose the page behind it. Safe on every stage —
+   .app paints over this everywhere, and the fade only exists on the plan stage. */
+.stagewrap{position:relative; margin:0 auto; background-color:var(--bg)}
 .app{
   /* overflow-x:clip mirrors the .sheet guard for the MAIN surfaces (Command
      Center, The Day, After, create/welcome) — a scroller with overflow-y:auto
@@ -317,8 +321,19 @@ button{font-family:inherit}
 /* Hero receipt — muted sentence, green done-dot; ring pulse = the beat */
 .card.hero-card.receipted{animation:okring 700ms var(--ease-out) both}
 @keyframes okring{0%{box-shadow:0 0 0 2px color-mix(in srgb, var(--ok) 55%, transparent)}100%{box-shadow:0 0 0 2px transparent}}
-.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); transition:opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
-@starting-style{ .receipt{opacity:0; translate:0 5px} }
+/* THE RECEIPT UNFOLDS; IT DOES NOT POP (host, 2026-07-30: "moves the whole screen…
+   nothing smooth about the transition"). Measured before the fix: height went 0 → 78px
+   in a SINGLE frame while opacity/translate animated — so the text faded in politely
+   while the box shoved the layout. And because the hero cluster is optically centred,
+   78px of new box re-centres the whole composition at once, which is why it read as the
+   screen moving rather than a row appearing.
+   The fix is the idiom .editor-slot already uses eleven lines above — height:auto is
+   animatable under the :root interpolate-size opt-in, browsers without it simply show
+   instantly, exactly as that comment says. margin/padding/border are animated too:
+   they are 23px of the jump on their own, so transitioning height alone would still
+   step. overflow:clip keeps the sentence from spilling while the box is short. */
+.receipt{display:flex; align-items:center; gap:9px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.07); height:auto; overflow:clip; transition:height 260ms var(--ease-out), margin-top 260ms var(--ease-out), padding-top 260ms var(--ease-out), border-top-color 260ms var(--ease-out), opacity 220ms var(--ease-out), translate 220ms var(--ease-out)}
+@starting-style{ .receipt{height:0; margin-top:0; padding-top:0; border-top-color:transparent; opacity:0; translate:0 5px} }
 .receipt .rdot{width:7px; height:7px; border-radius:999px; background:var(--ok); flex:0 0 auto}
 .receipt .rmsg{flex:1; min-width:0; font-size:13.5px; line-height:1.4; color:var(--muted)}
 @media (prefers-reduced-motion: reduce){ .card.hero-card.receipted{animation:none} }
@@ -458,16 +473,21 @@ button{font-family:inherit}
 /* CTA PARITY WITH FIGMA (host 2026-07-18): the elegant hero CTA is a DARK RAISED TACTILE key
    (not the gradient .cta, not white) — a solid bottom edge + soft cast + inset top highlight,
    depressing on press. Scoped to the elegant hero; the rest of the app's .cta is untouched. */
+/* HOST RULING 2026-07-28: "primary cta is a centered label". Verified against
+   four frames — 13 (ask pole), 18 (SCROLL resting), 22 (NAV), 27 (receipt +
+   advance) — every one shows the primary action as a centred label with NO
+   arrow ("Message the club", "I've got it"). The rule below used to claim
+   "Figma parity" for a → that appears in none of them. */
 .hero.elegant .cta{ background:#282d33; color:var(--ink); border-radius:14px; padding:15px 20px; min-height:54px;
-  width:100%; justify-content:space-between; text-align:left; font-size:16px;
+  width:100%; justify-content:center; text-align:center; font-size:16px;
   box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
-/* the → arrow (Figma parity) — added via ::after so no markup change; muted like the comps */
-.hero.elegant .cta::after{ content:'→'; color:var(--faint); font-weight:800; margin-left:14px; flex:0 0 auto; transition:transform var(--ms-fast) var(--ease-out), color var(--ms-fast) var(--ease-out); }
-/* `.stay` = an in-place settle CTA (Lock N in, Mark as paid): the glyph doctrine —
-   render the arrow ONLY when the handler routes; a settle wearing one reads as
-   false navigation (audit 2026-07-22, W14 follow-through). */
-.hero.elegant .cta.stay::after{ content:none; }
+/* THE ARROW IS GONE (host ruling 2026-07-28). It was added claiming Figma
+   parity; the frames show none. Note for whoever considers bringing it back:
+   the glyph doctrine ("render a → ONLY when the handler routes") constrains
+   when an arrow MAY appear — it never required one. Removing it satisfies the
+   doctrine and the frames at the same time. Row-level chevrons elsewhere are a
+   separate control and are untouched. */
 /* primary takes the full row; any secondary actions wrap quietly beneath it */
 .hero.elegant .hero-card .actions-row{ flex-wrap:wrap; row-gap:10px; }
 .hero.elegant .hero-card .actions-row > .cta{ flex:1 1 100%; }
@@ -476,10 +496,8 @@ button{font-family:inherit}
    surface (the depress). Two clear states, both subtle. */
 .hero.elegant .cta:hover:not(:disabled){ transform:translateY(-1px);
   box-shadow:0 4px 0 #06080b, 0 13px 26px -10px rgba(0,0,0,.62), inset 0 1px 0 rgba(255,255,255,.09); }
-.hero.elegant .cta:hover:not(:disabled)::after{ transform:translateX(3px); color:var(--muted); }
 .hero.elegant .cta:active{ transform:translateY(3px);
   box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
-.hero.elegant .cta:active::after{ transform:translateX(1px); }
 /* DECLUTTERED CONFLICT (host 2026-07-18): tight situation with a quiet "why?" tap, and
    the fixes as compact tappable rows (no faked "our fix" — genuine either/or). */
 .hero.elegant .conf-sit{ display:flex; align-items:flex-start; gap:10px; }
@@ -543,7 +561,19 @@ button{font-family:inherit}
 .app-elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
 .app-elegant .decopt-badge-wrap:hover .decopt-why, .app-elegant .decopt-badge-wrap:focus-visible .decopt-why, .app-elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
 .app-elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
-.app-elegant .decopt-disc{ align-self:flex-start; background:none; border:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
+/* WORDS APART, STILL TWINS (board re-sit, 2026-07-30 — flagged as a CSS-side fix).
+   The repoint gave this control and the bundle's "See all N ▸" different words, but
+   left them visually identical: 13px/--muted/500 here against 12.5px/--faint/450
+   there. Half a pixel and one weight step apart is not a difference a host can see,
+   and the two do different things — THIS one reveals other answers to the question
+   already on screen; that one reveals other questions entirely.
+   Differentiated structurally rather than with colour, so the accent budget is
+   untouched (UX_02: one accent per section, and .decopt.pick already spends it):
+   a hairline and full width bind this control to the option stack above it, so it
+   reads as the tail of THIS decision. The bundle's control keeps floating free. */
+.app-elegant .decopt-disc{ align-self:stretch; width:100%; text-align:left;
+  border-top:1px solid var(--line-soft); margin-top:2px; background:none; border-left:none;
+  border-right:none; border-bottom:none; color:var(--muted); font-size:13px; font-weight:500; cursor:pointer; padding:8px 0 2px; }
 .app-elegant .decopt-disc:hover{ color:var(--ink); }
 /* WATCH zone (Figma parity 2026-07-18): worries as steel-dot rows — distinct from the
    action rows above, muted, no arrows (a heads-up, not a thing to go do). */
@@ -822,6 +852,19 @@ button.later-row .chev{ position:static; color:var(--faint); flex-shrink:0; marg
   font-size:var(--t-btn); font-weight:700; color:var(--steel-soft); background:var(--steel-tint);
   border:none; border-radius:var(--r-sm); padding:7px var(--sp-3); cursor:pointer; white-space:nowrap;
 }
+
+/* ── A FOLDED CONFLICT KID (host click-through, 2026-07-28) ──────────────────
+   The kid pairs a full sentence ("Heritage Table Catering setup runs into guest
+   arrival") with a CTA that NAMES its destination ("Open vendors → Heritage
+   Table Catering"). .mini is white-space:nowrap, so on a phone the button won
+   the width fight: the title collapsed to ONE WORD PER LINE and the button's own
+   label clipped mid-word, overflowing the card — both explicit UI-QA failures.
+   Shortening the label was the wrong fix (a CTA names the act). The ROW gives
+   way instead: title and button share a line when there's room, and the button
+   drops beneath it when there isn't, wrapping rather than clipping. */
+.line.kid-row{ flex-wrap:wrap; align-items:center; row-gap:var(--sp-2); }
+.line.kid-row .vc-detail{ min-width:0; flex:1 1 16ch; }
+.line.kid-row .mini{ flex:0 1 auto; max-width:100%; white-space:normal; text-align:left; }
 
 .fold-btn{
   display:flex; align-items:center; gap:10px; width:100%; margin:var(--break-section) 0 0;
@@ -1139,12 +1182,23 @@ button:disabled, .cta:disabled{ pointer-events:none; }
 /* ── Budget sheet: allocation bars (share of plan) with spent fill ── */
 .brow{padding:11px 0 var(--sp-3); border-top:1px solid var(--line-soft)}
 .bline{height:8px; border-radius:5px; background:var(--bg-band); overflow:hidden}
+/* The allocation fill (share of the plan this line claims) was --steel-tint: the
+   SAME chip-background token, at 16% alpha, that made the summary bar unreadable
+   (fixed 2026-07-30). On the --bg-band track it composites to roughly #2A2C31
+   against #25262A — about a 4% lightness step, which is below what the eye
+   separates at 8px tall. Food's line showed a 4%-wide fill that could not be seen
+   at all, so every category read as an empty track. Same rule as the summary bar:
+   a chart fill has to be legible on its own ground, and alpha is not a value scale.
+   The two fills now separate by VALUE and carry the same meaning they do up top:
+   the dimmer tone is money claimed, the brighter one (b, nested inside) is money
+   actually spent. Brightness has to run the SAME direction on both charts or the
+   host has to relearn the scale halfway down one surface. */
 .bline i{
-  display:block; height:100%; border-radius:5px; background:var(--steel-tint);
-  border:1px solid var(--steel-tint); position:relative;
+  display:block; height:100%; border-radius:5px; background:var(--steel);
+  position:relative;
   transition:width .7s var(--ease-standard);
 }
-.bline b{display:block; height:100%; border-radius:5px; background:var(--steel); transition:width .7s var(--ease-standard)}
+.bline b{display:block; height:100%; border-radius:5px; background:var(--steel-soft); transition:width .7s var(--ease-standard)}
 
 /* ── The spread & shopping: check-off rows (real foodGot flags) ── */
 .frow{
@@ -2099,7 +2153,15 @@ button:disabled, .cta:disabled{ pointer-events:none; }
   display:flex; align-items:center; justify-content:center;
   font-size:16px/*monogram glyph*/; font-weight:800; letter-spacing:-.02em}
 .vc-id{min-width:0; flex:1}
-.vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+/* A VENDOR'S NAME IS ITS IDENTITY (click-through audit 2026-07-28). This was
+   white-space:nowrap + ellipsis, so on a phone — where the status pill and the
+   money take the right of the card — real names clipped mid-word: "Oxon Hill
+   Manor (…", "Heritage Table …". Two vendors from the same caterer become the
+   same string. Now it WRAPS to at most two lines: the host reads who it is, and
+   the card still can't be run away with by a long name. */
+.vc-name{font-size:var(--t-row); font-weight:750; color:var(--ink); letter-spacing:-.01em;
+  white-space:normal; overflow-wrap:anywhere;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden}
 .vc-cat{font-size:var(--t-row-sub); color:var(--muted); margin-top:1px}
 .vc-pill{flex-shrink:0; font-size:var(--t-caption-min); font-weight:800; letter-spacing:var(--tracking-2); text-transform:uppercase;
   padding:var(--sp-1) 10px; border-radius:var(--r-pill); color:var(--muted); background:var(--bg-band)}
@@ -2189,20 +2251,59 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 
 /* ── Print: the day sheet — a paper cue sheet a helper can hold. On paper the
    palette is ink-on-paper by definition; screen tokens don't apply. ── */
+/* Derived from an Adobe-rendered reference (Acumin Pro + Adelle, 2026-07-30).
+   FONT NOTE — deliberate substitution: the reference used Adobe Fonts, this does NOT
+   load them. index.html already puts two render-blocking Google Fonts requests on the
+   critical path; a third-party font host for a PRINT-ONLY surface would be a
+   regression. System sans stands in for Acumin (operational spine), Georgia for Adelle
+   (guidance voice). Nothing is fetched — the sheet prints identically offline. */
 .printsheet{display:none}
 @media print{
+  @page{ size:letter portrait; margin:0.5in 0.55in 0.45in; }
+
   body *{visibility:hidden}
   .printsheet, .printsheet *{visibility:visible}
+  /* PRE-EXISTING BUG, found by driving print emulation live (2026-07-30):
+     .printsheet is a child of .stagewrap — a 393px, position:relative, TRANSFORMED
+     phone frame. An absolutely-positioned child resolves against it, and a transform
+     also captures position:fixed — so the day sheet printed as a ~393px column on an
+     8.5in page, roughly 40% of the width, for every host who ever printed it.
+     Neutralising the frame for print only hands .printsheet the initial containing
+     block, so left/top/width:100% finally mean the page. Screen is untouched. */
+  .stagewrap{ position:static !important; transform:none !important; width:auto !important }
   .printsheet{
-    display:block; position:absolute; left:0; top:0; width:100%;
-    color:#000; background:#fff; font:13px/1.5 Georgia, 'Times New Roman', serif; padding:24px;
+    display:block; position:absolute; left:0; top:0; width:100%; padding:0;
+    color:#14161a; background:#fff; orphans:3; widows:3;
+    font:10pt/1.3 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
   }
-  .printsheet h1{font-size:22px; margin:0 0 2px}
-  .printsheet .p-sub{font-size:13px; margin:0 0 18px; color:#333}
-  .printsheet .p-row{display:flex; gap:14px; padding:7px 0; border-bottom:1px solid #ccc; break-inside:avoid}
-  .printsheet .p-time{min-width:70px; font-weight:700; font-variant-numeric:tabular-nums}
-  .printsheet .p-meta{color:#444; font-size:12px}
-  .printsheet .p-head{font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; margin:20px 0 6px; color:#333}
+  .printsheet h1{ font-family:Georgia,'Times New Roman',serif; font-weight:600;
+    font-size:21pt; line-height:1.02; letter-spacing:-.005em; color:#14161a; margin:0 }
+  /* The one heavy rule on the sheet — masthead closes with 2pt, sections with 0.75pt. */
+  .printsheet .p-sub{ font-size:9pt; line-height:1.35; color:#4a4f57;
+    margin:3pt 0 0; padding-bottom:7pt; border-bottom:2pt solid #14161a }
+  .printsheet .p-head{ font-size:7.5pt; font-weight:700; letter-spacing:.155em;
+    text-transform:uppercase; color:#14161a; margin:15pt 0 0; padding-bottom:3.5pt;
+    border-bottom:.75pt solid #14161a; break-after:avoid }
+  .printsheet .p-row{ display:flex; gap:11pt; padding:5.5pt 0;
+    border-bottom:.5pt solid #cfd2d6; align-items:baseline; break-inside:avoid }
+  .printsheet .p-time{ flex:0 0 62pt; font-size:10pt; font-weight:700;
+    font-variant-numeric:tabular-nums; letter-spacing:-.005em; color:#14161a }
+  /* THE GUTTER SAYS WHAT KIND OF TIME A ROW HAS — and every kind now says it, so no
+     row prints a bare '·' pretending to be a time:
+       clock ("2:05 PM")            full weight, tabular
+       relative label (r.rel)       .p-rel — real knowledge, weaker grade
+       "ongoing"                    .p-rel
+       "if" (conditional/risk)      .p-rel .p-when
+     A known OFFSET is not a known CLOCK, so it prints lighter and may wrap. */
+  .printsheet .p-time.p-rel{ font-weight:500; font-size:8.5pt; color:#6b7078;
+    letter-spacing:0; line-height:1.25 }
+  .printsheet .p-time.p-when{ letter-spacing:.1em; text-transform:lowercase }
+  .printsheet .p-time:empty::after{ content:'Not set'; color:#8b9096; font-weight:500 }
+  /* Was inline, so meta ran on after the segment; on paper it needs its own line. */
+  .printsheet .p-meta{ display:block; font-size:8pt; line-height:1.35; font-weight:400;
+    color:#5c626a; margin-top:1.5pt }
+  .printsheet a{ color:#14161a; text-decoration:none }
 }
 
 /* Auto-hiding dock: slides away on scroll-down so it never traps a CTA */
@@ -2225,6 +2326,60 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   background:var(--cta-grad); color:var(--carbon-text);
   box-shadow:0 16px 44px -12px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.14);
   transition:transform var(--ms-press) var(--ease-out), filter var(--ms-press) var(--ease-out);
+}
+/* ── THE BAR MUST NOT SIT ON THE CONTENT (Figma-vs-live audit, 2026-07-29) ──
+   .next-bar is position:absolute at z-index 22, and NOTHING reserved room for
+   it. It appears exactly when `!heroInView` — i.e. the moment the host starts
+   reading the below-fold — so it lands on the last rows of WORTH KEEPING AN EYE
+   ON. Driven live: "A key vendor cancels — and more…" was sitting behind it,
+   and it had quietly occluded the last rows in most of today's captures.
+   The Figma boards have no dock at all, so the below-fold was designed without
+   allowing for one; this is the cost of adding it after the fact.
+   Reserving the space is the right fix rather than hiding the bar — the bar is
+   deliberately persistent (host request 2026-07-16), so the CONTENT gives way,
+   not the affordance. Height = 15+15 padding + ~20 line + the 16px offset.
+
+   ── CORRECTION 2026-07-30, and the note above OVERSTATED the fix ──
+   padding-bottom reserved the space at the END OF THE CONTENT, but .next-bar is
+   position:absolute against .stagewrap (.app is not positioned), so the bar is
+   pinned to the FRAME. The two only coincide at max scroll. Driven on the
+   elegant plan surface, bar band fixed at 767-832 while the frame bottom is 848:
+       scrollTop 0     -> under the bar: .ef-sect   (live)
+       scrollTop 510   -> under the bar: .bento     (live)
+       scrollTop 1019  -> under the bar: .app       (the reservation)
+   So content was occluded at EVERY position except the very bottom. The content
+   was not giving way; it was passing underneath.
+
+   FIRST ATTEMPT, REVERTED SAME DAY — do not try it again. Shrinking the
+   scrollport (.app.has-nextbar{height:calc(100% - 84px)}) did clear the bar
+   geometrically, but .has-nextbar TOGGLES ON SCROLL, so the canvas visibly
+   changed size mid-scroll. Host caught it in local within minutes. A layout
+   that moves while you are reading it is worse than the overlap it fixed.
+   Anything keyed to .has-nextbar must not alter .app's BOX.
+
+   THE FIX: keep the reservation (so the last row can always be scrolled clear
+   of the bar) and add a bottom fade so content is never silently hidden — it
+   visibly dissolves before it reaches the bar instead of sliding under an opaque
+   pill. The mask is on .app's own box, so it rides the viewport and costs no
+   layout. Nothing resizes, and at max scroll the faded band is the reservation,
+   which is empty anyway.
+
+   Earlier the same day: a stray comment-terminator sat at the end of the "16px
+   offset." line, closing this comment early; the following lines then parsed as
+   part of a SELECTOR and the parser swallowed the rule below entirely. Proven in
+   isolation — the broken form parsed to [".next-bar:hover"] alone, the fixed form
+   to both rules — so this audit's own fix had never shipped at all. Do not write
+   a comment terminator inside this comment; that is exactly how it broke. */
+.app.has-nextbar{
+  /* The reservation: guarantees the last row can be scrolled clear of the bar. */
+  padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));
+  /* The fade: content dissolves before it reaches the bar rather than sliding
+     under it. Opaque down to the reservation line, gone by the bar's mid-point.
+     Masking .app's own box costs no layout and nothing resizes — and because
+     .stagewrap carries the same background-color (:108), fading .app's own
+     background reveals an identical ground, so no seam appears. */
+  -webkit-mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
+          mask-image:linear-gradient(to bottom, #000 calc(100% - 84px), transparent calc(100% - 34px));
 }
 .next-bar:hover{filter:brightness(1.05)}
 .next-bar:active{transform:scale(.99)}
@@ -2811,3 +2966,177 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   100%{ background:var(--faint); box-shadow:none; }
 }
 @media (prefers-reduced-motion: reduce){ .efold-grab{ animation:none } }
+
+/* ── The house's requirements — one list, two densities ──────────────────────
+   Host 2026-07-28: "clean up the pills. come up with something else here."
+   A chosen requirement is a ROW that carries its own reason; an unchosen one is
+   a small "+" chip below. Where an item sits IS its state, so nothing needs a
+   selected-tint to be legible and nothing is said twice.
+   Restraint per UX_01: hairline separators, no boxes, no colour — the tick is
+   the only mark, and it is --ok because "this is required" is a settled state,
+   not a warning. */
+.req-list{ list-style:none; margin:8px 0 0; padding:0 }
+.req-list li + li{ border-top:1px solid var(--line) }
+.req-row{
+  width:100%; display:flex; gap:10px; align-items:flex-start; text-align:left;
+  background:none; border:none; padding:9px 0; cursor:pointer; color:inherit;
+}
+.req-row:hover .req-label{ color:var(--ink) }
+.req-tick{ flex:0 0 auto; color:var(--ok); font-size:12px; line-height:1.5; font-weight:700 }
+.req-body{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+.req-label{ font-size:var(--t-row); font-weight:650; color:var(--ink-soft); transition:color var(--ms-press) var(--ease-out) }
+.req-why{ font-size:var(--t-row-sub); line-height:1.45; color:var(--muted) }
+/* Dropping one is a quiet, reversible act — the row dims rather than shouting. */
+.req-row:active{ opacity:.6 }
+@media (prefers-reduced-motion:reduce){ .req-row, .req-label{ transition:none } }
+
+/* ══ POINTER CAPABILITY — what the app owes a device with no hover ═════════════
+   Audit 2026-07-30. styles.css carried 46 :hover rules and ZERO @media (hover:*)
+   guards. A prior audit added :active press feedback for touch, so the gap left
+   was the other two halves: information hidden behind hover, and hover styles
+   that STICK after a tap, because nothing ever un-hovers on a touchscreen. */
+
+/* ── 1. THE HOVER TRAP (board item; both review panels found it independently) ──
+   .decopt-why holds the REASONING for "our pick" and is opacity:0 until :hover.
+   Its wrapper (.decopt-badge-wrap, tabIndex=0) is nested INSIDE the .decopt
+   <button> whose onClick is nd.settle(). A touchscreen has no hover, so the only
+   gesture that could reveal the reasoning IS the gesture that accepts it — a
+   false capability under UX_07: the badge implies more, and on the primary
+   platform delivers nothing.
+
+   Fixed here rather than in the JSX so the settle handler is untouched:
+   display:contents dissolves the two wrapper boxes, promoting .decopt-badge and
+   .decopt-why to direct grid children of .decopt. The reasoning then takes a
+   full-width second row, in flow, always visible — no gesture required, nothing
+   overlapping the next option, and no reliance on a tooltip a phone cannot summon. */
+@media (hover:none){
+  .app-elegant .decopt.pick{
+    display:grid; grid-template-columns:1fr auto; align-items:center;
+    column-gap:12px; row-gap:7px;
+  }
+  .app-elegant .decopt.pick .decopt-right,
+  .app-elegant .decopt.pick .decopt-badge-wrap{ display:contents; }
+  .app-elegant .decopt.pick .decopt-main{ grid-column:1; grid-row:1; }
+  .app-elegant .decopt.pick .decopt-badge{ grid-column:2; grid-row:1; justify-self:end; }
+  .app-elegant .decopt.pick .decopt-why{
+    position:static; grid-column:1 / -1; grid-row:2;
+    /* transition:none is load-bearing, not tidiness. The base rule animates opacity
+       and visibility because there it IS a reveal. Here it is not — it is static row
+       content that must simply be readable. Leaving the transition in place makes the
+       text depend on an animation FRAME ever running to become visible, and anything
+       that suspends animation (a backgrounded tab, a throttled or low-power device)
+       leaves it occupying its full height at opacity 0 — taking the space and saying
+       nothing, which is worse than the trap it replaces. Caught by measuring: forcing
+       these rules left it hidden until the transition was removed. */
+    transition:none;
+    opacity:1; visibility:visible; transform:none; pointer-events:auto;
+    width:auto; max-width:none; background:none; border:0; box-shadow:none;
+    padding:7px 0 0; z-index:auto; text-align:left;
+    font-size:var(--t-note); line-height:1.42; color:var(--muted);
+    border-top:1px solid var(--line-soft);
+  }
+}
+
+/* ── 2. STICKY HOVER ───────────────────────────────────────────────────────────
+   On a touchscreen :hover latches on tap and stays latched until the user taps
+   something else — a row you have already moved on from keeps reading as
+   "selected". Every rule below is DECORATIVE emphasis (background / colour /
+   opacity), verified rule-by-rule: only .decopt-why hid information, and that is
+   handled above. Press feedback is unaffected — :active is what should confirm a
+   tap on touch, and a prior audit already wired it across these same surfaces. */
+@media (hover:none){
+  .chip:hover, .cta:hover:not(:disabled), .cta.soft:hover, .cta.ghost:hover,
+  .card:hover, .lens:hover, .grow:hover, .frow:hover, .fold-btn:hover,
+  .tile-d:hover:not(:disabled), .tile-d.allset:hover, .wchip:hover,
+  .food-act:hover, .settled-card:hover, .toast-undo:hover, .next-bar:hover,
+  .floor-addland:hover, .palette-row:hover, .decopt:hover,
+  .app-elegant .decopt:hover, .app-elegant .decopt.pick:hover,
+  .app-elegant .decopt-disc:hover, .hero.elegant .cta:hover:not(:disabled),
+  .hero.elegant .whytog:hover, .hero.elegant .confrow:hover,
+  .hero.elegant .confrow.confrow-open:hover, .hero.elegant .ef-row:hover,
+  .hero.elegant .bento .tile-b:hover, .hero.elegant .bento .tile-c:hover,
+  .hero.elegant .cp-look:hover, .hero.elegant .ac-next:hover,
+  .ev-eyebrow:hover, .ev-kicker:hover{
+    background:inherit; filter:none; transform:none;
+  }
+  /* Child-emphasis hovers: the parent lit a descendant. Return it to its resting
+     colour so a tapped row does not stay brightened behind the host's thumb. */
+  .ev-eyebrow:hover .eb-menu > span{ background:var(--faint); }
+  .efold:hover .efold-grab{ opacity:.55; width:44px; }
+  .efold:hover .efold-label{ color:var(--faint); }
+  .hero.elegant .watch-row:hover .t{ color:var(--muted); }
+  .hero.elegant .returnbeat:hover .rb-t{ color:var(--muted); }
+  .db-row:hover .db-lead{ color:var(--carbon-muted); }
+  .qidx-row:hover .qidx-l{ color:var(--ink-soft); }
+  .req-row:hover .req-label{ color:var(--ink-soft); }
+}
+
+/* ── 3. FOCUS PARITY ───────────────────────────────────────────────────────────
+   46 :hover rules against 5 :focus-visible — a keyboard or switch user got about
+   a ninth of the state feedback a mouse user gets. The global :focus-visible ring
+   (:106) already marks WHERE focus is; what was missing is the surface responding
+   the way it does to a pointer, so the two inputs feel like one product. Given to
+   the row/card/button surfaces that carry a hover state worth matching. */
+@media (hover:hover){
+  .chip:focus-visible, .cta:focus-visible:not(:disabled), .card:focus-visible,
+  .lens:focus-visible, .grow:focus-visible, .frow:focus-visible,
+  .fold-btn:focus-visible, .wchip:focus-visible, .food-act:focus-visible,
+  .decopt:focus-visible, .app-elegant .decopt:focus-visible,
+  .hero.elegant .ef-row:focus-visible, .hero.elegant .confrow:focus-visible{
+    background:var(--steel-tint);
+  }
+  .db-row:focus-visible .db-lead{ color:var(--carbon-text); }
+  .qidx-row:focus-visible .qidx-l{ color:var(--ink); }
+  .req-row:focus-visible .req-label{ color:var(--ink); }
+  .hero.elegant .watch-row:focus-visible .t{ color:#c7ced4; }
+}
+
+/* The lead-in that names the act above a decision's options (board re-sit: "the
+   question has no visible answer"). Quiet by design — it orients, it does not
+   compete with the options themselves or with the ask above them. */
+.app-elegant .decopts-lead{
+  font-size:var(--t-note); font-weight:500; color:var(--faint);
+  margin:0 0 var(--sp-2); letter-spacing:0;
+}
+
+/* ── THE MONEY BAR ────────────────────────────────────────────────────────────
+   One chart, on the one surface where the host's question ("am I OK?") is a
+   proportion rather than a number. Segments are steel — this is identity and
+   structure, not a status — and only turn --danger when the plan is genuinely
+   over, which is the single case where the bar is reporting a problem rather
+   than a position. It never clips: over budget the whole track rescales so the
+   overspend is visible instead of a bar pinned reassuringly at 100%. */
+.mbar{
+  /* 10px, not the 8px the allocation bars use. This is the summary chart for the
+     whole surface and it sat directly above a stack of 4px allocation tracks that
+     it was previously indistinguishable from — same height, same near-invisible
+     fill. A summary must not look like one of the rows it summarises. */
+  position:relative; display:flex; height:10px; border-radius:5px; overflow:hidden;
+  background:var(--bg-band); border:1px solid var(--line);
+}
+/* A segment that exists but rounds to a hairline still has to be findable — a $12
+   spend against a $6,000 ceiling is real information, not a rendering error. */
+.mbar i:not([style*="width: 0%"]){ min-width:3px; }
+.mbar i{ display:block; height:100%; transition:width var(--ms-reveal) var(--ease-out); }
+@media(prefers-reduced-motion:reduce){ .mbar i{ transition:none } }
+/* The budget line marks the ceiling in BOTH states — at the right edge while there
+   is headroom, and inside the bar once the plan has passed it. */
+.mbar-line{ position:absolute; top:-2px; bottom:-2px; width:1px; background:var(--ink-soft); opacity:.5; z-index:1; }
+/* Crossed: a faint blue hairline is unreadable lying on a red fill, and this is the
+   one moment the mark has to be unmissable. Cut it as a notch in the page ground
+   instead — reads as the bar having run past its own end, which is the fact. */
+.mbar-line.is-over{ background:var(--bg); opacity:1; width:2px; }
+.mbar-key{
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 14px; margin-top:7px;
+  font-size:var(--t-note); color:var(--muted); font-variant-numeric:tabular-nums;
+}
+.mbar-key span{ display:inline-flex; align-items:center; gap:6px; }
+.mbar-dot{ width:8px; height:8px; border-radius:2px; flex:0 0 auto; }
+/* The cap states the headroom (or the overspend) in words, so the bar is never the
+   only carrier of the fact — UX_02: a colour must not be the sole signal. */
+.mbar-cap{ margin-left:auto; color:var(--ink-soft); font-weight:600; }
+
+/* "Run it again" — the copy-forward control under a past event. Deliberately quiet:
+   it is a secondary act on a row whose primary act is opening the event, so it must
+   not compete with the row above it. Indented to read as belonging to that row. */
+.runagain{ margin:2px 0 10px 12px; color:var(--steel-soft); }
