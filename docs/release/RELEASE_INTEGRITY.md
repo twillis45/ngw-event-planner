@@ -210,7 +210,8 @@ obsolete hashed assets cannot linger and ship forever.
 CRA bakes every `REACT_APP_*` into the **public** bundle at build time. Nothing
 is hidden from users; treat "secret" as "must never be built at all".
 
-`.env.example` now documents all **27** variables the source reads (21 were
+`.env.example` now documents all **27** variables referenced by application
+code in `src/` and `hostv2/src/` (21 were
 undocumented before this sprint). No values are committed.
 
 | Variable | Class | CI needs it? |
@@ -224,11 +225,26 @@ undocumented before this sprint). No values are committed.
 | `REACT_APP_AUTH_BYPASS`, `REACT_APP_BYPASS_ROLE` | **Development only** | **Must never be set in a deployed build** |
 | `REACT_APP_PLANNER_TOKEN` | Legacy dev gate — secret | **Never** |
 
-The CRA build requires **no** environment variable to compile, so CI sets none.
-Unset values degrade features to their offline paths rather than breaking the
-build. ⚠️ Because CI supplies none, a CI-built artifact is **not** currently a
-drop-in production bundle — production config must be supplied by whichever job
-actually publishes. This is called out in the deployment section below.
+The CRA build requires no environment variable to *compile*, which used to mean
+a config-less build silently became the localStorage-only demo while looking
+like a release.
+
+**RESOLVED 2026-07-31 (Slice D3).** Builds now declare a mode:
+
+| Mode | Public config | Meaning |
+|---|---|---|
+| `--mode=verification` | may be blank | ordinary CI compile; explicitly **not** production-capable |
+| `--mode=production` | **required** | fails loudly if a required value is missing |
+
+Enforced by `scripts/validate-production-config.mjs`, which also rejects
+prohibited browser variables (`REACT_APP_PLANNER_TOKEN`, `REACT_APP_AUTH_BYPASS`,
+`REACT_APP_BYPASS_ROLE`, service-role keys, provider secrets, database URLs) and
+secret-shaped values — printing names only, never values.
+
+Production values are **GitHub repository variables** (`vars.*`, not `secrets.*`
+— they are public by design), mapped at job scope in `pages-from-source.yml` so
+hostv2 and CRA both inherit them. Full classification of all 27 variables:
+[`PRODUCTION_CONFIG.md`](PRODUCTION_CONFIG.md).
 
 ---
 
