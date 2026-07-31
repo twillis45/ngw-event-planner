@@ -1,14 +1,22 @@
-# The safety net, automated (Up-Next #1, 2026-07-22). Two jobs:
+# The safety net, automated (Up-Next #1, 2026-07-22). Jobs:
 #
-#   jest — the Layer-1 engine proofs + the whole unit suite (decision-wire,
-#          host-string lint, day-before coverage, one-overdue-policy equality,
-#          path/lifecycle proofs — ~3,700 tests).
-#   e2e  — the parity gate (inside `npm run build`) + the Layer-2 Playwright
-#          board matrix on the BUILT bundle (loop-advance, rendered-copy lint,
-#          pinned geometry + scroll-end reachability, fold peek).
-#
+#   jest     — the Layer-1 engine proofs + the whole unit suite (decision-wire,
+#              host-string lint, day-before coverage, one-overdue-policy
+#              equality, path/lifecycle proofs — ~4,200 tests).
+#   e2e      — the parity gate (inside `npm run build`) + the Layer-2 Playwright
+#              board matrix on the BUILT bundle (loop-advance, rendered-copy
+#              lint, pinned geometry + scroll-end reachability, fold peek).
+#   backend  — the FastAPI suite including the 49 AI-auth/SSRF security tests
+#              (Release Integrity C1, 2026-07-30). These existed but ran
+#              nowhere, so the security gates written in the previous sprint
+#              gated nothing automatically.
+#   cra-build — the CRA PRODUCTION build (Release Integrity C2). Previously no
+#              workflow built the deployable app at all, so a real build break
+#              could reach gh-pages unnoticed. Enforces a reviewed warning
+#              baseline; see scripts/cra-build-gate.mjs.
 # Runs on every push/PR to working branches. Node 20 satisfies the e2e's ≥18
 # requirement (locally the shell defaults to 16 — the harness docs cover it).
+# Python 3.12 matches render.yaml's PYTHON_VERSION=3.12.7 (deployment truth).
 name: Checks
 
 on:
@@ -57,3 +65,40 @@ jobs:
         working-directory: hostv2
       - run: npm run test:e2e
         working-directory: hostv2
+
+  # ── Release Integrity C1 — backend tests actually run ───────────────────────
+  # No network, no provider credentials, no database: every outbound client in
+  # these tests is stubbed and the suite asserts the real ones are never called.
+  # Deliberately sets NO secrets, which is itself the proof.
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'      # matches render.yaml PYTHON_VERSION
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+        working-directory: backend
+      # --strict-markers turns an unknown/typo'd marker into an error instead
+      # of letting it silently skip a security test.
+      - run: python -m pytest tests/ --strict-markers
+        working-directory: backend
+
+  # ── Release Integrity C2 — the deployable app is actually built ─────────────
+  cra-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Runs the real production build and compares its warnings against the
+      # reviewed baseline in ci/cra-warning-baseline.json. A genuine build
+      # error fails regardless of the baseline.
+      - run: npm run gate:cra

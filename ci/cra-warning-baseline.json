@@ -1,0 +1,1552 @@
+{
+  "_comment": [
+    "REVIEWED CRA production-build warning baseline (Policy B).",
+    "Regenerate deliberately with: npm run gate:cra:update",
+    "Adding an entry here is a review decision, not routine maintenance.",
+    "Rationale per category lives in docs/release/RELEASE_INTEGRITY.md.",
+    "Resolved warnings do NOT fail the gate — fixing one is the goal."
+  ],
+  "temporaryCorrectnessExceptions": {
+    "status": "TEMPORARY — must be corrected before C4 Pages deployment activation",
+    "why": [
+      "These are real defects, not style noise. A duplicate object key silently",
+      "discards a value; unreachable code marks a logic error; a javascript: URL",
+      "is an eval-shaped sink. They are baselined ONLY because two of them sit in",
+      "src/App.js, which CLAUDE.md freezes as donor-only, and this was a release",
+      "sprint rather than a correctness sprint."
+    ],
+    "rules": [
+      "no-dupe-keys",
+      "no-unreachable",
+      "no-script-url"
+    ],
+    "count": 5,
+    "blocks": "Slice C4 (source-built Pages deployment activation)",
+    "entries": [
+      {
+        "rule": "no-dupe-keys",
+        "file": "src/App.js",
+        "message": "Duplicate key 'color'",
+        "count": 2
+      },
+      {
+        "rule": "no-dupe-keys",
+        "file": "src/components/MembersModal.jsx",
+        "message": "Duplicate key 'border'",
+        "count": 1
+      },
+      {
+        "rule": "no-script-url",
+        "file": "src/lib/lodgingBookmarklet.js",
+        "message": "Script URL is a form of eval",
+        "count": 1
+      },
+      {
+        "rule": "no-unreachable",
+        "file": "src/lib/knowledge/simulation.js",
+        "message": "Unreachable code",
+        "count": 1
+      }
+    ]
+  },
+  "generatedFrom": "npx react-scripts build",
+  "fingerprint": "rule|file|message (no line numbers — they shift on unrelated edits)",
+  "totalWarnings": 250,
+  "byRule": {
+    "no-unused-vars": 227,
+    "react-hooks/exhaustive-deps": 9,
+    "no-mixed-operators": 6,
+    "no-dupe-keys": 3,
+    "no-useless-escape": 1,
+    "no-lone-blocks": 1,
+    "import/no-anonymous-default-export": 1,
+    "no-unreachable": 1,
+    "no-script-url": 1
+  },
+  "byFile": {
+    "src/App.js": 135,
+    "src/admin/AdminConsole.jsx": 57,
+    "src/plan/CommunicationHub.jsx": 6,
+    "src/plan/VendorPlanningWorkspace.jsx": 5,
+    "src/CommandCenter.jsx": 4,
+    "src/lib/knowledge/providerIntegration.js": 3,
+    "src/lib/vendorAccountability/derive.js": 3,
+    "src/lib/experience/experienceComposer.js": 2,
+    "src/lib/knowledge/evidencePipeline.js": 2,
+    "src/lib/knowledge/findingAnalysis.js": 2,
+    "src/lib/knowledge/playbookSchema.js": 2,
+    "src/lib/knowledge/providerNormalizers.js": 2,
+    "src/lib/knowledge/researchQuestion.js": 2,
+    "src/lib/playbooks/index.js": 2,
+    "src/plan/ChecklistGenerator.jsx": 2,
+    "src/components/EventDayMode.jsx": 1,
+    "src/components/MembersModal.jsx": 1,
+    "src/lib/assembleRevealEngines.js": 1,
+    "src/lib/contactFormat.js": 1,
+    "src/lib/doItForMe.js": 1,
+    "src/lib/eventMemory.js": 1,
+    "src/lib/experience/experienceView.js": 1,
+    "src/lib/hostIntel.js": 1,
+    "src/lib/knowledge/batchTracking.js": 1,
+    "src/lib/knowledge/campaignRunner.js": 1,
+    "src/lib/knowledge/domain.js": 1,
+    "src/lib/knowledge/simulation.js": 1,
+    "src/lib/locationAssist.js": 1,
+    "src/lib/lodgingBookmarklet.js": 1,
+    "src/lib/lodgingIntel.js": 1,
+    "src/lib/playbooks/playbookRegistry.js": 1,
+    "src/lib/vendorAccountability/conflicts.js": 1,
+    "src/plan/ClientIntakeFlow.jsx": 1,
+    "src/plan/DecisionApprovalCenter.jsx": 1,
+    "src/slices/OrchestrationSlice.jsx": 1,
+    "src/slices/VendorEscalationSlice.jsx": 1
+  },
+  "warnings": [
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'authorityColor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'batchProgress' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'blockStage' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'blueprintToGoal' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'buildConsensusPacket' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'buildPipelineMetrics' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'campaignExplainerText' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'campaignId' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'campBatchResults' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'campDetectedGaps' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'campWorkflow' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'canPerform' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'COMPLETENESS' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'corpusDomain' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'createProviderEvent' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'domainCoverage' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'getDomain' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'getEventSyncStatus' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'getPlaybookField' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'getProviderStats' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'highReliabilitySources' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'isHighConfidenceProvenance' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'isUnanimous' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'kpiRefreshKey' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'lowQueue' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'overdueProviders' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'parseFieldPath' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'playbookReadinessForResearch' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'playbooksForDomain' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'prepareEvidenceForReview' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'PROVIDER_OUTCOME_TYPES' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'providerIntelligenceSummary' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'publishingRoles' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'quality' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'recordProviderEvent' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'refreshAll' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'resolveConflict' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'retryResearchProvider' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'runAutonomousCampaign' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'scoreRelevance' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setBatchProgress' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setCampDetectedGaps' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setCampWorkflow' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setCorpusDomain' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setPlaybookField' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'setProviderLastChecked' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'SEVERITY_COLOR' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'SIG_COLOR' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'simulateExperience' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'sourcesForDomain' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'sourcesForProvider' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'suggestBetterProviders' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'suggestPlaybooks' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'unbiasedSources' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'validatePlaybook' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'whyInsufficientForGap' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/admin/AdminConsole.jsx",
+      "message": "'whyQuestionUnansswered' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-dupe-keys",
+      "file": "src/App.js",
+      "message": "Duplicate key 'color'",
+      "count": 2
+    },
+    {
+      "rule": "no-mixed-operators",
+      "file": "src/App.js",
+      "message": "Unexpected mix of '&&' and '||'. Use parentheses to clarify the intended order of operations",
+      "count": 4
+    },
+    {
+      "rule": "no-mixed-operators",
+      "file": "src/App.js",
+      "message": "Unexpected mix of '||' and '&&'. Use parentheses to clarify the intended order of operations",
+      "count": 2
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'_dte' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'actionable' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'AddVendorIntro' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'aggregateVendorLibrary' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'buildAssembleRevealStages' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'C' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'carbonSurface2' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'card' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'checkAfterLock' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'CLIENT_MSG_TYPES' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'clientIsHostRec' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'clientPickVal' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'ClientProposalView' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'collected' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'colorFor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'commRows' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'COMPRESSION_META' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'confirmedVendors' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'DashWeekView' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'dayOfContactName' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'deriveCommandCenterData' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'deriveCurrentLocationAssist' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'Divider' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'docusignResult' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'dvUpdateActive' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'edgeId' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'envelopeStatusColor' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'evaluationStats' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'evColor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'EventCard' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'evtCLR' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'eyebrow' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'foodApproach' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'fpHue' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'fpIdent' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'fpItems' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'getCompressedWorkflowSummary' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'getCompressionLevel' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'getPhaseActions' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'guideNeedsAttention' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'hasTimedCues' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'heroNames' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'HomeQuickActions' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'idColor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'identityStatement' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'inferCategory' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'initials' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'INTAKE_EVENT_TYPES' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'INTERNAL_MSG_TYPES' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'isCueDone' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'isFuture' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'isInboundMessage' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'isMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'KpiInboxPanel' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'lkBtn' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'makeEventSyncRow' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'markPaid' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'maybe' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'metroTier' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'msgTypeStyle' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'needsSendCount' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'nextEvt' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'NOT_INCLUDED' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'openShoppingList' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'overduePayCount' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'paymentRows' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'pending' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'perUnit' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'PHASE_ORDER' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'portfolioBalance' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'previewAtt' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'previewNA' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'previewR' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'proofStudio' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'rainPlanGap' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'red' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'s' is assigned a value but never used",
+      "count": 2
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'saveMoneyOpen' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setClientPickVal' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setDocusignResult' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setPreviewEventId' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setProofStudio' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setShowActionMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setShowAI' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setShowClientPicker' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setShowPaymentsMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'setShowTasksMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'SetupBanner' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showActionMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showAI' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showClientPicker' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showPaymentsMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showRail' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'showTasksMobile' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'statusColor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'steelDeep' is assigned a value but never used",
+      "count": 2
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'steelTop' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'summarizeCrew' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'supplyIntel' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'T' is assigned a value but never used",
+      "count": 2
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'TagBadges' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'taskRows' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'td' is assigned a value but never used",
+      "count": 2
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'TIER_WHY' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'tierColor' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'totalAtt' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'totalDueSoon' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'trackPageView' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'URGENCY_META' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'VENDOR_STUBS' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'VendorAddedToast' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'VendorImportWizard' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'VendorScriptsPanel' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/App.js",
+      "message": "'wholeEventReadinessScore' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-useless-escape",
+      "file": "src/App.js",
+      "message": "Unnecessary escape character: \\/",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useEffect has a missing dependency: 'reloadIntakeSubs'. Either include it or remove the dependency array",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useEffect has a missing dependency: 'themeC.bgGrad'. Either include it or remove the dependency array",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useEffect has missing dependencies: 'NATIONAL_NOTE' and 'event'. Either include them or remove the dependency array",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useEffect has missing dependencies: 'onPatchProfile' and 'profile'. Either include them or remove the dependency array. If 'onPatchProfile' changes too often, find the parent component that defines it and wrap that definition in useCallback",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useMemo has a duplicate dependency: 'C.muted'. Either omit it or remove the dependency array",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "React Hook useMemo has a missing dependency: 'ctx'. Either include it or remove the dependency array",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "The 'timeline' conditional could make the dependencies of useMemo Hook (at line 43444) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/App.js",
+      "message": "The 'vendors' conditional could make the dependencies of useMemo Hook (at line 21055) change on every render. To fix this, wrap the initialization of 'vendors' in its own useMemo() Hook",
+      "count": 1
+    },
+    {
+      "rule": "no-lone-blocks",
+      "file": "src/CommandCenter.jsx",
+      "message": "Nested block is redundant",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/CommandCenter.jsx",
+      "message": "'firstRoute' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/CommandCenter.jsx",
+      "message": "'space' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/CommandCenter.jsx",
+      "message": "'taskSatisfied' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/components/EventDayMode.jsx",
+      "message": "'supp' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-dupe-keys",
+      "file": "src/components/MembersModal.jsx",
+      "message": "Duplicate key 'border'",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/assembleRevealEngines.js",
+      "message": "'complexity' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "import/no-anonymous-default-export",
+      "file": "src/lib/contactFormat.js",
+      "message": "Assign object to a variable before exporting as module default",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/doItForMe.js",
+      "message": "'who' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/eventMemory.js",
+      "message": "'OUTCOME_KEYS' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/experience/experienceComposer.js",
+      "message": "'phase' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/experience/experienceComposer.js",
+      "message": "'role' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/experience/experienceView.js",
+      "message": "'role' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/hostIntel.js",
+      "message": "'atLeastMedium' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/batchTracking.js",
+      "message": "'upsertWorker' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/campaignRunner.js",
+      "message": "'recordProviderRun' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/domain.js",
+      "message": "'playbookWeaknesses' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/evidencePipeline.js",
+      "message": "'normalizeToObservations' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/evidencePipeline.js",
+      "message": "'runCampaign' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/findingAnalysis.js",
+      "message": "'fieldPath' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/findingAnalysis.js",
+      "message": "'status' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/playbookSchema.js",
+      "message": "'provenance' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/playbookSchema.js",
+      "message": "'sources' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/providerIntegration.js",
+      "message": "'apiKey' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/providerIntegration.js",
+      "message": "'providers' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/providerIntegration.js",
+      "message": "'query' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/providerNormalizers.js",
+      "message": "'priceKey' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/providerNormalizers.js",
+      "message": "'slug' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/researchQuestion.js",
+      "message": "'affects' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/knowledge/researchQuestion.js",
+      "message": "'affectsFields' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unreachable",
+      "file": "src/lib/knowledge/simulation.js",
+      "message": "Unreachable code",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/locationAssist.js",
+      "message": "'_isPlausibleCity' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-script-url",
+      "file": "src/lib/lodgingBookmarklet.js",
+      "message": "Script URL is a form of eval",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/lodgingIntel.js",
+      "message": "'nights' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/playbooks/index.js",
+      "message": "'norm' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/playbooks/index.js",
+      "message": "'SUPPLY_INTEL_SOURCES' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/playbooks/playbookRegistry.js",
+      "message": "'cov' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/vendorAccountability/conflicts.js",
+      "message": "'getVendorPlaybook' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/vendorAccountability/derive.js",
+      "message": "'normalizeCategory' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/vendorAccountability/derive.js",
+      "message": "'playbook' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/lib/vendorAccountability/derive.js",
+      "message": "'PROMISE_STATUS_SEVERITY' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/ChecklistGenerator.jsx",
+      "message": "'useEffect' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "react-hooks/exhaustive-deps",
+      "file": "src/plan/ChecklistGenerator.jsx",
+      "message": "The 'timeline' logical expression could make the dependencies of useMemo Hook (at line 240) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/ClientIntakeFlow.jsx",
+      "message": "'Step1' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'ContextPanel' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'needsAttention' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'needsReplyByTab' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'totalNeedsReply' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'useCallback' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/CommunicationHub.jsx",
+      "message": "'workspaceHeader' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/DecisionApprovalCenter.jsx",
+      "message": "'reassigning' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/VendorPlanningWorkspace.jsx",
+      "message": "'conflictsForVendor' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/VendorPlanningWorkspace.jsx",
+      "message": "'fmtFileSize' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/VendorPlanningWorkspace.jsx",
+      "message": "'getSignedUrl' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/VendorPlanningWorkspace.jsx",
+      "message": "'getVendorLastContacted' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/plan/VendorPlanningWorkspace.jsx",
+      "message": "'hasReadinessSignal' is assigned a value but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/slices/OrchestrationSlice.jsx",
+      "message": "'isObserving' is defined but never used",
+      "count": 1
+    },
+    {
+      "rule": "no-unused-vars",
+      "file": "src/slices/VendorEscalationSlice.jsx",
+      "message": "'focal' is assigned a value but never used",
+      "count": 1
+    }
+  ]
+}

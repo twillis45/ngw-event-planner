@@ -19,6 +19,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "gate:cra": "node scripts/cra-build-gate.mjs",
+    "gate:cra:update": "node scripts/cra-build-gate.mjs --update",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build --dotfiles && gh workflow run pages.yml",
     "check:migrations": "node scripts/check-migrations.mjs",
