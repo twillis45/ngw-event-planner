@@ -1,0 +1,5 @@
+
+> ngw-event-boss@0.1.0 check:migrations
+> node scripts/check-migrations.mjs
+
+✓ migration governance: no new shared-table migrations under backend/migrations

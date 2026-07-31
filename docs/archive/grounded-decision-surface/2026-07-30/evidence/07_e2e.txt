@@ -1,0 +1,7 @@
+
+> ngw-hostv2-prototype@0.1.0 test:e2e
+> playwright test
+
+You are running Node.js 16.16.0.
+Playwright requires Node.js 18 or higher. 
+Please update your version of Node.js.

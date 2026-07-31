@@ -1,0 +1,34 @@
+PHASE 1 RUNTIME VERIFICATION — captured 2026-07-30T23:23:06Z
+node v16.16.0 / npm 9.6.6  (CI uses node 20 per .github/workflows/checks.yml)
+
+APP 1 — hostv2 (Vite prototype, where current host features are built)
+  command : cd hostv2 && npx vite --port 5199
+  startup : SUCCESS — "VITE v4.5.14 ready in 301 ms"
+  url     : http://localhost:5199/  → HTTP 200
+  errors  : none at startup
+
+APP 2 — CRA planner (src/App.js + src/**)
+  command : BROWSER=none npm start
+  startup : SUCCESS — "Compiled with warnings", "webpack compiled with 1 warning"
+  url     : http://localhost:3000/  → HTTP 200
+  errors  : none fatal at startup
+
+BUILD STATUS
+  npm run build              → EXIT 0  (succeeds)
+  CI=true npm run build      → EXIT 1  "Treating warnings as errors because process.env.CI = true"
+                                        237 lint warnings across the tree
+  hostv2 npm run build       → runs check-parity.mjs then vite build (verified earlier this session)
+
+CI COVERAGE (from .github/workflows/)
+  checks.yml  jest job : CI=true npx react-scripts test --watchAll=false
+  checks.yml  e2e job  : hostv2 npm run build (incl. parity gate) + hostv2 playwright
+  checks.yml  DOES NOT run the CRA production build.
+  pages.yml            : publishes the ALREADY-BUILT gh-pages branch. It does not build.
+  => The shipped CRA artifact is produced on a developer machine via
+     npm run deploy (predeploy -> npm run build, without CI=true) and pushed to gh-pages.
+     No CI gate exercises the CRA production build.
+
+ENV
+  27 distinct REACT_APP_* vars referenced in src/ + hostv2/src.
+  6 documented in .env.example. 11 undocumented REACT_APP_PI_* flags.
+  No secret values inspected or recorded.
