@@ -1,7 +1,9 @@
 # Release Integrity
 
 **Established 2026-07-30 (Release Integrity Sprint, Slices C1–C4).**
-Baseline commit `04ed31ed`, branch `grounded-decision-surface`.
+Baseline commit `04ed31ed`. Originally written on the `grounded-decision-surface`
+working branch, which was retired on 2026-07-31 after full convergence; `main` is
+now canonical.
 
 This is the runbook for building, gating, and shipping the app. It supersedes
 the deployment instructions scattered through `docs/HANDOFF_*.md` — in
@@ -278,28 +280,33 @@ The one improvement: `predeploy` now runs `npm run release` instead of
   and gated on [`LIVE_MODE_READINESS.md`](LIVE_MODE_READINESS.md), which is not
   yet worked.
 
-⚠️ **Dispatch is currently blocked by a GitHub platform rule:** `workflow_dispatch`
-only registers workflows present on the **default branch** (`main`).
-`pages-from-source.yml` exists only on `grounded-decision-surface`, so the API
-returns 404. It must reach `main` before any manual run is possible.
+📌 **Platform rule worth remembering:** `workflow_dispatch` only registers
+workflows present on the **default branch**. While `pages-from-source.yml` lived
+only on a working branch the dispatch API returned 404; PR #63 landed it on
+`main`, which is what made manual runs possible.
 
-### Staged path — `pages-from-source.yml` (NOT yet live)
+### Live path — `pages-from-source.yml`
 
-Added this sprint, triggered by **`workflow_dispatch` only**. It runs backend
+Triggered by **`workflow_dispatch` only**. It runs backend
 tests, the unit suite, then `npm run release`, writes `build/RELEASE_SHA.txt`
 recording the commit, uploads `build/`, and deploys that exact artifact.
 
 It is deliberately not automatic: a Pages deployment cannot be verified without
 actually publishing, and a broken deploy takes the public site down.
 
-**Migration steps (a later sprint):**
+**Migration status:**
 
-1. Run `pages-from-source.yml` manually from the Actions tab.
-2. Confirm the published site, including `hostv2/` and `RELEASE_SHA.txt`.
-3. Decide how production `REACT_APP_*` values reach the CI build (repo
-   variables for public values; nothing secret).
-4. Uncomment the `push:` trigger on the release branch.
-5. Retire `pages.yml` and the `deploy` / `predeploy` scripts.
+1. ~~Run `pages-from-source.yml` manually from the Actions tab.~~ Done — it is
+   how the public site is now deployed.
+2. ~~Confirm the published site, including `hostv2/` and `RELEASE_SHA.txt`.~~
+   Done; the first source-built run also fixed a `/hostv2/` crash that a
+   laptop-built bundle had shipped.
+3. ~~Decide how production `REACT_APP_*` values reach the CI build.~~ Done — the
+   `demo` / `live` profiles above. `demo` is the ruling for the public site, so
+   no repository variables are set.
+4. Uncomment the `push:` trigger on the release branch. **Open** — deliberately,
+   until a deploy is worth trusting unattended.
+5. Retire `pages.yml` and the `deploy` / `predeploy` scripts. **Open.**
 
 **Rollback at any point:** re-run `npm run deploy` from a laptop, or flip the
 repository's Pages source back to the `gh-pages` branch. Because
