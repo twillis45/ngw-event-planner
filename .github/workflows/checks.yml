@@ -7,6 +7,11 @@
 #          board matrix on the BUILT bundle (loop-advance, rendered-copy lint,
 #          pinned geometry + scroll-end reachability, fold peek).
 #
+# Added 2026-07-31 — backend, cra-build and hostv2-drift. All three already ran,
+# but only inside the DEPLOYMENT workflow, which means a backend break, a broken
+# production build, or a stale hostv2 artifact was discovered at deploy time
+# rather than on the pull request that caused it. Same commands, moved left.
+#
 # Runs on every push/PR to working branches. Node 20 satisfies the e2e's ≥18
 # requirement (locally the shell defaults to 16 — the harness docs cover it).
 name: Checks
@@ -20,6 +25,12 @@ on:
 concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
+
+# Least privilege: every job here only reads the repo, runs tests and builds.
+# Nothing publishes, deploys, or writes back. No secrets or repository variables
+# are referenced anywhere in this workflow.
+permissions:
+  contents: read
 
 jobs:
   jest:
@@ -57,3 +68,83 @@ jobs:
         working-directory: hostv2
       - run: npm run test:e2e
         working-directory: hostv2
+
+  # ── Backend suite ──────────────────────────────────────────────────────────
+  # Python 3.12 and the pinned requirements, matching the deployment workflow and
+  # render.yaml's PYTHON_VERSION. --strict-markers turns a typo'd marker into an
+  # error instead of letting it silently skip a test.
+  #
+  # No secrets, no database, no network: the suite stubs every outbound client and
+  # asserts the real ones are never called. Setting nothing is part of the proof.
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+        working-directory: backend
+      - run: python -m pytest tests/ --strict-markers
+        working-directory: backend
+
+  # ── CRA production build ───────────────────────────────────────────────────
+  # Proves main still produces a deployable artifact. It previously did not:
+  # no workflow built the CRA app, so a real compile break could reach gh-pages.
+  cra-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # CI is unset for THIS STEP ONLY. Actions always sets CI=true, and
+      # react-scripts promotes every ESLint warning to a build error under it —
+      # main carries known legacy warnings, so the build would fail for reasons
+      # that have nothing to do with the change under review.
+      #
+      # This does NOT hide build failures: verified locally that a syntax error
+      # still exits 1 with "Failed to compile" while the override is in place.
+      # Deciding what to do about the legacy warnings is a separate concern with
+      # its own gate; this job answers only "does main still build?".
+      #
+      # The Jest job above deliberately keeps CI=true.
+      - name: CRA production build
+        env:
+          CI: ''
+        run: npm run build
+
+  # ── hostv2 source ↔ tracked artifact parity ────────────────────────────────
+  # public/hostv2 is a TRACKED build output that ships inside the CRA site, so it
+  # can silently disagree with the source it claims to come from. This rebuilds
+  # from source and fails on any difference.
+  #
+  # Verification only — it never regenerates or commits the artifact.
+  #
+  # Deliberately given no REACT_APP_* values: a fresh checkout has no .env.local
+  # or .env.production.local (both gitignored), so the build here is the canonical
+  # config-free demo artifact. Injecting configuration would change the output
+  # hashes and make this fail against a perfectly good artifact.
+  hostv2-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      # BOTH trees — hostv2 bundles ../src via the @app alias, whose deps live in
+      # the ROOT package.json.
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv2
+      - run: npm run gate:hostv2
