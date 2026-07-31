@@ -1,0 +1,234 @@
+# Source-built GitHub Pages deployment — Release Integrity C4 (2026-07-30).
+#
+# STATUS: STAGED, NOT YET THE LIVE PATH. Trigger is `workflow_dispatch` only.
+#
+# WHY IT IS NOT AUTOMATIC YET
+# ---------------------------
+# The live path today is: a developer runs `npm run deploy` on their laptop,
+# which builds and force-pushes the `gh-pages` branch, and pages.yml publishes
+# that branch's contents. That flow is untouched by this file.
+#
+# Making THIS workflow automatic is a one-line change (add the `push:` trigger
+# below and retire pages.yml), but it cannot be verified without actually
+# deploying — and a broken deploy takes the public site down. So it ships
+# dispatch-only: run it by hand once, confirm the published site, then flip.
+# The migration steps and rollback are in docs/release/RELEASE_INTEGRITY.md.
+#
+# WHAT IT FIXES
+# -------------
+# The laptop flow has no gate between "source" and "published". It is how the
+# tracked hostv2 bundle went stale: a green Pages run happily shipped a
+# HostShellV2 bundle built from source nobody could identify. Here the artifact
+# is built from a known commit SHA, in CI, after the tests that guard it.
+name: Deploy Pages (from source)
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_profile:
+        description: 'demo = open, localStorage-only (current public product). live = authenticated + backend-connected. Choosing live CHANGES WHAT THE PRODUCT IS for every visitor.'
+        required: true
+        default: demo
+        type: choice
+        options: [demo, live]
+  # ── To make this the live path, uncomment and retire pages.yml: ──
+  # push:
+  #   branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Shares pages.yml's group so the two can never publish concurrently.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # PUBLIC production configuration, job-scoped so BOTH builds inherit it.
+    #
+    # These are GitHub repository (or environment) VARIABLES — `vars.*`, not
+    # `secrets.*`. That is deliberate: CRA compiles every REACT_APP_* into the
+    # public bundle, so a value placed here is published to every visitor by
+    # definition. Only values that are public by design belong in this list
+    # (the Supabase key is the anon/publishable one; the real boundary is the
+    # JWT + per-event ownership + Postgres RLS). Putting a real secret in
+    # `secrets.*` and referencing it here would leak it into the artifact —
+    # scripts/validate-production-config.mjs fails the build if anyone tries.
+    #
+    # HOST RULING 2026-07-31: the public site ships as the OPEN, localStorage-only
+    # demo. .env.production.local omits the live values DELIBERATELY — that is
+    # product behaviour, not missing configuration. So these are only consumed
+    # when release_profile=live is explicitly chosen; on the demo profile they are
+    # forced empty and their ABSENCE is asserted, so a demo release can never
+    # quietly acquire sign-in because someone set a repository variable.
+    #
+    # Set them at: Settings → Secrets and variables → Actions → Variables.
+    env:
+      RELEASE_PROFILE: ${{ inputs.release_profile }}
+      REACT_APP_API_BASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_API_BASE_URL || '' }}
+      REACT_APP_SUPABASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_URL || '' }}
+      REACT_APP_SUPABASE_ANON_KEY: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_ANON_KEY || '' }}
+      REACT_APP_AUTH_REDIRECT: ${{ inputs.release_profile == 'live' && vars.REACT_APP_AUTH_REDIRECT || '' }}
+      REACT_APP_ENABLE_GOOGLE_AUTH: ${{ inputs.release_profile == 'live' && vars.REACT_APP_ENABLE_GOOGLE_AUTH || '' }}
+      REACT_APP_SENTRY_DSN: ${{ vars.REACT_APP_SENTRY_DSN }}
+      REACT_APP_POSTHOG_KEY: ${{ vars.REACT_APP_POSTHOG_KEY }}
+      REACT_APP_POSTHOG_HOST: ${{ vars.REACT_APP_POSTHOG_HOST }}
+      REACT_APP_INVITE_ONLY: ${{ vars.REACT_APP_INVITE_ONLY }}
+      REACT_APP_BILLING_LIVE: ${{ vars.REACT_APP_BILLING_LIVE }}
+      REACT_APP_GOOGLE_MAPS_KEY: ${{ vars.REACT_APP_GOOGLE_MAPS_KEY }}
+      REACT_APP_OPENWEATHER_KEY: ${{ vars.REACT_APP_OPENWEATHER_KEY }}
+      # REACT_APP_PLANNER_TOKEN / _AUTH_BYPASS / _BYPASS_ROLE are deliberately
+      # ABSENT and are rejected by the validator if ever introduced.
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            hostv2/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      # ── the gates, before anything is published ──────────────────────────
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+        working-directory: backend
+      - name: Backend tests (incl. AI auth + SSRF gates)
+        run: python -m pytest tests/ --strict-markers
+        working-directory: backend
+
+      - run: npm ci
+      - run: npm ci
+        working-directory: hostv2
+      - name: Unit suite
+        run: CI=true npx react-scripts test --watchAll=false
+
+      # ── the public configuration contract ────────────────────────────────
+      # Production mode: every required public value must be present, or this
+      # fails rather than letting the release degrade silently to the
+      # localStorage-only demo. Also rejects prohibited browser variables and
+      # server-secret shapes. Prints names only, never values.
+      - name: Validate release configuration for the chosen profile
+        run: node scripts/validate-production-config.mjs --mode="${RELEASE_PROFILE}"
+
+      # ── build the release artifact from THIS commit ──────────────────────
+      # `npm run release` = build hostv2 → sync into public/hostv2 → CRA build.
+      # Both builds run in this same job, so both inherit the job-level env
+      # above — hostv2 bakes its own config at ITS build time (vite loadEnv
+      # merges prefixed process.env), so this is what keeps the two bundles in
+      # configuration parity. Nothing depends on the tracked artifact being
+      # fresh: it is regenerated from source.
+      - name: Build release artifact
+        # GitHub Actions ALWAYS sets CI=true, and react-scripts turns every ESLint
+        # warning into a build error under it — so `npm run release` would fail
+        # here on a tree that builds perfectly well locally. Verified: exit 1,
+        # "Treating warnings as errors because process.env.CI = true."
+        #
+        # This step's job is to produce the artifact, not to police lint. Warning
+        # policy lives in its own gate (scripts/cra-build-gate.mjs, run by the
+        # Checks workflow on the release branch) where a reviewed baseline decides
+        # what is acceptable. Unsetting CI here restores the intended build
+        # behaviour without weakening any gate this workflow owns.
+        env:
+          CI: ''
+        run: npm run release
+
+      - name: Record the deployed commit
+        run: |
+          echo "${GITHUB_SHA}" > build/RELEASE_SHA.txt
+          echo "release_profile=${RELEASE_PROFILE}" >> build/RELEASE_SHA.txt
+          echo "built $(date -u +%Y-%m-%dT%H:%M:%SZ) from ${GITHUB_SHA}" >> build/RELEASE_SHA.txt
+          if [ "${RELEASE_PROFILE}" = "demo" ]; then
+            echo "capability=open-demo-localstorage-only (NOT live-production capable)" >> build/RELEASE_SHA.txt
+          else
+            echo "capability=live-authenticated-backend-connected" >> build/RELEASE_SHA.txt
+          fi
+
+      # ── prove BOTH bundles received the intended configuration ───────────
+      # CRA and hostv2 are compiled by different toolchains from different
+      # entry points. A release where one is configured and the other is not
+      # looks completely normal until a host signs in on one surface and not
+      # the other. Assert the API base reached both.
+      - name: Verify CRA and hostv2 configuration parity
+        if: ${{ inputs.release_profile == 'live' }}
+        run: |
+          set -euo pipefail
+          api="${REACT_APP_API_BASE_URL}"
+          grep -rqF "$api" build/static/js/ \
+            || { echo "::error::CRA bundle is missing REACT_APP_API_BASE_URL"; exit 1; }
+          grep -rqF "$api" build/hostv2/assets/ \
+            || { echo "::error::hostv2 bundle is missing REACT_APP_API_BASE_URL — the two surfaces would disagree"; exit 1; }
+          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
+          echo "both bundles carry the intended public configuration; artifact stamped ${GITHUB_SHA}"
+
+      # ── demo profile: prove the live values are NOT in the bundle ────────
+      # The mirror of the live parity check. A demo artifact that contained a
+      # Supabase project URL or the API origin would be live-capable while
+      # claiming not to be, which is the dishonest state this whole contract
+      # exists to prevent.
+      - name: Verify demo artifact carries no live configuration
+        if: ${{ inputs.release_profile == 'demo' }}
+        run: |
+          set -uo pipefail
+          # A CONCRETE project host (https://<ref>.supabase.co), not the wildcard
+          # "*.supabase.co" allowlist pattern that legitimately lives in source —
+          # matching the wildcard would false-fail every clean demo build.
+          # Executed bundles only. Source maps carry the dependencies' own JSDoc,
+          # which includes example hosts like https://xyzcompany.supabase.co — real
+          # library documentation, not this deployment's configuration. Scanning
+          # them would fail every clean demo build for a comment in someone else's
+          # package.
+          if grep -rIlE --include='*.js' --exclude='*.map' \
+               'https://[a-z0-9]{8,}\.supabase\.co|onrender\.com|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{20,}\.' \
+               build/static/js/ build/hostv2/assets/ ; then
+            echo "::error::demo artifact contains live auth/backend configuration — it is not an open demo"
+            exit 1
+          fi
+          grep -q 'release_profile=demo' build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped release_profile=demo"; exit 1; }
+          test -s build/RELEASE_SHA.txt && grep -qF "${GITHUB_SHA}" build/RELEASE_SHA.txt \
+            || { echo "::error::artifact is not stamped with the commit SHA"; exit 1; }
+          echo "demo artifact verified: no live configuration, stamped ${GITHUB_SHA} / release_profile=demo"
+
+      # ── final net: no server secret may leave in the artifact ────────────
+      # VALUE shapes only, deliberately. The control on NAMES lives in
+      # validate-production-config.mjs, which refuses to build when a prohibited
+      # variable is set — that is the right place for it, because a bundler
+      # leaves the bare identifier in the output even when the variable is
+      # UNSET (`process.env.X` compiles to `{}.X`, so the name appears with no
+      # value attached). Scanning names here would fail every clean build and
+      # train people to ignore the gate. This layer therefore catches values
+      # that reached the artifact by ANY route, including ones no env check saw.
+      - name: Scan artifact for server secrets
+        run: |
+          set -uo pipefail
+          if grep -rIlE 'sk-[A-Za-z0-9_-]{16,}|sk_live_[A-Za-z0-9]{16,}|rk_live_[A-Za-z0-9]{16,}|postgres(ql)?://[^"'"'"' ]*:[^"'"'"' ]*@|ghp_[A-Za-z0-9]{20,}|xox[baprs]-[A-Za-z0-9-]{10,}|-----BEGIN [A-Z ]*PRIVATE KEY-----' build/ ; then
+            echo "::error::artifact contains a server-secret value pattern — refusing to publish"
+            exit 1
+          fi
+          echo "artifact clean: no server-secret value patterns"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
