@@ -1,0 +1,128 @@
+AUDIT ===== WEDDING (wedding) date=2026-10-10 createdAt=2026-06-30
+AUDIT   open=9 overdue=0 ready=9 waiting=0 locked=3 deferred=0 heartAtRisk=true
+AUDIT    1. ceremony [ready] w=high ew=high rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Ceremony type + officiant"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    2. venue [ready] w=high ew=med rev=locked tp=Y dep=- blocks=- route=RESOLVES
+AUDIT       label="Venue + date"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    3. budget [ready] w=high ew=med rev=costly tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Total budget + who pays"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    4. guestcount [ready] w=high ew=med rev=costly tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Guest-count target"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    5. vendor_team [ready] w=high ew=low rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="The vendor team"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    6. vision [ready] w=med ew=med rev=reversible tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Style + formality"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    7. music [ready] w=med ew=low rev=costly tp=Y dep=- blocks=- route=none
+AUDIT       label="Music — band or DJ"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    8. catering_style [ready] w=med ew=low rev=reversible tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Catering style"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    9. bar [ready] w=med ew=low rev=reversible tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Bar service"
+AUDIT       because="A good place to start." assurance=null
+AUDIT   HERO state=settle_ready title="Good to settle: Ceremony type + officiant."
+AUDIT   HERO line="No rush — 9 open, each in its own time." cta="Open what to settle"
+AUDIT   eventPlan.nextActions=3
+AUDIT     NA1 id=top:readiness:set-your-budget cat=readiness dom=budget title="Set your budget."
+AUDIT     NA2 id=food cat=undefined dom=food title="Plan the food."
+AUDIT     NA3 id=phase:datetime cat=phase dom=date title="Set the start time"
+AUDIT ===== REPAST (repast) date=2026-08-03 createdAt=2026-07-28
+AUDIT   open=4 overdue=2 ready=2 waiting=0 locked=3 deferred=0 heartAtRisk=true
+AUDIT    1. food_source [overdue] w=high ew=high rev=reversible tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Who provides the food"
+AUDIT       because="Was due 1 day ago." assurance="Nothing’s stalled — the plan’s been running on our pick."
+AUDIT    2. place [overdue] w=high ew=med rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Where the repast is held"
+AUDIT       because="Was due 1 day ago." assurance="The plan’s been running on our pick — swapping it now costs more than it did."
+AUDIT    3. memory [ready] w=med ew=high rev=reversible tp=N dep=- blocks=- route=none
+AUDIT       label="A way to remember together"
+AUDIT       because="Good to lock — about 1 day out." assurance=null
+AUDIT    4. headcount [ready] w=med ew=low rev=reversible tp=Y dep=- blocks=- route=RESOLVES
+AUDIT       label="A gentle headcount estimate"
+AUDIT       because="Good to lock today." assurance=null
+AUDIT   HERO state=settle_overdue title="Who provides the food."
+AUDIT   HERO line="2 still to sort — this one first, 4 days to go." cta="See what’s left"
+AUDIT   eventPlan.nextActions=6
+AUDIT     NA1 id=decision:food_source cat=surface dom=plan title="Resolve \"Who provides the food\"."
+AUDIT     NA2 id=decision:place cat=surface dom=plan title="Resolve \"Where the repast is held\"."
+AUDIT     NA3 id=top:readiness:set-your-budget cat=readiness dom=budget title="Set your budget."
+AUDIT ===== QUINCE (quinceanera) date=2026-12-28 createdAt=2026-07-10
+AUDIT   open=6 overdue=0 ready=6 waiting=0 locked=3 deferred=0 heartAtRisk=true
+AUDIT    1. vals_song [ready] w=high ew=high rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Choose the vals (waltz) song and music plan"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    2. religious_or_secular [ready] w=high ew=high rev=locked tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Will there be a church Mass / blessing (misa), or…"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    3. venue [ready] w=high ew=low rev=locked tp=Y dep=- blocks=- route=RESOLVES
+AUDIT       label="Choose the reception venue"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    4. court_size [ready] w=high ew=high rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="How large is the court"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    5. dress [ready] w=high ew=high rev=costly tp=Y dep=- blocks=- route=none
+AUDIT       label="Order the quinceañera ballgown and the court attire"
+AUDIT       because="A good place to start." assurance=null
+AUDIT    6. theme_colors [ready] w=med ew=med rev=reversible tp=N dep=- blocks=- route=none
+AUDIT       label="Pick the theme and color story"
+AUDIT       because="A good place to start." assurance=null
+AUDIT   HERO state=settle_ready title="Good to settle: Choose the vals (waltz) song and music plan."
+AUDIT   HERO line="No rush — 6 open, each in its own time." cta="Open what to settle"
+AUDIT   eventPlan.nextActions=3
+AUDIT     NA1 id=top:readiness:set-your-budget cat=readiness dom=budget title="Set your budget."
+AUDIT     NA2 id=food cat=undefined dom=food title="Plan the food."
+AUDIT     NA3 id=phase:datetime cat=phase dom=date title="Set the start time"
+AUDIT ===== CONFERENCE (conference) date=2026-11-28 createdAt=2026-06-20
+AUDIT   open=5 overdue=4 ready=1 waiting=0 locked=3 deferred=0 heartAtRisk=false
+AUDIT    1. tracks [overdue] w=high ew=low rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Single-track or multi-track agenda"
+AUDIT       because="Was due 28 days ago." assurance="The plan’s been running on our pick — swapping it now costs more than it did."
+AUDIT    2. ticketing [overdue] w=high ew=low rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Ticketed (paid) or free registration"
+AUDIT       because="Was due 28 days ago." assurance="The plan’s been running on our pick — swapping it now costs more than it did."
+AUDIT    3. sponsor_model [overdue] w=high ew=low rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Sponsor / exhibitor model"
+AUDIT       because="Was due 28 days ago." assurance="The plan’s been running on our pick — swapping it now costs more than it did."
+AUDIT    4. room_block [overdue] w=med ew=low rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Hotel room block + shuttle plan"
+AUDIT       because="Was due 28 days ago." assurance="The plan’s been running on our pick — swapping it now costs more than it did."
+AUDIT    5. format [ready] w=high ew=low rev=costly tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="In-person, hybrid, or virtual"
+AUDIT       because="A good place to start." assurance=null
+AUDIT   HERO state=settle_overdue title="Settle: Single-track or multi-track agenda."
+AUDIT   HERO line="4 decisions are past their easy window — this one first. The spread and shopping list size from them." cta="Open what to settle"
+AUDIT   eventPlan.nextActions=4
+AUDIT     NA1 id=bundle:decisions cat=surface dom=plan title="Resolve 4 decisions — they're past their easy window"
+AUDIT     NA2 id=top:readiness:set-your-budget cat=readiness dom=budget title="Set your budget."
+AUDIT     NA3 id=food cat=undefined dom=food title="Plan the food."
+AUDIT ===== BACKYARD (backyard bbq) date=2026-08-15 createdAt=2026-07-25
+AUDIT   open=5 overdue=0 ready=5 waiting=0 locked=3 deferred=0 heartAtRisk=false
+AUDIT    1. cooking_model [ready] w=high ew=med rev=costly tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Host cooks the spread, or potluck"
+AUDIT       because="Good to lock — about 2 days out." assurance=null
+AUDIT    2. grill_master [ready] w=high ew=med rev=costly tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Who is running the grill"
+AUDIT       because="Good to lock — about 2 days out." assurance=null
+AUDIT    3. shade_seating [ready] w=med ew=med rev=costly tp=N dep=- blocks=- route=none
+AUDIT       label="Shade + seating for every age"
+AUDIT       because="Good to lock — about 6 days out." assurance=null
+AUDIT    4. music [ready] w=low ew=high rev=reversible tp=N dep=- blocks=- route=none
+AUDIT       label="Music — DJ or playlist"
+AUDIT       because="Good to lock — about 6 days out." assurance=null
+AUDIT    5. drinks [ready] w=med ew=low rev=reversible tp=N dep=- blocks=- route=RESOLVES
+AUDIT       label="Drinks — family + grown folks"
+AUDIT       because="Good to lock — about 6 days out." assurance=null
+AUDIT   HERO state=settle_ready title="Good to settle: Host cooks the spread, or potluck."
+AUDIT   HERO line="No rush — 5 open, each in its own time." cta="Open what to settle"
+AUDIT   eventPlan.nextActions=4
+AUDIT     NA1 id=top:readiness:set-your-budget cat=readiness dom=budget title="Set your budget."
+AUDIT     NA2 id=food cat=undefined dom=food title="Plan the food."
+AUDIT     NA3 id=phase:rain cat=phase dom=rain title="Add a rain backup"
+✓ AUDIT phase 6 (352 ms)

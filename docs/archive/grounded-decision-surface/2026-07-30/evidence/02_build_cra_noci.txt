@@ -1,0 +1,370 @@
+
+> ngw-event-boss@0.1.0 build
+> react-scripts build
+
+Creating an optimized production build...
+Compiled with warnings.
+
+[eslint] 
+src/App.js
+  Line 29:8:       'VendorImportWizard' is defined but never used                                                                                                                                                                                                               no-unused-vars
+  Line 39:368:     'supplyIntel' is defined but never used                                                                                                                                                                                                                      no-unused-vars
+  Line 39:437:     'foodApproach' is defined but never used                                                                                                                                                                                                                     no-unused-vars
+  Line 40:10:      'buildAssembleRevealStages' is defined but never used                                                                                                                                                                                                        no-unused-vars
+  Line 59:10:      'deriveCurrentLocationAssist' is defined but never used                                                                                                                                                                                                      no-unused-vars
+  Line 72:215:     'dvUpdateActive' is defined but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 74:57:      'inferCategory' is defined but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 75:117:     'rainPlanGap' is defined but never used                                                                                                                                                                                                                      no-unused-vars
+  Line 84:132:     'envelopeStatusColor' is defined but never used                                                                                                                                                                                                              no-unused-vars
+  Line 87:67:      'trackPageView' is defined but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 95:98:      'identityStatement' is defined but never used                                                                                                                                                                                                                no-unused-vars
+  Line 112:149:    'evaluationStats' is defined but never used                                                                                                                                                                                                                  no-unused-vars
+  Line 115:30:     'makeEventSyncRow' is defined but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 127:28:     'carbonSurface2' is defined but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 134:158:    'summarizeCrew' is defined but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 137:47:     'deriveCommandCenterData' is defined but never used                                                                                                                                                                                                          no-unused-vars
+  Line 137:188:    'wholeEventReadinessScore' is defined but never used                                                                                                                                                                                                         no-unused-vars
+  Line 137:312:    'isInboundMessage' is defined but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 150:3:      'getCompressedWorkflowSummary' is defined but never used                                                                                                                                                                                                     no-unused-vars
+  Line 151:3:      'getCompressionLevel' is defined but never used                                                                                                                                                                                                              no-unused-vars
+  Line 154:3:      'COMPRESSION_META' is defined but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 155:3:      'URGENCY_META' is defined but never used                                                                                                                                                                                                                     no-unused-vars
+  Line 175:3:      'NOT_INCLUDED' is defined but never used                                                                                                                                                                                                                     no-unused-vars
+  Line 1453:9:     'T' is assigned a value but never used                                                                                                                                                                                                                       no-unused-vars
+  Line 2093:7:     'getPhaseActions' is assigned a value but never used                                                                                                                                                                                                         no-unused-vars
+  Line 2411:10:    'aggregateVendorLibrary' is defined but never used                                                                                                                                                                                                           no-unused-vars
+  Line 3669:7:     'VENDOR_STUBS' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 3924:7:     'TIER_WHY' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 5449:9:     'T' is assigned a value but never used                                                                                                                                                                                                                       no-unused-vars
+  Line 5626:10:    'KpiInboxPanel' is defined but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 5677:10:    'TagBadges' is defined but never used                                                                                                                                                                                                                        no-unused-vars
+  Line 5930:7:     'CLIENT_MSG_TYPES' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 5936:7:     'INTERNAL_MSG_TYPES' is assigned a value but never used                                                                                                                                                                                                      no-unused-vars
+  Line 5943:7:     'msgTypeStyle' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 6160:10:    'docusignResult' is assigned a value but never used                                                                                                                                                                                                          no-unused-vars
+  Line 6160:29:    'setDocusignResult' is assigned a value but never used                                                                                                                                                                                                       no-unused-vars
+  Line 6292:9:     'markPaid' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 6879:29:    'isFuture' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 7101:182:   Duplicate key 'color'                                                                                                                                                                                                                                        no-dupe-keys
+  Line 7764:10:    'ClientProposalView' is defined but never used                                                                                                                                                                                                               no-unused-vars
+  Line 10100:9:    'openShoppingList' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 10118:9:    'card' is assigned a value but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 10122:9:    'eyebrow' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 10448:9:    '_dte' is assigned a value but never used                                                                                                                                                                                                                    no-unused-vars
+  Line 10539:10:   'checkAfterLock' is assigned a value but never used                                                                                                                                                                                                          no-unused-vars
+  Line 10584:9:    'fpIdent' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 10585:9:    'fpHue' is assigned a value but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 10598:9:    'heroNames' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 11148:21:   'perUnit' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 11177:21:   'lkBtn' is assigned a value but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 11888:9:    'evtCLR' is assigned a value but never used                                                                                                                                                                                                                  no-unused-vars
+  Line 11938:10:   'saveMoneyOpen' is assigned a value but never used                                                                                                                                                                                                           no-unused-vars
+  Line 12195:9:    'steelDeep' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 12718:51:   Unexpected mix of '&&' and '||'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 12718:57:   Unexpected mix of '&&' and '||'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 14125:10:   'EventCard' is defined but never used                                                                                                                                                                                                                        no-unused-vars
+  Line 14335:9:    'Divider' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 14846:9:    'C' is assigned a value but never used                                                                                                                                                                                                                       no-unused-vars
+  Line 14932:9:    'red' is assigned a value but never used                                                                                                                                                                                                                     no-unused-vars
+  Line 15182:7:    'INTAKE_EVENT_TYPES' is assigned a value but never used                                                                                                                                                                                                      no-unused-vars
+  Line 15912:9:    'metroTier' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 16738:9:    'tierColor' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 17178:6:    React Hook useEffect has missing dependencies: 'NATIONAL_NOTE' and 'event'. Either include them or remove the dependency array                                                                                                                               react-hooks/exhaustive-deps
+  Line 17631:10:   'proofStudio' is assigned a value but never used                                                                                                                                                                                                             no-unused-vars
+  Line 17631:23:   'setProofStudio' is assigned a value but never used                                                                                                                                                                                                          no-unused-vars
+  Line 17635:10:   'showAI' is assigned a value but never used                                                                                                                                                                                                                  no-unused-vars
+  Line 17635:24:   'setShowAI' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 17662:9:    'initials' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 19289:10:   'DashWeekView' is defined but never used                                                                                                                                                                                                                     no-unused-vars
+  Line 19518:10:   'SetupBanner' is defined but never used                                                                                                                                                                                                                      no-unused-vars
+  Line 20187:6:    React Hook useMemo has a duplicate dependency: 'C.muted'. Either omit it or remove the dependency array                                                                                                                                                      react-hooks/exhaustive-deps
+  Line 20301:10:   'HomeQuickActions' is defined but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 20433:9:    'actionable' is assigned a value but never used                                                                                                                                                                                                              no-unused-vars
+  Line 20549:24:   Unexpected mix of '&&' and '||'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 20549:34:   Unexpected mix of '&&' and '||'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 21039:9:    The 'vendors' conditional could make the dependencies of useMemo Hook (at line 21066) change on every render. To fix this, wrap the initialization of 'vendors' in its own useMemo() Hook                                                                    react-hooks/exhaustive-deps
+  Line 21437:103:  React Hook useEffect has a missing dependency: 'reloadIntakeSubs'. Either include it or remove the dependency array                                                                                                                                          react-hooks/exhaustive-deps
+  Line 23129:6:    React Hook useMemo has a missing dependency: 'ctx'. Either include it or remove the dependency array                                                                                                                                                         react-hooks/exhaustive-deps
+  Line 23378:6:    React Hook useEffect has missing dependencies: 'onPatchProfile' and 'profile'. Either include them or remove the dependency array. If 'onPatchProfile' changes too often, find the parent component that defines it and wrap that definition in useCallback  react-hooks/exhaustive-deps
+  Line 23456:9:    'pending' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 23458:9:    'confirmedVendors' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 24428:9:    'guideNeedsAttention' is assigned a value but never used                                                                                                                                                                                                     no-unused-vars
+  Line 24501:26:   'setPreviewEventId' is assigned a value but never used                                                                                                                                                                                                       no-unused-vars
+  Line 24509:10:   'showTasksMobile' is assigned a value but never used                                                                                                                                                                                                         no-unused-vars
+  Line 24509:30:   'setShowTasksMobile' is assigned a value but never used                                                                                                                                                                                                      no-unused-vars
+  Line 24510:10:   'showPaymentsMobile' is assigned a value but never used                                                                                                                                                                                                      no-unused-vars
+  Line 24510:30:   'setShowPaymentsMobile' is assigned a value but never used                                                                                                                                                                                                   no-unused-vars
+  Line 24511:10:   'showActionMobile' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 24511:30:   'setShowActionMobile' is assigned a value but never used                                                                                                                                                                                                     no-unused-vars
+  Line 24575:9:    'overduePayCount' is assigned a value but never used                                                                                                                                                                                                         no-unused-vars
+  Line 24576:9:    'totalDueSoon' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 24583:9:    'needsSendCount' is assigned a value but never used                                                                                                                                                                                                          no-unused-vars
+  Line 24587:9:    'taskRows' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 24612:9:    'paymentRows' is assigned a value but never used                                                                                                                                                                                                             no-unused-vars
+  Line 24638:9:    'commRows' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 24685:9:    'clientIsHostRec' is assigned a value but never used                                                                                                                                                                                                         no-unused-vars
+  Line 25851:39:   'collected' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 25851:63:   'nextEvt' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 25854:23:   'totalAtt' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 26260:15:   'portfolioBalance' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 26277:15:   'previewR' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 26278:15:   'previewNA' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 26279:15:   'previewAtt' is assigned a value but never used                                                                                                                                                                                                              no-unused-vars
+  Line 26282:15:   'colorFor' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 26298:15:   'showRail' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 29471:9:    'edgeId' is assigned a value but never used                                                                                                                                                                                                                  no-unused-vars
+  Line 32072:9:    'maybe' is assigned a value but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 33564:10:   'VendorScriptsPanel' is defined but never used                                                                                                                                                                                                               no-unused-vars
+  Line 34284:9:    'hasTimedCues' is assigned a value but never used                                                                                                                                                                                                            no-unused-vars
+  Line 34293:9:    'isCueDone' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 34293:44:   Unexpected mix of '||' and '&&'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 34293:68:   Unexpected mix of '||' and '&&'. Use parentheses to clarify the intended order of operations                                                                                                                                                                 no-mixed-operators
+  Line 34801:9:    'dayOfContactName' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 34842:9:    'PHASE_ORDER' is assigned a value but never used                                                                                                                                                                                                             no-unused-vars
+  Line 34909:57:   Unnecessary escape character: \/                                                                                                                                                                                                                             no-useless-escape
+  Line 35667:9:    'isMobile' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 36176:11:   'evColor' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 37471:15:   'td' is assigned a value but never used                                                                                                                                                                                                                      no-unused-vars
+  Line 37529:17:   'td' is assigned a value but never used                                                                                                                                                                                                                      no-unused-vars
+  Line 39446:10:   'AddVendorIntro' is defined but never used                                                                                                                                                                                                                   no-unused-vars
+  Line 39524:9:    'steelTop' is assigned a value but never used                                                                                                                                                                                                                no-unused-vars
+  Line 39525:9:    'steelDeep' is assigned a value but never used                                                                                                                                                                                                               no-unused-vars
+  Line 39605:10:   'VendorAddedToast' is defined but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 40765:9:    's' is assigned a value but never used                                                                                                                                                                                                                       no-unused-vars
+  Line 40782:9:    'statusColor' is assigned a value but never used                                                                                                                                                                                                             no-unused-vars
+  Line 42057:9:    's' is assigned a value but never used                                                                                                                                                                                                                       no-unused-vars
+  Line 42438:11:   'fpItems' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 42677:9:    'idColor' is assigned a value but never used                                                                                                                                                                                                                 no-unused-vars
+  Line 43438:9:    The 'timeline' conditional could make the dependencies of useMemo Hook (at line 43455) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook                                                                  react-hooks/exhaustive-deps
+  Line 44042:10:   'showClientPicker' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 44042:31:   'setShowClientPicker' is assigned a value but never used                                                                                                                                                                                                     no-unused-vars
+  Line 44043:10:   'clientPickVal' is assigned a value but never used                                                                                                                                                                                                           no-unused-vars
+  Line 44043:31:   'setClientPickVal' is assigned a value but never used                                                                                                                                                                                                        no-unused-vars
+  Line 44943:289:  Duplicate key 'color'                                                                                                                                                                                                                                        no-dupe-keys
+  Line 45662:6:    React Hook useEffect has a missing dependency: 'themeC.bgGrad'. Either include it or remove the dependency array                                                                                                                                             react-hooks/exhaustive-deps
+
+src/CommandCenter.jsx
+  Line 29:17:   'space' is defined but never used                no-unused-vars
+  Line 73:25:   'taskSatisfied' is defined but never used        no-unused-vars
+  Line 886:5:   Nested block is redundant                        no-lone-blocks
+  Line 2653:7:  'firstRoute' is assigned a value but never used  no-unused-vars
+
+src/admin/AdminConsole.jsx
+  Line 17:10:    'getEventSyncStatus' is defined but never used               no-unused-vars
+  Line 31:10:    'resolveConflict' is defined but never used                  no-unused-vars
+  Line 31:27:    'buildConsensusPacket' is defined but never used             no-unused-vars
+  Line 33:32:    'parseFieldPath' is defined but never used                   no-unused-vars
+  Line 33:48:    'getPlaybookField' is defined but never used                 no-unused-vars
+  Line 33:66:    'setPlaybookField' is defined but never used                 no-unused-vars
+  Line 33:84:    'isHighConfidenceProvenance' is defined but never used       no-unused-vars
+  Line 33:112:   'playbookReadinessForResearch' is defined but never used     no-unused-vars
+  Line 34:158:   'COMPLETENESS' is defined but never used                     no-unused-vars
+  Line 35:42:    'whyInsufficientForGap' is defined but never used            no-unused-vars
+  Line 35:65:    'suggestBetterProviders' is defined but never used           no-unused-vars
+  Line 36:36:    'scoreRelevance' is defined but never used                   no-unused-vars
+  Line 36:81:    'whyQuestionUnansswered' is defined but never used           no-unused-vars
+  Line 36:105:   'campaignExplainerText' is defined but never used            no-unused-vars
+  Line 48:30:    'recordProviderEvent' is defined but never used              no-unused-vars
+  Line 48:51:    'createProviderEvent' is defined but never used              no-unused-vars
+  Line 48:93:    'PROVIDER_OUTCOME_TYPES' is defined but never used           no-unused-vars
+  Line 50:29:    'getDomain' is defined but never used                        no-unused-vars
+  Line 50:40:    'domainCoverage' is defined but never used                   no-unused-vars
+  Line 54:51:    'suggestPlaybooks' is defined but never used                 no-unused-vars
+  Line 54:69:    'playbooksForDomain' is defined but never used               no-unused-vars
+  Line 54:89:    'validatePlaybook' is defined but never used                 no-unused-vars
+  Line 55:26:    'sourcesForDomain' is defined but never used                 no-unused-vars
+  Line 55:44:    'sourcesForProvider' is defined but never used               no-unused-vars
+  Line 55:64:    'highReliabilitySources' is defined but never used           no-unused-vars
+  Line 55:88:    'unbiasedSources' is defined but never used                  no-unused-vars
+  Line 56:79:    'blockStage' is defined but never used                       no-unused-vars
+  Line 56:112:   'buildPipelineMetrics' is defined but never used             no-unused-vars
+  Line 57:26:    'canPerform' is defined but never used                       no-unused-vars
+  Line 57:38:    'publishingRoles' is defined but never used                  no-unused-vars
+  Line 59:34:    'overdueProviders' is defined but never used                 no-unused-vars
+  Line 63:37:    'blueprintToGoal' is defined but never used                  no-unused-vars
+  Line 64:10:    'runAutonomousCampaign' is defined but never used            no-unused-vars
+  Line 65:105:   'retryResearchProvider' is defined but never used            no-unused-vars
+  Line 67:92:    'providerIntelligenceSummary' is defined but never used      no-unused-vars
+  Line 67:121:   'getProviderStats' is defined but never used                 no-unused-vars
+  Line 69:29:    'prepareEvidenceForReview' is defined but never used         no-unused-vars
+  Line 71:26:    'simulateExperience' is defined but never used               no-unused-vars
+  Line 2333:10:  'campWorkflow' is assigned a value but never used            no-unused-vars
+  Line 2333:24:  'setCampWorkflow' is assigned a value but never used         no-unused-vars
+  Line 2334:10:  'campDetectedGaps' is assigned a value but never used        no-unused-vars
+  Line 2334:28:  'setCampDetectedGaps' is assigned a value but never used     no-unused-vars
+  Line 2354:10:  'campBatchResults' is assigned a value but never used        no-unused-vars
+  Line 2378:10:  'batchProgress' is assigned a value but never used           no-unused-vars
+  Line 2378:25:  'setBatchProgress' is assigned a value but never used        no-unused-vars
+  Line 2380:10:  'kpiRefreshKey' is assigned a value but never used           no-unused-vars
+  Line 2396:9:   'refreshAll' is assigned a value but never used              no-unused-vars
+  Line 2571:10:  'corpusDomain' is assigned a value but never used            no-unused-vars
+  Line 2571:24:  'setCorpusDomain' is assigned a value but never used         no-unused-vars
+  Line 2581:31:  'setProviderLastChecked' is assigned a value but never used  no-unused-vars
+  Line 2713:23:  'authorityColor' is assigned a value but never used          no-unused-vars
+  Line 4482:51:  'isUnanimous' is assigned a value but never used             no-unused-vars
+  Line 4500:49:  'quality' is assigned a value but never used                 no-unused-vars
+  Line 5759:13:  'lowQueue' is assigned a value but never used                no-unused-vars
+  Line 5832:36:  'campaignId' is assigned a value but never used              no-unused-vars
+  Line 6408:13:  'SIG_COLOR' is assigned a value but never used               no-unused-vars
+  Line 6537:13:  'SEVERITY_COLOR' is assigned a value but never used          no-unused-vars
+
+src/components/EventDayMode.jsx
+  Line 160:9:  'supp' is assigned a value but never used  no-unused-vars
+
+src/components/MembersModal.jsx
+  Line 117:5:  Duplicate key 'border'  no-dupe-keys
+
+src/lib/assembleRevealEngines.js
+  Line 53:5:  'complexity' is assigned a value but never used  no-unused-vars
+
+src/lib/contactFormat.js
+  Line 63:1:  Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+src/lib/doItForMe.js
+  Line 84:9:  'who' is assigned a value but never used  no-unused-vars
+
+src/lib/eventMemory.js
+  Line 20:7:  'OUTCOME_KEYS' is assigned a value but never used  no-unused-vars
+
+src/lib/experience/experienceComposer.js
+  Line 142:17:  'phase' is assigned a value but never used  no-unused-vars
+  Line 197:11:  'role' is assigned a value but never used   no-unused-vars
+
+src/lib/experience/experienceView.js
+  Line 13:11:  'role' is assigned a value but never used  no-unused-vars
+
+src/lib/hostIntel.js
+  Line 82:7:  'atLeastMedium' is assigned a value but never used  no-unused-vars
+
+src/lib/knowledge/batchTracking.js
+  Line 6:20:  'upsertWorker' is defined but never used  no-unused-vars
+
+src/lib/knowledge/campaignRunner.js
+  Line 24:10:  'recordProviderRun' is defined but never used  no-unused-vars
+
+src/lib/knowledge/domain.js
+  Line 9:28:  'playbookWeaknesses' is defined but never used  no-unused-vars
+
+src/lib/knowledge/evidencePipeline.js
+  Line 20:10:  'runCampaign' is defined but never used              no-unused-vars
+  Line 21:26:  'normalizeToObservations' is defined but never used  no-unused-vars
+
+src/lib/knowledge/findingAnalysis.js
+  Line 16:5:    'fieldPath' is assigned a value but never used  no-unused-vars
+  Line 189:54:  'status' is assigned a value but never used     no-unused-vars
+
+src/lib/knowledge/playbookSchema.js
+  Line 370:43:  'sources' is assigned a value but never used     no-unused-vars
+  Line 483:9:   'provenance' is assigned a value but never used  no-unused-vars
+
+src/lib/knowledge/providerIntegration.js
+  Line 12:11:  'apiKey' is assigned a value but never used     no-unused-vars
+  Line 13:11:  'query' is assigned a value but never used      no-unused-vars
+  Line 159:9:  'providers' is assigned a value but never used  no-unused-vars
+
+src/lib/knowledge/providerNormalizers.js
+  Line 17:7:   'slug' is assigned a value but never used      no-unused-vars
+  Line 92:94:  'priceKey' is assigned a value but never used  no-unused-vars
+
+src/lib/knowledge/researchQuestion.js
+  Line 23:14:  'affectsFields' is assigned a value but never used  no-unused-vars
+  Line 74:23:  'affects' is assigned a value but never used        no-unused-vars
+
+src/lib/knowledge/simulation.js
+  Line 51:3:  Unreachable code  no-unreachable
+
+src/lib/locationAssist.js
+  Line 26:7:  '_isPlausibleCity' is assigned a value but never used  no-unused-vars
+
+src/lib/lodgingBookmarklet.js
+  Line 108:10:  Script URL is a form of eval  no-script-url
+
+src/lib/lodgingIntel.js
+  Line 913:9:  'nights' is assigned a value but never used  no-unused-vars
+
+src/lib/playbooks/index.js
+  Line 333:9:   'norm' is assigned a value but never used                  no-unused-vars
+  Line 1555:7:  'SUPPLY_INTEL_SOURCES' is assigned a value but never used  no-unused-vars
+
+src/lib/playbooks/playbookRegistry.js
+  Line 179:9:  'cov' is assigned a value but never used  no-unused-vars
+
+src/lib/vendorAccountability/conflicts.js
+  Line 6:10:  'getVendorPlaybook' is defined but never used  no-unused-vars
+
+src/lib/vendorAccountability/derive.js
+  Line 6:29:   'normalizeCategory' is defined but never used        no-unused-vars
+  Line 7:23:   'PROMISE_STATUS_SEVERITY' is defined but never used  no-unused-vars
+  Line 329:9:  'playbook' is assigned a value but never used        no-unused-vars
+
+src/plan/ChecklistGenerator.jsx
+  Line 7:20:   'useEffect' is defined but never used                                                                                                                                                             no-unused-vars
+  Line 200:9:  The 'timeline' logical expression could make the dependencies of useMemo Hook (at line 240) change on every render. To fix this, wrap the initialization of 'timeline' in its own useMemo() Hook  react-hooks/exhaustive-deps
+
+src/plan/ClientIntakeFlow.jsx
+  Line 280:10:  'Step1' is defined but never used  no-unused-vars
+
+src/plan/CommunicationHub.jsx
+  Line 11:48:    'useCallback' is defined but never used               no-unused-vars
+  Line 279:9:    'needsAttention' is assigned a value but never used   no-unused-vars
+  Line 294:9:    'needsReplyByTab' is assigned a value but never used  no-unused-vars
+  Line 299:9:    'totalNeedsReply' is assigned a value but never used  no-unused-vars
+  Line 1341:10:  'ContextPanel' is defined but never used              no-unused-vars
+  Line 1555:9:   'workspaceHeader' is assigned a value but never used  no-unused-vars
+
+src/plan/DecisionApprovalCenter.jsx
+  Line 341:10:  'reassigning' is assigned a value but never used  no-unused-vars
+
+src/plan/VendorPlanningWorkspace.jsx
+  Line 81:3:    'getSignedUrl' is defined but never used                 no-unused-vars
+  Line 83:3:    'fmtFileSize' is defined but never used                  no-unused-vars
+  Line 94:3:    'conflictsForVendor' is defined but never used           no-unused-vars
+  Line 728:10:  'getVendorLastContacted' is defined but never used       no-unused-vars
+  Line 3925:9:  'hasReadinessSignal' is assigned a value but never used  no-unused-vars
+
+src/slices/OrchestrationSlice.jsx
+  Line 38:3:  'isObserving' is defined but never used  no-unused-vars
+
+src/slices/VendorEscalationSlice.jsx
+  Line 70:9:  'focal' is assigned a value but never used  no-unused-vars
+
+Search for the keywords to learn more about each warning.
+To ignore, add // eslint-disable-next-line to the line before.
+
+File sizes after gzip:
+
+  1.21 MB    build/static/js/main.ff446951.js
+  137.82 kB  build/static/js/238.e1084117.chunk.js
+  133.23 kB  build/static/js/228.95b1ab45.chunk.js
+  128.85 kB  build/static/js/252.a999a90f.chunk.js
+  62.87 kB   build/static/js/961.35afb59a.chunk.js
+  31.73 kB   build/static/js/648.bb71cfae.chunk.js
+  17.02 kB   build/static/js/195.2d342b29.chunk.js
+  10.14 kB   build/static/js/53.b72da94e.chunk.js
+  9.9 kB     build/static/js/81.c0df2d52.chunk.js
+  8.94 kB    build/static/js/970.b899abb0.chunk.js
+  6.42 kB    build/static/js/20.b98f1174.chunk.js
+  6.34 kB    build/static/js/580.5be0a837.chunk.js
+  4.31 kB    build/static/js/956.ddb6be44.chunk.js
+  4.06 kB    build/static/js/603.6956282b.chunk.js
+  3.46 kB    build/static/js/784.a99b5240.chunk.js
+  3.1 kB     build/static/js/563.bbb3d8db.chunk.js
+  2.32 kB    build/static/js/47.2a1925d5.chunk.js
+  1.43 kB    build/static/js/274.1857f3b4.chunk.js
+  787 B      build/static/js/406.f82918c5.chunk.js
+  486 B      build/static/css/main.49ddbfc7.css
+  424 B      build/static/js/310.d4de4c98.chunk.js
+
+The bundle size is significantly larger than recommended.
+Consider reducing it with code splitting: https://goo.gl/9VhYWB
+You can also analyze the project dependencies: https://goo.gl/LeUzfb
+
+The project was built assuming it is hosted at /ngw-event-planner/.
+You can control this with the homepage field in your package.json.
+
+The build folder is ready to be deployed.
+
+Find out more about deployment here:
+
+  https://cra.link/deployment
+

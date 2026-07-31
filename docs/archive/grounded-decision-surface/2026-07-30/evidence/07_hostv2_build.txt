@@ -1,0 +1,25 @@
+
+> ngw-hostv2-prototype@0.1.0 build
+> node src/parity/check-parity.mjs && vite build
+
+✓ Parity gate passed — 3 kit atoms locked + 5 hero CSS selectors token-clean; nothing re-inlined outside askKit.jsx.
+vite v4.5.14 building for production...
+transforming...
+✓ 583 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                           3.76 kB │ gzip:   1.85 kB
+dist/assets/index-2e732ba1.css          128.94 kB │ gzip:  25.41 kB
+dist/assets/InviteV2-ba595cfd.js         37.31 kB │ gzip:  12.10 kB
+dist/assets/module-f1dfae8e.js          197.05 kB │ gzip:  65.52 kB
+dist/assets/index-4f1a8eba.js           202.42 kB │ gzip:  64.07 kB
+dist/assets/inviteShared-026baac3.js    272.25 kB │ gzip:  78.71 kB
+dist/assets/usCitiesFull-cbaf9058.js    460.85 kB │ gzip: 128.75 kB
+dist/assets/HostShellV2-974d773d.js     851.31 kB │ gzip: 263.16 kB
+dist/assets/eventPool-3bc9f749.js     1,517.69 kB │ gzip: 425.76 kB
+
+(!) Some chunks are larger than 500 kBs after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 6.88s

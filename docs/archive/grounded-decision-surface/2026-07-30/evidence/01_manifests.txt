@@ -1,0 +1,38 @@
+=== root deps ===
+  @sentry/react ^8.55.2
+  @supabase/supabase-js ^2.106.1
+  papaparse ^5.5.3
+  posthog-js ^1.379.0
+  qrcode ^1.5.4
+  react ^19.2.6
+  react-dom ^19.2.6
+  react-scripts 5.0.1
+  xlsx ^0.18.5
+ --dev--
+  gh-pages ^6.3.0
+
+=== hostv2 deps ===
+name: ngw-hostv2-prototype
+scripts: {'dev': 'vite', 'parity': 'node src/parity/check-parity.mjs', 'build': 'node src/parity/check-parity.mjs && vite build', 'preview': 'vite preview', 'test:e2e': 'playwright test'}
+  react ^19.2.6
+  react-dom ^19.2.6
+ --dev--
+  @playwright/test ^1.61.1
+  @vitejs/plugin-react ^4.2.1
+  vite ^4.5.5
+
+=== backend dir ===
+MIGRATIONS.md
+README.md
+app
+migrations
+requirements-dev.txt
+requirements.txt
+tests
+
+=== env files (names only, no values) ===
+.env.development
+.env.example
+.env.local
+.env.production.example
+.env.production.local

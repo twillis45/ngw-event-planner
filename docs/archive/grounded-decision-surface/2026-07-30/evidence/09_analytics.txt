@@ -1,0 +1,25 @@
+=== analytics.js: exported API + gating
+19:const PH_KEY    = process.env.REACT_APP_POSTHOG_KEY || 'phc_<REDACTED-BY-AUDIT>';
+24:export const isAnalyticsConfigured = () => Boolean(PH_KEY) && !IS_LOCAL;
+31:    if (typeof window !== 'undefined' && /[?&]noanalytics=1/.test(window.location.search)) return true;
+32:    if (typeof localStorage !== 'undefined' && localStorage.getItem('ngw-analytics-optout') === '1') return true;
+34:  return false;
+41:  if (_ph) return _ph;
+42:  if (!PH_KEY || IS_LOCAL) return null;
+45:    posthog.init(PH_KEY, {
+58:          return safe;
+63:    return _ph;
+65:    return null;
+73:export async function identifyStudio(profile) {
+75:  if (!ph || !profile) return;
+91:export async function track(event, properties = {}) {
+92:  if (analyticsOptedOut()) return;
+97:  if (!ph) return;
+109:export const EVENTS = {
+149:  RETURNED_D1:            'returned_d1',
+150:  RETURNED_D7:            'returned_d7',
+231:export function trackOnce(key, event, props = {}) {
+
+=== distinct event names passed to track()/capture():
+
+=== count of track() call sites:
