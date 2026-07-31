@@ -111,7 +111,7 @@ export default function MembersModal({ onClose, currentUserId: propUid }) {
   const sectionTitle = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: D.muted, marginBottom: 10 };
   const row = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: `1px solid ${D.border}` };
   const input = { width: '100%', background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 8, color: D.text, fontSize: 13, padding: '8px 10px', outline: 'none', fontFamily: 'inherit' };
-  const btn = (variant='default') => ({ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+  const btn = (variant='default') => ({ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
     background: variant==='primary' ? D.accent : variant==='danger' ? 'transparent' : variant==='ghost' ? 'transparent' : D.surface2,
     color:      variant==='primary' ? '#fff'   : variant==='danger' ? D.danger     : variant==='ghost' ? D.muted      : D.text,
     border:     variant==='danger'  ? `1px solid ${D.danger}55` : variant==='ghost' ? `1px solid ${D.border}` : 'none',
