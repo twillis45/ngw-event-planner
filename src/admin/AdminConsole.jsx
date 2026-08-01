@@ -30,6 +30,7 @@ import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
 import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
 import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
 import { approvedSourcesFor, validateSourcesFor, wouldGround } from '../lib/knowledge/sourceAuthority';
+import { detectDivergence, divergenceSummary } from '../lib/knowledge/governanceDivergence';
 import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
@@ -3526,6 +3527,31 @@ function KcrStudioPanel() {
             <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
               LIVE IN RUNTIME — {inventory.length} governed field{inventory.length === 1 ? '' : 's'}
             </div>
+            {/* DIVERGENCE DETECTION (Phase 5F.4.1). Three states claim to know what is
+                governed — the admin store, the baked snapshot, and the committed corpus —
+                and they diverged twice in one session with nothing reporting it. Once a
+                duplicate lineage was created because the picker read the SNAPSHOT (which
+                had been restored) while the store already held a published record.
+                DETECTION ONLY: which side is right is a human judgement, and a tool that
+                guessed would sometimes delete real work. */}
+            {(() => {
+              const dv = detectDivergence(kcrs, publishedEntries());
+              if (dv.ok) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.warn, border: `1px solid ${D.warn}55`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong>{divergenceSummary(dv)}</strong>
+                  {dv.findings.slice(0, 5).map((f, i) => (
+                    <div key={i} style={{ color: D.muted, marginTop: 3, fontFamily: D.mono }}>
+                      {f.kind} — {f.detail}
+                    </div>
+                  ))}
+                  {dv.findings.length > 5 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{dv.findings.length - 5} more</div>
+                  )}
+                </div>
+              );
+            })()}
             {correctNote && <div style={{ fontSize: 10, color: D.good, marginBottom: 6, fontFamily: D.mono }}>{correctNote}</div>}
             {/* ACQUISITION TARGET (Phase 5F.2). The picker can select a field that has
                 never been published, which has no inventory row to attach a composer to.
