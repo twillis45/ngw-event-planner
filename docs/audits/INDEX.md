@@ -27,10 +27,19 @@ Note also: the repo-root `docs/` tree (including `docs/audits/`) is **outside th
 | 2026-07-09 | [Engine Parity — Original vs V2](2026-07-09_ENGINE_PARITY_AUDIT_ORIGINAL_VS_V2.md) | `b76b62ad` | ~35 engines V2 never touches; "V2 consumes engines like a dashboard, not a command system" |
 | 2026-07-08 | [Host Shell V2 — Engine & Doctrine Gap Audit](2026-07-08_HOSTV2_ENGINE_DOCTRINE_GAP_AUDIT.md) | `240f4b6a` | 4 confirmed live defects; 8-row doctrine-violation table |
 
+## Ported from artifacts (2026-08-01)
+
+| Date | Doc | Artifact | Headline |
+|---|---|---|---|
+| 2026-07-29 | [Mobbin Competitive Read — Gap Board](2026-07-29_MOBBIN_COMPETITIVE_READ.md) | `0582ce14` | 10 flow taxonomies, **922 flows**, 24 sections. **Keystone: per-day programme schema** — every engine assumes one day, one anchor, one cohort, so none of it works twice. Nothing in the library guides a host; the guidance leader is a road-trip planner (Wanderlog). Includes the Blink ExperienceOS enterprise mirror |
+| 2026-08-01 | [Blink ExperienceOS — Addendum](2026-08-01_BLINK_AND_CONFIRMATION_PATTERNS.md) | `f7dfd4c1` | Knowledge-base extension of the board's Blink section. The operator completion loop in their own labels · **their AI auto-fill does not mark what it filled** and silently drops transits · the analytics inventory: they count inventory, never work owed |
+| 2026-08-01 | [Lodging Listing UI Patterns](2026-08-01_LODGING_LISTING_UI_PATTERNS.md) | `2057dcd0` | 10 lodging apps, scoped to the return trip — we don't search, so only card anatomy, price semantics, comparison and missing-data transfer. **Adopt Zillow's transposed rail for the shortlist**; Agoda lets the user choose what a price *means*; reject the whole scarcity vocabulary |
+
 ## Authored in-repo
 
 | Date | Doc | Headline |
 |---|---|---|
+| 2026-07-17 | [Attention & Density Re-Audit](2026-07-17_ATTENTION_DENSITY_REAUDIT.md) | **The attention ENGINE is full; the PRESENTATION is not calm.** One ranked list re-expressed across 3–4 surfaces with 2–3 counters. The fix is subtraction at the presentation layer, not more engine |
 | 2026-07-14 | [Claim Source-of-Truth Sweep](2026-07-14_CLAIM_SOURCE_OF_TRUTH_SWEEP.md) | The vendor over-claim was one instance of a **systemic class**. 4 critical findings, 2 worse than the original |
 
 Older engine audits live in [`../product-os/engine-audit/`](../product-os/engine-audit/); sprint/architecture audits in [`../`](../).

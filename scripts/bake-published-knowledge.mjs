@@ -33,7 +33,11 @@ import { buildSnapshot } from '../src/lib/knowledge/publishedSnapshotBuild.mjs';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const OUT = path.join(ROOT, 'src/lib/knowledge/publishedKnowledge.json');
-const DEFAULT_IN = path.join(ROOT, 'knowledge-exports/published-kcrs.json');
+// PHASE 5D (P0): the KCR export moved INTO src/ so the app can import it. It was
+// outside the CRA module scope, which is why the export had to reconstruct its merge
+// base from the SNAPSHOT (heads only) and silently dropped superseded history on every
+// round trip. One file, one owner, readable by both the bake and the console.
+const DEFAULT_IN = path.join(ROOT, 'src/lib/knowledge/publishedKcrs.json');
 
 const argv = process.argv.slice(2);
 const flag = (name) => {

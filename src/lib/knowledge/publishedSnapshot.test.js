@@ -1,3 +1,7 @@
+// NOTE (Phase 5E.1): this slice used p_crabs.unitCostRange as its subject. The
+// crab line is owned by the crab engine (bushel thresholds), so that field is no
+// longer governable by declaration. The subject moved to p_oldbay - a plain
+// per-unit purchase - which is what a value slice should exercise anyway.
 // ─── CONVEYOR 1 TRANSPORT — published knowledge reaches runtime, safely ───────
 //
 // The governance chain was already proven end to end by kasVerticalSlice.test.js.
@@ -25,7 +29,7 @@ import { advanceKCR, recordReview, publishKCR } from './knowledgeChange';
 import { getPlaybook } from '../playbooks/index';
 
 const ASOF = '2026-07-02';
-const FIELD = 'p_crabs.unitCostRange';
+const FIELD = 'p_oldbay.unitCostRange';
 const NEW_VALUE = [3, 8];
 const crab = getPlaybook('Crab Feast');
 
@@ -156,17 +160,23 @@ describe('3 - rollback behavior', () => {
   });
 });
 
-describe('4 - no regression without a snapshot', () => {
-  test('the committed artifact is empty, so every value is authored', () => {
+describe('4 - no regression for UNPUBLISHED fields', () => {
+  // ERA NOTE (Phase 5E.1). This asserted `entryCount === 0` - true when written,
+  // because HEAD shipped the EMPTY snapshot and no governed knowledge had ever
+  // reached a build. Phase 5C.6 committed the governed corpus (that was the P0
+  // fix), so an empty artifact is now the anomaly, not the baseline. The property
+  // worth protecting was never "nothing is published" - it is "a field NOBODY
+  // published still resolves to its authored value", which is what this now says.
+  test('the artifact loads, and an UNPUBLISHED field is still authored', () => {
     const meta = snapshotMeta();
     expect(meta.loaded).toBe(true);
-    expect(meta.entryCount).toBe(0);
-    expect(publishedEntries()).toEqual([]);
-    expect(publishedEntry('Crab Feast', FIELD)).toBeNull();
+    expect(meta.entryCount).toBe(publishedEntries().length);
+    // a field with no governed entry
+    expect(publishedEntry('Crab Feast', 'p_oldbay.unitCostRange')).toBeNull();
   });
 
-  test('resolution with the shipped snapshot is byte-identical to authored', () => {
-    for (const [type, field] of [['Crab Feast', FIELD], ['Wedding', 'type'], ['Repast', 'type']]) {
+  test('resolution is byte-identical to authored for fields nobody published', () => {
+    for (const [type, field] of [['Wedding', 'type'], ['Repast', 'type']]) {
       const pb = getPlaybook(type);
       if (!pb) continue;
       const eff = effectiveValue(pb, field);

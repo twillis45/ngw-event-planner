@@ -23,8 +23,12 @@ import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
 import { publishedKcrsForExport, serializePublishedExport, exportSummary, EXPORT_FILENAME,
-  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory } from '../lib/knowledge/publishedExport';
+  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory, exportBase, lineageHistory, rollbackTarget } from '../lib/knowledge/publishedExport';
 import { publishedEntries } from '../lib/knowledge/publishedSnapshot';
+import { openCorrection } from '../lib/knowledge/correctionWorkflow';
+import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
+import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
+import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
@@ -2191,7 +2195,7 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
               publishedSnapshotBuild selects by lineage, that produced TWO LIVE HEADS on one
               field. The parent is `publishedVersion`. */}
           <B label="Publish" primary cap="publish" enabled={!gate.blocked}
-            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.publishedVersion || null, by: role, asOf }).kcr, 'Published')} />
+            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.correctionOf || k.publishedVersion || null, by: role, asOf }).kcr, 'Published')} />
           <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'archived', { by: role, note: 'withdrawn', asOf }), 'Withdrawn')} />
         </div>
       )}
@@ -2308,6 +2312,30 @@ function KcrStudioPanel() {
   const [depType, setDepType] = useState('Crab Feast');
   const [depField, setDepField] = useState('p_crabs.unitCostRange');
   const [depResult, setDepResult] = useState(null);
+
+  // Correction composer state (Phase 5C.7). Deliberately NOT window.prompt: a modal
+  // dialog blocks the page, is untestable through automation, and cannot show the
+  // version being superseded while the reason is written.
+  const [correctRow, setCorrectRow] = useState(null);
+  const [correctReason, setCorrectReason] = useState('');
+  const [correctNote, setCorrectNote] = useState(null);
+  // Typed value editor (Phase 5E). `correctDraft` holds the EDITOR-shaped value
+  // (strings from inputs); the field type parses it back into the engine shape
+  // on submit. Keeping those separate is what stops "0.5" reaching runtime.
+  // PHASE 5E.3: an admin must be able to govern a field that has never been
+  // published. The inventory only lists LIVE entries, so before this the composer
+  // could only ever re-correct the two fields already in the snapshot — which is
+  // why the host proof kept getting pushed. `correctPurchase` retargets the whole
+  // correction at any governable purchase in the same playbook.
+  const [correctPurchase, setCorrectPurchase] = useState(null);
+  const [correctField, setCorrectField] = useState('provenance');
+  const [correctDraft, setCorrectDraft] = useState(null);
+  // Rollback composer (Phase 5D P1): withdrawing a published version is at least as
+  // consequential as publishing one, so it takes the same shape — see the target,
+  // state a reason, confirm. It never deletes: rollbackKCR moves the head to
+  // 'revision' and the record stays on disk, so the action is reversible.
+  const [rollbackRow, setRollbackRow] = useState(null);
+  const [rollbackReason, setRollbackReason] = useState('');
 
   // Runtime Preview state
   const [rtType, setRtType] = useState('Crab Feast');
@@ -3179,10 +3207,103 @@ function KcrStudioPanel() {
       // the runtime resolver serves, and it contains only lineage heads.
       const liveEntries = publishedEntries();
       const liveAsKcrs = liveEntries.map(snapshotEntryToKcr).filter(Boolean);
-      const mergedForExport = mergePublishedKnowledge(liveAsKcrs, kcrs);
+      // PHASE 5D (P0): merge base is the COMMITTED EXPORT (full records, superseded
+      // history included), not the snapshot. Reconstructing from heads dropped v1 on
+      // the second correction and stripped 11 of 21 fields off every survivor.
+      const mergedForExport = exportBase(kcrs, liveEntries);
       const inventory = publishedInventory(liveEntries);
       const exported = publishedKcrsForExport(mergedForExport);
       const expSum = exportSummary(mergedForExport);
+      // CORRECT THIS (Phase 5C.7). Opens a governed correction against a LIVE published
+      // artifact and stops at Review. It does not publish, does not write an override, and
+      // does not touch publishedKnowledge — a correction that could skip review would be a
+      // wider hole than the defect it fixes. The prior KCR is reconstructed from the baked
+      // snapshot (the same bytes runtime serves) so lineage has a real ancestor to name.
+      const doCorrect = async (row) => {
+        const entry = liveEntries.find((e) => e.assetId === row.assetId && e.fieldPath === row.fieldPath);
+        const prior = entry && snapshotEntryToKcr(entry);
+        if (!prior) { setCorrectNote('Correction blocked: no live entry for that field.'); return; }
+        const reason = correctReason;
+        if (!reason || !reason.trim()) { setCorrectNote('A correction must state its reason.'); return; }
+        try {
+          // PHASE 5E — the correction now carries a TYPED value, not the old one.
+          // `correctField` names which governed field is being changed; the field
+          // type parses the editor draft into the engine's shape and refuses
+          // anything it cannot. `provenance` with no draft keeps prior behaviour.
+          const pid = correctPurchase || String(row.fieldPath).split('.')[0];
+        const fType = fieldTypeFor(`${pid}.${correctField}`);
+          let newValue = entry.value;
+          let targetPath = row.fieldPath;
+          if (correctDraft != null && fType) {
+            const parsed = fType.parse(correctDraft);
+            if (!parsed.ok) { setCorrectNote(`Blocked: ${parsed.error}`); return; }
+            const ed = validateForEditor(`${pid}.${correctField}`, parsed.value);
+            if (!ed.ok) { setCorrectNote(`Blocked: ${ed.errors.join(' ')}`); return; }
+            newValue = parsed.value;
+            targetPath = `${pid}.${correctField}`;
+          }
+          // CROSS-FIELD LINEAGE (5E defect, caught in the browser). Correcting a
+          // DIFFERENT field than the one published is not a correction of that
+          // lineage — `p_crabs.qtyPerGuest` has never been published, so claiming it
+          // supersedes `...p-crabs-provenance-v1` would fabricate an ancestor and
+          // wrongly retire the provenance record on the next bake. A new field starts
+          // its own lineage; only a same-field change supersedes.
+          const isSameField = targetPath === prior.fieldPath;
+          const corr = openCorrection({ ...prior, fieldPath: targetPath }, {
+            newValue,
+            reason: reason.trim(),
+            by: role,
+            asOf: new Date().toISOString(),
+            id: `${prior.id}-correction-${Date.now()}`,
+          });
+          await upsertKCR(prior);                // seed the ancestor so lineage resolves
+          // A new-field publication carries no ancestor; publishKCR then mints a
+          // fresh v1 instead of superseding an unrelated record.
+          await upsertKCR(isSameField ? corr : { ...corr, correctionOf: null });
+          // The message has to tell the SAME truth the record does. It used to claim
+          // "(supersedes <prior version>)" unconditionally — so opening the first
+          // correction of a new field from an unrelated published row announced that
+          // it would retire that row, while `correctionOf: null` two lines above says
+          // it will not. The lineage was right and the sentence was wrong, which is
+          // the worse of the two failures: an admin can only act on the sentence.
+          setCorrectNote(isSameField
+            ? `Correction opened for ${targetPath} (supersedes ${prior.publishedVersion}) — awaiting review ✓`
+            : `Correction opened for ${targetPath} — a newly governed field, so it starts its own lineage and supersedes nothing. Awaiting review ✓`);
+          setCorrectRow(null); setCorrectReason(''); setCorrectDraft(null); setCorrectField('provenance');
+          // REGRESSION FIX (Phase 5C.8). This is why the correction landed in the store
+          // but Review showed 0: the workspace's `kcrs` state was never re-read after
+          // upsertKCR. `refresh` is the component-level loader; Review filters purely on
+          // status, so once the state is current the correction appears.
+          await refresh();
+          setWs('Review');
+        } catch (e) { setCorrectNote(`Blocked: ${e.message}`); }
+      };
+
+      const doRollback = async (row) => {
+        const { head } = lineageHistory(row.assetId, row.fieldPath, kcrs);
+        if (!head) { setCorrectNote('Rollback blocked: no published head for that field.'); return; }
+        if (!rollbackReason.trim()) { setCorrectNote('A rollback must state its reason.'); return; }
+        try {
+          // rollbackKCR requires the head to be IN the store — seed it if this is the
+          // first action on a committed-but-never-loaded record.
+          const seeded = kcrs.find((k) => k.id === head.id) ? null : head;
+          if (seeded) await upsertKCR(seeded);
+          const reverted = rollbackKCR(head, { by: role, asOf: new Date().toISOString() });
+          await upsertKCR({
+            ...reverted,
+            // The reason rides on the record, not just in a toast — a withdrawal with no
+            // stated cause is indistinguishable from an accident.
+            reason: `ROLLBACK: ${rollbackReason.trim()} (was ${head.publishedVersion})`,
+          });
+          const target = rollbackTarget(row.assetId, row.fieldPath, kcrs);
+          setCorrectNote(`Rolled back ${row.fieldPath} — ${target
+            ? `${target.publishedVersion} becomes the head`
+            : 'the field reverts to its AUTHORED value'} on the next bake ✓`);
+          setRollbackRow(null); setRollbackReason('');
+          await refresh();
+        } catch (e) { setCorrectNote(`Blocked: ${e.message}`); }
+      };
+
       const doExport = () => {
         const blob = new Blob([serializePublishedExport(mergedForExport)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -3237,6 +3358,7 @@ function KcrStudioPanel() {
             <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
               LIVE IN RUNTIME — {inventory.length} governed field{inventory.length === 1 ? '' : 's'}
             </div>
+            {correctNote && <div style={{ fontSize: 10, color: D.good, marginBottom: 6, fontFamily: D.mono }}>{correctNote}</div>}
             {inventory.length === 0
               ? <Empty msg="No governed knowledge is live. Runtime is serving authored defaults for every field." />
               : inventory.map((r) => (
@@ -3250,10 +3372,298 @@ function KcrStudioPanel() {
                       style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.accent, cursor: 'pointer' }}>
                       verify →
                     </button>
+                    <button type="button" onClick={() => { setRollbackRow(r); setRollbackReason(''); setCorrectRow(null); }}
+                      title="Withdraw this published version. The prior version becomes live; nothing is deleted."
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.muted, cursor: 'pointer' }}>
+                      Rollback
+                    </button>
+                    <button type="button" onClick={() => { setCorrectRow(r); setCorrectReason(''); setRollbackRow(null); }}
+                      title="Open a governed correction that supersedes this version. Goes to Review — nothing publishes here."
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.warn}`, borderRadius: 5, padding: '2px 8px', color: D.warn, cursor: 'pointer' }}>
+                      Correct this
+                    </button>
                   </div>
                   <div style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, marginTop: 2 }}>
                     {r.version || 'no version'} · {r.tier || 'no tier'} · {r.publishedAt ? String(r.publishedAt).slice(0, 10) : 'no date'}
                   </div>
+                  {rollbackRow && rollbackRow.fieldPath === r.fieldPath && rollbackRow.assetId === r.assetId && (() => {
+                    const { history } = lineageHistory(r.assetId, r.fieldPath, kcrs);
+                    const target = rollbackTarget(r.assetId, r.fieldPath, kcrs);
+                    return (
+                      <div style={{ marginTop: 6, padding: 8, border: `1px solid ${D.border}`, borderRadius: 6, background: D.surface2 }}>
+                        <div style={{ fontSize: 9, color: D.muted, marginBottom: 5 }}>VERSION HISTORY — newest first</div>
+                        {history.map((h, i) => (
+                          <div key={h.id} style={{ fontSize: 9, fontFamily: D.mono, color: i === 0 ? D.text : D.faint, marginBottom: 2 }}>
+                            {i === 0 ? '● live  ' : '   ·    '}{h.publishedVersion}
+                          </div>
+                        ))}
+                        <div style={{ fontSize: 10, color: target ? D.warn : D.bad, margin: '7px 0 5px' }}>
+                          {target
+                            ? `Rolling back makes ${target.publishedVersion} live again.`
+                            : 'No earlier version — this field would revert to its AUTHORED value.'}
+                        </div>
+                        <textarea value={rollbackReason} onChange={(e) => setRollbackReason(e.target.value)}
+                          placeholder="Why is this version being withdrawn?"
+                          style={{ width: '100%', minHeight: 40, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                            color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 6 }} />
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          <button type="button" onClick={() => doRollback(r)} disabled={!rollbackReason.trim()}
+                            style={{ fontSize: 9, background: rollbackReason.trim() ? D.bad : 'transparent',
+                              border: `1px solid ${D.bad}`, borderRadius: 5, padding: '3px 10px',
+                              color: rollbackReason.trim() ? '#0b0d10' : D.faint, cursor: rollbackReason.trim() ? 'pointer' : 'not-allowed' }}>
+                            Confirm rollback
+                          </button>
+                          <button type="button" onClick={() => { setRollbackRow(null); setRollbackReason(''); }}
+                            style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {correctRow && correctRow.fieldPath === r.fieldPath && correctRow.assetId === r.assetId && (
+                    <div style={{ marginTop: 6, padding: 8, border: `1px solid ${D.warn}55`, borderRadius: 6, background: D.surface2 }}>
+                      <div style={{ fontSize: 9, color: D.muted, marginBottom: 5 }}>
+                        Correcting <code>{r.version}</code> — the new version will supersede it. Goes to Review; nothing publishes here.
+                      </div>
+                      {/* FIELD-AWARE VALUE EDITOR (Phase 5E). Which governed field is
+                          changing decides which inputs render, because the shapes differ:
+                          qtyPerGuest is a number, unitCostRange is a [min,max] tuple,
+                          provenance is a structured block. One free-text box would happily
+                          publish "0.5" as a string and the engine would resolve NaN in a
+                          host's shopping list — which is why there isn't one. */}
+                      {/* PURCHASE picker (5E.3). Governing a field that was never published
+                          is the normal case — the inventory only shows what is already live. */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 9, color: D.faint }}>ITEM</span>
+                        <select value={correctPurchase || String(r.fieldPath).split('.')[0]}
+                          onChange={(e) => { setCorrectPurchase(e.target.value); setCorrectDraft(null); }}
+                          style={{ fontSize: 9, fontFamily: D.mono, background: D.surface, color: D.text,
+                            border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 6px', maxWidth: 320 }}>
+                          {(((ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId) || {}).purchases || [])
+                            .map((pu) => (
+                              <option key={pu.id} value={pu.id}>
+                                {pu.id} — {String(pu.item).slice(0, 42)}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 9, color: D.faint }}>FIELD</span>
+                        {/* The two ENGINE-GOVERNING fields (5E.3) are offered only on a
+                            purchase that actually carries them. Listing priceLadder on
+                            Old Bay would offer a route that resolves to nothing — the
+                            same emptiness the ownership contract refuses elsewhere. */}
+                        {(() => {
+                        const pbF = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pidF = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const puF = pbF && (pbF.purchases || []).find((x) => x && x.id === pidF);
+                        return ['provenance', 'qtyPerGuest', 'unitCostRange']
+                          .concat(['priceLadder', 'servingGuide'].filter((f) => puF && puF[f]))
+                          .map((f) => {
+                          // The PURCHASE is passed so ownership reflects what this line
+                          // actually carries (e.g. `sourcingPrices` on a channel-priced
+                          // protein), not an id allowlist that can go stale.
+                          const own = fieldOwnership(r.assetId, `${pidF}.${f}`, puF);
+                          return (
+                          <button key={f} type="button" disabled={!own.editable}
+                            title={own.editable ? '' : blockedMessage(own)}
+                            onClick={() => {
+                              if (!own.editable) return;
+                              setCorrectField(f);
+                              if (f === 'provenance') { setCorrectDraft(null); return; }
+                              // PRE-FILL from what is CURRENTLY live (Phase 5E). A correction
+                              // is an old -> new decision, so the reviewer must see the number
+                              // being replaced; an empty box turns a governed change into a
+                              // guess. Reads the same purchase the engine reads.
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const purch = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              const live = purch ? purch[f] : undefined;
+                              setCorrectDraft(fieldTypeFor(`x.${f}`).format(live));
+                            }}
+                            style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5,
+                              cursor: own.editable ? 'pointer' : 'not-allowed',
+                              border: `1px solid ${correctField === f ? D.accent : D.border}`,
+                              background: correctField === f ? D.accent + '22' : 'transparent',
+                              opacity: own.editable ? 1 : 0.45,
+                              color: correctField === f ? D.accent : D.muted }}>
+                            {f}{own.editable ? '' : ' (engine-owned)'}
+                          </button>
+                          );
+                        });
+                        })()}
+                      </div>
+                      {/* OWNERSHIP (5E.1). Naming the engine and the governing rule, because
+                          "you cannot edit this" with no next step reads as a broken tool. */}
+                      {(() => {
+                        const _pbO = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const _pidO = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const _puO = _pbO && (_pbO.purchases || []).find((x) => x && x.id === _pidO);
+                        const own = fieldOwnership(r.assetId, `${_pidO}.${correctField}`, _puO);
+                        return own.editable ? null : (
+                          <div style={{ fontSize: 9, color: D.warn, marginBottom: 6, lineHeight: 1.5 }}>
+                            {blockedMessage(own)}
+                            <div style={{ color: D.faint, marginTop: 2 }}>{own.why}</div>
+                          </div>
+                        );
+                      })()}
+                      {correctField === 'qtyPerGuest' && (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                            {fieldTypeFor('x.qtyPerGuest').hint}
+                          </div>
+                          <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 3 }}>
+                            current: {(() => {
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              return pu && pu.qtyPerGuest != null ? String(pu.qtyPerGuest) : 'not set';
+                            })()}
+                          </div>
+                          <input type="text" value={correctDraft == null ? '' : correctDraft}
+                            onChange={(e) => setCorrectDraft(e.target.value)}
+                            placeholder="e.g. 0.5"
+                            style={{ width: 120, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                              color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                        </div>
+                      )}
+                      {correctField === 'unitCostRange' && (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                            {fieldTypeFor('x.unitCostRange').hint}
+                          </div>
+                          <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 3 }}>
+                            current: {(() => {
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              return pu && Array.isArray(pu.unitCostRange) ? `$${pu.unitCostRange[0]}-$${pu.unitCostRange[1]}` : 'not set';
+                            })()}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input type="text" placeholder="min"
+                              value={(correctDraft && correctDraft.min) || ''}
+                              onChange={(e) => setCorrectDraft({ ...(correctDraft || {}), min: e.target.value })}
+                              style={{ width: 80, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                            <span style={{ color: D.faint, fontSize: 10 }}>to</span>
+                            <input type="text" placeholder="max"
+                              value={(correctDraft && correctDraft.max) || ''}
+                              onChange={(e) => setCorrectDraft({ ...(correctDraft || {}), max: e.target.value })}
+                              style={{ width: 80, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                          </div>
+                        </div>
+                      )}
+                      {/* ROW EDITORS for the two engine-governing fields (5E.3).
+                          Both are nested objects. A JSON textarea would have given the
+                          crab line — the costliest item a host buys, and the one the
+                          ownership contract sends admins here to fix — the least safe
+                          editor in the console, so each renders named numeric inputs
+                          for ONE size at a time with the live value beside each box.
+                          The untouched sizes ride through in the draft's `base`. */}
+                      {(correctField === 'priceLadder' || correctField === 'servingGuide') && (() => {
+                        const T = fieldTypeFor(`x.${correctField}`);
+                        const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                        const live = pu ? pu[correctField] : undefined;
+                        const draft = (correctDraft && correctDraft.row) ? correctDraft : T.format(live);
+                        const isLadder = correctField === 'priceLadder';
+                        const keys = isLadder
+                          ? T.rowKeys(live)
+                          : Object.keys((live && live.bySize) || {}).filter((k) => T.sizes.includes(k));
+                        // What is live for the SELECTED size, so old and new sit side by side.
+                        const liveRow = isLadder
+                          ? ((live && live[draft.key]) || {})
+                          : (((live && live.bySize) || {})[draft.key] || {});
+                        const setRow = (f, val) => setCorrectDraft({ ...draft, row: { ...draft.row, [f]: val } });
+                        return (
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, lineHeight: 1.5 }}>{T.hint}</div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 9, color: D.faint }}>{isLadder ? 'SIZE / GRADE' : 'CRAB SIZE'}</span>
+                              {keys.map((k) => (
+                                <button key={k} type="button"
+                                  // Switching size re-seeds the inputs from what is LIVE for
+                                  // that size, while `base` stays the whole authored object so
+                                  // the sizes not being corrected survive the publish untouched.
+                                  onClick={() => setCorrectDraft({
+                                    base: live && typeof live === 'object' ? live : {},
+                                    key: k,
+                                    row: T.format(isLadder
+                                      ? { [k]: (live && live[k]) || {} }
+                                      : { bySize: { [k]: ((live && live.bySize) || {})[k] || {} } }).row,
+                                  })}
+                                  style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
+                                    border: `1px solid ${draft.key === k ? D.accent : D.border}`,
+                                    background: draft.key === k ? D.accent + '22' : 'transparent',
+                                    color: draft.key === k ? D.accent : D.muted }}>
+                                  {k}
+                                </button>
+                              ))}
+                            </div>
+                            {isLadder ? T.fields.map((f) => (
+                              <div key={f} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
+                                <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, width: 148 }}>{f}</span>
+                                <input type="text" value={draft.row[f] == null ? '' : draft.row[f]}
+                                  onChange={(e) => setRow(f, e.target.value)} placeholder="—"
+                                  style={{ width: 78, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                    color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>
+                                  current: {liveRow[f] == null ? 'not set' : `$${liveRow[f]}`}
+                                </span>
+                              </div>
+                            )) : T.fields.map((f) => (
+                              <div key={f} style={{ marginBottom: 5 }}>
+                                <div style={{ fontSize: 9, color: D.faint, marginBottom: 2 }}>{T.fieldHints[f]}</div>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, width: 76 }}>{f}</span>
+                                  <input type="text" placeholder="low"
+                                    value={(draft.row[f] && draft.row[f].low) || ''}
+                                    onChange={(e) => setRow(f, { ...draft.row[f], low: e.target.value })}
+                                    style={{ width: 58, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                      color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                  <span style={{ color: D.faint, fontSize: 10 }}>to</span>
+                                  <input type="text" placeholder="high"
+                                    value={(draft.row[f] && draft.row[f].high) || ''}
+                                    onChange={(e) => setRow(f, { ...draft.row[f], high: e.target.value })}
+                                    style={{ width: 58, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                      color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>
+                                    current: {Array.isArray(liveRow[f]) ? `${liveRow[f][0]}–${liveRow[f][1]}` : 'not set'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                            {!isLadder && (
+                              <div style={{ fontSize: 9, color: D.faint, marginTop: 4, lineHeight: 1.5 }}>
+                                All three are required — the engine discards a row missing any of them,
+                                so a half-filled correction would publish and change nothing.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      <textarea value={correctReason} onChange={(e) => setCorrectReason(e.target.value)}
+                        placeholder="Why is this being corrected? A correction without a stated defect is indistinguishable from an edit."
+                        style={{ width: '100%', minHeight: 46, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                          color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 6 }} />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <button type="button" onClick={() => doCorrect(r)} disabled={!correctReason.trim()}
+                          style={{ fontSize: 9, background: correctReason.trim() ? D.warn : 'transparent',
+                            border: `1px solid ${D.warn}`, borderRadius: 5, padding: '3px 10px',
+                            color: correctReason.trim() ? '#0b0d10' : D.faint, cursor: correctReason.trim() ? 'pointer' : 'not-allowed' }}>
+                          Open correction
+                        </button>
+                        <button type="button" onClick={() => { setCorrectRow(null); setCorrectReason(''); }}
+                          style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
           </div>

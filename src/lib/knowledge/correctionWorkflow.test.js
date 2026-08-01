@@ -16,10 +16,10 @@
 import fs from 'fs';
 import path from 'path';
 import { buildSnapshot } from './publishedSnapshotBuild.mjs';
-import { correctPublishedKCR, lineageOf } from './correctionWorkflow';
-import { rollbackKCR } from './knowledgeChange';
+import { correctPublishedKCR, lineageOf, openCorrection } from './correctionWorkflow';
+import { rollbackKCR, advanceKCR, publishKCR, canReachCited } from './knowledgeChange';
 
-const EXPORT_PATH = path.resolve(__dirname, '../../../knowledge-exports/published-kcrs.json');
+const EXPORT_PATH = path.resolve(__dirname, './publishedKcrs.json');
 const readExport = () => JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'));
 const AT = '2026-08-01T18:00:00.000Z';
 
@@ -215,5 +215,98 @@ describe('generator', () => {
     // eslint-disable-next-line no-console
     console.log(`\n  wrote v2 -> ${EXPORT_PATH}\n  supersedes ${kcr.rollbackTo}\n`);
     expect(readExport()).toHaveLength(list.length + 1);
+  });
+});
+
+// ─── Phase 5C.7 — the UI correction path ─────────────────────────────────────
+//
+// openCorrection is the half a button can safely call: it stops at Review. The
+// tests below prove the three-deep lineage the sprint asked for, and record the
+// evidence-gate behaviour Phase 0 established.
+describe('openCorrection — the reviewable half (Phase 5C.7)', () => {
+  const published = (id, ver, value, rollbackTo = null, evidence = [{ id: 'e1', sourceType: 'citation', source: 'S', url: 'https://x' }]) => ({
+    id, status: 'published', assetId: 'Retirement Party', fieldPath: 'p_wine.provenance',
+    type: 'correction', publishedVersion: ver, rollbackTo,
+    proposal: { newValue: value, newProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['e1'] } },
+    evidence, review: {}, audit: [], createdAt: AT,
+  });
+
+  test('stops at review — it does NOT publish and does NOT approve', () => {
+    const c = openCorrection(published('k1', 'v1', 'ONE'), { newValue: 'TWO', reason: 'arithmetic did not reproduce', asOf: AT });
+    expect(c.status).toBe('review');
+    expect(c.publishedVersion).toBeFalsy();
+    // review must remain unrecorded — the button cannot approve on the reviewer's behalf
+    // createKCR seeds each gate as null; what matters is that no DECISION exists,
+    // so advanceKCR(..,'approved') would still throw.
+    for (const gate of ['sme', 'editorial', 'governance']) {
+      expect(c.review[gate] && c.review[gate].decision).toBeFalsy();
+    }
+    expect(() => advanceKCR(c, 'approved', { by: 't', asOf: AT }))
+      .toThrow(/requires SME \+ editorial \+ governance/);
+    expect(c.correctionOf).toBe('v1');    // the ancestor the publish step will supersede
+  });
+
+  test('carries evidence forward, so the publish gate can still be satisfied', () => {
+    const prior = published('k1', 'v1', 'ONE');
+    const c = openCorrection(prior, { newValue: 'TWO', reason: 'r', asOf: AT });
+    expect(c.evidence).toHaveLength(1);
+    expect(canReachCited(c)).toBe(true);
+  });
+
+  test('a correction still requires a stated reason and a published ancestor', () => {
+    const prior = published('k1', 'v1', 'ONE');
+    expect(() => openCorrection(prior, { newValue: 'X', reason: '  ' })).toThrow(/must state its reason/);
+    expect(() => openCorrection({ ...prior, status: 'draft' }, { newValue: 'X', reason: 'r' })).toThrow(/must be published/);
+  });
+
+  test('CORRECTION LINEAGE v1 -> v2 -> v3: v3 active, v2 superseded, v1 historical', () => {
+    const v1 = published('k1', 'v1', 'ONE');
+    const v2 = published('k2', 'v2', 'TWO', 'v1');
+    const v3 = published('k3', 'v3', 'THREE', 'v2');
+    const r = buildSnapshot([v1, v2, v3]);
+    expect(r.snapshot.entries).toHaveLength(1);
+    expect(r.snapshot.entries[0].value).toBe('THREE');            // v3 active
+    expect(r.superseded.map((s) => s.versionId).sort()).toEqual(['v1', 'v2']);
+    expect(r.conflicts).toHaveLength(0);
+    // v1 historical: still present in the corpus, just not the head
+    expect(lineageOf([v1, v2, v3], 'Retirement Party', 'p_wine.provenance').head.id).toBe('k3');
+  });
+
+  test('ARRAY ORDER INDEPENDENCE across the exact orders specified', () => {
+    const v1 = published('k1', 'v1', 'ONE');
+    const v2 = published('k2', 'v2', 'TWO', 'v1');
+    const v3 = published('k3', 'v3', 'THREE', 'v2');
+    const a = buildSnapshot([v3, v1, v2]).snapshot;
+    const b = buildSnapshot([v2, v3, v1]).snapshot;
+    expect(a.entries[0].value).toBe('THREE');
+    expect(b.entries[0].value).toBe('THREE');
+    expect(a.snapshotVersion).toBe(b.snapshotVersion);
+  });
+
+  test('ROLLBACK: withdrawing v3 makes v2 active, not v1 and not authored', () => {
+    const v1 = published('k1', 'v1', 'ONE');
+    const v2 = published('k2', 'v2', 'TWO', 'v1');
+    const v3 = published('k3', 'v3', 'THREE', 'v2');
+    const rolled = rollbackKCR(v3, { by: 'publisher', asOf: AT });
+    expect(rolled.status).toBe('revision');
+    const r = buildSnapshot([v1, v2, { ...rolled, id: 'k3' }]);
+    expect(r.snapshot.entries[0].value).toBe('TWO');              // v2, not v1
+    expect(r.snapshot.entries).toHaveLength(1);                   // not authored fallback
+    expect(r.superseded.map((s) => s.versionId)).toEqual(['v1']);
+  });
+
+  test('EVIDENCE GATE (documented, Phase 0): advanceKCR never checks evidence', () => {
+    // The 0-Evidence Studio counter reads a DIFFERENT store (ngw-kas-evidence) from
+    // kcr.evidence[]. Only publishKCR consults evidence, and only for `cited`.
+    const noEv = { id: 'x', status: 'researching', assetId: 'A', fieldPath: 'f', evidence: [], review: {}, audit: [] };
+    expect(() => advanceKCR(noEv, 'grounded', { by: 't', asOf: AT })).not.toThrow();
+
+    const citedNoEv = {
+      ...noEv, status: 'approved', evidence: [],
+      review: { sme: { decision: 'approve' }, editorial: { decision: 'approve' }, governance: { decision: 'approve' } },
+      proposal: { newValue: 1, newProvenance: { verificationStatus: 'cited', sources: ['s'] } },
+    };
+    expect(() => publishKCR(citedNoEv, { versionId: 'v1', by: 't', asOf: AT }))
+      .toThrow(/cannot publish a cited value without supporting evidence/);
   });
 });

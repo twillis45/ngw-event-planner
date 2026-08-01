@@ -19,12 +19,15 @@ import fs from 'fs';
 import path from 'path';
 import {
   publishedKcrsForExport, serializePublishedExport, exportSummary,
-  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory,
+  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory, hydrateEvidence,
+  exportBase, committedExport,
 } from './publishedExport';
+import { canReachCited } from './knowledgeChange';
+import { correctPublishedKCR } from './correctionWorkflow';
 import { buildSnapshot } from './publishedSnapshotBuild.mjs';
 import { publishKCR } from './knowledgeChange';
 
-const EXPORT_PATH = path.resolve(__dirname, '../../../knowledge-exports/published-kcrs.json');
+const EXPORT_PATH = path.resolve(__dirname, './publishedKcrs.json');
 const readExport = () => JSON.parse(fs.readFileSync(EXPORT_PATH, 'utf8'));
 const AT = '2026-08-01T20:00:00.000Z';
 
@@ -263,5 +266,208 @@ describe('export merge safety (Phase 5C.6 / D2)', () => {
     expect(wine.runtimeStatus).toBe('active');
     expect(wine.source).toBe('published');
     expect(wine.confidence).toBe('medium');
+  });
+});
+
+// ─── Phase 5C.9 — evidence hydration (the 5C.8 blocker) ──────────────────────
+describe('evidence hydration (Phase 5C.9)', () => {
+  test('hydration restores PUBLISHABLE cited evidence from the registry', () => {
+    const ev = hydrateEvidence(['webstaurant-protein-2026']);
+    expect(ev).toHaveLength(1);
+    expect(ev[0].id).toBe('webstaurant-protein-2026');
+    expect(ev[0].sourceType).toBe('citation');
+    expect(ev[0].source).toBeTruthy();
+    expect(ev[0].url).toBeTruthy();
+    // the gate the 5C.8 blocker failed
+    expect(canReachCited({ evidence: ev })).toBe(true);
+  });
+
+  test('an UNRESOLVABLE id stays a bare stub and still fails the gate', () => {
+    // Hydration must not manufacture evidence. Unknown source => unpublishable.
+    const ev = hydrateEvidence(['no-such-source-9999']);
+    expect(ev).toEqual([{ id: 'no-such-source-9999' }]);
+    expect(canReachCited({ evidence: ev })).toBe(false);
+  });
+
+  test('canReachCited is UNCHANGED — a bare stub never passes', () => {
+    expect(canReachCited({ evidence: [{ id: 'x' }] })).toBe(false);
+    expect(canReachCited({ evidence: [] })).toBe(false);
+  });
+
+  test('a snapshot-reconstructed KCR is now publishable end to end', () => {
+    const committed = JSON.parse(fs.readFileSync(
+      path.resolve(__dirname, 'publishedKnowledge.json'), 'utf8',
+    ));
+    for (const entry of committed.entries) {
+      const prior = snapshotEntryToKcr(entry);
+      expect(canReachCited(prior)).toBe(true);          // 5C.8 blocker cleared
+
+      // and a correction built from it survives review -> approve -> publish
+      const { kcr, version } = correctPublishedKCR(prior, {
+        newValue: { ...entry.value, note: 'corrected in test' },
+        reason: 'regression: correction of a snapshot-reconstructed artifact must publish',
+        versionId: `${entry.versionId}-next`,
+        asOf: '2026-08-01T21:00:00.000Z',
+      });
+      expect(kcr.status).toBe('published');
+      expect(version.supersedes).toBe(entry.versionId);
+      expect(kcr.rollbackTo).toBe(entry.versionId);
+
+      // export merge keeps BOTH, lineage resolves to the correction
+      const merged = mergePublishedKnowledge([prior], [kcr]);
+      const snap = buildSnapshot(merged);
+      expect(snap.conflicts).toHaveLength(0);
+      expect(snap.superseded.map((s) => s.versionId)).toEqual([entry.versionId]);
+      expect(snap.snapshot.entries[0].versionId).toBe(`${entry.versionId}-next`);
+    }
+  });
+
+  test('evidence survives the whole approval chain unchanged', () => {
+    const committed = JSON.parse(fs.readFileSync(
+      path.resolve(__dirname, 'publishedKnowledge.json'), 'utf8',
+    ));
+    const prior = snapshotEntryToKcr(committed.entries[0]);
+    const { kcr } = correctPublishedKCR(prior, {
+      newValue: 'X', reason: 'evidence must survive review', asOf: '2026-08-01T21:00:00.000Z',
+    });
+    expect(kcr.evidence.map((e) => e.id)).toEqual(prior.evidence.map((e) => e.id));
+    expect(canReachCited(kcr)).toBe(true);
+  });
+});
+
+// ─── Phase 5D P0 — round-trip durability ─────────────────────────────────────
+//
+// 5C.9 proved the loop worked ONCE. Running it twice eroded the governance trail:
+// the merge base was the snapshot (lineage HEADS only, 10 of 21 fields), so the
+// second correction dropped v1 entirely and stripped audit/review/reason off the
+// survivors. These tests encode the full v1 -> v2 -> v3 -> rollback lifecycle.
+describe('round-trip durability (Phase 5D / P0)', () => {
+  const pub = (id, ver, value, rollbackTo = null, extra = {}) => ({
+    id, status: 'published', assetId: 'Retirement Party', fieldPath: 'p_wine.provenance',
+    type: 'correction', trigger: 'validation', publishedVersion: ver, rollbackTo,
+    proposal: { newValue: value }, evidence: [{ id: 'e1', sourceType: 'citation', source: 'S', url: 'https://x' }],
+    review: { sme: { decision: 'approve' }, editorial: { decision: 'approve' }, governance: { decision: 'approve' } },
+    audit: [{ action: 'published' }], reason: 'r', contradictions: [], impact: {}, priority: 'low',
+    ...extra,
+  });
+
+  test('SECOND correction keeps v1 — the exact loss 5C.9 measured', () => {
+    const v1 = pub('k1', 'v1', 'ONE');
+    const v2 = pub('k2', 'v2', 'TWO', 'v1');
+    const v3 = pub('k3', 'v3', 'THREE', 'v2');
+
+    // Round 1: publish v2 on top of v1.
+    const round1 = mergePublishedKnowledge([v1], [v2]);
+    expect(round1.map((k) => k.id).sort()).toEqual(['k1', 'k2']);
+
+    // Round 2 — the failing case. The OLD base was buildSnapshot(round1) heads only,
+    // which contains v2 and NOT v1, so v1 vanished. exportBase keeps everything.
+    const headsOnly = buildSnapshot(round1).snapshot.entries.map(snapshotEntryToKcr);
+    expect(headsOnly.map((k) => k.publishedVersion)).toEqual(['v2']);      // v1 already gone
+    const round2 = mergePublishedKnowledge(mergePublishedKnowledge(round1, headsOnly), [v3]);
+    expect(round2.map((k) => k.id).sort()).toEqual(['k1', 'k2', 'k3']);    // v1 SURVIVES
+  });
+
+  test('FULL LINEAGE v1 -> v2 -> v3 resolves to v3 with both ancestors superseded', () => {
+    const all = [pub('k1', 'v1', 'ONE'), pub('k2', 'v2', 'TWO', 'v1'), pub('k3', 'v3', 'THREE', 'v2')];
+    const r = buildSnapshot(all);
+    expect(r.snapshot.entries).toHaveLength(1);
+    expect(r.snapshot.entries[0].value).toBe('THREE');
+    expect(r.superseded.map((s) => s.versionId).sort()).toEqual(['v1', 'v2']);
+    expect(r.conflicts).toHaveLength(0);
+  });
+
+  test('ROLLBACK from a 3-deep chain restores v2 — not v1, not authored', () => {
+    const v1 = pub('k1', 'v1', 'ONE');
+    const v2 = pub('k2', 'v2', 'TWO', 'v1');
+    const v3 = pub('k3', 'v3', 'THREE', 'v2');
+    const withdrawn = { ...v3, status: 'revision' };
+    const r = buildSnapshot([v1, v2, withdrawn]);
+    expect(r.snapshot.entries[0].value).toBe('TWO');
+    expect(r.snapshot.entries).toHaveLength(1);
+    expect(r.superseded.map((s) => s.versionId)).toEqual(['v1']);
+    // and the withdrawn version is still ON DISK — rollback is reversible
+    expect([v1, v2, withdrawn].find((k) => k.id === 'k3')).toBeTruthy();
+  });
+
+  test('FIELD FIDELITY: the merge preserves all 21 governance fields', () => {
+    const full = committedExport()[0];
+    const fieldCount = Object.keys(full).length;
+    expect(fieldCount).toBeGreaterThanOrEqual(20);
+    // the snapshot reconstruction is lossy by design; the committed export is not
+    const reconstructed = snapshotEntryToKcr(
+      JSON.parse(fs.readFileSync(path.resolve(__dirname, 'publishedKnowledge.json'), 'utf8')).entries[0],
+    );
+    expect(Object.keys(reconstructed).length).toBeLessThan(fieldCount);
+    // exportBase must return the FULL record, not the reconstruction
+    const base = exportBase([], []);
+    const same = base.find((k) => k.id === full.id);
+    expect(Object.keys(same).length).toBe(fieldCount);
+    for (const f of ['audit', 'review', 'reason', 'contradictions']) expect(same[f]).toBeDefined();
+  });
+
+  test('exportBase is DETERMINISTIC and never drops a committed record', () => {
+    const a = exportBase([], []);
+    const b = exportBase([], []);
+    expect(serializePublishedExport(a)).toBe(serializePublishedExport(b));
+    for (const k of committedExport()) expect(a.find((x) => x.id === k.id)).toBeTruthy();
+  });
+
+  test('a re-export with an empty Admin store is BYTE-IDENTICAL to the commit', () => {
+    // The durability contract: running the loop with nothing new changes nothing.
+    const text = serializePublishedExport(exportBase([], []));
+    expect(text).toBe(fs.readFileSync(EXPORT_PATH, 'utf8'));
+  });
+});
+
+describe('exportBase merge order (Phase 5D — regression)', () => {
+  test('a snapshot reconstruction must NOT clobber the full committed record', () => {
+    // The defect: reconstructions share an id with the committed record, and
+    // merging them last replaced 21 fields with 10 and wiped `rollbackTo`,
+    // un-superseding the ancestor and mis-reporting the head count.
+    const committed = committedExport();
+    const wineV2 = committed.find((k) => String(k.publishedVersion).endsWith('p-wine-provenance-v2'));
+    expect(wineV2.rollbackTo).toBeTruthy();          // the committed record HAS lineage
+
+    const snap = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'publishedKnowledge.json'), 'utf8'));
+    const base = exportBase([], snap.entries);
+    const merged = base.find((k) => k.id === wineV2.id);
+
+    expect(merged.rollbackTo).toBe(wineV2.rollbackTo);              // lineage survives
+    expect(Object.keys(merged).length).toBe(Object.keys(wineV2).length); // full fidelity
+    expect(merged.audit).toBeDefined();
+    expect(merged.review).toBeDefined();
+
+    // and the counts the UI shows are now truthful
+    const sum = exportSummary(base);
+    expect(sum.heads).toBe(2);
+    expect(sum.superseded).toBe(1);
+    expect(buildSnapshot(base).snapshot.entries).toHaveLength(2);
+  });
+});
+
+describe('withdrawn history survives export (Phase 5D — regression)', () => {
+  const rec = (id, ver, status, rollbackTo = null) => ({
+    id, status, assetId: 'A', fieldPath: 'f', publishedVersion: ver, rollbackTo,
+    proposal: { newValue: ver }, evidence: [], review: {}, audit: [],
+  });
+
+  test('a ROLLED-BACK version stays in the export so the rollback is reversible', () => {
+    const v1 = rec('k1', 'v1', 'published');
+    const v2 = rec('k2', 'v2', 'revision', 'v1');       // withdrawn
+    const out = publishedKcrsForExport([v1, v2]);
+    expect(out.map((k) => k.id).sort()).toEqual(['k1', 'k2']);   // v2 NOT deleted
+
+    // the bake still refuses it — history travels, only heads resolve
+    const r = buildSnapshot([v1, v2]);
+    expect(r.snapshot.entries).toHaveLength(1);
+    expect(r.snapshot.entries[0].value).toBe('v1');
+    // and re-publishing v2 restores it, because the record survived
+    expect(buildSnapshot([v1, { ...v2, status: 'published' }]).snapshot.entries[0].value).toBe('v2');
+  });
+
+  test('a never-published draft is still excluded', () => {
+    const draft = { id: 'd', status: 'draft', assetId: 'A', fieldPath: 'f', proposal: { newValue: 1 } };
+    expect(publishedKcrsForExport([draft])).toHaveLength(0);
   });
 });

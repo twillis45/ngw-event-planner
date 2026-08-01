@@ -51,9 +51,22 @@ export const CORRECTION_TRIGGER = 'validation';
  *              a reasoning fix that cites the same sources as the artifact it
  *              replaces (as p_wine v2 is).
  */
-export function correctPublishedKCR(prior, {
-  newValue, newProvenance = null, rationale = '', reason, evidence = [], versionId = null,
-  by = 'publisher', reviewers = {}, asOf = null, id = null,
+/**
+ * openCorrection(prior, opts) -> KCR at status 'review'
+ *
+ * Phase 5C.7. The UI-facing half of a correction: everything up to the review
+ * gate and NOT ONE STEP FURTHER. It exists because correctPublishedKCR records
+ * all three approvals itself and publishes in one call — correct for a scripted
+ * correction, but wiring it to a button would auto-approve and bypass the human
+ * review this whole programme depends on.
+ *
+ * So the button opens a correction; a reviewer approves it; a publisher publishes
+ * it. Same gates as any other knowledge change, because a correction that could
+ * skip review would be a wider hole than the defect it fixes.
+ */
+export function openCorrection(prior, {
+  newValue, newProvenance = null, rationale = '', reason, evidence = [],
+  by = 'publisher', asOf = null, id = null,
 } = {}) {
   if (!prior || prior.status !== 'published') {
     throw new Error('correction: prior KCR must be published');
@@ -67,14 +80,11 @@ export function correctPublishedKCR(prior, {
 
   let k = createKCR({
     id: id || `${prior.id}-correction`,
-    type: prior.type,
+    type: prior.type || 'correction',
     trigger: CORRECTION_TRIGGER,
     assetId: prior.assetId,
     assetKind: prior.assetKind || 'playbook',
     fieldPath: prior.fieldPath,
-    // The value being corrected is the CURRENT one — the defective published
-    // value, not the original authored value. The audit trail should show what
-    // was actually live when the defect was found.
     currentValue: prior.proposal ? prior.proposal.newValue : prior.currentValue,
     currentProvenance: prior.currentProvenance || null,
     reason: String(reason),
@@ -82,21 +92,29 @@ export function correctPublishedKCR(prior, {
     asOf,
   });
 
-  // Evidence is carried forward from the superseded version when the correction
-  // is a reasoning fix rather than a new finding — the sources did not change,
-  // only what we correctly claim they say.
+  // Evidence carried forward from the superseded version: a reasoning fix cites
+  // the same sources, and those sources already passed the publish gate once.
   const carried = evidence.length ? evidence : (prior.evidence || []);
   for (const ev of carried) k = addEvidence(k, ev, asOf);
   k = advanceKCR(k, 'researching', { by, note: 'correction opened', asOf });
   k = advanceKCR(k, 'grounded', { by, note: 'evidence carried from superseded version', asOf });
-  // newValue  = what gets written into the playbook field
-  // newProvenance = how THIS change is itself evidenced (graded at publish)
   k = setProposal(k, {
     newValue,
     newProvenance: newProvenance || (prior.proposal && prior.proposal.newProvenance) || null,
     rationale: rationale || String(reason),
   }, asOf);
   k = advanceKCR(k, 'review', { by, note: 'correction submitted for review', asOf });
+
+  // The ancestor this correction will supersede, carried so the publish step can
+  // pass it as prevVersion without re-deriving it.
+  return { ...k, correctionOf: prior.publishedVersion };
+}
+
+export function correctPublishedKCR(prior, {
+  newValue, newProvenance = null, rationale = '', reason, evidence = [], versionId = null,
+  by = 'publisher', reviewers = {}, asOf = null, id = null,
+} = {}) {
+  let k = openCorrection(prior, { newValue, newProvenance, rationale, reason, evidence, by, asOf, id });
 
   // Same three gates as any other publication. A correction is not a fast path.
   for (const gate of ['sme', 'editorial', 'governance']) {
@@ -109,7 +127,11 @@ export function correctPublishedKCR(prior, {
   }
   k = advanceKCR(k, 'approved', { by, note: 'correction approved', asOf });
 
-  return publishKCR(k, { prevVersion: prior.publishedVersion, versionId, by, asOf });
+  // `correctionOf` is a UI handoff field (it tells the publish step which version to
+  // supersede when the correction is published later, from the store). The scripted
+  // path already knows the ancestor, so it must not leak into the published record.
+  const { correctionOf, ...clean } = k;
+  return publishKCR(clean, { prevVersion: prior.publishedVersion, versionId, by, asOf });
 }
 
 /**

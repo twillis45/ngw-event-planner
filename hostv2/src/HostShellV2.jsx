@@ -5767,9 +5767,41 @@ export default function HostShellV2() {
                     </div>
                   );
                 }
+                // ── DOES THE HERO REGION ALREADY STATE ITS OWN URGENCY? ──────────
+                // V1 ("Something can't wait — it's first on your list.") is the one
+                // ITEM-level verdict among seven. Measured over the 19 future-dated
+                // sample events: it fires on 10, and in 10 of 10 the critical item IS
+                // queue[0] — necessarily, since the queue is priority-sorted and
+                // `critical` outranks everything. So it never points at something the
+                // host cannot see; it describes the card directly beneath it, and
+                // "it's FIRST on your list" states a position already visible.
+                //
+                // This mirrors WHAT THE CARD RENDERS, not the action's raw fields, and
+                // that distinction is the whole point: 4 of those 10 heroes are conflict
+                // BUNDLES whose own action object carries neither dueInDays nor
+                // consequence, while the card they render does show a `.because` — it
+                // comes from the bundle's FIRST ITEM (`it.detailShort || it.detail`,
+                // ~:6218). A guard reading the object would have kept V1 on exactly the
+                // screens where it is most redundant. Reading the object instead of the
+                // surface is what made the withdrawn STOP-set fix wrong earlier today.
+                //
+                // Three render conditions, mirrored: the due chip (same test dueChip()
+                // applies, solemn overshoot included), the hero's own evidence line, and
+                // the bundle child's detail line. Never any one of them alone.
+                const heroOwnsUrgency = (() => {
+                  const a = queue[0];
+                  if (!a) return false;
+                  if (Number.isFinite(a.dueInDays) && !(solemn && a.dueInDays < 0)) return true;
+                  if (a.consequence) return true;
+                  const first = Array.isArray(a.items) && a.items.length ? a.items[0] : null;
+                  return !!(first && (first.detailShort || first.detail || first.consequence));
+                })();
                 let statusNode = null; let statusOnTrack = false;
                 if (!isPast && days !== null && days > 0) {
-                  if (queue.some(a => a && a.level === 'critical')) {
+                  // When the hero already carries it, fall through to the EVENT-level
+                  // branches below (slips / calm / on-track) — those are aggregates and
+                  // are deliberately untouched.
+                  if (queue.some(a => a && a.level === 'critical') && !heroOwnsUrgency) {
                     statusNode = <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
                   } else {
                     const slips = [];
@@ -13500,6 +13532,20 @@ export default function HostShellV2() {
                                         : null,
                                       it.forgotten ? 'often forgotten' : null,
                                     ].filter(Boolean).join(' · ')}
+                                  </span>
+                                )}
+                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10). Until now a
+                                    published KCR moved Admin's Runtime Preview and nothing a
+                                    host ever saw — the bake, snapshot, resolver and lineage
+                                    all worked, but no surface read them. This is the last
+                                    seam: when a quantity is sourced (isGroundedItemQty over
+                                    the GOVERNED provenance), say so and name the source.
+                                    Muted, one line, no accent — informational, not
+                                    interactive (UX_02 restraint). Silent when the field is
+                                    authored, which is still most of the corpus. */}
+                                {it.qtyGrounded && it.provenance && it.provenance.note && (
+                                  <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                    Sourced — {it.provenance.note}
                                   </span>
                                 )}
                               </span>

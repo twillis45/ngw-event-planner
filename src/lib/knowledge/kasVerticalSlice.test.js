@@ -1,4 +1,8 @@
-// KAS-2 — the complete vertical slice. Proves ONE field (Crab Feast p_crabs.unitCostRange)
+// NOTE (Phase 5E.1): this slice used p_crabs.unitCostRange as its subject. The
+// crab line is owned by the crab engine (bushel thresholds), so that field is no
+// longer governable by declaration. The subject moved to p_oldbay - a plain
+// per-unit purchase - which is what a value slice should exercise anyway.
+// KAS-2 — the complete vertical slice. Proves ONE field (Crab Feast p_oldbay.unitCostRange)
 // travels the full manufacturing chain — Observation → Evidence → Finding → KCR → Review →
 // Publish → override → Production — with ZERO source-file editing, an immutable audit trail,
 // required KCR/review/publish, working rollback, and dimension-only confidence.
@@ -11,7 +15,7 @@ import { corpusConnector, DECLARED_CONNECTORS } from './connectors';
 import { getPlaybook } from '../playbooks/index';
 
 const ASOF = '2026-07-02';
-const FIELD = 'p_crabs.unitCostRange';
+const FIELD = 'p_oldbay.unitCostRange';
 const NEW_VALUE = [3, 8];
 const crab = getPlaybook('Crab Feast');
 beforeEach(() => clearOverrides());
