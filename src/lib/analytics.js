@@ -227,7 +227,12 @@ export const EVENTS = {
   // Every one of these carries reason_type + reason_source so a low-value reason
   // KIND can be retired on evidence rather than opinion.
   REASON_SHOWN:           'reason_shown',
-  REASON_CLICKED:         'reason_clicked',
+  // RENAMED before any production data existed (instrumentation sprint): the
+  // handler is the ROW's onClick and fires only when a reason is present, so it
+  // observes "a row carrying a reason was tapped" -- NOT "the reason caused the
+  // tap". There is no control arm. The old name asserted causation the event
+  // cannot support.
+  ROW_WITH_REASON_CLICKED: 'row_with_reason_clicked',
   ACTION_COMPLETED_WITH_REASON: 'action_completed_with_reason',
 };
 

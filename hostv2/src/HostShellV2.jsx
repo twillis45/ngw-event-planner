@@ -86,6 +86,7 @@ import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowe
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
+import { analyticsEventContext, runwayBucket } from '@app/lib/analyticsContext';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2282,9 +2283,18 @@ export default function HostShellV2() {
   // ── REASONING CONTINUITY v1 — instrumentation ────────────────────────────────
   // One shape for all three events so a reason KIND can be judged on evidence and
   // retired if it earns nothing. No PII: ids and enums only, never the host's copy.
+  // Every payload carries the SAME context block, from one producer, so a result
+  // can be segmented by runway / solemnity / destination instead of being a bare count.
+  const analyticsCtx = useMemo(() => {
+    try {
+      const c = analyticsEventContext(event);
+      return { ...c, runway_bucket: runwayBucket(c.days_out) };
+    } catch { return { event_type: null, days_out: null, is_solemn: null, is_destination: null, runway_bucket: null }; }
+  }, [event]);
   const trackReason = useCallback((evt, action, reason) => {
     try {
       trackEvent(evt, {
+        ...analyticsCtx,
         action_id: action && action.id != null ? String(action.id) : null,
         action_source: (action && action.source) || null,
         reason_type: reason ? reason.type : null,
@@ -2292,21 +2302,34 @@ export default function HostShellV2() {
         reason_confidence: reason ? reason.confidence : null,
       });
     } catch { /* analytics must never break a render */ }
-  }, []);
+  }, [analyticsCtx]);
   // COMPLETION REASONING — when a row is satisfied, report what it actually freed.
   // `unlocks` is the engine's own transitive dependent count; when it is absent we
   // say nothing rather than guessing at a number (unlocked_count stays null).
-  const trackCompletion = useCallback((action, reason) => {
+  // COMPLETION. `resolution` is the honest half: 'settled' when the host resolved
+  // it in place and we watched it happen; 'left_queue' when the action simply
+  // stopped being raised (the ONLY path a routed queue row can take — it navigates
+  // away and the work happens on another surface, so eventPlan re-derives without
+  // it). 'snoozed' is a departure that is explicitly NOT a completion.
+  const trackCompletion = useCallback((action, reason, resolution) => {
     try {
       trackEvent(ANALYTICS.ACTION_COMPLETED_WITH_REASON, {
+        ...analyticsCtx,
         action_id: action && action.id != null ? String(action.id) : null,
+        action_source: (action && action.source) || null,
         reason_type: reason ? reason.type : null,
         reason_source: reason ? reason.source : null,
+        reason_confidence: reason ? reason.confidence : null,
         gate_holder: !!(action && action.gateHolder === true),
         unlocked_count: action && Number.isFinite(action.unlocks) ? action.unlocks : null,
+        resolution: resolution || 'settled',
+        // Client completion time. PostHog stamps INGESTION time, which is not the
+        // same instant when a send is queued, retried, or offline — and
+        // time-to-complete is the strongest signal a reason helped.
+        completed_at: new Date().toISOString(),
       });
     } catch { /* never break a settle */ }
-  }, []);
+  }, [analyticsCtx]);
   useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queue = elegantMode
     ? [
@@ -2326,23 +2349,6 @@ export default function HostShellV2() {
   // effect rather than from render (a render-time side effect would double-count on
   // every re-render and pollute the very data this exists to produce). The ref is
   // cleared on event switch so the same row on a different event counts again.
-  const reasonSeenRef = useRef(new Set());
-  useEffect(() => { reasonSeenRef.current = new Set(); }, [eventId]);
-  useEffect(() => {
-    if (!elegantMode) return;
-    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
-    if (!rows.length) return;
-    const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
-    for (const a of rows) {
-      const r = getActionReason(a, { event, moneyRows });
-      if (!r) continue;
-      const key = String(a.id || a.title) + '|' + r.type;
-      if (reasonSeenRef.current.has(key)) continue;
-      reasonSeenRef.current.add(key);
-      trackReason(ANALYTICS.REASON_SHOWN, a, r);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventId, elegantMode, queue]);
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
@@ -4985,6 +4991,65 @@ export default function HostShellV2() {
   };
   // T-2d: inside the day-before window the board simplifies, not busies.
   const nearDayPlan = !!(dayBefore && dayBefore.applicable && askMode);
+
+  // ── REASONING CONTINUITY v1 INSTRUMENTATION ─────────────────────────────────
+  // Placed HERE, after nearDayPlan/queueOpen exist, because the impression guard
+  // must be a copy of the render guard -- and those two symbols are declared
+  // below the queue. Reading them earlier would be a TDZ crash, and approximating
+  // them would reintroduce the measurement drift this sprint exists to remove.
+  const reasonSeenRef = useRef(new Set());
+  // The reason each action carried WHEN LAST SEEN, so a completion can report the
+  // reason the host actually read — by the time it completes the action is gone.
+  const reasonLiveRef = useRef(new Map());
+  const completedRef = useRef(new Set());
+  useEffect(() => {
+    reasonSeenRef.current = new Set();
+    reasonLiveRef.current = new Map();
+    completedRef.current = new Set();
+  }, [eventId]);
+  useEffect(() => {
+    // ── VISIBILITY PARITY (instrumentation sprint) ────────────────────────────
+    // This guard is a COPY of the render guard at the "Then, in order" block, not
+    // an approximation of it. `reason_shown` must mean "the host could see this",
+    // so any condition that stops the block rendering must stop the event too.
+    // Previously this read `if (!elegantMode) return;` alone, which left two
+    // states — !askMode, and the day-before collapse — where the effect could run
+    // over a block that was never on screen.
+    const blockRendered = elegantMode && askMode && !(nearDayPlan && !queueOpen);
+    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+    const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
+
+    if (blockRendered) {
+      for (const a of rows) {
+        const r = getActionReason(a, { event, moneyRows });
+        if (!r) continue;
+        reasonLiveRef.current.set(String(a.id || a.title), { reason: r, action: a });
+        const key = String(a.id || a.title) + '|' + r.type;
+        if (reasonSeenRef.current.has(key)) continue;
+        reasonSeenRef.current.add(key);
+        trackReason(ANALYTICS.REASON_SHOWN, a, r);
+      }
+    }
+
+    // ── COMPLETION, THE ONLY WAY A ROUTED ROW CAN CLOSE ───────────────────────
+    // A queue row does not settle in place — `openThen` routes it to the surface
+    // that owns the field, the host does the work there, and eventPlan re-derives
+    // WITHOUT it. So hooking settle handlers can never close this funnel; the
+    // observable event is the action leaving the raised set.
+    // Departure is not automatically success: a snoozed action also leaves. The
+    // two are separated and reported as different `resolution` values rather than
+    // collapsed into one number that would overstate completion.
+    const liveIds = new Set((actions || []).map(a => String(a && a.id)));
+    for (const [id, snap] of [...reasonLiveRef.current.entries()]) {
+      if (liveIds.has(id)) continue;                 // still raised
+      if (completedRef.current.has(id)) continue;    // already reported
+      completedRef.current.add(id);
+      reasonLiveRef.current.delete(id);
+      const snoozed = (() => { try { return !!snoozedUntil(event, id); } catch { return false; } })();
+      trackCompletion(snap.action, snap.reason, snoozed ? 'snoozed' : 'left_queue');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   // DAY-OF resume: entering The Day on the day itself picks up at the first
   // cue not already done (event.rosDone persists across reloads — the same
@@ -6422,7 +6487,7 @@ export default function HostShellV2() {
                   // so the hero advances even if its phase (food, etc.) still has other parts.
                   // COMPLETION REASONING v1: report what settling actually freed,
                   // from the engine's own `unlocks`/`gateHolder` — never a guess.
-                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event })); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
                 })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
@@ -6791,7 +6856,7 @@ export default function HostShellV2() {
                         // does appear. No model, no invented text.
                         const reason = getActionReason(a, { event, moneyRows });
                         return (
-                          <button key={String(a.id || i)} className="ef-row" onClick={() => { if (reason) trackReason(ANALYTICS.REASON_CLICKED, a, reason); openThen(a, String(a.id || (i + 1))); }}>
+                          <button key={String(a.id || i)} className="ef-row" onClick={() => { if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason); openThen(a, String(a.id || (i + 1))); }}>
                             <span className="t">{t}</span>
                             {reason && <span className="ef-why" data-reason={reason.type}>{reason.text}</span>}
                             <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
