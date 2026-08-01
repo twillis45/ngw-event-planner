@@ -29,7 +29,7 @@ import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correct
 import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
 import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
 import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
-import { approvedSourcesFor, validateSourcesFor } from '../lib/knowledge/sourceAuthority';
+import { approvedSourcesFor, validateSourcesFor, wouldGround } from '../lib/knowledge/sourceAuthority';
 import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
@@ -3766,6 +3766,21 @@ function KcrStudioPanel() {
                               const check = validateSourcesFor(fp, chosen);
                               const toggle = (id) => set('sources',
                                 (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(', '));
+                              // TIER (Phase 5F.3 defect). `format()` carries the AUTHORED tier
+                              // forward, and `isGroundedItemQty` requires tier === 'researched'.
+                              // So a correction on a purchase already sitting at `norm` or
+                              // `trade-heuristic` cited an approved source, published cleanly,
+                              // and NEVER GROUNDED — while the verdict below said "Will ground",
+                              // because it only checked sources. Measured on The Cookout
+                              // (trade-heuristic) and Quinceanera (norm) in the 5F.3 cohort.
+                              //
+                              // The tier is not silently upgraded: it is a claim about evidence
+                              // quality and belongs to the human. It is SHOWN, made changeable,
+                              // and the verdict now runs the real predicate over the whole block.
+                              const tierNow = d.tier || 'researched';
+                              const draftProv = { tier: tierNow, confidence: d.confidence || 'medium',
+                                verificationStatus: 'researched', sources: chosen, note: d.note || '' };
+                              const grounds = wouldGround(fp, draftProv);
                               return (
                                 <div style={{ marginBottom: 6 }}>
                                   <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
@@ -3794,11 +3809,25 @@ function KcrStudioPanel() {
                                       </button>
                                     );
                                   })}
+                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 5 }}>
+                                    <span style={{ fontSize: 9, color: D.faint, width: 74 }}>TIER</span>
+                                    {['researched', tierNow !== 'researched' ? tierNow : null].filter(Boolean).map((t) => (
+                                      <button key={t} type="button" onClick={() => set('tier', t)}
+                                        style={{ fontSize: 9, fontFamily: D.mono, padding: '2px 8px', borderRadius: 5,
+                                          cursor: 'pointer', border: `1px solid ${tierNow === t ? D.accent : D.border}`,
+                                          background: tierNow === t ? D.accent + '22' : 'transparent',
+                                          color: tierNow === t ? D.accent : D.muted }}>
+                                        {t}{t !== 'researched' ? ' (carried, will NOT ground)' : ''}
+                                      </button>
+                                    ))}
+                                  </div>
                                   {chosen.length > 0 && (
-                                    <div style={{ fontSize: 9, marginTop: 3, color: check.ok ? D.good : D.warn, lineHeight: 1.5 }}>
-                                      {check.ok
-                                        ? `Will ground — ${check.axis.hostImpact}`
-                                        : check.errors.join(' ')}
+                                    <div style={{ fontSize: 9, marginTop: 4, color: grounds ? D.good : D.warn, lineHeight: 1.5 }}>
+                                      {!check.ok
+                                        ? check.errors.join(' ')
+                                        : grounds
+                                          ? `Will ground — ${check.axis.hostImpact}`
+                                          : `Will NOT ground: tier is "${tierNow}" and ${check.axis.predicateName} requires "researched". The source is approved, but the host would show no Sourced line.`}
                                     </div>
                                   )}
                                 </div>

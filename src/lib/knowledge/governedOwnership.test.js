@@ -82,7 +82,12 @@ describe('THE PUBLISH GATE refuses a delegated field', () => {
   });
 
   test('publishing p_crabs.provenance is ALLOWED', () => {
-    const { kcr } = publishKCR(approved('p_crabs.provenance', { sources: ['s'], note: 'n' }), { versionId: 'v1', asOf: AT });
+    // Source id updated Phase 5F.4: the fixture cited a placeholder `'s'`, which the
+    // grounding-honesty gate now refuses (a citation that resolves nowhere would
+    // publish and never ground). This test is about OWNERSHIP - that the crab engine
+    // does not own provenance - so it uses a real approved source and a researched
+    // tier, which is what a genuine provenance publish looks like.
+    const { kcr } = publishKCR(approved('p_crabs.provenance', { tier: 'researched', sources: ['reddy-ice-2026'], note: 'n' }), { versionId: 'v1', asOf: AT });
     expect(kcr.status).toBe('published');
   });
 

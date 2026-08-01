@@ -23,6 +23,7 @@ import { validateGovernedValue } from './governedFieldTypes';
 // publishable at all - governing it produces a stated rate beside a count sized
 // by something else, which is worse than leaving it alone.
 import { fieldOwnership, blockedMessage } from './governedOwnership';
+import { groundingHonesty } from './sourceAuthority';
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 export const KCR_TYPES = [
@@ -299,6 +300,27 @@ export function publishKCR(kcr, { prevVersion = null, versionId, by = 'publisher
     // OWNERSHIP GATE. Refuse a field an engine owns, whatever its type.
     const own = fieldOwnership(kcr.assetId, kcr.fieldPath);
     if (!own.drivesRuntime) throw new Error(`KCR: ${kcr.fieldPath} is not governable — ${blockedMessage(own)}`);
+    // GROUNDING-HONESTY GATE (Phase 5F.4). A provenance block that CITES SOURCES is
+    // making a claim about evidence. This gate refuses the two ways that claim can be
+    // false, both found by running the acquisition loop rather than by reading code:
+    //
+    //   1. an UNRESOLVABLE source id. `usda-meat-2026` (real, but a cost source) or a
+    //      pasted URL published cleanly, then failed the grounding predicate. The claim
+    //      showed sources and the host showed nothing. ~8 raw URLs are in the corpus
+    //      this way; none has ever grounded.
+    //
+    //   2. approved sources on a NON-GROUNDING TIER. `format()` carries the authored
+    //      tier forward, so a purchase already sitting at `norm` or `trade-heuristic`
+    //      kept it invisibly. The Cookout and Quinceanera both published citing approved
+    //      sources with qtyGrounded=false — a record that looks sourced and is not.
+    //
+    // WHAT IS STILL ALLOWED: provenance with NO sources on any tier. A heuristic that
+    // says it is a heuristic is honest. The gate fires only when sources are present,
+    // because that is when the record starts making a claim it may not be able to keep.
+    //
+    // TIERS ARE NEVER AUTO-UPGRADED. The gate refuses and explains; a human chooses.
+    const gs = groundingHonesty(kcr.fieldPath, kcr.proposal.newValue);
+    if (!gs.ok) throw new Error(`KCR: ${gs.error}`);
   }
   // Complete the grading now that the evidence check has passed.
   const finalProv = derivedProvenance(kcr, prov);

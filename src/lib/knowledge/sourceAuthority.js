@@ -140,6 +140,58 @@ export function validateSourcesFor(fieldPath, ids) {
 }
 
 /**
+ * groundingHonesty(fieldPath, value) -> { ok, error?, reason?, tier?, status? }
+ *
+ * THE PUBLISH GATE (Phase 5F.4). Answers one question: **if this record cites sources,
+ * will the runtime predicate agree that it is grounded?**
+ *
+ * It exists because "the source picker validated the source" turned out not to be the
+ * same claim as "this will ground". Two records — The Cookout (`trade-heuristic`) and
+ * Quinceanera (`norm`) — published citing APPROVED sources and grounded false. The UI
+ * had said "Will ground". The gap was the TIER, which the editor carried forward
+ * invisibly and nothing checked.
+ *
+ * SCOPE, deliberately narrow:
+ *   - fires ONLY on a provenance value that carries a non-empty `sources` array;
+ *   - a provenance with no sources is honest on any tier and passes;
+ *   - a non-provenance field is not this gate's business.
+ *
+ * It never upgrades a tier. Evidence quality is a human claim.
+ */
+export function groundingHonesty(fieldPath, value) {
+  const f = String(fieldPath || '');
+  if (!/\.provenance$/.test(f)) return { ok: true };
+  if (!value || typeof value !== 'object') return { ok: true };
+  const sources = Array.isArray(value.sources) ? value.sources.filter(Boolean) : [];
+  if (!sources.length) return { ok: true };            // an unsourced heuristic is honest
+
+  const axis = axisForField(f);
+  if (!axis) return { ok: true };                      // no axis claims authority here
+
+  const check = validateSourcesFor(f, sources);
+  if (!check.ok) {
+    return {
+      ok: false,
+      status: 'unresolvable source',
+      error: `${check.errors.join(' ')} Publishing it would create a record that lists sources and never grounds.`,
+    };
+  }
+  if (!axis.predicate(value)) {
+    const tier = value.tier == null ? '(none)' : String(value.tier);
+    return {
+      ok: false,
+      tier,
+      status: `Will NOT ground ${axis.label.toLowerCase()} claims`,
+      error: `evidence tier "${tier}" does not satisfy ${axis.predicateName}. `
+        + 'The cited sources are approved, but the record would list sources and show no '
+        + `Sourced line to a host. Set the tier to "researched" if the research was actually `
+        + 'done, or remove the sources — do not publish a record that looks sourced and is not.',
+    };
+  }
+  return { ok: true, status: `Will ground — ${axis.hostImpact}` };
+}
+
+/**
  * wouldGround(fieldPath, provenance) -> boolean
  *
  * Runs the REAL predicate the host runs. The composer uses this so the operator is
