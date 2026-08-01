@@ -22,6 +22,9 @@ import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
 import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
+import { publishedKcrsForExport, serializePublishedExport, exportSummary, EXPORT_FILENAME,
+  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory } from '../lib/knowledge/publishedExport';
+import { publishedEntries } from '../lib/knowledge/publishedSnapshot';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
@@ -2181,8 +2184,14 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 
       {s === 'approved' && (
         <div style={{ display: 'flex', gap: 6 }}>
+          {/* LINEAGE FIX (Phase 5C.4). `prevVersion` was `k.rollbackTo` — the version the
+              CURRENT one already replaced, i.e. the grandparent. On a first publish both are
+              null so the bug is invisible; on a RE-publish (every correction) it chained the
+              new version to its grandparent and left the parent unsuperseded. Since
+              publishedSnapshotBuild selects by lineage, that produced TWO LIVE HEADS on one
+              field. The parent is `publishedVersion`. */}
           <B label="Publish" primary cap="publish" enabled={!gate.blocked}
-            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.rollbackTo || null, by: role, asOf }).kcr, 'Published')} />
+            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.publishedVersion || null, by: role, asOf }).kcr, 'Published')} />
           <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'archived', { by: role, note: 'withdrawn', asOf }), 'Withdrawn')} />
         </div>
       )}
@@ -3163,13 +3172,110 @@ function KcrStudioPanel() {
     if (ws === 'Publishing') {
       const pubKcrs = kcrs.filter((k) => k.status === 'approved')
         .sort((a, b) => a.assetId.localeCompare(b.assetId));
+      // Phase 5C.4 — the export that closes Admin -> bake -> runtime.
+      // Phase 5C.6 (D2) — MERGE, never replace. Admin's store only holds KCRs Admin
+      // originated, so exporting it alone would delete governed knowledge Admin has
+      // never heard of. The baked snapshot is the merge base: it is the same bytes
+      // the runtime resolver serves, and it contains only lineage heads.
+      const liveEntries = publishedEntries();
+      const liveAsKcrs = liveEntries.map(snapshotEntryToKcr).filter(Boolean);
+      const mergedForExport = mergePublishedKnowledge(liveAsKcrs, kcrs);
+      const inventory = publishedInventory(liveEntries);
+      const exported = publishedKcrsForExport(mergedForExport);
+      const expSum = exportSummary(mergedForExport);
+      const doExport = () => {
+        const blob = new Blob([serializePublishedExport(mergedForExport)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = EXPORT_FILENAME;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      };
       return (
         <div>
-          <Banner>KCRs approved and ready to publish — the final human gate. Publishing writes an override record that the runtime resolver applies. Nothing publishes automatically.</Banner>
+          <Banner>KCRs approved and ready to publish — the final human gate. Publishing writes a governed KCR record. Nothing publishes automatically, and nothing reaches a host until the export below is committed and baked.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="Approved" value={byStatus.approved || 0} tone={D.good} />
             <PBKpi label="Published all time" value={byStatus.published || 0} tone={D.good} />
+            <PBKpi label="In export (heads)" value={expSum.heads} tone={D.accent} />
+            <PBKpi label="Superseded (history)" value={expSum.superseded} tone={D.faint} />
           </div>
+
+          {/* THE MISSING LINK. Publishing a KCR does not change what a host sees — the
+              runtime reads a BAKED artifact built from knowledge-exports/published-kcrs.json.
+              This projects the published KCRs into exactly that file. The bake stays a
+              deliberate human step (download -> commit -> `npm run bake:knowledge`), so a bad
+              publish is caught in a diff instead of discovered by a host. */}
+          <div style={{ border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, marginBottom: 14, background: D.surface2 }}>
+            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 8 }}>
+              RUNTIME EXPORT — {expSum.records} published record{expSum.records === 1 ? '' : 's'} across {expSum.fields} field{expSum.fields === 1 ? '' : 's'}
+              {expSum.superseded > 0 && ` · ${expSum.superseded} superseded (kept for history, will not win resolution)`}
+            </div>
+            <div style={{ fontSize: 10, color: D.faint, marginBottom: 10, lineHeight: 1.5 }}>
+              Download replaces <code>knowledge-exports/{EXPORT_FILENAME}</code>, then run <code>npm run bake:knowledge</code>.
+              Nothing here writes to runtime. Verify any field afterwards in Runtime Preview.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={doExport} disabled={!exported.length}
+                style={{ padding: '5px 11px', borderRadius: 6, fontSize: type.size.caption, fontFamily: D.ff,
+                  border: `1px solid ${D.accent}`, background: exported.length ? D.accent : 'transparent',
+                  color: exported.length ? '#0b0d10' : D.faint, cursor: exported.length ? 'pointer' : 'not-allowed' }}>
+                Export published KCRs
+              </button>
+              <button type="button" onClick={() => setWs('Runtime Preview')}
+                style={{ padding: '5px 11px', borderRadius: 6, fontSize: type.size.caption, fontFamily: D.ff,
+                  border: `1px solid ${D.border}`, background: 'transparent', color: D.muted, cursor: 'pointer' }}>
+                Verify in Runtime Preview →
+              </button>
+            </div>
+          </div>
+
+          {/* PUBLISHED KNOWLEDGE INVENTORY (Phase 5C.6, D1) — "what is currently live?"
+              Read from the baked artifact the runtime itself serves, so it cannot drift
+              from what a host sees. A projection, not a second store. */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
+              LIVE IN RUNTIME — {inventory.length} governed field{inventory.length === 1 ? '' : 's'}
+            </div>
+            {inventory.length === 0
+              ? <Empty msg="No governed knowledge is live. Runtime is serving authored defaults for every field." />
+              : inventory.map((r) => (
+                <div key={`${r.assetId}-${r.fieldPath}`} style={{ padding: '6px 8px', borderBottom: `1px solid ${D.border}44` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontFamily: D.mono, color: D.text, flex: 1 }}>{r.assetId} · {r.fieldPath}</span>
+                    <span style={{ fontSize: 9, color: D.good, fontFamily: D.mono }}>{r.runtimeStatus}</span>
+                    <span style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{r.confidence || '—'}</span>
+                    <button type="button"
+                      onClick={() => { setRtType(r.assetId); setRtField(r.fieldPath); setRtResult(null); setWs('Runtime Preview'); }}
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.accent, cursor: 'pointer' }}>
+                      verify →
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, marginTop: 2 }}>
+                    {r.version || 'no version'} · {r.tier || 'no tier'} · {r.publishedAt ? String(r.publishedAt).slice(0, 10) : 'no date'}
+                  </div>
+                </div>
+              ))}
+          </div>
+
+          {/* Per-field verification: jump straight to what a host sees for THIS field. */}
+          {exported.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>PUBLISHED FIELDS</div>
+              {exported.map((k) => (
+                <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: `1px solid ${D.border}44` }}>
+                  <span style={{ fontSize: 10, fontFamily: D.mono, color: D.text, flex: 1 }}>{k.assetId} · {k.fieldPath}</span>
+                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>{k.publishedVersion || '—'}</span>
+                  <button type="button"
+                    onClick={() => { setRtType(k.assetId); setRtField(k.fieldPath); setRtResult(null); setWs('Runtime Preview'); }}
+                    style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.accent, cursor: 'pointer' }}>
+                    verify →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {loading ? <Banner tone="muted">Loading…</Banner> : pubKcrs.length === 0 ? <Empty msg="No KCRs pending publish. Honest-empty." /> : <KcrTable items={pubKcrs} />}
         </div>
       );

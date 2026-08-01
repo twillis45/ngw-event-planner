@@ -1,7 +1,66 @@
 {
   "schemaVersion": 1,
-  "entries": [],
-  "generatedAt": null,
-  "snapshotVersion": "3350e13d",
-  "entryCount": 0
+  "entries": [
+    {
+      "assetId": "Crab Feast",
+      "fieldPath": "p_crabs.provenance",
+      "value": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "note": "Per-guest crab quantity grounded to the WebstaurantStore protein portion guide (fetched 2026-07-16)."
+      },
+      "kcrId": "kcr-kas-crab-feast-p-crabs-provenance",
+      "versionId": "crab-feast-p-crabs-provenance-v1",
+      "evidenceIds": [
+        "webstaurant-protein-2026"
+      ],
+      "provenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "verificationStatus": "cited",
+      "publishedAt": "2026-08-01T12:00:00.000Z"
+    },
+    {
+      "assetId": "Retirement Party",
+      "fieldPath": "p_wine.provenance",
+      "value": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "DERIVATION CORRECTED (Phase 5C.2, supersedes v1). bar-provision-2026 states ~1/2 bottle of wine per DRINKING guest (~1 bottle per ~2.5 drinking guests per hour; a 750ml pours ~5 servings). This line is expressed per GUEST, so the sourced 0.5/drinker is multiplied by an assumed ~80% drinking rate for an older mixed daytime crowd: 0.5 x 0.8 = 0.4 bottle/guest. The ~80% rate is an ASSUMPTION, not sourced, and is the one unverified step. WITHDRAWN FROM v1: \"wine carries ~40% of the drink load\" was wrong twice - the source assigns ~40% to BEER (beer+wine ~75%, implying wine ~35%), and v1's own arithmetic (3h x 1/h x 40% / 5 glasses) yields 0.24 bottle/guest, not the 0.4 it published. The VALUE survives; only the reasoning was defective.",
+        "claim": "Source states ~1/2 bottle of wine per drinking guest at ~1 drink/guest/hour; at an assumed ~80% drinking rate for an older daytime crowd this yields ~0.4 bottle per guest",
+        "sufficientWhen": "A drinking-participation rate for older daytime retirement gatherings confirms the ~80% assumption, OR wine consumption data from >=2 comparable 3h events confirms ~0.4 bottle/guest when beer/seltzer is also present"
+      },
+      "kcrId": "kcr-kas-retirement-party-p-wine-provenance-v2",
+      "versionId": "retirement-party-p-wine-provenance-v2",
+      "evidenceIds": [
+        "bar-provision-2026"
+      ],
+      "provenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "verificationStatus": "cited",
+      "publishedAt": "2026-08-01T18:00:00.000Z"
+    }
+  ],
+  "generatedAt": "2026-08-01T18:00:00.000Z",
+  "snapshotVersion": "23817229",
+  "entryCount": 2
 }

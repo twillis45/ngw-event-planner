@@ -1,0 +1,446 @@
+[
+  {
+    "id": "kcr-kas-crab-feast-p-crabs-provenance",
+    "type": "research",
+    "trigger": "research",
+    "createdBy": "kas-phase5a2",
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "assetId": "Crab Feast",
+    "assetKind": "playbook",
+    "fieldPath": "p_crabs.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "p_crabs provenance cites four DMV retailers as free prose; no source id resolves, so the quantity predicate reads it as ungrounded.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "webstaurant-protein-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "WebstaurantStore — How Much Meat to Serve Per Person (protein portion guide)",
+        "url": "https://www.webstaurantstore.com/blog/5410/protein-portion-guide.html"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "note": "Per-guest crab quantity grounded to the WebstaurantStore protein portion guide (fetched 2026-07-16)."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Replaces prose-only sourcing with a resolvable source id so the quantity grounding predicate can evaluate it.",
+      "verificationStatus": "cited",
+      "sources": [
+        "webstaurant-protein-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "editorial": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      }
+    },
+    "publishedVersion": "crab-feast-p-crabs-provenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "kas-phase5a2",
+        "action": "created",
+        "note": "type=research trigger=research"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "WebstaurantStore — How Much Meat to Serve Per Person (protein portion guide)"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Replaces prose-only sourcing with a resolvable source id so the quantity grounding predicate can evaluate it."
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:researching",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:grounded",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:review",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "crab-feast-p-crabs-provenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "kcr-kas-retirement-party-p-wine-provenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "kas-phase5a3",
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "assetId": "Retirement Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_wine.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "p_wine provenance records confidence 'med'; the canonical vocabulary is high|medium|low, so the value is unaggregatable against the rest of the corpus.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "Bar provisioning guide (drinks per guest per hour)",
+        "url": "https://www.webstaurantstore.com/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "Grounded to bar-provision-2026: ~1/2 bottle of wine per drinker, ~5 glasses per 750ml, at ~1 drink/guest/hour.",
+        "claim": "At ~1 drink/guest/hour, wine carries ~40% of the drink load: a 750ml bottle (5 glasses) supports ~0.4 bottle/guest over 3 hours when beer is also served."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Normalizes confidence 'med' to the canonical 'medium' without editing the authored playbook file.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "editorial": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      }
+    },
+    "publishedVersion": "retirement-party-p-wine-provenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "kas-phase5a3",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Bar provisioning guide (drinks per guest per hour)"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Normalizes confidence 'med' to the canonical 'medium' without editing the authored playbook file."
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:researching",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:grounded",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:review",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "retirement-party-p-wine-provenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "kcr-kas-retirement-party-p-wine-provenance-v2",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "publisher",
+    "createdAt": "2026-08-01T18:00:00.000Z",
+    "assetId": "Retirement Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_wine.provenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "researched",
+      "sources": [
+        "bar-provision-2026"
+      ],
+      "note": "Grounded to bar-provision-2026: ~1/2 bottle of wine per drinker, ~5 glasses per 750ml, at ~1 drink/guest/hour.",
+      "claim": "At ~1 drink/guest/hour, wine carries ~40% of the drink load: a 750ml bottle (5 glasses) supports ~0.4 bottle/guest over 3 hours when beer is also served."
+    },
+    "currentProvenance": null,
+    "reason": "Published v1 carried a derivation that does not reproduce: it attributed the source's ~40% BEER share to wine, and its stated arithmetic yields 0.24 bottle/guest against a published 0.4. Found by the Phase 5C.1 trust repair audit. The quantity is unchanged; the reasoning is replaced.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "Bar provisioning guide (drinks per guest per hour)",
+        "url": "https://www.webstaurantstore.com/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "DERIVATION CORRECTED (Phase 5C.2, supersedes v1). bar-provision-2026 states ~1/2 bottle of wine per DRINKING guest (~1 bottle per ~2.5 drinking guests per hour; a 750ml pours ~5 servings). This line is expressed per GUEST, so the sourced 0.5/drinker is multiplied by an assumed ~80% drinking rate for an older mixed daytime crowd: 0.5 x 0.8 = 0.4 bottle/guest. The ~80% rate is an ASSUMPTION, not sourced, and is the one unverified step. WITHDRAWN FROM v1: \"wine carries ~40% of the drink load\" was wrong twice - the source assigns ~40% to BEER (beer+wine ~75%, implying wine ~35%), and v1's own arithmetic (3h x 1/h x 40% / 5 glasses) yields 0.24 bottle/guest, not the 0.4 it published. The VALUE survives; only the reasoning was defective.",
+        "claim": "Source states ~1/2 bottle of wine per drinking guest at ~1 drink/guest/hour; at an assumed ~80% drinking rate for an older daytime crowd this yields ~0.4 bottle per guest",
+        "sufficientWhen": "A drinking-participation rate for older daytime retirement gatherings confirms the ~80% assumption, OR wine consumption data from >=2 comparable 3h events confirms ~0.4 bottle/guest when beer/seltzer is also present"
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Replaces a non-reproducing derivation. Same source, same value, corrected reasoning.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: sme",
+        "at": "2026-08-01T18:00:00.000Z"
+      },
+      "editorial": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: editorial",
+        "at": "2026-08-01T18:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: governance",
+        "at": "2026-08-01T18:00:00.000Z"
+      }
+    },
+    "publishedVersion": "retirement-party-p-wine-provenance-v2",
+    "rollbackTo": "retirement-party-p-wine-provenance-v1",
+    "audit": [
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Bar provisioning guide (drinks per guest per hour)"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:researching",
+        "note": "correction opened"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:grounded",
+        "note": "evidence carried from superseded version"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Replaces a non-reproducing derivation. Same source, same value, corrected reasoning."
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:review",
+        "note": "correction submitted for review"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:approved",
+        "note": "correction approved"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "retirement-party-p-wine-provenance-v2"
+      }
+    ]
+  }
+]
