@@ -110,6 +110,69 @@ export function openCorrection(prior, {
   return { ...k, correctionOf: prior.publishedVersion };
 }
 
+/**
+ * openAuthoredGovernance({ assetId, fieldPath, authoredValue }, opts) -> KCR at 'review'
+ *
+ * PHASE 5F.2. The FIRST governance of a field that has never been published.
+ *
+ * WHY THIS IS A SEPARATE FUNCTION. `openCorrection` requires a published prior and
+ * throws without one — correctly, because it is a SUPERSESSION workflow and its whole
+ * job is to point `correctionOf` at the version being retired. An authored-only field
+ * has no version to retire. Before this existed, `doCorrect` refused with "no live
+ * entry for that field", so **37 of 39 playbooks could not be governed at all**: the
+ * governance engine was reachable only for knowledge that was already governed.
+ *
+ * The two paths are deliberately not merged. Making `openCorrection` tolerate a null
+ * prior would mean one function whose most important behaviour — does this retire a
+ * previous published version? — depends on a nullable argument. That is exactly the
+ * shape that produced the 5E cross-field lineage defect, where a correction claimed an
+ * ancestor it did not have and would have silently retired an unrelated record.
+ *
+ * WHAT IS THE SAME: the states, the review gate, the reason requirement, and every
+ * publish gate downstream (type, ownership, evidence, approval). A first governance is
+ * not a fast path.
+ *
+ * WHAT IS DIFFERENT: `currentValue` is the AUTHORED value, so a reviewer sees the real
+ * old -> new; and the record carries NO `correctionOf`, so `publishKCR` mints a fresh
+ * v1 and the builder supersedes nothing.
+ */
+export function openAuthoredGovernance({ assetId, fieldPath, authoredValue = null, assetKind = 'playbook' } = {}, {
+  newValue, newProvenance = null, rationale = '', reason, evidence = [],
+  by = 'publisher', asOf = null, id = null,
+} = {}) {
+  if (!assetId || !fieldPath) {
+    throw new Error('authored governance: assetId and fieldPath are required');
+  }
+  if (!reason || !String(reason).trim()) {
+    throw new Error('authored governance: a change must state its reason');
+  }
+
+  let k = createKCR({
+    id: id || `authored-${String(assetId).toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${String(fieldPath).replace(/[^a-zA-Z0-9]+/g, '-')}`,
+    type: 'correction',
+    trigger: CORRECTION_TRIGGER,
+    assetId,
+    assetKind,
+    fieldPath,
+    // The authored value IS the "before". Recording it is what makes the change
+    // reviewable rather than a bare assertion of a new number.
+    currentValue: authoredValue,
+    currentProvenance: null,
+    reason: String(reason),
+    createdBy: by,
+    asOf,
+  });
+
+  for (const ev of (evidence || [])) k = addEvidence(k, ev, asOf);
+  k = advanceKCR(k, 'researching', { by, note: 'first governance opened', asOf });
+  k = advanceKCR(k, 'grounded', { by, note: 'authored value captured as the prior', asOf });
+  k = setProposal(k, { newValue, newProvenance, rationale: rationale || String(reason) }, asOf);
+  k = advanceKCR(k, 'review', { by, note: 'first governance submitted for review', asOf });
+
+  // NO `correctionOf`. This starts a lineage; it does not continue one.
+  return k;
+}
+
 export function correctPublishedKCR(prior, {
   newValue, newProvenance = null, rationale = '', reason, evidence = [], versionId = null,
   by = 'publisher', reviewers = {}, asOf = null, id = null,

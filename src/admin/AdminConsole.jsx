@@ -25,9 +25,11 @@ import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publ
 import { publishedKcrsForExport, serializePublishedExport, exportSummary, EXPORT_FILENAME,
   mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory, exportBase, lineageHistory, rollbackTarget } from '../lib/knowledge/publishedExport';
 import { publishedEntries } from '../lib/knowledge/publishedSnapshot';
-import { openCorrection } from '../lib/knowledge/correctionWorkflow';
+import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correctionWorkflow';
 import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
 import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
+import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
+import { approvedSourcesFor, validateSourcesFor } from '../lib/knowledge/sourceAuthority';
 import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
@@ -2213,6 +2215,11 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 const STUDIO_WS = [
   'Mission Control', 'Research Session', 'Research Ops',
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
+  // ACQUISITION (Phase 5F.2) sits before Review because it is where governed work
+  // now STARTS. Publishing lists what is already governed — 2 assets of 39 — so
+  // discovery anchored there could only ever re-correct knowledge that already
+  // existed. This browses the AUTHORED corpus with published knowledge as an overlay.
+  'Acquisition',
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
   'Copilot', 'Analytics', 'Retirement', 'Campaigns', 'Campaign Research',
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
@@ -2328,6 +2335,13 @@ function KcrStudioPanel() {
   // why the host proof kept getting pushed. `correctPurchase` retargets the whole
   // correction at any governable purchase in the same playbook.
   const [correctPurchase, setCorrectPurchase] = useState(null);
+  // ACQUISITION (5F.2). `acqTarget` is how the picker hands the composer an
+  // asset+field that may have NO published row — the case the composer could not
+  // previously represent at all.
+  const [acqAsset, setAcqAsset] = useState('');
+  const [acqState, setAcqState] = useState('');
+  const [acqQuery, setAcqQuery] = useState('');
+  const [acqTarget, setAcqTarget] = useState(null);
   const [correctField, setCorrectField] = useState('provenance');
   const [correctDraft, setCorrectDraft] = useState(null);
   // Rollback composer (Phase 5D P1): withdrawing a published version is at least as
@@ -3197,6 +3211,109 @@ function KcrStudioPanel() {
       );
     }
 
+    // ─── ACQUISITION (Phase 5F.2) ────────────────────────────────────────────
+    // Discovery over the AUTHORED corpus. The field list comes from
+    // governableFieldsFor(), which derives from the runtime ownership contract —
+    // so an engine-delegated or unconsumed field can never appear here, and the
+    // picker cannot drift from what actually reaches a host.
+    if (ws === 'Acquisition') {
+      // Same baked snapshot the runtime serves — so "published" here means published
+      // to a host, not merely present in Admin's store.
+      const liveIdx = publishedEntries().map((e) => ({ assetId: e.assetId, fieldPath: e.fieldPath }));
+      const tree = acquisitionTree(ALL_PLAYBOOKS, liveIdx, {
+        assetId: acqAsset || null, state: acqState || null, query: acqQuery,
+      });
+      const summary = acquisitionSummary(acquisitionTree(ALL_PLAYBOOKS, liveIdx));
+      const STATE_TONE = {
+        published: D.good, 'missing-provenance': D.warn, 'needs-research': D.warn,
+        correctable: D.accent, ungoverned: D.muted,
+      };
+      return (
+        <div>
+          <Banner tone="muted">
+            Knowledge Acquisition — browse the authored corpus and open governed corrections.
+            Published knowledge is an overlay, not the starting point: before this workspace,
+            only fields that were ALREADY governed could be corrected, so {summary.assets - (summary.assets - summary.ungovernedAssets)} of {summary.assets} playbooks were unreachable.
+          </Banner>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '10px 0 14px' }}>
+            <PBKpi label="Assets" value={summary.assets} />
+            <PBKpi label="Governable fields" value={summary.fields} />
+            <PBKpi label="Never governed" value={summary.ungovernedAssets} tone={D.muted} />
+            <PBKpi label="Missing provenance" value={summary.counts['missing-provenance']} tone={D.warn} />
+            <PBKpi label="Published" value={summary.counts.published} tone={D.good} />
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <input value={acqQuery} onChange={(e) => setAcqQuery(e.target.value)}
+              placeholder="find an item…"
+              style={{ fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 8px', width: 190 }} />
+            <select value={acqAsset} onChange={(e) => setAcqAsset(e.target.value)}
+              style={{ fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 6px' }}>
+              <option value="">all playbooks</option>
+              {(ALL_PLAYBOOKS || []).map((p) => p && p.type)
+                .filter(Boolean).sort().map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {['', ...GOVERNANCE_STATES].map((s) => (
+              <button key={s || 'all'} type="button" onClick={() => setAcqState(s)}
+                style={{ fontSize: 9, padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
+                  border: `1px solid ${acqState === s ? D.accent : D.border}`,
+                  background: acqState === s ? D.accent + '22' : 'transparent',
+                  color: acqState === s ? D.accent : D.muted }}>
+                {s || 'any state'}
+              </button>
+            ))}
+          </div>
+          {tree.length === 0 ? <Empty msg="No governable fields match those filters." /> : tree.slice(0, 12).map((a) => (
+            <div key={a.assetId} style={{ marginBottom: 14, border: `1px solid ${D.border}`, borderRadius: 8, padding: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: D.text, marginBottom: 2 }}>
+                {a.assetId}
+                <span style={{ fontSize: 9, fontFamily: D.mono, color: a.ungoverned ? D.muted : D.good, marginLeft: 8 }}>
+                  {a.ungoverned ? 'never governed' : `${a.publishedCount} governed`}
+                </span>
+              </div>
+              {a.categories.map((c) => (
+                <div key={c.category} style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, textTransform: 'uppercase', letterSpacing: '.08em' }}>{c.category}</div>
+                  {c.items.map((it) => (
+                    <div key={it.id} style={{ marginTop: 5, paddingLeft: 8, borderLeft: `1px solid ${D.border}` }}>
+                      <div style={{ fontSize: 10.5, color: D.text }}>
+                        {String(it.item).slice(0, 62)}
+                        <span style={{ fontFamily: D.mono, fontSize: 9, color: D.faint, marginLeft: 6 }}>{it.id}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 4 }}>
+                        {it.fields.map((f) => (
+                          <button key={f.field} type="button"
+                            title={`state: ${f.state} — open a governed correction`}
+                            onClick={() => {
+                              // Hands the composer an ASSET + FIELD, not a published row.
+                              setAcqTarget({ assetId: a.assetId, purchaseId: it.id, field: f.field, state: f.state });
+                              setCorrectPurchase(it.id); setCorrectField(f.field);
+                              setCorrectDraft(null); setCorrectReason(''); setCorrectNote('');
+                              setWs('Publishing');
+                            }}
+                            style={{ fontSize: 9, fontFamily: D.mono, padding: '2px 7px', borderRadius: 5,
+                              cursor: 'pointer', border: `1px solid ${STATE_TONE[f.state] || D.border}`,
+                              background: 'transparent', color: STATE_TONE[f.state] || D.muted }}>
+                            {f.field} · {f.state}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+          {tree.length > 12 && (
+            <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>
+              showing 12 of {tree.length} assets — narrow with a filter
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (ws === 'Publishing') {
       const pubKcrs = kcrs.filter((k) => k.status === 'approved')
         .sort((a, b) => a.assetId.localeCompare(b.assetId));
@@ -3219,26 +3336,57 @@ function KcrStudioPanel() {
       // does not touch publishedKnowledge — a correction that could skip review would be a
       // wider hole than the defect it fixes. The prior KCR is reconstructed from the baked
       // snapshot (the same bytes runtime serves) so lineage has a real ancestor to name.
+      //
+      // PHASE 5F.2 — TWO ORIGINS, ONE COMPOSER.
+      //
+      // This used to hard-refuse anything without a live snapshot entry ("no live
+      // entry for that field"), which meant a field could only be governed if it was
+      // ALREADY governed: 2 assets of 39 reachable, and the corpus could never grow
+      // through the tool built to grow it.
+      //
+      // Now a correction has two legitimate origins:
+      //   SUPERSESSION  — a published prior exists -> openCorrection, correctionOf set
+      //   FIRST GOVERNANCE — authored only        -> openAuthoredGovernance, no parent
+      //
+      // They are separate functions on purpose. One function whose most important
+      // behaviour (does this retire a previous version?) hinged on a nullable argument
+      // is the shape that produced the 5E cross-field lineage defect, where a
+      // correction claimed an ancestor it did not have.
       const doCorrect = async (row) => {
-        const entry = liveEntries.find((e) => e.assetId === row.assetId && e.fieldPath === row.fieldPath);
+        // The picker hands over an asset+field that may have no published row at all.
+        const target = acqTarget && !row ? acqTarget : null;
+        const assetId = row ? row.assetId : target.assetId;
+        const pid = correctPurchase || (row ? String(row.fieldPath).split('.')[0] : target.purchaseId);
+        const entry = liveEntries.find((e) => e.assetId === assetId
+          && e.fieldPath === (row ? row.fieldPath : `${pid}.${correctField}`));
         const prior = entry && snapshotEntryToKcr(entry);
-        if (!prior) { setCorrectNote('Correction blocked: no live entry for that field.'); return; }
         const reason = correctReason;
         if (!reason || !reason.trim()) { setCorrectNote('A correction must state its reason.'); return; }
+        if (!prior && !target && !row) { setCorrectNote('Correction blocked: no asset selected.'); return; }
         try {
           // PHASE 5E — the correction now carries a TYPED value, not the old one.
           // `correctField` names which governed field is being changed; the field
           // type parses the editor draft into the engine's shape and refuses
           // anything it cannot. `provenance` with no draft keeps prior behaviour.
-          const pid = correctPurchase || String(row.fieldPath).split('.')[0];
-        const fType = fieldTypeFor(`${pid}.${correctField}`);
-          let newValue = entry.value;
-          let targetPath = row.fieldPath;
+          const fType = fieldTypeFor(`${pid}.${correctField}`);
+          // With no published entry there is no prior value to carry, so the draft is
+          // required — a first governance cannot mean "publish whatever was already there".
+          let newValue = entry ? entry.value : undefined;
+          let targetPath = row ? row.fieldPath : `${pid}.${correctField}`;
           if (correctDraft != null && fType) {
             const parsed = fType.parse(correctDraft);
             if (!parsed.ok) { setCorrectNote(`Blocked: ${parsed.error}`); return; }
             const ed = validateForEditor(`${pid}.${correctField}`, parsed.value);
             if (!ed.ok) { setCorrectNote(`Blocked: ${ed.errors.join(' ')}`); return; }
+            // SOURCE AUTHORITY (5F.2 Step 2). Enforced at SUBMIT, not only in the
+            // picker: a UI that merely omits an option is a suggestion, and this
+            // programme has already shipped one thing that was labelled safe and
+            // wasn't. The picker cannot offer a wrong-axis source, but the draft is
+            // still plain state, so the gate belongs where the record is created.
+            if (correctField === 'provenance' && Array.isArray(parsed.value && parsed.value.sources)) {
+              const srcCheck = validateSourcesFor(`${pid}.provenance`, parsed.value.sources);
+              if (!srcCheck.ok) { setCorrectNote(`Blocked: ${srcCheck.errors.join(' ')}`); return; }
+            }
             newValue = parsed.value;
             targetPath = `${pid}.${correctField}`;
           }
@@ -3248,6 +3396,26 @@ function KcrStudioPanel() {
           // supersedes `...p-crabs-provenance-v1` would fabricate an ancestor and
           // wrongly retire the provenance record on the next bake. A new field starts
           // its own lineage; only a same-field change supersedes.
+          // FIRST GOVERNANCE — no published prior anywhere for this asset+field.
+          if (!prior) {
+            if (newValue === undefined) {
+              setCorrectNote('Blocked: enter the corrected value — a first governance has no prior value to carry.');
+              return;
+            }
+            const pbA = (ALL_PLAYBOOKS || []).find((x) => x && x.type === assetId);
+            const puA = pbA && (pbA.purchases || []).find((x) => x && x.id === pid);
+            const firstK = openAuthoredGovernance(
+              { assetId, fieldPath: targetPath, authoredValue: puA ? puA[correctField] : null },
+              { newValue, reason: reason.trim(), by: role, asOf: new Date().toISOString(),
+                id: `authored-${assetId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetPath.replace(/[^a-zA-Z0-9]+/g, '-')}-${Date.now()}` },
+            );
+            await upsertKCR(firstK);
+            setCorrectNote(`First governance opened for ${assetId} · ${targetPath} — authored value ${JSON.stringify(puA ? puA[correctField] : null)} recorded as the prior. Starts a new lineage and supersedes nothing. Awaiting review ✓`);
+            setCorrectRow(null); setAcqTarget(null); setCorrectReason('');
+            setCorrectDraft(null); setCorrectField('provenance');
+            await refresh();
+            return;
+          }
           const isSameField = targetPath === prior.fieldPath;
           const corr = openCorrection({ ...prior, fieldPath: targetPath }, {
             newValue,
@@ -3359,9 +3527,53 @@ function KcrStudioPanel() {
               LIVE IN RUNTIME — {inventory.length} governed field{inventory.length === 1 ? '' : 's'}
             </div>
             {correctNote && <div style={{ fontSize: 10, color: D.good, marginBottom: 6, fontFamily: D.mono }}>{correctNote}</div>}
-            {inventory.length === 0
+            {/* ACQUISITION TARGET (Phase 5F.2). The picker can select a field that has
+                never been published, which has no inventory row to attach a composer to.
+                Rather than fork the 297-line typed editor, the target is rendered as a
+                first-class row: same composer, same validation, same gates — the only
+                difference is that `doCorrect` finds no prior and opens a FIRST
+                governance instead of a supersession. One editor, two origins. */}
+            {(() => {
+              if (!acqTarget) return null;
+              const fp = `${acqTarget.purchaseId}.${acqTarget.field}`;
+              const already = inventory.some((r) => r.assetId === acqTarget.assetId && r.fieldPath === fp);
+              if (already) return null;                 // it IS governed — the real row handles it
+              const pseudo = { assetId: acqTarget.assetId, fieldPath: fp, version: '(not yet governed)' };
+              return (
+                <div style={{ padding: '6px 8px', border: `1px solid ${D.accent}55`, borderRadius: 6, marginBottom: 8, background: D.surface2 }}>
+                  <div style={{ fontSize: 10, color: D.text, fontFamily: D.mono }}>
+                    {pseudo.assetId} · {pseudo.fieldPath}
+                    <span style={{ color: D.accent, marginLeft: 8, fontSize: 9 }}>FROM ACQUISITION — never governed</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: D.faint, marginTop: 2 }}>
+                    Authored value is the prior. This starts a new lineage and supersedes nothing.
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                    <button type="button" onClick={() => { setCorrectRow(pseudo); setRollbackRow(null); }}
+                      style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.accent}`, borderRadius: 5, padding: '3px 10px', color: D.accent, cursor: 'pointer' }}>
+                      Govern this field
+                    </button>
+                    <button type="button" onClick={() => { setAcqTarget(null); setCorrectRow(null); }}
+                      style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                      Clear
+                    </button>
+                  </div>
+                  {correctRow && correctRow.fieldPath === pseudo.fieldPath && correctRow.assetId === pseudo.assetId && (
+                    <div style={{ fontSize: 9, color: D.faint, marginTop: 4 }}>Composer open below.</div>
+                  )}
+                </div>
+              );
+            })()}
+            {inventory.length === 0 && !acqTarget
               ? <Empty msg="No governed knowledge is live. Runtime is serving authored defaults for every field." />
-              : inventory.map((r) => (
+              : [
+                  ...(acqTarget && !inventory.some((r) => r.assetId === acqTarget.assetId
+                        && r.fieldPath === `${acqTarget.purchaseId}.${acqTarget.field}`)
+                    ? [{ assetId: acqTarget.assetId, fieldPath: `${acqTarget.purchaseId}.${acqTarget.field}`,
+                         version: '(not yet governed)', tier: 'authored', confidence: '-', asOf: '-', firstGovernance: true }]
+                    : []),
+                  ...inventory,
+                ].map((r) => (
                 <div key={`${r.assetId}-${r.fieldPath}`} style={{ padding: '6px 8px', borderBottom: `1px solid ${D.border}44` }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ fontSize: 10, fontFamily: D.mono, color: D.text, flex: 1 }}>{r.assetId} · {r.fieldPath}</span>
@@ -3536,13 +3748,62 @@ function KcrStudioPanel() {
                                 ? `${(live.sources || []).join(', ') || '(no sources)'} — ${String(live.note || '').slice(0, 60)}`
                                 : 'not set — this claim is currently ungrounded'}
                             </div>
-                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
-                              <span style={{ fontSize: 9, color: D.faint, width: 74 }}>SOURCE IDS</span>
-                              <input type="text" value={d.sources || ''}
-                                onChange={(e) => set('sources', e.target.value)}
-                                placeholder="comma-separated, e.g. reddy-ice-2026"
-                                style={{ ...box, flex: 1 }} />
-                            </div>
+                            {/* SOURCE PICKER (Phase 5F.2 Step 2). This was a free-text box.
+                                Typing `usda-meat-2026` — a REAL id, but a cost source —
+                                published cleanly and then failed `isGroundedItemQty`, which
+                                requires every cited id to resolve in QTY_SOURCES. The claim
+                                silently never grounded, the host showed no "Sourced -" line,
+                                and nothing reported an error. A silent ungrounding is
+                                indistinguishable from never having done the work.
+
+                                The options come from the registry the PREDICATE reads, so
+                                what an admin can cite and what can actually ground are the
+                                same list by construction. Free text is gone. */}
+                            {(() => {
+                              const fp = `${pid}.provenance`;
+                              const approved = approvedSourcesFor(fp);
+                              const chosen = String(d.sources || '').split(',').map((x) => x.trim()).filter(Boolean);
+                              const check = validateSourcesFor(fp, chosen);
+                              const toggle = (id) => set('sources',
+                                (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(', '));
+                              return (
+                                <div style={{ marginBottom: 6 }}>
+                                  <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                                    APPROVED SOURCES — {check.axis ? check.axis.label : 'no axis'} ·
+                                    grounded by <code>{check.axis ? check.axis.predicateName : '-'}</code>
+                                  </div>
+                                  {approved.length === 0 && (
+                                    <div style={{ fontSize: 9, color: D.warn }}>
+                                      No approved sources exist for this axis yet. Registering one is a
+                                      reviewed code change — deciding who may be believed is not a text box.
+                                    </div>
+                                  )}
+                                  {approved.map((s) => {
+                                    const on = chosen.includes(s.id);
+                                    return (
+                                      <button key={s.id} type="button" onClick={() => toggle(s.id)}
+                                        title={`${s.claim}`}
+                                        style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 3,
+                                          fontSize: 9, padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
+                                          border: `1px solid ${on ? D.accent : D.border}`,
+                                          background: on ? D.accent + '18' : 'transparent',
+                                          color: on ? D.accent : D.muted }}>
+                                        <span style={{ fontFamily: D.mono }}>{on ? '✓ ' : '  '}{s.id}</span>
+                                        <span style={{ color: D.faint, marginLeft: 6 }}>{String(s.org).slice(0, 54)}</span>
+                                        <span style={{ color: D.faint, marginLeft: 6, fontFamily: D.mono }}>captured {s.fetched}</span>
+                                      </button>
+                                    );
+                                  })}
+                                  {chosen.length > 0 && (
+                                    <div style={{ fontSize: 9, marginTop: 3, color: check.ok ? D.good : D.warn, lineHeight: 1.5 }}>
+                                      {check.ok
+                                        ? `Will ground — ${check.axis.hostImpact}`
+                                        : check.errors.join(' ')}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
                             <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
                               <span style={{ fontSize: 9, color: D.faint, width: 74, paddingTop: 5 }}>CLAIM NOTE</span>
                               <textarea value={d.note || ''} onChange={(e) => set('note', e.target.value)}
