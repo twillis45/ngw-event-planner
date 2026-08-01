@@ -33,6 +33,28 @@ export const QTY_SOURCES = {
     fetched: '2026-07-16',
     claim: 'Standard US party drink provisioning: ~1 drink/guest/hour (≈2 in the first hour, ~5–6 drinks/guest over a 4–5h event); a mixed bar skews ~40% beer with beer+wine ~75% of volume; wine ~1 bottle per ~2.5 drinking guests per hour (≈½ bottle per drinker; a 750ml bottle pours ~5 servings); sparkling wine ~1 bottle per 4–5 guests for a mimosa bar; ~2–3 non-alcoholic servings/guest when alcohol is also offered; ice ~1.5 lb/guest (12–15 bags per 100).',
   },
+  // PHASE 5F. Registered because `bar-provision-2026` gives ice ~1.5 lb/guest as a
+  // GENERAL party figure, and the corpus's outdoor cooks (Cookout, Juneteenth, Crab
+  // Feast, Reunion) all author 2 lb/guest with nothing behind them. This is the
+  // outdoor case, from a source that publishes one.
+  //
+  // WHAT IT ACTUALLY SAYS, and the arithmetic, because the prose range and the worked
+  // example do not agree: the page states "one to two pounds of ice per person", but
+  // its own outdoor-BBQ worked example is 50 guests -> 15 seven-pound bags = 105 lb =
+  // 2.1 lb/guest, i.e. ABOVE the stated ceiling. Its indoor example lands at 2.05
+  // lb/guest, so the published examples barely distinguish indoor from outdoor even
+  // though the prose says they should.
+  //
+  // NOT DISINTERESTED. A packaged-ice manufacturer profits from a higher figure. That
+  // is why this is registered as `trade` and its claim is worded as a ceiling-leaning
+  // planning number rather than a measured mean. It corroborates the corpus's authored
+  // 2 lb/guest for outdoor events; it does not independently establish it.
+  'reddy-ice-2026': {
+    org: 'Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party',
+    url: 'https://www.reddyice.com/how-much-ice-you-need-for-a-party/',
+    fetched: '2026-08-01',
+    claim: 'States 1-2 lb of ice per person. Its own worked OUTDOOR BBQ example is 50 guests = 15 seven-pound bags = 105 lb, i.e. 2.1 lb/guest; the indoor example computes to 2.05 lb/guest. Supports ~2 lb/guest as a ceiling-leaning planning figure for an outdoor event. Vendor-published and commercially interested in a higher number - corroborating, not independent.',
+  },
 };
 
 // A quantity provenance is GROUNDED only when it is tier:'researched' AND cites >=1 real

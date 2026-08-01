@@ -1,214 +1,119 @@
-// ─── Provider Data Integration ────────────────────────────────────────────────
-// Real data fetching from external APIs: FDA, government data, retail pricing.
-// Each provider fetches and returns normalized records ready for evidence.
+// ─── Provider Data Integration — HONEST-EMPTY (Phase 5F.1 truth repair) ───────
+//
+// WHAT THIS FILE USED TO DO, and why it was deleted rather than flagged.
+//
+// Its header read "Real data fetching from external APIs: FDA, government data,
+// retail pricing." It made ZERO network calls. Four exported `fetch*` functions
+// returned hardcoded literals — 6 fabricated statements carrying 11 facts stamped
+// `confidence: 'high'` — attributed to real, authoritative URLs: opendata.fda.gov,
+// ams.usda.gov/market-news, fisheries.noaa.gov, instacart.com, restaurantdepot.com,
+// reddit.com/r/maryland.
+//
+// Nine real organisations were named inside invented records: FDA, USDA, NOAA,
+// Whole Foods, Safeway, Harris Teeter, Restaurant Depot, Reddit, and a named local
+// business quoted saying something nobody said:
+//
+//   "USDA Market News: Blue crabs (Maryland) seasonal average June-July 2026:
+//    Large grade $7.92-$8.17/lb..."          -> ams.usda.gov, confidence: 'high'
+//   "Community reports (Reddit r/maryland): 'Buy live from <named shop>, they're
+//    $0.50-1.00/lb cheaper than Wharf...'"   -> reddit.com/r/maryland
+//
+// None of it was fetched. It was literals in this file wearing federal and
+// commercial citations. Nothing downstream could tell the difference: the records
+// had the same shape, the same `url` field, and a HIGHER confidence stamp than
+// most genuine provenance in the corpus.
+//
+// It had not yet reached a host only because a SEPARATE defect blocked it — the
+// admin merge step wrote nothing. The system was protected by a bug rather than by
+// a gate, which is not protection.
+//
+// THE RULE THIS FILE NOW ENFORCES: synthetic data must never create evidence,
+// create claims, influence confidence, or publish through a KCR. The cheapest way
+// to guarantee that is for the synthetic data not to exist. Deleted, not flagged —
+// a flagged simulator is one config change from being live again, and this module's
+// own header already demonstrated that a label is not a gate.
+//
+// WHAT REPLACES IT: nothing, deliberately. `providers.js` already states the real
+// contract — "External providers normalize FETCHED source records (the fetch itself
+// is executed by an agent/backend and handed in — the app never crawls)." This
+// module now honours that contract instead of contradicting it. With no records
+// handed in, every provider returns empty, and a research run visibly finds
+// nothing, which is the truth.
+//
+// Real acquisition today is the path proven in Phase 5F: a human reads a source,
+// registers it in a source registry, and authors a governed correction through the
+// Admin composer. See PHASE_5F_ACQUISITION_REPORT.md and
+// SOURCE_REGISTRY_ARCHITECTURE.md. The original file is preserved outside the repo
+// for the audit record only.
 
-import { buildProviders } from './providers';
-
-// Food Safety Provider: FDA food facility database
-export async function fetchFoodSafetyData(foodItem, region = 'Maryland') {
-  try {
-    // Real FDA API endpoint for food facility inspections
-    // This would connect to actual FDA OpenFDA API in production
-    const apiKey = process.env.REACT_APP_FDA_API_KEY || 'demo';
-    const query = encodeURIComponent(`"${foodItem}"`);
-
-    // Simulated response structure matching FDA data
-    return {
-      records: [
-        {
-          statement: `FDA facility inspection for ${foodItem} handling shows standard temperature control protocols (below 40°F for storage).`,
-          source: 'FDA Food Facility Database',
-          url: 'https://opendata.fda.gov/food/enforcement',
-          gapType: 'safety',
-          fieldPath: 'risks.handling',
-          extractedFacts: [
-            { fact: 'storage_temperature', value: '< 40°F', unit: 'celsius', confidence: 'high' },
-            { fact: 'facility_compliance', value: '98%', unit: 'percent', confidence: 'high' },
-          ],
-          region,
-        },
-      ],
-      source: 'fda-foodsafety',
-      at: new Date().toISOString(),
-    };
-  } catch (e) {
-    console.warn('FDA fetch failed:', e.message);
-    return { records: [], source: 'fda-foodsafety', at: new Date().toISOString() };
-  }
-}
-
-// Government Data: USDA commodity prices and NOAA seasonal data
-export async function fetchGovernmentData(commodity, season = 'summer') {
-  try {
-    // Real USDA QuickStats API for commodity prices
-    // Real NOAA API for seasonal availability
-
-    // Simulated response with realistic market data
-    return {
-      records: [
-        {
-          statement: `USDA Market News: Blue crabs (Maryland) seasonal average June-July 2026: Large grade $7.92-$8.17/lb, Medium grade $6.17-$6.25/lb, Jumbo grade $14.58-$15.67/lb.`,
-          source: 'USDA Market News',
-          url: 'https://www.ams.usda.gov/market-news',
-          gapType: 'pricing',
-          fieldPath: 'purchases[crabs].unitCostRange',
-          extractedFacts: [
-            { fact: 'crab_size_large', value: 7.92, unit: 'USD/lb', confidence: 'high', source: 'USDA' },
-            { fact: 'crab_size_medium', value: 6.17, unit: 'USD/lb', confidence: 'high', source: 'USDA' },
-            { fact: 'crab_size_jumbo', value: 14.58, unit: 'USD/lb', confidence: 'high', source: 'USDA' },
-            { fact: 'season_peak', value: 'June-September', confidence: 'high', source: 'NOAA' },
-          ],
-          region: 'Maryland',
-        },
-        {
-          statement: `NOAA Seasonal Data: Blue crab peak availability June-September (harvest season). Expect 15-20% price premium Oct-May.`,
-          source: 'NOAA Fisheries',
-          url: 'https://www.fisheries.noaa.gov/species/blue-crab',
-          gapType: 'pricing',
-          fieldPath: 'governance.seasonalAdjustment',
-          extractedFacts: [
-            { fact: 'peak_season_months', value: '6,7,8,9', unit: 'month_numbers', confidence: 'high' },
-            { fact: 'off_season_premium', value: 0.15, unit: 'multiplier', confidence: 'medium' },
-          ],
-          region: 'Atlantic',
-        },
-      ],
-      source: 'data.gov',
-      at: new Date().toISOString(),
-    };
-  } catch (e) {
-    console.warn('Government data fetch failed:', e.message);
-    return { records: [], source: 'data.gov', at: new Date().toISOString() };
-  }
-}
-
-// Retail Pricing: Simulated retail data from grocery APIs
-export async function fetchRetailPrices(item, region = 'Maryland') {
-  try {
-    // In production, this would call Instacart API, Walmart API, or similar
-    // For demo, return realistic price data
-
-    return {
-      records: [
-        {
-          statement: `Retail pricing survey (7/1/2026): Fresh blue crabs Large grade averaged $8.49/lb across 12 Maryland retailers (Whole Foods, Safeway, Harris Teeter, local fish markets).`,
-          source: 'Retail Price Survey',
-          url: 'https://www.instacart.com/search?q=live%20blue%20crabs',
-          gapType: 'pricing',
-          fieldPath: 'purchases[crabs].unitCostRange',
-          extractedFacts: [
-            { fact: 'retail_large_avg', value: 8.49, unit: 'USD/lb', confidence: 'high', retailers: 12 },
-            { fact: 'retail_range_min', value: 7.99, unit: 'USD/lb', confidence: 'medium' },
-            { fact: 'retail_range_max', value: 9.99, unit: 'USD/lb', confidence: 'medium' },
-          ],
-          region,
-        },
-        {
-          statement: `Wholesale pricing (Restaurant Depot membership): Large blue crabs $6.99/lb (bulk, 30lb minimum). Steamed & ready: $8.99/lb.`,
-          source: 'Restaurant Depot',
-          url: 'https://www.restaurantdepot.com',
-          gapType: 'pricing',
-          fieldPath: 'decisions[steam_vs_order].costFactors',
-          extractedFacts: [
-            { fact: 'wholesale_live_large', value: 6.99, unit: 'USD/lb', confidence: 'high' },
-            { fact: 'wholesale_steamed_large', value: 8.99, unit: 'USD/lb', confidence: 'high' },
-            { fact: 'diy_markup', value: 0.29, unit: 'multiplier', confidence: 'medium' },
-          ],
-          region,
-        },
-      ],
-      source: 'retail',
-      at: new Date().toISOString(),
-    };
-  } catch (e) {
-    console.warn('Retail pricing fetch failed:', e.message);
-    return { records: [], source: 'retail', at: new Date().toISOString() };
-  }
-}
-
-// Community Validation: Simulated community forum data (Reddit, forums)
-export async function fetchCommunityValidation(topic, region = 'Maryland') {
-  try {
-    return {
-      records: [
-        {
-          statement: `Community reports (Reddit r/maryland, Crab Feast forums): "Buy live from Blue Crab House on Main St, they're $0.50-1.00/lb cheaper than Wharf and quality is same."`,
-          source: 'Community Forums',
-          url: 'https://reddit.com/r/maryland',
-          gapType: 'sourcing',
-          fieldPath: 'decisions[where_buy].costFactors',
-          extractedFacts: [
-            { fact: 'community_savings_estimate', value: 0.75, unit: 'USD/lb', confidence: 'low' },
-            { fact: 'preferred_vendor', value: 'Blue Crab House', confidence: 'medium' },
-          ],
-          region,
-        },
-      ],
-      source: 'community-forums',
-      at: new Date().toISOString(),
-    };
-  } catch (e) {
-    console.warn('Community validation fetch failed:', e.message);
-    return { records: [], source: 'community-forums', at: new Date().toISOString() };
-  }
-}
-
-// Main integration: Fetch data from selected provider families and normalize
-export async function fetchProviderData(providerIds, { campaign, at }) {
+/**
+ * fetchProviderData(providerIds, { campaign, at, handedIn }) -> { [providerId]: {...} }
+ *
+ * HONEST-EMPTY BY DEFAULT. NGW does not crawl. A provider yields records only when
+ * a human or a backend agent HANDS THEM IN via `handedIn`, keyed by provider id —
+ * exactly the shape `providers.js#normalizeToObservations` already expects.
+ *
+ * `unfetched` is returned so a surface can say "nothing was fetched" instead of
+ * rendering an empty list that reads as "we looked and found nothing". Those are
+ * different claims, and a research tool that conflates them teaches its operator
+ * that absence of evidence was checked when it was not.
+ */
+export async function fetchProviderData(providerIds, { campaign, at, handedIn = {} } = {}) {
   const results = {};
-  const providers = buildProviders();
-
-  for (const providerId of providerIds) {
-    try {
-      let data;
-
-      // Route to appropriate fetcher based on provider ID
-      if (providerId === 'fda-foodsafety') {
-        data = await fetchFoodSafetyData(campaign.gapType);
-      } else if (providerId === 'data.gov') {
-        data = await fetchGovernmentData('blue-crabs');
-      } else if (['retail', 'market-pricing', 'restaurant-depot'].includes(providerId)) {
-        data = await fetchRetailPrices('blue crabs');
-      } else if (providerId === 'community-forums') {
-        data = await fetchCommunityValidation('crab feast pricing');
-      } else {
-        // For other providers, return empty (placeholder for future integrations)
-        data = { records: [], source: providerId, at };
-      }
-
-      results[providerId] = data;
-    } catch (e) {
-      console.error(`Provider ${providerId} failed:`, e);
-      results[providerId] = { records: [], source: providerId, at, error: e.message };
-    }
+  for (const providerId of providerIds || []) {
+    const records = Array.isArray(handedIn[providerId]) ? handedIn[providerId] : [];
+    results[providerId] = {
+      records,
+      source: providerId,
+      at,
+      unfetched: records.length === 0,
+      why: records.length === 0
+        ? 'No records handed in. NGW does not fetch — paste or import source records to research this provider.'
+        : null,
+    };
   }
-
   return results;
 }
 
-// Helper: Convert fetched provider data into evidence for evidence intelligence
+/**
+ * prepareEvidenceForReview(providedData, providers) -> reviewCandidate[]
+ *
+ * CONFIDENCE IS NO LONGER MINTED HERE. This function used to stamp
+ * `confidence: 'high'` on EVERY record it touched, regardless of provider, source
+ * or content — so a pasted forum post and a federal register entry left this
+ * function indistinguishable, both "high".
+ *
+ * Confidence is a judgement about how far a source supports a claim. A reviewer
+ * makes it, at correction time, in the composer. A transport function has no
+ * standing to assert it, so a record's own confidence is carried through and
+ * `unverified` is the default.
+ *
+ * The objects returned are REVIEW CANDIDATES, not KnowledgeEvidence, and are
+ * marked `reviewCandidate: true` so nothing downstream mistakes one for a governed
+ * evidence record.
+ */
 export function prepareEvidenceForReview(providedData, providers) {
   const evidence = [];
-
-  for (const [providerId, data] of Object.entries(providedData)) {
-    const provider = providers.find((p) => p.id === providerId);
+  for (const [providerId, data] of Object.entries(providedData || {})) {
+    const provider = (providers || []).find((p) => p.id === providerId);
     if (!provider) continue;
-
-    for (const record of data.records || []) {
+    for (const record of (data.records || [])) {
       evidence.push({
-        id: `ev-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+        id: `cand-${providerId}-${(record && record.id) || evidence.length}`,
         source: providerId,
         sourceType: provider.authorityLevel,
         statement: record.statement,
-        url: record.url,
-        fieldPath: record.fieldPath,
+        url: record.url || null,
+        fieldPath: record.fieldPath || null,
         extractedFacts: record.extractedFacts || [],
-        confidence: 'high',
+        confidence: record.confidence || 'unverified',
+        reviewCandidate: true,
         at: data.at,
-        expiresAt: data.at ? new Date(new Date(data.at).getTime() + 90 * 24 * 60 * 60 * 1000).toISOString() : null,
+        expiresAt: data.at && provider.freshnessDays
+          ? new Date(new Date(data.at).getTime() + provider.freshnessDays * 86400000).toISOString()
+          : null,
       });
     }
   }
-
   return evidence;
 }

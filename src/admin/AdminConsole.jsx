@@ -3508,6 +3508,60 @@ function KcrStudioPanel() {
                           </div>
                         );
                       })()}
+                      {/* PROVENANCE EDITOR (Phase 5F). `governedFieldTypes.provenance` has
+                          carried format/parse/validate/validateForEditor since 5E, and the
+                          composer rendered inputs for every OTHER typed field but not this
+                          one. Selecting `provenance` therefore left the draft null and
+                          doCorrect fell through to `newValue = entry.value` — the correction
+                          re-published the EXISTING provenance unchanged. An administrator
+                          could not author a new source attribution at all; every provenance
+                          block in the corpus got there by a developer editing a file.
+                          That is the acquisition bottleneck this phase exists to remove. */}
+                      {correctField === 'provenance' && (() => {
+                        const T = fieldTypeFor('x.provenance');
+                        const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                        const live = pu ? pu.provenance : undefined;
+                        const d = (correctDraft && typeof correctDraft === 'object' && 'sources' in correctDraft)
+                          ? correctDraft : T.format(live);
+                        const set = (k, v) => setCorrectDraft({ ...d, [k]: v });
+                        const box = { fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                          border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 };
+                        return (
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, lineHeight: 1.5 }}>{T.hint}</div>
+                            <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 4 }}>
+                              current: {live
+                                ? `${(live.sources || []).join(', ') || '(no sources)'} — ${String(live.note || '').slice(0, 60)}`
+                                : 'not set — this claim is currently ungrounded'}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4 }}>
+                              <span style={{ fontSize: 9, color: D.faint, width: 74 }}>SOURCE IDS</span>
+                              <input type="text" value={d.sources || ''}
+                                onChange={(e) => set('sources', e.target.value)}
+                                placeholder="comma-separated, e.g. reddy-ice-2026"
+                                style={{ ...box, flex: 1 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
+                              <span style={{ fontSize: 9, color: D.faint, width: 74, paddingTop: 5 }}>CLAIM NOTE</span>
+                              <textarea value={d.note || ''} onChange={(e) => set('note', e.target.value)}
+                                placeholder="What does the source actually say? A source without a claim is not provenance."
+                                style={{ ...box, flex: 1, minHeight: 44 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span style={{ fontSize: 9, color: D.faint, width: 74 }}>CONFIDENCE</span>
+                              {CONFIDENCE_LEVELS.map((c) => (
+                                <button key={c} type="button" onClick={() => set('confidence', c)}
+                                  style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
+                                    border: `1px solid ${d.confidence === c ? D.accent : D.border}`,
+                                    background: d.confidence === c ? D.accent + '22' : 'transparent',
+                                    color: d.confidence === c ? D.accent : D.muted }}>{c}</button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
                       {correctField === 'qtyPerGuest' && (
                         <div style={{ marginBottom: 6 }}>
                           <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
@@ -4387,16 +4441,15 @@ function KcrStudioPanel() {
         }
       };
 
-      const handleMerge = () => {
-        if (!campRunResult || !gap) return;
-        // Auto-merge: mark as researched and update provenance
-        setCampRunResult({
-          ...campRunResult,
-          merged: true,
-          mergedAt: asOf,
-          message: `✓ Evidence merged into playbook. ${gap.label} cost factors now marked as researched.`
-        });
-      };
+      // REMOVED in Phase 5F.1: `handleMerge`. It set React state and wrote nothing —
+      // no KCR, no playbook write, no persistence — then reported
+      // "Evidence merged into playbook … now marked as researched."
+      //
+      // Deleted rather than left unreferenced. A dead function that fabricates a
+      // success message is one `onClick` from being live again, and its name reads
+      // like the feature it never was. When a real bridge is built it should be
+      // written against the governed path (openCorrection → Review → publish), not
+      // resurrected from this.
 
       const handleBatchGapClosure = async () => {
         if (!selectedPb || campSelectedGaps.length === 0 || campProviders.length === 0) return;
@@ -5217,16 +5270,35 @@ function KcrStudioPanel() {
                       </div>
                     )}
 
-                    <div style={{ fontSize: 11, color: D.good, marginBottom: 12 }}>✓ Campaign completed successfully</div>
-                    {campRunResult.merged ? (
-                      <div style={{ background: `${D.good}22`, border: `1px solid ${D.good}`, borderRadius: 6, padding: 10, fontSize: 11, color: D.good }}>
-                        {campRunResult.message}
+                    {/* TRUTH REPAIR (Phase 5F.1). This block used to read "✓ Campaign
+                        completed successfully" and offer "✓ Accept & Merge into Playbook",
+                        whose handler set React state and wrote NOTHING — no KCR, no
+                        playbook write, no persistence — then printed "✓ Evidence merged
+                        into playbook … now marked as researched."
+
+                        An operator was told a durable change had happened when none had.
+                        That is worse than a missing feature: it teaches the person running
+                        research that the loop is closed, so the gap never gets reported.
+
+                        Option B was taken (label honestly) rather than Option A (persist).
+                        Persisting would mean building an evidence→KCR bridge on top of a
+                        research layer whose fetchers were fabricating federal citations
+                        until this same phase. The bridge is the RIGHT next step — but only
+                        once records come from somewhere real. Wiring it first would have
+                        turned a silent no-op into a publisher of invented USDA data. */}
+                    <div style={{ fontSize: 11, color: D.muted, marginBottom: 8 }}>
+                      Campaign run finished — {(campCampaignEvidence || []).length} review candidate(s).
+                    </div>
+                    <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, fontSize: 10.5, color: D.muted, lineHeight: 1.55 }}>
+                      <strong style={{ color: D.text }}>Preview only — nothing is saved.</strong> These
+                      candidates are not evidence and are not governed knowledge. Nothing here
+                      reaches a host.
+                      <div style={{ marginTop: 6 }}>
+                        To make a finding real: register its source, then open a correction on the
+                        field from <em>Publishing → Correct this</em>. That path is reviewed,
+                        versioned and reversible; this panel is neither.
                       </div>
-                    ) : (
-                      <button onClick={handleMerge} style={{ width: '100%', padding: '10px', borderRadius: 6, border: 'none', background: D.good, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
-                        ✓ Accept & Merge into Playbook
-                      </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>

@@ -6,7 +6,7 @@
 //
 // TODAY: every grounding predicate resolves a source id by direct key lookup into
 // its own axis registry — `QTY_SOURCES[id]`, `COST_SOURCES[id]`, and 18 more.
-// `groundingSources.js` already unions all 20 axes into 111 normalized records,
+// `groundingSources.js` already unions all 20 axes into 112 normalized records,
 // but no predicate consults it. A future `resolveSource(id)` would be built on
 // that union.
 //
@@ -77,11 +77,13 @@ const MUST_NOT_RESOLVE = [
 ];
 
 describe('1 — the source universe is what we think it is', () => {
-  test('20 axes, 111 source identities — verified, not assumed', () => {
+  // 112 since Phase 5F registered `reddy-ice-2026` in QTY_SOURCES. This counter is
+  // SUPPOSED to move when a real source is added - that is the point of pinning it.
+  test('20 axes, 112 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(111);
-    expect(unionIds().size).toBe(111);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(112);
+    expect(unionIds().size).toBe(112);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
@@ -217,7 +219,7 @@ describe('4 — NO TRUST EXPANSION: grounding outcomes are unchanged', () => {
 describe('5 — the migration gate', () => {
   // The single assertion that must pass before ANY predicate is moved onto a
   // resolver. Expressed as a count so the report is unambiguous.
-  test('111/111 ids agree between the union and the axis maps', () => {
+  test('112/112 ids agree between the union and the axis maps', () => {
     let checked = 0, agreed = 0;
     for (const map of Object.values(AXIS_MAPS)) {
       for (const id of Object.keys(map)) {
