@@ -221,6 +221,14 @@ export const EVENTS = {
   // (RSVP_REMINDER_SENT already exists; it was being mis-tagged as INVITE_SHARED.)
   DAY_MODE_OPENED:        'day_mode_opened',
   SHOPPING_PLAN_VIEWED:   'shopping_plan_viewed',
+
+  // Reasoning Continuity v1 (2026-07-31) — the queue used to render title + arrow
+  // only, so "does a host act sooner when told why" had no way to be answered.
+  // Every one of these carries reason_type + reason_source so a low-value reason
+  // KIND can be retired on evidence rather than opinion.
+  REASON_SHOWN:           'reason_shown',
+  REASON_CLICKED:         'reason_clicked',
+  ACTION_COMPLETED_WITH_REASON: 'action_completed_with_reason',
 };
 
 /**

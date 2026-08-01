@@ -521,6 +521,23 @@ button{font-family:inherit}
 .hero.elegant .ef-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); padding:14px 0; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:opacity var(--ms-fast) var(--ease-out); }
 .hero.elegant .ef-list .ef-row:first-child{ border-top:none; }
 .hero.elegant .ef-row .t{ font-size:15px; font-weight:600; }
+/* REASONING CONTINUITY v1 (2026-07-31) — the row's one earned reason. Recedes:
+   steel-soft, smaller, lighter than the title, so it reads as a note the row
+   carries rather than a second instruction competing with it. Sits between the
+   title and the arrow, takes the leftover width, and truncates rather than
+   wrapping — a row that grows to two lines is the density the 2026-07-18 ruling
+   removed. Absent on most rows by design, which is what makes it mean something. */
+.hero.elegant .ef-row .ef-why{ flex:1 1 auto; min-width:0; text-align:right;
+  font-size:12.5px; font-weight:500; color:var(--steel-soft); letter-spacing:.01em;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* Time pressure is the one reason kind that earns the urgency accent — the same
+   amber the due chip uses, and the only colour this component introduces. */
+.hero.elegant .ef-row .ef-why[data-reason="time"]{ color:var(--amber, #d9a441); }
+@media (max-width: 430px){
+  /* On a phone the title owns the row; a reason that would squeeze it below
+     ~55% of the width is dropped rather than truncated to noise. */
+  .hero.elegant .ef-row .ef-why{ max-width:42%; font-size:12px; }
+}
 .hero.elegant .ef-row .ef-r{ display:flex; align-items:center; gap:9px; flex:0 0 auto; }
 .hero.elegant .ef-cnt{ background:#1a2228; color:var(--steel-soft); border-radius:999px; padding:2px 8px; font-size:12px; font-weight:700; }
 .hero.elegant .ef-row .ef-g{ color:var(--faint); font-weight:800; }

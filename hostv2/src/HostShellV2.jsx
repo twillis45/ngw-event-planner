@@ -84,6 +84,8 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
+// Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
+import { getActionReason } from '@app/lib/actionReason';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -2277,6 +2279,34 @@ export default function HostShellV2() {
   // deciding. Accumulates (not one id) so satisfying the next doesn't un-filter the last; cleared
   // on event switch. Elegant loop only.
   const [satisfiedIds, setSatisfiedIds] = useState([]);
+  // ── REASONING CONTINUITY v1 — instrumentation ────────────────────────────────
+  // One shape for all three events so a reason KIND can be judged on evidence and
+  // retired if it earns nothing. No PII: ids and enums only, never the host's copy.
+  const trackReason = useCallback((evt, action, reason) => {
+    try {
+      trackEvent(evt, {
+        action_id: action && action.id != null ? String(action.id) : null,
+        action_source: (action && action.source) || null,
+        reason_type: reason ? reason.type : null,
+        reason_source: reason ? reason.source : null,
+        reason_confidence: reason ? reason.confidence : null,
+      });
+    } catch { /* analytics must never break a render */ }
+  }, []);
+  // COMPLETION REASONING — when a row is satisfied, report what it actually freed.
+  // `unlocks` is the engine's own transitive dependent count; when it is absent we
+  // say nothing rather than guessing at a number (unlocked_count stays null).
+  const trackCompletion = useCallback((action, reason) => {
+    try {
+      trackEvent(ANALYTICS.ACTION_COMPLETED_WITH_REASON, {
+        action_id: action && action.id != null ? String(action.id) : null,
+        reason_type: reason ? reason.type : null,
+        reason_source: reason ? reason.source : null,
+        gate_holder: !!(action && action.gateHolder === true),
+        unlocked_count: action && Number.isFinite(action.unlocks) ? action.unlocks : null,
+      });
+    } catch { /* never break a settle */ }
+  }, []);
   useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queue = elegantMode
     ? [
@@ -2292,6 +2322,27 @@ export default function HostShellV2() {
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
   // Both now consult this predicate; a single neutral/calendar/heart item IS
   // quiet. Reads the QUEUE (post-worry-split): heads-ups never break the calm.
+  // REASONING CONTINUITY v1 — fire reason_shown ONCE per row per event, from an
+  // effect rather than from render (a render-time side effect would double-count on
+  // every re-render and pollute the very data this exists to produce). The ref is
+  // cleared on event switch so the same row on a different event counts again.
+  const reasonSeenRef = useRef(new Set());
+  useEffect(() => { reasonSeenRef.current = new Set(); }, [eventId]);
+  useEffect(() => {
+    if (!elegantMode) return;
+    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+    if (!rows.length) return;
+    const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
+    for (const a of rows) {
+      const r = getActionReason(a, { event, moneyRows });
+      if (!r) continue;
+      const key = String(a.id || a.title) + '|' + r.type;
+      if (reasonSeenRef.current.has(key)) continue;
+      reasonSeenRef.current.add(key);
+      trackReason(ANALYTICS.REASON_SHOWN, a, r);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, elegantMode, queue]);
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
@@ -6369,7 +6420,9 @@ export default function HostShellV2() {
                   const nd = heroDecisionND;
                   // Roll to next when satisfied: settling drops this action from the hero queue,
                   // so the hero advances even if its phase (food, etc.) still has other parts.
-                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  // COMPLETION REASONING v1: report what settling actually freed,
+                  // from the engine's own `unlocks`/`gateHolder` — never a guess.
+                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event })); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
                 })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
@@ -6692,6 +6745,9 @@ export default function HostShellV2() {
                 // two stacked bundles. A bundle routes to its own sheet on tap.
                 const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
                 if (!thenItems.length) return null;
+                // Dated money obligations, read ONCE for the whole list — the reason
+                // service matches a row to an action by key/vendorId. Never an estimate.
+                const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
                 const openThen = (a, key) => {
                   if (a.kind === 'bundle') {
                     if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
@@ -6724,9 +6780,20 @@ export default function HostShellV2() {
                         const goes = a.kind === 'bundle' || (() => {
                           try { return !!resolveRoute(a.route); } catch (_e) { return false; }
                         })();
+                        // ── REASONING CONTINUITY v1 (2026-07-31) ──────────────────
+                        // The row used to render title + arrow and nothing else, while
+                        // `a.consequence` / `a.dueInDays` / `a.gateHolder` sat in scope
+                        // unread — so a host scanning their remaining work saw five
+                        // instructions and zero reasons.
+                        // getActionReason returns ONE reason or null; null renders
+                        // nothing, which keeps the calm compact row the 2026-07-18
+                        // ruling asked for and makes a reason MEAN something when it
+                        // does appear. No model, no invented text.
+                        const reason = getActionReason(a, { event, moneyRows });
                         return (
-                          <button key={String(a.id || i)} className="ef-row" onClick={() => openThen(a, String(a.id || (i + 1)))}>
+                          <button key={String(a.id || i)} className="ef-row" onClick={() => { if (reason) trackReason(ANALYTICS.REASON_CLICKED, a, reason); openThen(a, String(a.id || (i + 1))); }}>
                             <span className="t">{t}</span>
+                            {reason && <span className="ef-why" data-reason={reason.type}>{reason.text}</span>}
                             <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
                           </button>
                         );
