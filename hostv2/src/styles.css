@@ -478,8 +478,27 @@ button{font-family:inherit}
    advance) — every one shows the primary action as a centred label with NO
    arrow ("Message the club", "I've got it"). The rule below used to claim
    "Figma parity" for a → that appears in none of them. */
-.hero.elegant .cta{ background:#282d33; color:var(--ink); border-radius:14px; padding:15px 20px; min-height:54px;
-  width:100%; justify-content:center; text-align:center; font-size:16px;
+/* ATOM PARITY 2026-07-31. This rule used to FORK the .cta atom rather than
+   extend it: `background:#282d33` (a raw hex flat grey) overrode the app-wide
+   `var(--cta-grad)` steel gradient that all 42 plain `.cta` sites render, so the
+   primary action on the app's most important surface was the one button that did
+   not look like a button anywhere else. `color:var(--ink)` named a different
+   token than the atom's `var(--carbon-text)` (same value, wrong name),
+   `border-radius:14px` re-stated `var(--r-row)` as a literal, and `font-size:16px`
+   matched NEITHER tier (--t-cta is 15, --t-cta-big is 17) — an orphan size.
+   Identity now comes from the atom; only LAYOUT is overridden here (full width,
+   centred label per the 2026-07-28 ruling, and the >=46px floor raised to 54 so
+   the primary action is the tallest tap target, per the S1 audit note on .cta). */
+/* SOFT TIER (host ruling 2026-07-31). The hero command wears `.cta.soft`'s
+   treatment, not the primary gradient: var(--steel-tint) ground, var(--steel-soft)
+   label — the same two tokens `.cta.soft` (line ~886) declares, so there is no
+   third vocabulary. Declared here rather than by adding the `soft` class in JSX
+   because the hero CTA has several render branches with different classNames
+   ("cta", "cta stay", …) and only one renders at a time; `.hero.elegant .cta` is
+   the one selector that reliably reaches all of them. The parity gate pins these
+   two tokens so this cannot drift back into a fork. */
+.hero.elegant .cta{ background:var(--steel-tint); color:var(--steel-soft); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
+  width:100%; justify-content:center; text-align:center; font-size:var(--t-cta-big);
   box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
 /* THE ARROW IS GONE (host ruling 2026-07-28). It was added claiming Figma
@@ -531,8 +550,14 @@ button{font-family:inherit}
   font-size:12.5px; font-weight:500; color:var(--steel-soft); letter-spacing:.01em;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 /* Time pressure is the one reason kind that earns the urgency accent — the same
-   amber the due chip uses, and the only colour this component introduces. */
-.hero.elegant .ef-row .ef-why[data-reason="time"]{ color:var(--amber, #d9a441); }
+   amber the due chip uses, and the only colour this component introduces.
+   TOKEN FIX 2026-07-31: this said `var(--amber, #d9a441)`. `--amber` is not a
+   token in this system, so every row fell through to the hardcoded hex and
+   rendered #D9A441 — while the due chip beside it (`.card-top .of`, line 470)
+   renders var(--warn) = #ECA13F. Two ambers for one meaning, on the same screen,
+   live-verified. --warn is the existing urgency token and the one the comment
+   above always meant. */
+.hero.elegant .ef-row .ef-why[data-reason="time"]{ color:var(--warn); }
 @media (max-width: 430px){
   /* On a phone the title owns the row; a reason that would squeeze it below
      ~55% of the width is dropped rather than truncated to noise. */
@@ -545,39 +570,58 @@ button{font-family:inherit}
 /* Base .decopt — calm stacked action rows OUTSIDE elegant (the v2 count-fix hero
    uses these; the .app-elegant rules below are more specific and still win inside
    the elegant hero). Full-width tactile rows, not inline pills. */
+/* ONE DECISION-OPTION COMPONENT (host ruling 2026-07-31: "dinner party component
+   should be used throughout"). There used to be TWO: a thinner base (--bg-band,
+   14px pad, a --sheen inset, #2c3138 hover, --steel-soft arrow) and a richer
+   `.app-elegant` version (--card, 13px pad, no sheen, --steel-tint hover, --faint
+   arrow) that ALSO owned every feature the base lacked — the pick state, the
+   badge, the tradeoff note and the why-tooltip. `.app-elegant` is present on the
+   live shell, so the base rendered nowhere while still reading as authoritative,
+   and any surface outside the elegant shell silently got the poorer component
+   with none of the pick/badge/why behaviour.
+   The elegant version — the one the dinner-party decision screen renders — IS the
+   component now, at base specificity, so every surface gets it. Raw hexes swapped
+   for the existing atoms they were already approximating (measured live, deltas
+   <=2 except where noted); no new atoms, no new geometry. */
 .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
+/* ALIGNED TO THE .cta FAMILY (host ruling 2026-07-31, "align all"). Two values
+   were out of step with every other action control in the app:
+     radius     — var(--r-md) 12px, where the .cta family unified on
+                  var(--r-row) 14px ("ONE radius across the whole .cta family").
+     tap target — no floor at all, so rows rendered 43-45px against the >=46px
+                  minimum .cta's own S1 audit set ("the tallest tap target should
+                  be the primary action" — these were UNDER the floor, not just
+                  shorter than the primary).
+   Padding stays 13px 16px: it is the kit's TierRow geometry (parity fix
+   2026-07-20) and min-height now carries the floor without inflating the row. */
 .decopt{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%;
-  background:var(--bg-band); border:none; border-radius:var(--r-md); padding:14px 16px;
-  cursor:pointer; text-align:left; color:var(--ink); font:inherit; box-shadow:inset 0 1px 0 var(--sheen);
+  background:var(--card); border:none; border-radius:var(--r-row); padding:13px 16px; min-height:46px;
+  cursor:pointer; text-align:left; color:var(--ink); font:inherit;
   transition:background var(--ms-fast) var(--ease-out), transform .1s var(--ease-out); }
-.decopt:hover{ background:#2c3138; }
+.decopt:hover{ background:var(--steel-tint); }
 .decopt:active{ transform:translateY(1px); }
-.decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
-.decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
-.decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
-.decopt-arrow{ color:var(--steel-soft); font-weight:800; flex:0 0 auto; }
 /* COMBINED DECISION OPTIONS (host 2026-07-18): the pick shown once (emphasized, badged, with
    its real tradeoff note), the rest behind a disclosure. Ask-mode = equal rows, no badge. */
-.app-elegant .decopts{ display:flex; flex-direction:column; gap:8px; margin-top:var(--sp-2); }
-/* Tokenized to the kit's TierRow geometry — was raw hex + 13px 15px (parity fix 2026-07-20). */
-.app-elegant .decopt{ display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; background:var(--card); border:none; border-radius:var(--r-md); padding:13px 16px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; transition:background var(--ms-fast) var(--ease-out), transform .1s var(--ease-out); }
-.app-elegant .decopt:hover{ background:var(--steel-tint); }
-.app-elegant .decopt:active{ transform:translateY(1px); }
-.app-elegant .decopt.pick{ background:var(--steel-tint); border:1px solid var(--steel); box-shadow:0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
-.app-elegant .decopt.pick:hover{ background:#2c3138; }
-.app-elegant .decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
-.app-elegant .decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
+.decopt.pick{ background:var(--steel-tint); border:1px solid var(--steel); box-shadow:0 9px 20px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07); }
+/* was a raw hex rgb(44,49,56); --line is rgb(49,51,56) — nearest existing atom. */
+.decopt.pick:hover{ background:var(--line); }
+.decopt.pick:active{ transform:translateY(3px); box-shadow:0 0 0 #06080b, 0 3px 9px -5px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.05); }
+.decopt-main{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 /* decopt option name matches the Figma node (14px Semi Bold), pick included — was 15/16. */
-.app-elegant .decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
-.app-elegant .decopt.pick .decopt-name{ font-size:14px; }
-.app-elegant .decopt-badge{ background:#28343c; color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
-.app-elegant .decopt-note{ font-size:13px; color:var(--muted); font-weight:400; }
-.app-elegant .decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.decopt-name{ display:flex; align-items:center; gap:9px; font-size:14px; font-weight:650; }
+.decopt.pick .decopt-name{ font-size:14px; }
+/* #28343c is the ONE value in this family with no close atom — nearest is
+   --carbon-line at rgb(35,40,48) against rgb(40,52,60), a visible shift on a
+   blue-grey pill. Left as-is deliberately rather than restyled; it needs either a
+   real atom or a ruling, not a silent approximation. */
+.decopt-badge{ background:#28343c; color:var(--steel-soft); border-radius:999px; padding:3px 9px; font-size:11px; font-weight:650; letter-spacing:.3px; flex:0 0 auto; }
+.decopt-note{ font-size:13px; color:var(--muted); font-weight:400; }
+.decopt-right{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
 /* WHY THIS PICK on hover of "our pick" (Figma combined design): a tooltip, not a line. */
-.app-elegant .decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
-.app-elegant .decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:#13151a; border:1px solid #2a2f36; border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
-.app-elegant .decopt-badge-wrap:hover .decopt-why, .app-elegant .decopt-badge-wrap:focus-visible .decopt-why, .app-elegant .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
-.app-elegant .decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
+.decopt-badge-wrap{ position:relative; display:inline-flex; outline:none; }
+.decopt-why{ position:absolute; top:calc(100% + 9px); right:0; width:250px; max-width:74vw; background:var(--carbon-panel); border:1px solid var(--carbon-line); border-radius:10px; padding:10px 12px; font-size:12.5px; font-weight:400; color:var(--muted); line-height:1.42; text-align:left; letter-spacing:0; z-index:40; box-shadow:0 10px 26px -6px rgba(0,0,0,.6); opacity:0; visibility:hidden; transform:translateY(-3px); transition:opacity .15s var(--ease-out), transform .15s var(--ease-out), visibility .15s; pointer-events:none; }
+.decopt-badge-wrap:hover .decopt-why, .decopt-badge-wrap:focus-visible .decopt-why, .decopt-badge-wrap:focus-within .decopt-why{ opacity:1; visibility:visible; transform:none; }
+.decopt-arrow{ color:var(--faint); font-weight:800; flex:0 0 auto; }
 /* WORDS APART, STILL TWINS (board re-sit, 2026-07-30 — flagged as a CSS-side fix).
    The repoint gave this control and the bundle's "See all N ▸" different words, but
    left them visually identical: 13px/--muted/500 here against 12.5px/--faint/450
