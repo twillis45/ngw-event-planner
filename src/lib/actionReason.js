@@ -19,6 +19,7 @@
 //
 // PURE: no React, no I/O, no event mutation.
 import { isSolemnEvent } from './solemn';
+import { timeStatusLabel } from './timeStatusLabel';
 
 // Ordered by what a host has most at stake. First match wins and the ladder stops —
 // one row never carries two reasons.
@@ -142,11 +143,10 @@ export function getActionReason(action, opts = {}) {
   // measured from a deadline the family never agreed to (standing board ruling).
   if (!solemn && Number.isFinite(action.dueInDays)) {
     const d = action.dueInDays;
-    let raw = null;
-    if (d < 0) raw = 'past its window';
-    else if (d === 0) raw = 'due today';
-    else if (d === 1) raw = 'due tomorrow';
-    else if (d <= 7) raw = `due in ${plural(d, 'day', 'days')}`;
+    // The label itself is shared with the card-top due chip (timeStatusLabel);
+    // the <=7 day HORIZON is this ladder's own policy and stays here — past a
+    // week out a date is not time PRESSURE, so the row stays bare.
+    const raw = d <= 7 ? timeStatusLabel(d) : null;
     if (raw) { const r = emit('time', raw, 'dueInDays', DERIVED); if (r) return r; }
   }
 

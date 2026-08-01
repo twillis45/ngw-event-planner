@@ -86,6 +86,7 @@ import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowe
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
 import { getActionReason } from '@app/lib/actionReason';
+import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
 import { analyticsEventContext, runwayBucket } from '@app/lib/analyticsContext';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
@@ -6132,7 +6133,10 @@ export default function HostShellV2() {
                   if (solemn && a.dueInDays < 0) return null;
                   return (
                     <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                      {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
+                      {/* Shared with the queue row's time reason — one owner for these
+                          four strings (src/lib/timeStatusLabel.js). The guard above
+                          already proved dueInDays finite, so this never returns null here. */}
+                      {timeStatusLabel(a.dueInDays)}
                     </span>
                   );
                 };
@@ -9020,7 +9024,7 @@ export default function HostShellV2() {
                   // shame grammar on a grief clock. The row keeps `lateLine` below, so
                   // the state is still explained; only the accusing badge goes.
                   const lateChip = (r.status !== 'overdue' || solemn) ? null : (runningOnOurPick
-                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>past its window</span>
+                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{PAST_WINDOW}</span>
                     : <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>);
                   const lateLine = (r.status === 'overdue' && r.assurance) ? r.assurance : r.because;
                   // Wave-2a per-row consumers: the rank's work, the difm propose/ask

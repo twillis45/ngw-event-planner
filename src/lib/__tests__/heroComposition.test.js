@@ -23,6 +23,8 @@
 //   number. Rams' dissent sustained: keep the instance, cut the generalisation.
 const fs = require('fs');
 const path = require('path');
+// Vocabulary consolidation 2026-07-31: the chip's labels now come from here.
+const { timeStatusLabel, PAST_WINDOW } = require('../timeStatusLabel');
 const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
 
 const SHELL = path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx');
@@ -336,8 +338,14 @@ describe('re-sit — the sheet rows use the hero’s theory', () => {
 
   it('danger is reserved for a call nothing is holding', () => {
     const block = src.slice(src.indexOf('const lateChip'), src.indexOf('const lateLine'));
-    expect(block).toMatch(/runningOnOurPick[\s\S]*--warn-tint[\s\S]*past its window/);
+    // The PAIRING is the ruling: warn tint carries "past its window" (something is
+    // holding it), danger carries "overdue" (nothing is). Unchanged. After the
+    // 2026-07-31 vocabulary consolidation the warn branch renders the shared
+    // PAST_WINDOW constant instead of its own copy of the literal, so the match
+    // is on the token — and the constant's VALUE is pinned just below.
+    expect(block).toMatch(/runningOnOurPick[\s\S]*--warn-tint[\s\S]*\{PAST_WINDOW\}/);
     expect(block).toMatch(/--danger-tint[\s\S]*overdue/);
+    expect(PAST_WINDOW).toBe('past its window');
   });
 
   it('the anonymous heart banner stays deleted — keep the instance, cut the generalisation', () => {
@@ -568,7 +576,10 @@ describe('a solemn day is not late — the hostv2 hero too', () => {
   it('the hero due chip drops the OVERSHOOT on a solemn event, keeping forward states', () => {
     expect(src2).toMatch(/if \(solemn && a\.dueInDays < 0\) return null;/);
     // forward states must survive — only the negative branch is suppressed
-    expect(src2).toMatch(/a\.dueInDays === 0 \? 'due today'/);
+    // The inline ternary moved to the shared timeStatusLabel helper; the guarantee
+    // is unchanged, now asserted on real output rather than source shape.
+    expect(src2).toMatch(/timeStatusLabel\(a\.dueInDays\)/);
+    expect(timeStatusLabel(0)).toBe('due today');
   });
 
   it('the decision row late chip is suppressed on a solemn event', () => {

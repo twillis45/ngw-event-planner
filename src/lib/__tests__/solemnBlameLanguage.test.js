@@ -24,6 +24,8 @@
 // that could make them date- or timezone-dependent.
 const fs = require('fs');
 const path = require('path');
+// Vocabulary consolidation 2026-07-31: the chip's labels now come from here.
+const { timeStatusLabel, PAST_WINDOW } = require('../timeStatusLabel');
 
 const SHELL = path.resolve(__dirname, '../../../hostv2/src/HostShellV2.jsx');
 const raw = fs.readFileSync(SHELL, 'utf8');
@@ -56,9 +58,18 @@ describe('a solemn day is never told it is late', () => {
   it('only the OVERSHOOT is dropped — forward states still print', () => {
     // A solemn event must still be able to say "due today". Suppressing those
     // would hide real, forward-looking work rather than removing blame.
-    expect(src).toMatch(/a\.dueInDays === 0 \? 'due today'/);
-    expect(src).toMatch(/a\.dueInDays === 1 \? 'due tomorrow'/);
-    expect(src).toMatch(/'due in ' \+ a\.dueInDays \+ ' days'/);
+    //
+    // VOCABULARY CONSOLIDATION 2026-07-31: the chip's four labels moved to the
+    // shared timeStatusLabel helper, so the inline ternary these lines used to
+    // match no longer exists. The GUARANTEE is unchanged and is now asserted
+    // against the helper's real output rather than the source shape — a stronger
+    // check, because it proves what renders instead of how it is written.
+    expect(src).toMatch(/timeStatusLabel\(a\.dueInDays\)/);
+    expect(timeStatusLabel(0)).toBe('due today');
+    expect(timeStatusLabel(1)).toBe('due tomorrow');
+    expect(timeStatusLabel(3)).toBe('due in 3 days');
+    // and the one state a solemn event must never reach, which the guard above drops
+    expect(timeStatusLabel(-1)).toBe('past its window');
   });
 
   it('non-solemn events are untouched — every guard only ADDS a condition', () => {
@@ -66,8 +77,16 @@ describe('a solemn day is never told it is late', () => {
     // non-solemn path, so ordinary events cannot change behaviour.
     expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\)/);
     expect(src).toMatch(/if \(solemn && a\.dueInDays < 0\) return null;/);
-    // The blame strings still EXIST for non-solemn events to use.
+    // The blame strings still EXIST for non-solemn events to use. After the
+    // 2026-07-31 vocabulary consolidation NEITHER shell surface carries the
+    // literal any more — the due chip calls timeStatusLabel and the vendor
+    // late-chip renders the shared PAST_WINDOW constant — so the assertion moved
+    // to the owner. Suppression is still per-surface and unchanged; only the
+    // SOURCE of the language moved.
     expect(src).toMatch(/past their easy window/);
-    expect(src).toMatch(/'past its window'/);
+    expect(src).toMatch(/\{PAST_WINDOW\}/);            // the vendor/status late chip
+    expect(src).toMatch(/timeStatusLabel\(a\.dueInDays\)/);  // the hero due chip
+    expect(PAST_WINDOW).toBe('past its window');
+    expect(timeStatusLabel(-1)).toBe('past its window');
   });
 });
