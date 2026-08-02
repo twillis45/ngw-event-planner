@@ -3336,7 +3336,21 @@ export default function HostShellV2() {
       if (el && app) {
         // Rect math relative to the scroller, un-scaled by the phone frame's
         // --fit transform (offsetTop resolves against the wrong ancestor here).
-        const fit = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fit')) || 1;
+        //
+        // Read the ACTUAL applied scale, not the global `--fit` custom property.
+        // `--fit` is set on documentElement by main.jsx for every window, but the
+        // transform that uses it lives only inside the >=1280px block — and a surface
+        // that opts out of the fixed stage (.stagewrap--responsive-command) has no
+        // transform at all. Dividing by a `--fit` that is not applied to THIS element
+        // sends the scroll to the wrong offset, which is precisely the route-focus
+        // dependency the --fit trace flagged. getBoundingClientRect/offsetWidth gives
+        // the scale actually in force, and falls back to 1 when nothing is scaled.
+        const fit = (() => {
+          const ow = app.offsetWidth;
+          if (!ow) return 1;
+          const s = app.getBoundingClientRect().width / ow;
+          return (Number.isFinite(s) && s > 0.05) ? s : 1;
+        })();
         const delta = (el.getBoundingClientRect().top - app.getBoundingClientRect().top) / fit;
         const top = Math.max(0, app.scrollTop + delta - (app.clientHeight - el.getBoundingClientRect().height / fit) / 2);
         app.scrollTo({ top, behavior: REDUCE_MOTION ? 'instant' : 'smooth' });
