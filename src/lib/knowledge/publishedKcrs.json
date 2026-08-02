@@ -1,5 +1,149 @@
 [
   {
+    "id": "authored-birthday-p-tableware-provenance-1785650063496",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:54:23.496Z",
+    "assetId": "Birthday",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-birthday-p-tableware-provenance-1785650063496-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-birthday-p-tableware-provenance-1785650063496-v10"
+      }
+    ]
+  },
+  {
     "id": "kcr-kas-crab-feast-p-crabs-provenance",
     "type": "research",
     "trigger": "research",

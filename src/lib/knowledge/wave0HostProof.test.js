@@ -28,6 +28,9 @@ const WAVE0 = [
   { asset: 'Fish Fry', id: 'p_ice', source: 'reddy-ice-2026', authored: 1.5 },
   { asset: 'Dinner Party', id: 'p_ice', source: 'bar-provision-2026', authored: 1.5 },
   { asset: 'Crab Feast', id: 'p_ice', source: 'reddy-ice-2026', authored: 2 },
+  // Batch 2 (disposables). Eligible only where the authored value sits at a figure the
+  // source states WITHOUT assuming a service style: plates 1.3-1.5, cups+cutlery 1.5.
+  { asset: 'Birthday', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
 ];
 
 describe('Wave 0 reaches the host', () => {
@@ -53,11 +56,20 @@ describe('Wave 0 reaches the host', () => {
   });
 
   test('the commercial-source caveat travels all the way to the rendered note', () => {
-    // Two of the three cite a packaged-ice manufacturer. A host reading the Sourced
-    // line should be able to see that, not just a reviewer reading the KCR.
+    // Three of the four cite a commercially interested publisher. A host reading the
+    // Sourced line should be able to see that, not just a reviewer reading the KCR.
     for (const asset of ['Fish Fry', 'Crab Feast']) {
       expect(rowFor(asset, 'p_ice').provenance.note).toMatch(/CAVEAT|ceiling-leaning/);
     }
+    expect(rowFor('Birthday', 'p_tableware').provenance.note).toMatch(/CAVEAT/);
+  });
+
+  test('the disposables LIMITATION is disclosed, not hidden', () => {
+    // The corpus bundles napkins into a "set" while the source recommends 3 napkins
+    // per guest — more than one set provides. Citing the source without saying so
+    // would overstate what the line is grounded to.
+    expect(rowFor('Birthday', 'p_tableware').provenance.note).toMatch(/LIMITATION/);
+    expect(rowFor('Birthday', 'p_tableware').provenance.note).toMatch(/3 napkins/);
   });
 });
 
