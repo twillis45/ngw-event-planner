@@ -4392,7 +4392,7 @@ export default function HostShellV2() {
               number comes from replies, not a typed lock. */}
           {event.guestMode !== 'list' && guestN > 0 && (
             <CtaRow>
-              <button className="cta stay" onClick={() => {
+              <button className="cta" onClick={() => {
                 patchEvent({ guestCount: guestN, guestEstimate: guestN },
                   guestN + ' locked in — food, seats, and buys now size from it.');
                 // Answering the ask advances the loop (W14b): the engine stops
@@ -4451,7 +4451,7 @@ export default function HostShellV2() {
             </div>
           ))}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta stay" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
@@ -6032,7 +6032,7 @@ export default function HostShellV2() {
                         : (money.committed ? fmt(money.committed) + ' all told.' : 'no budget was tracked.')}</p>
                     </div>
                     <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'nowrap' }}>
-                      <button className="cta stay" style={{ flex: '0 0 auto', width: 'auto', whiteSpace: 'nowrap', minHeight: 0, padding: '12px 18px', fontSize: 'var(--t-body-s)' }}
+                      <button className="cta" style={{ flex: '0 0 auto', width: 'auto', whiteSpace: 'nowrap', minHeight: 0, padding: '12px 18px', fontSize: 'var(--t-body-s)' }}
                         onClick={() => setStage('after')}>Save what worked</button>
                       <span style={{ fontSize: 'var(--t-meta)', color: 'var(--muted)', textAlign: 'right', flex: '1 1 auto', minWidth: 0, lineHeight: 1.35 }}>so your next one starts&nbsp;ahead.</span>
                     </div>
@@ -6715,7 +6715,7 @@ export default function HostShellV2() {
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
-                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key, { canSettle: true })}>{
+                          return <button className="cta" onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real

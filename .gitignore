@@ -43,3 +43,6 @@ yarn-error.log*
 /scripts/assembleSampleEvents.js
 .claude/worktrees/
 build-verify/
+
+# Drift/QA capture output — regenerate with `npx playwright test e2e/driftCapture.spec.mjs`
+hostv2/review-shots/drift/

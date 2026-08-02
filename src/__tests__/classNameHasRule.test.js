@@ -62,8 +62,12 @@ const NOT_STYLE_HOOKS = new Set([
 //
 //    The hand audit found ONE of these (`stay`). The other seven are why this
 //    file exists.
+//    FIXED 2026-08-02 — `stay` removed from this list. It was 3 literal
+//    `className="cta stay"` sites plus a FOURTH the inventory missed:
+//    `className={'cta' + (isSettle ? ' stay' : '')}` at ~6718, which is inside a
+//    braced expression and therefore inside this file's deliberate harvesting gap.
+//    All four now render a plain `.cta`, which is what they already looked like.
 const KNOWN_PHANTOMS = new Set([
-  'stay',          // 3 uses — `cta stay`. The one the CTA inventory caught.
   'agenda',        // 1 use
   'cvb-brief',     // 1 use
   'draft-body',    // 1 use
