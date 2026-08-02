@@ -123,6 +123,18 @@ describe('mismatched evidence — the one 5F.6 missed (Phase 5F.7)', () => {
     expect(evidenceSubjectMismatch('p_ribs.provenance', [{ id: 'webstaurant-protein-2026' }])).toEqual([]);
   });
 
+  test('a source covering TWO subjects is not a mismatch on either (5F.10)', () => {
+    // FALSE POSITIVE, found by publishing a correct record. `bar-provision-2026` is a
+    // drinks guide whose claim also states "ice ~1.5 lb/guest", so it genuinely grounds
+    // an indoor ice line — and the single-source-per-subject assumption reported that
+    // record as mismatched. A check that cries wolf on good work is worse than none.
+    expect(evidenceSubjectMismatch('p_ice.provenance', [{ id: 'bar-provision-2026' }])).toEqual([]);
+    expect(evidenceSubjectMismatch('p_wine.provenance', [{ id: 'bar-provision-2026' }])).toEqual([]);
+    // and it still catches a genuinely wrong subject
+    expect(evidenceSubjectMismatch('p_ice.provenance', [{ id: 'webstaurant-protein-2026' }]))
+      .toEqual(['webstaurant-protein-2026']);
+  });
+
   test('it makes NO claim about unmapped purchases or unmapped sources', () => {
     // Silence where nothing is declared, rather than a guess.
     expect(evidenceSubjectMismatch('p_favors.provenance', [{ id: 'reddy-ice-2026' }])).toEqual([]);

@@ -233,6 +233,45 @@ export function wouldGround(fieldPath, provenance) {
 const CITABLE_TYPE = 'citation';
 
 /**
+ * provenanceMirror(field, newValue) -> newProvenance | null
+ *
+ * THE TWO HALVES OF PROVENANCE MUST AGREE (Phase 5F.10).
+ *
+ * A proposal carries provenance twice, and the halves are read by different layers:
+ *
+ *   GOVERNANCE / HOST   read `proposal.newValue`  (tier + sources -> isGroundedItemQty)
+ *   TRANSPORT / BAKE    read `proposal.newProvenance` (-> entry.provenance, evidenceIds)
+ *
+ * The composer left `newProvenance` null, so `format()` supplied the default
+ * `{verificationStatus: 'synthesized', sources: []}`. Measured on three records
+ * promoted to the corpus in 5F.10:
+ *
+ *   snapshot entry            evidenceIds: []   provenance.verificationStatus: 'synthesized'
+ *   snapshotEntryToKcr(entry) no evidence ids to hydrate
+ *   canReachCited(...)        FALSE  -> the field could never be corrected again
+ *
+ * A host still saw the "Sourced -" line, because that reads `newValue` — so the defect
+ * was invisible from the front and fatal from the back. This mirrors the cited sources
+ * into the transport half so both agree.
+ *
+ * Returns null for non-provenance fields: a quantity correction has no provenance of its
+ * own, and inventing one would be the same class of mistake in the other direction.
+ */
+export function provenanceMirror(field, newValue) {
+  if (field !== 'provenance') return null;
+  if (!newValue || typeof newValue !== 'object' || Array.isArray(newValue)) return null;
+  const sources = Array.isArray(newValue.sources) ? newValue.sources.filter(Boolean) : [];
+  return {
+    // `cited` only when there is something to cite — an unsourced heuristic stays
+    // honestly synthesized rather than being promoted by the mirror.
+    verificationStatus: sources.length ? 'cited' : (newValue.verificationStatus || 'synthesized'),
+    sources,
+    tier: newValue.tier || null,
+    confidence: newValue.confidence || null,
+  };
+}
+
+/**
  * evidenceFromSources(sources, opts) -> evidence[]
  *
  * Returns one evidence entry per RESOLVABLE source id, in registry order. Unresolvable

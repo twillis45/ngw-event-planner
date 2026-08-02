@@ -144,6 +144,438 @@
     ]
   },
   {
+    "id": "authored-crab-feast-p-ice-provenance-1785647631378",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:13:51.378Z",
+    "assetId": "Crab Feast",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "reddy-ice-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party",
+        "url": "https://www.reddyice.com/how-much-ice-you-need-for-a-party/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person; its own worked outdoor-BBQ example computes to 2.1 lb/guest. A Crab Feast is an outdoor summer cook, so the outdoor case applies and the authored 2 lb/guest sits at that figure. Value unchanged; provenance only. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat 2 lb as ceiling-leaning planning guidance."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "reddy-ice-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-crab-feast-p-ice-provenance-1785647631378-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-crab-feast-p-ice-provenance-1785647631378-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-dinner-party-p-ice-provenance-1785647521144",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:12:01.144Z",
+    "assetId": "Dinner Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "The Party Source (100-guest planning guide) + Evite / Omnicalculator / Reventals party-drink calculators (consensus)",
+        "url": "https://thepartysource.com/blog/how-much-alcohol-for-100-guests"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "bar-provision-2026 states ice ~1.5 lb/guest (12-15 bags per 100) as standard US party drink provisioning. Dinner Party is the indoor baseline case, and the authored 1.5 matches the source-stated rate exactly. Value unchanged; provenance only."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-dinner-party-p-ice-provenance-1785647521144-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "The Party Source (100-guest planning guide) + Evite / Omnicalculator / Reventals party-drink calculators (consensus)"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-dinner-party-p-ice-provenance-1785647521144-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-fish-fry-p-ice-provenance-1785647428637",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:10:28.637Z",
+    "assetId": "Fish Fry",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "reddy-ice-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party",
+        "url": "https://www.reddyice.com/how-much-ice-you-need-for-a-party/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person. Fish Fry authors 1.5 lb/guest, which sits inside that stated range; the value is NOT changed here. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat the range as ceiling-leaning planning guidance rather than a measured mean."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "reddy-ice-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-fish-fry-p-ice-provenance-1785647428637-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-fish-fry-p-ice-provenance-1785647428637-v10"
+      }
+    ]
+  },
+  {
     "id": "kcr-kas-retirement-party-p-wine-provenance",
     "type": "correction",
     "trigger": "validation",

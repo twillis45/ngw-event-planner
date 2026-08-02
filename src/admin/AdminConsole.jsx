@@ -29,7 +29,7 @@ import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correct
 import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
 import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
 import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
-import { approvedSourcesFor, validateSourcesFor, wouldGround, evidenceFromSources } from '../lib/knowledge/sourceAuthority';
+import { approvedSourcesFor, validateSourcesFor, wouldGround, evidenceFromSources, provenanceMirror } from '../lib/knowledge/sourceAuthority';
 import { detectDivergence, divergenceSummary, firstGovernanceGuard } from '../lib/knowledge/governanceDivergence';
 import { reconciliationCandidates, reconciliationSummary } from '../lib/knowledge/governanceReconciliation';
 import { knowledgeInventory, groundedShare, INVENTORY_STATES } from '../lib/knowledge/knowledgeInventory';
@@ -2193,7 +2193,23 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
             <B label="Mark approved" primary cap="request-review" enabled={!(gate.reviewsNeeded || []).length} on={() => run((k) => advanceKCR(k, 'approved', { by: role, asOf }), 'Approved')} />
             <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'researching', { by: role, note: 'sent back', asOf }), 'Sent back')} />
+            {/* RETIRE FROM REVIEW (5F.10). `review -> archived` is legal and had no
+                control, so a record that should never publish could only be bounced
+                back to `researching` forever. Hit during Wave 0: an in-flight record
+                predating the evidence fix carried `evidence: []`, so it would fail at
+                publish, and there was no way to withdraw it. Same required reason as
+                every other retirement. */}
+            <B label="Archive" cap="reject"
+              on={() => {
+                const why = (retireReason || '').trim();
+                if (!why) return undefined;
+                return run((k) => advanceKCR(k, 'archived', { by: role, note: why, asOf }), 'Archived');
+              }} />
           </div>
+          <input value={retireReason} onChange={(e) => setRetireReason(e.target.value)}
+            placeholder="to archive instead: why is this being retired? (required)"
+            style={{ marginTop: 6, width: '100%', fontSize: 10, fontFamily: D.mono, background: D.surface,
+              color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 8px' }} />
         </div>
       )}
 
@@ -3489,7 +3505,22 @@ function KcrStudioPanel() {
             const puA = pbA && (pbA.purchases || []).find((x) => x && x.id === pid);
             const firstK = openAuthoredGovernance(
               { assetId, fieldPath: targetPath, authoredValue: puA ? puA[correctField] : null },
-              { newValue, reason: reason.trim(), by: role, asOf: new Date().toISOString(),
+              { newValue,
+                // NEWPROVENANCE MUST MIRROR THE CITED SOURCES (5F.10). The composer left
+                // this null, so `format()` wrote the default
+                // `{verificationStatus: 'synthesized', sources: []}` — and the BAKE reads
+                // `newProvenance`, not `newValue`, for the entry-level provenance and
+                // `evidenceIds`. Measured on three records promoted to the corpus:
+                //
+                //   snapshot entry -> evidenceIds: []   provenance.verificationStatus: 'synthesized'
+                //   snapshotEntryToKcr(entry) -> no evidence ids to hydrate
+                //   canReachCited(reconstructed) -> FALSE
+                //
+                // A host still saw the Sourced line (that reads `newValue`), so this was
+                // invisible from the front — but the field could never be corrected again
+                // from the snapshot. The two provenance halves have to agree.
+                newProvenance: provenanceMirror(correctField, newValue),
+                reason: reason.trim(), by: role, asOf: new Date().toISOString(),
                 // EVIDENCE (5F.8). This argument was never supplied, so every record this
                 // path has ever created carried `evidence: []` — and `canReachCited`
                 // therefore refused it, making the record unpromotable to the corpus and
@@ -3510,6 +3541,7 @@ function KcrStudioPanel() {
           const isSameField = targetPath === prior.fieldPath;
           const corr = openCorrection({ ...prior, fieldPath: targetPath }, {
             newValue,
+            newProvenance: provenanceMirror(correctField, newValue),
             reason: reason.trim(),
             by: role,
             asOf: new Date().toISOString(),

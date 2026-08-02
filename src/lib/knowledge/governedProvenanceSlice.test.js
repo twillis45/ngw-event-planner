@@ -89,10 +89,26 @@ describe('the runtime reader', () => {
   });
 
   test('every OTHER purchase is untouched — authored fallback preserved', () => {
+    // GOVERNED fields are excluded because governance is supposed to override the
+    // authored value — that is the whole point. `p_ice` joined `p_crabs` in Wave 0
+    // (5F.11), grounded to reddy-ice-2026 with the authored 2 lb/guest unchanged.
+    // The assertion that matters is that everything NOT governed still falls through
+    // to what the playbook authored.
+    const GOVERNED = new Set(['p_crabs', 'p_ice']);
     for (const p of pb().purchases) {
-      if (p.id === 'p_crabs') continue;
+      if (GOVERNED.has(p.id)) continue;
       expect(purchaseProvenance(pb(), p)).toEqual(p.provenance);
     }
+  });
+
+  test('the governed fields ARE overridden, and by the expected source', () => {
+    // The other half of the same property — without this, adding an id to the skip
+    // list above could silently hide a governance failure.
+    const ice = (pb().purchases || []).find((p) => p.id === 'p_ice');
+    const prov = purchaseProvenance(pb(), ice);
+    expect(prov).not.toEqual(ice.provenance);
+    expect(prov.sources).toEqual(['reddy-ice-2026']);
+    expect(prov.tier).toBe('researched');
   });
 
   test('a junk playbook or purchase never throws', () => {

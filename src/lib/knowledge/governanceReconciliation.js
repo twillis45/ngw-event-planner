@@ -63,11 +63,18 @@ export function evidenceSubjectMismatch(fieldPath, evidence) {
   const purchaseId = String(fieldPath || '').split('.')[0];
   const mine = SUBJECT_SOURCES.find((s) => s.ids.includes(purchaseId));
   if (!mine) return [];                                   // no declared subject: no claim
+  // Sources that legitimately speak to THIS subject: its primary plus anything the
+  // registry declares as also covering it. A source may serve several subjects —
+  // `bar-provision-2026` is a drinks guide whose claim also states an ice rate — and
+  // assuming otherwise produced a false positive on a correct record in 5F.10.
+  const accepted = new Set([mine.source, ...(mine.alsoCovers || [])]);
   const out = [];
   for (const ev of (evidence || [])) {
     const id = ev && ev.id;
-    if (!id) continue;
-    const theirs = SUBJECT_SOURCES.find((s) => s.source === id);
+    if (!id || accepted.has(id)) continue;
+    // Flag only if the id is declared for a DIFFERENT subject. An unmapped source
+    // says nothing either way.
+    const theirs = SUBJECT_SOURCES.find((s) => s.source === id || (s.alsoCovers || []).includes(id));
     if (theirs && theirs.subject !== mine.subject) out.push(id);
   }
   return out;

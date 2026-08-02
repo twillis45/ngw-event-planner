@@ -54,6 +54,16 @@ export const SUBJECT_SOURCES = Object.freeze([
   {
     subject: 'ice per guest',
     source: 'reddy-ice-2026',
+    // A SOURCE MAY COVER MORE THAN ONE SUBJECT. `bar-provision-2026` is primarily a
+    // drinks-provisioning guide, and its claim also states "ice ~1.5 lb/guest (12-15
+    // bags per 100)" — so it genuinely grounds an indoor ice line.
+    //
+    // Added in 5F.10 because the single-source assumption produced a FALSE POSITIVE:
+    // a correct Dinner Party record citing bar-provision for p_ice was reported as
+    // `mismatched-evidence`. A check that cries wolf on good work is worse than no
+    // check. `source` remains the PRIMARY source for the subject; `alsoCovers` lists
+    // others that legitimately speak to it.
+    alsoCovers: ['bar-provision-2026'],
     ids: ['p_ice'],
   },
   // PHASE 5F.7. Deliberately NARROW: only the ids that author a PER-GUEST count.

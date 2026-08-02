@@ -148,9 +148,12 @@ describe('published export (task 2)', () => {
     const s = exportSummary(onDisk);
     expect(s.records).toBe(onDisk.length);
     expect(s.heads + s.superseded).toBe(s.records);
-    // p_wine v1 is superseded by v2 (Phase 5C.2); p_crabs stands alone.
+    // p_wine v1 is superseded by v2 (Phase 5C.2); the rest stand alone.
+    // 5 fields since Wave 0 (5F.11) committed three ice provenance records. This
+    // counter is SUPPOSED to move when real knowledge lands — it is pinned so that
+    // it cannot move WITHOUT somebody noticing.
     expect(s.superseded).toBe(1);
-    expect(s.fields).toBe(2);
+    expect(s.fields).toBe(5);
   });
 
   test('export is pure — it does not touch disk', () => {
@@ -438,11 +441,13 @@ describe('exportBase merge order (Phase 5D — regression)', () => {
     expect(merged.audit).toBeDefined();
     expect(merged.review).toBeDefined();
 
-    // and the counts the UI shows are now truthful
+    // and the counts the UI shows are now truthful. 5 heads since Wave 0 (5F.11);
+    // still exactly ONE superseded, which is the property this regression guards —
+    // the reconstruction must not clobber v2's lineage and un-supersede v1.
     const sum = exportSummary(base);
-    expect(sum.heads).toBe(2);
+    expect(sum.heads).toBe(5);
     expect(sum.superseded).toBe(1);
-    expect(buildSnapshot(base).snapshot.entries).toHaveLength(2);
+    expect(buildSnapshot(base).snapshot.entries).toHaveLength(5);
   });
 });
 

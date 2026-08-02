@@ -68,6 +68,31 @@ describe('every lifecycle state is reachable in the console', () => {
   });
 });
 
+// ── RETIREMENT MUST BE REACHABLE FROM EVERY STATE THAT PERMITS IT ────────────
+describe('every state whose transitions allow archived offers a way to get there', () => {
+  // The controls that expose `-> archived`, mirrored from AdminConsole.
+  const ARCHIVE_CONTROL_ON = new Set(['approved', 'review', 'monitoring', 'revision']);
+
+  test('review can be retired — it is legal, and it had no control until 5F.10', () => {
+    // Hit during Wave 0: an in-flight record predating the evidence fix carried
+    // `evidence: []`, so it would fail at publish — and could only be bounced back to
+    // `researching`, never withdrawn.
+    expect(KCR_TRANSITIONS.review).toContain('archived');
+    expect(ARCHIVE_CONTROL_ON.has('review')).toBe(true);
+  });
+
+  test('no state that PERMITS archived is left without a control', () => {
+    const permits = Object.entries(KCR_TRANSITIONS)
+      .filter(([, to]) => to.includes('archived'))
+      .map(([from]) => from);
+    // `draft`, `researching` and `grounded` permit it but are pre-publication intake:
+    // nothing has been asserted yet, so abandoning them is not a governance act.
+    const needsControl = permits.filter((s) => !['draft', 'researching', 'grounded'].includes(s));
+    expect(needsControl.sort()).toEqual(['approved', 'monitoring', 'review', 'revision']);
+    for (const s of needsControl) expect(ARCHIVE_CONTROL_ON.has(s)).toBe(true);
+  });
+});
+
 describe('the listing sets do not overlap misleadingly', () => {
   test('no status is claimed by two different workspaces', () => {
     // A record showing in two places would double-count every KPI derived from them.

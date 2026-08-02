@@ -30,6 +30,90 @@
       "publishedAt": "2026-08-01T12:00:00.000Z"
     },
     {
+      "assetId": "Crab Feast",
+      "fieldPath": "p_ice.provenance",
+      "value": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person; its own worked outdoor-BBQ example computes to 2.1 lb/guest. A Crab Feast is an outdoor summer cook, so the outdoor case applies and the authored 2 lb/guest sits at that figure. Value unchanged; provenance only. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat 2 lb as ceiling-leaning planning guidance."
+      },
+      "kcrId": "authored-crab-feast-p-ice-provenance-1785647631378",
+      "versionId": "authored-crab-feast-p-ice-provenance-1785647631378-v10",
+      "evidenceIds": [
+        "reddy-ice-2026"
+      ],
+      "provenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "verificationStatus": "cited",
+      "publishedAt": "2026-08-02T05:13:51.378Z"
+    },
+    {
+      "assetId": "Dinner Party",
+      "fieldPath": "p_ice.provenance",
+      "value": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "bar-provision-2026 states ice ~1.5 lb/guest (12-15 bags per 100) as standard US party drink provisioning. Dinner Party is the indoor baseline case, and the authored 1.5 matches the source-stated rate exactly. Value unchanged; provenance only."
+      },
+      "kcrId": "authored-dinner-party-p-ice-provenance-1785647521144",
+      "versionId": "authored-dinner-party-p-ice-provenance-1785647521144-v10",
+      "evidenceIds": [
+        "bar-provision-2026"
+      ],
+      "provenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "verificationStatus": "cited",
+      "publishedAt": "2026-08-02T05:12:01.144Z"
+    },
+    {
+      "assetId": "Fish Fry",
+      "fieldPath": "p_ice.provenance",
+      "value": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person. Fish Fry authors 1.5 lb/guest, which sits inside that stated range; the value is NOT changed here. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat the range as ceiling-leaning planning guidance rather than a measured mean."
+      },
+      "kcrId": "authored-fish-fry-p-ice-provenance-1785647428637",
+      "versionId": "authored-fish-fry-p-ice-provenance-1785647428637-v10",
+      "evidenceIds": [
+        "reddy-ice-2026"
+      ],
+      "provenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "verificationStatus": "cited",
+      "publishedAt": "2026-08-02T05:10:28.637Z"
+    },
+    {
       "assetId": "Retirement Party",
       "fieldPath": "p_wine.provenance",
       "value": {
@@ -60,7 +144,7 @@
       "publishedAt": "2026-08-01T18:00:00.000Z"
     }
   ],
-  "generatedAt": "2026-08-01T18:00:00.000Z",
-  "snapshotVersion": "23817229",
-  "entryCount": 2
+  "generatedAt": "2026-08-02T05:13:51.378Z",
+  "snapshotVersion": "d61dade5",
+  "entryCount": 5
 }

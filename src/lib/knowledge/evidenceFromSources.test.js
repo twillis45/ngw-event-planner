@@ -12,7 +12,7 @@
 // Found in 5F.7 by promoting the cleanest of four such records and watching the suite
 // refuse it. Four records in the admin store are affected.
 import {
-  evidenceFromSources, validateSourcesFor, wouldGround,
+  evidenceFromSources, validateSourcesFor, wouldGround, provenanceMirror,
 } from './sourceAuthority';
 import { canReachCited } from './knowledgeChange';
 import { openAuthoredGovernance } from './correctionWorkflow';
@@ -114,6 +114,59 @@ describe('THE POINT — the record is now promotable', () => {
     const lowTier = { ...provenance, tier: 'trade-heuristic' };
     expect(evidenceFromSources(lowTier.sources).length).toBe(1);
     expect(wouldGround('p_ice.provenance', lowTier)).toBe(false);
+  });
+});
+
+// ─── THE TRANSPORT HALF (Phase 5F.10) ────────────────────────────────────────
+describe('provenanceMirror — both halves of provenance must agree', () => {
+  const sourced = {
+    tier: 'researched', confidence: 'medium', verificationStatus: 'researched',
+    sources: ['reddy-ice-2026'], note: 'n',
+  };
+
+  test('it mirrors the cited sources into the transport half', () => {
+    const m = provenanceMirror('provenance', sourced);
+    expect(m.sources).toEqual(['reddy-ice-2026']);
+    expect(m.verificationStatus).toBe('cited');
+    expect(m.tier).toBe('researched');
+    expect(m.confidence).toBe('medium');
+  });
+
+  test('an UNSOURCED heuristic is not promoted to cited by the mirror', () => {
+    const m = provenanceMirror('provenance', { tier: 'norm', verificationStatus: 'synthesized', sources: [] });
+    expect(m.verificationStatus).toBe('synthesized');
+    expect(m.sources).toEqual([]);
+  });
+
+  test('a NON-provenance field gets null — inventing one is the same mistake reversed', () => {
+    expect(provenanceMirror('qtyPerGuest', 2)).toBeNull();
+    expect(provenanceMirror('unitCostRange', [1, 2])).toBeNull();
+    expect(provenanceMirror('provenance', null)).toBeNull();
+    expect(provenanceMirror('provenance', 'a string')).toBeNull();
+    expect(provenanceMirror('provenance', [1, 2])).toBeNull();
+  });
+
+  test('THE DEFECT: an empty mirror loses the source ids at the bake', () => {
+    // What the composer used to produce, and why it was fatal. The bake reads
+    // `newProvenance` for entry.provenance and evidenceIds; with sources [], a
+    // snapshot-reconstructed KCR has nothing to hydrate and canReachCited fails —
+    // so the field could never be corrected again. A host still saw the Sourced line,
+    // because that reads `newValue`. Invisible from the front, fatal from the back.
+    const oldDefault = { verificationStatus: 'synthesized', sources: [] };
+    expect(oldDefault.sources).toEqual([]);
+    expect(provenanceMirror('provenance', sourced).sources).not.toEqual([]);
+  });
+
+  test('the mirror matches the shape of the records already in the corpus', () => {
+    // eslint-disable-next-line global-require
+    const corpus = require('./publishedKcrs.json');
+    for (const k of corpus) {
+      const np = k.proposal && k.proposal.newProvenance;
+      if (!np || !Array.isArray(np.sources) || !np.sources.length) continue;
+      // Every good committed record carries its sources in BOTH halves.
+      expect(np.sources).toEqual(k.proposal.newValue.sources);
+      expect(np.verificationStatus).toBe('cited');
+    }
   });
 });
 
