@@ -137,14 +137,14 @@ describe('the shape of the real backlog', () => {
   });
 
   test('the new disposables source reaches exactly the PER-GUEST place settings', () => {
-    // 29, not 30, since Batch 2 (5F.11) grounded Birthday `p_tableware` — a grounded
+    // 26 since Batch 2 (5F.11) grounded four p_tableware lines — a grounded
     // line leaves `needsWork`, which is the count moving in the right direction.
     // Pinned so it cannot move without somebody noticing.
     const reached = cls.rows.filter((r) => r.source === 'jollychef-disposables-2026');
     const byId = {};
     for (const r of reached) byId[r.id] = (byId[r.id] || 0) + 1;
-    expect(byId).toEqual({ p_tableware: 17, p_cups: 4, p_napkins: 8 });
-    expect(reached.length).toBe(29);
+    expect(byId).toEqual({ p_tableware: 14, p_cups: 4, p_napkins: 8 });
+    expect(reached.length).toBe(26);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {

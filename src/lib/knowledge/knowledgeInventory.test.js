@@ -98,6 +98,23 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
     expect(lineState('A', authoredUngrounded, published)).toBe('reviewed');
   });
 
+  test('ENTRIES STRIPPED OF `value` silently understate grounding (5F.11)', () => {
+    // The console passed a list mapped down to {assetId, fieldPath} for the picker and
+    // reused it here. `value` was gone, so the governed lookup returned undefined,
+    // every governed line fell back to its authored provenance, and the console read
+    // "grounded 38 · reviewed 8" while the corpus measured 46 and 0.
+    //
+    // The inventory cannot detect a caller that drops the field — but it CAN be shown
+    // to depend on it, so the dependency is documented rather than folklore.
+    const pbs = [pb('A', [line('p_ice', { provenance: null })])];
+    const full = [{ assetId: 'A', fieldPath: 'p_ice.provenance', value: prov('researched', ['reddy-ice-2026']) }];
+    const stripped = full.map((e) => ({ assetId: e.assetId, fieldPath: e.fieldPath }));
+
+    expect(knowledgeInventory(pbs, full).counts.grounded).toBe(1);
+    expect(knowledgeInventory(pbs, stripped).counts.grounded).toBe(0);
+    expect(knowledgeInventory(pbs, stripped).counts.reviewed).toBe(1);
+  });
+
   test('a governed provenance that does NOT ground still reads reviewed', () => {
     const published = new Set(['A p_ice.provenance']);
     const weak = prov('trade-heuristic', ['reddy-ice-2026']);

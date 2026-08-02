@@ -31,6 +31,9 @@ const WAVE0 = [
   // Batch 2 (disposables). Eligible only where the authored value sits at a figure the
   // source states WITHOUT assuming a service style: plates 1.3-1.5, cups+cutlery 1.5.
   { asset: 'Birthday', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Baby Shower', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Get-Together', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Graduation', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
 ];
 
 describe('Wave 0 reaches the host', () => {
@@ -62,6 +65,15 @@ describe('Wave 0 reaches the host', () => {
       expect(rowFor(asset, 'p_ice').provenance.note).toMatch(/CAVEAT|ceiling-leaning/);
     }
     expect(rowFor('Birthday', 'p_tableware').provenance.note).toMatch(/CAVEAT/);
+  });
+
+  test('every disposables record carries the IDENTICAL canonical note', () => {
+    // The reason a builder exists: ten near-identical notes composed by hand is how a
+    // caveat goes missing from the ninth. Byte-identical or the batch is not safe.
+    const notes = WAVE0.filter((w) => w.source === 'jollychef-disposables-2026')
+      .map((w) => rowFor(w.asset, w.id).provenance.note);
+    expect(notes.length).toBeGreaterThan(1);
+    expect(new Set(notes).size).toBe(1);
   });
 
   test('the disposables LIMITATION is disclosed, not hidden', () => {

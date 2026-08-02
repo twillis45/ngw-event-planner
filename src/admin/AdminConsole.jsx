@@ -3296,8 +3296,20 @@ function KcrStudioPanel() {
       // three separate counters in this repo have each reported a different "how much
       // do we know" figure by silently dropping something. This block states the one
       // denominator that never shrinks — every authored line, always.
-      const inv = knowledgeInventory(ALL_PLAYBOOKS, liveIdx);
-      const cls = backfillClassification(ALL_PLAYBOOKS, liveIdx);
+      // FULL entries, not `liveIdx` (Phase 5F.11). `liveIdx` maps each entry down to
+      // `{assetId, fieldPath}` for the picker, which is all `acquisitionTree` needs —
+      // but `knowledgeInventory` reads `entry.value` to decide whether a GOVERNED
+      // provenance grounds. Passing the stripped list made that lookup `undefined`, so
+      // every governed line fell back to its authored provenance and was counted
+      // `reviewed` instead of `grounded`.
+      //
+      // Measured: the console read "grounded 38 · reviewed 8" while the committed
+      // corpus measured 46 and 0. The console UNDERSTATED its own grounding — the same
+      // measurement-disagrees-with-runtime shape this programme keeps finding, this
+      // time caused by a convenience mapping two lines earlier.
+      const liveEntriesFull = publishedEntries();
+      const inv = knowledgeInventory(ALL_PLAYBOOKS, liveEntriesFull);
+      const cls = backfillClassification(ALL_PLAYBOOKS, liveEntriesFull);
       const STATE_TONE = {
         published: D.good, 'missing-provenance': D.warn, 'needs-research': D.warn,
         correctable: D.accent, ungoverned: D.muted,

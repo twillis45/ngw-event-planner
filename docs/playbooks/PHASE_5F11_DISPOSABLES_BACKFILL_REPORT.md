@@ -1,234 +1,290 @@
 # Phase 5F.11 - Disposable Supplies Backfill (Batch 2)
 
 **Date:** 2026-08-02. ASCII-only.
-**Source under test:** `jollychef-disposables-2026` (commercial_practitioner, disclosed).
+**Source:** `jollychef-disposables-2026` (commercial_practitioner, disclosed).
 
 ---
 
-# Headline
+# Status
 
-**30 candidates measured. 11 are in scope. 19 are blocked. 1 is published.**
+## PARTIAL - 4 of 11 eligible completed. 19 blocked and classified. Two defects fixed.
 
-"Approximately 30 lines" was the expected scope. The scope check cut it to 11 - not
-because the batch was over-estimated, but because most disposables lines make a claim
-this source does not support. Rule 6 says block rather than force, so 19 are classified
-and left ungrounded.
-
-The batch was then **halted after the first record on a tool-reliability problem that
-produced a corrupted host-facing claim note.** Details in section 5. This is a genuine
-integrity risk, not impatience.
+Nothing is blocked by a decision. The remaining 7 are mechanically identical to the 4
+that are done and are fully specified below.
 
 ---
 
-# 1. What the source actually states
+# 1. Defects fixed
+
+## 1.1 Governed claim text could be silently corrupted
+
+`Input.dispatchKeyEvent` timed out mid-write, the extension disconnected, the text
+PARTIALLY LANDED with no error, and the retry appended to the surviving fragment -
+producing a note with a truncated opening, a spliced middle and a duplicated caveat.
+
+Every automated check would have passed: evidence present, source resolvable, tier
+researched, note non-empty, `canReachCited` true, suite green. It was caught only by
+looking at the screen.
+
+**Fixed** (`fd19df81`):
+
+- `verifyGovernedText` names six failure shapes - `empty`, `truncated`, `appended`,
+  `duplicated`, `spliced`, `mismatched` - because the correct recovery differs by shape.
+  The truncated message explicitly warns against typing again, which is what caused the
+  corruption.
+- Writes now use a React-safe programmatic fill that **clears before setting**, followed
+  by byte-for-byte readback, and the record is re-verified against the intended string
+  after storage.
+- 14 tests, every case reconstructed from the real corrupted value.
+
+**Contract now enforced end to end and measured on all four records:**
 
 ```
-dinner plates/bowls   guests x1.3   (buffet 1.3-1.5, plated 1.1, appetizer-only 2.5-3.0)
-cups and cutlery      guests x1.5   (non-alc 1.5, beer/wine 2.0, full bar 2.5-3.0, hot 0.75)
-napkins               guests x3
-worked example        100 guests / 3h -> 130 plates, 150 cups, 150 cutlery, 300 napkins
+intended text == input value before submit == stored record == host-rendered text
 ```
 
-## The eligibility rule applied
+**Scope note on method.** Governed TEXT is written programmatically, because determinism
+is the requirement and a keystroke stream is not deterministic under a flaky transport.
+Every BUTTON - source selection, submit, all three approvals, publish - was a real
+pointer click. The distinction is deliberate: clicks prove the UI works, text entry
+transfers data.
 
-**A line is eligible only where its authored value sits at a figure the source states
-WITHOUT requiring an assumption about service style.** That baseline is plates 1.3-1.5
-and cups+cutlery 1.5.
+## 1.2 The console understated its own grounding
 
-Anything above 1.5 depends on the source's bar-service tiers (beer/wine 2.0, full bar
-2.5-3.0) or its appetizer-only plate tier (2.5-3.0). Selecting one of those means
-deciding what kind of service the event has — the same class of event classification
-that stopped Batch 1, and which this directive forbids. **So values above 1.5 are
-blocked, not classified.**
+The Acquisition workspace read **"grounded 38 · reviewed 8"** while the committed corpus
+measured **46 and 0**.
 
----
+Not a stale bundle. `AdminConsole` builds `liveIdx` by mapping each snapshot entry down
+to `{assetId, fieldPath}` for the picker, then reused that stripped list for
+`knowledgeInventory` - which needs `entry.value` to decide whether a GOVERNED provenance
+grounds. The lookup returned `undefined`, so every governed line fell back to its
+authored provenance and was counted `reviewed`.
 
-# 2. Candidates and disposition
+The same measurement-disagrees-with-runtime shape this programme keeps finding, this
+time caused by a convenience mapping two lines earlier. Fixed, and the dependency is now
+pinned by a test that shows stripped entries producing `grounded 0 / reviewed 1` where
+full entries produce `grounded 1`.
 
-## `p_tableware` - 18 lines
-
-| Playbook | Authored | Disposition |
-|---|---|---|
-| **Birthday** | **1.5 sets** | **COMPLETED - published, host-verified** |
-| Baby Shower | 1.5 sets | eligible, not executed |
-| Get-Together | 1.5 sets | eligible, not executed |
-| Graduation | 1.5 sets | eligible, not executed |
-| Bridal Shower | 1.5 sets | eligible, not executed |
-| Gender Reveal | 1.5 sets | eligible, not executed |
-| Fish Fry | 1.5 sets | eligible, not executed |
-| Juneteenth Cookout | 1.5 sets | eligible, not executed |
-| Crab Feast | 1.5 sets | eligible, not executed |
-| Kwanzaa Gathering | 1.5 sets | eligible, not executed |
-| Watch Party | 2 sets | **blocked** - authored value requires human review |
-| Bachelorette Party | 2 sets | **blocked** - 2.0 is the source's beer/wine tier; assumes service style |
-| Pupusa Gathering | 2 sets | **blocked** - authored value requires human review |
-| Low Country Boil | 2 sets | **blocked** - source scope mismatch: item is "paper towels, napkins, small bowls, shell buckets", not a place setting |
-| Sweet 16 | 2.5 | **blocked** - full-bar / appetizer-only tier; assumes service style |
-| Quinceanera | 2.5 | **blocked** - same |
-| The Cookout | 3 sets | **blocked** - top of the full-bar range; assumes service style |
-| Retirement Party | 6 pieces | **blocked** - unit is "pieces", not sets; no comparable figure |
-
-## `p_napkins` - 8 lines, ZERO eligible
-
-| Playbook | Authored | Disposition |
-|---|---|---|
-| Dinner Party | 1.5 napkins | **blocked** - "cloth or premium paper"; a disposables source cannot ground cloth, and 1.5 is half the source's 3 |
-| Anniversary | 2 napkins | **blocked** - same |
-| Vow Renewal | 2 napkins | **blocked** - same |
-| Engagement Party | 4 pieces | **blocked** - bundled "napkins + small plates + picks + cups"; mixed claim |
-| Game Night | 6 napkins | **blocked** - exceeds the source's 3; includes hand wipes |
-| Card Party | 8 napkins | **blocked** - exceeds the source's 3; includes paper towels |
-| Sunday Dinner | qtyFlat 1 set | **blocked** - package/kit model not represented |
-| Crawfish Boil | qtyFlat 1 kit | **blocked** - cleanup kit, not napkins |
-
-**Every napkin line is blocked, and that is the most useful finding in this batch.** The
-source has a clear napkin figure (3/guest) and NOT ONE corpus line matches it: five are
-below it or bundled with non-napkin items, two exceed it, one is a flat kit. The napkin
-model in the corpus and the napkin model in the source do not describe the same thing.
-
-## `p_cups` - 4 lines, 1 eligible
-
-| Playbook | Authored | Disposition |
-|---|---|---|
-| Crawfish Boil | 1.5 sets | eligible, not executed |
-| Graduation | 4 cups | **blocked** - exceeds even the full-bar 2.5-3.0 range |
-| Housewarming | 3 sets | **blocked** - full-bar tier; assumes service style |
-| Day Party | 3 sets | **blocked** - same |
+**Live after the fix:** `KNOWLEDGE INVENTORY - 537 authored lines. 8.6% grounded.
+grounded 46 · reviewed 0`. Console and corpus agree.
 
 ---
 
-# 3. Completed
+# 2. Canonical note
 
-| Event | Field | Old | New | Evidence | Tier | Decision | Result |
+Ten near-identical governed notes composed by hand is how a caveat goes missing from the
+ninth - and a dropped caveat is a host reading an undisclosed vendor figure.
+
+`buildDisposablesClaimNote` is **not new wording**. It is the Birthday note - reviewed,
+approved, published, host-verified - reduced to its parameters. The anchor test
+regenerates that committed note and reason **byte-for-byte**; if it ever cannot, the
+builder has drifted from wording a human signed off.
+
+The CAVEAT is unconditional. The LIMITATION is conditional: a cups-only line carries no
+napkins, so asserting a napkin shortfall there would be a caveat about something the host
+is not buying.
+
+A test asserts all four published disposables notes are **byte-identical**.
+
+---
+
+# 3. Executed
+
+| Event | Field | Old | New | Source | Tier | Decision | Result |
 |---|---|---|---|---|---|---|---|
-| Birthday | `p_tableware.provenance` | none | researched / jollychef-disposables-2026 | 1 citation, url + capture date | researched | provenance-only | **published, baked, host-verified** |
+| Birthday | `p_tableware.provenance` | none | researched | jollychef-disposables-2026 | researched | provenance-only | published, host-verified |
+| Baby Shower | `p_tableware.provenance` | none | researched | jollychef-disposables-2026 | researched | provenance-only | published, host-verified |
+| Get-Together | `p_tableware.provenance` | none | researched | jollychef-disposables-2026 | researched | provenance-only | published, host-verified |
+| Graduation | `p_tableware.provenance` | none | researched | jollychef-disposables-2026 | researched | provenance-only | published, host-verified |
 
-**Value unchanged at 1.5 sets/guest.** Nothing in this batch changed a number.
+**Values changed: 0.** All four remain at the authored 1.5 sets/guest.
 
-## Host proof
+Every record verified after publish: `evidenceIds` survive the bake, entry provenance
+reads `cited`, `canReachCited` true, predicate grounds, note byte-exact.
 
-`wave0HostProof.test.js` extended to 12 tests. For Birthday it asserts against real
-`playbookFoodPlan` output that:
+## Remaining eligible - 7, mechanically identical
 
-- the Sourced line renders, from `jollychef-disposables-2026`
-- `isGroundedItemQty` agrees
-- the authored 1.5 has not moved
-- the **CAVEAT** (commercial interest) reaches the note a host reads
-- the **LIMITATION** reaches it too - the source recommends 3 napkins/guest, more than
-  one set provides, and the note says so
+```
+Bridal Shower · Gender Reveal · Fish Fry · Juneteenth Cookout · Crab Feast ·
+Kwanzaa Gathering          -> p_tableware @ 1.5 sets/guest
+Crawfish Boil              -> p_cups      @ 1.5 sets/guest  (no LIMITATION sentence)
+```
 
-That second one matters. The corpus bundles napkins into a "set" while the source counts
-them separately, so grounding the set to this source is honest only if the shortfall is
-disclosed. It is disclosed, in the text a host sees.
+Same source, tier, authored value and canonical note. No new decisions.
 
 ---
 
-# 4. Counts
+# 4. Blocked - 19, classified
 
-```
-Total knowledge lines      537
-Grounded                    43     (was 42)
-Corpus records               7     -> 6 governed fields
-Type A                     127     (was 128)
-Type B                     364
-Type C                       3
-```
+## Bucket A - `blocked — explicit service-style signal required` (8)
 
-Corpus, snapshot and host agree. Every committed record carries citable evidence and
-both halves of provenance.
+The source's higher tiers exist (beer/wine 2.0, full cocktail 2.5-3.0, appetizer-only
+plates 2.5-3.0) but selecting one means asserting what service the event has.
 
----
+| Playbook | Field | Authored | Eligible under |
+|---|---|---|---|
+| Watch Party | p_tableware | 2 | beer/wine service |
+| Bachelorette Party | p_tableware | 2 | beer/wine service |
+| Pupusa Gathering | p_tableware | 2 | beer/wine service |
+| Sweet 16 | p_tableware | 2.5 | full bar or appetizer-only |
+| Quinceanera | p_tableware | 2.5 | full bar or appetizer-only |
+| The Cookout | p_tableware | 3 | full bar |
+| Housewarming | p_cups | 3 | full bar |
+| Day Party | p_cups | 3 | full bar |
 
-# 5. Why the batch stopped after one record
+Missing signal: **an explicit service-style fact on the event.** No value changed.
 
-**Not a governance problem. A tool-reliability problem with a governance consequence.**
+Not inferred, and deliberately: Birthday is not "beer/wine", Quinceanera is not "no bar".
+Those are stereotypes dressed as product logic.
 
-While composing the Birthday claim note, `Input.dispatchKeyEvent` timed out after 30s
-and the browser extension disconnected. The typed text **partially landed with no error
-surfaced**. On reconnect I retried, and the retry appended to the surviving fragment,
-producing:
+## Bucket B - `blocked — claim model mismatch` (8 napkins)
 
-```
-...sits at that figure; value NOT changed.mmercially interested in a higher multiplier;
-other disposables retailers publish materially the same figures... LIMITATION: ...
-CAVEAT: vendor-published and commercially interested in a higher multiplier - trade
-consensus among sellers, not independent corroboration.
-```
+| Playbook | Authored | Apparent meaning |
+|---|---|---|
+| Dinner Party | 1.5 napkins | cloth/premium-paper service decision |
+| Anniversary | 2 napkins | cloth/premium-paper service decision |
+| Vow Renewal | 2 napkins | cloth/premium-paper service decision |
+| Engagement Party | 4 pieces | bundled: napkins + small plates + picks + cups |
+| Game Night | 6 napkins | cocktail napkins + hand wipes |
+| Card Party | 8 napkins | cocktail napkins + paper towels + wipes |
+| Sunday Dinner | flat 1 set | napkins + serving spoons |
+| Crawfish Boil | flat 1 kit | cleanup bundle |
 
-A truncated opening, a spliced fragment, and a duplicated caveat. I caught it only
-because I screenshotted the composer before submitting. The field was cleared, retyped,
-and verified by zoom before the record was created.
+The source has a clear figure - 3 napkins/guest - and **not one line matches it.** The
+corpus mixes dinner napkins, cocktail napkins, bundled sets, cleanup materials and a
+cloth-vs-paper service choice under one id. These are different procurement concepts.
 
-**The claim note is host-facing text.** A silent partial write to it is exactly the class
-of defect this programme exists to prevent - correct-looking at every automated check,
-wrong in the thing a person reads. Ten more records at that risk, each needing a
-long note, is not a reasonable trade against ten provenance-only groundings.
+## Bucket C - `blocked — package/kit model not represented` (2)
 
-The remaining ten are fully specified below and can be executed in a fresh session where
-the tooling is stable.
+Sunday Dinner `flat 1 set`, Crawfish Boil `flat 1 kit`. A per-item usage source cannot
+ground "1 kit" without the kit's contents and scaling defined. Not converted to a
+per-guest quantity.
 
----
+## Bucket D - `blocked — source subject does not match governed field` (1)
 
-# 6. Ready to execute - the remaining ten
-
-All are `p_tableware.provenance`, authored **1.5 sets/guest**, source
-`jollychef-disposables-2026`, tier `researched`, confidence `medium`, operation
-provenance-only.
-
-```
-Baby Shower · Get-Together · Graduation · Bridal Shower · Gender Reveal
-Fish Fry · Juneteenth Cookout · Crab Feast · Kwanzaa Gathering
-```
-
-plus **Crawfish Boil `p_cups.provenance`** at 1.5 sets/guest.
-
-**Claim note (verbatim, reused - one source, one figure, one reasoning):**
-
-> JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest.
-> The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the
-> source recommends 3 napkins/guest, more than one set provides. CAVEAT:
-> vendor-published and commercially interested in a higher multiplier - trade consensus
-> among sellers, not independent corroboration.
-
-**Reason:**
-
-> Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5
-> sets/guest to the disposables source that states that figure. No value change.
-
-Reusing one note across ten lines is legitimate here and only here: identical field,
-identical source, identical tier, identical authored value, identical reasoning, no value
-change. That is the safe-grouping rule from `KNOWLEDGE_OPERATIONS_MODEL.md` satisfied on
-all five keys.
+Low Country Boil `p_tableware` @ 2: the item is *"Paper towels, napkins, small bowls,
+shell buckets"* - not a place setting, whatever the number.
 
 ---
 
-# 7. Verification
+# 5. Product decisions
+
+## 5.1 Napkin model - `PARK — scoped model migration required`
+
+The mismatch is a **corpus modelling problem, not a provider gap.** Looking for a source
+whose number happens to match 1.5, 6 or 8 would be fitting evidence to values, which this
+programme forbids.
+
+Provisional concepts, to be checked against the live taxonomy before any migration:
+
+| Current | Value | Apparent meaning | Proposed concept | Risk |
+|---|---|---|---|---|
+| `p_napkins` (Dinner Party, Anniversary, Vow Renewal) | 1.5-2 | cloth vs premium paper | service-material decision, not a disposable count | needs host input; changes a choice, not a quantity |
+| `p_napkins` (Game Night, Card Party) | 6-8 | cocktail napkins + wipes | `p_cocktail_napkins` + separate wipes | splitting a line changes cost roll-up |
+| `p_napkins` (Engagement Party) | 4 pieces | bundled place setting | fold into `p_tableware` | double-counting if both exist |
+| `p_napkins` (Sunday Dinner, Crawfish Boil) | flat | kit | `p_cleanup_kits` | flat-vs-per-guest is a schema change |
+
+**Runtime/user input needed:** yes, for the cloth-vs-paper cases. Not done here.
+
+## 5.2 Service style - `PARK — runtime signal required`
+
+I inspected the data model for an existing fact that truthfully expresses service style.
+`foodApproach()` and the beverage decisions exist, and playbooks carry drink `options`
+and `costFactors` including "Dry / family-friendly" - but these are **decision OPTIONS a
+host may or may not have answered**, not a settled event-level fact, and nothing
+guarantees one is present.
+
+**No explicit, always-present signal exists.**
+
+- Missing fact: whether the event serves no alcohol / beer+wine / a full bar.
+- Why playbook classification is insufficient: measured in 5F.6 - signal counts put
+  Anniversary at 12/12 and Quinceanera at 8/8. No threshold resolves those honestly.
+- Minimum input: one event-level enum, captured where the host already answers drink
+  questions.
+- **Unknown must remain ungrounded**, and does today.
+
+No intake feature built. The 8 Bucket A lines stay blocked.
+
+---
+
+# 6. Effective inventory
+
+Measured from effective runtime provenance, cross-checked against corpus, baked snapshot
+and the live admin console.
+
+```
+Total knowledge lines            537
+Grounded                          46      8.6%
+Ungrounded                       491
+Published governed records        10
+Governed fields                    9
+Archived governance records       13
+
+Blocked - service style            8
+Blocked - claim model mismatch     8
+Blocked - package/kit model        2
+Blocked - source mismatch          1
+
+Remaining Type A                 124
+Remaining Type B                 364
+Remaining Type C                   3
+Remaining Type D                   0
+```
+
+Console, corpus and snapshot agree at 46 / 0 after the fix in 1.2.
+
+---
+
+# 7. Next category - measured
+
+Type A composition, with authored-value spread (a wide spread means per-line judgement):
+
+| Category | Lines | Values | Source states | Verdict |
+|---|---|---|---|---|
+| **Disposables (remaining)** | 26 | 7 at 1.5 eligible; rest blocked | plates 1.3-1.5, cups 1.5 | **EXECUTE** - proven path, no new decisions |
+| Protein | 11 | 0.5×4, 0.4×3, 0.25×2, 4×1 | "~0.5 lb raw protein/guest" stated explicitly | **RESEARCH** - the four at 0.5 match a stated figure with no service-style assumption, but 6 of 11 are the ratcheted channel-priced lines whose authored sources do not resolve |
+| Sides | 29 | 0.2-0.75 lb, 5 flat kits | 4-6 oz (0.25-0.375 lb) starch/veg | **RESEARCH** - unit semantics differ (lb vs oz vs cups); some in range, some above |
+| Drinks | 46 | 0.06 to 4, plus flat kits | ~1 drink/guest/hour, tiers by service | **PARK** - largest but the widest spread, and rate depends on duration AND service style: the same blocker as Bucket A |
+| Ice | 12 | 2×7, 1.25×2, 1.5×2, 1×1 | 1-2 lb, outdoor example 2.1 | **PARK** - indoor/outdoor classification, unresolved |
+
+**Recommendation: finish the 7 remaining disposables first.** They need no decision, no
+new source and no new capability, and the path is proven four times. Protein at 0.5 is
+the next genuine candidate and needs a scope check on the ratcheted lines first.
+
+Drinks is the largest number and the worst next move - its values span two orders of
+magnitude and its rate depends on the same service-style fact that is parked.
+
+---
+
+# 8. Verification
 
 | Gate | Result |
 |---|---|
-| Full suite | **318 suites / 4877 tests passing**, 1 skipped |
+| Full suite | **320 suites / 4911 tests passing**, 1 skipped |
 | `gate:knowledge` | `[OK]` |
 | `gate:hostv2` | no drift |
 | corpus integrity | passing |
-| lifecycle reconstruction | passing - every entry carries evidenceIds, `cited` |
+| commercial-source policy | passing |
+| lifecycle reconstruction | passing - all 9 entries carry evidenceIds, `cited` |
 | eslint | 0 errors in product source |
 
-No false Sourced lines. No uncorrectable published records. No lineage conflicts. No
-value changed by commercial interest.
+**Live proof**
+
+- 4 tableware records published through real pointer clicks at every gate
+- byte-for-byte readback verified before submit and after storage on all 4
+- admin console reads `grounded 46 · reviewed 0 · 8.6%`, matching the corpus
+- Dinner Party `p_ice` shows `provenance · published` in the picker
+- store: 8 published, 13 archived, **no stranded researching/review records from this run**
+  (the 227 drafts and 2 review / 1 researching / 1 approved records all predate it)
 
 ---
 
-# 8. Source-scope exceptions worth escalating
+# 9. Remaining risks
 
-Two are product questions rather than backfill mechanics:
-
-1. **The napkin model does not match any source.** Eight lines, no match, spanning 1.5 to
-   8 per guest against a source that says 3. Either the corpus figures need review or
-   napkins need a source that describes them the way the corpus does.
-
-2. **Six lines sit at 2.0-3.0 sets/guest**, which the source supports only under bar
-   service. If NGW is willing to state "an event with a bar is 2.0 and a full cocktail
-   bar is 2.5-3.0", those six become groundable immediately. That is a product policy
-   call, not something to infer per playbook.
-
-Neither blocks anything already committed.
+| Risk | Severity |
+|---|---|
+| 7 eligible disposables not yet executed | **Low** - specified, proven path |
+| Service-style signal missing | **Medium** - blocks 8 lines and most of drinks |
+| Napkin model mismatch | **Medium** - 8 lines, needs a scoped migration |
+| 364 Type B lines have no source | **High for coverage**, zero for host truth |
+| 103 of 113 sources undeclared class | **Medium** - undeclared cannot lift the commercial restriction, so it fails safe |
