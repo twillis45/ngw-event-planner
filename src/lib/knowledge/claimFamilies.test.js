@@ -7,7 +7,7 @@ import { ALL_PLAYBOOKS, getPlaybook, playbookFoodPlan, purchaseProvenance } from
 import { classifyClaim, HOST_LABELS } from './claimBasis';
 import { isGroundedItemQty } from './quantityProvenance';
 import {
-  ICE_FAMILY, ICE_MEMBERS, ICE_RECOVERED_LOGIC, ICE_CHANGE_FACTORS,
+  ICE_FAMILY, ICE_MEMBERS, ICE_RECOVERED_LOGIC, ICE_CHANGE_FACTORS, RECOMMENDATION_STATES,
   CONDITION_EVIDENCE, familyFor, iceRecommendation,
 } from './claimFamilies';
 
@@ -69,7 +69,7 @@ describe('authored values are preserved exactly', () => {
     for (const m of ICE_MEMBERS) {
       const rec = iceRecommendation(m.assetId, 'p_ice', { guestCount: 20 });
       expect(rec.perGuest).toBe(m.value);
-      expect(rec.total).toBe(Math.round(m.value * 20));
+      expect(rec.total).toBe(Math.round(m.value * 20 * 100) / 100);
     }
   });
 
@@ -144,7 +144,7 @@ describe('the recovered logic is recovered, not verified', () => {
     expect(repast.condition).toBeNull();
     const rec = iceRecommendation('Repast', 'p_ice', { guestCount: 10 });
     expect(rec.why).toBeNull();
-    expect(rec.assumption).toMatch(/No conditions were recorded/i);
+    expect(rec.assumption).toMatch(/no conditions were recorded/i);
   });
 });
 
@@ -195,5 +195,144 @@ describe('it agrees with what the host already renders', () => {
         expect(isGroundedItemQty(purchaseProvenance(pb, p))).toBe(true);
       }
     }
+  });
+});
+
+describe('recommendation state derives from EXPLICIT facts only (Part 5)', () => {
+  test('an environment-dependent line with unknown setting asks for confirmation', () => {
+    // Juneteenth is authored for outdoor June heat. Not knowing the setting could
+    // materially change what a host buys, so it is not quietly assumed.
+    const r = iceRecommendation('Juneteenth Cookout', 'p_ice', { guestCount: 20 });
+    expect(r.environmentDependent).toBe(true);
+    expect(r.recommendationState).toBe('confirm-before-committing');
+    expect(r.assumption).toBeTruthy();
+    expect(r.nextAction.route).toEqual({ tab: 'Event Details', focusField: 'event-venue' });
+  });
+
+  test('once the setting IS known the assumption disappears', () => {
+    const r = iceRecommendation('Juneteenth Cookout', 'p_ice', { guestCount: 20, facts: { setting: 'outdoor' } });
+    expect(r.recommendationState).toBe('recommended');
+    expect(r.assumption).toBeNull();
+    expect(r.nextAction).toBeNull();
+    // and the quantity is UNCHANGED — knowing the fact confirms, it does not compute
+    expect(r.perGuest).toBe(2);
+  });
+
+  test('knowing the setting NEVER changes the number, in either direction', () => {
+    // The prohibited use, asserted across the whole family.
+    for (const m of ICE_MEMBERS) {
+      const base = iceRecommendation(m.assetId, 'p_ice', { guestCount: 25 });
+      for (const setting of ['outdoor', 'indoor']) {
+        const withFact = iceRecommendation(m.assetId, 'p_ice', { guestCount: 25, facts: { setting } });
+        expect(withFact.perGuest).toBe(base.perGuest);
+        expect(withFact.total).toBe(base.total);
+      }
+    }
+  });
+
+  test('a line with NO recorded condition asks for confirmation, not an assumption', () => {
+    const r = iceRecommendation('Repast', 'p_ice', { guestCount: 15 });
+    expect(r.recommendationState).toBe('confirm-before-committing');
+    expect(r.why).toBeNull();
+  });
+
+  test('a non-environment line with unknown facts is still USABLE', () => {
+    // The product must lead, not withhold. Bachelorette is authored for a batch
+    // cocktail and a water station -- service, not weather.
+    const r = iceRecommendation('Bachelorette Party', 'p_ice', { guestCount: 12 });
+    expect(r.recommendationState).toBe('recommended-with-assumption');
+    expect(r.perGuest).toBe(1.5);
+    expect(r.total).toBe(18);
+    // No route: the drinks question is answered on this very surface.
+    expect(r.nextAction.route).toBeNull();
+    expect(r.nextAction.why).toMatch(/on this list/i);
+  });
+
+  test('ice NEVER produces needs-professional-confirmation', () => {
+    // Reserved for safety/legal/licensed-service. Overusing it teaches hosts to
+    // ignore it exactly where it matters.
+    for (const m of ICE_MEMBERS) {
+      for (const facts of [null, { setting: 'outdoor' }, { setting: 'indoor' }]) {
+        const r = iceRecommendation(m.assetId, 'p_ice', { guestCount: 10, facts });
+        expect(r.recommendationState).not.toBe('needs-professional-confirmation');
+        expect(Object.keys(RECOMMENDATION_STATES)).toContain(r.recommendationState);
+      }
+    }
+  });
+
+  test('every state has a next action unless it is fully Recommended', () => {
+    for (const m of ICE_MEMBERS) {
+      const r = iceRecommendation(m.assetId, 'p_ice', { guestCount: 10 });
+      if (r.recommendationState === 'recommended') expect(r.nextAction).toBeNull();
+      else {
+        expect(r.nextAction).toBeTruthy();
+        expect(r.nextAction.why).toBeTruthy();
+        // A label is present only when there is somewhere real to go.
+        if (r.nextAction.route) {
+          expect(r.nextAction.label).toBeTruthy();
+          // CTAs name the act -- no "Do this" / "Take me to it"
+          expect(r.nextAction.label).not.toMatch(/do this|handle this|take me/i);
+        } else {
+          expect(r.nextAction.label).toBeNull();
+        }
+      }
+    }
+  });
+});
+
+describe('next-action routes are REAL, resolvable landings (Part 11)', () => {
+  test('every emitted route resolves through the production resolver', () => {
+    // A CTA that routes nowhere is worse than no CTA. Run the real resolver, not a
+    // string comparison -- resolveRoute fall-throughs silently mis-land bare routes.
+    // eslint-disable-next-line global-require
+    const { resolveRoute } = require('../routeResolver');
+    const seen = new Set();
+    for (const m of ICE_MEMBERS) {
+      const r = iceRecommendation(m.assetId, 'p_ice', { guestCount: 10 });
+      if (!r.nextAction) continue;
+      if (!r.nextAction.route) continue;
+      const resolved = resolveRoute(r.nextAction.route);
+      expect(resolved).toBeTruthy();
+      // AND it must land on an actual control. `{tab:'Planning',focusField:'food-plan'}`
+      // resolved to `{kind:'food', focus:null}` -- it reopened the surface the card is
+      // already on and focused nothing. The earlier version of this test asserted the
+      // DESCRIPTOR I wrote rather than what the resolver returns, so it passed while
+      // the button did nothing on screen. Assert the resolver's output.
+      expect(resolved.anchor || resolved.focus).toBeTruthy();
+      seen.add(JSON.stringify(r.nextAction.route));
+    }
+    expect(seen.size).toBeGreaterThanOrEqual(1);
+  });
+
+  test('a CTA is rendered ONLY when it genuinely navigates', () => {
+    // The glyph/CTA rule: an in-place settle earns no navigation affordance.
+    for (const m of ICE_MEMBERS) {
+      const r = iceRecommendation(m.assetId, 'p_ice', { guestCount: 10 });
+      if (!r.nextAction) continue;
+      expect(!!r.nextAction.label).toBe(!!r.nextAction.route);
+    }
+  });
+});
+
+describe('the card cannot contradict the row (found live)', () => {
+  test('the total keeps the row\'s precision — no rounding disagreement', () => {
+    // Live defect: the card printed "17 lb" directly above a size stepper reading
+    // "16.5 lbs". Two surfaces, same number, different answers.
+    const r = iceRecommendation('Birthday', 'p_ice', { guestCount: 11 });
+    expect(r.total).toBe(16.5);
+    // and it is exactly perGuest x guests, never re-derived
+    for (const m of ICE_MEMBERS) {
+      for (const g of [7, 11, 18, 25, 33]) {
+        const rec = iceRecommendation(m.assetId, 'p_ice', { guestCount: g });
+        expect(rec.total).toBeCloseTo(m.value * g, 5);
+      }
+    }
+  });
+
+  test('the state label and assumption read as ONE sentence', () => {
+    const r = iceRecommendation('Birthday', 'p_ice', { guestCount: 11 });
+    const line = `${r.recommendationStateLabel} — ${r.assumption}`;
+    expect(line).toBe('Recommended with assumption — those conditions are unconfirmed for your event.');
+    expect(line).not.toMatch(/—.*—/);        // no double em-dash
   });
 });

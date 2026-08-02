@@ -104,3 +104,41 @@ describe('the label names what the number actually rests on', () => {
     }
   });
 });
+
+// ─── Part 7 — every ice row, individually ────────────────────────────────────
+// Aggregate counts can hide a single silent row. These assert per playbook.
+describe('no silent ice row, checked one at a time', () => {
+  const { ICE_MEMBERS, iceRecommendation } = require('./claimFamilies');
+  const iceRow = (type) => (((playbookFoodPlan(EVENT(type), {}) || {}).list) || [])
+    .find((r) => r && r.id === 'p_ice');
+
+  test.each(ICE_MEMBERS.map((m) => [m.assetId, m.value]))(
+    '%s ice row renders a basis label and its authored value %p',
+    (assetId, value) => {
+      const row = iceRow(assetId);
+      expect(row).toBeTruthy();                       // reaches a host at all
+      const c = classifyClaim(row.provenance);
+      expect(c.hostLabel).toBeTruthy();               // never silent
+      expect(Object.values(HOST_LABELS)).toContain(c.hostLabel);
+      // Directly sourced ONLY where the predicate passes -- no false source claim.
+      if (c.hostLabel === HOST_LABELS.DIRECTLY_SOURCED) {
+        expect(isGroundedItemQty(row.provenance)).toBe(true);
+      } else {
+        expect(isGroundedItemQty(row.provenance)).toBe(false);
+      }
+      // The card and the row cannot disagree about the number or the basis.
+      const rec = iceRecommendation(assetId, 'p_ice', { guestCount: 18, claim: c });
+      expect(rec.perGuest).toBe(value);
+      expect(rec.basisLabel).toBe(c.hostLabel);
+      expect(rec.total).toBeCloseTo(value * 18, 5);
+    },
+  );
+
+  test('the 29 rows span more than one basis label -- not a relabelled silence', () => {
+    const labels = new Set(ICE_MEMBERS.map((m) => classifyClaim(iceRow(m.assetId).provenance).hostLabel));
+    expect(labels.size).toBeGreaterThanOrEqual(3);
+    expect(labels.has(HOST_LABELS.DIRECTLY_SOURCED)).toBe(true);
+    expect(labels.has(HOST_LABELS.PLANNING_BASELINE)).toBe(true);
+    expect(labels.has(HOST_LABELS.PRACTITIONER_GUIDANCE)).toBe(true);
+  });
+});

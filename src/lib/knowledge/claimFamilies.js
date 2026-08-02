@@ -147,6 +147,26 @@ export const ICE_CHANGE_FACTORS = Object.freeze([
   'Whether a venue or caterer already supplies ice',
 ]);
 
+/**
+ * The four host-facing recommendation states.
+ *
+ * `needs-professional-confirmation` is reserved for high-consequence safety, legal,
+ * venue or licensed-service questions. Ice is never one of those, and a test asserts
+ * the ice family cannot produce it — overusing that state would teach hosts to ignore
+ * it exactly where it matters.
+ */
+export const RECOMMENDATION_STATES = Object.freeze({
+  recommended: 'Recommended',
+  'recommended-with-assumption': 'Recommended with assumption',
+  'confirm-before-committing': 'Confirm before committing',
+  'needs-professional-confirmation': 'Needs professional confirmation',
+});
+
+// Which authored conditions are ENVIRONMENT-dependent — i.e. where not knowing the
+// setting could materially change what a host should buy. Derived from the human-read
+// condition table above, not from parsing the playbook note at runtime.
+const ENVIRONMENT_DEPENDENT = /outdoor|heat|hot|melts|all-day|afternoon/i;
+
 const MEMBER_BY_ASSET = new Map(ICE_MEMBERS.map((m) => [m.assetId, m]));
 
 /** The family a given playbook field belongs to, or null. Never guesses from a name. */
@@ -164,15 +184,74 @@ export function familyFor(assetId, purchaseId) {
  * value honestly. It deliberately exposes no adjusted number and no arithmetic:
  * `perGuest` is always the authored figure.
  */
-export function iceRecommendation(assetId, purchaseId, { guestCount = null, claim = null } = {}) {
+export function iceRecommendation(assetId, purchaseId, { guestCount = null, claim = null, facts = null } = {}) {
   const hit = familyFor(assetId, purchaseId);
   if (!hit) return null;
   const { member } = hit;
+
+  // ── Recommendation state, from EXPLICIT facts only ─────────────────────────
+  //
+  // `facts.setting` is 'outdoor' | 'indoor' | null and must come from something the
+  // HOST entered (venue text, notes). It is never derived from the event type: a
+  // playbook called "Juneteenth Cookout" is a naming convention, not evidence that
+  // THIS host's party is outdoors. The asymmetry matters — a venue reading "backyard"
+  // tells us outdoor, but a venue that mentions nothing tells us NOTHING, and must
+  // not be read as indoor.
+  const f = facts || {};
+  const settingKnown = f.setting === 'outdoor' || f.setting === 'indoor';
+  const envDependent = !!member.condition && ENVIRONMENT_DEPENDENT.test(member.condition);
+
+  let state;
+  if (!member.condition) {
+    // Nothing was ever recorded about why this number is what it is.
+    state = 'confirm-before-committing';
+  } else if (envDependent && !settingKnown) {
+    // The authored value hangs on heat or being outdoors, and we do not know either.
+    // Getting this wrong changes what a host should actually buy.
+    state = 'confirm-before-committing';
+  } else if (settingKnown) {
+    state = 'recommended';
+  } else {
+    state = 'recommended-with-assumption';
+  }
+
+  // The single highest-value missing fact, and where to fix it.
+  // Route descriptors use the SAME vocabulary as phaseProgress.js cues, so they land
+  // on the exact control rather than the top of a tab (the row-level CTA rule).
+  const nextAction = state === 'recommended'
+    ? null
+    : (envDependent || !member.condition)
+      ? {
+        label: 'Confirm where it happens',
+        route: { tab: 'Event Details', focusField: 'event-venue' },
+        why: 'Outdoor heat changes how fast ice melts.',
+      }
+      : {
+        // NO ROUTE, deliberately. The beverage question is answered on the food plan
+        // itself — which is where this card already lives. `{tab:'Planning',
+        // focusField:'food-plan'}` resolves to `{kind:'food', focus:null}`: it reopens
+        // the surface the host is already looking at and focuses nothing. Found by
+        // clicking it live; a CTA that appears to navigate and does not is worse than
+        // no CTA, and a landing with no focus breaks the row-level CTA rule.
+        label: null,
+        route: null,
+        why: 'More beverage service means more ice — set the drinks on this list before ordering.',
+      };
+
   return {
+    recommendationState: state,
+    recommendationStateLabel: RECOMMENDATION_STATES[state],
+    settingKnown: settingKnown ? f.setting : null,
+    environmentDependent: envDependent,
+    nextAction,
     familyId: ICE_FAMILY.id,
     unit: ICE_FAMILY.unit,
     perGuest: member.value,                                  // authored, never adjusted
-    total: guestCount > 0 ? Math.round(member.value * guestCount) : null,
+    // The exact product, rounded only enough to kill float noise. Math.round() here
+    // printed "17 lb" directly above a size stepper reading "16.5 lbs" — two surfaces
+    // contradicting each other about the same number, found live-testing. Two decimals
+    // because one still loses the .25 variants (1.25 x 7 = 8.75, not 8.8).
+    total: guestCount > 0 ? Math.round(member.value * guestCount * 100) / 100 : null,
     // The basis label comes from the claim classifier, so this surface can never
     // contradict what the row already renders.
     basisLabel: claim ? claim.hostLabel : null,
@@ -183,9 +262,16 @@ export function iceRecommendation(assetId, purchaseId, { guestCount = null, clai
     why: member.condition
       ? `This playbook is written for ${member.condition}.`
       : null,
-    assumption: member.condition
-      ? 'Assumes those conditions still hold — confirm before ordering.'
-      : 'No conditions were recorded for this line — confirm before ordering.',
+    // The assumption is what we are CARRYING because a fact is unknown. Once the
+    // fact is known it disappears rather than lingering as decoration.
+    // Renders after the state label, so it completes that sentence rather than
+    // restating it: "Recommended with assumption — those conditions are unconfirmed
+    // for your event."
+    assumption: state === 'recommended'
+      ? null
+      : member.condition
+        ? 'those conditions are unconfirmed for your event.'
+        : 'no conditions were recorded for this line.',
     changeFactors: ICE_CHANGE_FACTORS,
     recoveredStatus: ICE_RECOVERED_LOGIC.status,
   };

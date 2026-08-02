@@ -141,6 +141,7 @@ import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
+import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -1008,6 +1009,22 @@ export default function HostShellV2() {
   // venue/city/state/kind question below asks the constitution, never a raw
   // field — the CITY-LEAK gate and the at-home carve-out ride every consumer.
   const vf = useMemo(() => venueFor(event), [event]);
+
+  // ── EXPLICIT event facts for claim recommendations (Phase 5G-C1) ───────────
+  // Facts a HOST actually entered — the venue text and their own notes — never the
+  // event type. A playbook named "Juneteenth Cookout" is a naming convention, not
+  // evidence that THIS party is outdoors, and reading it as one would be exactly the
+  // inference the directive forbids.
+  //
+  // Deliberately ASYMMETRIC: a venue reading "backyard" tells us outdoor; a venue
+  // that mentions nothing tells us NOTHING and must never be recorded as indoor.
+  // Unknown stays unknown, which is what puts the line in "Confirm before committing"
+  // rather than quietly assuming the mild case.
+  const claimFacts = useMemo(() => {
+    let outdoor = false;
+    try { outdoor = isLikelyOutdoor(vf.name, event && event.notes); } catch (_e) { outdoor = false; }
+    return { setting: outdoor ? 'outdoor' : null };
+  }, [vf, event]);
 
   // ── Regional price factor (queue item 3) — the production pipeline:
   // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
@@ -13696,6 +13713,75 @@ export default function HostShellV2() {
                               // (which reshapes it.low/high, hence Value/Premium too) actually
                               // happens instead of a stray commit.
                               <div className="brow" style={{ margin: '2px 0 var(--sp-2)', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
+                                {/* ── WHERE THIS NUMBER CAME FROM (Phase 5G-C1) ────────────
+                                    The canonical-family recommendation card. The ROW above
+                                    already carries the amount and the basis label; repeating
+                                    them here would be the duplicate-summary defect, so this
+                                    explains instead: the per-guest derivation, the condition
+                                    the playbook was actually written for, the assumption we
+                                    are carrying, what would change it, and one CTA to the
+                                    exact control that resolves it.
+
+                                    Currently ice only — familyFor() returns null for every
+                                    other line, by design. A family is joined by a human
+                                    ruling on shared meaning and unit, never by field name.
+
+                                    It NEVER shows an adjusted quantity. `perGuest` is the
+                                    authored figure; knowing the setting confirms the
+                                    recommendation, it does not recompute it. */}
+                                {(() => {
+                                  const rec = iceRecommendation(event.type, it.id, {
+                                    guestCount: foodPlan.guests || 0,
+                                    claim: classifyClaim(it.provenance),
+                                    facts: claimFacts,
+                                  });
+                                  if (!rec) return null;
+                                  const settled = rec.recommendationState === 'recommended';
+                                  return (
+                                    <div style={{ marginBottom: 'var(--sp-2)' }}>
+                                      <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                        {rec.perGuest} {it.unitBase || 'lb'} per guest
+                                        {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
+                                        {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
+                                      </p>
+                                      {rec.why && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>
+                                      )}
+                                      {rec.assumption && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                          {rec.recommendationStateLabel} — {rec.assumption}
+                                        </p>
+                                      )}
+                                      {!settled && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                          What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
+                                        </p>
+                                      )}
+                                      {/* A BUTTON only when there is somewhere real to go.
+                                          When the missing fact is answered on this very
+                                          surface, the ask is a sentence — rendering a CTA
+                                          that reopens the screen you are already on is the
+                                          dead-navigation defect, found by clicking it live. */}
+                                      {rec.nextAction && rec.nextAction.route && (
+                                        <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
+                                          title={rec.nextAction.why}
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            // Real landing or an honest toast — never a dead CTA.
+                                            if (!routeSheet(rec.nextAction.route)) {
+                                              toast('Not wired here yet.');
+                                            }
+                                          }}>
+                                          {rec.nextAction.label}
+                                        </button>
+                                      )}
+                                      {rec.nextAction && !rec.nextAction.route && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {/* COST STRUCTURE, per item — the engine's own knobs:
                                     size it (foodQty re-prices), swap it (alternatives
                                     carry their own real ranges), or skip it. */}
