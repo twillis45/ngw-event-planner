@@ -142,6 +142,38 @@ button{font-family:inherit}
 }
 @media(max-width:1279px), (max-height:699px){ .stagewrap{height:100dvh} }
 
+/* ── RESPONSIVE COMMAND PATH (Phase 5G-C1) ──────────────────────────────────
+   Exactly two surfaces opt out of the fixed phone silhouette at laptop and
+   above: the orientation command surface and the food sheet carrying the ice
+   recommendation. The class is applied from responsiveSurface.js by explicit
+   stage+sheet identity, never inferred from markup.
+
+   WHY OPT OUT OF --fit RATHER THAN SCALE A WIDE LAYOUT: --fit is height-driven
+   (main.jsx: min(1, (innerHeight-52)/852)), so a 1280x800 laptop scales the
+   whole stage to 0.878 — measured. Scaling and reflow solve different problems;
+   applying both gives fuzzy text, wrong hit areas and misleading breakpoints. A
+   two-column composition must be laid out, not shrunk. Short windows scroll.
+
+   TABLET IS DELIBERATELY UNTOUCHED: 640-1279px already renders full-bleed at
+   100% usable width under the 2026-07-22 T1 ruling, and the e2e matrix guards
+   it. It is the precedent these rules follow, not a gap.
+
+   Legacy surfaces (every other sheet and stage) keep the transform unchanged. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-command,
+  .stagewrap--responsive-food{
+    /* Replace the fixed silhouette with real width. transform-origin is reset
+       because the scaled stage anchored top-center. */
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1280px); max-width:1280px;
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  /* The phone bezel is a silhouette affordance — it has no meaning once the
+     surface is a real responsive canvas. */
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app{ border-radius:var(--r-xl); box-shadow:none; height:auto; min-height:60vh }
+}
+
 .content{padding:var(--sp-4) var(--sp-5) calc(170px + env(safe-area-inset-bottom, 0px))}
 
 .appbar{

@@ -26,7 +26,21 @@ test('measure the shell composition at every viewport class', async ({ page }) =
   for (const vp of VIEWPORTS) {
     await page.setViewportSize({ width: vp.width, height: vp.height });
     await page.goto('./');
-    await page.waitForTimeout(700);
+    // WAIT FOR THE SPLASH TO LEAVE, not for a timeout and not for text.
+    // A 700ms wait screenshotted the splash. Waiting on app text then passed while
+    // the splash was STILL COVERING the shell — .splash is an overlay, so the app
+    // had content underneath the whole time. Only the overlay's absence proves the
+    // shell is actually visible.
+    await page.waitForFunction(() => {
+      const sp = document.querySelector('.splash');
+      if (sp) {
+        const cs = getComputedStyle(sp);
+        if (cs.display !== 'none' && cs.visibility !== 'hidden' && parseFloat(cs.opacity) > 0.01) return false;
+      }
+      const app = document.querySelector('.app');
+      return !!app && (app.innerText || '').trim().length > 120;
+    }, null, { timeout: 20_000 });
+    await page.waitForTimeout(400);       // let the reveal settle before measuring
 
     const m = await page.evaluate(() => {
       const stage = document.querySelector('.stagewrap');

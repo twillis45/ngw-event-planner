@@ -143,6 +143,7 @@ import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { orientation as deriveOrientation, segmentsText } from '@app/lib/eventOrientation';
+import { stagewrapClass } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -2369,6 +2370,7 @@ export default function HostShellV2() {
   const orient = useMemo(() => {
     try { return deriveOrientation(phaseCues, queue); } catch (_e) { return null; }
   }, [phaseCues, queue]);
+
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -2646,6 +2648,14 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  // ── RESPONSIVE SURFACE MODE (Phase 5G-C1) ─────────────────────────────────
+  // Exactly two surfaces opt out of the fixed phone stage at >=1280px: the
+  // orientation command surface and the food sheet carrying the ice
+  // recommendation. Derived ONLY from explicit surface identity (stage + sheet
+  // kind) — never from headings, child counts, copy, or whether the ice card
+  // happens to be present. The mapping is pinned in responsiveSurface.test.js so a
+  // sheet cannot start widening silently.
+  const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Row-level landing (audit 2026-07-22): a route resolved to {kind:'space',
   // focus:'parking'|…} opens THAT row's inline note editor — the last leg of the
   // parking/load-in deep links (resolver branch in lib/routeResolver.js).
@@ -5224,7 +5234,7 @@ export default function HostShellV2() {
   // wander into before the one decision this screen asks for.
   if (welcome) {
     return (
-      <div className="stagewrap">
+      <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
         {/* inert while the splash covers the screen: closes the AT-path tap-
             through — a screen reader user could otherwise swipe onto and
             activate welcome/dashboard controls that are invisible to them
@@ -5260,7 +5270,7 @@ export default function HostShellV2() {
   }
 
   return (
-    <div className="stagewrap">
+    <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
