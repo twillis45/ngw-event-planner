@@ -142,6 +142,7 @@ import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled }
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
+import { orientation as deriveOrientation, segmentsText } from '@app/lib/eventOrientation';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -2359,6 +2360,15 @@ export default function HostShellV2() {
         ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
       ]
     : actions;
+
+  // ── WHERE ARE WE? (Phase 5G-C1 Parts 8-9) ─────────────────────────────────
+  // DERIVED, never a second source of truth: lifecycle label, plain-language summary
+  // and per-dimension segments all read the phaseCues ledger above, so this surface
+  // cannot disagree with the hairline it sits beside. `queue` supplies the severe
+  // blocker, which outranks any completion count.
+  const orient = useMemo(() => {
+    try { return deriveOrientation(phaseCues, queue); } catch (_e) { return null; }
+  }, [phaseCues, queue]);
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -6805,8 +6815,39 @@ export default function HostShellV2() {
                 const total = Number(phaseCues.totalCount) || 0;
                 const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
                 return (
-                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')} aria-hidden="true">
-                    <div className="eprog-rule"><span style={{ width: pct + '%' }} /></div>
+                  // PART 9 — the ONE progress visual, now SEGMENTED and readable.
+                  //
+                  // It was a single continuous bar marked aria-hidden, so its own labels
+                  // ("4 of 5 plan parts handled") reached nobody using assistive tech —
+                  // a visual encoding state with no text form. The wrapper now carries
+                  // the segment text via aria-label and stops being hidden.
+                  //
+                  // Segments are CATEGORICAL: each essential is handled or open, never a
+                  // percentage of itself, because the engine knows which of those is true
+                  // and nothing finer. The continuous fill is kept underneath as the
+                  // at-a-glance read; the segments are what carry meaning.
+                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
+                    role="img" aria-label={segmentsText(orient)}>
+                    <div className="eprog-rule" aria-hidden="true"><span style={{ width: pct + '%' }} /></div>
+                    {orient && orient.segments.length > 0 && (
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '3px 0 2px' }}>
+                        {orient.segments.map(s => (
+                          <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
+                            style={{
+                              flex: 1, height: 2, borderRadius: 1,
+                              // Never colour-only: the aria-label above and the title
+                              // attribute both name the state in words.
+                              //
+                              // Open segments were `--line` at 0.5 opacity and read as
+                              // nearly invisible on the dark ground, so the bar looked
+                              // like "2 things" rather than "2 of 5 handled" — the
+                              // denominator disappeared. Found by inspecting the zoom.
+                              background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
+                              opacity: s.handled ? 0.95 : 0.75,
+                            }} />
+                        ))}
+                      </div>
+                    )}
                     <div className="eprog-labels">
                       {/* "settled" was this shell's own word, and it collided (frame 4
                           audit, driven 2026-07-29). The decision flow settles things —
@@ -7189,6 +7230,20 @@ export default function HostShellV2() {
                     else setHandledOpen(o => !o);
                   }}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (queue.length) { setEditor(null); spotlight(String(queue[0].id || 0)); } else setHandledOpen(o => !o); } }}>
+                  {/* ── WHERE ARE WE (Phase 5G-C1 Part 8) ───────────────────────
+                      This tile already carried the counts and the ranked next cue. What
+                      it never said was WHERE IN THE ARC the event sits, or what that
+                      means in words. Both are derived from the same phaseCues ledger the
+                      tile already reads — no second source, so the two cannot disagree.
+
+                      No date stays "Getting started" with no count, and an overdue lead
+                      item outranks a complete-looking tally: 6-of-7 handled with a
+                      payment past its date does not get to read as nearly done. */}
+                  {orient && (
+                    <p className="v-meta" style={{ margin: '0 0 4px' }}>
+                      {orient.lifecycleLabel}{orient.countText ? ` · ${orient.countText}` : ''} — {orient.summary}
+                    </p>
+                  )}
                   <div className="t-label">Where you stand{' '}
                     <span role="button" tabIndex={0} style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', display: 'inline-block' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
