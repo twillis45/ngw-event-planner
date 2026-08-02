@@ -34,7 +34,21 @@ const WAVE0 = [
   { asset: 'Baby Shower', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
   { asset: 'Get-Together', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
   { asset: 'Graduation', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Bridal Shower', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Gender Reveal', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Fish Fry', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Juneteenth Cookout', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Crab Feast', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
+  { asset: 'Kwanzaa Gathering', id: 'p_tableware', source: 'jollychef-disposables-2026', authored: 1.5 },
 ];
+
+// EXCLUDED, and this is a finding rather than an omission. `Crawfish Boil p_cups` is
+// authored `essential: false`, so it never enters `playbookFoodPlan` output — no host
+// sees the line at all. It was created, reviewed and published before that was noticed;
+// the scope check verified the VALUE (1.5) and the SOURCE but not that the line reaches
+// a host. Grounding a line nobody sees publishes an authoritative value that changes
+// nothing, which is exactly what `no-runtime-consumer` exists to stop.
+// Removed from the corpus, retired in the store, reclassified as blocked.
 
 describe('Wave 0 reaches the host', () => {
   test.each(WAVE0)('$asset $id renders a Sourced line from $source', ({ asset, id, source }) => {
@@ -67,13 +81,33 @@ describe('Wave 0 reaches the host', () => {
     expect(rowFor('Birthday', 'p_tableware').provenance.note).toMatch(/CAVEAT/);
   });
 
-  test('every disposables record carries the IDENTICAL canonical note', () => {
+  test('every BUNDLED-SET record carries the IDENTICAL canonical note', () => {
     // The reason a builder exists: ten near-identical notes composed by hand is how a
     // caveat goes missing from the ninth. Byte-identical or the batch is not safe.
-    const notes = WAVE0.filter((w) => w.source === 'jollychef-disposables-2026')
+    const notes = WAVE0.filter((w) => w.source === 'jollychef-disposables-2026' && w.id === 'p_tableware')
       .map((w) => rowFor(w.asset, w.id).provenance.note);
-    expect(notes.length).toBeGreaterThan(1);
+    expect(notes.length).toBe(10);
     expect(new Set(notes).size).toBe(1);
+  });
+
+  test('a line the host never sees is NOT governed', () => {
+    // `Crawfish Boil p_cups` is `essential: false` and does not appear in food-plan
+    // output. It was published and then removed once that surfaced. Grounding it would
+    // have put an authoritative value behind a line no host reads.
+    const pb = getPlaybook('Crawfish Boil');
+    const authored = (pb.purchases || []).find((p) => p.id === 'p_cups');
+    expect(authored).toBeTruthy();
+    expect(authored.essential).toBe(false);
+    expect(rowFor('Crawfish Boil', 'p_cups')).toBeNull();
+    expect(corpus.some((k) => k.assetId === 'Crawfish Boil' && k.fieldPath === 'p_cups.provenance')).toBe(false);
+  });
+
+  test('EVERY governed line reaches a host — no invisible grounding', () => {
+    // The general property the above is one instance of.
+    for (const e of (snapshot.entries || [])) {
+      const pid = String(e.fieldPath).split('.')[0];
+      expect(rowFor(e.assetId, pid)).toBeTruthy();
+    }
   });
 
   test('the disposables LIMITATION is disclosed, not hidden', () => {

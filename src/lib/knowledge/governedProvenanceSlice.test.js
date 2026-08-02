@@ -90,11 +90,11 @@ describe('the runtime reader', () => {
 
   test('every OTHER purchase is untouched — authored fallback preserved', () => {
     // GOVERNED fields are excluded because governance is supposed to override the
-    // authored value — that is the whole point. `p_ice` joined `p_crabs` in Wave 0
+    // authored value — that is the whole point. `p_ice` joined `p_crabs` in Wave 0, and `p_tableware` in Batch 2
     // (5F.11), grounded to reddy-ice-2026 with the authored 2 lb/guest unchanged.
     // The assertion that matters is that everything NOT governed still falls through
     // to what the playbook authored.
-    const GOVERNED = new Set(['p_crabs', 'p_ice']);
+    const GOVERNED = new Set(['p_crabs', 'p_ice', 'p_tableware']);
     for (const p of pb().purchases) {
       if (GOVERNED.has(p.id)) continue;
       expect(purchaseProvenance(pb(), p)).toEqual(p.provenance);
