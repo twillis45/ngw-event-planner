@@ -6,7 +6,7 @@
 import { ALL_PLAYBOOKS } from '../playbooks/index';
 import snapshot from './publishedKnowledge.json';
 import {
-  knowledgeInventory, lineState, groundedShare, inventoryTree, INVENTORY_STATES,
+  knowledgeInventory, lineState, directlyCitedShare, inventoryTree, INVENTORY_STATES,
 } from './knowledgeInventory';
 
 const pb = (type, purchases) => ({ type, purchases });
@@ -35,7 +35,7 @@ describe('the denominator is every authored line, always', () => {
     const withEv = knowledgeInventory(ALL_PLAYBOOKS, snapshot.entries || []);
     const without = knowledgeInventory(ALL_PLAYBOOKS, []);
     expect(without.total).toBe(withEv.total);
-    expect(without.counts.grounded).toBeLessThanOrEqual(withEv.counts.grounded);
+    expect(without.counts['directly-cited']).toBeLessThanOrEqual(withEv.counts['directly-cited']);
   });
 
   test('every line lands in exactly one DECLARED state', () => {
@@ -57,7 +57,7 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
   const keys = new Set();
 
   test('grounded requires the same predicate the host renders on', () => {
-    expect(lineState('A', line('p_x', { provenance: prov('researched', ['reddy-ice-2026']) }), keys)).toBe('grounded');
+    expect(lineState('A', line('p_x', { provenance: prov('researched', ['reddy-ice-2026']) }), keys)).toBe('directly-cited');
     // researched tier but an UNREGISTERED source does not ground
     expect(lineState('A', line('p_x', { provenance: prov('researched', ['made-up-2026']) }), keys)).toBe('ambiguous');
   });
@@ -93,7 +93,7 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
     const published = new Set(['A p_ice.provenance']);
     const authoredUngrounded = line('p_ice');                       // no provenance at all
     const governed = prov('researched', ['reddy-ice-2026']);
-    expect(lineState('A', authoredUngrounded, published, governed)).toBe('grounded');
+    expect(lineState('A', authoredUngrounded, published, governed)).toBe('directly-cited');
     // and without the governed overlay it is only "reviewed"
     expect(lineState('A', authoredUngrounded, published)).toBe('reviewed');
   });
@@ -110,8 +110,8 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
     const full = [{ assetId: 'A', fieldPath: 'p_ice.provenance', value: prov('researched', ['reddy-ice-2026']) }];
     const stripped = full.map((e) => ({ assetId: e.assetId, fieldPath: e.fieldPath }));
 
-    expect(knowledgeInventory(pbs, full).counts.grounded).toBe(1);
-    expect(knowledgeInventory(pbs, stripped).counts.grounded).toBe(0);
+    expect(knowledgeInventory(pbs, full).counts['directly-cited']).toBe(1);
+    expect(knowledgeInventory(pbs, stripped).counts['directly-cited']).toBe(0);
     expect(knowledgeInventory(pbs, stripped).counts.reviewed).toBe(1);
   });
 
@@ -126,7 +126,7 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
     expect(lineState('A', line('p_x'), published)).toBe('reviewed');
     // and grounding still wins over reviewed
     expect(lineState('A', line('p_x', { provenance: prov('researched', ['reddy-ice-2026']) }), published))
-      .toBe('grounded');
+      .toBe('directly-cited');
   });
 
   test('REVIEWED does not leak across purchases with a shared id prefix', () => {
@@ -145,7 +145,7 @@ describe('against the REAL corpus', () => {
   });
 
   test('the grounded share is reported honestly against the FULL denominator', () => {
-    const share = groundedShare(inv);
+    const share = directlyCitedShare(inv);
     expect(share).toBeGreaterThan(0);
     // If this ever reads like a healthy number, check the denominator before celebrating.
     expect(share).toBeLessThan(50);
@@ -186,6 +186,6 @@ describe('it does not repeat the old miscounts', () => {
   test('an empty corpus reports zero rather than dividing by zero', () => {
     const inv = knowledgeInventory([], []);
     expect(inv.total).toBe(0);
-    expect(groundedShare(inv)).toBe(0);
+    expect(directlyCitedShare(inv)).toBe(0);
   });
 });

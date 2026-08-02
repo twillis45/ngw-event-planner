@@ -140,6 +140,7 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
+import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -13534,20 +13535,37 @@ export default function HostShellV2() {
                                     ].filter(Boolean).join(' · ')}
                                   </span>
                                 )}
-                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10). Until now a
-                                    published KCR moved Admin's Runtime Preview and nothing a
-                                    host ever saw — the bake, snapshot, resolver and lineage
-                                    all worked, but no surface read them. This is the last
-                                    seam: when a quantity is sourced (isGroundedItemQty over
-                                    the GOVERNED provenance), say so and name the source.
-                                    Muted, one line, no accent — informational, not
-                                    interactive (UX_02 restraint). Silent when the field is
-                                    authored, which is still most of the corpus. */}
-                                {it.qtyGrounded && it.provenance && it.provenance.note && (
-                                  <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
-                                    Sourced — {it.provenance.note}
-                                  </span>
-                                )}
+                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10; rewritten 5G-B).
+                                    5C.10 rendered "Sourced — …" on the 52 lines that pass
+                                    isGroundedItemQty and NOTHING on the other 485. The Phase A
+                                    audit found that silence was the largest honesty defect in
+                                    the product: it reads as "we have no view", when most of
+                                    those lines rest on board judgment, trade practice or
+                                    cultural knowledge that authors had already recorded and
+                                    the grounding predicate could not see.
+
+                                    classifyClaim() is presentation only — the same contract
+                                    confidenceGrammar works under. It computes no quantity and
+                                    moves no threshold; it reads the GOVERNED provenance the
+                                    row already carries and names what it rests on, in one of
+                                    six truthful labels. `Directly sourced` still means exactly
+                                    what `Sourced —` meant, on exactly the same 52 lines.
+                                    Muted, one line, no accent (UX_02 restraint). */}
+                                {(() => {
+                                  const claim = classifyClaim(it.provenance);
+                                  if (!claim.hostLabel) return null;
+                                  // The detail is whatever the author actually wrote. Never
+                                  // synthesised — a label with no recorded reasoning stands
+                                  // alone rather than inventing one.
+                                  const detail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
+                                    ? it.provenance.note
+                                    : claim.rationale;
+                                  return (
+                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                      {claim.hostLabel}{detail ? ` — ${detail}` : ''}
+                                    </span>
+                                  );
+                                })()}
                               </span>
                               {/* Frictionless price entry: the amount itself is the
                                   input, not a link to a panel two taps away. Tap the

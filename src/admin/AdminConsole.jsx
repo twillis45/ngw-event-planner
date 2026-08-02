@@ -32,7 +32,7 @@ import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/k
 import { approvedSourcesFor, validateSourcesFor, wouldGround, evidenceFromSources, provenanceMirror } from '../lib/knowledge/sourceAuthority';
 import { detectDivergence, divergenceSummary, firstGovernanceGuard } from '../lib/knowledge/governanceDivergence';
 import { reconciliationCandidates, reconciliationSummary } from '../lib/knowledge/governanceReconciliation';
-import { knowledgeInventory, groundedShare, INVENTORY_STATES } from '../lib/knowledge/knowledgeInventory';
+import { knowledgeInventory, directlyCitedShare, INVENTORY_STATES } from '../lib/knowledge/knowledgeInventory';
 import { backfillClassification, classificationSummary } from '../lib/knowledge/backfillClassification';
 import { sourceFreshness, freshnessSummary, needsRecheck } from '../lib/knowledge/sourceFreshness';
 // The COMMITTED corpus — what a clean checkout ships. Distinct from both the admin store
@@ -3334,7 +3334,8 @@ function KcrStudioPanel() {
           <div style={{ border: `1px solid ${D.border}`, borderRadius: 6, padding: '10px 12px',
             marginBottom: 12, fontFamily: D.mono, fontSize: 10, color: D.muted, lineHeight: 1.7 }}>
             <div style={{ color: D.text, marginBottom: 4 }}>
-              KNOWLEDGE INVENTORY — {inv.total} authored lines. {groundedShare(inv)}% grounded.
+              KNOWLEDGE INVENTORY — {inv.total} authored lines. {directlyCitedShare(inv)}% directly cited to a registered source
+              (NOT the share with an intellectual basis — see the basis distribution below).
             </div>
             <div>
               {INVENTORY_STATES.map((s) => `${s} ${inv.counts[s]}`).join('  ·  ')}

@@ -177,7 +177,11 @@ export function backfillClassification(playbooks = [], publishedEntries = []) {
     for (const p of (pb.purchases || [])) {
       if (!p || !p.id) continue;
       const state = stateById.get(`${pb.type} ${p.id}`);
-      if (state === 'grounded' || state === 'reviewed') continue;   // already done
+      // 'directly-cited' was called 'grounded' until Phase 5G-B. The stale literal
+      // silently re-opened all 52 settled lines as backlog and reported it as a bigger
+      // backlog rather than as an error. Caught by the needsWork/inventory
+      // reconciliation test, which exists for exactly this class of drift.
+      if (state === 'directly-cited' || state === 'reviewed') continue;   // already done
       const c = classifyLine(pb.type, p, state);
       rows.push({ assetId: pb.type, id: p.id, item: p.item, category: p.category || 'other', state, ...c });
     }

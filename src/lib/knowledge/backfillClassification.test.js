@@ -88,8 +88,12 @@ describe('it reconciles with the inventory rather than floating free', () => {
     expect(cls.total).toBe(inv.total);
   });
 
-  test('needsWork = total minus what is already grounded or reviewed', () => {
-    expect(cls.needsWork).toBe(inv.total - inv.counts.grounded - inv.counts.reviewed);
+  test('needsWork = total minus what is already cited or reviewed', () => {
+    // This reconciliation is the guard that caught the Phase 5G-B rename drift: the
+    // classifier still tested for the literal 'grounded', so all 52 settled lines
+    // silently re-entered the backlog and were reported as a bigger backlog, not an
+    // error. Keep it reconciling against the inventory, never against a fixed number.
+    expect(cls.needsWork).toBe(inv.total - inv.counts['directly-cited'] - inv.counts.reviewed);
   });
 
   test('the four types partition needsWork with nothing left over', () => {

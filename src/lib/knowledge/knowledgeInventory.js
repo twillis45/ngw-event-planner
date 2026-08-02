@@ -36,7 +36,12 @@ import { fieldOwnership } from './governedOwnership';
  * most to least known.
  */
 export const INVENTORY_STATES = Object.freeze([
-  'grounded',          // the runtime predicate passes — a host sees a "Sourced —" line
+  // RENAMED in Phase 5G-B, from 'grounded'. That word silently excluded established
+  // consensus, cultural tradition and primary evidence — 45 lines whose basis the
+  // predicate cannot see — and so a reader took `52/537` for "the share with any
+  // intellectual basis". It is not: it is the share DIRECTLY CITED to a registered
+  // source. For what a line actually rests on, use `classifyClaim` in claimBasis.js.
+  'directly-cited',    // the runtime predicate passes — a host sees a "Sourced —" line
   'reviewed',          // governance published something here, but it does not ground
   'ambiguous',         // lists sources and does NOT ground — looks sourced, is not
   'needs-source',      // provenance exists, declares a tier, cites nothing
@@ -63,8 +68,9 @@ export function lineState(assetId, purchase, publishedKeys, governedProvenance =
   const sources = (prov && typeof prov === 'object' && Array.isArray(prov.sources))
     ? prov.sources.filter(Boolean) : [];
 
-  // 1. GROUNDED — the host-facing predicate, not a separate notion of "researched".
-  if (isGroundedItemQty(prov)) return 'grounded';
+  // 1. DIRECTLY CITED — the host-facing predicate, not a separate notion of
+  //    "researched", and NOT a claim about whether the line has an intellectual basis.
+  if (isGroundedItemQty(prov)) return 'directly-cited';
 
   // 2. REVIEWED — governance has published something on this line. It went through the
   //    chain; it just does not ground (a value correction with no provenance, say).
@@ -147,10 +153,16 @@ export function knowledgeInventory(playbooks = [], publishedEntries = []) {
   return { total, counts, byPlaybook, orphanedPublished, rows };
 }
 
-/** What share of the corpus a host actually sees a source for. One honest number. */
-export function groundedShare(inv) {
+/**
+ * What share of the corpus is DIRECTLY CITED to a registered source.
+ *
+ * This is NOT "the share with any intellectual basis" and must never be presented as
+ * such — see claimBasis.js `basisDistribution` for that. Renamed from `groundedShare`
+ * in Phase 5G-B for exactly this reason.
+ */
+export function directlyCitedShare(inv) {
   if (!inv || !inv.total) return 0;
-  return Math.round((inv.counts.grounded / inv.total) * 1000) / 10;
+  return Math.round((inv.counts['directly-cited'] / inv.total) * 1000) / 10;
 }
 
 /**
