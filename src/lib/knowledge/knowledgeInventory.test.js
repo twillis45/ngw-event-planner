@@ -84,6 +84,26 @@ describe('states are derived from the HOST predicate, not a parallel notion', ()
     expect(lineState('A', bare, keys)).toBe('unsupported');
   });
 
+  test('EFFECTIVE provenance wins over authored — a governed line counts as grounded', () => {
+    // Phase 5F.11. This read the AUTHORED provenance while a host reads the governed
+    // value overlaid on top. Measured after Wave 0 committed three grounded ice
+    // records: `grounded` stayed at 38 and `reviewed` went 1 -> 4, so the three lines
+    // governance had just fixed were reported as "does not ground". The inventory was
+    // reporting something other than what the runtime serves.
+    const published = new Set(['A p_ice.provenance']);
+    const authoredUngrounded = line('p_ice');                       // no provenance at all
+    const governed = prov('researched', ['reddy-ice-2026']);
+    expect(lineState('A', authoredUngrounded, published, governed)).toBe('grounded');
+    // and without the governed overlay it is only "reviewed"
+    expect(lineState('A', authoredUngrounded, published)).toBe('reviewed');
+  });
+
+  test('a governed provenance that does NOT ground still reads reviewed', () => {
+    const published = new Set(['A p_ice.provenance']);
+    const weak = prov('trade-heuristic', ['reddy-ice-2026']);
+    expect(lineState('A', line('p_ice'), published, weak)).toBe('reviewed');
+  });
+
   test('REVIEWED means governance published on this line without grounding it', () => {
     const published = new Set(['A p_x.qtyPerGuest']);
     expect(lineState('A', line('p_x'), published)).toBe('reviewed');

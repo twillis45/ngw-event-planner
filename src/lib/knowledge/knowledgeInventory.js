@@ -48,8 +48,18 @@ export const INVENTORY_STATES = Object.freeze([
 const keyOf = (assetId, fieldPath) => `${assetId} ${fieldPath}`;
 
 /** Which state does ONE authored purchase line occupy? */
-export function lineState(assetId, purchase, publishedKeys) {
-  const prov = purchase.provenance;
+export function lineState(assetId, purchase, publishedKeys, governedProvenance = null) {
+  // THE EFFECTIVE PROVENANCE, not the authored one (Phase 5F.11).
+  //
+  // This read `purchase.provenance` — what the playbook file says — while a HOST reads
+  // the governed value overlaid on top. Measured after Wave 0 committed three grounded
+  // ice records: `grounded` stayed at 38 and `reviewed` went 1 -> 4, so the three lines
+  // governance had just fixed were counted as "published here, does not ground".
+  //
+  // The inventory was doing the thing this whole programme exists to prevent: reporting
+  // something other than what the runtime serves. `reviewed` is a real state — a value
+  // correction with no provenance — but it must not absorb lines that DO ground.
+  const prov = governedProvenance || purchase.provenance;
   const sources = (prov && typeof prov === 'object' && Array.isArray(prov.sources))
     ? prov.sources.filter(Boolean) : [];
 
@@ -96,6 +106,12 @@ export function lineState(assetId, purchase, publishedKeys) {
 export function knowledgeInventory(playbooks = [], publishedEntries = []) {
   const publishedKeys = new Set((publishedEntries || [])
     .filter((e) => e && e.assetId && e.fieldPath).map((e) => keyOf(e.assetId, e.fieldPath)));
+  // The governed provenance a host would actually read, keyed by asset+purchase.
+  const governedProv = new Map();
+  for (const e of (publishedEntries || [])) {
+    if (!e || !e.assetId || !/\.provenance$/.test(String(e.fieldPath || ''))) continue;
+    governedProv.set(keyOf(e.assetId, String(e.fieldPath).split('.')[0]), e.value);
+  }
 
   const counts = Object.fromEntries(INVENTORY_STATES.map((s) => [s, 0]));
   const byPlaybook = [];
@@ -108,7 +124,7 @@ export function knowledgeInventory(playbooks = [], publishedEntries = []) {
     let lines = 0;
     for (const p of (pb.purchases || [])) {
       if (!p || !p.id) continue;
-      const state = lineState(pb.type, p, publishedKeys);
+      const state = lineState(pb.type, p, publishedKeys, governedProv.get(keyOf(pb.type, p.id)));
       counts[state] += 1; local[state] += 1; lines += 1;
       seenLines.add(keyOf(pb.type, p.id));
       rows.push({ assetId: pb.type, id: p.id, item: p.item, category: p.category || 'other', state });
