@@ -2,7 +2,9 @@
 //
 // Both scenarios below are REAL — they happened in this session and nothing reported
 // either one. The tests reconstruct them exactly.
-import { detectDivergence, divergenceSummary, DIVERGENCE_KINDS } from './governanceDivergence';
+import {
+  detectDivergence, divergenceSummary, DIVERGENCE_KINDS, firstGovernanceGuard,
+} from './governanceDivergence';
 
 const kcr = (assetId, fieldPath, version, value, rollbackTo = null) => ({
   id: `k-${assetId}-${version}`, status: 'published', assetId, fieldPath,
@@ -112,5 +114,72 @@ describe('it detects and does not repair', () => {
   test('the summary reports and disclaims', () => {
     const s = [kcr('A', 'p_x.provenance', 'v1', 1)];
     expect(divergenceSummary(detectDivergence(s, []))).toMatch(/nothing is reconciled automatically/);
+  });
+});
+
+// ─── THE BLOCKING GUARD (Phase 5F.5) ─────────────────────────────────────────
+describe('firstGovernanceGuard — refuses to CREATE the divergence', () => {
+  const inFlight = (assetId, fieldPath, status) => ({
+    id: `k-${status}`, status, assetId, fieldPath, proposal: {}, evidence: [], review: {}, audit: [],
+  });
+
+  test('an unrelated, ungoverned field is allowed', () => {
+    const g = firstGovernanceGuard('Fish Fry', 'p_ice.provenance', [], []);
+    expect(g.ok).toBe(true);
+    expect(g.blocked).toBe(false);
+  });
+
+  test('THE MEASURED DEFECT — store published, snapshot empty, is BLOCKED', () => {
+    // This is exactly the state that produced the duplicate: the snapshot (which is all
+    // `doCorrect` consulted) says ungoverned, and the store says published.
+    const store = [kcr('Crab Feast', 'p_ice.provenance', 'v1', { tier: 'researched' })];
+    const g = firstGovernanceGuard('Crab Feast', 'p_ice.provenance', store, []);
+    expect(g.ok).toBe(false);
+    expect(g.kind).toBe('already-published-in-store');
+    expect(g.ids).toEqual(['k-Crab Feast-v1']);
+    expect(g.reason).toMatch(/second lineage with no parent/);
+    expect(g.reason).toMatch(/Correct the existing record instead/);
+  });
+
+  test('a change already in review is BLOCKED — the same collision, one step earlier', () => {
+    for (const status of ['draft', 'researching', 'grounded', 'review', 'approved']) {
+      const g = firstGovernanceGuard('A', 'p_x.provenance', [inFlight('A', 'p_x.provenance', status)], []);
+      expect(g.ok).toBe(false);
+      expect(g.kind).toBe('change-already-in-flight');
+      expect(g.reason).toContain(status);
+    }
+  });
+
+  test('a field already SERVING from the snapshot is BLOCKED even with an empty store', () => {
+    const g = firstGovernanceGuard('A', 'p_x.provenance', [], [entry('A', 'p_x.provenance', 1, 'v1')]);
+    expect(g.ok).toBe(false);
+    expect(g.kind).toBe('already-serving');
+    expect(g.reason).toMatch(/a correction, not a first governance/);
+  });
+
+  test('CLOSED records do not block — a rejected attempt must not wedge the field forever', () => {
+    for (const status of ['rejected', 'abandoned', 'archived', 'deprecated']) {
+      const g = firstGovernanceGuard('A', 'p_x.provenance', [inFlight('A', 'p_x.provenance', status)], []);
+      expect(g.ok).toBe(true);
+    }
+  });
+
+  test('it is scoped to ONE field — a sibling field on the same asset does not block', () => {
+    const store = [kcr('Crab Feast', 'p_ice.provenance', 'v1', 1)];
+    expect(firstGovernanceGuard('Crab Feast', 'p_oldbay.provenance', store, []).ok).toBe(true);
+    expect(firstGovernanceGuard('Fish Fry', 'p_ice.provenance', store, []).ok).toBe(true);
+  });
+
+  test('it blocks and explains, but never repairs or instructs a deletion', () => {
+    const store = [kcr('A', 'p_x.provenance', 'v1', 1)];
+    const g = firstGovernanceGuard('A', 'p_x.provenance', store, []);
+    // Same rule the detector follows: name what exists, never order a destructive fix.
+    expect(g.reason).not.toMatch(/\b(delete|remove|discard)\b/i);
+    expect(Array.isArray(g.ids)).toBe(true);
+  });
+
+  test('missing arguments do not throw or block — the guard is not a validator', () => {
+    expect(firstGovernanceGuard(null, null, [], []).ok).toBe(true);
+    expect(firstGovernanceGuard('A', 'p_x.provenance', null, null).ok).toBe(true);
   });
 });
