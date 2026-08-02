@@ -24,6 +24,7 @@ import { validateGovernedValue } from './governedFieldTypes';
 // by something else, which is worse than leaving it alone.
 import { fieldOwnership, blockedMessage } from './governedOwnership';
 import { groundingHonesty } from './sourceAuthority';
+import { commercialSourceCheck } from './commercialSourcePolicy';
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 export const KCR_TYPES = [
@@ -321,6 +322,14 @@ export function publishKCR(kcr, { prevVersion = null, versionId, by = 'publisher
     // TIERS ARE NEVER AUTO-UPGRADED. The gate refuses and explains; a human chooses.
     const gs = groundingHonesty(kcr.fieldPath, kcr.proposal.newValue);
     if (!gs.ok) throw new Error(`KCR: ${gs.error}`);
+
+    // COMMERCIAL PRACTITIONER POLICY (Phase 5F.9). A source that sells the thing it
+    // measures is admissible — it is often the only published figure — but it cannot
+    // carry a claim stronger than its standing. Enforced HERE, beside the grounding
+    // gate, because both answer the same question: is this record making a claim it can
+    // keep? Refuses and explains; never rewrites the claim.
+    const cs = commercialSourceCheck(kcr.proposal.newValue);
+    if (!cs.ok) throw new Error(`KCR: ${cs.violations.map((v) => v.detail).join(' ')}`);
   }
   // Complete the grading now that the evidence check has passed.
   const finalProv = derivedProvenance(kcr, prov);

@@ -29,8 +29,15 @@ import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correct
 import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
 import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
 import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
-import { approvedSourcesFor, validateSourcesFor, wouldGround } from '../lib/knowledge/sourceAuthority';
-import { detectDivergence, divergenceSummary } from '../lib/knowledge/governanceDivergence';
+import { approvedSourcesFor, validateSourcesFor, wouldGround, evidenceFromSources } from '../lib/knowledge/sourceAuthority';
+import { detectDivergence, divergenceSummary, firstGovernanceGuard } from '../lib/knowledge/governanceDivergence';
+import { reconciliationCandidates, reconciliationSummary } from '../lib/knowledge/governanceReconciliation';
+import { knowledgeInventory, groundedShare, INVENTORY_STATES } from '../lib/knowledge/knowledgeInventory';
+import { backfillClassification, classificationSummary } from '../lib/knowledge/backfillClassification';
+import { sourceFreshness, freshnessSummary, needsRecheck } from '../lib/knowledge/sourceFreshness';
+// The COMMITTED corpus — what a clean checkout ships. Distinct from both the admin store
+// and the baked snapshot; reconciliation needs all three to tell them apart.
+import publishedCorpus from '../lib/knowledge/publishedKcrs.json';
 import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
@@ -2107,6 +2114,7 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
   const [prop, setProp] = useState('');
   const [note, setNote] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [retireReason, setRetireReason] = useState('');   // 5F.8 — a retirement states its reason
   const gate = kcrGateStatus(kcr);
 
   const run = async (mutator, label) => {
@@ -2204,7 +2212,33 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
       )}
 
       {s === 'published' && <B label="Move to monitoring" cap="view" on={() => run((k) => advanceKCR(k, 'monitoring', { by: role, asOf }), 'Monitoring')} />}
-      {(s === 'monitoring' || s === 'revision') && <B label={s === 'monitoring' ? 'Open a revision' : 'Re-research'} cap="request-review" on={() => run((k) => advanceKCR(k, s === 'monitoring' ? 'revision' : 'researching', { by: role, asOf }), 'Advanced')} />}
+      {/* RETIREMENT WAS UNREACHABLE (Phase 5F.8). The console could publish a record and
+          then never retire it: `published` legally advances only to `monitoring` or
+          `revision`, and neither state offered an archive control. So seven browser-only
+          records could be neither promoted nor withdrawn through the UI.
+          `KCR_TRANSITIONS` already permits `monitoring -> archived` and
+          `revision -> archived`; this surfaces the transition that existed, and adds no
+          new path — `published -> archived` stays illegal, as it should.
+          NOTE: two records archived in 5F.4 carry a DIRECT published -> archived audit
+          entry, which this table forbids. They were written outside `advanceKCR`. */}
+      {(s === 'monitoring' || s === 'revision') && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <B label={s === 'monitoring' ? 'Open a revision' : 'Re-research'} cap="request-review" on={() => run((k) => advanceKCR(k, s === 'monitoring' ? 'revision' : 'researching', { by: role, asOf }), 'Advanced')} />
+          <B label="Archive" cap="reject"
+            on={() => {
+              // A retirement states its reason, like every other governance decision.
+              const why = (retireReason || '').trim();
+              if (!why) { return; }
+              return run((k) => advanceKCR(k, 'archived', { by: role, note: why, asOf }), 'Archived');
+            }} />
+        </div>
+      )}
+      {(s === 'monitoring' || s === 'revision') && (
+        <input value={retireReason} onChange={(e) => setRetireReason(e.target.value)}
+          placeholder="why is this being retired? (required)"
+          style={{ marginTop: 6, width: '100%', fontSize: 10, fontFamily: D.mono, background: D.surface,
+            color: D.text, border: `1px solid ${retireReason.trim() ? D.border : D.warn}`, borderRadius: 5, padding: '4px 8px' }} />
+      )}
 
       {note && <div style={{ marginTop: 8, fontSize: type.size.caption, color: note.startsWith('Blocked') || note.startsWith('⚠') ? D.warn : D.good }}>{note}</div>}
       {!kcrCan(role, 'publish') && s === 'approved' && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Only a governance/publisher role can publish.</div>}
@@ -3195,13 +3229,29 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Review') {
-      const reviewKcrs = kcrs.filter((k) => k.status === 'review' || k.status === 'grounded')
+      // ORPHAN STATES (Phase 5F.9). `researching` and `draft` were listed by NO
+      // workspace: KcrTable renders in Review (review/grounded), Publishing (approved),
+      // Validation (published) and Retirement (archived). So "Send back" — the reject
+      // action on any review row — moved a record into a status the console could not
+      // display, and it could never be recovered through the UI.
+      //
+      // Found by doing it: a mis-click sent a real record to `researching`, after which
+      // no workspace showed it. A lifecycle you can enter and not leave is not a
+      // lifecycle. In-flight work now surfaces where the reviewer already is.
+      // `researching` ONLY, deliberately. Including `draft` was tried and measured: the
+      // store holds 227 auto-seeded corpus-dimension drafts against 2 real sent-back
+      // records, so listing both would bury the human work under machine candidates —
+      // a different untruth from the one being fixed. Drafts are intake, not in-flight
+      // review.
+      const reviewKcrs = kcrs.filter((k) => ['review', 'grounded', 'researching'].includes(k.status))
         .sort((a, b) => (a.priority === 'high' ? -1 : 0) - (b.priority === 'high' ? -1 : 0));
+      const sentBack = reviewKcrs.filter((k) => k.status === 'researching').length;
       return (
         <div>
           <Banner>KCRs in review — SME, editorial, and governance sign-off required (role-gated). KCR-6 governs which roles can advance each stage. No auto-advancement.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
+            <PBKpi label="Sent back" value={sentBack} tone={sentBack ? D.warn : D.faint} />
             <PBKpi label="Aging >30d" value={metrics.staleCount} tone={metrics.staleCount ? D.bad : D.faint} onClick={metrics.staleCount ? () => setStatusFilter('stale') : undefined} />
           </div>
           {loading ? <Banner tone="muted">Loading…</Banner> : reviewKcrs.length === 0
@@ -3225,6 +3275,13 @@ function KcrStudioPanel() {
         assetId: acqAsset || null, state: acqState || null, query: acqQuery,
       });
       const summary = acquisitionSummary(acquisitionTree(ALL_PLAYBOOKS, liveIdx));
+      // CANONICAL INVENTORY (5F.6 W2). The KPIs above count governable FIELD SLOTS
+      // (1,605). That is a real number and a different unit from purchase LINES, and
+      // three separate counters in this repo have each reported a different "how much
+      // do we know" figure by silently dropping something. This block states the one
+      // denominator that never shrinks — every authored line, always.
+      const inv = knowledgeInventory(ALL_PLAYBOOKS, liveIdx);
+      const cls = backfillClassification(ALL_PLAYBOOKS, liveIdx);
       const STATE_TONE = {
         published: D.good, 'missing-provenance': D.warn, 'needs-research': D.warn,
         correctable: D.accent, ungoverned: D.muted,
@@ -3242,6 +3299,25 @@ function KcrStudioPanel() {
             <PBKpi label="Never governed" value={summary.ungovernedAssets} tone={D.muted} />
             <PBKpi label="Missing provenance" value={summary.counts['missing-provenance']} tone={D.warn} />
             <PBKpi label="Published" value={summary.counts.published} tone={D.good} />
+          </div>
+          {/* The canonical inventory + what kind of work the remainder needs. Text, not
+              a new surface — the point is that ONE denominator is visible, not that
+              there is another dashboard. */}
+          <div style={{ border: `1px solid ${D.border}`, borderRadius: 6, padding: '10px 12px',
+            marginBottom: 12, fontFamily: D.mono, fontSize: 10, color: D.muted, lineHeight: 1.7 }}>
+            <div style={{ color: D.text, marginBottom: 4 }}>
+              KNOWLEDGE INVENTORY — {inv.total} authored lines. {groundedShare(inv)}% grounded.
+            </div>
+            <div>
+              {INVENTORY_STATES.map((s) => `${s} ${inv.counts[s]}`).join('  ·  ')}
+            </div>
+            <div style={{ marginTop: 6, color: D.text }}>
+              {classificationSummary(cls)}
+            </div>
+            <div style={{ marginTop: 4 }}>
+              The denominator never shrinks because evidence is missing — a line with no
+              source is counted, not skipped.
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
             <input value={acqQuery} onChange={(e) => setAcqQuery(e.target.value)}
@@ -3403,11 +3479,25 @@ function KcrStudioPanel() {
               setCorrectNote('Blocked: enter the corrected value — a first governance has no prior value to carry.');
               return;
             }
+            // DIVERGENCE GUARD (5F.5). `prior` above is derived from the SNAPSHOT alone,
+            // so a field already published in the STORE reaches here looking ungoverned —
+            // which is precisely how a second parentless lineage was created in 5F.4.
+            // The guard reads both, and blocks rather than choosing a winner.
+            const fg = firstGovernanceGuard(assetId, targetPath, kcrs, liveEntries);
+            if (!fg.ok) { setCorrectNote(`Blocked: ${fg.reason}`); return; }
             const pbA = (ALL_PLAYBOOKS || []).find((x) => x && x.type === assetId);
             const puA = pbA && (pbA.purchases || []).find((x) => x && x.id === pid);
             const firstK = openAuthoredGovernance(
               { assetId, fieldPath: targetPath, authoredValue: puA ? puA[correctField] : null },
               { newValue, reason: reason.trim(), by: role, asOf: new Date().toISOString(),
+                // EVIDENCE (5F.8). This argument was never supplied, so every record this
+                // path has ever created carried `evidence: []` — and `canReachCited`
+                // therefore refused it, making the record unpromotable to the corpus and
+                // the field permanently uncorrectable. Four such records are in the store.
+                // The sources are the ones the human picked from the axis-approved list;
+                // this records that choice in the shape the corpus requires.
+                evidence: evidenceFromSources(newValue && newValue.sources,
+                  { confidence: (newValue && newValue.confidence) || 'medium' }),
                 id: `authored-${assetId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetPath.replace(/[^a-zA-Z0-9]+/g, '-')}-${Date.now()}` },
             );
             await upsertKCR(firstK);
@@ -3423,6 +3513,12 @@ function KcrStudioPanel() {
             reason: reason.trim(),
             by: role,
             asOf: new Date().toISOString(),
+            // Same fix on the supersession path. `openCorrection` carries the prior's
+            // evidence forward, which is right for a same-field correction — but a
+            // correction that changes the CITED SOURCES must carry the new ones too, or
+            // the evidence describes the superseded claim.
+            evidence: evidenceFromSources(newValue && newValue.sources,
+              { confidence: (newValue && newValue.confidence) || 'medium' }),
             id: `${prior.id}-correction-${Date.now()}`,
           });
           await upsertKCR(prior);                // seed the ancestor so lineage resolves
@@ -3548,6 +3644,54 @@ function KcrStudioPanel() {
                   ))}
                   {dv.findings.length > 5 && (
                     <div style={{ color: D.faint, marginTop: 3 }}>+{dv.findings.length - 5} more</div>
+                  )}
+                </div>
+              );
+            })()}
+            {/* RECONCILIATION (5F.6 W1). Divergence above says the store and the snapshot
+                disagree. This says what to DO about each record that exists only here —
+                with the caveat that the machine never says "promote". Every clean record
+                still needs a human to confirm the source's scope reaches the event. */}
+            {(() => {
+              const cands = reconciliationCandidates(kcrs, publishedEntries(), publishedCorpus);
+              if (!cands.length) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.muted, border: `1px solid ${D.border}`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong style={{ color: D.text }}>{reconciliationSummary(cands)}</strong>
+                  {cands.slice(0, 6).map((c) => (
+                    <div key={c.key} style={{ marginTop: 3, fontFamily: D.mono }}>
+                      <span style={{ color: c.recommended === 'reject' ? D.warn : D.faint }}>
+                        {c.recommended}
+                      </span>
+                      {' — '}{c.assetId} · {c.fieldPath}
+                      {c.blockers.length ? ` [${c.blockers.join(', ')}]` : ''}
+                      {' · host impact: '}{c.hostImpact}
+                    </div>
+                  ))}
+                  {cands.length > 6 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{cands.length - 6} more</div>
+                  )}
+                </div>
+              );
+            })()}
+            {/* SOURCE FRESHNESS (5F.6 W3). Recorded in 90 places, surfaced in none until
+                now. A WARNING only — nothing here withdraws grounding. */}
+            {(() => {
+              const fresh = sourceFreshness(new Date().toISOString());
+              const due = needsRecheck(fresh);
+              if (!due.length) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.muted, border: `1px solid ${D.border}`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong style={{ color: D.text }}>{freshnessSummary(fresh)}</strong>
+                  {due.slice(0, 4).map((r) => (
+                    <div key={r.id} style={{ marginTop: 3, fontFamily: D.mono }}>
+                      {r.state} — {r.id} ({r.axis}) · {r.action}
+                    </div>
+                  ))}
+                  {due.length > 4 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{due.length - 4} more</div>
                   )}
                 </div>
               );
@@ -4041,10 +4185,23 @@ function KcrStudioPanel() {
           {/* Per-field verification: jump straight to what a host sees for THIS field. */}
           {exported.length > 0 && (
             <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>PUBLISHED FIELDS</div>
+              {/* HEADING CORRECTED (5F.7). This list is the EXPORT, and the export
+                  deliberately carries every record that has ever been published —
+                  including rolled-back and ARCHIVED ones — so that history travels and
+                  rollback stays possible. Calling it "PUBLISHED FIELDS" told an
+                  operator that two records archived in 5F.4 for grounding dishonesty
+                  (The Cookout, Quinceanera) were published. They are refused at the
+                  bake by `isPublishable`, so no host could ever see them — but the
+                  console said otherwise, which is this phase's whole subject. */}
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
+                IN THE EXPORT — every version ever published, including superseded and archived.
+                Only <span style={{ color: D.good }}>published</span> rows reach a host.
+              </div>
               {exported.map((k) => (
                 <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: `1px solid ${D.border}44` }}>
-                  <span style={{ fontSize: 10, fontFamily: D.mono, color: D.text, flex: 1 }}>{k.assetId} · {k.fieldPath}</span>
+                  <span style={{ fontSize: 10, fontFamily: D.mono, color: k.status === 'published' ? D.text : D.faint, flex: 1 }}>{k.assetId} · {k.fieldPath}</span>
+                  <span style={{ fontSize: 9, fontFamily: D.mono,
+                    color: k.status === 'published' ? D.good : D.warn }}>{k.status || 'unknown'}</span>
                   <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>{k.publishedVersion || '—'}</span>
                   <button type="button"
                     onClick={() => { setRtType(k.assetId); setRtField(k.fieldPath); setRtResult(null); setWs('Runtime Preview'); }}

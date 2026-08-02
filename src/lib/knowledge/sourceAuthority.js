@@ -27,6 +27,7 @@
 // PURE: no I/O, no UI, no storage.
 import { QTY_SOURCES, isGroundedItemQty } from './quantityProvenance';
 import { COST_SOURCES, isGroundedCost } from './costProvenance';
+import { resolveGroundingSource } from './groundingSources';
 
 /**
  * THE AXES a PURCHASE correction can touch.
@@ -202,4 +203,61 @@ export function wouldGround(fieldPath, provenance) {
   const axis = axisForField(fieldPath);
   if (!axis) return false;
   return !!axis.predicate(provenance);
+}
+
+// ─── EVIDENCE FROM THE SOURCES A HUMAN ALREADY CHOSE (Phase 5F.8) ────────────
+//
+// THE DEFECT THIS CLOSES, and it invalidated every record the Acquisition workflow
+// has ever produced. `openAuthoredGovernance` accepts an `evidence` option and the
+// admin console never passed one, so every first-governance record was written with
+// `evidence: []`. Measured consequence:
+//
+//   canReachCited(kcr)                     -> false
+//   publishedExport.test.js round-trip     -> FAILS
+//   the record cannot enter the corpus     -> and if it somehow did, that field
+//                                             could never be corrected again
+//
+// Four such records sit in the store. Promoting the cleanest one in 5F.7 broke the
+// suite, which is how the root cause surfaced.
+//
+// THIS MANUFACTURES NOTHING. The human picked the source from the axis-approved list;
+// this records that choice in the shape the corpus requires, copying organisation, URL
+// and capture date VERBATIM from the registry entry. It invents no claim, asserts no
+// confidence beyond what the caller states, and refuses any id that does not resolve —
+// so it cannot conjure an evidence record for a source that does not exist.
+//
+// `supports: null` deliberately: whether the source supports the specific value is a
+// human judgement recorded in the KCR's reason, not something derivable from an id.
+
+/** The evidence sourceTypes `canReachCited` accepts. Mirrored, not guessed. */
+const CITABLE_TYPE = 'citation';
+
+/**
+ * evidenceFromSources(sources, opts) -> evidence[]
+ *
+ * Returns one evidence entry per RESOLVABLE source id, in registry order. Unresolvable
+ * ids are dropped rather than stubbed: a stub with no organisation and no URL fails
+ * `canReachCited` anyway, and emitting one would look like evidence while being none.
+ */
+export function evidenceFromSources(sources, { confidence = 'medium' } = {}) {
+  const ids = Array.isArray(sources) ? sources.filter(Boolean) : [];
+  const out = [];
+  for (const id of ids) {
+    const s = resolveGroundingSource(id);
+    if (!s) continue;
+    const org = s.org || s.publisher || s.title || '';
+    const url = s.url || '';
+    if (!org && !url) continue;             // nothing citable to record
+    out.push({
+      id,
+      sourceType: CITABLE_TYPE,
+      confidence,
+      supports: null,
+      contradicts: false,
+      capturedAt: s.fetched || null,
+      source: org,
+      url,
+    });
+  }
+  return out;
 }
