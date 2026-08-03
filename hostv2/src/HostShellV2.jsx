@@ -2443,6 +2443,20 @@ export default function HostShellV2() {
   // is the one the board proved the checklist cannot see and must not talk over.
   const calmVeto = (worries || []).find(w => w && String(w.category) === 'money') || null;
   const mayBeCalm = mayExhale(listIsCalm, calmVeto);
+
+  // ── ONE COMPLETENESS READ, ONE EXPIRY (board step 2) ────────────────────────
+  // The hairline computed `done >= total` inline; the calm pole computed its own
+  // cpDone/cpTotal with a DIFFERENT fallback. Two readings of one ledger is exactly
+  // how the two checklists in the R3 defect drifted apart. Derived here, once.
+  const planTotal = Number(phaseCues && phaseCues.totalCount) || 0;
+  const planDone = Number(phaseCues && phaseCues.completedCount) || 0;
+  const planComplete = planTotal > 0 && planDone >= planTotal;
+  // The date this ledger's denominator next moves (phaseProgress). A completion
+  // claim made without it is a claim with a fuse — see the field's own comment.
+  const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
+  const ledgerExpiryShort = ledgerExpiry ? (() => {
+    try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
+  })() : null;
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
   // engine has an ask, the display slot speaks it (the ASK) and queue[0]
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
@@ -6110,14 +6124,37 @@ export default function HostShellV2() {
                 // fold behind "Look around anyway". Grounded: the on-track count is the real phase
                 // ledger; "next check" is the nearest dated thing. Elegant + genuinely-calm only.
                 if (elegantMode && mayBeCalm && !isPast && days !== null && days > 0) {
-                  const cpDone = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : (plan.progress && plan.progress.done);
-                  const cpTotal = phaseCues && Number(phaseCues.totalCount) ? Number(phaseCues.totalCount) : (plan.progress && plan.progress.total);
-                  const nextUp = (upNext && upNext.find(u => u && u.due)) || null;
-                  const nextCheck = nextUp ? (() => { try { return new Date(nextUp.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; } })() : null;
+                  const cpDone = planDone;
+                  const cpTotal = planTotal;
+                  // The five things, BY NAME. "5 of 5" tells a host a number; it never
+                  // tells them what was counted, and they never filled in a form with
+                  // five parts on it. Grandmother seat, 2026-08-03: "if you're going to
+                  // count my life into five pieces, say them out loud."
+                  // Only the HANDLED ones are named here. Listing all five undifferentiated
+                  // put an OPEN part inside a line that reads as "what's settled" — the
+                  // count said 4 of 5 while the legend showed five. The count line carries
+                  // which is open, via the same helper the ask hairline uses.
+                  const partNames = (orient && orient.segments.length)
+                    ? orient.segments.filter(s => s.handled).map(s => s.label).join(' · ') : null;
                   return (<>
-                    <p className="cp-label">ALL QUIET</p>
-                    <h2 className="cp-head">You’re ahead.</h2>
-                    {statusNode || <p className="verdict">Nothing needs you today. Everything’s in motion.</p>}
+                    {/* "ALL QUIET" deleted — it said the same word as the verdict line
+                        40px below it ("All quiet — you're genuinely set for now"), and
+                        the headline already names the state. One element, one meaning. */}
+                    {/* THE HEADLINE IS THE EXPIRY, NOT A COMPLIMENT.
+                        "You're ahead." was hardcoded, read no count, and is comparative
+                        with no referent — ahead of what? The host was never shown a
+                        schedule. Worse, the ledger's denominator MOVES, so any standing
+                        claim is a claim with a fuse. The honest loud line is the date the
+                        quiet ends. Falls back to a today-scoped claim when the ledger has
+                        no pending change — never a standing one. */}
+                    <h2 className="cp-head">{ledgerExpiryShort
+                      ? `Nothing needs you until ${ledgerExpiryShort}.`
+                      : 'Nothing needs you today.'}</h2>
+                    {/* statusNode is the SOLE author of this line. The `||` fallback that
+                        used to sit here was unreachable — statusNode's guard is identical
+                        to this branch's — so it was dead code that misread as shipped copy
+                        and misled a design review. */}
+                    {statusNode}
                     <button className="cp-look" onClick={() => { try {
                       // The below-fold scrolls the .app container, which silently ignores
                       // scrollTo({behavior:'smooth'}) here — only a direct scrollTop assignment
@@ -6131,9 +6168,24 @@ export default function HostShellV2() {
                         : sc.scrollTop + Math.round((sc.clientHeight || 700) * 0.82);
                       try { sc.scrollTo({ top: target, behavior: 'smooth' }); } catch {}
                       sc.scrollTop = target;
-                    } catch { /* no target */ } }}>Look around anyway  ›</button>
-                    {Number.isFinite(cpDone) && Number.isFinite(cpTotal) && cpTotal > 0 && (
-                      <p className="cp-prog">{cpDone} of {cpTotal} on track{nextCheck ? ' · next check ' + nextCheck : ''}</p>
+                    {/* ▸ not › — this handler sets scrollTop, it does not route. A
+                        navigation glyph on an in-place reveal is the fake affordance the
+                        shell's own rule forbids, and "anyway" argued against the click
+                        before the host made it. Say where it goes. */}
+                    } catch { /* no target */ } }}>See what’s below  ▸</button>
+                    {cpTotal > 0 && (
+                      <>
+                        {/* "on track" is a PACE word. The engine knows handled-or-open per
+                            essential and nothing about rate — the same false precision the
+                            host killed the continuous fill for. Use the engine's own noun. */}
+                        <p className="cp-prog">{hairlineLabel(orient) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
+                        {partNames && <p className="cp-parts">{partNames}</p>}
+                        {/* The denominator moves, so say when. This is the whole reason
+                            phaseProgress now emits nextLedgerChange. */}
+                        {ledgerExpiry && ledgerExpiryShort && (
+                          <p className="cp-prog">{ledgerExpiryShort} is when {ledgerExpiry.what}.</p>
+                        )}
+                      </>
                     )}
                   </>);
                 }

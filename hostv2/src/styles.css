@@ -817,6 +817,10 @@ button{font-family:inherit}
 .hero.elegant .cp-look{ margin-top:24px; background:none; border:none; padding:0; font-family:var(--sans); font-size:15px; font-weight:650; color:var(--steel-soft); cursor:pointer; text-align:left; transition:color var(--ms-fast) var(--ease-out); }
 .hero.elegant .cp-look:hover{ color:var(--ink-soft); }
 .hero.elegant .cp-prog{ margin-top:14px; font-size:13px; font-weight:500; color:var(--faint); }
+/* The five parts, named. A count tells a host a number; it never tells them WHAT was
+   counted, and they never filled in a form with five parts on it. Set below the count
+   and above the expiry, quieter than both — it is a legend, not a claim. */
+.hero.elegant .cp-parts{ margin-top:6px; font-size:12.5px; font-weight:500; color:var(--faint); letter-spacing:.01em; }
 .hero.elegant .ac-tl{ list-style:none; margin:18px 0 0; padding:0; width:100%; }
 .hero.elegant .ac-tl li{ display:flex; align-items:baseline; gap:14px; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); }
 .hero.elegant .ac-tl li:first-child{ border-top:none; }
