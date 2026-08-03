@@ -142,6 +142,158 @@ button{font-family:inherit}
 }
 @media(max-width:1279px), (max-height:699px){ .stagewrap{height:100dvh} }
 
+/* ── RESPONSIVE COMMAND PATH (Phase 5G-C1) ──────────────────────────────────
+   Exactly two surfaces opt out of the fixed phone silhouette at laptop and
+   above: the orientation command surface and the food sheet carrying the ice
+   recommendation. The class is applied from responsiveSurface.js by explicit
+   stage+sheet identity, never inferred from markup.
+
+   WHY OPT OUT OF --fit RATHER THAN SCALE A WIDE LAYOUT: --fit is height-driven
+   (main.jsx: min(1, (innerHeight-52)/852)), so a 1280x800 laptop scales the
+   whole stage to 0.878 — measured. Scaling and reflow solve different problems;
+   applying both gives fuzzy text, wrong hit areas and misleading breakpoints. A
+   two-column composition must be laid out, not shrunk. Short windows scroll.
+
+   TABLET IS DELIBERATELY UNTOUCHED: 640-1279px already renders full-bleed at
+   100% usable width under the 2026-07-22 T1 ruling, and the e2e matrix guards
+   it. It is the precedent these rules follow, not a gap.
+
+   Legacy surfaces (every other sheet and stage) keep the transform unchanged. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-command,
+  .stagewrap--responsive-food{
+    /* Replace the fixed silhouette with real width. transform-origin is reset
+       because the scaled stage anchored top-center. */
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1280px); max-width:1280px;
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  /* The phone bezel is a silhouette affordance — it has no meaning once the
+     surface is a real responsive canvas. */
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app{ border-radius:var(--r-xl); box-shadow:none; height:auto; min-height:60vh }
+
+  /* 60vh was a phone-stage leftover: it pinned the card to 540px inside a 900px
+     window while 1185px of content scrolled INSIDE it — the surface ended
+     mid-section with a third of the window left as dead background, and the
+     reference lane was clipped rather than reachable. The card fills the window
+     and keeps its own scroller, which is the existing architecture (.app is the
+     scroll container on every viewport) rather than a new one. */
+  /* ...but filling the window UNBOUNDED made the canvas square. Width is capped at
+     1280 while height tracked the viewport, so on a tall display (1230px+, i.e. any
+     external monitor) the surface computed to 1280x1170 — a square box, reported
+     from the browser three times. It only looks right on a ~900px laptop, which is
+     why it survived review.
+
+     A canvas has an ASPECT, not just a height. Cap it so the surface stays landscape
+     on tall screens and still fills a short one: 900px keeps 1280-wide at ~1.42:1,
+     and `min()` means a 900px laptop is unaffected (it still resolves to ~840). Any
+     leftover window below is background, which is what it was before the fill — and
+     a balanced landscape canvas beats a square one that merely has no gap. */
+  .stagewrap--responsive-command .app{
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    min-height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+  }
+
+  /* ── RE-ZONE AT LAPTOP AND ABOVE (host ruling: rail + content) ─────────────
+     Giving the surface real width only fixed the CONTAINER. Inside it the phone
+     column simply stretched: the hero stopped floating and compressed into the
+     top quarter, one-line rows ran the full 1280 with their chevron a thousand
+     pixels from the label, and the lower half of the frame was empty.
+
+     Same content, re-zoned — NEVER richer. There is no extra data at 1280: same
+     event, same engine output. Two columns, and the only thing that changes is
+     where each existing block sits:
+
+       RAIL   orientation — who/what/when, and the readiness segments. The
+              "where am I" column, persistent instead of pinned to a foot the
+              eye never reaches on a wide screen.
+       MAIN   the decision — the ask, the guide voice, the one action, then the
+              reference lane beneath it.
+
+     The doctrine survives the move: the ask is still the single loud thing, and
+     lifting progress into the rail stops it competing with the ask for the foot.
+
+     GRID, not flex, so the two columns can be declared by AREA. The phone rules
+     are untouched below 1280 — this whole block is inside the media query and
+     scoped to the command surface, so no other stage or sheet can inherit it. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on{
+    display:grid;
+    grid-template-columns:minmax(240px, 300px) minmax(0, 1fr);
+    grid-template-rows:auto auto 1fr;
+    grid-template-areas:
+      "rail main"
+      "rail main"
+      "prog main";
+    column-gap:56px;
+    align-content:start;
+    /* The phone bound (100cqh - 64px) is wrong here, but so is 0: collapsing to
+       content left the rail 289px tall, so the progress sat directly under the
+       eyebrow instead of at the foot of a column, reading as unanchored rather
+       than as the base of the orientation zone. Give the rail real extent while
+       staying well short of the phone's full-screen bound. */
+    min-height:min(520px, calc(100vh - 260px));
+  }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ev-eyebrow{ grid-area:rail; align-self:start; }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ev-head{
+    grid-area:rail; align-self:start; margin-top:44px;
+  }
+  /* Progress sits at the FOOT OF THE RAIL, not the foot of the screen. On a
+     phone the eye ends at the bottom edge; on a wide canvas it does not, which
+     is why the foot is the wrong home for it here. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .eprog{
+    grid-area:prog; align-self:end; margin-top:32px; padding-top:0;
+  }
+  /* In the RAIL the two labels sit side by side in ~260px, so the named open parts
+     truncated here while the same line fits whole on a 390px phone — the wide canvas
+     was the cramped one. The rail has height, not width, so spend the height: stack
+     the two labels and let the names wrap instead of clipping. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .eprog .eprog-labels{
+    flex-direction:column; align-items:flex-start; gap:3px;
+  }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .eprog .eprog-labels > span:first-child{
+    white-space:normal; overflow:visible; text-overflow:clip;
+  }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .eprog .eprog-labels > span:last-child{
+    padding-left:0;
+  }
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter{
+    grid-area:main; min-width:0;
+    /* The ask is display type — it must not run the full 1280. A measure cap is
+       what keeps a headline a headline instead of a banner. */
+    max-width:none;
+  }
+  .stagewrap--responsive-command .hero.elegant .ask{ max-width:18ch; }
+  .stagewrap--responsive-command .hero.elegant .voice,
+  .stagewrap--responsive-command .hero.elegant .eanswer .truth{ max-width:52ch; }
+  /* Rows, cards and the reference lane share the main column's measure. Without
+     this a one-line row spans the whole canvas and its chevron detaches from its
+     label — the single most obvious "stretched phone" tell. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hero-card,
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .cta,
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hc-row{ max-width:62ch; }
+
+  /* BELOW THE FOLD — the reference lane is a sibling of .escreen, so it is not
+     in the grid. Indent it to the main column so the page reads as one column of
+     content with a rail beside it, rather than two unrelated widths stacked. */
+  .stagewrap--responsive-command .hero.elegant > .efold,
+  .stagewrap--responsive-command .hero.elegant .escreen ~ *{
+    margin-left:calc(min(300px, max(240px, 23%)) + 56px);
+    max-width:68ch;
+  }
+  /* The grab handle is a PHONE affordance — it says "there is more below the
+     bottom edge". On a wide canvas the next section is already visible, so the
+     handle would be pointing at something in plain sight. */
+  .stagewrap--responsive-command .hero.elegant > .efold{ display:none; }
+
+  /* The docked action follows the main column too — a 755px pill spanning the
+     whole canvas belongs to no column at all. */
+  .stagewrap--responsive-command .next-bar{
+    left:calc(min(300px, max(240px, 23%)) + 56px + var(--sp-5));
+    right:auto; width:min(62ch, 620px);
+  }
+}
+
 .content{padding:var(--sp-4) var(--sp-5) calc(170px + env(safe-area-inset-bottom, 0px))}
 
 .appbar{
@@ -665,6 +817,10 @@ button{font-family:inherit}
 .hero.elegant .cp-look{ margin-top:24px; background:none; border:none; padding:0; font-family:var(--sans); font-size:15px; font-weight:650; color:var(--steel-soft); cursor:pointer; text-align:left; transition:color var(--ms-fast) var(--ease-out); }
 .hero.elegant .cp-look:hover{ color:var(--ink-soft); }
 .hero.elegant .cp-prog{ margin-top:14px; font-size:13px; font-weight:500; color:var(--faint); }
+/* The five parts, named. A count tells a host a number; it never tells them WHAT was
+   counted, and they never filled in a form with five parts on it. Set below the count
+   and above the expiry, quieter than both — it is a legend, not a claim. */
+.hero.elegant .cp-parts{ margin-top:6px; font-size:12.5px; font-weight:500; color:var(--faint); letter-spacing:.01em; }
 .hero.elegant .ac-tl{ list-style:none; margin:18px 0 0; padding:0; width:100%; }
 .hero.elegant .ac-tl li{ display:flex; align-items:baseline; gap:14px; padding:10px 0; border-top:1px solid rgba(255,255,255,.06); }
 .hero.elegant .ac-tl li:first-child{ border-top:none; }
@@ -701,12 +857,21 @@ button{font-family:inherit}
 /* Continuous hairline progress (replaces counted dots). Sits as a calm
    "settled" band under the guide voice, dividing the framing from the work. */
 .eprog{ margin-top:auto; padding-top:24px; display:flex; flex-direction:column; gap:11px; }
-.eprog-rule{ height:3px; border-radius:2px; background:var(--line-soft); overflow:hidden; }
-/* GREEN IS EARNED (host 2026-07-18): steel while filling, green only at completion. */
-.eprog-rule span{ display:block; height:100%; border-radius:2px; background:var(--steel-soft); transition:width var(--ms-reveal) var(--ease-out), background var(--ms-reveal) var(--ease-out); }
-.eprog.is-done .eprog-rule span{ background:var(--ok); }
+/* .eprog-rule (the continuous percentage fill) was REMOVED from the hero — host
+   ruling, driven in the iOS simulator. It sat directly above the segment row
+   encoding the same fact twice, and the percentage claimed a precision the
+   engine does not have: it knows handled-or-open per essential, nothing finer.
+   Its rules are deleted rather than left dead so nobody later styles a bar that
+   no longer renders. GREEN IS EARNED (host 2026-07-18) still holds — it now
+   lives on the segments, which turn --ok only as each essential is handled. */
 .eprog-labels{ display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--faint); }
-@media (prefers-reduced-motion: reduce){ .eprog-rule span{ transition:none } }
+/* The left label now NAMES the open parts, so it is variable-length where it used to
+   be a fixed count. On a 390px phone "Date & time and Food open" plus "the rest can
+   wait" can exceed the line, and flex would resolve that by shrinking BOTH — squeezing
+   the judgement on the right, which is the more valuable half. So the left takes all
+   the slack and truncates; the right never shrinks. */
+.eprog-labels > span:first-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.eprog-labels > span:last-child{ flex:none; padding-left:10px; }
 /* Scroll-driven stratum focus (progressive enhancement): below-fold blocks
    brighten as they enter the reading zone — attention follows the eye. */
 @supports (animation-timeline: view()){
@@ -2884,7 +3049,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .hero.elegant .ask{ font-size:clamp(40px,7.5cqw,56px); }
   .hero.elegant .verdict{ font-size:22px; }
 }
-@media (min-width:1024px) and (max-width:1279px) and (min-height:700px){
+/* ORIENTATION GUARD (host ruling 2026-08-02: "port doesn't need 2 columns").
+   This block is the tablet-LANDSCAPE ruling, but `min-width:1024px` alone does
+   not say landscape — and iPad Pro 13" PORTRAIT is exactly 1024 wide, so the
+   landscape split fired in portrait. The result was the ask squeezed into a
+   ~310px left column beside a 440px card, on a canvas 1366px tall with room for
+   the full-width single column the portrait ruling above explicitly preserves.
+   The width test was standing in for a shape test; this states the shape.
+   iPad 11" landscape (1194x834) still matches and keeps variant B. */
+@media (min-width:1024px) and (max-width:1279px) and (min-height:700px) and (orientation:landscape){
   /* Tablet-land ruling: variant B "question | answer" — the hzone (ask headline +
      guide voice) owns the left half; the settle mechanics (status, option card,
      other-ways) stack in a 440px right column, both vertically centered. The
@@ -2944,11 +3117,18 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .toast.ok{ box-shadow:0 12px 40px rgba(47,107,70,.34), 0 0 24px -6px rgba(79,174,122,.55); }
 
 /* — COMPLETIONS — */
-/* #5 sweep: glow rides the hairline fill; is-done flips it green (existing
-   transition), the foot label catches the color, and ONE halo breathes. */
-.hero.elegant .eprog-rule span{ box-shadow:0 0 12px rgba(122,160,196,.45); }
-.eprog.is-done .eprog-rule span{ box-shadow:0 0 16px rgba(79,174,122,.55); }
+/* #5 sweep: the foot label catches the color at completion and ONE halo
+   breathes. The two glow rules that rode .eprog-rule span went with the
+   continuous fill — the halo and the label colour carry the completion beat now,
+   and the segments themselves flip green as each essential lands. */
 .eprog{ position:relative; }
+/* PARKED, NOT DEAD (board 2026-08-03). `.eprog.is-done` is no longer applied by the
+   shell: the hairline renders only inside askMode — i.e. with a live ask on screen —
+   which is the one state where "you're set" is guaranteed FALSE. Painting the green
+   done-state over an open request was the exhale outranking the engine (exhaleGate R3).
+   These rules are kept for the complete-state screen (Figma 922:101 "A3 · Complete"),
+   which owns the real celebration and is not built yet. Do not re-apply the class to
+   the ask hairline. */
 .eprog.is-done::after{ content:''; position:absolute; left:-20px; right:-20px; top:-40px; bottom:-16px; pointer-events:none;
   background:radial-gradient(60% 70% at 50% 80%, rgba(79,174,122,.26), transparent 70%);
   opacity:0; animation: donehalo 1.1s var(--ease-out) .3s; }

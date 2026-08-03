@@ -74,6 +74,79 @@ const REUNION_ARC_PROVENANCE = {
   note: 'The documented reunion weekend arc: arrival evening, the shared meal as the climax, worship on the Sunday + farewell close (McCoy, Generations/ASA; reunion-planning consensus, research dossier 2026-07-26).',
 };
 
+// ── The structural arc — true of ANY multi-day hosted event ──────────────────
+//
+// Deliberately CONTENTLESS. It names only what a span itself implies: people
+// arrive, the thing everyone came for happens, people leave. It does not know
+// what to do in Santa Fe, and it must not pretend to — per-destination activity
+// content is a research gap (zero `activities:` keys across 39 playbooks), and
+// filling it from a language model would be exactly the invented intelligence
+// this codebase forbids. The host gets a real skeleton to edit, plus the honest
+// admission that the middle is theirs to fill.
+//
+// The main day prefers the Saturday when the span contains one — same
+// weekday-aware rule as the reunion arc, for the same reason.
+function structuralArc(ev, days) {
+  const rows = [{
+    day: 1, slot: 'evening', anchor: true,
+    title: 'Everyone arrives',
+    note: days > 1 ? 'keep the first night easy — people are travelling' : null,
+  }];
+
+  let mainDay = null;
+  for (let i = 1; i <= days; i += 1) { if (weekdayOfDay(ev, i) === 6 && i > 1) { mainDay = i; break; } }
+  if (!mainDay) mainDay = Math.min(days, Math.max(2, Math.ceil(days / 2)));
+  if (days === 1) mainDay = 1;
+
+  rows.push({
+    day: mainDay, slot: 'afternoon', anchor: true,
+    title: 'The main event',
+    note: 'the day everyone came for',
+  });
+
+  if (days > mainDay) {
+    rows.push({ day: days, slot: 'midday', anchor: true, title: 'Goodbyes and departures', note: null });
+  }
+  return rows;
+}
+
+// THE DAYS THE ARC DOES NOT COVER ARE THE POINT.
+//
+// The three anchors are the same three whatever the span, so a 5-day trip came
+// back as a 3-row plan and the two unplanned days simply were not mentioned —
+// the surface under-told the very thing the host is paying for. A guest is in
+// Santa Fe on the Sunday whether or not we have a row for it.
+//
+// Naming the gap is the honest move, and it belongs in the PROVENANCE rather
+// than in filler rows: these rows are a proposal the host accepts with "Use this
+// plan", and accepted rows go to the INVITE. A guest reading "Nothing planned
+// yet" on their itinerary would be worse than a short one.
+function structuralArcProvenance(ev, days, rows) {
+  const covered = new Set(rows.map((r) => r.day));
+  const openDays = [];
+  for (let i = 1; i <= days; i += 1) if (!covered.has(i)) openDays.push(i);
+
+  const base = 'The shape of a multi-day event, not a recommendation about this one: '
+    + 'guests arrive, the main day anchors the trip, everyone leaves.';
+
+  let gap = '';
+  if (openDays.length) {
+    const labels = openDays.map((d) => dayLabelFor(ev, d));
+    const named = labels.length === 1 ? labels[0]
+      : labels.length === 2 ? `${labels[0]} and ${labels[1]}`
+        : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+    gap = ` ${named} ${openDays.length === 1 ? 'has' : 'have'} nothing on `
+      + `${openDays.length === 1 ? 'it' : 'them'} yet — `
+      + `${openDays.length === 1 ? 'a whole day' : `${openDays.length} whole days`} `
+      + 'your guests are here for.';
+  }
+
+  const tail = ' We hold no researched activity content for this destination yet,'
+    + ' and will not invent any.';
+
+  return { tier: 'structural', note: base + gap + tail, openDays };
+}
+
 const normRow = (r) => {
   if (!r) return null;
   const day = Math.max(1, Math.round(Number(r.day) || 1));
@@ -122,11 +195,27 @@ export function guestItinerary(event, getPlaybook) {
     };
   }
 
-  // 3 · the proposed reunion arc — multi-day reunions only, weekday-aware
-  if (String(ev.type || '') === 'Reunion' && spanNights(ev) >= 1) {
+  // 3 · a PROPOSED arc for any event that actually spans days.
+  //
+  // This used to read `ev.type === 'Reunion'` and nothing else, so 38 of 39
+  // playbooks produced no programme at all: a five-day destination birthday came
+  // back `relevant: false` and the host saw nothing. The gate is now the SPAN,
+  // not the type — if an event runs multiple days it has an arc, because arriving,
+  // gathering and leaving are properties of a span rather than facts about
+  // reunions. Reunion keeps its researched overlay on top.
+  if (spanNights(ev) >= 1) {
     const days = spanNights(ev) + 1;
-    const rows = reunionArc(ev, days).map(normRow).filter(Boolean);
-    if (rows.length) return { relevant: true, source: 'proposed', rows: sortRows(rows), provenance: REUNION_ARC_PROVENANCE };
+    const isReunion = String(ev.type || '') === 'Reunion';
+    const rows = (isReunion ? reunionArc(ev, days) : structuralArc(ev, days)).map(normRow).filter(Boolean);
+    if (rows.length) {
+      const sorted = sortRows(rows);
+      return {
+        relevant: true,
+        source: 'proposed',
+        rows: sorted,
+        provenance: isReunion ? REUNION_ARC_PROVENANCE : structuralArcProvenance(ev, days, sorted),
+      };
+    }
   }
 
   return { relevant: false, source: null, rows: [], provenance: null };

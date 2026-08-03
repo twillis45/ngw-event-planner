@@ -79,6 +79,50 @@ export const isDuringEvent = (event, now) => {
 export const dayIndexOf = (event, now) =>
   isDuringEvent(event, now) ? 1 - daysUntil(event.date, now) : null;
 
+// ── The month a host named without a day ────────────────────────────────────
+// "in June of 2028" is a real answer, just not a date. `event.targetMonth` holds
+// it as { year, month, label }. It is NEVER a substitute for `date`: nothing is
+// counted, scheduled or deadlined from it. It exists so the surface can repeat
+// what the host said instead of answering "No date", and so a day-picker can open
+// on the month they already chose.
+
+/** The label of the month the host named, when they gave no day. Null otherwise. */
+export const targetMonthLabel = (event) => {
+  const t = event && event.targetMonth;
+  if (!t || event.date) return null;
+  if (t.year == null || t.month == null) return null; // see saturdaysOfMonth — Number(null) is 0
+  const y = Number(t.year), m = Number(t.month);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 0 || m > 11) return null;
+  return String(t.label || '').trim() || null;
+};
+
+/**
+ * The real Saturdays in a month, as YYYY-MM-DD.
+ *
+ * A celebration usually lands on one, so these are offered as OPTIONS — the host
+ * taps a real day rather than the app inventing one. Formatted from LOCAL parts,
+ * never toISOString: east of Greenwich a UTC slice shifts a local-midnight
+ * Saturday back to Friday's date, so the chip would say Saturday and write the
+ * day before.
+ */
+export const saturdaysOfMonth = (year, month) => {
+  // Guard BEFORE Number(): Number(null) is 0 and Number.isInteger(0) is true, so a
+  // null/'' month would otherwise sail through as January of year 0 and return four
+  // real-looking Saturdays from the year zero. Caught by the bad-input test.
+  if (year == null || month == null || year === '' || month === '') return [];
+  const y = Number(year), m = Number(month);
+  if (!Number.isInteger(y) || !Number.isInteger(m) || m < 0 || m > 11) return [];
+  const out = [];
+  const d = new Date(y, m, 1);
+  while (d.getMonth() === m) {
+    if (d.getDay() === 6) {
+      out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return out;
+};
+
 // ── TIME INTELLIGENCE ─────────────────────────────────────────────────────────
 // ONE source for "is this event date usable, and what is its standing relative to
 // today?" Built on daysUntil so every surface (create flow, Where & when, the action

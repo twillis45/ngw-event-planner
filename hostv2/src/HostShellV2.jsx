@@ -71,7 +71,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
@@ -142,7 +142,8 @@ import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled }
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
-import { orientation as deriveOrientation, segmentsText } from '@app/lib/eventOrientation';
+import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
+import { stagewrapClass } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -154,6 +155,8 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
+import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
+import { mayExhale } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -815,6 +818,11 @@ export default function HostShellV2() {
   const [fGuests, setFGuests] = useState(null);
   const [fBudget, setFBudget] = useState(null);
   const [fIsDestination, setFIsDestination] = useState(null);
+  // The two axes behind "destination" — asked, not inferred. We hold no city
+  // coordinates, so distance (and therefore drive-vs-fly) cannot be derived
+  // honestly; the host knows both answers instantly. null = unanswered.
+  const [fOvernight, setFOvernight] = useState(null);
+  const [fTravelMode, setFTravelMode] = useState(null);
   const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
   // "Change an answer" re-runs assemble over the SAME event — this holds its
   // id so the correction replaces it in the store instead of appending a
@@ -980,7 +988,29 @@ export default function HostShellV2() {
   // Smart parse — extracted to lib/smartParseEvent (single, unit-tested
   // source: every extraction here used to be verifiable only by hand in a
   // live browser tab).
-  const parsed = useMemo(() => parseSmartEventText(smartText), [smartText]);
+  // HOST PROFILE — hoisted here from below (it used to sit ~80 lines further
+  // down). The smart-parse memo underneath needs the host's area, and a `const`
+  // declared later is in the temporal dead zone at that point: the shell threw
+  // "Cannot access '_e' before initialization" and rendered the error boundary
+  // instead of the app. The initialiser depends on nothing in component scope,
+  // and hook ORDER stays consistent across renders, so hoisting is safe.
+  const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+
+  // HOME AREA IN (destination detection): "is this a destination?" is a relation
+  // between two places, and the parser only ever saw one — so a bare "in
+  // Charleston" could not be judged, and "in Annapolis, MD" from a host who
+  // LIVES in Annapolis was flagged destination purely because a city resolved.
+  // The host's own area already exists on the profile ("Your area" below) and
+  // eventGeoQuery already reads it; the parser was simply never handed it.
+  // Absent profile ⇒ homeCity undefined ⇒ the comparison is skipped and the
+  // parse is byte-identical to before.
+  const parsed = useMemo(
+    () => parseSmartEventText(smartText, {
+      homeCity: (profile && profile.city) || '',
+      homeState: (profile && profile.state) || '',
+    }),
+    [smartText, profile],
+  );
 
   // Effective values: manual correction wins, then the parse, then the
   // playbook's own typical (host-shell defaulting — never a blank form).
@@ -999,6 +1029,11 @@ export default function HostShellV2() {
   const effCityText = fCity.trim() || (parsed.venueCity ? (parsed.venueState ? parsed.venueCity + ', ' + parsed.venueState : parsed.venueCity) : '');
   const effBudget = fBudget ?? parsed.budget ?? null;
   const effIsDestination = fIsDestination ?? !!parsed.isDestination;
+  // Host answer wins over the heard hint, which wins over nothing. Staying null
+  // is a real state — it means "we have not been told", and the decisions that
+  // depend on it stay out rather than being gated on a guess.
+  const effOvernight = fOvernight ?? parsed.overnight ?? null;
+  const effTravelMode = fTravelMode ?? parsed.travelMode ?? null;
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
@@ -1051,7 +1086,9 @@ export default function HostShellV2() {
   // hostIntelligence feeds attendance learning. V2 writes MERGE-ONLY so every
   // production field it doesn't know about survives untouched; the original
   // app's own debounced cloud save picks the changes up next time it runs.
-  const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+  // (`profile` STATE is declared earlier, above the smart-parse memo, because the
+  // parser now needs the host's area to judge whether a place is a destination.
+  // Declaring it here left it in the temporal dead zone for that memo.)
   // Cross-device resume pointer (build-map #3): the account remembers the last
   // event the host was in; on a fresh device we follow it once it resolves.
   // resumePointer (STATE, so setting it re-runs the follow effect) holds the
@@ -2369,6 +2406,14 @@ export default function HostShellV2() {
   const orient = useMemo(() => {
     try { return deriveOrientation(phaseCues, queue); } catch (_e) { return null; }
   }, [phaseCues, queue]);
+
+  // Which progress segment the pointer (or keyboard focus) is on, so the hairline
+  // can NAME the part of the plan a strip stands for. The strips already carried a
+  // native `title`, but that is a ~1s delayed OS tooltip that never appears on
+  // touch — the strip read as an anonymous tick. Host ruling: hovering a strip
+  // should say which part of the plan it is. Null = show the running count.
+  const [hoverSeg, setHoverSeg] = useState(null);
+
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -2380,11 +2425,50 @@ export default function HostShellV2() {
   // cleared on event switch so the same row on a different event counts again.
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
+
+  // ── THE ENGINE GRANTS CALM, NOT THE CHECKLIST (exhaleGate R3, wired 2026-08-03) ──
+  //
+  // `listIsCalm` reads `queue`, and `queue` is built from `actions` + `blockerDecisions`
+  // (~:2398). The over-budget heads-up is appended to `worries` (~:2321) and NEVER to
+  // either. So an overspend could not break the calm BY CONSTRUCTION: a host $1,400 past
+  // their number, with a quiet action queue, was shown "You're ahead."
+  //
+  // That is exactly R3 — a local completeness read outranking what the engine knows —
+  // and `lib/exhaleGate` was written on 2026-07-14 to forbid it. It had ZERO importers in
+  // hostv2: its only call site was the frozen `src/App.js`, which is scheduled for
+  // deletion, so the invariant was about to be left with no callers at all.
+  //
+  // The veto is scoped to MONEY on purpose. `worries` are deliberately non-blocking
+  // heads-ups, and the CALM_CATEGORIES ruling (one calm item is still calm) stands. Money
+  // is the one the board proved the checklist cannot see and must not talk over.
+  const calmVeto = (worries || []).find(w => w && String(w.category) === 'money') || null;
+  const mayBeCalm = mayExhale(listIsCalm, calmVeto);
+
+  // ── ONE COMPLETENESS READ, ONE EXPIRY (board step 2) ────────────────────────
+  // The hairline computed `done >= total` inline; the calm pole computed its own
+  // cpDone/cpTotal with a DIFFERENT fallback. Two readings of one ledger is exactly
+  // how the two checklists in the R3 defect drifted apart. Derived here, once.
+  const planTotal = Number(phaseCues && phaseCues.totalCount) || 0;
+  const planDone = Number(phaseCues && phaseCues.completedCount) || 0;
+  const planComplete = planTotal > 0 && planDone >= planTotal;
+  // The date this ledger's denominator next moves (phaseProgress). A completion
+  // claim made without it is a claim with a fuse — see the field's own comment.
+  const ledgerExpiry = (phaseCues && phaseCues.nextLedgerChange) || null;
+  const ledgerExpiryShort = ledgerExpiry ? (() => {
+    try { return new Date(ledgerExpiry.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; }
+  })() : null;
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
   // engine has an ask, the display slot speaks it (the ASK) and queue[0]
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
   // past, no date) the countdown keeps the display — the date IS the story then.
-  const askMode = days !== null && days >= 0 && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
+  // NO DATE IS AN ASK, NOT AN ABSENCE (Figma 922:121, "A4 · No date — the honest
+  // floor"). Excluding days===null here dropped every undated event out of the
+  // elegant composition entirely and onto the plain numbered list — reported from
+  // the browser repeatedly as "this has no Figma parity", and correctly so: the
+  // frame shows the SAME board, with the ask simply being "Add the day." and the
+  // one action being "Set the event date". The countdown does not own the display
+  // when there is no countdown to own it.
+  const askMode = (days === null || days >= 0) && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
   // ── THE ONE ASK STRING (board ruling C, 2026-07-30) ──
   // The loud line is the FIRST real ITEM, not the generic bundle verb — the per-item
   // intelligence surfacing where the host looks first. Conflicts → the clash; decisions
@@ -2479,6 +2563,10 @@ export default function HostShellV2() {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
     if (elegantMode && days === 0) return 'It’s today.';
+    // THE HONEST FLOOR (Figma 922:121). With no day, nothing downstream can be
+    // timed, so the date outranks every other ask no matter what queue[0] holds —
+    // it is the floor the rest of the plan stands on, not one item among several.
+    if (elegantMode && days === null) return 'Add the day.';
     const q0 = queue[0];
     // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
     // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
@@ -2646,6 +2734,14 @@ export default function HostShellV2() {
   const [customBudget, setCustomBudget] = useState(''); // host's own number, either surface
   const [guestDraft, setGuestDraft] = useState('');      // in-progress typed guest count, before commit
   const [sheet, setSheet] = useState(null);   // deep-link landing: {kind, focus}
+  // ── RESPONSIVE SURFACE MODE (Phase 5G-C1) ─────────────────────────────────
+  // Exactly two surfaces opt out of the fixed phone stage at >=1280px: the
+  // orientation command surface and the food sheet carrying the ice
+  // recommendation. Derived ONLY from explicit surface identity (stage + sheet
+  // kind) — never from headings, child counts, copy, or whether the ice card
+  // happens to be present. The mapping is pinned in responsiveSurface.test.js so a
+  // sheet cannot start widening silently.
+  const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
   // Row-level landing (audit 2026-07-22): a route resolved to {kind:'space',
   // focus:'parking'|…} opens THAT row's inline note editor — the last leg of the
   // parking/load-in deep links (resolver branch in lib/routeResolver.js).
@@ -3336,7 +3432,21 @@ export default function HostShellV2() {
       if (el && app) {
         // Rect math relative to the scroller, un-scaled by the phone frame's
         // --fit transform (offsetTop resolves against the wrong ancestor here).
-        const fit = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--fit')) || 1;
+        //
+        // Read the ACTUAL applied scale, not the global `--fit` custom property.
+        // `--fit` is set on documentElement by main.jsx for every window, but the
+        // transform that uses it lives only inside the >=1280px block — and a surface
+        // that opts out of the fixed stage (.stagewrap--responsive-command) has no
+        // transform at all. Dividing by a `--fit` that is not applied to THIS element
+        // sends the scroll to the wrong offset, which is precisely the route-focus
+        // dependency the --fit trace flagged. getBoundingClientRect/offsetWidth gives
+        // the scale actually in force, and falls back to 1 when nothing is scaled.
+        const fit = (() => {
+          const ow = app.offsetWidth;
+          if (!ow) return 1;
+          const s = app.getBoundingClientRect().width / ow;
+          return (Number.isFinite(s) && s > 0.05) ? s : 1;
+        })();
         const delta = (el.getBoundingClientRect().top - app.getBoundingClientRect().top) / fit;
         const top = Math.max(0, app.scrollTop + delta - (app.clientHeight - el.getBoundingClientRect().height / fit) / 2);
         app.scrollTo({ top, behavior: REDUCE_MOTION ? 'instant' : 'smooth' });
@@ -4368,7 +4478,7 @@ export default function HostShellV2() {
               number comes from replies, not a typed lock. */}
           {event.guestMode !== 'list' && guestN > 0 && (
             <CtaRow>
-              <button className="cta stay" onClick={() => {
+              <button className="cta" onClick={() => {
                 patchEvent({ guestCount: guestN, guestEstimate: guestN },
                   guestN + ' locked in — food, seats, and buys now size from it.');
                 // Answering the ask advances the loop (W14b): the engine stops
@@ -4427,7 +4537,7 @@ export default function HostShellV2() {
             </div>
           ))}
           <div className="actions-row" style={{ marginTop: 6 }}>
-            <button className="cta stay" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
+            <button className="cta" onClick={() => patchEvent({ dietaryNoted: true }, 'Dietary needs noted — the menu is good to go.')}>That’s everyone — noted</button>
           </div>
           <p className="grounding" style={{ margin: 0 }}>
             Vegetarian and vegan counts add a real, priced main to the spread; the others flag which lines to double-check. Counts live on the plan — change them anytime.
@@ -4485,12 +4595,37 @@ export default function HostShellV2() {
         // set, mark it host-confirmed in the same tap so BOTH halves of "when" clear together
         // (datetime is handled only when date AND start time are confirmed — phaseProgress.js).
         const patch = { date: v };
+        // The named month has been answered by a real day — drop it rather than
+        // leave a second, staler "when" on the record.
+        if (event.targetMonth) patch.targetMonth = null;
         if (String(event.startTime || '').trim() && !startTimeIsConfirmed(event)) patch.startTimeSource = 'host';
         patchEvent(patch, 'Date confirmed — every countdown, deadline, and shopping window just moved to it.');
         setDateDraft(null);
       };
       return (
       <div className="hc-row" style={{ flexWrap: 'wrap' }}>
+        {/* The host already named a MONTH. Opening a blank picker on it asked them
+            to answer twice — so offer that month's real Saturdays, the same
+            OPTIONS-not-guesses affordance intake uses. Still never invents a day:
+            nothing is written until one of these is tapped. */}
+        {!event.date && targetMonthLabel(event) && (() => {
+          const sats = saturdaysOfMonth(event.targetMonth.year, event.targetMonth.month);
+          if (!sats.length) return null;
+          return (
+            <div style={{ width: '100%' }}>
+              <p className="grounding" style={{ margin: '0 0 6px' }}>
+                You said {targetMonthLabel(event)} — pick a Saturday, or set the exact day.
+              </p>
+              <div className="chips" style={{ marginBottom: 6 }}>
+                {sats.map(s => (
+                  <button key={s} className="chip" onClick={() => setDateDraft(s)}>
+                    {new Date(s + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         <input className="field" type="date" value={dateShown} aria-label="Event date"
           onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
         {/* CONFIRM (host report): a date change waits for a yes before it moves the plan. */}
@@ -4846,6 +4981,15 @@ export default function HostShellV2() {
       name: effName ? effName + '’s ' + milestoneName : 'My ' + milestoneName,
       honoree: effName || '',
       type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
+      // "next month", "this fall"). It was heard at intake — the chip said
+      // "Jun 2028 · pick a day" — and then dropped here, so the board answered
+      // "No date" to someone who had just given one, the countdown had nothing to
+      // stand on, and the date picker opened BLANK on a month already chosen.
+      // Honest to persist: `monthYear` is null unless the host actually said it
+      // (smartParseEvent ~229-260), and it is never a day — the day stays unset
+      // until they pick one. Written only when there is no exact date.
+      ...(!effDate && parsed.monthYear ? { targetMonth: parsed.monthYear } : {}),
       // "No kids." typed at create carries straight to the invite policy the
       // invite + DIFM copy already consume (parser 2026-07-27; never invented).
       ...(parsed.kidsPolicy ? { kidsPolicy: parsed.kidsPolicy } : {}),
@@ -4861,6 +5005,11 @@ export default function HostShellV2() {
       guestEstimate: effGuests || '',
       totalBudget: effBudget || '',
       isDestination: effIsDestination,
+      // Persisted only when the event IS a destination and we actually have an
+      // answer — an absent field means "not told", which the engines can treat
+      // differently from a false. Never written for a local event.
+      ...(effOvernight !== null ? { guestsStayOvernight: effOvernight } : {}),
+      ...(effIsDestination && effTravelMode ? { travelMode: effTravelMode } : {}),
       // The coarse time-of-day the host said ("cookout in the afternoon"). Persisted so the
       // grounded start-time default below has a bucket to propose from — without this it was
       // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
@@ -5210,7 +5359,7 @@ export default function HostShellV2() {
   // wander into before the one decision this screen asks for.
   if (welcome) {
     return (
-      <div className="stagewrap">
+      <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
         {/* inert while the splash covers the screen: closes the AT-path tap-
             through — a screen reader user could otherwise swipe onto and
             activate welcome/dashboard controls that are invisible to them
@@ -5246,7 +5395,7 @@ export default function HostShellV2() {
   }
 
   return (
-    <div className="stagewrap">
+    <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
@@ -5457,6 +5606,41 @@ export default function HostShellV2() {
                         <button className="chip" aria-pressed={effIsDestination} onClick={() => setFIsDestination(!effIsDestination)}>
                           {effIsDestination ? 'Destination event' + (fIsDestination == null ? ' · heard' : '') : 'Local event'}
                         </button>
+                        {/* ── The two axes, asked rather than guessed ──────────────────
+                            One boolean gated lodging, transport, travel-mix and health
+                            identically, so a staycation and a fly-in wedding got the same
+                            four rows. These separate them. They appear only once the event
+                            is a destination, so a local dinner's chip row is unchanged.
+
+                            Distance is deliberately NOT used to infer these: the app holds
+                            no city coordinates (usCitiesFull is names only), so any mileage
+                            would be invented. The host knows both answers in one tap, and a
+                            known fact beats a derived guess. Three states each — the third
+                            is "unanswered", which stays honest instead of defaulting. */}
+                        {/* OVERNIGHT IS ITS OWN AXIS, not a sub-question of "destination".
+                            A STAYCATION is the case that proves it: local, nobody travels,
+                            and yet everyone sleeps somewhere — so the lodging decisions are
+                            live while transport is not. Nesting this under isDestination hid
+                            the question for exactly that event. It shows whenever the event
+                            is a destination, or spans days, or overnight was heard. */}
+                        {(effIsDestination || effOvernight !== null || !!effEndDate) ? (
+                          <button className="chip" aria-pressed={effOvernight === true}
+                            onClick={() => setFOvernight(effOvernight === true ? false : effOvernight === false ? null : true)}>
+                            {effOvernight === true ? 'Staying overnight' + (fOvernight == null ? ' · heard' : '')
+                              : effOvernight === false ? 'Same day, no stay' : 'Staying over?'}
+                          </button>
+                        ) : null}
+                        {/* Mode stays destination-only: "driving or flying" is meaningless
+                            when nobody is travelling in. */}
+                        {effIsDestination ? (
+                          <button className="chip" aria-pressed={!!effTravelMode}
+                            onClick={() => setFTravelMode(effTravelMode === 'drive' ? 'fly' : effTravelMode === 'fly' ? 'mixed' : effTravelMode === 'mixed' ? null : 'drive')}>
+                            {effTravelMode === 'drive' ? 'Driving in' + (fTravelMode == null ? ' · heard' : '')
+                              : effTravelMode === 'fly' ? 'Flying in' + (fTravelMode == null ? ' · heard' : '')
+                              : effTravelMode === 'mixed' ? 'Some drive, some fly' + (fTravelMode == null ? ' · heard' : '')
+                              : 'Driving or flying?'}
+                          </button>
+                        ) : null}
                         {/* Kids policy — CAPTURED silently since the Vida fixes but never
                             echoed; a heard fact the host can't see is a fact they'll
                             re-type. Display-only (edits live on the invite settings). */}
@@ -5716,7 +5900,11 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
+                  {/* The eyebrow is the ONE element every elegant screen keeps, so it
+                      carries the date STATUS — and with no date it said nothing at all,
+                      leaving the countdown slot silently empty. Figma 922:121 puts
+                      "NO DATE YET" here; when the host named a month, say the month. */}
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : (targetMonthLabel(event) ? String(targetMonthLabel(event)).toUpperCase() + '  ·  PICK A DAY  ·  ' : 'NO DATE YET  ·  ')) + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
                     /* Span visibility (host report 2026-07-27 "I don't see the multi day"):
                        the range rides the always-on eyebrow — the ONE element every
                        elegant screen keeps — so a 3-day event reads as one at a glance.
@@ -5919,7 +6107,14 @@ export default function HostShellV2() {
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
                         dedup and the browser tab speak exactly what is rendered here. */}
                     <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{heroAskText}</h2>
-                    <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>
+                    {/* With no date this slot would read "null days". The frame puts
+                        the honest sentence here instead — and when the host named a
+                        MONTH we can do better than "no date yet" and say which one. */}
+                    {days === null
+                      ? <p className="truth">{targetMonthLabel(event)
+                        ? `${targetMonthLabel(event)} — pick a day and the countdown starts`
+                        : (orient && orient.summary) || 'No date yet, so nothing can be timed.'}</p>
+                      : <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>}
                     {!statusOnTrack && statusNode}
                   </>);
                 }
@@ -5928,15 +6123,38 @@ export default function HostShellV2() {
                 // masthead + mega + verdict + heads-ups. The heads-ups / coming-up live below the
                 // fold behind "Look around anyway". Grounded: the on-track count is the real phase
                 // ledger; "next check" is the nearest dated thing. Elegant + genuinely-calm only.
-                if (elegantMode && listIsCalm && !isPast && days !== null && days > 0) {
-                  const cpDone = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : (plan.progress && plan.progress.done);
-                  const cpTotal = phaseCues && Number(phaseCues.totalCount) ? Number(phaseCues.totalCount) : (plan.progress && plan.progress.total);
-                  const nextUp = (upNext && upNext.find(u => u && u.due)) || null;
-                  const nextCheck = nextUp ? (() => { try { return new Date(nextUp.due + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return null; } })() : null;
+                if (elegantMode && mayBeCalm && !isPast && days !== null && days > 0) {
+                  const cpDone = planDone;
+                  const cpTotal = planTotal;
+                  // The five things, BY NAME. "5 of 5" tells a host a number; it never
+                  // tells them what was counted, and they never filled in a form with
+                  // five parts on it. Grandmother seat, 2026-08-03: "if you're going to
+                  // count my life into five pieces, say them out loud."
+                  // Only the HANDLED ones are named here. Listing all five undifferentiated
+                  // put an OPEN part inside a line that reads as "what's settled" — the
+                  // count said 4 of 5 while the legend showed five. The count line carries
+                  // which is open, via the same helper the ask hairline uses.
+                  const partNames = (orient && orient.segments.length)
+                    ? orient.segments.filter(s => s.handled).map(s => s.label).join(' · ') : null;
                   return (<>
-                    <p className="cp-label">ALL QUIET</p>
-                    <h2 className="cp-head">You’re ahead.</h2>
-                    {statusNode || <p className="verdict">Nothing needs you today. Everything’s in motion.</p>}
+                    {/* "ALL QUIET" deleted — it said the same word as the verdict line
+                        40px below it ("All quiet — you're genuinely set for now"), and
+                        the headline already names the state. One element, one meaning. */}
+                    {/* THE HEADLINE IS THE EXPIRY, NOT A COMPLIMENT.
+                        "You're ahead." was hardcoded, read no count, and is comparative
+                        with no referent — ahead of what? The host was never shown a
+                        schedule. Worse, the ledger's denominator MOVES, so any standing
+                        claim is a claim with a fuse. The honest loud line is the date the
+                        quiet ends. Falls back to a today-scoped claim when the ledger has
+                        no pending change — never a standing one. */}
+                    <h2 className="cp-head">{ledgerExpiryShort
+                      ? `Nothing needs you until ${ledgerExpiryShort}.`
+                      : 'Nothing needs you today.'}</h2>
+                    {/* statusNode is the SOLE author of this line. The `||` fallback that
+                        used to sit here was unreachable — statusNode's guard is identical
+                        to this branch's — so it was dead code that misread as shipped copy
+                        and misled a design review. */}
+                    {statusNode}
                     <button className="cp-look" onClick={() => { try {
                       // The below-fold scrolls the .app container, which silently ignores
                       // scrollTo({behavior:'smooth'}) here — only a direct scrollTop assignment
@@ -5950,9 +6168,24 @@ export default function HostShellV2() {
                         : sc.scrollTop + Math.round((sc.clientHeight || 700) * 0.82);
                       try { sc.scrollTo({ top: target, behavior: 'smooth' }); } catch {}
                       sc.scrollTop = target;
-                    } catch { /* no target */ } }}>Look around anyway  ›</button>
-                    {Number.isFinite(cpDone) && Number.isFinite(cpTotal) && cpTotal > 0 && (
-                      <p className="cp-prog">{cpDone} of {cpTotal} on track{nextCheck ? ' · next check ' + nextCheck : ''}</p>
+                    {/* ▸ not › — this handler sets scrollTop, it does not route. A
+                        navigation glyph on an in-place reveal is the fake affordance the
+                        shell's own rule forbids, and "anyway" argued against the click
+                        before the host made it. Say where it goes. */}
+                    } catch { /* no target */ } }}>See what’s below  ▸</button>
+                    {cpTotal > 0 && (
+                      <>
+                        {/* "on track" is a PACE word. The engine knows handled-or-open per
+                            essential and nothing about rate — the same false precision the
+                            host killed the continuous fill for. Use the engine's own noun. */}
+                        <p className="cp-prog">{hairlineLabel(orient) || `${cpDone} of ${cpTotal} plan parts handled`}</p>
+                        {partNames && <p className="cp-parts">{partNames}</p>}
+                        {/* The denominator moves, so say when. This is the whole reason
+                            phaseProgress now emits nextLedgerChange. */}
+                        {ledgerExpiry && ledgerExpiryShort && (
+                          <p className="cp-prog">{ledgerExpiryShort} is when {ledgerExpiry.what}.</p>
+                        )}
+                      </>
                     )}
                   </>);
                 }
@@ -6008,7 +6241,7 @@ export default function HostShellV2() {
                         : (money.committed ? fmt(money.committed) + ' all told.' : 'no budget was tracked.')}</p>
                     </div>
                     <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'nowrap' }}>
-                      <button className="cta stay" style={{ flex: '0 0 auto', width: 'auto', whiteSpace: 'nowrap', minHeight: 0, padding: '12px 18px', fontSize: 'var(--t-body-s)' }}
+                      <button className="cta" style={{ flex: '0 0 auto', width: 'auto', whiteSpace: 'nowrap', minHeight: 0, padding: '12px 18px', fontSize: 'var(--t-body-s)' }}
                         onClick={() => setStage('after')}>Save what worked</button>
                       <span style={{ fontSize: 'var(--t-meta)', color: 'var(--muted)', textAlign: 'right', flex: '1 1 auto', minWidth: 0, lineHeight: 1.35 }}>so your next one starts&nbsp;ahead.</span>
                     </div>
@@ -6023,11 +6256,15 @@ export default function HostShellV2() {
                     {/* Mid-span truth (R1): on day 2 of a June 12–14 event `days`
                         is -1 — the old label said "1d ago" while the reunion was
                         LIVE. The span check must come before the ago branch. */}
-                    {days === null ? 'No date'
+                    {days === null ? (targetMonthLabel(event) || 'No date')
                       : isDuringEvent(event) ? (spanNights(event) > 0 ? `Day ${dayIndexOf(event)} of ${spanNights(event) + 1}` : 'Today')
                         : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
                   </div>
                   <p className="mega-sub">
+                    {/* The mega now says "Jun 2028" when that is all the host gave.
+                        Say what is still missing, so a month never reads as a settled
+                        day — the countdown genuinely cannot start until there is one. */}
+                    {days === null && targetMonthLabel(event) && 'pick a day and the countdown starts'}
                     {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
                     {/* Past says it ONCE — the "How it landed · behind you" header carries it;
                         this sub and the empty-state used to re-say it (audit 2026-07-22, W7). */}
@@ -6691,7 +6928,7 @@ export default function HostShellV2() {
                           const isSettle = isVendorConfirmAction(a) || /^send payment to/i.test(String(a.title || ''));
                           // canSettle: this button lives INSIDE the card loop, so
                           // `editor === key` at the slot above genuinely mounts an editor.
-                          return <button className={'cta' + (isSettle ? ' stay' : '')} onClick={() => onCta(a, key, { canSettle: true })}>{
+                          return <button className="cta" onClick={() => onCta(a, key, { canSettle: true })}>{
                           isVendorConfirmAction(a) ? 'Mark as locked in'
                           : /^send payment to/i.test(String(a.title || '')) ? 'Mark as paid'
                           /* NO generic "Take me to it" on the hero (host standing rule): name the real
@@ -6813,27 +7050,54 @@ export default function HostShellV2() {
               {elegantMode && askMode && phaseCues && phaseCues.totalCount > 0 && (() => {
                 const done = Number(phaseCues.completedCount) || 0;
                 const total = Number(phaseCues.totalCount) || 0;
-                const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
                 return (
-                  // PART 9 — the ONE progress visual, now SEGMENTED and readable.
+                  // PART 9 — the ONE progress visual, SEGMENTED.
                   //
                   // It was a single continuous bar marked aria-hidden, so its own labels
                   // ("4 of 5 plan parts handled") reached nobody using assistive tech —
-                  // a visual encoding state with no text form. The wrapper now carries
-                  // the segment text via aria-label and stops being hidden.
+                  // a visual encoding state with no text form. The wrapper carries the
+                  // segment text via aria-label and is not hidden.
                   //
                   // Segments are CATEGORICAL: each essential is handled or open, never a
                   // percentage of itself, because the engine knows which of those is true
-                  // and nothing finer. The continuous fill is kept underneath as the
-                  // at-a-glance read; the segments are what carry meaning.
-                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
+                  // and nothing finer.
+                  //
+                  // THE CONTINUOUS FILL IS GONE (host ruling, driven in the iOS simulator).
+                  // It sat directly above the segments encoding the SAME fact as a
+                  // percentage — two bars, one truth, stacked. The percentage was also the
+                  // weaker of the two: it implied a precision the engine does not have,
+                  // since it only knows handled-or-open per essential. One loud thing per
+                  // screen, and the segments are the one that carries meaning.
+                  // THE CELEBRATION CANNOT BE TRUE HERE (board, 2026-08-03).
+                  //
+                  // This hairline renders ONLY inside askMode, and askMode requires
+                  // `!listIsCalm && queue.length > 0` — a live ask on screen. So
+                  // `done >= total` in THIS context never means "you're set": it means
+                  // the plan-parts ledger is closed while something outside that ledger
+                  // is still asking for the host. Painting the green done-state and
+                  // saying "you're set" directly above an open request is the exhale
+                  // outranking the engine — the R3 defect that `lib/exhaleGate` was
+                  // written to forbid on 2026-07-14 ("a checklist may propose calm; only
+                  // the engine may grant it"), reproduced in the shell that replaced the
+                  // one it was fixed in.
+                  //
+                  // The green completion belongs to the complete-state screen, which
+                  // does not exist yet. Until it does, this surface says the true thing:
+                  // the parts are handled AND something is still open.
+                  <div className="eprog"
                     role="img" aria-label={segmentsText(orient)}>
-                    <div className="eprog-rule" aria-hidden="true"><span style={{ width: pct + '%' }} /></div>
                     {orient && orient.segments.length > 0 && (
-                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '3px 0 2px' }}>
+                      // A 2px bar is not a hoverable target. Each strip gets a padded
+                      // hit area, and the row takes an equal negative margin back, so
+                      // the strips stay on exactly the pixel row they were drawn on —
+                      // the target grew, the composition did not move.
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
                         {orient.segments.map(s => (
                           <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
-                            style={{
+                            onMouseEnter={() => setHoverSeg(s)}
+                            onMouseLeave={() => setHoverSeg(cur => (cur && cur.id === s.id ? null : cur))}
+                            style={{ flex: 1, padding: '7px 0', display: 'flex', alignItems: 'center' }}>
+                            <span style={{
                               flex: 1, height: 2, borderRadius: 1,
                               // Never colour-only: the aria-label above and the title
                               // attribute both name the state in words.
@@ -6845,6 +7109,7 @@ export default function HostShellV2() {
                               background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
                               opacity: s.handled ? 0.95 : 0.75,
                             }} />
+                          </span>
                         ))}
                       </div>
                     )}
@@ -6860,10 +7125,21 @@ export default function HostShellV2() {
                           uses the engine's own noun ("…parts of your plan handled",
                           phaseProgress ~220), which also frees "settled" to mean
                           decisions only. */}
-                      <span>{done} of {total} plan parts handled</span>
+                      {/* The resting line NAMES the open parts rather than re-printing
+                          the count the strips already encode — that is what makes this
+                          readable on touch, where there is no hover. Hovering a single
+                          strip narrows the same line to that one part. */}
+                      <span>{hoverSeg ? hoverSeg.label : hairlineLabel(orient)}</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
-                      <span>{done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait')}</span>
+                      {/* `done >= total` used to print "you’re set" HERE — over a live
+                          ask, because this hairline only exists in askMode. It is the
+                          one state in which "you’re set" is guaranteed false. It now
+                          says what is actually true: the ledger is closed, and the thing
+                          on screen is not in that ledger. */}
+                      <span>{hoverSeg
+                        ? (hoverSeg.handled ? 'handled' : 'still open')
+                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
                     </div>
                   </div>
                 );
@@ -9390,6 +9666,17 @@ export default function HostShellV2() {
                   {event.isDestination ? 'yes' : 'no'}
                 </button>
               </div>
+            )}
+            {/* SPAN RECOGNITION: the engine knows when an event probably runs more
+                than one day — a destination trip, guests flying in or staying over,
+                or a type that spans by definition. It used to know this and say
+                nothing, so a five-day Santa Fe birthday sat as a one-afternoon plan
+                and was never asked. Ask here, with the reason, and let the host
+                answer with the control directly below. Never writes an endDate. */}
+            {sheet.kind === 'space' && shouldAskSpan(event) && (
+              <p className="grounding" style={{ padding: '2px 0 8px', margin: 0 }}>
+                {spanIntel(event).why}
+              </p>
             )}
             {sheet.kind === 'space' && (
               // R1 span ruling (2026-07-26): endDate is host-editable after

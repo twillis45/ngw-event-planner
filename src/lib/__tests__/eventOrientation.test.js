@@ -4,7 +4,7 @@
 // invents no readiness, and cannot disagree with the engine it reads.
 import { deriveEventPhaseProgress } from '../phaseProgress';
 import {
-  orientation, readinessSegments, severeBlocker, segmentsText,
+  orientation, readinessSegments, severeBlocker, segmentsText, openPartsLabel, hairlineLabel,
   LIFECYCLE_LABELS, DIMENSION_LABELS,
 } from '../eventOrientation';
 
@@ -190,5 +190,88 @@ describe('the visual has a text equivalent (accessibility)', () => {
 
   test('it degrades safely', () => {
     expect(segmentsText(null)).toBe('');
+  });
+});
+
+// The hairline's visible left label. It must carry the NAMES without a pointer,
+// because hover does not exist on touch — that is the whole reason it replaced the
+// bare count. These cover the arities the live surface cannot easily be driven into.
+describe('openPartsLabel — the open parts, named, with no pointer', () => {
+  const seg = (label, handled) => ({ id: label, label, handled });
+  const withSegments = (segments) => ({ segments });
+
+  test('one open part is named on its own', () => {
+    expect(openPartsLabel(withSegments([seg('Food', false), seg('Place', true)])))
+      .toBe('Food open');
+  });
+
+  test('two open parts are joined, not truncated', () => {
+    expect(openPartsLabel(withSegments([seg('Date & time', false), seg('Food', false)])))
+      .toBe('Date & time and Food open');
+  });
+
+  test('past two it names two and COUNTS the rest — the line is bounded', () => {
+    expect(openPartsLabel(withSegments([
+      seg('Date & time', false), seg('Food', false), seg('Budget', false), seg('Vendors', false),
+    ]))).toBe('Date & time, Food +2 more');
+  });
+
+  test('nothing open says so — never an empty line beside a full bar', () => {
+    expect(openPartsLabel(withSegments([seg('Food', true), seg('Place', true)])))
+      .toBe('nothing open');
+  });
+
+  test('it degrades safely', () => {
+    expect(openPartsLabel(null)).toBe('');
+  });
+
+  test('it names the SAME open parts the screen-reader sentence does', () => {
+    const o = orientation(cuesFor(DATED));
+    const spoken = segmentsText(o);
+    o.segments.filter((s) => !s.handled).slice(0, 2).forEach((s) => {
+      expect(spoken).toContain(s.label);
+      expect(openPartsLabel(o)).toContain(s.label);
+    });
+  });
+});
+
+// The hybrid the board actually renders. Names are better than a count only while
+// the remaining list is short enough to read as a list; the Figma frames specify
+// the count, and the count is what survives the extremes.
+describe('hairlineLabel — names when they help, the specified count when they do not', () => {
+  const seg = (label, handled) => ({ id: label, label, handled });
+  const o = (segments) => ({
+    segments,
+    completedCount: segments.filter((s) => s.handled).length,
+    totalCount: segments.length,
+  });
+
+  test('ONE open part is named', () => {
+    expect(hairlineLabel(o([seg('Food', false), seg('Place', true)])))
+      .toBe('1 of 2 · Food open');
+  });
+
+  test('TWO open parts are named', () => {
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Place', true)])))
+      .toBe('1 of 3 · Date & time and Food open');
+  });
+
+  test('THREE open falls back to the count — names stop being a list', () => {
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Budget', false)])))
+      .toBe('0 of 3 plan parts handled');
+  });
+
+  test('the honest floor matches the Figma frame verbatim', () => {
+    const five = ['Date & time', 'Place', 'Guests', 'Food', 'Budget'].map((l) => seg(l, false));
+    expect(hairlineLabel(o(five))).toBe('0 of 5 plan parts handled');
+  });
+
+  test('ALL handled uses the count, never "nothing open"', () => {
+    expect(hairlineLabel(o([seg('Food', true), seg('Place', true)])))
+      .toBe('2 of 2 plan parts handled');
+  });
+
+  test('it degrades safely', () => {
+    expect(hairlineLabel(null)).toBe('');
   });
 });

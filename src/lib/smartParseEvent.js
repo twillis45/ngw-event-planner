@@ -42,7 +42,25 @@ export function parseSmartEventText(text, opts = {}) {
 
   // ── Guests ──────────────────────────────────────────────────────────────
   let guests = null;
-  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i) || t.match(/\b(\d{1,3})\s*(?:people|guests|ppl|folks|friends|pickers)\b/i);
+  // The counting noun is whatever word the host reaches for, and the original
+  // list held six. "20 cousins flying in" therefore parsed as NO count and the
+  // plan silently sized to the reunion typical (~50) — a number the host never
+  // said, standing in for one they did. Kinship and group words are how people
+  // actually count a room, so they are all here.
+  //
+  // Deliberately NOT open-ended (\d+ \w+ would read "20 minutes" and "2028 in
+  // Asheville" as guest counts). Every noun below is a word for PEOPLE.
+  const COUNT_NOUNS = [
+    'people', 'guests', 'ppl', 'folks', 'friends', 'pickers', 'attendees', 'heads',
+    'adults', 'kids', 'children', 'grandkids', 'teens',
+    'cousins', 'relatives', 'family members', 'siblings', 'aunts', 'uncles', 'nieces', 'nephews',
+    'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
+    'students', 'staff', 'employees', 'players', 'members',
+  ].join('|');
+  const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i)
+    || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
+    // "12 of us", "20 of them" — the count with no noun at all.
+    || t.match(/\b(\d{1,3})\s+of\s+(?:us|them)\b/i);
   if (gm) guests = parseInt(gm[1], 10);
 
   // ── Budget — "$3,000", "$3k budget", "budget of $5000", "2500 budget" ────
@@ -93,12 +111,19 @@ export function parseSmartEventText(text, opts = {}) {
   // host actually said a range; same never-invent rule as everything else here.
   let endDate = null;
   if (!date) {
-    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(\d{1,2})(?:st|nd|rd|th)?\b/i);
+    // "the" before the end day ("June 12 through the 14th") is ordinary speech and
+    // used to break the match, leaving the start parsed and the span dropped.
+    // A trailing YEAR is now captured: it was matched by nothing, so "June 12-14,
+    // 2028" parsed as the CURRENT year, failed the past check, and was bumped to
+    // 2027 — a stated fact silently replaced with a wrong one, which is worse
+    // than not hearing it. An explicit year is authoritative and never bumped.
+    const rng = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:-|–|—|to|through|thru)\s*(?:(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+)?(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
     if (rng) {
       const m1 = MONTHS.indexOf(rng[1].slice(0, 3).toLowerCase());
       const m2 = rng[3] ? MONTHS.indexOf(rng[3].slice(0, 3).toLowerCase()) : m1;
-      const start = new Date(now.getFullYear(), m1, parseInt(rng[2], 10), 12);
-      if (start < now) start.setFullYear(start.getFullYear() + 1);
+      const saidYear = rng[5] ? parseInt(rng[5], 10) : null;
+      const start = new Date(saidYear || now.getFullYear(), m1, parseInt(rng[2], 10), 12);
+      if (!saidYear && start < now) start.setFullYear(start.getFullYear() + 1);
       const end = new Date(start.getFullYear(), m2, parseInt(rng[4], 10), 12);
       // Year-straddling ranges ("Dec 30 – Jan 2") bump the end year — but ONLY
       // when a second month was explicitly said; a same-month backwards "range"
@@ -134,10 +159,16 @@ export function parseSmartEventText(text, opts = {}) {
       }
     }
   }
-  const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?\b/i);
+  // The trailing year is captured here for the SAME reason it is in the range
+  // matcher above: without it "June 12, 2028" resolved to the current year,
+  // failed the past check, and was bumped to 2027 — replacing a date the host
+  // stated correctly with a wrong one. Four digits only, so "June 12, 20
+  // cousins" can never read the headcount as a year.
+  const dm = date ? null : t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?\b/i);
   if (dm) {
-    const cand = new Date(now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
-    if (cand < now) cand.setFullYear(cand.getFullYear() + 1);
+    const saidY = dm[3] ? parseInt(dm[3], 10) : null;
+    const cand = new Date(saidY || now.getFullYear(), MONTHS.indexOf(dm[1].slice(0, 3).toLowerCase()), parseInt(dm[2], 10), 12);
+    if (!saidY && cand < now) cand.setFullYear(cand.getFullYear() + 1);
     date = cand.toISOString().slice(0, 10);
   } else if (!date) {
     const sm2 = t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/);
@@ -147,6 +178,32 @@ export function parseSmartEventText(text, opts = {}) {
       if (!sm2[3] && cand < now) cand.setFullYear(cand.getFullYear() + 1);
       if (!isNaN(cand)) date = cand.toISOString().slice(0, 10);
     }
+  }
+  // "The weekend of June 12" — extremely common for a trip, and it was parsing
+  // the start and dropping the span entirely. It means a block of days, so the
+  // span is real and the host said it.
+  //
+  // NEVER MOVES THE STATED DAY. "Weekend of the 12th" where the 12th is a
+  // Saturday could be read as Fri-Sun, but shifting the start BACKWARD would
+  // invent a day the host did not say. We only extend FORWARD to the Sunday of
+  // that same weekend: Fri -> Sun, Sat -> Sun, and a stated Sunday stays a
+  // single day. Understating a span is recoverable; inventing a date is not.
+  //
+  // ONLY when the stated day is itself part of a weekend. Running blindly
+  // forward to the next Sunday turned "the weekend of June 12, 2028" — a MONDAY
+  // — into a six-day span, which is a fabricated event length. A weekday date
+  // with "weekend of" is genuinely ambiguous (the weekend before? after?), so it
+  // stays a single day and the host says which. Understating a span is
+  // recoverable; inventing five extra days is not.
+  if (date && !endDate && /\bweekend\s+of\b/i.test(t)) {
+    const s = new Date(date + 'T12:00:00');
+    const dow = s.getDay();                       // 0 Sun … 6 Sat
+    if (dow === 5 || dow === 6) {                 // Friday or Saturday
+      const e = new Date(s);
+      e.setDate(e.getDate() + (7 - dow));         // forward to that Sunday
+      endDate = e.toISOString().slice(0, 10);
+    }
+    // Sunday -> already the last day. Mon-Thu -> not a weekend; do not guess.
   }
   // Duration form — "3-day reunion", "2 nights" — only meaningful once a start
   // date resolved, and never from the relative "in N days" form (rel), whose
@@ -254,7 +311,85 @@ export function parseSmartEventText(text, opts = {}) {
   // recognizable name and a real hub town. The curated registry supplies all
   // three facts honestly; the hub town (not the area) anchors weather/maps.
   const area = matchVacationArea(t);
-  const isDestination = /\bdestination\b|\bfly (?:in|out)\b|\bout[- ]of[- ]town\b/i.test(t) || !!loc || !!area;
+
+  // ── What isDestination ACTUALLY means ────────────────────────────────────
+  // Read the decisions it gates: "How many guests are traveling in", "How are
+  // guests staying", "Are you providing group transport". The flag is about
+  // GUESTS TRAVELLING, not about the host leaving home. That distinction sets
+  // the two rules below.
+  //
+  // STRONG signals — explicit travel language, or a named vacation area. These
+  // stand on their own and are never suppressed by the home comparison: "18
+  // people flying in" is a travel event even when the party is in your own town.
+  //
+  // The old pattern was `fly (?:in|out)`, which required the bare stem and so
+  // missed the ordinary gerund — "flying in" did not match, and one missed
+  // boolean silently removes the entire travel stack (travelPlan returns
+  // relevant:false, destinationDecisionsFor returns [], the destination tasks
+  // and vendor categories never layer on). Stems and travel nouns now count.
+  const TRAVEL_STRONG = new RegExp([
+    '\\bdestination\\b',
+    '\\bout[- ]of[- ]town\\b', '\\boutta town\\b',
+    '\\bflights?\\b',
+    '\\b(?:fly|flies|flying|flew)\\s+(?:in|out|into|down|up|over)\\b',
+    '\\b(?:travel|travels|travell?ing)\\s+(?:in|out|from|down|up|over)\\b',
+    '\\bcoming\\s+in\\s+from\\b', '\\bin\\s+town\\s+for\\b',
+    '\\b(?:weekend|day|road)\\s+trip\\b', '\\btrip\\s+to\\b',
+    '\\bgetaway\\b', '\\bretreat\\b',
+    '\\bdriv(?:e|ing)\\s+(?:up|down|out|in)\\b',
+  ].join('|'), 'i');
+  const travelSaid = TRAVEL_STRONG.test(t) || !!area;
+
+  // A bare place name after travel phrasing — "weekend trip to Asheville".
+  // parseVenueLocation deliberately refuses a city with no state (a guessed
+  // state is worse than asking), and that strict gate is right for COMMITTING a
+  // location. But the destination flag does not need a state: it needs to know
+  // the place is not home. Captured for that comparison only; it never becomes
+  // venueCity.
+  const awayM = t.match(/\b(?:trip|getaway|retreat|flying|driving|heading|going|traveling|travelling)\s+(?:up\s+|down\s+|out\s+|back\s+|over\s+)?to\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})\b/);
+  const awayPlace = awayM ? awayM[1].trim() : '';
+
+  // WEAK signal — a city was parsed at all. On its own this over-fires: a
+  // gathering "in Annapolis, MD" hosted BY someone in Annapolis was being
+  // flagged as a destination event purely because a city resolved. The host's
+  // own area is the missing half of the comparison; it already exists on the
+  // profile ("Your area"), and eventGeoQuery reads it — the parser simply was
+  // never handed it. With it, the weak signal only counts when the place
+  // differs from home, which removes false positives as well as adding misses.
+  const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
+  const homeCity = normCity(opts.homeCity);
+  const placeName = (loc && loc.city) || awayPlace || '';
+  const placeAway = !!placeName && (!homeCity || normCity(placeName) !== homeCity);
+  const isDestination = travelSaid || ((!!loc || !!awayPlace) && placeAway);
+
+  // Why it was decided, for the "· heard" chip and any later explanation. Never
+  // a silent commit: the host still confirms via the toggle.
+  const destinationBasis = !isDestination ? null
+    : travelSaid ? 'travel-language'
+    : (homeCity ? 'place-differs-from-your-area' : 'place-named');
+
+  // ── The two axes that actually pick the destination decisions ────────────
+  // One boolean cannot separate a staycation from a fly-in wedding, yet it gates
+  // the same four rows for both. What decides them is narrower:
+  //   overnight -> lodging ("How are guests staying")
+  //   mode      -> transport ("Are you providing group transport"), airport runs
+  // Both are HINTS ONLY. They pre-select the intake questions; they never commit,
+  // because a guess here silently adds or removes whole decisions. null means
+  // "not heard" — the host answers, and their answer wins.
+
+  // Mode, strictly from what was said. Never inferred from distance: we hold no
+  // city coordinates (usCitiesFull is names only), so any mileage would be made up.
+  const saidFly = /\bflights?\b|\b(?:fly|flies|flying|flew)\b|\bairports?\b|\blanding\b/i.test(t);
+  const saidDrive = /\bdriv(?:e|es|ing)\b|\broad\s+trip\b|\bcaravan\b|\bcarpool\b/i.test(t);
+  const travelMode = (saidFly && saidDrive) ? 'mixed' : saidFly ? 'fly' : saidDrive ? 'drive' : null;
+
+  // Overnight. A multi-day span is the strongest honest signal there is — if the
+  // plan runs across days, people are sleeping somewhere. Lodging words say it
+  // outright. A staycation is local AND overnight, which is exactly the case the
+  // single boolean could not express.
+  const saidOvernight = /\bovernight\b|\bnights?\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
+  const overnight = (endDate || saidOvernight) ? true : null;
+  const overnightBasis = !overnight ? null : (endDate ? 'multi-day-span' : 'said-so');
 
   // TIME OF DAY — the coarse word the host actually said. This used to be dropped entirely,
   // so "cookout in the afternoon" created an event with NO time signal at all, and the
@@ -317,7 +452,7 @@ export function parseSmartEventText(text, opts = {}) {
   const lodging = /\b(airbnb|vrbo|lake\s*house|beach\s*house|cabin|rental\s+(?:house|home|condo)|rent(?:ed|ing)?\s+(?:an?\s+)?(?:airbnb|vrbo|house|cabin|condo))\b/i.test(t);
 
   return {
-    type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, timeOfDay,
+    type, secondaryType, theme, guests, budget, date, endDate, monthYear, milestone, isDestination, destinationBasis, travelMode, overnight, overnightBasis, timeOfDay,
     honoree: hm ? hm[1] : null,
     venueKind: home || /\bmy|our\b/i.test(venuePhrase) ? 'home' : (lodging || venueAt ? 'venue' : ''),
     venue: venuePhrase || venueAt || (home ? (/backyard/i.test(t) ? 'Backyard' : 'Home') : (area ? area.label : '')),

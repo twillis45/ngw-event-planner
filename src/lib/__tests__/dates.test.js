@@ -1,4 +1,4 @@
-import { getToday, daysUntil, eventDateStatus } from '../dates';
+import { getToday, daysUntil, eventDateStatus, targetMonthLabel, saturdaysOfMonth } from '../dates';
 
 const iso = (offsetDays) => {
   const d = getToday();
@@ -57,5 +57,54 @@ describe('DATE-GUARDRAIL — eventDateStatus blocks a corrupted year before it c
     const status = eventDateStatus(iso(92));
     expect(status.blocking).toBe(false);
     expect(status.valid).toBe(true);
+  });
+});
+
+// The month a host named without a day. It must repeat what they said and must
+// NEVER behave like a date — no countdown, no deadline, no invented day.
+describe('targetMonth — a named month is not a date', () => {
+  test('it returns the label the host was shown at intake', () => {
+    expect(targetMonthLabel({ targetMonth: { year: 2028, month: 5, label: 'Jun 2028' } }))
+      .toBe('Jun 2028');
+  });
+
+  test('a real date OUTRANKS it — the month never competes with a day', () => {
+    expect(targetMonthLabel({ date: '2028-06-17', targetMonth: { year: 2028, month: 5, label: 'Jun 2028' } }))
+      .toBeNull();
+  });
+
+  test('no targetMonth is null, not a guess at the current month', () => {
+    expect(targetMonthLabel({})).toBeNull();
+    expect(targetMonthLabel(null)).toBeNull();
+  });
+
+  test('a malformed month is refused rather than rendered', () => {
+    expect(targetMonthLabel({ targetMonth: { year: 2028, month: 12, label: 'Nope' } })).toBeNull();
+    expect(targetMonthLabel({ targetMonth: { year: 'x', month: 5, label: 'Jun 2028' } })).toBeNull();
+  });
+
+  test('it never yields a countable date — daysUntil stays null', () => {
+    const ev = { targetMonth: { year: 2028, month: 5, label: 'Jun 2028' } };
+    expect(daysUntil(ev.date)).toBeNull();
+  });
+});
+
+describe('saturdaysOfMonth — real days offered as options', () => {
+  test('June 2028 Saturdays are the real ones, in order', () => {
+    expect(saturdaysOfMonth(2028, 5)).toEqual([
+      '2028-06-03', '2028-06-10', '2028-06-17', '2028-06-24',
+    ]);
+  });
+
+  test('every returned day really is a Saturday, read LOCALLY', () => {
+    saturdaysOfMonth(2028, 5).forEach((s) => {
+      const [y, m, d] = s.split('-').map(Number);
+      expect(new Date(y, m - 1, d).getDay()).toBe(6);
+    });
+  });
+
+  test('a bad month yields nothing rather than throwing', () => {
+    expect(saturdaysOfMonth(2028, 12)).toEqual([]);
+    expect(saturdaysOfMonth(null, null)).toEqual([]);
   });
 });
