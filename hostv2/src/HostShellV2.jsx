@@ -6997,7 +6997,23 @@ export default function HostShellV2() {
                   // weaker of the two: it implied a precision the engine does not have,
                   // since it only knows handled-or-open per essential. One loud thing per
                   // screen, and the segments are the one that carries meaning.
-                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
+                  // THE CELEBRATION CANNOT BE TRUE HERE (board, 2026-08-03).
+                  //
+                  // This hairline renders ONLY inside askMode, and askMode requires
+                  // `!listIsCalm && queue.length > 0` — a live ask on screen. So
+                  // `done >= total` in THIS context never means "you're set": it means
+                  // the plan-parts ledger is closed while something outside that ledger
+                  // is still asking for the host. Painting the green done-state and
+                  // saying "you're set" directly above an open request is the exhale
+                  // outranking the engine — the R3 defect that `lib/exhaleGate` was
+                  // written to forbid on 2026-07-14 ("a checklist may propose calm; only
+                  // the engine may grant it"), reproduced in the shell that replaced the
+                  // one it was fixed in.
+                  //
+                  // The green completion belongs to the complete-state screen, which
+                  // does not exist yet. Until it does, this surface says the true thing:
+                  // the parts are handled AND something is still open.
+                  <div className="eprog"
                     role="img" aria-label={segmentsText(orient)}>
                     {orient && orient.segments.length > 0 && (
                       // A 2px bar is not a hoverable target. Each strip gets a padded
@@ -7045,9 +7061,14 @@ export default function HostShellV2() {
                       <span>{hoverSeg ? hoverSeg.label : hairlineLabel(orient)}</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
+                      {/* `done >= total` used to print "you’re set" HERE — over a live
+                          ask, because this hairline only exists in askMode. It is the
+                          one state in which "you’re set" is guaranteed false. It now
+                          says what is actually true: the ledger is closed, and the thing
+                          on screen is not in that ledger. */}
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
-                        : (done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
+                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
                     </div>
                   </div>
                 );
