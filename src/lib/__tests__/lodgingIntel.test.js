@@ -353,7 +353,13 @@ describe('lodgingSearchLinks', () => {
   test('…and the host is handed her own criteria to paste there', () => {
     const [, vr] = lodgingSearchLinks(EV2);
     expect(vr.criteria).toMatch(/Deep Creek Lake/);
-    expect(vr.criteria).toMatch(/2026-09-11 to 2026-09-13/);
+    // WAS: expect(...).toMatch(/2026-09-11 to 2026-09-13/) — this assertion
+    // DEMANDED the ISO string, so it held the defect in place. Driving the
+    // sheet on a phone (2026-08-03) showed the host reading "put in Santa Fe,
+    // NM · 2028-06-17 to 2028-06-21". `criteria` is what she types into Vrbo's
+    // own date picker, so it is host-facing text and speaks host language.
+    expect(vr.criteria).toMatch(/Sep 11–Sep 13/);
+    expect(vr.criteria).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(vr.criteria).toMatch(/10 guests/);
   });
 

@@ -47,6 +47,22 @@ const ungalleryName = (l) => String(l || '')
 
 // URL host → platform id. Anything else is 'other' — named honestly, never
 // upgraded to a platform we have no policy grounding for.
+// ─── ONE DATE VOICE FOR THIS SURFACE (live drive, 2026-08-03) ──────────────
+// This formatter lived INSIDE lodgingSearchBlocked, whose own comment records
+// the fix: "Host language, not ISO. The first version printed '2028-06-17 to
+// 2028-06-21' at a host who has never typed a date that way."
+//
+// The fix never spanned. `lodgingSearchLinks` built its `said[]` summary from
+// the raw ISO slices, so the very line under the search doors — "Opens with
+// your own answers already in it" — still read "2028-06-17 to 2028-06-21".
+// Caught by driving the sheet on a phone, not by any gate: a fix applied at one
+// call site is not a fix applied to the class. Both sites now share this.
+export const niceDay = (iso) => {
+  try {
+    return new Date(String(iso) + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return iso; }
+};
+
 export function lodgingPlatformFor(url) {
   try {
     const h = new URL(String(url || '')).hostname.toLowerCase();
@@ -951,10 +967,7 @@ export function lodgingSearchBlocked(event) {
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
   // Host language, not ISO. The first version printed "2028-06-17 to 2028-06-21"
   // at a host who has never typed a date that way.
-  const nice = (iso) => {
-    try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
-    catch { return iso; }
-  };
+  const nice = niceDay;
   const inHand = [
     start && end ? `${nice(start)}-${nice(end)}` : (start ? nice(start) : null),
     guests ? `${guests} guests` : null,
@@ -987,7 +1000,7 @@ export function lodgingSearchLinks(event) {
 
   const said = [
     place,
-    start && end ? `${start} to ${end}` : null,
+    start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `${guests} guests` : null,
     budget ? `under $${budget.toLocaleString()}` : null,
   ].filter(Boolean);
@@ -1038,7 +1051,11 @@ export function lodgingSearchLinks(event) {
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
     { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
-      criteria: [place, start && end ? `${start} to ${end}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
+      // Host language here too: `criteria` is what she reads and types into
+      // Vrbo's own date picker, so it is a THIRD producer of the same string.
+      // The first sweep fixed `applied` and missed this one — the gate now
+      // covers every field on every link.
+      criteria: [place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
     { id: 'hotels', label: 'Search hotels', href: `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`, applied: said },
   ];
 }
