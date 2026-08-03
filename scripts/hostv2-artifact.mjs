@@ -5,10 +5,15 @@
  *
  * THE PROBLEM
  * -----------
- * hostv2 ships as a static subdirectory of the CRA site. The build output
- * (`hostv2/dist/`) is gitignored, but the DEPLOYED copy (`public/hostv2/`) is
- * tracked — CRA copies `public/` verbatim into `build/`, and `npm run deploy`
- * pushes `build/` to the `gh-pages` branch.
+ * hostv2 ships as a static subdirectory of the CRA site. BOTH the build output
+ * (`hostv2/dist/`) and the staged copy (`public/hostv2/`) are gitignored under
+ * Model A — no build artifact is tracked at all. CRA copies `public/` verbatim
+ * into `build/`, and `.github/workflows/pages-from-source.yml` runs
+ * `npm run release` in CI and publishes `build/` straight to Pages.
+ *
+ * The old laptop path (`gh-pages -d build` pushing a branch that pages.yml then
+ * republished) was DELETED 2026-08-03 along with the branch script and the
+ * gh-pages devDependency. Deploying is now one thing: merge to main.
  *
  * Nothing kept those two in step. The only documented refresh was a manual
  * rsync buried in a handoff note:

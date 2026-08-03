@@ -1,26 +1,28 @@
 # Source-built GitHub Pages deployment — Release Integrity C4 (2026-07-30).
 #
-# STATUS: STAGED, NOT YET THE LIVE PATH. Trigger is `workflow_dispatch` only.
+# STATUS: THIS IS THE LIVE PATH, AND THE ONLY ONE. Every push to main publishes
+# Pages, built from source in CI. `workflow_dispatch` remains for manual runs and
+# for the `live` release profile.
 #
-# WHY IT IS NOT AUTOMATIC YET
-# ---------------------------
-# The live path today is: a developer runs `npm run deploy` on their laptop,
-# which builds and force-pushes the `gh-pages` branch, and pages.yml publishes
-# that branch's contents. That flow is untouched by this file.
-#
-# FLIPPED 2026-08-03. This IS the live path now: push to main deploys, built here.
 # It was dispatch-only until it had been run by hand and the published site
 # confirmed — that happened on 96dd25c7, verified at the chunk level (the live
 # HostShellV2 bundle carried the new copy and no longer carried the old), and the
-# trigger was enabled immediately after. pages.yml is retired.
-# The migration steps and rollback are in docs/release/RELEASE_INTEGRITY.md.
+# push trigger was enabled immediately after.
+#
+# pages.yml and the laptop `gh-pages` flow were DELETED 2026-08-03, together with
+# the `deploy:branch` script and the `gh-pages` devDependency. Until then two
+# workflows could publish and the repo had two deploy scripts that did different
+# things — the branch and main even disagreed about what `npm run deploy` meant.
+# There is now exactly one way to ship. Rollback = re-run this workflow at an
+# older ref. Migration notes: docs/release/RELEASE_INTEGRITY.md.
 #
 # WHAT IT FIXES
 # -------------
-# The laptop flow has no gate between "source" and "published". It is how the
+# The laptop flow had no gate between "source" and "published". It is how the
 # tracked hostv2 bundle went stale: a green Pages run happily shipped a
-# HostShellV2 bundle built from source nobody could identify. Here the artifact
-# is built from a known commit SHA, in CI, after the tests that guard it.
+# HostShellV2 bundle built from source nobody could identify, and the branch it
+# republished sat four days behind main. Here the artifact is built from a known
+# commit SHA, in CI, after the tests that guard it.
 name: Deploy Pages (from source)
 
 on:
@@ -33,9 +35,7 @@ on:
         type: choice
         options: [demo, live]
   # THE LIVE PATH (2026-08-03). Every merge to main publishes Pages, built from
-  # source in CI. This replaced pages.yml, which republished a laptop-built
-  # gh-pages BRANCH — that branch sat four days stale while main moved, and any
-  # push to it would have silently reverted the site to the older build.
+  # source in CI.
   #
   # A push carries NO inputs, so release_profile is empty here and the env below
   # floors it to `demo`. That is deliberate and load-bearing: an automatic deploy
@@ -50,7 +50,8 @@ permissions:
   pages: write
   id-token: write
 
-# Shares pages.yml's group so the two can never publish concurrently.
+# Kept on the `pages` group: the name outlives pages.yml, and it still serializes
+# an automatic push-deploy against a manual `live` dispatch.
 concurrency:
   group: pages
   cancel-in-progress: false
