@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { lodgingIntel, kitchenConsequence, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -10123,6 +10123,39 @@ export default function HostShellV2() {
                           })()}
                         </div>
                         {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the links you’re weighing — a hotel, an Airbnb, a Vrbo house. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
+                        {/* ── WHAT THE KITCHEN DECIDES (workflow census 2026-08-03) ──────
+                            lodgingKitchen() had ZERO render sites on this surface: the host
+                            answered "where does everyone sleep" here and the consequence
+                            showed up only on the food sheet. And `dest_lodging` — the
+                            question that sets it — is REMOVED when a lodging/room_block base
+                            decision exists (playbooks/index.js:756), so a host who books a
+                            hotel by phone could never answer it at all.
+                            Answering here writes the same foodChoices.dest_lodging the
+                            playbook would have written, so there is no second truth. */}
+                        {(() => {
+                          const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
+                          if (!kc) return null;
+                          const tone = kc.state === 'untold' ? 'var(--muted)' : 'var(--ink-soft)';
+                          return (
+                            <div style={{ margin: '4px 0 var(--sp-4)', padding: 'var(--sp-3)',
+                              border: '1px solid var(--line)', borderRadius: 'var(--r-md)' }}>
+                              <p className="eyebrow" style={{ margin: '0 0 6px' }}>THE KITCHEN DECIDES THE FOOD PLAN</p>
+                              <p style={{ margin: 0, fontSize: 'var(--t-row)', fontWeight: 650, color: 'var(--ink)' }}>{kc.headline}</p>
+                              <p className="grounding" style={{ margin: '4px 0 0', color: tone }}>{kc.detail}</p>
+                              {!kc.answered && (
+                                <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
+                                  {kc.answers.map((a) => (
+                                    <button key={a.id} className="cta soft" onClick={() => patchEvent(
+                                      { foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } },
+                                      a.kitchen
+                                        ? 'A kitchen — the food plan is a grocery run.'
+                                        : 'No kitchen — the food plan is reservations.')}>{a.label}</button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                         {/* WHAT IT HAS TO HAVE (host directive 2026-07-28). The host's own
                             requirements — the only criterion they state outright rather than
                             us inferring it. The verified filters ride the platform search;
