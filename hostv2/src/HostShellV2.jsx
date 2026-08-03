@@ -816,6 +816,11 @@ export default function HostShellV2() {
   const [fGuests, setFGuests] = useState(null);
   const [fBudget, setFBudget] = useState(null);
   const [fIsDestination, setFIsDestination] = useState(null);
+  // The two axes behind "destination" — asked, not inferred. We hold no city
+  // coordinates, so distance (and therefore drive-vs-fly) cannot be derived
+  // honestly; the host knows both answers instantly. null = unanswered.
+  const [fOvernight, setFOvernight] = useState(null);
+  const [fTravelMode, setFTravelMode] = useState(null);
   const [createEdit, setCreateEdit] = useState(null); // which correction editor is open
   // "Change an answer" re-runs assemble over the SAME event — this holds its
   // id so the correction replaces it in the store instead of appending a
@@ -981,7 +986,29 @@ export default function HostShellV2() {
   // Smart parse — extracted to lib/smartParseEvent (single, unit-tested
   // source: every extraction here used to be verifiable only by hand in a
   // live browser tab).
-  const parsed = useMemo(() => parseSmartEventText(smartText), [smartText]);
+  // HOST PROFILE — hoisted here from below (it used to sit ~80 lines further
+  // down). The smart-parse memo underneath needs the host's area, and a `const`
+  // declared later is in the temporal dead zone at that point: the shell threw
+  // "Cannot access '_e' before initialization" and rendered the error boundary
+  // instead of the app. The initialiser depends on nothing in component scope,
+  // and hook ORDER stays consistent across renders, so hoisting is safe.
+  const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+
+  // HOME AREA IN (destination detection): "is this a destination?" is a relation
+  // between two places, and the parser only ever saw one — so a bare "in
+  // Charleston" could not be judged, and "in Annapolis, MD" from a host who
+  // LIVES in Annapolis was flagged destination purely because a city resolved.
+  // The host's own area already exists on the profile ("Your area" below) and
+  // eventGeoQuery already reads it; the parser was simply never handed it.
+  // Absent profile ⇒ homeCity undefined ⇒ the comparison is skipped and the
+  // parse is byte-identical to before.
+  const parsed = useMemo(
+    () => parseSmartEventText(smartText, {
+      homeCity: (profile && profile.city) || '',
+      homeState: (profile && profile.state) || '',
+    }),
+    [smartText, profile],
+  );
 
   // Effective values: manual correction wins, then the parse, then the
   // playbook's own typical (host-shell defaulting — never a blank form).
@@ -1000,6 +1027,11 @@ export default function HostShellV2() {
   const effCityText = fCity.trim() || (parsed.venueCity ? (parsed.venueState ? parsed.venueCity + ', ' + parsed.venueState : parsed.venueCity) : '');
   const effBudget = fBudget ?? parsed.budget ?? null;
   const effIsDestination = fIsDestination ?? !!parsed.isDestination;
+  // Host answer wins over the heard hint, which wins over nothing. Staying null
+  // is a real state — it means "we have not been told", and the decisions that
+  // depend on it stay out rather than being gated on a guess.
+  const effOvernight = fOvernight ?? parsed.overnight ?? null;
+  const effTravelMode = fTravelMode ?? parsed.travelMode ?? null;
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
@@ -1052,7 +1084,9 @@ export default function HostShellV2() {
   // hostIntelligence feeds attendance learning. V2 writes MERGE-ONLY so every
   // production field it doesn't know about survives untouched; the original
   // app's own debounced cloud save picks the changes up next time it runs.
-  const [profile, setProfileState] = useState(() => { try { return JSON.parse(localStorage.getItem('ngw-profile')) || null; } catch { return null; } });
+  // (`profile` STATE is declared earlier, above the smart-parse memo, because the
+  // parser now needs the host's area to judge whether a place is a destination.
+  // Declaring it here left it in the temporal dead zone for that memo.)
   // Cross-device resume pointer (build-map #3): the account remembers the last
   // event the host was in; on a fresh device we follow it once it resolves.
   // resumePointer (STATE, so setting it re-runs the follow effect) holds the
@@ -4885,6 +4919,11 @@ export default function HostShellV2() {
       guestEstimate: effGuests || '',
       totalBudget: effBudget || '',
       isDestination: effIsDestination,
+      // Persisted only when the event IS a destination and we actually have an
+      // answer — an absent field means "not told", which the engines can treat
+      // differently from a false. Never written for a local event.
+      ...(effOvernight !== null ? { guestsStayOvernight: effOvernight } : {}),
+      ...(effIsDestination && effTravelMode ? { travelMode: effTravelMode } : {}),
       // The coarse time-of-day the host said ("cookout in the afternoon"). Persisted so the
       // grounded start-time default below has a bucket to propose from — without this it was
       // dropped, and defaultStartTime had nothing to ground on for a brand-new event.
@@ -5481,6 +5520,41 @@ export default function HostShellV2() {
                         <button className="chip" aria-pressed={effIsDestination} onClick={() => setFIsDestination(!effIsDestination)}>
                           {effIsDestination ? 'Destination event' + (fIsDestination == null ? ' · heard' : '') : 'Local event'}
                         </button>
+                        {/* ── The two axes, asked rather than guessed ──────────────────
+                            One boolean gated lodging, transport, travel-mix and health
+                            identically, so a staycation and a fly-in wedding got the same
+                            four rows. These separate them. They appear only once the event
+                            is a destination, so a local dinner's chip row is unchanged.
+
+                            Distance is deliberately NOT used to infer these: the app holds
+                            no city coordinates (usCitiesFull is names only), so any mileage
+                            would be invented. The host knows both answers in one tap, and a
+                            known fact beats a derived guess. Three states each — the third
+                            is "unanswered", which stays honest instead of defaulting. */}
+                        {/* OVERNIGHT IS ITS OWN AXIS, not a sub-question of "destination".
+                            A STAYCATION is the case that proves it: local, nobody travels,
+                            and yet everyone sleeps somewhere — so the lodging decisions are
+                            live while transport is not. Nesting this under isDestination hid
+                            the question for exactly that event. It shows whenever the event
+                            is a destination, or spans days, or overnight was heard. */}
+                        {(effIsDestination || effOvernight !== null || !!effEndDate) ? (
+                          <button className="chip" aria-pressed={effOvernight === true}
+                            onClick={() => setFOvernight(effOvernight === true ? false : effOvernight === false ? null : true)}>
+                            {effOvernight === true ? 'Staying overnight' + (fOvernight == null ? ' · heard' : '')
+                              : effOvernight === false ? 'Same day, no stay' : 'Staying over?'}
+                          </button>
+                        ) : null}
+                        {/* Mode stays destination-only: "driving or flying" is meaningless
+                            when nobody is travelling in. */}
+                        {effIsDestination ? (
+                          <button className="chip" aria-pressed={!!effTravelMode}
+                            onClick={() => setFTravelMode(effTravelMode === 'drive' ? 'fly' : effTravelMode === 'fly' ? 'mixed' : effTravelMode === 'mixed' ? null : 'drive')}>
+                            {effTravelMode === 'drive' ? 'Driving in' + (fTravelMode == null ? ' · heard' : '')
+                              : effTravelMode === 'fly' ? 'Flying in' + (fTravelMode == null ? ' · heard' : '')
+                              : effTravelMode === 'mixed' ? 'Some drive, some fly' + (fTravelMode == null ? ' · heard' : '')
+                              : 'Driving or flying?'}
+                          </button>
+                        ) : null}
                         {/* Kids policy — CAPTURED silently since the Vida fixes but never
                             echoed; a heard fact the host can't see is a fact they'll
                             re-type. Display-only (edits live on the invite settings). */}
@@ -6837,24 +6911,28 @@ export default function HostShellV2() {
               {elegantMode && askMode && phaseCues && phaseCues.totalCount > 0 && (() => {
                 const done = Number(phaseCues.completedCount) || 0;
                 const total = Number(phaseCues.totalCount) || 0;
-                const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
                 return (
-                  // PART 9 — the ONE progress visual, now SEGMENTED and readable.
+                  // PART 9 — the ONE progress visual, SEGMENTED.
                   //
                   // It was a single continuous bar marked aria-hidden, so its own labels
                   // ("4 of 5 plan parts handled") reached nobody using assistive tech —
-                  // a visual encoding state with no text form. The wrapper now carries
-                  // the segment text via aria-label and stops being hidden.
+                  // a visual encoding state with no text form. The wrapper carries the
+                  // segment text via aria-label and is not hidden.
                   //
                   // Segments are CATEGORICAL: each essential is handled or open, never a
                   // percentage of itself, because the engine knows which of those is true
-                  // and nothing finer. The continuous fill is kept underneath as the
-                  // at-a-glance read; the segments are what carry meaning.
+                  // and nothing finer.
+                  //
+                  // THE CONTINUOUS FILL IS GONE (host ruling, driven in the iOS simulator).
+                  // It sat directly above the segments encoding the SAME fact as a
+                  // percentage — two bars, one truth, stacked. The percentage was also the
+                  // weaker of the two: it implied a precision the engine does not have,
+                  // since it only knows handled-or-open per essential. One loud thing per
+                  // screen, and the segments are the one that carries meaning.
                   <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
                     role="img" aria-label={segmentsText(orient)}>
-                    <div className="eprog-rule" aria-hidden="true"><span style={{ width: pct + '%' }} /></div>
                     {orient && orient.segments.length > 0 && (
-                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '3px 0 2px' }}>
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '0 0 2px' }}>
                         {orient.segments.map(s => (
                           <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
                             style={{

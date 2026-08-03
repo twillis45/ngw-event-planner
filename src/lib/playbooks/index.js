@@ -527,7 +527,12 @@ export function choicePickFor(event, id) {
   // authored-default fallback must look there too — otherwise a whenChoice gate
   // on a dest_* decision reads null and shows the item before any answer.
   // Only consulted when the modifier is actually on.
-  const dd = (event.isDestination ? DESTINATION_DECISIONS.find((d) => d.id === id) : null)
+  // Resolve through the SAME per-row gate the board uses, rather than a second
+  // copy of the isDestination test. Once dest_lodging could appear on a local
+  // overnight event (a staycation), this branch would have returned null for it
+  // and any whenChoice hanging off it would read "unanswered" — the row visible
+  // on the board, its dependent item gated on a default that never resolved.
+  const dd = destinationDecisionsFor(event, pb).find((d) => d.id === id)
     || militaryDecisionsFor(event).find((d) => d.id === id) || null;
   return (dd && dd.default) || null;
 }
@@ -678,10 +683,50 @@ const DESTINATION_DECISIONS = [
 // governs — appending the generic twin asked "how are guests staying?" twice
 // (Team Retreat 'lodging', Conference 'room_block'). Travel-mix/transport have
 // no exact base twins, so only the lodging collision is suppressed.
+//
+// ── PER-ROW GATING (host ruling: a staycation is a lodging event) ────────────
+// One boolean used to admit or refuse all five rows together, so a staycation
+// and a fly-in wedding received an identical set. They are not the same event:
+//
+//   dest_lodging     decided by OVERNIGHT. A staycation is local, nobody travels,
+//                    and everyone still sleeps somewhere — the room-block question
+//                    is live. This is the row the single flag got most wrong.
+//   dest_transport   decided by ARRIVAL. The row's own rationale is "the late-night
+//                    ride back from the venue", which needs guests who came from
+//                    somewhere. Not a staycation question.
+//   dest_travelmix   only sensible when someone is travelling in.
+//   dest_health      altitude and long active days — travel-specific.
+//   dest_childcare   rides with the travel set (kids ALSO gated by whenKids).
+//
+// Two new event fields feed this, both ASKED at intake rather than inferred:
+// `guestsStayOvernight` and `travelMode` ('drive' | 'fly' | 'mixed'). Distance is
+// deliberately not used — the app holds no city coordinates, so any mileage would
+// be invented. Absent fields fall back to the old behaviour exactly, so an event
+// created before this shipped is byte-identical.
 export function destinationDecisionsFor(event, pb) {
-  if (!event || !event.isDestination) return [];
+  if (!event) return [];
+  const isDest = !!event.isDestination;
+  // Overnight is TRUE when said, and otherwise inferred only from a real multi-day
+  // span — an event running across days has people sleeping somewhere. Undefined
+  // stays undefined: on a destination event lodging still shows (unchanged), and on
+  // a local single-day event it stays out.
+  const spansDays = !!(event.endDate && String(event.endDate).trim() && event.endDate !== event.date);
+  const overnight = typeof event.guestsStayOvernight === 'boolean' ? event.guestsStayOvernight : (spansDays || null);
+  const mode = event.travelMode || null;
+
   const baseIds = new Set(((pb && Array.isArray(pb.decisions)) ? pb.decisions : []).map((d) => d && d.id));
-  return DESTINATION_DECISIONS.filter((d) => !(d.id === 'dest_lodging' && (baseIds.has('lodging') || baseIds.has('room_block'))));
+  return DESTINATION_DECISIONS.filter((d) => {
+    // F10 (audit 2026-07-27): a travel-native playbook's OWN lodging decision
+    // governs — appending the generic twin asked "how are guests staying?" twice
+    // (Team Retreat 'lodging', Conference 'room_block').
+    if (d.id === 'dest_lodging' && (baseIds.has('lodging') || baseIds.has('room_block'))) return false;
+    if (d.id === 'dest_lodging') return overnight === true || (isDest && overnight !== false);
+    if (!isDest) return false;                 // every remaining row needs travel
+    // Nobody flies on a driving trip: the airport-shuttle framing is noise there.
+    // 'mixed' and an unstated mode both keep it — silence is not a "no".
+    if (d.id === 'dest_transport' && mode === 'drive') return false;
+    return true;
+  });
 }
 // DESTINATION-4 — kids-presence predicate (shared). ONE place "are kids actually
 // coming?" is read from: the SAME two sources the food plan's portion skew uses —

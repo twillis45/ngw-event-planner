@@ -733,12 +733,14 @@ button{font-family:inherit}
 /* Continuous hairline progress (replaces counted dots). Sits as a calm
    "settled" band under the guide voice, dividing the framing from the work. */
 .eprog{ margin-top:auto; padding-top:24px; display:flex; flex-direction:column; gap:11px; }
-.eprog-rule{ height:3px; border-radius:2px; background:var(--line-soft); overflow:hidden; }
-/* GREEN IS EARNED (host 2026-07-18): steel while filling, green only at completion. */
-.eprog-rule span{ display:block; height:100%; border-radius:2px; background:var(--steel-soft); transition:width var(--ms-reveal) var(--ease-out), background var(--ms-reveal) var(--ease-out); }
-.eprog.is-done .eprog-rule span{ background:var(--ok); }
+/* .eprog-rule (the continuous percentage fill) was REMOVED from the hero — host
+   ruling, driven in the iOS simulator. It sat directly above the segment row
+   encoding the same fact twice, and the percentage claimed a precision the
+   engine does not have: it knows handled-or-open per essential, nothing finer.
+   Its rules are deleted rather than left dead so nobody later styles a bar that
+   no longer renders. GREEN IS EARNED (host 2026-07-18) still holds — it now
+   lives on the segments, which turn --ok only as each essential is handled. */
 .eprog-labels{ display:flex; justify-content:space-between; font-size:13px; font-weight:500; color:var(--faint); }
-@media (prefers-reduced-motion: reduce){ .eprog-rule span{ transition:none } }
 /* Scroll-driven stratum focus (progressive enhancement): below-fold blocks
    brighten as they enter the reading zone — attention follows the eye. */
 @supports (animation-timeline: view()){
@@ -2976,10 +2978,10 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .toast.ok{ box-shadow:0 12px 40px rgba(47,107,70,.34), 0 0 24px -6px rgba(79,174,122,.55); }
 
 /* — COMPLETIONS — */
-/* #5 sweep: glow rides the hairline fill; is-done flips it green (existing
-   transition), the foot label catches the color, and ONE halo breathes. */
-.hero.elegant .eprog-rule span{ box-shadow:0 0 12px rgba(122,160,196,.45); }
-.eprog.is-done .eprog-rule span{ box-shadow:0 0 16px rgba(79,174,122,.55); }
+/* #5 sweep: the foot label catches the color at completion and ONE halo
+   breathes. The two glow rules that rode .eprog-rule span went with the
+   continuous fill — the halo and the label colour carry the completion beat now,
+   and the segments themselves flip green as each essential lands. */
 .eprog{ position:relative; }
 .eprog.is-done::after{ content:''; position:absolute; left:-20px; right:-20px; top:-40px; bottom:-16px; pointer-events:none;
   background:radial-gradient(60% 70% at 50% 80%, rgba(79,174,122,.26), transparent 70%);
