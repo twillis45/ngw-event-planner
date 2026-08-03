@@ -67,3 +67,48 @@ describe('what must NOT change', () => {
     expect(it.rows).toHaveLength(1);
   });
 });
+
+// The three anchors are the same three whatever the span, so a 5-day trip came back
+// as a 3-row plan with two days silently unmentioned. The gap is the point: a guest
+// is there on the Sunday whether or not we have a row for it.
+describe('the arc names the days it does NOT cover', () => {
+  // Jun 17 2028 is a Saturday. Days: 1 Sat, 2 Sun, 3 Mon, 4 Tue, 5 Wed.
+  // Anchors land on 1 (arrive), 3 (main — no later Saturday), 5 (depart).
+  const fiveDay = { id: 'sf', type: 'Birthday', date: '2028-06-17', endDate: '2028-06-21', isDestination: true };
+
+  test('it names the uncovered days by weekday', () => {
+    const p = guestItinerary(fiveDay, noPlaybook).provenance;
+    expect(p.openDays).toEqual([2, 4]);
+    expect(p.note).toMatch(/Sunday and Tuesday have nothing on them yet/);
+  });
+
+  test('it says how much of the trip is unplanned, in days', () => {
+    expect(guestItinerary(fiveDay, noPlaybook).provenance.note)
+      .toMatch(/2 whole days your guests are here for/);
+  });
+
+  test('it still refuses to fill them — no invented activity content', () => {
+    const p = guestItinerary(fiveDay, noPlaybook);
+    expect(p.provenance.note).toMatch(/will not invent any/);
+    // and the GAP is never expressed as filler ROWS, which would reach the invite
+    expect(p.rows).toHaveLength(3);
+    p.rows.forEach((r) => expect(r.title).not.toMatch(/nothing planned|open|tbd/i));
+  });
+
+  test('a fully-covered span reports no gap at all', () => {
+    // Sat->Mon: anchors on 1, 2 (Sunday is the middle), 3 — nothing left over.
+    const threeDay = { id: 't', type: 'Birthday', date: '2028-06-17', endDate: '2028-06-19' };
+    const p = guestItinerary(threeDay, noPlaybook).provenance;
+    expect(p.openDays).toEqual([]);
+    expect(p.note).not.toMatch(/nothing on/);
+  });
+
+  test('a single uncovered day reads in the singular', () => {
+    // Sat->Tue (4 days): anchors 1, 2, 4 -> day 3 is the lone gap.
+    const fourDay = { id: 'f', type: 'Birthday', date: '2028-06-17', endDate: '2028-06-20' };
+    const p = guestItinerary(fourDay, noPlaybook).provenance;
+    expect(p.openDays).toEqual([3]);
+    expect(p.note).toMatch(/has nothing on it yet/);
+    expect(p.note).toMatch(/a whole day your guests are here for/);
+  });
+});

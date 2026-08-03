@@ -142,7 +142,7 @@ import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled }
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
-import { orientation as deriveOrientation, segmentsText, openPartsLabel } from '@app/lib/eventOrientation';
+import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
 import { stagewrapClass } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
@@ -7042,7 +7042,7 @@ export default function HostShellV2() {
                           the count the strips already encode — that is what makes this
                           readable on touch, where there is no hover. Hovering a single
                           strip narrows the same line to that one part. */}
-                      <span>{hoverSeg ? hoverSeg.label : `${done} of ${total} · ${openPartsLabel(orient)}`}</span>
+                      <span>{hoverSeg ? hoverSeg.label : hairlineLabel(orient)}</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
                       <span>{hoverSeg

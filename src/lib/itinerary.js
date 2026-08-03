@@ -110,10 +110,42 @@ function structuralArc(ev, days) {
   return rows;
 }
 
-const STRUCTURAL_ARC_PROVENANCE = {
-  tier: 'structural',
-  note: 'The shape of a multi-day event, not a recommendation about this one: guests arrive, the main day anchors the trip, everyone leaves. What happens in between is yours — we hold no researched activity content for this destination yet, and will not invent any.',
-};
+// THE DAYS THE ARC DOES NOT COVER ARE THE POINT.
+//
+// The three anchors are the same three whatever the span, so a 5-day trip came
+// back as a 3-row plan and the two unplanned days simply were not mentioned —
+// the surface under-told the very thing the host is paying for. A guest is in
+// Santa Fe on the Sunday whether or not we have a row for it.
+//
+// Naming the gap is the honest move, and it belongs in the PROVENANCE rather
+// than in filler rows: these rows are a proposal the host accepts with "Use this
+// plan", and accepted rows go to the INVITE. A guest reading "Nothing planned
+// yet" on their itinerary would be worse than a short one.
+function structuralArcProvenance(ev, days, rows) {
+  const covered = new Set(rows.map((r) => r.day));
+  const openDays = [];
+  for (let i = 1; i <= days; i += 1) if (!covered.has(i)) openDays.push(i);
+
+  const base = 'The shape of a multi-day event, not a recommendation about this one: '
+    + 'guests arrive, the main day anchors the trip, everyone leaves.';
+
+  let gap = '';
+  if (openDays.length) {
+    const labels = openDays.map((d) => dayLabelFor(ev, d));
+    const named = labels.length === 1 ? labels[0]
+      : labels.length === 2 ? `${labels[0]} and ${labels[1]}`
+        : `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+    gap = ` ${named} ${openDays.length === 1 ? 'has' : 'have'} nothing on `
+      + `${openDays.length === 1 ? 'it' : 'them'} yet — `
+      + `${openDays.length === 1 ? 'a whole day' : `${openDays.length} whole days`} `
+      + 'your guests are here for.';
+  }
+
+  const tail = ' We hold no researched activity content for this destination yet,'
+    + ' and will not invent any.';
+
+  return { tier: 'structural', note: base + gap + tail, openDays };
+}
 
 const normRow = (r) => {
   if (!r) return null;
@@ -176,11 +208,12 @@ export function guestItinerary(event, getPlaybook) {
     const isReunion = String(ev.type || '') === 'Reunion';
     const rows = (isReunion ? reunionArc(ev, days) : structuralArc(ev, days)).map(normRow).filter(Boolean);
     if (rows.length) {
+      const sorted = sortRows(rows);
       return {
         relevant: true,
         source: 'proposed',
-        rows: sortRows(rows),
-        provenance: isReunion ? REUNION_ARC_PROVENANCE : STRUCTURAL_ARC_PROVENANCE,
+        rows: sorted,
+        provenance: isReunion ? REUNION_ARC_PROVENANCE : structuralArcProvenance(ev, days, sorted),
       };
     }
   }

@@ -4,7 +4,7 @@
 // invents no readiness, and cannot disagree with the engine it reads.
 import { deriveEventPhaseProgress } from '../phaseProgress';
 import {
-  orientation, readinessSegments, severeBlocker, segmentsText, openPartsLabel,
+  orientation, readinessSegments, severeBlocker, segmentsText, openPartsLabel, hairlineLabel,
   LIFECYCLE_LABELS, DIMENSION_LABELS,
 } from '../eventOrientation';
 
@@ -232,5 +232,46 @@ describe('openPartsLabel — the open parts, named, with no pointer', () => {
       expect(spoken).toContain(s.label);
       expect(openPartsLabel(o)).toContain(s.label);
     });
+  });
+});
+
+// The hybrid the board actually renders. Names are better than a count only while
+// the remaining list is short enough to read as a list; the Figma frames specify
+// the count, and the count is what survives the extremes.
+describe('hairlineLabel — names when they help, the specified count when they do not', () => {
+  const seg = (label, handled) => ({ id: label, label, handled });
+  const o = (segments) => ({
+    segments,
+    completedCount: segments.filter((s) => s.handled).length,
+    totalCount: segments.length,
+  });
+
+  test('ONE open part is named', () => {
+    expect(hairlineLabel(o([seg('Food', false), seg('Place', true)])))
+      .toBe('1 of 2 · Food open');
+  });
+
+  test('TWO open parts are named', () => {
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Place', true)])))
+      .toBe('1 of 3 · Date & time and Food open');
+  });
+
+  test('THREE open falls back to the count — names stop being a list', () => {
+    expect(hairlineLabel(o([seg('Date & time', false), seg('Food', false), seg('Budget', false)])))
+      .toBe('0 of 3 plan parts handled');
+  });
+
+  test('the honest floor matches the Figma frame verbatim', () => {
+    const five = ['Date & time', 'Place', 'Guests', 'Food', 'Budget'].map((l) => seg(l, false));
+    expect(hairlineLabel(o(five))).toBe('0 of 5 plan parts handled');
+  });
+
+  test('ALL handled uses the count, never "nothing open"', () => {
+    expect(hairlineLabel(o([seg('Food', true), seg('Place', true)])))
+      .toBe('2 of 2 plan parts handled');
+  });
+
+  test('it degrades safely', () => {
+    expect(hairlineLabel(null)).toBe('');
   });
 });

@@ -165,6 +165,30 @@ export function openPartsLabel(orientationResult) {
 }
 
 /**
+ * The hairline's visible left label — HYBRID, and the split is deliberate.
+ *
+ * The board frames (Figma 922:121 "0 of 5 plan parts handled", 120:60 "4 of 7
+ * clashes cleared") specify the COUNT. Naming the open parts beats the count when
+ * the host is nearly done and there are one or two things left — that is real
+ * information, and it is the only form that survives on touch, where the strips'
+ * hover tooltip does not exist.
+ *
+ * But names do not survive the extremes. At 0 of 5 handled they degrade to
+ * "Date & time, Place +3 more", which is longer than the count and says less. So:
+ * names while the remaining list is short enough to BE a list, the specified
+ * count otherwise.
+ */
+export function hairlineLabel(orientationResult) {
+  const o = orientationResult;
+  if (!o) return '';
+  const openCount = o.segments.filter((s) => !s.handled).length;
+  const done = o.completedCount;
+  const total = o.totalCount;
+  if (openCount > 0 && openCount <= 2) return `${done} of ${total} · ${openPartsLabel(o)}`;
+  return `${done} of ${total} plan parts handled`;
+}
+
+/**
  * A text equivalent of the segmented visual, for screen readers.
  *
  * The existing progress hairline is `aria-hidden="true"`, so its labels reach nobody
