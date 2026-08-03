@@ -81,7 +81,8 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
@@ -10098,7 +10099,15 @@ export default function HostShellV2() {
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
-                          <span>The rental shortlist</span>
+                          {/* NOT "the rental shortlist" (2026-08-03): hotels are
+                              now one of THREE doors out of this surface
+                              (lodgingSearchLinks — Airbnb, Vrbo, hotels), and a
+                              room block is the answer `dest_lodging` offers
+                              first. Naming the set after one of its kinds told a
+                              host comparing hotels that this list was not for
+                              them. The heading names the ACT, which is the same
+                              act either way. */}
+                          <span>Places you’re weighing</span>
                           {/* HOW MANY (host 2026-07-28: "total number of listings
                               somewhere"). The count of what you are weighing, and how many
                               of them still fit the group — the second number is the one
@@ -10113,7 +10122,7 @@ export default function HostShellV2() {
                             );
                           })()}
                         </div>
-                        {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the rental links you’re weighing. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
+                        {li.options.length === 0 && <p className="v-meta" style={{ margin: '4px 0 8px' }}>Paste the links you’re weighing — a hotel, an Airbnb, a Vrbo house. Add a photo and they show up on the invite — guests tap a preference, you make the call.</p>}
                         {/* WHAT IT HAS TO HAVE (host directive 2026-07-28). The host's own
                             requirements — the only criterion they state outright rather than
                             us inferring it. The verified filters ride the platform search;
@@ -10215,7 +10224,35 @@ export default function HostShellV2() {
                             or three back, and the ranking below does the comparing. */}
                         {(() => {
                           const links = (() => { try { return lodgingSearchLinks(event) || []; } catch { return []; } })();
-                          if (!links.length) return null;
+                          // NO TOWN IS A STEP, NOT A BLANK. Returning null here meant a host
+                          // planning "a destination 80th, ten of us, June 17-21" with the town
+                          // still open saw no lodging help at all - and the town was the very
+                          // thing she was trying to decide. Name the one missing input, say
+                          // what is already in hand, and route to the field that unlocks it.
+                          if (!links.length) {
+                            const blocked = (() => { try { return lodgingSearchBlocked(event); } catch { return null; } })();
+                            if (!blocked) return null;
+                            // ASK FOR THE TOWN HERE, not somewhere else. The first version
+                            // routed to `{tab:'Event Details', focusField:'event-venue'}` and
+                            // the e2e caught it: that field writes `venue` (a venue NAME), so
+                            // typing "Santa Fe, NM" into it stored venue:"Santa Fe, NM" with
+                            // venueCity:"" — the host did exactly what the button said and the
+                            // searches still did not open. Same CityField + saveCity the other
+                            // city prompts use, so the strict "City, ST or ZIP" gate and the
+                            // venueCity write are unchanged; only the place we ask moved.
+                            return (
+                              <div style={{ margin: '2px 0 12px' }}>
+                                <p className="grounding" style={{ margin: '0 0 6px' }}>{blocked.detail}</p>
+                                <div className="hc-row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                                  <CityField value={cityDraft} onChange={setCityDraft} onPick={setCityDraft} onEnter={saveCity}
+                                    placeholder="Santa Fe, NM" ariaLabel="Town, state or ZIP"
+                                    style={{ maxWidth: 170, flex: '0 1 170px' }}
+                                    inputStyle={{ fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} />
+                                  <button className="mini" onClick={saveCity}>Use this town</button>
+                                </div>
+                              </div>
+                            );
+                          }
                           return (
                             <div style={{ margin: '2px 0 12px' }}>
                               <div className="actions-row" style={{ gap: 'var(--sp-2)' }}>
@@ -10734,7 +10771,7 @@ export default function HostShellV2() {
                               Add another — {li.options.length} on the list
                             </span>
                           )}
-                          <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Rental listing link" />
+                          <input className="field" style={fldR} placeholder="Listing link (Airbnb, Vrbo, hotel…)" value={rf.url} onChange={(e) => setRentalForm({ ...rf, url: e.target.value })} aria-label="Listing link" />
                           <input className="field" style={fldR} placeholder="Photos — copy the gallery on the listing and paste once; every image comes through"
                             value={rf.photo || ''}
                             onChange={(e) => setRentalForm({ ...rf, photo: e.target.value })}
@@ -13329,6 +13366,7 @@ export default function HostShellV2() {
                   const fGuestPhrase = (fBand && fBand.applicable && fBand.band && fBandLbl) ? fBandLbl : `${foodPlan.bandLow}–${foodPlan.bandHigh}`;
                   const left = foodPlan.itemCount - foodPlan.boughtCount;
                   const done = foodPlan.boughtCount >= foodPlan.itemCount && foodPlan.itemCount > 0;
+                  const fSpan = (() => { try { return foodSpanNote(event); } catch { return null; } })();
                   return (
                   <div style={{ padding: '2px 0 14px' }}>
                     {/* Figma 378:60 parity — the hero composes the parity kit
@@ -13354,13 +13392,29 @@ export default function HostShellV2() {
                     <Grounding gap={3}>
                       {fmt(foodPlan.perGuestLow)}–{fmt(foodPlan.perGuestHigh)} a head · sized for {fGuestPhrase} guests
                     </Grounding>
+                    {/* SCOPE, NOT SCALE (foodSpan.js): across a multi-day span
+                        this plan sizes ONE gathering. Quantities are NOT
+                        multiplied by the day count — that would invent a plan
+                        nobody researched — so the sheet states what the number
+                        actually covers, right under the "sized for" line. */}
+                    {fSpan ? <Grounding gap={3}>{fSpan.text}</Grounding> : null}
                     {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
                   </div>
                   );
                 })() : (
-                  <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
-                    Sized to a typical guess for now — set a real guest count and the dollars appear.
-                  </p>
+                  <>
+                    <p className="grounding" style={{ margin: '2px 0 var(--sp-3)' }}>
+                      Sized to a typical guess for now — set a real guest count and the dollars appear.
+                    </p>
+                    {/* The span disclosure is independent of the head count —
+                        it is true whether or not the guests are locked. */}
+                    {(() => {
+                      const fSpan2 = (() => { try { return foodSpanNote(event); } catch { return null; } })();
+                      return fSpan2
+                        ? <p className="grounding" style={{ margin: '0 0 var(--sp-3)' }}>{fSpan2.text}</p>
+                        : null;
+                    })()}
+                  </>
                 )}
                 {/* Meal tally (guests parity gap #5): what guests actually picked —
                     the same guest.meal field RSVPs, CSV imports, and the per-guest

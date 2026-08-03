@@ -296,11 +296,32 @@ export function parseSmartEventText(text, opts = {}) {
   // town were dropped). Part 1 is the venue VERBATIM; parts 2+3 go through the
   // same strict parseVenueLocation gate, so "at the park, food, and games"
   // can never invent a location ("games" is not a state).
+  // BACK OFF A WORD AT A TIME (live-drive find 2026-08-03). The state group was
+  // unbounded, so any capitalised word that merely FOLLOWED the state was pulled
+  // into it: "in Santa Fe, New Mexico June 17-21 2028" parsed the state as
+  // "New Mexico June", parseVenueLocation rightly refused it, and the town was
+  // dropped entirely — while "…New Mexico in June of 2028" parsed fine. Same
+  // city, different neighbouring word.
+  //
+  // A simple cap does not fix it ("Austin, Texas June" is two words and still
+  // wrong), so try the LONGEST state candidate first and shorten until one
+  // resolves. The strict gate is untouched: if no candidate is a real state,
+  // this still returns null rather than guessing.
+  const tryLoc = (city, stateText) => {
+    const words = String(stateText || '').trim().split(/\s+/).filter(Boolean);
+    for (let n = words.length; n >= 1; n -= 1) {
+      try {
+        const r = parseVenueLocation(city + ', ' + words.slice(0, n).join(' '));
+        if (r) return r;
+      } catch { /* shorter candidate next */ }
+    }
+    return null;
+  };
   const l3 = t.match(/\b(?:in|at)\s+([A-Z][\w.'’-]*(?:\s+[\w.'’-]+){0,4}?),\s*([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
-  const loc3 = l3 ? (() => { try { return parseVenueLocation(l3[2] + ', ' + l3[3]); } catch { return null; } })() : null;
+  const loc3 = l3 ? tryLoc(l3[2], l3[3]) : null;
   const venueAt = loc3 && l3 ? l3[1].trim() : '';
   const lm = t.match(/\b(?:in|at)\s+([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
-  const loc = loc3 || (lm ? (() => { try { return parseVenueLocation(lm[1] + ', ' + lm[2]); } catch { return null; } })() : null);
+  const loc = loc3 || (lm ? tryLoc(lm[1], lm[2]) : null);
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't

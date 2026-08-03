@@ -7,8 +7,10 @@ import { playbookFoodPlan, effectiveRos } from './playbooks';
 // Was: Math.floor((eventMidnight - new Date()) / 86400000) — a floor over a diff whose
 // right side still carried the wall clock, so for most of every day it reported one day
 // FEWER than remained, and the 30-day risk thresholds below fired a day early.
-import { daysUntil as daysToEvent } from './dates';
+import { daysUntil as daysToEvent, spanNights } from './dates';
 import { venueFor } from './venueFor';
+import { lodgingIntel, lodgingKitchen } from './lodgingIntel';
+import { foodSpanText } from './foodSpan';
 
 // ─── ONE HEADCOUNT (host ruling "single points of truth", 2026-07-29) ───────
 // This file resolved the guest count in three places: once for the blockers
@@ -261,6 +263,29 @@ function assemblePlanningDomains(event, profile, foodPP) {
     }
   } catch {}
 
+  // === LODGING (destination only — and BEFORE food, because it gates food) ===
+  // The reveal named food, shopping, guests, budget and vendors but never
+  // lodging, so on a destination event the one decision that blocks the food
+  // plan was the one the reveal skipped. dest_lodging declares
+  // blocks:['vendors','food'] (playbooks/index.js) and phaseProgress ranks the
+  // lodging axis at priority 4 — above location and food. Ordering here mirrors
+  // that: whoever reads the reveal top-to-bottom meets the first domino first.
+  try {
+    if (event && event.isDestination === true) {
+      let chosen = null;
+      try { chosen = (lodgingIntel(event) || {}).chosen || null; } catch { /* intel is best-effort */ }
+      domains.push({
+        type: 'lodging',
+        data: {
+          stayLabel: String((chosen && chosen.label) || '').trim(),
+          nights: spanNights(event) || 0,
+          // true | false | null — null is NOT TOLD, and stays null here.
+          kitchen: lodgingKitchen(event)
+        }
+      });
+    }
+  } catch {}
+
   // === FOOD ===
   try {
     const fp = playbookFoodPlan(event, foodPP);
@@ -270,7 +295,12 @@ function assemblePlanningDomains(event, profile, foodPP) {
         // guestCount = the host's headcount (the truth). planFor = what the plan
         // BUYS for (sizingGuests' plan-to ceiling). Both ride along so the stage
         // can state the first and explain the second — see buildDomainStage.food.
-        data: { fp, guestCount: resolveGuestCount(event), planFor: Number(fp.guests) || 0 }
+        data: {
+          fp,
+          guestCount: resolveGuestCount(event),
+          planFor: Number(fp.guests) || 0,
+          spanNote: foodSpanText(event)
+        }
       });
     }
   } catch {}
@@ -281,7 +311,7 @@ function assemblePlanningDomains(event, profile, foodPP) {
     if (fp && fp.list && fp.list.length > 0) {
       domains.push({
         type: 'shopping',
-        data: { fp, itemCount: fp.itemCount }
+        data: { fp, itemCount: fp.itemCount, spanNote: foodSpanText(event) }
       });
     }
   } catch {}
@@ -331,6 +361,28 @@ function buildDomainStage(domain) {
       buildWhy: (data) => 'Your timeline is ready to fill—every moment can be adjusted as plans crystallize.',
       status: 'Ready to fill'
     },
+    lodging: {
+      icon: 'home',
+      title: 'Where Everyone Stays',
+      // Never guesses a stay and never invents a night count: an unpicked stay
+      // says so. The span is the host's own dates, not an assumption.
+      buildWhat: (data) => {
+        const n = Number(data.nights) || 0;
+        const nightsPhrase = n > 0 ? `${n} night${n === 1 ? '' : 's'}` : '';
+        if (data.stayLabel) return nightsPhrase ? `${data.stayLabel} · ${nightsPhrase}.` : `${data.stayLabel}.`;
+        return nightsPhrase ? `Not picked yet · ${nightsPhrase} to cover.` : 'Not picked yet.';
+      },
+      // The kitchen fact is WHY this sorts first: it decides whether a shopping
+      // list is the main artifact or meaningless (lodging→food audit,
+      // 2026-08-03). null means the host genuinely has not been asked — that
+      // reads as the open question it is, not as a hotel.
+      buildWhy: (data) => {
+        if (data.kitchen === true) return 'A kitchen means the food plan is a grocery run, not reservations.';
+        if (data.kitchen === false) return 'No kitchen means the food plan is reservations, not a grocery run.';
+        return 'Where everyone sleeps decides the food plan — so this one comes first.';
+      },
+      status: (data) => (data.stayLabel ? 'Ready' : 'Awaiting Decision')
+    },
     food: {
       icon: 'cloche',
       title: 'Sizing the Food & Drink',
@@ -348,9 +400,15 @@ function buildDomainStage(domain) {
       // headline states the ONE headcount, and the line beneath names the
       // overage in its own words, marked as the estimate it is.
       buildWhat: (data) => `${data.fp.itemCount} item${data.fp.itemCount === 1 ? '' : 's'} for ${data.guestCount} guests.`,
-      buildWhy: (data) => (data.planFor > data.guestCount
-        ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
-        : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.'),
+      // Across a multi-day span that item count sizes ONE gathering, not the
+      // trip (foodSpan.js). The scope is stated rather than the quantities
+      // silently multiplied — nobody has researched the multi-day meal model.
+      buildWhy: (data) => {
+        const base = data.planFor > data.guestCount
+          ? `Menu is built. Quantities are an estimate — sized for about ${data.planFor} so you don't run short if more show up. Choose sourcing next.`
+          : 'Menu is built. Quantities are an estimate — they scale with your head count. Choose sourcing next.';
+        return data.spanNote ? `${base} ${data.spanNote}` : base;
+      },
       status: 'Ready to fill'
     },
     shopping: {
@@ -360,7 +418,13 @@ function buildDomainStage(domain) {
       // Same rule as the food stage: a price the host hasn't paid yet is an
       // ESTIMATE, and this screen says so rather than implying a looked-up
       // figure. "mapped to a store and price" read as precision it doesn't have.
-      buildWhy: (data) => 'Every ingredient mapped to a store, with an estimated price. Check items off as you shop.',
+      // When we KNOW there is no kitchen, a grocery list is not the artifact
+      // for the stay — say so instead of presenting it as the plan. Untold
+      // stays untold (foodSpan.js).
+      buildWhy: (data) => {
+        const base = 'Every ingredient mapped to a store, with an estimated price. Check items off as you shop.';
+        return data.spanNote ? `${base} ${data.spanNote}` : base;
+      },
       status: 'Ready'
     },
     guests: {
@@ -399,7 +463,9 @@ function buildDomainStage(domain) {
     title: meta.title,
     what: meta.buildWhat(domain.data),
     why: meta.buildWhy(domain.data),
-    status: meta.status,
+    // Most stages carry a fixed status; lodging's depends on whether a stay is
+    // actually picked, so a function is allowed here.
+    status: typeof meta.status === 'function' ? meta.status(domain.data) : meta.status,
     nextDecision: null,
     sourceEngines: ['Playbook Engine'],
     confidenceLabel: 'Assembled',

@@ -38,6 +38,7 @@ export const DIMENSION_LABELS = Object.freeze({
   shopping: 'Shopping',
   budget: 'Budget',
   vendors: 'Vendors',
+  lodging: 'Where everyone stays',
   rain: 'Backup plan',
   moment: 'The moment',
   crabs: 'Seafood order',
