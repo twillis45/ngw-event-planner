@@ -128,18 +128,24 @@ jobs:
           CI: ''
         run: npm run build
 
-  # ── hostv2 source ↔ tracked artifact parity ────────────────────────────────
-  # public/hostv2 is a TRACKED build output that ships inside the CRA site, so it
-  # can silently disagree with the source it claims to come from. This rebuilds
-  # from source and fails on any difference.
+  # ── hostv2 builds, and its markup matches its stylesheet ───────────────────
+  # WAS `hostv2-drift`: public/hostv2 used to be a TRACKED build output, gated by
+  # a byte-exact comparison against a fresh build. That gate rested on vite being
+  # reproducible — true on ONE machine, false across machines. CI building this
+  # very source produced HostShellV2-4c0ca35e.js against a committed d448e983, so
+  # the gate could not go green on a PR no matter how recently the artifact was
+  # synced. It was failing continuously from 2026-08-01.
   #
-  # Verification only — it never regenerates or commits the artifact.
+  # The artifact is no longer tracked (Model A — the end state this script always
+  # named). Drift is now impossible by construction: every release path BUILDS it,
+  # `npm run release` locally and the from-source Pages workflow in CI. What is
+  # still worth gating is that hostv2 COMPILES and that check-parity passes, which
+  # is what `npm run build` does in that tree.
   #
   # Deliberately given no REACT_APP_* values: a fresh checkout has no .env.local
-  # or .env.production.local (both gitignored), so the build here is the canonical
-  # config-free demo artifact. Injecting configuration would change the output
-  # hashes and make this fail against a perfectly good artifact.
-  hostv2-drift:
+  # or .env.production.local (both gitignored), so this is the config-free demo
+  # build — the same one the release produces.
+  hostv2-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -155,4 +161,7 @@ jobs:
       - run: npm ci
       - run: npm ci
         working-directory: hostv2
-      - run: npm run gate:hostv2
+      # `npm run build` in hostv2 = check-parity && vite build. The parity check
+      # is the real gate: it fails on any className with no matching selector.
+      - run: npm run build
+        working-directory: hostv2

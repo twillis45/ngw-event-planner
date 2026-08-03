@@ -51,3 +51,12 @@ hostv2/review-shots/drift/
 # throwaway evidence, not artifacts — 11 of them (~4MB) accumulated untracked
 # before this rule existed. Durable captures belong in hostv2/review-shots/.
 /*.png
+
+# hostv2 DEPLOY ARTIFACT — Model A (2026-08-03). Generated, never committed.
+# It was tracked so a laptop-built gh-pages branch would carry it, guarded by a
+# byte-exact drift gate. That gate assumed vite output is reproducible; it is,
+# on ONE machine — CI building the same source produced HostShellV2-4c0ca35e.js
+# against a committed d448e983, so the gate could never go green on a PR. Both
+# release paths now BUILD it: `npm run release` (which predeploy runs) and the
+# from-source Pages workflow. Regenerate locally with `npm run sync:hostv2`.
+/public/hostv2/

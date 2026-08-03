@@ -22,18 +22,30 @@
  * different index.html. A green Pages run was shipping a hostv2 bundle that
  * did not correspond to the source it was built from.
  *
- * THE MODEL — Model B (tracked artifact + hard drift gate)
- * -------------------------------------------------------
- * Model A (stop tracking `public/hostv2/`) is the better end state and is the
- * documented next step, but it requires Pages to build from source. Today Pages
- * publishes a laptop-built `gh-pages` branch, so untracking the artifact would
- * mean any `npm run build` that skipped the hostv2 step would silently ship a
- * site with NO hostv2 at all. Until the Pages migration lands (Slice C4), the
- * artifact stays tracked and this gate makes staleness impossible to merge.
+ * THE MODEL — Model A (untracked artifact, built by every release path)
+ * ---------------------------------------------------------------------
+ * Adopted 2026-08-03. `public/hostv2/` is no longer tracked.
  *
- * Vite's output is deterministic here — two consecutive builds from identical
- * source produced byte-identical trees — so an exact file-by-file comparison is
- * a sound gate rather than a flaky one.
+ * Model B (tracked artifact + byte-exact drift gate) rested on one assumption,
+ * stated here as fact: "Vite's output is deterministic — two consecutive builds
+ * from identical source produced byte-identical trees." That is true on ONE
+ * machine and false across machines. CI building the same source produced
+ * `HostShellV2-4c0ca35e.js` while the committed artifact was `d448e983` and a
+ * laptop build of that same source reproduced `d448e983` exactly. So the gate
+ * could never go green on a pull request, however freshly the artifact was
+ * synced — it failed continuously from 2026-08-01, and re-syncing could not fix
+ * it, because the next CI run rebuilt and disagreed again.
+ *
+ * Model A's precondition — "it requires Pages to build from source" — is now
+ * met: `.github/workflows/pages-from-source.yml` runs `npm run release`. And the
+ * risk that blocked it ("any `npm run build` that skipped the hostv2 step would
+ * silently ship a site with NO hostv2") is closed from the other side: `predeploy`
+ * is now `npm run release`, so the local deploy path cannot skip the hostv2 build
+ * either.
+ *
+ * `--sync` remains the canonical regeneration and is what `release` calls.
+ * `--check` still works locally for a sanity comparison, but it is NOT a CI gate
+ * any more: with nothing tracked there is nothing to drift.
  *
  *   node scripts/hostv2-artifact.mjs --sync    # canonical regeneration
  *   node scripts/hostv2-artifact.mjs --check   # drift gate (CI)
