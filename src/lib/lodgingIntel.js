@@ -884,8 +884,14 @@ export function lodgingSearchBlocked(event) {
   const start = String(ev.date || '').slice(0, 10);
   const end = String(ev.endDate || '').slice(0, 10);
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
+  // Host language, not ISO. The first version printed "2028-06-17 to 2028-06-21"
+  // at a host who has never typed a date that way.
+  const nice = (iso) => {
+    try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+    catch { return iso; }
+  };
   const inHand = [
-    start && end ? `${start} to ${end}` : (start || null),
+    start && end ? `${nice(start)}-${nice(end)}` : (start ? nice(start) : null),
     guests ? `${guests} guests` : null,
   ].filter(Boolean);
 

@@ -10223,10 +10223,24 @@ export default function HostShellV2() {
                           if (!links.length) {
                             const blocked = (() => { try { return lodgingSearchBlocked(event); } catch { return null; } })();
                             if (!blocked) return null;
+                            // ASK FOR THE TOWN HERE, not somewhere else. The first version
+                            // routed to `{tab:'Event Details', focusField:'event-venue'}` and
+                            // the e2e caught it: that field writes `venue` (a venue NAME), so
+                            // typing "Santa Fe, NM" into it stored venue:"Santa Fe, NM" with
+                            // venueCity:"" — the host did exactly what the button said and the
+                            // searches still did not open. Same CityField + saveCity the other
+                            // city prompts use, so the strict "City, ST or ZIP" gate and the
+                            // venueCity write are unchanged; only the place we ask moved.
                             return (
                               <div style={{ margin: '2px 0 12px' }}>
-                                <button className="mini" onClick={() => { if (!routeSheet(blocked.route)) toast(blocked.label); }}>{blocked.label} →</button>
-                                <p className="grounding" style={{ margin: '4px 0 0' }}>{blocked.detail}</p>
+                                <p className="grounding" style={{ margin: '0 0 6px' }}>{blocked.detail}</p>
+                                <div className="hc-row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
+                                  <CityField value={cityDraft} onChange={setCityDraft} onPick={setCityDraft} onEnter={saveCity}
+                                    placeholder="Santa Fe, NM" ariaLabel="Town, state or ZIP"
+                                    style={{ maxWidth: 170, flex: '0 1 170px' }}
+                                    inputStyle={{ fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} />
+                                  <button className="mini" onClick={saveCity}>Use this town</button>
+                                </div>
                               </div>
                             );
                           }
