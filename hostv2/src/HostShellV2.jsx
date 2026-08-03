@@ -2428,7 +2428,14 @@ export default function HostShellV2() {
   // engine has an ask, the display slot speaks it (the ASK) and queue[0]
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
   // past, no date) the countdown keeps the display — the date IS the story then.
-  const askMode = days !== null && days >= 0 && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
+  // NO DATE IS AN ASK, NOT AN ABSENCE (Figma 922:121, "A4 · No date — the honest
+  // floor"). Excluding days===null here dropped every undated event out of the
+  // elegant composition entirely and onto the plain numbered list — reported from
+  // the browser repeatedly as "this has no Figma parity", and correctly so: the
+  // frame shows the SAME board, with the ask simply being "Add the day." and the
+  // one action being "Set the event date". The countdown does not own the display
+  // when there is no countdown to own it.
+  const askMode = (days === null || days >= 0) && !listIsCalm && queue.length > 0; // >=0: day-of joined the elegant ask flow (T2 ruling, Figma 598:60/602:60)
   // ── THE ONE ASK STRING (board ruling C, 2026-07-30) ──
   // The loud line is the FIRST real ITEM, not the generic bundle verb — the per-item
   // intelligence surfacing where the host looks first. Conflicts → the clash; decisions
@@ -2523,6 +2530,10 @@ export default function HostShellV2() {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
     if (elegantMode && days === 0) return 'It’s today.';
+    // THE HONEST FLOOR (Figma 922:121). With no day, nothing downstream can be
+    // timed, so the date outranks every other ask no matter what queue[0] holds —
+    // it is the floor the rest of the plan stands on, not one item among several.
+    if (elegantMode && days === null) return 'Add the day.';
     const q0 = queue[0];
     // Foundational pick-decision (Ceremony Timing, …) surfaced as a hero — its own
     // ask ("Choose the timing."), so it stays in the ask flow after roll-to-next.
@@ -5856,7 +5867,11 @@ export default function HostShellV2() {
               {elegantMode && (askMode || justCleared || isPast || (listIsCalm && !isPast && days !== null && days > 0)) ? (
                 <button className="ev-eyebrow" onClick={() => setSheet({ kind: 'nav' })} aria-haspopup="true" aria-label="Menu">
                   <span className="eb-menu" aria-hidden="true"><span /><span /><span /></span>
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : '') + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
+                  {/* The eyebrow is the ONE element every elegant screen keeps, so it
+                      carries the date STATUS — and with no date it said nothing at all,
+                      leaving the countdown slot silently empty. Figma 922:121 puts
+                      "NO DATE YET" here; when the host named a month, say the month. */}
+                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : (targetMonthLabel(event) ? String(targetMonthLabel(event)).toUpperCase() + '  ·  PICK A DAY  ·  ' : 'NO DATE YET  ·  ')) + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
                     /* Span visibility (host report 2026-07-27 "I don't see the multi day"):
                        the range rides the always-on eyebrow — the ONE element every
                        elegant screen keeps — so a 3-day event reads as one at a glance.
@@ -6059,7 +6074,14 @@ export default function HostShellV2() {
                     {/* ONE ask string, computed once at heroAskText (~2357) so the card-title
                         dedup and the browser tab speak exactly what is rendered here. */}
                     <h2 className="ask" key={'ask-' + String(queue[0].id || queue[0].title || '')}>{heroAskText}</h2>
-                    <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>
+                    {/* With no date this slot would read "null days". The frame puts
+                        the honest sentence here instead — and when the host named a
+                        MONTH we can do better than "no date yet" and say which one. */}
+                    {days === null
+                      ? <p className="truth">{targetMonthLabel(event)
+                        ? `${targetMonthLabel(event)} — pick a day and the countdown starts`
+                        : (orient && orient.summary) || 'No date yet, so nothing can be timed.'}</p>
+                      : <p className="truth">{days === 1 ? '1 day' : days + ' days'}{dateLong ? ' — ' + dateLong : ''}{statusOnTrack ? ' · on track' : ''}</p>}
                     {!statusOnTrack && statusNode}
                   </>);
                 }
