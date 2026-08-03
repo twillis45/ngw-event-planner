@@ -167,6 +167,46 @@ export function normalizeLodgingOption(raw, i = 0) {
  * Pure and honest: money math only when the host typed prices; sleeps-fit only
  * against a real guest count; nothing scraped, nothing invented.
  */
+/**
+ * IS THERE A KITCHEN WHERE EVERYONE IS STAYING?  true | false | null
+ *
+ * WHY THIS EXISTS. A resort and a rental house produce nearly disjoint food plans.
+ * A hotel has no kitchen: the plan is reservations, private dining and banquet
+ * minimums, and a grocery list is meaningless. A whole-home rental has a full
+ * kitchen: the plan is a grocery run, someone cooking, and — across a multi-day
+ * span — a meal per day rather than one event. The app already ASKED which it was
+ * (`dest_lodging`, "How are guests staying?") and already derived the platform from
+ * a pasted listing URL, and then told neither fact to the food engine.
+ *
+ * THE THIRD STATE IS THE POINT. "Guests book on their own" says nothing about a
+ * kitchen — the host genuinely does not know where anyone will be. That returns
+ * null, not false, so a surface can ask instead of assuming a hotel.
+ *
+ * Reads host answers only. No inference from a city, a price, or an event type.
+ */
+export function lodgingKitchen(event) {
+  const ev = event || {};
+
+  // 1 · A pasted listing outranks the multiple-choice answer: it is the more
+  //     specific act. Platform is derived from the URL host, never from prose.
+  const opts = Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : [];
+  for (const o of opts) {
+    const platform = lodgingPlatformFor(o && o.url);
+    // Whole-home rental platforms. A kitchen is what the host is booking.
+    if (platform === 'vrbo' || platform === 'airbnb') return true;
+  }
+
+  // 2 · The decision the playbook already asks. Stored with the other picks.
+  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  const pick = String(picks.dest_lodging || '').trim();
+  if (/airbnb|rental|house|cabin|villa/i.test(pick)) return true;
+  // A room block IS a hotel — that is what a block is.
+  if (/room block/i.test(pick)) return false;
+
+  // 3 · "Guests book on their own", or nothing asked yet. NOT TOLD.
+  return null;
+}
+
 export function lodgingIntel(event) {
   const ev = event || {};
   const nights = spanNights(ev);
@@ -822,6 +862,44 @@ export function mustHaveBasis(event) {
  * Verified against both platforms' live search on 2026-07-28 — these parameter
  * names are the ones their own search pages produce, not invented.
  */
+/**
+ * WHY THERE ARE NO SEARCHES YET, or null when there are.
+ *
+ * `lodgingSearchLinks` returns [] with no town, which is correct - you cannot
+ * honestly search a place nobody has named. But the surface then rendered NOTHING
+ * (HostShellV2 `if (!links.length) return null`), so a host planning "a destination
+ * 80th, ten of us, June 17-21" with the town still open got no lodging help at all -
+ * and the town was the very thing they were trying to decide.
+ *
+ * The app is not searching on the host's behalf either way. It builds the query;
+ * the host runs it. This just names the one input still missing, and says that
+ * everything else is already in hand.
+ */
+export function lodgingSearchBlocked(event) {
+  const ev = event || {};
+  // Only a destination event owes the host a lodging search.
+  if (ev.isDestination !== true) return null;
+  if (lodgingSearchLinks(ev).length > 0) return null;
+
+  const start = String(ev.date || '').slice(0, 10);
+  const end = String(ev.endDate || '').slice(0, 10);
+  const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || 0;
+  const inHand = [
+    start && end ? `${start} to ${end}` : (start || null),
+    guests ? `${guests} guests` : null,
+  ].filter(Boolean);
+
+  return {
+    reason: 'no-town',
+    label: 'Name the town and the searches open up',
+    // Never claims to know the answer - names the one gap and what is already held.
+    detail: inHand.length
+      ? `Airbnb, Vrbo and hotel searches all need a place. ${inHand.join(' and ')} are already filled in.`
+      : 'Airbnb, Vrbo and hotel searches all need a place.',
+    route: { tab: 'Event Details', focusField: 'event-venue' },
+  };
+}
+
 export function lodgingSearchLinks(event) {
   const ev = event || {};
   const vf = venueFor(ev);
@@ -877,10 +955,20 @@ export function lodgingSearchLinks(event) {
   // stop violating the one clause we violate by construction rather than by
   // interpretation. Treating different terms differently is what reading them is
   // for. `criteria` is rendered for the host to copy.
+  // HOTELS, not just rentals. The lodging question the playbook asks
+  // (`dest_lodging`) offers room blocks as three of its four options, and the food
+  // plan now branches on whether there is a kitchen - so a host choosing the HOTEL
+  // path had no way out of the app at all. Sent through a general search entry
+  // point rather than any chain's booking surface: same construct-the-query,
+  // host-runs-it rule as the two below, and no platform's terms to read.
+  const hotelQ = ['hotels in', place, start && end ? `${start} to ${end}` : null,
+    guests ? `for ${guests} guests` : null].filter(Boolean).join(' ');
+
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
     { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
       criteria: [place, start && end ? `${start} to ${end}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
+    { id: 'hotels', label: 'Search hotels', href: `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`, applied: said },
   ];
 }
 

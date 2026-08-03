@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
 // Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
@@ -10215,7 +10215,21 @@ export default function HostShellV2() {
                             or three back, and the ranking below does the comparing. */}
                         {(() => {
                           const links = (() => { try { return lodgingSearchLinks(event) || []; } catch { return []; } })();
-                          if (!links.length) return null;
+                          // NO TOWN IS A STEP, NOT A BLANK. Returning null here meant a host
+                          // planning "a destination 80th, ten of us, June 17-21" with the town
+                          // still open saw no lodging help at all - and the town was the very
+                          // thing she was trying to decide. Name the one missing input, say
+                          // what is already in hand, and route to the field that unlocks it.
+                          if (!links.length) {
+                            const blocked = (() => { try { return lodgingSearchBlocked(event); } catch { return null; } })();
+                            if (!blocked) return null;
+                            return (
+                              <div style={{ margin: '2px 0 12px' }}>
+                                <button className="mini" onClick={() => { if (!routeSheet(blocked.route)) toast(blocked.label); }}>{blocked.label} →</button>
+                                <p className="grounding" style={{ margin: '4px 0 0' }}>{blocked.detail}</p>
+                              </div>
+                            );
+                          }
                           return (
                             <div style={{ margin: '2px 0 12px' }}>
                               <div className="actions-row" style={{ gap: 'var(--sp-2)' }}>
