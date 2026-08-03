@@ -145,6 +145,28 @@ function preProgress(ev, phase, daysOut) {
       unbought ? { tab: 'Planning', foodFocus: unboughtItems[0].id } : { tab: 'Planning', focusField: 'food-plan' }, 6);
   }
 
+  // ── LODGING — destination events only ───────────────────────────────────────
+  // The destination TIMELINE already carries the real work: call the visitors
+  // bureau, confirm the room block, build the arrivals/departures grid, confirm
+  // ground transport, send the getting-here note — 6 of 16 tasks on a Santa Fe
+  // fixture. None of it reached this READINESS ledger, so "where is everyone
+  // sleeping" could never become the next ask and never counted toward "N of M
+  // plan parts handled". The app knew this was a destination event when it PRICED
+  // it ("ranges run wider because guests are traveling in") and forgot it when
+  // deciding what the host should do next. This is the wire, not new content.
+  //
+  // APPLIES only when the host actually said destination — never inferred from a
+  // city, which is the venueCity-pollution trap. HANDLED only on a real stored
+  // pick; an absent `lodging` is "not told", never a no.
+  //
+  // Priority 4 — above location (5) and food (6). Rooms sell out and a group rate
+  // carries a deadline; a menu does not.
+  const _lodgingPicked = !!(ev.lodging && typeof ev.lodging === 'object'
+    && String(ev.lodging.hotelName || '').trim());
+  add('lodging', ev.isDestination === true, _lodgingPicked,
+    'Sort where everyone stays',
+    { tab: 'Travel', focusField: 'lodging' }, 4);
+
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
   if (vendors.length) {

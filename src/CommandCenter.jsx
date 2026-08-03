@@ -1457,6 +1457,27 @@ export function _eventFoundationActions(event) {
         ? (Number(event.totalBudget) > 0 ? `Budget set · ${fmtMoney0(Number(event.totalBudget))}` : 'Budget set')
         : null,
     },
+    // ── LODGING — a destination domino, ahead of the menu ───────────────────
+    // The foundation ladder was date → guests → budget → food for every event,
+    // so a destination trip was ordered like a local party: "Plan the food."
+    // led while ten people had nowhere to sleep. The readiness ledger already
+    // ranks lodging above food (priority 4 vs 6), but ledger items are appended
+    // AFTER the foundation, so that ranking could never beat this list.
+    //
+    // Rooms sell out and a group rate carries a deadline; a menu does not.
+    //
+    // `applies` only when the host actually said destination — never inferred
+    // from a city. Spliced out entirely for a local event, so no other event
+    // type grows a domino it can never satisfy.
+    ...(event && event.isDestination === true ? [{
+      id: 'lodging', domain: 'lodging', title: 'Sort where everyone stays.',
+      consequence: 'Rooms sell out and group rates expire — this one has a deadline the rest of the plan does not.',
+      cta: 'Sort lodging', route: { tab: 'Travel', focusField: 'lodging' },
+      done: !!(event.lodging && typeof event.lodging === 'object'
+        && String(event.lodging.hotelName || '').trim()),
+      handledFact: (event.lodging && String(event.lodging.hotelName || '').trim())
+        ? `Staying at ${String(event.lodging.hotelName).trim()}` : null,
+    }] : []),
     {
       id: 'food', domain: 'food', title: 'Plan the food.',
       consequence: 'How you’re feeding everyone — cook, cater, or potluck — drives the shopping and the run of show.',
