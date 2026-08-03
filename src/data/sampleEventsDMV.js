@@ -2,7 +2,8 @@
 // generate-sample-events workflow and assembled by scripts/assembleSampleEvents.js.
 // Each event's `type` maps to its own engine model via familyFor(). Do not hand-edit;
 // re-run the workflow + assembler to regenerate.
-export const SAMPLE_EVENTS_DMV = [
+import { rebaseSampleEvents } from '../lib/sampleDateRebase';
+const RAW_SAMPLE_EVENTS_DMV = [
   {
     "id": "ev-dmv-wedding",
     "rsvpCode": "weddin",
@@ -3468,5 +3469,11 @@ export const SAMPLE_EVENTS_DMV = [
     ]
   }
 ];
+
+// Dates above are authored as offsets from SAMPLE_ANCHOR, not as calendar facts.
+// rebaseSampleEvents shifts every one of them by the same delta so the corpus keeps
+// the leads it was written with instead of decaying a day per day. See
+// src/lib/sampleDateRebase.js.
+export const SAMPLE_EVENTS_DMV = rebaseSampleEvents(RAW_SAMPLE_EVENTS_DMV);
 
 export const SAMPLE_EVENT_IDS_DMV = SAMPLE_EVENTS_DMV.map(e => e.id);

@@ -45,6 +45,18 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+// ── TOOLCHAIN GUARD ──────────────────────────────────────────────────────────
+// This script's output is a TRACKED artifact compared byte-for-byte against a
+// CI build, so the build must run on the same major Node CI uses (20). Failing
+// loudly here beats committing an artifact that only drifts once it reaches CI.
+const _major = Number(process.versions.node.split('.')[0]);
+if (_major < 20) {
+  console.error(`\n\u2717 Node ${process.versions.node} is too old — hostv2 artifacts must be built on Node >=20 (CI uses 20).`);
+  console.error('  This machine: brew --prefix node@20 → export PATH="$(brew --prefix node@20)/bin:$PATH"\n');
+  process.exit(1);
+}
+
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HOSTV2 = join(ROOT, 'hostv2');
 const DEPLOYED = join(ROOT, 'public/hostv2');

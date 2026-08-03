@@ -7,12 +7,30 @@
 // the dedup predicate over real seeded events instead of a hand-copied mirror of it.
 //
 // PURE display mappers: no React, no component state, no event mutation.
+import { normalizeAsk, isCircularAsk } from './askVoice';
 
 // REBALANCE 2026-07-17 — the ASK vocabulary. The display slot speaks the next
 // action in plain hand-holder words (2–4 words, ≤2 lines at display size); the
 // panel beneath carries the specifics. Raw queue titles are card copy and can
 // be proper nouns ("Confirm Semper Catering Co") — never display material.
 const HERO_NOUN = { cater: 'caterer', dj: 'DJ', music: 'DJ', photo: 'photographer', video: 'videographer', flor: 'florist', flower: 'florist', venue: 'venue', rental: 'rentals', bar: 'bartender', cake: 'baker', transport: 'driver' };
+
+// The food dimensions a host actually decides between, most-blocking first.
+// Provider comes before service style, which comes before the dishes: you cannot
+// choose a menu before you know who is cooking it, and a repast whose provider is
+// open is asking a sourcing question, not a culinary one.
+// Ordered, so a title naming two dimensions is asked about the one that gates.
+const FOOD_DIMENSION = [
+  { re: /\b(who|provider|providers|provid\w*|source|sourcing|cater\w*|potluck|cook(s|ing)?)\b/i, ask: 'Decide who provides the food.' },
+  { re: /\b(service|style|buffet|plated|seated|family[- ]style|passed|stationed|format)\b/i, ask: 'Choose how the food is served.' },
+  { re: /\b(dietary|allerg\w*|vegetarian|vegan|halal|kosher|gluten)\b/i, ask: 'Note the dietary needs.' },
+  { re: /\b(count|headcount|quantit\w*|how much|per guest|portions?)\b/i, ask: 'Fix the catering count.' },
+  { re: /\b(menu|dish\w*|serving|entree|main|sides?)\b/i, ask: 'Decide the menu.' },
+];
+function foodAsk(title) {
+  for (const d of FOOD_DIMENSION) if (d.re.test(title)) return d.ask;
+  return null;
+}
 export function heroAskFor(a, event) {
   try {
     // AN AUTHORED ASK ALWAYS WINS (2026-07-30). Everything below classifies an item
@@ -26,11 +44,43 @@ export function heroAskFor(a, event) {
     // A surface that knows its own job can now say so (`ask` on the raise) and this
     // reads it first. Structural, and it generalises: any future surface whose domain
     // and job differ authors one line instead of teaching this ladder a new regex.
-    if (a && a.ask) return String(a.ask);
+    if (a && a.ask) return normalizeAsk(a.ask) || 'Your next step.';
     const t = String((a && a.title) || '').replace(/\.+$/, '').trim();
     const d = String((a && a.domain) || '').toLowerCase();
     if (d === 'budget' || /budget/i.test(t)) return 'Set your budget.';
-    if (d === 'food' || /serving|menu|food/i.test(t)) return 'Decide the menu.';
+    // ── A BUY LINE IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────────
+    // "Buy chips, crackers, pretzels & popcorn — 13 snack servings tomorrow"
+    // reached the food branch below on the word "servings", which is a QUANTITY
+    // word the dimension ladder files under the menu. The host was told to
+    // "Decide the menu." over an item whose menu was long since decided and
+    // whose actual job is a shopping run.
+    //
+    // The foodFocus route says what this is: it points at an unbought LINE in
+    // the spread. That rung already existed — it just sat below the dimension
+    // ladder, so it never got to speak for any title containing a food word,
+    // which is every title it was written for. Ordering is the whole fix: an
+    // execution item is answered as execution before anything tries to read a
+    // decision out of its prose.
+    if (a && a.route && a.route.foodFocus) return 'Get the food.';
+    // ── THE FOOD BRANCH USED TO RESTATE ITS OWN ITEM ──────────────────────────
+    // Host report, 2026-07-31: a repast whose open decision is "Who provides the
+    // food" was asked "Decide the menu." — an instruction to do the thing the
+    // card is already named after, and one that names the WRONG dimension: the
+    // provider was the open question, not the dishes.
+    //
+    // The defect was the rule, not the string. This branch matched any title
+    // containing food/menu/serving and answered with a single fixed sentence, so
+    // every distinct food question collapsed into the same ask. It now reads the
+    // title to name the dimension actually missing, and foodAsk() returns null
+    // when it cannot tell — a null falls through to the ladder below rather than
+    // inventing a dimension the event has no evidence for.
+    if (d === 'food' || /serving|menu|food/i.test(t)) {
+      const ask = foodAsk(t);
+      if (ask && !isCircularAsk(ask, t)) return ask;
+      // Nothing narrower is known. Say the general thing ONLY if it still adds
+      // information; otherwise fall through and let a later rung speak.
+      if (!isCircularAsk('Decide the menu.', t)) return 'Decide the menu.';
+    }
     if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
     if (/start time/i.test(t)) return 'Confirm the start time.';
     if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
@@ -40,7 +90,24 @@ export function heroAskFor(a, event) {
     if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
     if (/resolve .*decision|decisions? —|decisions? are past/i.test(t)) return 'Settle your decisions.';
     if (/(catering|guest|final)\s+count/i.test(t)) return 'Fix the catering count.';
-    const vm = t.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
+    // "Send payment to Hearthstone Catering Co" reached the host as the dead
+    // placeholder "Your next step." (driven 2026-07-31, retirement party at
+    // T-29). The title is 39 chars so it fell past the 26-char cutoff, and it
+    // missed this branch for one reason: the verb list had no `send`.
+    //
+    // Adding the word alone would have produced "Send your caterer." — the verb
+    // is carried through to the ask, and the act here is not sending, it is
+    // PAYING. A payment title is normalized to its real verb first, so the
+    // money item says what the host actually does.
+    //
+    // The rewrite is the WHOLE fix — `send` is deliberately NOT added to the
+    // verb list below. Adding it regressed "Send the invites" to "Send your
+    // vendor.", because that branch appends a vendor noun to whatever verb it
+    // matched. Rewriting to a `Pay …` title instead feeds the branch a verb it
+    // already handles, and every non-payment `send` keeps falling through to
+    // the short-title path that was already saying the right thing.
+    const t2 = t.replace(/^send\s+(?:the\s+|a\s+)?(?:payment|balance|deposit|check|invoice)\s+(?:to|for)\s+/i, 'Pay ');
+    const vm = t2.match(/^(confirm|book|call|chase|pay|reconfirm)\s+(.+)$/i);
     if (vm) {
       const verb = vm[1].charAt(0).toUpperCase() + vm[1].slice(1).toLowerCase();
       const rest = vm[2].toLowerCase();
@@ -49,11 +116,8 @@ export function heroAskFor(a, event) {
       const nounKey = Object.keys(HERO_NOUN).find(k => catKey.includes(k) || rest.includes(k));
       return verb + ' your ' + (nounKey ? HERO_NOUN[nounKey] : 'vendor') + '.';
     }
-    // A food-line buy ("Fried or baked chicken & baked ham — 28.5 lbs in 2 days")
-    // carries an item title, never an instruction — the fallback rendered the dead
-    // "Your next step." on it (audit 2026-07-22, W11). The foodFocus route names
-    // the real job in plain words.
-    if (a && a.route && a.route.foodFocus) return 'Get the food.';
+    // (The foodFocus rung — a food-line buy carries an item title, never an
+    // instruction — now runs ABOVE the food dimension ladder; see the note there.)
     // ── OPEN: A 26-CHARACTER CUTOFF DECIDES WHETHER THE HOST SEES THE ASK ──
     // Frames 25/26 audit, driven 2026-07-29 on the retirement party. Its open
     // decision is authored as a question — retirementParty.js venue:
@@ -74,7 +138,7 @@ export function heroAskFor(a, event) {
     // carried through as its own field. It must not be re-derived from the
     // short label, and the cutoff must not be widened blindly — a long
     // declarative title genuinely does not read as a hero; a question does.
-    return t.length <= 26 ? t + '.' : 'Your next step.';
+    return (t.length <= 26 ? normalizeAsk(t + '.') : null) || 'Your next step.';
   } catch { return 'Your next step.'; }
 }
 // The record the panel names — only when it adds info beyond the ask (dedup:

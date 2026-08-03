@@ -42,6 +42,14 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # GOVERNED KNOWLEDGE BAKE GATE (Phase 5A-3). publishedKnowledge.json is a
+      # build artifact derived from knowledge-exports/published-kcrs.json. Nothing
+      # regenerated it, so a published KCR could land without its snapshot entry and
+      # the runtime would keep serving authored values with no signal that governance
+      # had moved. --check re-bakes in memory and fails on drift; it writes nothing,
+      # makes no network call, and needs no new infrastructure. Runs BEFORE the suite
+      # so a stale artifact reports as itself rather than as a confusing test failure.
+      - run: npm run gate:knowledge
       - run: CI=true npx react-scripts test --watchAll=false
 
   e2e:

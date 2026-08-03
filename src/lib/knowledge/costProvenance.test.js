@@ -21,7 +21,19 @@ describe('cost provenance grounding', () => {
       }
     }
     // the Grounding lever: "even 10/46 with a costResearched predicate lifts the cap off 2%."
-    expect(grounded).toBeGreaterThanOrEqual(16); // wave-2v grounded 6 more service-tier factors
+    //
+    // FLOOR LOWERED 16 -> 15 on 2026-08-01 (Phase 5C.1), DELIBERATELY, not as a regression.
+    // Juneteenth Cookout / `menu` had its grounding WITHDRAWN because verification showed the
+    // cited source does not support the claim: usda-meat-2026 prices brisket (~$4.50/lb) within
+    // ~4% of pork chops (~$4.33/lb) so it cannot support a ~20% brisket premium, and it is a
+    // meat series containing no seafood at all, so the mixed-grill+seafood leg was ungroundable
+    // under any reading. The decision's VALUES are unchanged; only the evidence label moved to
+    // 'synthesized'. See docs/playbooks/PHASE_5C_1_EXECUTION_REPORT.md.
+    //
+    // This is a ratchet: it must not be lowered again to accommodate a future withdrawal
+    // without the same written justification, and it should RISE as claims are properly
+    // re-grounded. A smaller truthful knowledge base beats a larger questionable one.
+    expect(grounded).toBeGreaterThanOrEqual(15); // wave-2v grounded 6 more service-tier factors
     expect(grounded).toBeLessThan(withProv); // honest — most are still a research backlog
   });
 

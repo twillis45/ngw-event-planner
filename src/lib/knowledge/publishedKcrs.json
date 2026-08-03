@@ -1,0 +1,2318 @@
+[
+  {
+    "id": "authored-baby-shower-p-tableware-provenance-1785651162869",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T06:12:42.868Z",
+    "assetId": "Baby Shower",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-baby-shower-p-tableware-provenance-1785651162869-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T06:12:42.868Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-baby-shower-p-tableware-provenance-1785651162869-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-birthday-p-tableware-provenance-1785650063496",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:54:23.496Z",
+    "assetId": "Birthday",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-birthday-p-tableware-provenance-1785650063496-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T05:54:23.496Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-birthday-p-tableware-provenance-1785650063496-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-bridal-shower-p-tableware-provenance-1785662617860",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:23:37.860Z",
+    "assetId": "Bridal Shower",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-bridal-shower-p-tableware-provenance-1785662617860-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:23:37.860Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-bridal-shower-p-tableware-provenance-1785662617860-v10"
+      }
+    ]
+  },
+  {
+    "id": "kcr-kas-crab-feast-p-crabs-provenance",
+    "type": "research",
+    "trigger": "research",
+    "createdBy": "kas-phase5a2",
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "assetId": "Crab Feast",
+    "assetKind": "playbook",
+    "fieldPath": "p_crabs.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "p_crabs provenance cites four DMV retailers as free prose; no source id resolves, so the quantity predicate reads it as ungrounded.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "webstaurant-protein-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "WebstaurantStore — How Much Meat to Serve Per Person (protein portion guide)",
+        "url": "https://www.webstaurantstore.com/blog/5410/protein-portion-guide.html"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "note": "Per-guest crab quantity grounded to the WebstaurantStore protein portion guide (fetched 2026-07-16)."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "webstaurant-protein-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Replaces prose-only sourcing with a resolvable source id so the quantity grounding predicate can evaluate it.",
+      "verificationStatus": "cited",
+      "sources": [
+        "webstaurant-protein-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "editorial": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      }
+    },
+    "publishedVersion": "crab-feast-p-crabs-provenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "kas-phase5a2",
+        "action": "created",
+        "note": "type=research trigger=research"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "WebstaurantStore — How Much Meat to Serve Per Person (protein portion guide)"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Replaces prose-only sourcing with a resolvable source id so the quantity grounding predicate can evaluate it."
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:researching",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:grounded",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:review",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "crab-feast-p-crabs-provenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "authored-crab-feast-p-ice-provenance-1785647631378",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:13:51.378Z",
+    "assetId": "Crab Feast",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "reddy-ice-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party",
+        "url": "https://www.reddyice.com/how-much-ice-you-need-for-a-party/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person; its own worked outdoor-BBQ example computes to 2.1 lb/guest. A Crab Feast is an outdoor summer cook, so the outdoor case applies and the authored 2 lb/guest sits at that figure. Value unchanged; provenance only. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat 2 lb as ceiling-leaning planning guidance."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "reddy-ice-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-crab-feast-p-ice-provenance-1785647631378-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: prior records archived for inherited protein-guide evidence and for an empty newProvenance. Same value, correct source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:13:51.378Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-crab-feast-p-ice-provenance-1785647631378-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-crab-feast-p-tableware-provenance-1785663004715",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:30:04.714Z",
+    "assetId": "Crab Feast",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-crab-feast-p-tableware-provenance-1785663004715-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:30:04.714Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-crab-feast-p-tableware-provenance-1785663004715-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-dinner-party-p-ice-provenance-1785647521144",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:12:01.144Z",
+    "assetId": "Dinner Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "The Party Source (100-guest planning guide) + Evite / Omnicalculator / Reventals party-drink calculators (consensus)",
+        "url": "https://thepartysource.com/blog/how-much-alcohol-for-100-guests"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "bar-provision-2026 states ice ~1.5 lb/guest (12-15 bags per 100) as standard US party drink provisioning. Dinner Party is the indoor baseline case, and the authored 1.5 matches the source-stated rate exactly. Value unchanged; provenance only."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-dinner-party-p-ice-provenance-1785647521144-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "The Party Source (100-guest planning guide) + Evite / Omnicalculator / Reventals party-drink calculators (consensus)"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: prior record archived because newProvenance was written empty and the bake lost the source ids. Same value, same source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:12:01.144Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-dinner-party-p-ice-provenance-1785647521144-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-fish-fry-p-ice-provenance-1785647428637",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T05:10:28.637Z",
+    "assetId": "Fish Fry",
+    "assetKind": "playbook",
+    "fieldPath": "p_ice.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "reddy-ice-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party",
+        "url": "https://www.reddyice.com/how-much-ice-you-need-for-a-party/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "note": "Reddy Ice states 1-2 lb of ice per person. Fish Fry authors 1.5 lb/guest, which sits inside that stated range; the value is NOT changed here. CAVEAT: a packaged-ice manufacturer profits from a higher figure, so treat the range as ceiling-leaning planning guidance rather than a measured mean."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "reddy-ice-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place.",
+      "verificationStatus": "cited",
+      "sources": [
+        "reddy-ice-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-fish-fry-p-ice-provenance-1785647428637-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Reddy Ice LLC (packaged-ice manufacturer) - How Much Ice You Need for a Party"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Wave 0 rebuild: the prior record was archived because newProvenance was written empty, so the bake lost the source ids and the field could not have been corrected again. Same value, same source, now with the provenance mirror in place."
+      },
+      {
+        "at": "2026-08-02T05:10:28.637Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-fish-fry-p-ice-provenance-1785647428637-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-fish-fry-p-tableware-provenance-1785662780940",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:26:20.940Z",
+    "assetId": "Fish Fry",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-fish-fry-p-tableware-provenance-1785662780940-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:26:20.940Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-fish-fry-p-tableware-provenance-1785662780940-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-gender-reveal-p-tableware-provenance-1785662692218",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:24:52.218Z",
+    "assetId": "Gender Reveal",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-gender-reveal-p-tableware-provenance-1785662692218-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:24:52.218Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-gender-reveal-p-tableware-provenance-1785662692218-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-get-together-p-tableware-provenance-1785651370784",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T06:16:10.783Z",
+    "assetId": "Get-Together",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-get-together-p-tableware-provenance-1785651370784-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T06:16:10.783Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-get-together-p-tableware-provenance-1785651370784-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-graduation-p-tableware-provenance-1785651455247",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T06:17:35.247Z",
+    "assetId": "Graduation",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-graduation-p-tableware-provenance-1785651455247-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T06:17:35.247Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-graduation-p-tableware-provenance-1785651455247-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-juneteenth-cookout-p-tableware-provenance-1785662926174",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:28:46.174Z",
+    "assetId": "Juneteenth Cookout",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-juneteenth-cookout-p-tableware-provenance-1785662926174-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:28:46.174Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-juneteenth-cookout-p-tableware-provenance-1785662926174-v10"
+      }
+    ]
+  },
+  {
+    "id": "authored-kwanzaa-gathering-p-tableware-provenance-1785663067436",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "admin",
+    "createdAt": "2026-08-02T09:31:07.436Z",
+    "assetId": "Kwanzaa Gathering",
+    "assetKind": "playbook",
+    "fieldPath": "p_tableware.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "jollychef-disposables-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-08-01",
+        "source": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event",
+        "url": "https://jollychef.com/blogs/how-to-guides/calculate-disposable-tableware-quantity-event-guide"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "note": "JollyChef states 1.3-1.5 dinner plates/guest for a buffet and 1.5 cups+cutlery/guest. The authored 1.5 sets/guest sits at that figure; value NOT changed. LIMITATION: the source recommends 3 napkins/guest, more than one set provides. CAVEAT: vendor-published and commercially interested in a higher multiplier - trade consensus among sellers, not independent corroboration."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "jollychef-disposables-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change.",
+      "verificationStatus": "cited",
+      "sources": [
+        "jollychef-disposables-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "editorial": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      },
+      "ai": null,
+      "governance": {
+        "by": "admin",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-02"
+      }
+    },
+    "publishedVersion": "authored-kwanzaa-gathering-p-tableware-provenance-1785663067436-v10",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "admin",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "JollyChef (disposable-tableware retailer) - Disposable Tableware Math: How Much to Order for Your Event"
+      },
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "admin",
+        "action": "advanced:researching",
+        "note": "first governance opened"
+      },
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "admin",
+        "action": "advanced:grounded",
+        "note": "authored value captured as the prior"
+      },
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Batch 2 provenance-only: p_tableware carries no provenance. Grounding the authored 1.5 sets/guest to the disposables source that states that figure. No value change."
+      },
+      {
+        "at": "2026-08-02T09:31:07.436Z",
+        "by": "admin",
+        "action": "advanced:review",
+        "note": "first governance submitted for review"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-02",
+        "by": "admin",
+        "action": "published",
+        "note": "authored-kwanzaa-gathering-p-tableware-provenance-1785663067436-v10"
+      }
+    ]
+  },
+  {
+    "id": "kcr-kas-retirement-party-p-wine-provenance",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "kas-phase5a3",
+    "createdAt": "2026-08-01T12:00:00.000Z",
+    "assetId": "Retirement Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_wine.provenance",
+    "currentValue": null,
+    "currentProvenance": null,
+    "reason": "p_wine provenance records confidence 'med'; the canonical vocabulary is high|medium|low, so the value is unaggregatable against the rest of the corpus.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "Bar provisioning guide (drinks per guest per hour)",
+        "url": "https://www.webstaurantstore.com/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "Grounded to bar-provision-2026: ~1/2 bottle of wine per drinker, ~5 glasses per 750ml, at ~1 drink/guest/hour.",
+        "claim": "At ~1 drink/guest/hour, wine carries ~40% of the drink load: a 750ml bottle (5 glasses) supports ~0.4 bottle/guest over 3 hours when beer is also served."
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Normalizes confidence 'med' to the canonical 'medium' without editing the authored playbook file.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "editorial": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "steward",
+        "decision": "approve",
+        "note": "",
+        "at": "2026-08-01T12:00:00.000Z"
+      }
+    },
+    "publishedVersion": "retirement-party-p-wine-provenance-v1",
+    "rollbackTo": null,
+    "audit": [
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "kas-phase5a3",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Bar provisioning guide (drinks per guest per hour)"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Normalizes confidence 'med' to the canonical 'medium' without editing the authored playbook file."
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:researching",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:grounded",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:review",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "steward",
+        "action": "advanced:approved",
+        "note": ""
+      },
+      {
+        "at": "2026-08-01T12:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "retirement-party-p-wine-provenance-v1"
+      }
+    ]
+  },
+  {
+    "id": "kcr-kas-retirement-party-p-wine-provenance-v2",
+    "type": "correction",
+    "trigger": "validation",
+    "createdBy": "publisher",
+    "createdAt": "2026-08-01T18:00:00.000Z",
+    "assetId": "Retirement Party",
+    "assetKind": "playbook",
+    "fieldPath": "p_wine.provenance",
+    "currentValue": {
+      "tier": "researched",
+      "confidence": "medium",
+      "verificationStatus": "researched",
+      "sources": [
+        "bar-provision-2026"
+      ],
+      "note": "Grounded to bar-provision-2026: ~1/2 bottle of wine per drinker, ~5 glasses per 750ml, at ~1 drink/guest/hour.",
+      "claim": "At ~1 drink/guest/hour, wine carries ~40% of the drink load: a 750ml bottle (5 glasses) supports ~0.4 bottle/guest over 3 hours when beer is also served."
+    },
+    "currentProvenance": null,
+    "reason": "Published v1 carried a derivation that does not reproduce: it attributed the source's ~40% BEER share to wine, and its stated arithmetic yields 0.24 bottle/guest against a published 0.4. Found by the Phase 5C.1 trust repair audit. The quantity is unchanged; the reasoning is replaced.",
+    "status": "published",
+    "priority": null,
+    "impact": null,
+    "evidence": [
+      {
+        "id": "bar-provision-2026",
+        "sourceType": "citation",
+        "confidence": "medium",
+        "supports": null,
+        "contradicts": false,
+        "capturedAt": "2026-07-16",
+        "source": "Bar provisioning guide (drinks per guest per hour)",
+        "url": "https://www.webstaurantstore.com/"
+      }
+    ],
+    "contradictions": [],
+    "proposal": {
+      "newValue": {
+        "tier": "researched",
+        "confidence": "medium",
+        "verificationStatus": "researched",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "note": "DERIVATION CORRECTED (Phase 5C.2, supersedes v1). bar-provision-2026 states ~1/2 bottle of wine per DRINKING guest (~1 bottle per ~2.5 drinking guests per hour; a 750ml pours ~5 servings). This line is expressed per GUEST, so the sourced 0.5/drinker is multiplied by an assumed ~80% drinking rate for an older mixed daytime crowd: 0.5 x 0.8 = 0.4 bottle/guest. The ~80% rate is an ASSUMPTION, not sourced, and is the one unverified step. WITHDRAWN FROM v1: \"wine carries ~40% of the drink load\" was wrong twice - the source assigns ~40% to BEER (beer+wine ~75%, implying wine ~35%), and v1's own arithmetic (3h x 1/h x 40% / 5 glasses) yields 0.24 bottle/guest, not the 0.4 it published. The VALUE survives; only the reasoning was defective.",
+        "claim": "Source states ~1/2 bottle of wine per drinking guest at ~1 drink/guest/hour; at an assumed ~80% drinking rate for an older daytime crowd this yields ~0.4 bottle per guest",
+        "sufficientWhen": "A drinking-participation rate for older daytime retirement gatherings confirms the ~80% assumption, OR wine consumption data from >=2 comparable 3h events confirms ~0.4 bottle/guest when beer/seltzer is also present"
+      },
+      "newProvenance": {
+        "verificationStatus": "cited",
+        "sources": [
+          "bar-provision-2026"
+        ],
+        "tier": "researched",
+        "confidence": "medium"
+      },
+      "rationale": "Replaces a non-reproducing derivation. Same source, same value, corrected reasoning.",
+      "verificationStatus": "cited",
+      "sources": [
+        "bar-provision-2026"
+      ]
+    },
+    "review": {
+      "sme": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: sme",
+        "at": "2026-08-01T18:00:00.000Z"
+      },
+      "editorial": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: editorial",
+        "at": "2026-08-01T18:00:00.000Z"
+      },
+      "ai": null,
+      "governance": {
+        "by": "publisher",
+        "decision": "approve",
+        "note": "correction reviewed: governance",
+        "at": "2026-08-01T18:00:00.000Z"
+      }
+    },
+    "publishedVersion": "retirement-party-p-wine-provenance-v2",
+    "rollbackTo": "retirement-party-p-wine-provenance-v1",
+    "audit": [
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "created",
+        "note": "type=correction trigger=validation"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "steward",
+        "action": "evidence-added",
+        "note": "Bar provisioning guide (drinks per guest per hour)"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:researching",
+        "note": "correction opened"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:grounded",
+        "note": "evidence carried from superseded version"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "steward",
+        "action": "proposal-set",
+        "note": "Replaces a non-reproducing derivation. Same source, same value, corrected reasoning."
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:review",
+        "note": "correction submitted for review"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:sme",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:editorial",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "review:governance",
+        "note": "approve"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "advanced:approved",
+        "note": "correction approved"
+      },
+      {
+        "at": "2026-08-01T18:00:00.000Z",
+        "by": "publisher",
+        "action": "published",
+        "note": "retirement-party-p-wine-provenance-v2"
+      }
+    ]
+  }
+]

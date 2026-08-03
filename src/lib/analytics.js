@@ -221,6 +221,19 @@ export const EVENTS = {
   // (RSVP_REMINDER_SENT already exists; it was being mis-tagged as INVITE_SHARED.)
   DAY_MODE_OPENED:        'day_mode_opened',
   SHOPPING_PLAN_VIEWED:   'shopping_plan_viewed',
+
+  // Reasoning Continuity v1 (2026-07-31) — the queue used to render title + arrow
+  // only, so "does a host act sooner when told why" had no way to be answered.
+  // Every one of these carries reason_type + reason_source so a low-value reason
+  // KIND can be retired on evidence rather than opinion.
+  REASON_SHOWN:           'reason_shown',
+  // RENAMED before any production data existed (instrumentation sprint): the
+  // handler is the ROW's onClick and fires only when a reason is present, so it
+  // observes "a row carrying a reason was tapped" -- NOT "the reason caused the
+  // tap". There is no control arm. The old name asserted causation the event
+  // cannot support.
+  ROW_WITH_REASON_CLICKED: 'row_with_reason_clicked',
+  ACTION_COMPLETED_WITH_REASON: 'action_completed_with_reason',
 };
 
 /**

@@ -28,6 +28,11 @@ import { buildReplyDiff, buildPatch, replyLogEntry } from '@app/lib/vendorReplyP
 import { positiveAttention } from '@app/lib/positiveAttention';
 import { isSolemnEvent } from '@app/lib/solemn';
 import { heroAskFor, heroRecord } from '@app/lib/heroAsk'; // the ASK vocabulary — see src/lib/heroAsk.js
+// ONE selected decision across the hero, the panel and the CTA — see src/lib/selectedAction.js
+import { resolveSelection, decisionIdentityFor } from '@app/lib/selectedAction';
+import { explainEvidence } from '@app/lib/decisionEvidence'; // "why this?" — see src/lib/decisionEvidence.js
+import { boardDecisionND, foodDecisionND, blockerDecisionND, FOOD_SOURCING_OPTIONS } from '@app/lib/decisionND';
+import { questionFrom, normalizeAsk } from '@app/lib/askVoice'; // the final ask boundary — one terminal mark, never '??'
 import { showsReplyTracking } from '@app/lib/guestMode';
 import { isLikelyOutdoor, suggestRainPlan, guestRainMessage, weatherImpactByEventPhase, rainAwareSummary, rainPlanStatus, weatherLogistics, isWeatherConfigured, geocodeVenue, getEventWeatherSpan } from '@app/lib/weather';
 import { playMessageChime, notifyMessageArrival, setMessageSoundMuted, primeMessageSound } from '@app/lib/notificationSound';
@@ -79,6 +84,10 @@ import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
 import { lodgingIntel, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
+// Reasoning Continuity v1 — the ONE place a queue row's "why" is decided.
+import { getActionReason } from '@app/lib/actionReason';
+import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
+import { analyticsEventContext, runwayBucket } from '@app/lib/analyticsContext';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
@@ -131,6 +140,9 @@ import { buildPayLink, getSuggestedPayMethod } from '@app/lib/payLinks';
 import { isStripeApiConfigured, createCheckoutSession } from '@app/lib/stripeApi';
 import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled } from '@app/lib/hostIntel';
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
+import { classifyClaim } from '@app/lib/knowledge/claimBasis';
+import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
+import { orientation as deriveOrientation, segmentsText } from '@app/lib/eventOrientation';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -999,6 +1011,22 @@ export default function HostShellV2() {
   // field — the CITY-LEAK gate and the at-home carve-out ride every consumer.
   const vf = useMemo(() => venueFor(event), [event]);
 
+  // ── EXPLICIT event facts for claim recommendations (Phase 5G-C1) ───────────
+  // Facts a HOST actually entered — the venue text and their own notes — never the
+  // event type. A playbook named "Juneteenth Cookout" is a naming convention, not
+  // evidence that THIS party is outdoors, and reading it as one would be exactly the
+  // inference the directive forbids.
+  //
+  // Deliberately ASYMMETRIC: a venue reading "backyard" tells us outdoor; a venue
+  // that mentions nothing tells us NOTHING and must never be recorded as indoor.
+  // Unknown stays unknown, which is what puts the line in "Confirm before committing"
+  // rather than quietly assuming the mild case.
+  const claimFacts = useMemo(() => {
+    let outdoor = false;
+    try { outdoor = isLikelyOutdoor(vf.name, event && event.notes); } catch (_e) { outdoor = false; }
+    return { setting: outdoor ? 'outdoor' : null };
+  }, [vf, event]);
+
   // ── Regional price factor (queue item 3) — the production pipeline:
   // getFoodPriceFactor via the API base (BLS regional). State comes ONLY from
   // an explicit ', XX' in venueCity — never guessed. Neutral 1.0 otherwise.
@@ -1591,93 +1619,62 @@ export default function HostShellV2() {
   };
   // ADAPTER — a playbook `decision:*` board row → NormalizedDecision (its authored
   // options/optionNotes/defaultWhy, and the difm propose/ask approach as the pick).
+  // The PAYLOAD moved to lib/decisionND (PR #70) so the gates can run the same
+  // builder the shell renders; only the write half stays here.
   const playbookDecisionND = (dec) => {
-    const dopts = (() => { try { return playbookDecisionOptions(event, dec.id); } catch { return null; } })();
-    if (!dopts || !Array.isArray(dopts.options) || !dopts.options.length) return null;
-    const notes = (dopts.optionNotes && typeof dopts.optionNotes === 'object') ? dopts.optionNotes : {};
-    const dapproach = dec.difmCapable ? (() => { try { return decisionApproach(dec, dopts); } catch { return null; } })() : null;
-    // Propose-don't-ask: prefer the DIFM-derived pick, but when a decision carries no
-    // difmCapable (injected military/destination sets) fall back to its AUTHORED grounded
-    // default — those rows have default+why+src, so a blank ask over a real default is wrong.
-    const proposed = (dapproach && dapproach.mode === 'propose' && dapproach.proposed)
-      ? dapproach.proposed
-      : (dopts.default || null);
-    return {
-      id: dec.id,
-      options: dopts.options.map(o => ({ value: o, label: o, note: notes[o] || null })),
-      proposed: proposed ? { value: proposed, why: dopts.defaultWhy || dopts.why || null } : null,
-      why: dopts.why || null,
-      settle: (v) => settleDecision(dec, v),
-    };
+    const nd = boardDecisionND(event, dec);
+    return nd ? { ...nd, settle: (v) => settleDecision(dec, v) } : null;
   };
   // ADAPTER — the phase:food "how is the food handled" decision → NormalizedDecision.
   // Propose-don't-ask ONLY when grounded: at a real headcount, cooking for that many is a
   // lot to own on the day, so most hosts hand it to a caterer. Below that, honest ask-mode.
-  const foodDecisionND = () => {
-    // WIRE (audit 2026-07-22, W8 "doesn't continue"): when the playbook authors its
-    // own food-approach decision (repast `food_source` — culturally specific options,
-    // committee-brings default), THAT decision IS the food decision. The generic
-    // cook/cater/potluck trio both contradicted its doctrine and wrote a key the
-    // engine ignores whenever an authored lever exists — settling changed nothing.
-    // settleDecision writes foodChoices[<lever id>], the exact store foodApproach
-    // reads, so the pick now reshapes buys/tasks/costs. Trio = lever-less types only.
-    try {
-      const fa = foodApproach(event);
-      if (fa && fa.decisionId) {
-        const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]
-          .find(x => x && x.id === fa.decisionId);
-        const nd = row ? playbookDecisionND(row) : null;
-        if (nd) return { ...nd, selected: (event.foodChoices || {})[fa.decisionId] || null };
-      }
-    } catch { /* fall through to the generic trio */ }
-    const OPTS = [['We’ll cook it', 'host cooks'], ['A caterer handles it', 'caterer'], ['Potluck', 'potluck']];
-    const NOTES = {
-      'host cooks': 'Most control, most work on the day — best when the count is small.',
-      'caterer': 'Hands-off on the day; the biggest line in the food budget.',
-      'potluck': 'Low cost and communal — but you can’t plan the exact spread.',
-    };
-    const gn = Number(guests) || 0;
-    const proposed = gn >= 40
-      ? { value: 'caterer', why: `At about ${gn} guests, most hosts hand the food to a caterer — cooking for that many is a lot to own on the day.` }
-      : null;
-    return {
-      id: 'phase:food',
-      options: OPTS.map(([label, value]) => ({ value, label, note: NOTES[value] || null })),
-      proposed,
-      selected: (event.foodChoices || {}).sourcing || null,
-      why: proposed ? null : 'How you handle the food shapes both the budget and your day-of workload.',
-      settle: (v) => {
-        const label = (OPTS.find(([, val]) => val === v) || ['it'])[0];
-        patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
-          'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
-      },
-    };
+  // The trio/lever choice moved to lib/decisionND (PR #70). WIRE (audit
+  // 2026-07-22, W8): when the playbook authors its own food-approach decision
+  // (repast `food_source`) THAT decision IS the food decision, and settling it
+  // writes the key foodApproach actually reads.
+  const foodND = () => {
+    const nd = foodDecisionND(event, guests, [...(decisionBoard.open || []), ...(decisionBoard.locked || [])]);
+    return { ...nd, settle: (v) => settleND(nd, v) };
   };
-  // DISPATCHER — any decision-like hero action → its NormalizedDecision (or null when the
-  // action isn't a pick-style decision, e.g. a free-entry editor). Add a source here once.
+  // THE ONE WRITE PATH for any NormalizedDecision the shell renders. The generic
+  // trio writes foodChoices.sourcing; an authored lever or board row goes through
+  // settleDecision (which writes foodChoices[<row id>]); a blocker writes its own
+  // field. Keyed on the decision's OWN id, so the write can never land on a
+  // different decision than the one whose options were tapped.
+  const settleND = (nd, v) => {
+    if (!nd) return;
+    if (nd.id === 'phase:food') {
+      const label = (FOOD_SOURCING_OPTIONS.find(([, val]) => val === v) || ['it'])[0];
+      patchEvent({ foodChoices: { ...(event.foodChoices || {}), sourcing: v } },
+        'Food planned: ' + label.toLowerCase() + ' — the plan just recomputed.');
+      return;
+    }
+    if (/^blocker:/.test(String(nd.id || ''))) {
+      const key = String(nd.id).slice('blocker:'.length);
+      const b = (blockers || []).find(x => x && x.fieldKey === key);
+      patchEvent({ [key]: v }, ((b && b.title) || 'Decided') + ' — set.');
+      return;
+    }
+    const row = [...(decisionBoard.open || []), ...(decisionBoard.locked || [])].find(x => x && x.id === nd.id);
+    if (row) settleDecision(row, v);
+  };
+  // The canonical payload's write half — same dispatcher, reached through the
+  // selection so the hero panel has no private path to a store.
+  const settleSelection = (sel, v) => { if (sel && sel.decision) settleND(sel.decision, v); };
+  // DISPATCHER — any decision-like action → its NormalizedDecision, or null.
+  // IDENTITY-GATED (PR #70): it asks decisionIdentityFor first, so it can never
+  // answer for an action that does not declare a decision. Add a source here once.
   const decisionFor = (a) => {
-    if (!a) return null;
-    const id = String(a.id || '');
-    if (/^decision:/.test(id)) {
-      const dec = (decisionBoard.open || []).find(x => x && ('decision:' + x.id) === id);
-      return dec ? playbookDecisionND(dec) : null;
+    const idn = decisionIdentityFor(a);
+    if (!idn) return null;
+    if (idn.decisionId === 'phase:food') return foodND();
+    if (idn.source === 'blocker') {
+      const nd = blockerDecisionND((blockers || []).find(x => x && ('blocker:' + x.fieldKey) === idn.decisionId));
+      return nd ? { ...nd, settle: (v) => settleND(nd, v) } : null;
     }
-    if (id === 'phase:food') return foodDecisionND();
-    if (/^blocker:/.test(id)) {
-      const b = (blockers || []).find(x => x && ('blocker:' + x.fieldKey) === id);
-      if (!b) return null;
-      return {
-        id,
-        options: (b.options || []).map(o => ({ value: o.value, label: o.label, note: o.note || null })),
-        proposed: null,
-        why: b.what || null,
-        settle: (v) => patchEvent({ [b.fieldKey]: v }, (b.title || 'Decided') + ' — set.'),
-      };
-    }
-    return null;
+    const dec = (decisionBoard.open || []).find(x => x && String(x.id) === String(idn.decisionId));
+    return dec ? playbookDecisionND(dec) : null;
   };
-  // Back-compat: the decisions BUNDLE + single-decision hero still call this with a board row.
-  const renderDecisionActions = (dec) => renderDecision(playbookDecisionND(dec));
   // Host override (task 3): the ranking is a PROPOSAL the host can correct. Pinning
   // floats an open decision to the top; persists via the same patchEvent path every
   // edit uses. Toggling re-pins/unpins.
@@ -2303,6 +2300,56 @@ export default function HostShellV2() {
   // deciding. Accumulates (not one id) so satisfying the next doesn't un-filter the last; cleared
   // on event switch. Elegant loop only.
   const [satisfiedIds, setSatisfiedIds] = useState([]);
+  // ── REASONING CONTINUITY v1 — instrumentation ────────────────────────────────
+  // One shape for all three events so a reason KIND can be judged on evidence and
+  // retired if it earns nothing. No PII: ids and enums only, never the host's copy.
+  // Every payload carries the SAME context block, from one producer, so a result
+  // can be segmented by runway / solemnity / destination instead of being a bare count.
+  const analyticsCtx = useMemo(() => {
+    try {
+      const c = analyticsEventContext(event);
+      return { ...c, runway_bucket: runwayBucket(c.days_out) };
+    } catch { return { event_type: null, days_out: null, is_solemn: null, is_destination: null, runway_bucket: null }; }
+  }, [event]);
+  const trackReason = useCallback((evt, action, reason) => {
+    try {
+      trackEvent(evt, {
+        ...analyticsCtx,
+        action_id: action && action.id != null ? String(action.id) : null,
+        action_source: (action && action.source) || null,
+        reason_type: reason ? reason.type : null,
+        reason_source: reason ? reason.source : null,
+        reason_confidence: reason ? reason.confidence : null,
+      });
+    } catch { /* analytics must never break a render */ }
+  }, [analyticsCtx]);
+  // COMPLETION REASONING — when a row is satisfied, report what it actually freed.
+  // `unlocks` is the engine's own transitive dependent count; when it is absent we
+  // say nothing rather than guessing at a number (unlocked_count stays null).
+  // COMPLETION. `resolution` is the honest half: 'settled' when the host resolved
+  // it in place and we watched it happen; 'left_queue' when the action simply
+  // stopped being raised (the ONLY path a routed queue row can take — it navigates
+  // away and the work happens on another surface, so eventPlan re-derives without
+  // it). 'snoozed' is a departure that is explicitly NOT a completion.
+  const trackCompletion = useCallback((action, reason, resolution) => {
+    try {
+      trackEvent(ANALYTICS.ACTION_COMPLETED_WITH_REASON, {
+        ...analyticsCtx,
+        action_id: action && action.id != null ? String(action.id) : null,
+        action_source: (action && action.source) || null,
+        reason_type: reason ? reason.type : null,
+        reason_source: reason ? reason.source : null,
+        reason_confidence: reason ? reason.confidence : null,
+        gate_holder: !!(action && action.gateHolder === true),
+        unlocked_count: action && Number.isFinite(action.unlocks) ? action.unlocks : null,
+        resolution: resolution || 'settled',
+        // Client completion time. PostHog stamps INGESTION time, which is not the
+        // same instant when a send is queued, retried, or offline — and
+        // time-to-complete is the strongest signal a reason helped.
+        completed_at: new Date().toISOString(),
+      });
+    } catch { /* never break a settle */ }
+  }, [analyticsCtx]);
   useEffect(() => { setSatisfiedIds([]); }, [eventId]);
   const queue = elegantMode
     ? [
@@ -2313,11 +2360,24 @@ export default function HostShellV2() {
         ...blockerDecisions.filter(bd => !satisfiedIds.includes(bd.id)),
       ]
     : actions;
+
+  // ── WHERE ARE WE? (Phase 5G-C1 Parts 8-9) ─────────────────────────────────
+  // DERIVED, never a second source of truth: lifecycle label, plain-language summary
+  // and per-dimension segments all read the phaseCues ledger above, so this surface
+  // cannot disagree with the hairline it sits beside. `queue` supplies the severe
+  // blocker, which outranks any completion count.
+  const orient = useMemo(() => {
+    try { return deriveOrientation(phaseCues, queue); } catch (_e) { return null; }
+  }, [phaseCues, queue]);
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
   // Both now consult this predicate; a single neutral/calendar/heart item IS
   // quiet. Reads the QUEUE (post-worry-split): heads-ups never break the calm.
+  // REASONING CONTINUITY v1 — fire reason_shown ONCE per row per event, from an
+  // effect rather than from render (a render-time side effect would double-count on
+  // every re-render and pollute the very data this exists to produce). The ref is
+  // cleared on event switch so the same row on a different event counts again.
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
@@ -2346,18 +2406,57 @@ export default function HostShellV2() {
   // Returns null whenever an EARLIER rung of the ask ladder wins (day-of speaks the
   // DAY, a blocker/conflict/COI item speaks its own line), so this can never claim a
   // hero that is in fact talking about something else.
-  const heroDecisionRow = (() => {
-    if (!elegantMode || !askMode || !queue[0]) return null;
+  // ── THE ONE CANONICAL SELECTION (PR #70, driven on Game Night 2026-07-31) ──
+  // queue[0] is resolved ONCE, here, into a single payload that the hero ask,
+  // the decision panel and the CTA all read. Before this, each of the three
+  // asked its own question in its own scope: the ask ran a title-prose ladder,
+  // the panel came from wiredKind reading the route's `foodFocus` (a SHOPPING-LINE
+  // id) as a food decision, and the CTA was whatever survived. On Game Night that
+  // produced "Decide the menu." over a snack-quantity item over a food-provider
+  // choice the host had already made — three subjects, one card, zero open
+  // decisions on the board.
+  //
+  // resolveSelection (lib/selectedAction) owns the rule: an action is a decision
+  // only when it DECLARES one. The resolvers below only fetch; they never decide
+  // whether there is something to fetch.
+  const heroSelection = (() => {
     const q0 = queue[0];
-    if (days === 0) return null;
-    if (/^blocker:/.test(String(q0.id || '')) && q0.ask) return null;
-    if (/conflict/i.test(String(q0.title || '')) && conflictItems[0]) return null;
-    if (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''))) return null;
-    // A lone decision carries its own id; a decisions BUNDLE speaks its first call.
-    return /^decision:/.test(String(q0.id || ''))
-      ? ((decisionBoard.open || []).find(x => x && ('decision:' + x.id) === q0.id) || null)
-      : (/decision/i.test(String(q0.title || '')) ? (callsOrdered[0] || null) : null);
+    if (!q0) return null;
+    // An EARLIER rung of the ask ladder can own the hero outright — the DAY, a
+    // foundational blocker's authored ask, a conflict, a COI step. When one does,
+    // the selection still resolves (the ask string has exactly one author, always),
+    // but it is denied any decision identity — so the panel can never claim a hero
+    // that is in fact talking about something else.
+    const rungOwnsHero = !elegantMode || !askMode || days === 0
+      || (/^blocker:/.test(String(q0.id || '')) && !!q0.ask)
+      || (/conflict/i.test(String(q0.title || '')) && !!conflictItems[0])
+      || q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || ''));
+    const open = decisionBoard.open || [];
+    return resolveSelection(q0, {
+      boardRow: rungOwnsHero ? null : (idn) => open.find(r => r && String(r.id) === String(idn.decisionId)) || null,
+      decisionND: rungOwnsHero ? null : (idn) => {
+        if (idn.decisionId === 'phase:food') return foodDecisionND(event, guests, [...open, ...(decisionBoard.locked || [])]);
+        if (idn.source === 'blocker') return blockerDecisionND((blockers || []).find(b => b && ('blocker:' + b.fieldKey) === idn.decisionId));
+        const row = open.find(r => r && String(r.id) === String(idn.decisionId));
+        return row ? boardDecisionND(event, row) : null;
+      },
+      actionAsk: (a) => heroAskFor(a, event),
+    });
   })();
+  // The board ROW behind the selection (authored assurance, overdue status) — the
+  // two status-line consumers below read it. Null whenever there is no decision.
+  const heroDecisionRow = (heroSelection && heroSelection.decisionId) ? heroSelection.row : null;
+  // The renderable decision, with the shell's write half attached. ONE object:
+  // the panel cannot look anything up for itself.
+  const heroDecisionND = (heroSelection && heroSelection.decision)
+    ? { ...heroSelection.decision, settle: (v) => settleSelection(heroSelection, v) }
+    : null;
+  // THE EVIDENCE BEHIND THE ONE RECOMMENDATION (2026-07-31). Derived here, beside
+  // the selection it belongs to, so the card cannot render evidence for a different
+  // decision than the one it is asking about — the identity discipline PR #70
+  // imposed on the ask and the panel, applied to the "why".
+  const heroEvidence = (heroSelection && heroSelection.evidence) || null;
+  const heroWhy = heroEvidence ? explainEvidence(heroEvidence) : [];
   // ── ONE SENTENCE, ONE AUTHOR (board re-sit follow-up, 2026-07-30) ──
   // "Time got tight." (the shell's slip line) sat directly above "Nothing's
   // stalled — the plan's been running on our pick." (playbooks' assurance), and
@@ -2370,7 +2469,13 @@ export default function HostShellV2() {
   // ORDER-DEPENDENT BY DESIGN: the status IIFE runs earlier in the same render
   // pass than the card, so the flag is always settled before the card reads it.
   let heroAssuranceSpoken = false;
-  const heroAskText = (askMode && queue[0]) ? (() => {
+  // EVERY branch of the ladder below leaves through normalizeAsk (2026-07-31).
+  // Five rungs return strings from five different producers — a raiser's authored
+  // ask, a conflict's ask, a COI task title, the authored decision question, the
+  // heroAskFor ladder — and each used to be trusted to have already settled its
+  // own punctuation. Normalizing per-rung is how the boundary drifts; normalizing
+  // at the single exit is how it cannot.
+  const heroAskText = (askMode && queue[0]) ? normalizeAsk((() => {
     // Day-of (T2 ruling): the loud line is the DAY, not the item — the item speaks from
     // its own card below (is-dayof unhides the h3).
     if (elegantMode && days === 0) return 'It’s today.';
@@ -2381,11 +2486,13 @@ export default function HostShellV2() {
     if (elegantMode && /conflict/i.test(String(q0.title || '')) && conflictItems[0]) return conflictItems[0].ask;
     // COI-collection task → the REAL first step (coiNextAction), not "Your next step."
     if (elegantMode && (q0.sourceCategory === 'coi' || /collect.*coi|vendor coi/i.test(String(q0.title || '')))) return coiFirst ? coiFirst.title : 'You’re clear on insurance.';
-    if (elegantMode && heroDecisionRow) {
-      return String(heroDecisionRow.label || '').replace(/\s*\(.*?\)\s*/g, ' ').replace(/["“”"]/g, '').replace(/\.+$/, '').trim() + '?';
-    }
-    return heroAskFor(q0, event);
-  })() : null;
+    // THE CANONICAL SELECTION SPEAKS (PR #70). resolveSelection already ran the
+    // whole ask ladder for this item — the authored question for the decision it
+    // actually carries, else the identity-free wording fallback (heroAskFor, the
+    // ONE call site in this file) — so there is one derivation, and the words on
+    // screen are guaranteed to be about the same thing the panel below is about.
+    return heroSelection ? heroSelection.ask : null;
+  })()) : null;
   // ONE bottom overlay at a time (rebalance): while the hero zone is on screen
   // it owns "next" — the pinned bar stays away; once the hero scrolls out, the
   // bar fades in as the echo. (The dock already auto-hides on scroll — the two
@@ -4053,7 +4160,16 @@ export default function HostShellV2() {
     if (f === 'event-date' || f === 'event-start') return 'date';   // the date editor holds the time too
     if (f === 'guests-entry') return 'guests';
     if (/dietary|allerg/i.test(a.title || '') || /^fp-diet/.test(f)) return 'diet';
-    if ((a.route && a.route.foodFocus) || f === 'food-plan') return 'food';
+    // ── A ROW POINTER IS NOT A DECISION (PR #70, driven 2026-07-31) ──────────
+    // `route.foodFocus` is the id of an unbought LINE in the spread — it says
+    // "scroll to this row and highlight it". Mapping it to the food editor
+    // handed the food SOURCING decision to every shopping action that carried
+    // one: on Game Night the host got "We'll cook it · A caterer handles it ·
+    // Potluck", with their own months-old answer already marked chosen, under
+    // an item about how many snack servings to buy. The board had no open
+    // decision at all. `food-plan` stays — that focusField genuinely names the
+    // food plan itself, not a row inside it.
+    if (f === 'food-plan') return 'food';
     if (/catering count/i.test(a.title || '')) return 'count';
     if (/final (guest|catering) count|confirm .*(guest|catering) count/i.test(a.title || '')) return 'lockcount';
     if (f === 'hsp-budget' || (a.domain === 'readiness' && /budget/i.test(a.title || ''))) return 'budget';
@@ -4448,7 +4564,7 @@ export default function HostShellV2() {
       // renderDecision(foodDecisionND()) — full-width option rows with our-pick (unsettled) or the
       // chosen row highlighted (settled) + notes, NOT a parallel inline-chip render. One source of
       // truth for the food decision; the "Open the spread" detail link stays as a subtle secondary.
-      const fndBase = foodDecisionND();
+      const fndBase = foodND();
       // ADVANCE ON SELECTION (host ruling 2026-07-23 "once this is selection, go to
       // the next step"): the editor's settle used to write + receipt but leave the
       // editor open — a dead end after the choice. Now it mirrors the hero settle:
@@ -4904,6 +5020,65 @@ export default function HostShellV2() {
   };
   // T-2d: inside the day-before window the board simplifies, not busies.
   const nearDayPlan = !!(dayBefore && dayBefore.applicable && askMode);
+
+  // ── REASONING CONTINUITY v1 INSTRUMENTATION ─────────────────────────────────
+  // Placed HERE, after nearDayPlan/queueOpen exist, because the impression guard
+  // must be a copy of the render guard -- and those two symbols are declared
+  // below the queue. Reading them earlier would be a TDZ crash, and approximating
+  // them would reintroduce the measurement drift this sprint exists to remove.
+  const reasonSeenRef = useRef(new Set());
+  // The reason each action carried WHEN LAST SEEN, so a completion can report the
+  // reason the host actually read — by the time it completes the action is gone.
+  const reasonLiveRef = useRef(new Map());
+  const completedRef = useRef(new Set());
+  useEffect(() => {
+    reasonSeenRef.current = new Set();
+    reasonLiveRef.current = new Map();
+    completedRef.current = new Set();
+  }, [eventId]);
+  useEffect(() => {
+    // ── VISIBILITY PARITY (instrumentation sprint) ────────────────────────────
+    // This guard is a COPY of the render guard at the "Then, in order" block, not
+    // an approximation of it. `reason_shown` must mean "the host could see this",
+    // so any condition that stops the block rendering must stop the event too.
+    // Previously this read `if (!elegantMode) return;` alone, which left two
+    // states — !askMode, and the day-before collapse — where the effect could run
+    // over a block that was never on screen.
+    const blockRendered = elegantMode && askMode && !(nearDayPlan && !queueOpen);
+    const rows = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
+    const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
+
+    if (blockRendered) {
+      for (const a of rows) {
+        const r = getActionReason(a, { event, moneyRows });
+        if (!r) continue;
+        reasonLiveRef.current.set(String(a.id || a.title), { reason: r, action: a });
+        const key = String(a.id || a.title) + '|' + r.type;
+        if (reasonSeenRef.current.has(key)) continue;
+        reasonSeenRef.current.add(key);
+        trackReason(ANALYTICS.REASON_SHOWN, a, r);
+      }
+    }
+
+    // ── COMPLETION, THE ONLY WAY A ROUTED ROW CAN CLOSE ───────────────────────
+    // A queue row does not settle in place — `openThen` routes it to the surface
+    // that owns the field, the host does the work there, and eventPlan re-derives
+    // WITHOUT it. So hooking settle handlers can never close this funnel; the
+    // observable event is the action leaving the raised set.
+    // Departure is not automatically success: a snoozed action also leaves. The
+    // two are separated and reported as different `resolution` values rather than
+    // collapsed into one number that would overstate completion.
+    const liveIds = new Set((actions || []).map(a => String(a && a.id)));
+    for (const [id, snap] of [...reasonLiveRef.current.entries()]) {
+      if (liveIds.has(id)) continue;                 // still raised
+      if (completedRef.current.has(id)) continue;    // already reported
+      completedRef.current.add(id);
+      reasonLiveRef.current.delete(id);
+      const snoozed = (() => { try { return !!snoozedUntil(event, id); } catch { return false; } })();
+      trackCompletion(snap.action, snap.reason, snoozed ? 'snoozed' : 'left_queue');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eventId, elegantMode, askMode, nearDayPlan, queueOpen, queue, actions]);
   const isPast = isPastEvent(event);                      // lib/closeoutIntel — tense authority
   // DAY-OF resume: entering The Day on the day itself picks up at the first
   // cue not already done (event.rosDone persists across reloads — the same
@@ -5620,9 +5795,41 @@ export default function HostShellV2() {
                     </div>
                   );
                 }
+                // ── DOES THE HERO REGION ALREADY STATE ITS OWN URGENCY? ──────────
+                // V1 ("Something can't wait — it's first on your list.") is the one
+                // ITEM-level verdict among seven. Measured over the 19 future-dated
+                // sample events: it fires on 10, and in 10 of 10 the critical item IS
+                // queue[0] — necessarily, since the queue is priority-sorted and
+                // `critical` outranks everything. So it never points at something the
+                // host cannot see; it describes the card directly beneath it, and
+                // "it's FIRST on your list" states a position already visible.
+                //
+                // This mirrors WHAT THE CARD RENDERS, not the action's raw fields, and
+                // that distinction is the whole point: 4 of those 10 heroes are conflict
+                // BUNDLES whose own action object carries neither dueInDays nor
+                // consequence, while the card they render does show a `.because` — it
+                // comes from the bundle's FIRST ITEM (`it.detailShort || it.detail`,
+                // ~:6218). A guard reading the object would have kept V1 on exactly the
+                // screens where it is most redundant. Reading the object instead of the
+                // surface is what made the withdrawn STOP-set fix wrong earlier today.
+                //
+                // Three render conditions, mirrored: the due chip (same test dueChip()
+                // applies, solemn overshoot included), the hero's own evidence line, and
+                // the bundle child's detail line. Never any one of them alone.
+                const heroOwnsUrgency = (() => {
+                  const a = queue[0];
+                  if (!a) return false;
+                  if (Number.isFinite(a.dueInDays) && !(solemn && a.dueInDays < 0)) return true;
+                  if (a.consequence) return true;
+                  const first = Array.isArray(a.items) && a.items.length ? a.items[0] : null;
+                  return !!(first && (first.detailShort || first.detail || first.consequence));
+                })();
                 let statusNode = null; let statusOnTrack = false;
                 if (!isPast && days !== null && days > 0) {
-                  if (queue.some(a => a && a.level === 'critical')) {
+                  // When the hero already carries it, fall through to the EVENT-level
+                  // branches below (slips / calm / on-track) — those are aggregates and
+                  // are deliberately untouched.
+                  if (queue.some(a => a && a.level === 'critical') && !heroOwnsUrgency) {
                     statusNode = <p className="verdict slipping">Something can’t wait — it’s first on your list.</p>;
                   } else {
                     const slips = [];
@@ -5904,7 +6111,9 @@ export default function HostShellV2() {
                 // When the lead is a decision, its decopt options + "our pick" why carry the
                 // reasoning — the generic planningState.reasoning (often vendor-status copy like
                 // "Currently quoted…") would bleed onto it. Suppress it for decision heroes.
-                if (elegantMode && decisionFor(firstCard)) return null;
+                // (Reads the canonical selection, so "is the lead a decision" has the
+                // same answer here as it does on the card — PR #70.)
+                if (elegantMode && heroDecisionND) return null;
                 // Calm state has no "first" to reason about — a leftover reasoning line
                 // (often vendor copy like "Currently quoted…") contradicts "nothing needs you".
                 if (elegantMode && (listIsCalm || !firstCard)) return null;
@@ -5984,7 +6193,10 @@ export default function HostShellV2() {
                   if (solemn && a.dueInDays < 0) return null;
                   return (
                     <span className="of" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>
-                      {a.dueInDays < 0 ? 'past its window' : a.dueInDays === 0 ? 'due today' : a.dueInDays === 1 ? 'due tomorrow' : 'due in ' + a.dueInDays + ' days'}
+                      {/* Shared with the queue row's time reason — one owner for these
+                          four strings (src/lib/timeStatusLabel.js). The guard above
+                          already proved dueInDays finite, so this never returns null here. */}
+                      {timeStatusLabel(a.dueInDays)}
                     </span>
                   );
                 };
@@ -6128,8 +6340,13 @@ export default function HostShellV2() {
                   // receipt → the board re-derives → the next decision rises). The
                   // proposal + why + accept path already exist in the decisions sheet;
                   // this brings them to the hero instead of gating behind "See all N".
-                  if (elegantMode && askMode && i === 0 && /decision/i.test(String(a.title || '')) && callsOrdered[0]) {
-                    const dec = callsOrdered[0];
+                  // IDENTITY, NOT PROSE (PR #70): this used to fire on any bundle
+                  // whose TITLE contained "decision" and then render the globally
+                  // top-ranked callsOrdered[0] — a row this bundle need not even
+                  // contain. It now renders the decision the canonical selection
+                  // carries, which for a bundle is its own first child's.
+                  if (elegantMode && askMode && i === 0 && heroDecisionRow && heroDecisionND) {
+                    const dec = heroDecisionRow;
                     return (
                       <article className={'card hero-card bundle-hero decision-hero' + (heroReceipt ? ' receipted' : '')} id={'card-' + key} key={key}
                         style={{ animation: 'askin 240ms var(--ease-out) 60ms both' }}>
@@ -6152,11 +6369,10 @@ export default function HostShellV2() {
                               contradiction the board actually saw. heroAssuranceSpoken is set
                               by that line earlier in this same render pass. */}
                           {dec.assurance && !heroAssuranceSpoken && <p className="because">{dec.assurance}</p>}
-                          {renderDecisionActions(dec) || (
-                            <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-                              <button className="cta" onClick={() => { if (!(dec.route && routeSheet(dec.route))) setSheet({ kind: 'decisions', focus: dec.id }); }}>{ctaLabelFor(dec.cta, dec.route, event, 'the decision')}</button>
-                            </div>
-                          )}
+                          {/* Same one object the hero ask was built from — no second
+                              lookup, so the options here always belong to the decision
+                              the line above is asking about. */}
+                          {renderDecision(heroDecisionND)}
                           {heroReceipt && (
                             <div className="receipt">
                               <span className="rdot" aria-hidden="true" />
@@ -6318,18 +6534,24 @@ export default function HostShellV2() {
                 // SINGLE DECISION IN PLACE (host "replace take-me-to-it with action",
                 // 2026-07-18): once decisions thin out they stop bundling and a lone one
                 // becomes its own hero card — which used to route ("Take me to it"). Resolve
-                // it RIGHT HERE via the same shared renderDecisionActions (options / proposed
-                // default → settleDecision → receipt → next). Only in the elegant hero, only
+                // it RIGHT HERE via the shared renderDecision (options / proposed default
+                // → settleDecision → receipt → next). Only in the elegant hero, only
                 // when the decision actually has authored options (else keep its route).
                 // UNIFIED: every decision-like hero action (playbook decision:* OR a phase
                 // decision like phase:food) resolves through the one dispatcher + renderer,
                 // so all of them get the decopt / "our pick" treatment — no more chip-vs-row split.
-                const decHeroActions = (elegantMode && isHero) ? (() => {
-                  const nd = decisionFor(a);
-                  if (!nd) return null;
+                // ONE LOOKUP (PR #70): the panel renders the decision the CANONICAL
+                // SELECTION carries — it no longer dispatches its own. heroDecisionND
+                // is null unless queue[0] declares an ACTIVE decision, so a
+                // non-decision action (and a decision the host already settled) gets
+                // no panel at all, and its own CTA renders instead.
+                const decHeroActions = (elegantMode && isHero && heroDecisionND) ? (() => {
+                  const nd = heroDecisionND;
                   // Roll to next when satisfied: settling drops this action from the hero queue,
                   // so the hero advances even if its phase (food, etc.) still has other parts.
-                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
+                  // COMPLETION REASONING v1: report what settling actually freed,
+                  // from the engine's own `unlocks`/`gateHolder` — never a guess.
+                  return renderDecision({ ...nd, settle: (v) => { nd.settle(v); trackCompletion(a, getActionReason(a, { event }), 'settled'); setSatisfiedIds(ids => ids.includes(a.id) ? ids : [...ids, a.id]); } });
                 })() : null;
                 // GROUNDED COI STEP (host "Decide CTA should be the action" + "past its window
                 // AND overdue?", 2026-07-18): the COI-collection task shows the REAL first step
@@ -6358,8 +6580,20 @@ export default function HostShellV2() {
                 // heroAskText, and `decHeroActions` is the honest signal for "the option rows
                 // below carry the meaning" (Figma 369:60, title → rows). Where there are no
                 // rows, the consequence IS the only explanation and correctly renders.
+                // WHY THIS? (2026-07-31) — the hero carries its evidence envelope as
+                // inspectable data: the board's rank sentence, its grounded axes, the
+                // cited sources and the honest confidence/uncertainty state. No visual
+                // change; a reviewer opens devtools on the hero card and can answer
+                // "why did NGW recommend this?" without reading source. Hero only —
+                // the below-fold cards are not the recommendation.
+                // (Comment sits ABOVE the return: a {/* … */} after `return (` is a
+                // second expression and breaks the build — the same trap documented
+                // on the conflict-hero disclosure ~:6100.)
                 return (
                   <article className={'card' + (spot === key ? ' spot' : '') + (isHero ? ' hero-card' + (heroReceipt ? ' receipted' : '') : '')} id={'card-' + key} key={key}
+                    data-decision-id={(isHero && heroSelection && heroSelection.decisionId) || undefined}
+                    data-confidence={(isHero && heroEvidence && heroEvidence.confidence) || undefined}
+                    data-why={(isHero && heroWhy.length) ? heroWhy.join(' · ') : undefined}
                     style={spot === key ? undefined : { animation: isHero ? 'askin 240ms var(--ease-out) 60ms both' : `cardin 340ms var(--ease-out) ${Math.min(i, 6) * 45}ms both` }}>
                     {!isHero && <span className="idx">{i + 1}</span>}
                     <div className="card-head">
@@ -6581,8 +6815,39 @@ export default function HostShellV2() {
                 const total = Number(phaseCues.totalCount) || 0;
                 const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((done / total) * 100))) : 0;
                 return (
-                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')} aria-hidden="true">
-                    <div className="eprog-rule"><span style={{ width: pct + '%' }} /></div>
+                  // PART 9 — the ONE progress visual, now SEGMENTED and readable.
+                  //
+                  // It was a single continuous bar marked aria-hidden, so its own labels
+                  // ("4 of 5 plan parts handled") reached nobody using assistive tech —
+                  // a visual encoding state with no text form. The wrapper now carries
+                  // the segment text via aria-label and stops being hidden.
+                  //
+                  // Segments are CATEGORICAL: each essential is handled or open, never a
+                  // percentage of itself, because the engine knows which of those is true
+                  // and nothing finer. The continuous fill is kept underneath as the
+                  // at-a-glance read; the segments are what carry meaning.
+                  <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
+                    role="img" aria-label={segmentsText(orient)}>
+                    <div className="eprog-rule" aria-hidden="true"><span style={{ width: pct + '%' }} /></div>
+                    {orient && orient.segments.length > 0 && (
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '3px 0 2px' }}>
+                        {orient.segments.map(s => (
+                          <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
+                            style={{
+                              flex: 1, height: 2, borderRadius: 1,
+                              // Never colour-only: the aria-label above and the title
+                              // attribute both name the state in words.
+                              //
+                              // Open segments were `--line` at 0.5 opacity and read as
+                              // nearly invisible on the dark ground, so the bar looked
+                              // like "2 things" rather than "2 of 5 handled" — the
+                              // denominator disappeared. Found by inspecting the zoom.
+                              background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
+                              opacity: s.handled ? 0.95 : 0.75,
+                            }} />
+                        ))}
+                      </div>
+                    )}
                     <div className="eprog-labels">
                       {/* "settled" was this shell's own word, and it collided (frame 4
                           audit, driven 2026-07-29). The decision flow settles things —
@@ -6640,6 +6905,9 @@ export default function HostShellV2() {
                 // two stacked bundles. A bundle routes to its own sheet on tap.
                 const thenItems = (queue || []).slice(1).filter(a => a && a.level !== 'critical');
                 if (!thenItems.length) return null;
+                // Dated money obligations, read ONCE for the whole list — the reason
+                // service matches a row to an action by key/vendorId. Never an estimate.
+                const moneyRows = (() => { try { return (moneyDatesFor(event) || {}).rows || null; } catch { return null; } })();
                 const openThen = (a, key) => {
                   if (a.kind === 'bundle') {
                     if (/decision/i.test(String(a.title || ''))) { setSheet({ kind: 'decisions' }); return; }
@@ -6672,9 +6940,20 @@ export default function HostShellV2() {
                         const goes = a.kind === 'bundle' || (() => {
                           try { return !!resolveRoute(a.route); } catch (_e) { return false; }
                         })();
+                        // ── REASONING CONTINUITY v1 (2026-07-31) ──────────────────
+                        // The row used to render title + arrow and nothing else, while
+                        // `a.consequence` / `a.dueInDays` / `a.gateHolder` sat in scope
+                        // unread — so a host scanning their remaining work saw five
+                        // instructions and zero reasons.
+                        // getActionReason returns ONE reason or null; null renders
+                        // nothing, which keeps the calm compact row the 2026-07-18
+                        // ruling asked for and makes a reason MEAN something when it
+                        // does appear. No model, no invented text.
+                        const reason = getActionReason(a, { event, moneyRows });
                         return (
-                          <button key={String(a.id || i)} className="ef-row" onClick={() => openThen(a, String(a.id || (i + 1)))}>
+                          <button key={String(a.id || i)} className="ef-row" onClick={() => { if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason); openThen(a, String(a.id || (i + 1))); }}>
                             <span className="t">{t}</span>
+                            {reason && <span className="ef-why" data-reason={reason.type}>{reason.text}</span>}
                             <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
                           </button>
                         );
@@ -6951,6 +7230,20 @@ export default function HostShellV2() {
                     else setHandledOpen(o => !o);
                   }}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (queue.length) { setEditor(null); spotlight(String(queue[0].id || 0)); } else setHandledOpen(o => !o); } }}>
+                  {/* ── WHERE ARE WE (Phase 5G-C1 Part 8) ───────────────────────
+                      This tile already carried the counts and the ranked next cue. What
+                      it never said was WHERE IN THE ARC the event sits, or what that
+                      means in words. Both are derived from the same phaseCues ledger the
+                      tile already reads — no second source, so the two cannot disagree.
+
+                      No date stays "Getting started" with no count, and an overdue lead
+                      item outranks a complete-looking tally: 6-of-7 handled with a
+                      payment past its date does not get to read as nearly done. */}
+                  {orient && (
+                    <p className="v-meta" style={{ margin: '0 0 4px' }}>
+                      {orient.lifecycleLabel}{orient.countText ? ` · ${orient.countText}` : ''} — {orient.summary}
+                    </p>
+                  )}
                   <div className="t-label">Where you stand{' '}
                     <span role="button" tabIndex={0} style={{ opacity: .55, padding: '11px 8px', margin: '-9px -2px', display: 'inline-block' }}
                       onClick={e => { e.stopPropagation(); setHandledOpen(o => !o); }}
@@ -8836,7 +9129,7 @@ export default function HostShellV2() {
                   // shame grammar on a grief clock. The row keeps `lateLine` below, so
                   // the state is still explained; only the accusing badge goes.
                   const lateChip = (r.status !== 'overdue' || solemn) ? null : (runningOnOurPick
-                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>past its window</span>
+                    ? <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>{PAST_WINDOW}</span>
                     : <span className="tag plan" style={{ color: 'var(--danger)', background: 'var(--danger-tint)' }}>overdue</span>);
                   const lateLine = (r.status === 'overdue' && r.assurance) ? r.assurance : r.because;
                   // Wave-2a per-row consumers: the rank's work, the difm propose/ask
@@ -13314,6 +13607,37 @@ export default function HostShellV2() {
                                     ].filter(Boolean).join(' · ')}
                                   </span>
                                 )}
+                                {/* GOVERNED KNOWLEDGE, VISIBLE (Phase 5C.10; rewritten 5G-B).
+                                    5C.10 rendered "Sourced — …" on the 52 lines that pass
+                                    isGroundedItemQty and NOTHING on the other 485. The Phase A
+                                    audit found that silence was the largest honesty defect in
+                                    the product: it reads as "we have no view", when most of
+                                    those lines rest on board judgment, trade practice or
+                                    cultural knowledge that authors had already recorded and
+                                    the grounding predicate could not see.
+
+                                    classifyClaim() is presentation only — the same contract
+                                    confidenceGrammar works under. It computes no quantity and
+                                    moves no threshold; it reads the GOVERNED provenance the
+                                    row already carries and names what it rests on, in one of
+                                    six truthful labels. `Directly sourced` still means exactly
+                                    what `Sourced —` meant, on exactly the same 52 lines.
+                                    Muted, one line, no accent (UX_02 restraint). */}
+                                {(() => {
+                                  const claim = classifyClaim(it.provenance);
+                                  if (!claim.hostLabel) return null;
+                                  // The detail is whatever the author actually wrote. Never
+                                  // synthesised — a label with no recorded reasoning stands
+                                  // alone rather than inventing one.
+                                  const detail = (it.provenance && typeof it.provenance === 'object' && it.provenance.note)
+                                    ? it.provenance.note
+                                    : claim.rationale;
+                                  return (
+                                    <span className="v-meta" style={{ display: 'block', marginTop: 2 }}>
+                                      {claim.hostLabel}{detail ? ` — ${detail}` : ''}
+                                    </span>
+                                  );
+                                })()}
                               </span>
                               {/* Frictionless price entry: the amount itself is the
                                   input, not a link to a panel two taps away. Tap the
@@ -13444,6 +13768,75 @@ export default function HostShellV2() {
                               // (which reshapes it.low/high, hence Value/Premium too) actually
                               // happens instead of a stray commit.
                               <div className="brow" style={{ margin: '2px 0 var(--sp-2)', paddingLeft: 30 }} onMouseDown={e => e.preventDefault()}>
+                                {/* ── WHERE THIS NUMBER CAME FROM (Phase 5G-C1) ────────────
+                                    The canonical-family recommendation card. The ROW above
+                                    already carries the amount and the basis label; repeating
+                                    them here would be the duplicate-summary defect, so this
+                                    explains instead: the per-guest derivation, the condition
+                                    the playbook was actually written for, the assumption we
+                                    are carrying, what would change it, and one CTA to the
+                                    exact control that resolves it.
+
+                                    Currently ice only — familyFor() returns null for every
+                                    other line, by design. A family is joined by a human
+                                    ruling on shared meaning and unit, never by field name.
+
+                                    It NEVER shows an adjusted quantity. `perGuest` is the
+                                    authored figure; knowing the setting confirms the
+                                    recommendation, it does not recompute it. */}
+                                {(() => {
+                                  const rec = iceRecommendation(event.type, it.id, {
+                                    guestCount: foodPlan.guests || 0,
+                                    claim: classifyClaim(it.provenance),
+                                    facts: claimFacts,
+                                  });
+                                  if (!rec) return null;
+                                  const settled = rec.recommendationState === 'recommended';
+                                  return (
+                                    <div style={{ marginBottom: 'var(--sp-2)' }}>
+                                      <div className="of" style={{ letterSpacing: 'var(--tracking-2)' }}>WHERE THIS NUMBER CAME FROM</div>
+                                      <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                        {rec.perGuest} {it.unitBase || 'lb'} per guest
+                                        {rec.total != null ? ` × ${foodPlan.guests} ${foodPlan.guests === 1 ? 'guest' : 'guests'} = ${rec.total} ${it.unitBase || 'lb'}` : ''}
+                                        {rec.basisLabel ? ` · ${rec.basisLabel}` : ''}
+                                      </p>
+                                      {rec.why && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.why}</p>
+                                      )}
+                                      {rec.assumption && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                          {rec.recommendationStateLabel} — {rec.assumption}
+                                        </p>
+                                      )}
+                                      {!settled && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>
+                                          What could change it: {ICE_CHANGE_FACTORS.slice(0, 3).join(' · ').toLowerCase()}.
+                                        </p>
+                                      )}
+                                      {/* A BUTTON only when there is somewhere real to go.
+                                          When the missing fact is answered on this very
+                                          surface, the ask is a sentence — rendering a CTA
+                                          that reopens the screen you are already on is the
+                                          dead-navigation defect, found by clicking it live. */}
+                                      {rec.nextAction && rec.nextAction.route && (
+                                        <button className="mini" style={{ marginTop: 'var(--sp-1)' }}
+                                          title={rec.nextAction.why}
+                                          onClick={e => {
+                                            e.stopPropagation();
+                                            // Real landing or an honest toast — never a dead CTA.
+                                            if (!routeSheet(rec.nextAction.route)) {
+                                              toast('Not wired here yet.');
+                                            }
+                                          }}>
+                                          {rec.nextAction.label}
+                                        </button>
+                                      )}
+                                      {rec.nextAction && !rec.nextAction.route && (
+                                        <p className="v-meta" style={{ margin: '2px 0 0' }}>{rec.nextAction.why}</p>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                                 {/* COST STRUCTURE, per item — the engine's own knobs:
                                     size it (foodQty re-prices), swap it (alternatives
                                     carry their own real ranges), or skip it. */}

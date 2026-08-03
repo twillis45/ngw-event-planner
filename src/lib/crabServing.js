@@ -154,8 +154,37 @@ export function normalizeCrabSize(size) {
   return SIZE_ALIAS[String(size || '').toLowerCase()] || DEFAULT_CRAB_SIZE;
 }
 
-function entryFor(size) {
-  return CRAB_SERVING_GUIDE.bySize[normalizeCrabSize(size)] || CRAB_SERVING_GUIDE.bySize[DEFAULT_CRAB_SIZE];
+// A row is USABLE only if it carries the three arrays every caller below reads. A
+// governed guide arrives from the publish pipeline, and a half-filled row would put
+// `undefined[1]` — NaN crabs — on a host's shopping list. Shape is checked here once
+// so no caller has to remember to.
+function usableRow(r) {
+  const pair = (v) => Array.isArray(v) && v.length === 2
+    && typeof v[0] === 'number' && Number.isFinite(v[0])
+    && typeof v[1] === 'number' && Number.isFinite(v[1]);
+  return !!r && pair(r.withSides) && pair(r.mainOnly) && pair(r.perBushel);
+}
+
+/**
+ * The serving row for a size.
+ *
+ * `guide` is the OVERRIDE a governed `servingGuide` supplies (Phase 5E.3). Until that
+ * phase this module's own constant was the only source, so publishing a corrected
+ * serving guide changed nothing: `resolveBulkPurchase` checked `p.servingGuide` for
+ * truthiness and then read these numbers straight off the frozen constant. The field
+ * was in the governed set with no consumer behind it — the precise defect the
+ * ownership contract exists to refuse, sitting inside the contract's own registry.
+ *
+ * Falls back to the authored table whenever the override is absent, malformed, or
+ * silent on this size. A governed guide may correct the sizes it knows about without
+ * having to restate the whole table, and a bad one degrades to sourced numbers rather
+ * than to NaN.
+ */
+function entryFor(size, guide) {
+  const key = normalizeCrabSize(size);
+  const over = guide && guide.bySize && guide.bySize[key];
+  if (usableRow(over)) return over;
+  return CRAB_SERVING_GUIDE.bySize[key] || CRAB_SERVING_GUIDE.bySize[DEFAULT_CRAB_SIZE];
 }
 
 /**
@@ -163,7 +192,8 @@ function entryFor(size) {
  * range, because the failure mode at a crab feast is running out of crabs, and the
  * spread is a crab wide, not a bushel wide. Use crabsPerPickerRange() to disclose it.
  * @param {string} size
- * @param {{mainOnly?: boolean}} [opts] crabs are the whole meal (no sides)
+ * @param {{mainOnly?: boolean, guide?: object}} [opts] crabs are the whole meal (no
+ *   sides); `guide` is a governed serving guide overriding the authored table
  */
 export function crabsPerPicker(size, opts = {}) {
   const r = crabsPerPickerRange(size, opts);
@@ -172,18 +202,18 @@ export function crabsPerPicker(size, opts = {}) {
 
 /** The published [low, high] for this size — for surfaces that show the spread. */
 export function crabsPerPickerRange(size, opts = {}) {
-  const e = entryFor(size);
+  const e = entryFor(size, opts.guide);
   return opts.mainOnly ? e.mainOnly : e.withSides;
 }
 
 /** Crabs in a bushel of this size. Sourced except where `tier` says interpolated. */
-export function crabsPerBushel(size) {
-  return entryFor(size).perBushel[0];
+export function crabsPerBushel(size, opts = {}) {
+  return entryFor(size, opts.guide).perBushel[0];
 }
 
 /** Is this size's guidance actually published, or did we fill the gap ourselves? */
-export function crabServingProvenance(size) {
-  const e = entryFor(size);
+export function crabServingProvenance(size, opts = {}) {
+  const e = entryFor(size, opts.guide);
   return { tier: e.tier, source: e.source, inches: e.inches };
 }
 

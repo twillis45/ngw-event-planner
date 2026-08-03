@@ -1,0 +1,249 @@
+// ─── SOURCE RESOLVER INVARIANT (Phase 5A-4.1) ────────────────────────────────
+//
+// THIS TEST CHANGES NOTHING. It is a safety rail written BEFORE a resolver
+// exists, so that a future consolidation is a mechanical change against a proven
+// invariant rather than a judgement call.
+//
+// TODAY: every grounding predicate resolves a source id by direct key lookup into
+// its own axis registry — `QTY_SOURCES[id]`, `COST_SOURCES[id]`, and 18 more.
+// `groundingSources.js` already unions all 20 axes into 112 normalized records,
+// but no predicate consults it. A future `resolveSource(id)` would be built on
+// that union.
+//
+// THE INVARIANT: the union must be a FAITHFUL INDEX of the axis maps — same ids,
+// no more, no fewer, and each id resolvable only within the axis that owns it.
+// If that holds, a resolver built on the union cannot change any grounding
+// outcome. If it ever stops holding, this fails and the migration is blocked.
+//
+// WHAT WOULD BREAK TRUST, stated as the two failure directions:
+//   EXPANSION  — an id grounds through the union that does not ground today.
+//                This is the unacceptable one: silent trust inflation.
+//   REGRESSION — an id grounds today but not through the union.
+//                Visible, but still a loss of earned grounding.
+import { groundingSourceCatalog } from './groundingSources';
+import { QTY_SOURCES, isGroundedItemQty } from './quantityProvenance';
+import { COST_SOURCES, isGroundedCost } from './costProvenance';
+import { TIMING_SOURCES } from './timingProvenance';
+import { CULTURAL_SOURCES } from './culturalContext';
+import { ACCESSIBILITY_SOURCES } from './accessibilityContext';
+import { LEGAL_SOURCES } from './legalContext';
+import { VENUE_SOURCES } from './venueContext';
+import { WEATHER_SOURCES } from './weatherContext';
+import { HUMAN_SOURCES } from './humanContext';
+import { DIETARY_SOURCES } from './dietaryContext';
+import { BUDGET_SOURCES } from './budgetContext';
+import { CHILDCARE_SOURCES } from './childcareContext';
+import { MILITARY_SOURCES } from './militaryRetirement';
+import { DESTINATION_SOURCES } from './destinationContext';
+import { SOURCE_CATALOG } from './sourceCatalog';
+
+// The axis maps a predicate can reach today. Deliberately listed by hand: an axis
+// added to groundingSources without being represented here is itself a finding.
+const AXIS_MAPS = {
+  Quantity: QTY_SOURCES,
+  Cost: COST_SOURCES,
+  Timing: TIMING_SOURCES,
+  'Cultural / religious': CULTURAL_SOURCES,
+  Accessibility: ACCESSIBILITY_SOURCES,
+  'Legal / COI': LEGAL_SOURCES,
+  'Venue constraint': VENUE_SOURCES,
+  Weather: WEATHER_SOURCES,
+  'Human / relational': HUMAN_SOURCES,
+  'Dietary / allergy': DIETARY_SOURCES,
+  'Budget authority': BUDGET_SOURCES,
+  Childcare: CHILDCARE_SOURCES,
+  'Military ceremony': MILITARY_SOURCES,
+  'Destination / travel': DESTINATION_SOURCES,
+};
+
+const catalog = () => groundingSourceCatalog();
+const unionIds = () => new Set(catalog().flatMap((g) => g.sources.map((s) => s.id)));
+
+// Strings that must NEVER resolve. These are the real shapes found in the corpus
+// (7 purchases cite raw URLs and prose names where an id belongs), plus the
+// classic near-miss forms a fuzzy resolver would wrongly accept.
+const MUST_NOT_RESOLVE = [
+  "Captain White's Seafood (Oxon Hill, MD)",
+  'https://www.eatlikenoone.com/chicken-prices-at-costco.htm',
+  'https://example.com',
+  'WebstaurantStore',                 // the PROVIDER, not the citation
+  'webstaurant',                      // prefix
+  'webstaurant-protein',              // truncated id
+  'WEBSTAURANT-PROTEIN-2026',         // case variant
+  'webstaurant-protein-2026 ',        // trailing space
+  ' webstaurant-protein-2026',        // leading space
+  'bls-cpi',                          // a SOURCE_CATALOG provider id
+  '', null, undefined, 0, false, [], {},
+];
+
+describe('1 — the source universe is what we think it is', () => {
+  // 113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES
+  // (112 after 5F's `reddy-ice-2026`). This counter is SUPPOSED to move when a real
+  // source is added - that is the point of pinning it.
+  test('20 axes, 113 source identities — verified, not assumed', () => {
+    const cat = catalog();
+    expect(cat.length).toBe(20);
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(113);
+    expect(unionIds().size).toBe(113);        // therefore every id is globally unique
+  });
+
+  test('no id appears in two axes', () => {
+    const seen = new Map();
+    for (const g of catalog()) {
+      for (const s of g.sources) {
+        expect(seen.has(s.id)).toBe(false);
+        seen.set(s.id, g.axis);
+      }
+    }
+  });
+
+  test('every id is a slug — never a URL, never prose', () => {
+    for (const id of unionIds()) {
+      expect(typeof id).toBe('string');
+      expect(id).not.toMatch(/\s/);
+      expect(id).not.toMatch(/^https?:/i);
+    }
+  });
+
+  test('the citation universe and the PROVIDER catalogue stay disjoint', () => {
+    // SOURCE_CATALOG rates provider families; the axes name citations. Merging the
+    // two id spaces is the specific mistake this test exists to catch.
+    const providers = new Set(SOURCE_CATALOG.map((s) => s.id));
+    for (const id of unionIds()) expect(providers.has(id)).toBe(false);
+    expect(SOURCE_CATALOG.length).toBe(22);
+  });
+});
+
+describe('2 — the union is a FAITHFUL INDEX of the axis maps', () => {
+  // This is the property a resolver would depend on. Asserted per axis so a
+  // failure names the axis that drifted.
+  test.each(Object.keys(AXIS_MAPS))('%s: union ids === registry keys, exactly', (axis) => {
+    const map = AXIS_MAPS[axis];
+    const fromMap = Object.keys(map).sort();
+    const group = catalog().find((g) => g.axis === axis);
+    expect(group).toBeTruthy();
+    const fromUnion = group.sources.map((s) => s.id).sort();
+    expect(fromUnion).toEqual(fromMap);       // no additions, no omissions
+  });
+
+  test('every axis in the union is represented by a real registry (no orphan axes)', () => {
+    // 20 axes exist; 14 are covered by AXIS_MAPS above. The remainder are declared
+    // so an unreviewed axis cannot appear silently.
+    const KNOWN_UNMAPPED = [
+      'Incident / guest safety', 'Food safety', 'Fire & burn safety',
+      'Booking / vendor collapse', 'Table & seating capacity', 'Group rental fit',
+    ];
+    const axes = catalog().map((g) => g.axis).sort();
+    const accounted = [...Object.keys(AXIS_MAPS), ...KNOWN_UNMAPPED].sort();
+    expect(axes).toEqual(accounted);
+  });
+});
+
+describe('3 — the resolver contract, asserted against TODAY behaviour', () => {
+  // A future resolveSource(id) must satisfy exactly this. Written now so the
+  // migration is mechanical.
+  const resolveViaUnion = (id) => {
+    if (typeof id !== 'string' || !id) return null;
+    for (const g of catalog()) {
+      const hit = g.sources.find((s) => s.id === id);
+      if (hit) return { ...hit, axis: g.axis };
+    }
+    return null;
+  };
+
+  test('EXACT id lookup — every known id resolves, and to its own axis', () => {
+    for (const g of catalog()) {
+      for (const s of g.sources) {
+        const r = resolveViaUnion(s.id);
+        expect(r).not.toBeNull();
+        expect(r.axis).toBe(g.axis);          // axis identity preserved
+      }
+    }
+  });
+
+  test('NO fuzzy matching, NO aliases, NO case folding, NO trimming', () => {
+    for (const bad of MUST_NOT_RESOLVE) expect(resolveViaUnion(bad)).toBeNull();
+  });
+
+  test('agreement with the map lookup a predicate performs today', () => {
+    for (const [axis, map] of Object.entries(AXIS_MAPS)) {
+      for (const id of Object.keys(map)) {
+        // today: !!MAP[id] -> truthy. future: resolveSource(id) -> non-null.
+        expect(!!map[id]).toBe(resolveViaUnion(id) !== null);
+      }
+      // and a string that is not a key must be falsy under both
+      const absent = `__not-a-source-${axis.replace(/\W/g, '')}__`;
+      expect(!!map[absent]).toBe(resolveViaUnion(absent) !== null);
+    }
+  });
+});
+
+describe('4 — NO TRUST EXPANSION: grounding outcomes are unchanged', () => {
+  // The predicates require BOTH a resolvable source AND an axis-specific tier.
+  // A resolver that returned records for more ids would not, by itself, ground
+  // anything extra — but these pin the end-to-end outcome so that cannot drift.
+  test('quantity: resolvable id + researched tier grounds; anything else does not', () => {
+    const good = Object.keys(QTY_SOURCES)[0];
+    expect(isGroundedItemQty({ tier: 'researched', sources: [good] })).toBe(true);
+    // every way it can fail
+    expect(isGroundedItemQty({ tier: 'researched', sources: ['Captain White\'s Seafood'] })).toBe(false);
+    expect(isGroundedItemQty({ tier: 'researched', sources: ['https://example.com'] })).toBe(false);
+    expect(isGroundedItemQty({ tier: 'primary', sources: [good] })).toBe(false);   // wrong tier
+    expect(isGroundedItemQty({ tier: 'researched', sources: [] })).toBe(false);
+    expect(isGroundedItemQty({ tier: 'researched' })).toBe(false);
+    expect(isGroundedItemQty(null)).toBe(false);
+  });
+
+  test('cost: same contract, its own registry', () => {
+    const good = Object.keys(COST_SOURCES)[0];
+    expect(isGroundedCost({ tier: 'researched', sources: [good] })).toBe(true);
+    expect(isGroundedCost({ tier: 'researched', sources: ['bls-cpi'] })).toBe(false);   // provider id
+    expect(isGroundedCost({ tier: 'researched', sources: [good, 'nope'] })).toBe(false); // EVERY id must resolve
+  });
+
+  test('CROSS-AXIS LEAKAGE: a quantity source must not ground a cost claim', () => {
+    // The sharpest failure a naive global resolver would introduce.
+    const qty = Object.keys(QTY_SOURCES)[0];
+    const cost = Object.keys(COST_SOURCES)[0];
+    expect(COST_SOURCES[qty]).toBeUndefined();
+    expect(QTY_SOURCES[cost]).toBeUndefined();
+    expect(isGroundedCost({ tier: 'researched', sources: [qty] })).toBe(false);
+    expect(isGroundedItemQty({ tier: 'researched', sources: [cost] })).toBe(false);
+  });
+
+  test('a partially-resolving source list never grounds', () => {
+    const good = Object.keys(QTY_SOURCES)[0];
+    expect(isGroundedItemQty({ tier: 'researched', sources: [good, 'https://example.com'] })).toBe(false);
+  });
+});
+
+describe('5 — the migration gate', () => {
+  // The single assertion that must pass before ANY predicate is moved onto a
+  // resolver. Expressed as a count so the report is unambiguous.
+  test('112/112 ids agree between the union and the axis maps', () => {
+    let checked = 0, agreed = 0;
+    for (const map of Object.values(AXIS_MAPS)) {
+      for (const id of Object.keys(map)) {
+        checked += 1;
+        if (unionIds().has(id) === !!map[id]) agreed += 1;
+      }
+    }
+    // AXIS_MAPS covers 14 of 20 axes; the remaining 6 are asserted structurally above.
+    expect(agreed).toBe(checked);
+    expect(checked).toBeGreaterThan(0);
+  });
+
+  test('0 newly grounded and 0 lost: the union adds and removes nothing', () => {
+    const union = unionIds();
+    const fromMaps = new Set(Object.values(AXIS_MAPS).flatMap((m) => Object.keys(m)));
+    const newlyGrounded = [...union].filter((id) => !fromMaps.has(id));
+    const lost = [...fromMaps].filter((id) => !union.has(id));
+    expect(lost).toEqual([]);                       // nothing may disappear
+    // The union legitimately contains the 6 unmapped axes; none may come from a
+    // mapped axis. Assert the surplus is exactly the unmapped-axis population.
+    const unmappedIds = new Set(catalog()
+      .filter((g) => !AXIS_MAPS[g.axis])
+      .flatMap((g) => g.sources.map((s) => s.id)));
+    for (const id of newlyGrounded) expect(unmappedIds.has(id)).toBe(true);
+  });
+});

@@ -23,6 +23,8 @@
 //   number. Rams' dissent sustained: keep the instance, cut the generalisation.
 const fs = require('fs');
 const path = require('path');
+// Vocabulary consolidation 2026-07-31: the chip's labels now come from here.
+const { timeStatusLabel, PAST_WINDOW } = require('../timeStatusLabel');
 const { useFrozenClock, daysFromNow } = require('../../testUtils/frozenClock');
 
 const SHELL = path.join(__dirname, '..', '..', '..', 'hostv2', 'src', 'HostShellV2.jsx');
@@ -108,24 +110,37 @@ describe('ruling B — the overdue scold is said once, not twice', () => {
     expect(src).toMatch(/if \(od && !heroSpeaksThisOverdue && !solemn\) slips\.push\(/);
   });
 
-  it('the guard is STRUCTURAL — heroDecisionRow, never a title regex', () => {
-    // The whole class of bug ruling C closed was classification by title prose. B must
-    // not reintroduce it: the suppression rides the resolved decision row.
-    expect(src).toMatch(/const heroDecisionRow = \(\(\) => \{/);
-    // heroDecisionRow yields null whenever an earlier ask rung owns the hero, so the
-    // guard can never claim a hero that is talking about something else.
-    const block = src.slice(src.indexOf('const heroDecisionRow'), src.indexOf('const heroAskText'));
+  // GATE RE-POINTED (PR #70, 2026-07-31) — and, like the widening below, not a
+  // convenience edit. These two pinned the SHAPE ruling B shipped: a
+  // `heroDecisionRow` IIFE, and an ask ladder that read it. That shape was itself
+  // only two-thirds of the invariant — the hero read heroDecisionRow while the
+  // PANEL still dispatched its own decision, which is how a completed food-provider
+  // pick came to render under a snack-quantity item on Game Night with the h2
+  // saying "Decide the menu.". Both now read ONE canonical payload (heroSelection,
+  // from lib/selectedAction), and heroDecisionRow is derived from it rather than
+  // being a second derivation. The property B guards is unchanged and now stronger:
+  // the suppression rides a RESOLVED decision, never title prose, and the ask cannot
+  // be about a different decision than the panel.
+  it('the guard is STRUCTURAL — a resolved selection, never a title regex', () => {
+    expect(src).toMatch(/const heroSelection = \(\(\) => \{/);
+    // heroDecisionRow is DERIVED from the canonical selection — not looked up again.
+    expect(src).toMatch(/const heroDecisionRow = \(heroSelection && heroSelection\.decisionId\) \? heroSelection\.row : null/);
+    // The selection denies decision identity whenever an earlier ask rung owns the
+    // hero, so the guard can never claim a hero that is talking about something else.
+    const block = src.slice(src.indexOf('const heroSelection'), src.indexOf('const heroAskText'));
     for (const rung of ['days === 0', 'blocker:', 'conflict', 'coi']) {
       expect(block).toContain(rung);
     }
   });
 
-  it('ONE derivation — the ask ladder reads the same heroDecisionRow, not its own copy', () => {
-    // Ruling C's lesson applied forward: if the ask ladder re-derived the decision row
+  it('ONE derivation — the ask ladder reads the same selection, not its own copy', () => {
+    // Ruling C's lesson applied forward: if the ask ladder re-derived the decision
     // separately, B could suppress against a row the H1 is not actually speaking.
-    expect(src).toMatch(/if \(elegantMode && heroDecisionRow\) \{/);
-    const askBlock = src.slice(src.indexOf('const heroAskText'), src.indexOf('heroAskFor(q0, event)'));
+    expect(src).toMatch(/return heroSelection \? heroSelection\.ask : null/);
+    const askBlock = src.slice(src.indexOf('const heroAskText'), src.indexOf('heroSelection ? heroSelection.ask'));
     expect(askBlock).not.toMatch(/decisionBoard\.open \|\| \[\]\)\.find/);
+    // …and the PANEL reads the very same object, which is the half that was missing.
+    expect(src).toMatch(/const heroDecisionND = \(heroSelection && heroSelection\.decision\)/);
   });
 
   it('only the DECISIONS clause is suppressed — time and spending slips survive', () => {
@@ -323,8 +338,14 @@ describe('re-sit — the sheet rows use the hero’s theory', () => {
 
   it('danger is reserved for a call nothing is holding', () => {
     const block = src.slice(src.indexOf('const lateChip'), src.indexOf('const lateLine'));
-    expect(block).toMatch(/runningOnOurPick[\s\S]*--warn-tint[\s\S]*past its window/);
+    // The PAIRING is the ruling: warn tint carries "past its window" (something is
+    // holding it), danger carries "overdue" (nothing is). Unchanged. After the
+    // 2026-07-31 vocabulary consolidation the warn branch renders the shared
+    // PAST_WINDOW constant instead of its own copy of the literal, so the match
+    // is on the token — and the constant's VALUE is pinned just below.
+    expect(block).toMatch(/runningOnOurPick[\s\S]*--warn-tint[\s\S]*\{PAST_WINDOW\}/);
     expect(block).toMatch(/--danger-tint[\s\S]*overdue/);
+    expect(PAST_WINDOW).toBe('past its window');
   });
 
   it('the anonymous heart banner stays deleted — keep the instance, cut the generalisation', () => {
@@ -555,7 +576,10 @@ describe('a solemn day is not late — the hostv2 hero too', () => {
   it('the hero due chip drops the OVERSHOOT on a solemn event, keeping forward states', () => {
     expect(src2).toMatch(/if \(solemn && a\.dueInDays < 0\) return null;/);
     // forward states must survive — only the negative branch is suppressed
-    expect(src2).toMatch(/a\.dueInDays === 0 \? 'due today'/);
+    // The inline ternary moved to the shared timeStatusLabel helper; the guarantee
+    // is unchanged, now asserted on real output rather than source shape.
+    expect(src2).toMatch(/timeStatusLabel\(a\.dueInDays\)/);
+    expect(timeStatusLabel(0)).toBe('due today');
   });
 
   it('the decision row late chip is suppressed on a solemn event', () => {

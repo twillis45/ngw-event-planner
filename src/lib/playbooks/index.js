@@ -64,6 +64,10 @@ import { crabsPerPicker, crabsPerBushel } from '../crabServing';
 import { kidCount, vegCount, KID_PROTEIN_FACTOR } from '../appetite';
 import { getCompressionLevel, getStandardLeadProvenance, isGroundedLead } from '../workflowCompression';
 import { effectiveTimingProvenance, isGroundedTiming } from '../knowledge/timingProvenance';
+// PHASE 5A-2 — the ONE runtime reader of governed knowledge. Purchase provenance
+// only: a published KCR may replace the authored provenance block, and nothing
+// else. Values, quantities, costs, decisions and ranking are untouched.
+import { effectiveValue } from '../knowledge/knowledgeOverride';
 import { isGroundedCulture } from '../knowledge/culturalContext';
 import { militaryDecisionsFor, isGroundedMilitary } from '../knowledge/militaryRetirement';
 import { destinationContextFor, isGroundedDestination } from '../knowledge/destinationContext';
@@ -78,6 +82,7 @@ import { effectiveHuman, isGroundedHuman } from '../knowledge/humanContext';
 import { effectiveDietary, isGroundedDietary } from '../knowledge/dietaryContext';
 import { effectiveBudget, isGroundedBudget } from '../knowledge/budgetContext';
 import { effectiveChildcare, isGroundedChildcare } from '../knowledge/childcareContext';
+import { authoredQuestion } from '../askVoice';
 
 // ── Registry ────────────────────────────────────────────────────────────────
 // Normalized (case-insensitive) canonical-event-type → playbook. Phase-1 host
@@ -159,7 +164,15 @@ function resolveBulkPurchase(p, decisions, choices, adultGuests) {
   // it up — a FIFTH copy of the crab figure, and the fallback was the medium number
   // being applied to whatever size the host actually chose. It now reads the sourced,
   // size-aware table, which returns a published [low, high] range.
-  const crabsPerPerson = crabsPerPicker(servingKey);
+  //
+  // `p.servingGuide` is passed through as the OVERRIDE (Phase 5E.3). Before that it was
+  // read only by the truthiness check at the top of this function, so a published
+  // correction to it moved nothing — the numbers came off the frozen module constant.
+  // It is now the consumer that makes `servingGuide` genuinely governable, which is
+  // what lets an admin correct the crab COUNT: `qtyPerGuest` cannot move a bushel, but
+  // crabs-per-picker is the figure the bushel maths is built on.
+  const guide = p.servingGuide;
+  const crabsPerPerson = crabsPerPicker(servingKey, { guide });
   const guests = Math.max(1, Math.round(adultGuests));
   const totalUnits = Math.ceil(guests * crabsPerPerson);
   // RE-AUDIT (fresh-eyes, 2026-07-14): approxPerBushel used to WIN over the sourced table —
@@ -168,7 +181,7 @@ function resolveBulkPurchase(p, decisions, choices, adultGuests) {
   // sheet's defaultCountPerUnit counted 60 — two screens, two jumbo-bushel counts, on the
   // costliest line item. The ONE sourced table (crabServing) wins; the ladder's approx is
   // only the fallback for a servingKey the table doesn't know.
-  const perBushel = crabsPerBushel(servingKey) || ladder.approxPerBushel || 72;
+  const perBushel = crabsPerBushel(servingKey, { guide }) || ladder.approxPerBushel || 72;
   const perHalfBushel = Math.round(perBushel / 2);
   if (totalUnits <= 12 && ladder.perDz) {
     return { qty: 1, unit: 'dozen', totalUnits, unitLabel: '1 dozen', price: ladder.perDz };
@@ -880,6 +893,74 @@ export function playbookChecklist(event, asOf) {
 // ── Reader ────────────────────────────────────────────────────────────────────
 // playbookTasks(event, asOf) → OperationalTask[]  (pure; soonest-due first).
 // Purchases blocked by an unresolved prerequisite decision are suppressed.
+
+// ── GOVERNED PURCHASE PROVENANCE (Phase 5A-2) ────────────────────────────────
+// The single seam between governed knowledge and the playbook engine. Scope is
+// deliberately one field: a purchase's `provenance` block. It never touches
+// unitCostRange, qty, costFactors, decisions, ranking or reasoning.
+//
+// Failure is a no-op by construction: effectiveValue() degrades to the authored
+// value, and any throw here falls back to the authored block rather than breaking
+// a plan render.
+export function purchaseProvenance(playbook, purchase) {
+  if (!playbook || !purchase || !purchase.id) return purchase && purchase.provenance;
+  try {
+    const eff = effectiveValue(playbook, `${purchase.id}.provenance`, null);
+    return (eff && eff.value !== undefined) ? eff.value : purchase.provenance;
+  } catch (_e) {
+    return purchase.provenance;
+  }
+}
+// ─── GOVERNED PURCHASE — the wire from published knowledge to the host ────────
+//
+// PHASE 5C.10. Until now the ONLY governed read on the host path was the
+// provenance block above, and nothing rendered it: hostv2 read `unitCostRange`
+// and `qtyPerGuest` straight off the authored playbook, so a published KCR
+// changed what Admin's Runtime Preview showed and nothing a host ever saw.
+// The bake, the snapshot, the resolver and the lineage all worked; the last
+// seam was missing.
+//
+// This closes it in ONE place. Every host-visible purchase field is resolved
+// through effectiveValue (override -> published snapshot -> authored), so the
+// downstream sizing, pricing and copy inherit governance without any surface
+// having to know governance exists. hostv2 needs no change to get correct
+// NUMBERS — only to show the provenance note, which is a separate choice.
+//
+// SAFE BY CONSTRUCTION: effectiveValue degrades to the authored value when
+// nothing is published, so with an empty snapshot this returns the purchase
+// unchanged (identity). That is why it can sit on the hot path.
+// PHASE 5E.2: `priceLadder` and `servingGuide` join the governed set because they
+// have a VERIFIED runtime consumer — resolveBulkPurchase() (index.js:149) reads them
+// off the GOVERNED purchase and produces `bulkRecommendation`, the dozen / half
+// bushel / bushel figure the host actually buys against.
+//
+// This is the honest lever for threshold economics. `p_crabs.qtyPerGuest` is refused
+// because a per-guest rate cannot move a bushel; the LADDER can, because it is what
+// the bushel maths reads. Governing the rule instead of the output.
+const GOVERNED_PURCHASE_FIELDS = ['unitCostRange', 'qtyPerGuest', 'qtyFlat', 'provenance',
+  'priceLadder', 'servingGuide'];
+
+export function governedPurchase(playbook, purchase) {
+  if (!playbook || !purchase || !purchase.id) return purchase;
+  let out = purchase;
+  for (const field of GOVERNED_PURCHASE_FIELDS) {
+    try {
+      const eff = effectiveValue(playbook, `${purchase.id}.${field}`, null);
+      // Only ADOPT a governed value: 'authored' means nothing is published for
+      // this field, and re-assigning it would be a no-op that costs an allocation.
+      if (eff && eff.source !== 'authored' && eff.value !== undefined) {
+        if (out === purchase) out = { ...purchase };
+        out[field] = eff.value;
+        // Record WHICH fields governance supplied, so a surface can be honest
+        // about the difference between an authored default and a published fact.
+        out._governed = [...(out._governed || []), field];
+      }
+    } catch (_e) { /* a resolver failure must never break the shopping list */ }
+  }
+  return out;
+}
+
+
 export function playbookTasks(event, asOf) {
   if (!event) return [];
   const playbook = getPlaybook(event.type);
@@ -959,7 +1040,11 @@ export function playbookTasks(event, asOf) {
       provenance: { source: `${playbook.type} playbook`, buyAt: p.buyAt },
       // Wave-2w GROUNDING — is this item's per-guest QUANTITY backed by a real portion/drink
       // source (vs a trade heuristic)? Surfaced so the buy row can show sourced quantities.
-      qtyGrounded: isGroundedItemQty(p.provenance),
+      // PHASE 5A-2 — governed provenance, authored fallback. effectiveValue()
+      // resolves override -> published snapshot -> authored, in that order; with an
+      // empty snapshot and no override it returns the authored block unchanged, so
+      // this line is a no-op until governance has published something for this field.
+      qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p)),
     });
   }
 
@@ -2002,12 +2087,26 @@ function decisionDepNoun(id, decisions) {
 }
 // "Seated dinner or buffet / family-style?" → trimmed, no trailing '?', capped.
 function decisionShortLabel(label) {
-  let s = String(label || '').trim().replace(/\?+\s*$/, '');
   // A trailing parenthetical is guide voice ("game night skews light — people
   // need to think"), never label material — and truncating THROUGH it left an
   // unbalanced "(game night skews ligh…" no display transform could strip
   // (audit 2026-07-22). The rationale still reaches the host via `why`.
-  s = s.replace(/\s*\([^)]*\)\s*$/, '').trim();
+  //
+  // NEITHER ORDER IS SUFFICIENT — STRIP UNTIL STABLE (2026-07-31).
+  // Authored labels come in both shapes, and a fixed order breaks one of them:
+  //   "Alcohol? (adult parties)"        — '?' hides BEHIND the parenthetical
+  //   "Is this corporate (name tags…)?" — the parenthetical hides behind the '?'
+  // Stripping '?' first left the first shape's mark in place, and the render
+  // boundary appended a second one: "Alcohol??". Stripping the parenthetical
+  // first left the second shape's paren in place, which the host-string lint
+  // catches as an unbalanced paren. Looping settles both, and any future label
+  // that alternates them, without either strip having to know about the other.
+  let s = String(label || '').trim();
+  for (let i = 0; i < 4; i++) {
+    const before = s;
+    s = s.replace(/\s*\([^)]*\)\s*$/, '').replace(/\?+\s*$/, '').trim();
+    if (s === before) break;
+  }
   if (s.length > 52) s = s.slice(0, 50).trim() + '…';
   return s;
 }
@@ -2563,7 +2662,7 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const derived = { importanceBasis, _derivedWeight, _derivedReason, timingProvenance, timingGrounded, _dependedOnCount, culturalContext, culturalGrounded, militaryContext, militaryGrounded, destinationContext, destinationGrounded, accessibilityContext, accessibilityGrounded, costGrounded, legalContext, legalGrounded, venueContext, venueGrounded, weatherContext, weatherGrounded, humanContext, humanGrounded, dietaryContext, dietaryGrounded, budgetContext, budgetGrounded, childcareContext, childcareGrounded, ...(_affects ? { affects: _affects } : {}) };
     if (isLocked(d)) {
       const val = picks[d.id] || (isDietaryDecision(d) ? 'Collected' : (d.default || 'Set'));
-      locked.push({ id: d.id, label: decisionShortLabel(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
+      locked.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status: 'locked', because: String(val), dueDate, daysOut, ...priority, ...derived, route });
       continue;
     }
 
@@ -2636,7 +2735,14 @@ export function playbookDecisionBoard(event, asOf, profile) {
           : daysOut > 45 ? 'Ready when you are — plenty of time.'
             : `Good to lock — about ${daysOut} ${daysOut === 1 ? 'day' : 'days'} out.`;
     }
-    open.push({ id: d.id, label: decisionShortLabel(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+    // `ask` carries the AUTHORED question, derived from d.label — the full
+    // authored string, never the short card label. The short label is a display
+    // truncation (52 chars, parenthetical peeled) and re-deriving a question from
+    // it loses exactly the authored labels this is meant to preserve. One
+    // Only a label AUTHORED as a question becomes an ask — authoredQuestion()
+    // returns null for a declarative decision NAME, which then falls through to
+    // the builder ladder rather than being punctuated into a fake question.
+    open.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is
@@ -3339,7 +3445,12 @@ export function playbookFoodPlan(event, opts = {}) {
   // The grounded shopping list, scaled by guest count, grouped + costed.
   const list = playbook.purchases
     .filter((p) => (p.category === 'food' || p.category === 'beverage') && purchaseShown(p) && regionShown(p) && hostBuysIt(p) && hostCooksIt(p))
-    .map((p) => {
+    .map((p0) => {
+      // PHASE 5C.10 — governance enters here, once, for every host-visible line.
+      // Everything below (sizing, pricing, copy) reads the GOVERNED purchase, so a
+      // published KCR moves the host's numbers without any surface knowing.
+      // Identity when nothing is published.
+      const p = governedPurchase(playbook, p0);
       // In-place swap chosen for this line (event.foodSwap[id] = the alternative's name).
       const swappedName = (p.id in swapMap && String(swapMap[p.id] || '').trim()) ? String(swapMap[p.id]).trim() : null;
       // If the chosen alternative carries its OWN price/qty data, the line RE-PRICES to it
@@ -3435,6 +3546,10 @@ export function playbookFoodPlan(event, opts = {}) {
           note: `Priced by your crab order${_crabOrder.mixedSummary ? ' — ' + _crabOrder.mixedSummary : ''}.`,
           forgotten: false,
           crabDelegated: true, excludeFromFoodTotal: true,
+          // Governance, carried to the surface (5C.10).
+          provenance: purchaseProvenance(playbook, p0) || null,
+          qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
+          governedFields: p._governed || [],
         };
       }
       return {
@@ -3515,6 +3630,12 @@ export function playbookFoodPlan(event, opts = {}) {
         ...((resolveBulkPurchase(p, _decisions, _choices, _qtyGuests) != null)
           ? { bulkRecommendation: resolveBulkPurchase(p, _decisions, _choices, _qtyGuests) }
           : {}),
+        // Governance, carried to the surface (5C.10). `provenance` is what a host
+        // can read; `qtyGrounded` is whether the quantity is sourced; `governedFields`
+        // names which numbers came from a published KCR rather than the authored file.
+        provenance: purchaseProvenance(playbook, p0) || null,
+        qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
+        governedFields: p._governed || [],
       };
     });
 
@@ -3628,9 +3749,22 @@ export function playbookFoodPlan(event, opts = {}) {
   // row functions as food (lock-before-checkoff, qty edit, skip/swap, per-unit,
   // where-links, alternatives). Kept OUT of the food $ total below; surfaced as
   // their own budget line. Same map shape as the food rows above.
-  for (const p of playbook.purchases) {
-    if (p.category === 'food' || p.category === 'beverage') continue;
-    if (!p.essential || !p.buyAt || !purchaseShown(p) || !regionShown(p)) continue;
+  for (const p0 of playbook.purchases) {
+    if (p0.category === 'food' || p0.category === 'beverage') continue;
+    if (!p0.essential || !p0.buyAt || !purchaseShown(p0) || !regionShown(p0)) continue;
+    // GOVERNANCE REACHES SUPPLIES TOO (Phase 5E.4). This loop iterated the AUTHORED
+    // purchase while the food loop above resolved through governedPurchase(), so the
+    // entire Supplies half of every shopping list was ungoverned: `unitCostRange`,
+    // `qtyPerGuest`, `qtyFlat` and `provenance` were all editable, publishable,
+    // versioned and approved on a supply line, and changing any of them moved
+    // nothing a host saw. Measured across 39 playbooks before the fix: 396 dead
+    // field/purchase pairs, every one of them a supply row.
+    //
+    // The comment below has always claimed these rows get "the EXACT same row
+    // functions as food". They did not, and the gap was invisible precisely because
+    // the rows LOOK identical on the surface — same qty, same price range, sourced
+    // from the authored file instead of the governed one.
+    const p = governedPurchase(playbook, p0);
     const baseQty = resolveQuantity(p, guests);
     const qOver = (p.id in qtyMap) ? Math.max(0, Number(qtyMap[p.id]) || 0) : null;
     const qty = qOver != null ? qOver : baseQty;
@@ -3652,6 +3786,13 @@ export function playbookFoodPlan(event, opts = {}) {
       skipped: !!skip[p.id], locked: (p.id in lockedMap) ? Math.max(0, Math.round(Number(lockedMap[p.id]) || 0)) : null,
       note: p.note || '', forgotten: /commonly forgotten/i.test(p.note || ''), supply: true,
       ...(Array.isArray(p.alternatives) && p.alternatives.length > 0 ? { alternatives: p.alternatives } : {}),
+      // Same three governance fields the food rows carry, for the same reason: a
+      // host reading a sourced supply quantity should be told it is sourced, and a
+      // surface should not have to know whether a line came from the food loop or
+      // this one to answer "where did this number come from".
+      provenance: purchaseProvenance(playbook, p0) || null,
+      qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
+      governedFields: p._governed || [],
     });
   }
 
@@ -3819,13 +3960,27 @@ export function playbookSetupPreview(type) {
 // buildCrabPlan's cost math still uses host-entered prices exclusively).
 export function crabPriceLadder() {
   const pb = getPlaybook('Crab Feast');
+  if (!pb) return null;
+  // GOVERNED (Phase 5E.4). hostv2 renders these as the reference prices on the crab
+  // sheet ("male $72 / female $52"), while the shopping list prices the same crabs
+  // through governedPurchase. Scanning the authored playbook here meant a published
+  // ladder correction moved one surface and not the other: two host-visible prices
+  // for the costliest item on the list, disagreeing, both looking authoritative.
+  // That is the exact failure the ownership contract exists to prevent, and it was
+  // sitting one function away from the field the contract points admins at.
+  const crabs = (pb.purchases || []).find((p) => p && p.id === 'p_crabs');
+  if (crabs) {
+    const gov = governedPurchase(pb, crabs);
+    if (gov && gov.priceLadder) return gov.priceLadder;
+  }
+  // Fallback for any playbook shape that carries a ladder somewhere else.
   const scan = (o, depth) => {
     if (!o || typeof o !== 'object' || depth > 6) return null;
     if (o.priceLadder) return o.priceLadder;
     for (const v of Object.values(o)) { const r = scan(v, depth + 1); if (r) return r; }
     return null;
   };
-  return pb ? scan(pb, 0) : null;
+  return scan(pb, 0);
 }
 
 // Which purchase lines does an UNMADE menu decision re-price? Map of

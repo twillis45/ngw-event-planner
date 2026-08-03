@@ -22,6 +22,28 @@ import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
 import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
+// `mergePublishedKnowledge` is no longer called from here: Phase 5D moved the merge
+// INSIDE `exportBase`, which combines the committed export with the snapshot
+// reconstruction in the load-bearing order. The import outlived the call, which is
+// what the CRA warning gate caught. `snapshotEntryToKcr` STAYS — the correction flow
+// below still reconstructs a prior KCR with it.
+import { publishedKcrsForExport, serializePublishedExport, exportSummary, EXPORT_FILENAME,
+  snapshotEntryToKcr, publishedInventory, exportBase, lineageHistory, rollbackTarget } from '../lib/knowledge/publishedExport';
+import { publishedEntries } from '../lib/knowledge/publishedSnapshot';
+import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correctionWorkflow';
+import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
+import { fieldTypeFor, validateForEditor, CONFIDENCE_LEVELS } from '../lib/knowledge/governedFieldTypes';
+import { acquisitionTree, acquisitionSummary, GOVERNANCE_STATES } from '../lib/knowledge/knowledgeAcquisition';
+import { approvedSourcesFor, validateSourcesFor, wouldGround, evidenceFromSources, provenanceMirror } from '../lib/knowledge/sourceAuthority';
+import { detectDivergence, divergenceSummary, firstGovernanceGuard } from '../lib/knowledge/governanceDivergence';
+import { reconciliationCandidates, reconciliationSummary } from '../lib/knowledge/governanceReconciliation';
+import { knowledgeInventory, directlyCitedShare, INVENTORY_STATES } from '../lib/knowledge/knowledgeInventory';
+import { backfillClassification, classificationSummary } from '../lib/knowledge/backfillClassification';
+import { sourceFreshness, freshnessSummary, needsRecheck } from '../lib/knowledge/sourceFreshness';
+// The COMMITTED corpus — what a clean checkout ships. Distinct from both the admin store
+// and the baked snapshot; reconciliation needs all three to tell them apart.
+import publishedCorpus from '../lib/knowledge/publishedKcrs.json';
+import { fieldOwnership, blockedMessage } from '../lib/knowledge/governedOwnership';
 import { kcrCan, canPublish } from '../lib/knowledge/kcrRoles';
 import { corpusDimensionKCRs, qualityManufacturing } from '../lib/knowledge/dimensions';
 import { buildFactory } from '../lib/knowledge/factory';
@@ -2097,6 +2119,7 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
   const [prop, setProp] = useState('');
   const [note, setNote] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [retireReason, setRetireReason] = useState('');   // 5F.8 — a retirement states its reason
   const gate = kcrGateStatus(kcr);
 
   const run = async (mutator, label) => {
@@ -2175,20 +2198,68 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
           <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
             <B label="Mark approved" primary cap="request-review" enabled={!(gate.reviewsNeeded || []).length} on={() => run((k) => advanceKCR(k, 'approved', { by: role, asOf }), 'Approved')} />
             <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'researching', { by: role, note: 'sent back', asOf }), 'Sent back')} />
+            {/* RETIRE FROM REVIEW (5F.10). `review -> archived` is legal and had no
+                control, so a record that should never publish could only be bounced
+                back to `researching` forever. Hit during Wave 0: an in-flight record
+                predating the evidence fix carried `evidence: []`, so it would fail at
+                publish, and there was no way to withdraw it. Same required reason as
+                every other retirement. */}
+            <B label="Archive" cap="reject"
+              on={() => {
+                const why = (retireReason || '').trim();
+                if (!why) return undefined;
+                return run((k) => advanceKCR(k, 'archived', { by: role, note: why, asOf }), 'Archived');
+              }} />
           </div>
+          <input value={retireReason} onChange={(e) => setRetireReason(e.target.value)}
+            placeholder="to archive instead: why is this being retired? (required)"
+            style={{ marginTop: 6, width: '100%', fontSize: 10, fontFamily: D.mono, background: D.surface,
+              color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 8px' }} />
         </div>
       )}
 
       {s === 'approved' && (
         <div style={{ display: 'flex', gap: 6 }}>
+          {/* LINEAGE FIX (Phase 5C.4). `prevVersion` was `k.rollbackTo` — the version the
+              CURRENT one already replaced, i.e. the grandparent. On a first publish both are
+              null so the bug is invisible; on a RE-publish (every correction) it chained the
+              new version to its grandparent and left the parent unsuperseded. Since
+              publishedSnapshotBuild selects by lineage, that produced TWO LIVE HEADS on one
+              field. The parent is `publishedVersion`. */}
           <B label="Publish" primary cap="publish" enabled={!gate.blocked}
-            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.rollbackTo || null, by: role, asOf }).kcr, 'Published')} />
+            on={() => run((k) => publishKCR(k, { versionId: `${k.id}-v${(k.audit || []).length}`, prevVersion: k.correctionOf || k.publishedVersion || null, by: role, asOf }).kcr, 'Published')} />
           <B label="Send back" cap="reject" on={() => run((k) => advanceKCR(k, 'archived', { by: role, note: 'withdrawn', asOf }), 'Withdrawn')} />
         </div>
       )}
 
       {s === 'published' && <B label="Move to monitoring" cap="view" on={() => run((k) => advanceKCR(k, 'monitoring', { by: role, asOf }), 'Monitoring')} />}
-      {(s === 'monitoring' || s === 'revision') && <B label={s === 'monitoring' ? 'Open a revision' : 'Re-research'} cap="request-review" on={() => run((k) => advanceKCR(k, s === 'monitoring' ? 'revision' : 'researching', { by: role, asOf }), 'Advanced')} />}
+      {/* RETIREMENT WAS UNREACHABLE (Phase 5F.8). The console could publish a record and
+          then never retire it: `published` legally advances only to `monitoring` or
+          `revision`, and neither state offered an archive control. So seven browser-only
+          records could be neither promoted nor withdrawn through the UI.
+          `KCR_TRANSITIONS` already permits `monitoring -> archived` and
+          `revision -> archived`; this surfaces the transition that existed, and adds no
+          new path — `published -> archived` stays illegal, as it should.
+          NOTE: two records archived in 5F.4 carry a DIRECT published -> archived audit
+          entry, which this table forbids. They were written outside `advanceKCR`. */}
+      {(s === 'monitoring' || s === 'revision') && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <B label={s === 'monitoring' ? 'Open a revision' : 'Re-research'} cap="request-review" on={() => run((k) => advanceKCR(k, s === 'monitoring' ? 'revision' : 'researching', { by: role, asOf }), 'Advanced')} />
+          <B label="Archive" cap="reject"
+            on={() => {
+              // A retirement states its reason, like every other governance decision.
+              const why = (retireReason || '').trim();
+              if (!why) { return; }
+              return run((k) => advanceKCR(k, 'archived', { by: role, note: why, asOf }), 'Archived');
+            }} />
+        </div>
+      )}
+      {(s === 'monitoring' || s === 'revision') && (
+        <input value={retireReason} onChange={(e) => setRetireReason(e.target.value)}
+          placeholder="why is this being retired? (required)"
+          style={{ marginTop: 6, width: '100%', fontSize: 10, fontFamily: D.mono, background: D.surface,
+            color: D.text, border: `1px solid ${retireReason.trim() ? D.border : D.warn}`, borderRadius: 5, padding: '4px 8px' }} />
+      )}
 
       {note && <div style={{ marginTop: 8, fontSize: type.size.caption, color: note.startsWith('Blocked') || note.startsWith('⚠') ? D.warn : D.good }}>{note}</div>}
       {!kcrCan(role, 'publish') && s === 'approved' && <div style={{ marginTop: 6, fontSize: type.size.caption, color: D.faint }}>Only a governance/publisher role can publish.</div>}
@@ -2200,6 +2271,11 @@ function KcrActions({ kcr, role, asOf, onChanged }) {
 const STUDIO_WS = [
   'Mission Control', 'Research Session', 'Research Ops',
   'Inbox', 'Observations', 'Evidence', 'Findings', 'Conflicts',
+  // ACQUISITION (Phase 5F.2) sits before Review because it is where governed work
+  // now STARTS. Publishing lists what is already governed — 2 assets of 39 — so
+  // discovery anchored there could only ever re-correct knowledge that already
+  // existed. This browses the AUTHORED corpus with published knowledge as an overlay.
+  'Acquisition',
   'Review', 'Publishing', 'Validation', 'Monitoring', 'Quality',
   'Copilot', 'Analytics', 'Retirement', 'Campaigns', 'Campaign Research',
   'Dep. Explorer', 'Graph', 'Runtime Preview', 'Simulator',
@@ -2299,6 +2375,37 @@ function KcrStudioPanel() {
   const [depType, setDepType] = useState('Crab Feast');
   const [depField, setDepField] = useState('p_crabs.unitCostRange');
   const [depResult, setDepResult] = useState(null);
+
+  // Correction composer state (Phase 5C.7). Deliberately NOT window.prompt: a modal
+  // dialog blocks the page, is untestable through automation, and cannot show the
+  // version being superseded while the reason is written.
+  const [correctRow, setCorrectRow] = useState(null);
+  const [correctReason, setCorrectReason] = useState('');
+  const [correctNote, setCorrectNote] = useState(null);
+  // Typed value editor (Phase 5E). `correctDraft` holds the EDITOR-shaped value
+  // (strings from inputs); the field type parses it back into the engine shape
+  // on submit. Keeping those separate is what stops "0.5" reaching runtime.
+  // PHASE 5E.3: an admin must be able to govern a field that has never been
+  // published. The inventory only lists LIVE entries, so before this the composer
+  // could only ever re-correct the two fields already in the snapshot — which is
+  // why the host proof kept getting pushed. `correctPurchase` retargets the whole
+  // correction at any governable purchase in the same playbook.
+  const [correctPurchase, setCorrectPurchase] = useState(null);
+  // ACQUISITION (5F.2). `acqTarget` is how the picker hands the composer an
+  // asset+field that may have NO published row — the case the composer could not
+  // previously represent at all.
+  const [acqAsset, setAcqAsset] = useState('');
+  const [acqState, setAcqState] = useState('');
+  const [acqQuery, setAcqQuery] = useState('');
+  const [acqTarget, setAcqTarget] = useState(null);
+  const [correctField, setCorrectField] = useState('provenance');
+  const [correctDraft, setCorrectDraft] = useState(null);
+  // Rollback composer (Phase 5D P1): withdrawing a published version is at least as
+  // consequential as publishing one, so it takes the same shape — see the target,
+  // state a reason, confirm. It never deletes: rollbackKCR moves the head to
+  // 'revision' and the record stays on disk, so the action is reversible.
+  const [rollbackRow, setRollbackRow] = useState(null);
+  const [rollbackReason, setRollbackReason] = useState('');
 
   // Runtime Preview state
   const [rtType, setRtType] = useState('Crab Feast');
@@ -3143,13 +3250,29 @@ function KcrStudioPanel() {
     }
 
     if (ws === 'Review') {
-      const reviewKcrs = kcrs.filter((k) => k.status === 'review' || k.status === 'grounded')
+      // ORPHAN STATES (Phase 5F.9). `researching` and `draft` were listed by NO
+      // workspace: KcrTable renders in Review (review/grounded), Publishing (approved),
+      // Validation (published) and Retirement (archived). So "Send back" — the reject
+      // action on any review row — moved a record into a status the console could not
+      // display, and it could never be recovered through the UI.
+      //
+      // Found by doing it: a mis-click sent a real record to `researching`, after which
+      // no workspace showed it. A lifecycle you can enter and not leave is not a
+      // lifecycle. In-flight work now surfaces where the reviewer already is.
+      // `researching` ONLY, deliberately. Including `draft` was tried and measured: the
+      // store holds 227 auto-seeded corpus-dimension drafts against 2 real sent-back
+      // records, so listing both would bury the human work under machine candidates —
+      // a different untruth from the one being fixed. Drafts are intake, not in-flight
+      // review.
+      const reviewKcrs = kcrs.filter((k) => ['review', 'grounded', 'researching'].includes(k.status))
         .sort((a, b) => (a.priority === 'high' ? -1 : 0) - (b.priority === 'high' ? -1 : 0));
+      const sentBack = reviewKcrs.filter((k) => k.status === 'researching').length;
       return (
         <div>
           <Banner>KCRs in review — SME, editorial, and governance sign-off required (role-gated). KCR-6 governs which roles can advance each stage. No auto-advancement.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="In review" value={byStatus.review || 0} tone={D.warn} />
+            <PBKpi label="Sent back" value={sentBack} tone={sentBack ? D.warn : D.faint} />
             <PBKpi label="Aging >30d" value={metrics.staleCount} tone={metrics.staleCount ? D.bad : D.faint} onClick={metrics.staleCount ? () => setStatusFilter('stale') : undefined} />
           </div>
           {loading ? <Banner tone="muted">Loading…</Banner> : reviewKcrs.length === 0
@@ -3160,16 +3283,985 @@ function KcrStudioPanel() {
       );
     }
 
+    // ─── ACQUISITION (Phase 5F.2) ────────────────────────────────────────────
+    // Discovery over the AUTHORED corpus. The field list comes from
+    // governableFieldsFor(), which derives from the runtime ownership contract —
+    // so an engine-delegated or unconsumed field can never appear here, and the
+    // picker cannot drift from what actually reaches a host.
+    if (ws === 'Acquisition') {
+      // Same baked snapshot the runtime serves — so "published" here means published
+      // to a host, not merely present in Admin's store.
+      const liveIdx = publishedEntries().map((e) => ({ assetId: e.assetId, fieldPath: e.fieldPath }));
+      const tree = acquisitionTree(ALL_PLAYBOOKS, liveIdx, {
+        assetId: acqAsset || null, state: acqState || null, query: acqQuery,
+      });
+      const summary = acquisitionSummary(acquisitionTree(ALL_PLAYBOOKS, liveIdx));
+      // CANONICAL INVENTORY (5F.6 W2). The KPIs above count governable FIELD SLOTS
+      // (1,605). That is a real number and a different unit from purchase LINES, and
+      // three separate counters in this repo have each reported a different "how much
+      // do we know" figure by silently dropping something. This block states the one
+      // denominator that never shrinks — every authored line, always.
+      // FULL entries, not `liveIdx` (Phase 5F.11). `liveIdx` maps each entry down to
+      // `{assetId, fieldPath}` for the picker, which is all `acquisitionTree` needs —
+      // but `knowledgeInventory` reads `entry.value` to decide whether a GOVERNED
+      // provenance grounds. Passing the stripped list made that lookup `undefined`, so
+      // every governed line fell back to its authored provenance and was counted
+      // `reviewed` instead of `grounded`.
+      //
+      // Measured: the console read "grounded 38 · reviewed 8" while the committed
+      // corpus measured 46 and 0. The console UNDERSTATED its own grounding — the same
+      // measurement-disagrees-with-runtime shape this programme keeps finding, this
+      // time caused by a convenience mapping two lines earlier.
+      const liveEntriesFull = publishedEntries();
+      const inv = knowledgeInventory(ALL_PLAYBOOKS, liveEntriesFull);
+      const cls = backfillClassification(ALL_PLAYBOOKS, liveEntriesFull);
+      const STATE_TONE = {
+        published: D.good, 'missing-provenance': D.warn, 'needs-research': D.warn,
+        correctable: D.accent, ungoverned: D.muted,
+      };
+      return (
+        <div>
+          <Banner tone="muted">
+            Knowledge Acquisition — browse the authored corpus and open governed corrections.
+            Published knowledge is an overlay, not the starting point: before this workspace,
+            only fields that were ALREADY governed could be corrected, so {summary.assets - (summary.assets - summary.ungovernedAssets)} of {summary.assets} playbooks were unreachable.
+          </Banner>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', margin: '10px 0 14px' }}>
+            <PBKpi label="Assets" value={summary.assets} />
+            <PBKpi label="Governable fields" value={summary.fields} />
+            <PBKpi label="Never governed" value={summary.ungovernedAssets} tone={D.muted} />
+            <PBKpi label="Missing provenance" value={summary.counts['missing-provenance']} tone={D.warn} />
+            <PBKpi label="Published" value={summary.counts.published} tone={D.good} />
+          </div>
+          {/* The canonical inventory + what kind of work the remainder needs. Text, not
+              a new surface — the point is that ONE denominator is visible, not that
+              there is another dashboard. */}
+          <div style={{ border: `1px solid ${D.border}`, borderRadius: 6, padding: '10px 12px',
+            marginBottom: 12, fontFamily: D.mono, fontSize: 10, color: D.muted, lineHeight: 1.7 }}>
+            <div style={{ color: D.text, marginBottom: 4 }}>
+              KNOWLEDGE INVENTORY — {inv.total} authored lines. {directlyCitedShare(inv)}% directly cited to a registered source
+              (NOT the share with an intellectual basis — see the basis distribution below).
+            </div>
+            <div>
+              {INVENTORY_STATES.map((s) => `${s} ${inv.counts[s]}`).join('  ·  ')}
+            </div>
+            <div style={{ marginTop: 6, color: D.text }}>
+              {classificationSummary(cls)}
+            </div>
+            <div style={{ marginTop: 4 }}>
+              The denominator never shrinks because evidence is missing — a line with no
+              source is counted, not skipped.
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 12 }}>
+            <input value={acqQuery} onChange={(e) => setAcqQuery(e.target.value)}
+              placeholder="find an item…"
+              style={{ fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 8px', width: 190 }} />
+            <select value={acqAsset} onChange={(e) => setAcqAsset(e.target.value)}
+              style={{ fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                border: `1px solid ${D.border}`, borderRadius: 5, padding: '4px 6px' }}>
+              <option value="">all playbooks</option>
+              {(ALL_PLAYBOOKS || []).map((p) => p && p.type)
+                .filter(Boolean).sort().map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            {['', ...GOVERNANCE_STATES].map((s) => (
+              <button key={s || 'all'} type="button" onClick={() => setAcqState(s)}
+                style={{ fontSize: 9, padding: '3px 8px', borderRadius: 5, cursor: 'pointer',
+                  border: `1px solid ${acqState === s ? D.accent : D.border}`,
+                  background: acqState === s ? D.accent + '22' : 'transparent',
+                  color: acqState === s ? D.accent : D.muted }}>
+                {s || 'any state'}
+              </button>
+            ))}
+          </div>
+          {tree.length === 0 ? <Empty msg="No governable fields match those filters." /> : tree.slice(0, 12).map((a) => (
+            <div key={a.assetId} style={{ marginBottom: 14, border: `1px solid ${D.border}`, borderRadius: 8, padding: 10 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: D.text, marginBottom: 2 }}>
+                {a.assetId}
+                <span style={{ fontSize: 9, fontFamily: D.mono, color: a.ungoverned ? D.muted : D.good, marginLeft: 8 }}>
+                  {a.ungoverned ? 'never governed' : `${a.publishedCount} governed`}
+                </span>
+              </div>
+              {a.categories.map((c) => (
+                <div key={c.category} style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, textTransform: 'uppercase', letterSpacing: '.08em' }}>{c.category}</div>
+                  {c.items.map((it) => (
+                    <div key={it.id} style={{ marginTop: 5, paddingLeft: 8, borderLeft: `1px solid ${D.border}` }}>
+                      <div style={{ fontSize: 10.5, color: D.text }}>
+                        {String(it.item).slice(0, 62)}
+                        <span style={{ fontFamily: D.mono, fontSize: 9, color: D.faint, marginLeft: 6 }}>{it.id}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 4 }}>
+                        {it.fields.map((f) => (
+                          <button key={f.field} type="button"
+                            title={`state: ${f.state} — open a governed correction`}
+                            onClick={() => {
+                              // Hands the composer an ASSET + FIELD, not a published row.
+                              setAcqTarget({ assetId: a.assetId, purchaseId: it.id, field: f.field, state: f.state });
+                              setCorrectPurchase(it.id); setCorrectField(f.field);
+                              setCorrectDraft(null); setCorrectReason(''); setCorrectNote('');
+                              setWs('Publishing');
+                            }}
+                            style={{ fontSize: 9, fontFamily: D.mono, padding: '2px 7px', borderRadius: 5,
+                              cursor: 'pointer', border: `1px solid ${STATE_TONE[f.state] || D.border}`,
+                              background: 'transparent', color: STATE_TONE[f.state] || D.muted }}>
+                            {f.field} · {f.state}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          ))}
+          {tree.length > 12 && (
+            <div style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>
+              showing 12 of {tree.length} assets — narrow with a filter
+            </div>
+          )}
+        </div>
+      );
+    }
+
     if (ws === 'Publishing') {
       const pubKcrs = kcrs.filter((k) => k.status === 'approved')
         .sort((a, b) => a.assetId.localeCompare(b.assetId));
+      // Phase 5C.4 — the export that closes Admin -> bake -> runtime.
+      // Phase 5C.6 (D2) — MERGE, never replace. Admin's store only holds KCRs Admin
+      // originated, so exporting it alone would delete governed knowledge Admin has
+      // never heard of. The baked snapshot is the merge base: it is the same bytes
+      // the runtime resolver serves, and it contains only lineage heads.
+      const liveEntries = publishedEntries();
+      // PHASE 5D (P0): merge base is the COMMITTED EXPORT (full records, superseded
+      // history included), not the snapshot. Reconstructing from heads dropped v1 on
+      // the second correction and stripped 11 of 21 fields off every survivor.
+      const mergedForExport = exportBase(kcrs, liveEntries);
+      const inventory = publishedInventory(liveEntries);
+      const exported = publishedKcrsForExport(mergedForExport);
+      const expSum = exportSummary(mergedForExport);
+      // CORRECT THIS (Phase 5C.7). Opens a governed correction against a LIVE published
+      // artifact and stops at Review. It does not publish, does not write an override, and
+      // does not touch publishedKnowledge — a correction that could skip review would be a
+      // wider hole than the defect it fixes. The prior KCR is reconstructed from the baked
+      // snapshot (the same bytes runtime serves) so lineage has a real ancestor to name.
+      //
+      // PHASE 5F.2 — TWO ORIGINS, ONE COMPOSER.
+      //
+      // This used to hard-refuse anything without a live snapshot entry ("no live
+      // entry for that field"), which meant a field could only be governed if it was
+      // ALREADY governed: 2 assets of 39 reachable, and the corpus could never grow
+      // through the tool built to grow it.
+      //
+      // Now a correction has two legitimate origins:
+      //   SUPERSESSION  — a published prior exists -> openCorrection, correctionOf set
+      //   FIRST GOVERNANCE — authored only        -> openAuthoredGovernance, no parent
+      //
+      // They are separate functions on purpose. One function whose most important
+      // behaviour (does this retire a previous version?) hinged on a nullable argument
+      // is the shape that produced the 5E cross-field lineage defect, where a
+      // correction claimed an ancestor it did not have.
+      const doCorrect = async (row) => {
+        // The picker hands over an asset+field that may have no published row at all.
+        const target = acqTarget && !row ? acqTarget : null;
+        const assetId = row ? row.assetId : target.assetId;
+        const pid = correctPurchase || (row ? String(row.fieldPath).split('.')[0] : target.purchaseId);
+        const entry = liveEntries.find((e) => e.assetId === assetId
+          && e.fieldPath === (row ? row.fieldPath : `${pid}.${correctField}`));
+        const prior = entry && snapshotEntryToKcr(entry);
+        const reason = correctReason;
+        if (!reason || !reason.trim()) { setCorrectNote('A correction must state its reason.'); return; }
+        if (!prior && !target && !row) { setCorrectNote('Correction blocked: no asset selected.'); return; }
+        try {
+          // PHASE 5E — the correction now carries a TYPED value, not the old one.
+          // `correctField` names which governed field is being changed; the field
+          // type parses the editor draft into the engine's shape and refuses
+          // anything it cannot. `provenance` with no draft keeps prior behaviour.
+          const fType = fieldTypeFor(`${pid}.${correctField}`);
+          // With no published entry there is no prior value to carry, so the draft is
+          // required — a first governance cannot mean "publish whatever was already there".
+          let newValue = entry ? entry.value : undefined;
+          let targetPath = row ? row.fieldPath : `${pid}.${correctField}`;
+          if (correctDraft != null && fType) {
+            const parsed = fType.parse(correctDraft);
+            if (!parsed.ok) { setCorrectNote(`Blocked: ${parsed.error}`); return; }
+            const ed = validateForEditor(`${pid}.${correctField}`, parsed.value);
+            if (!ed.ok) { setCorrectNote(`Blocked: ${ed.errors.join(' ')}`); return; }
+            // SOURCE AUTHORITY (5F.2 Step 2). Enforced at SUBMIT, not only in the
+            // picker: a UI that merely omits an option is a suggestion, and this
+            // programme has already shipped one thing that was labelled safe and
+            // wasn't. The picker cannot offer a wrong-axis source, but the draft is
+            // still plain state, so the gate belongs where the record is created.
+            if (correctField === 'provenance' && Array.isArray(parsed.value && parsed.value.sources)) {
+              const srcCheck = validateSourcesFor(`${pid}.provenance`, parsed.value.sources);
+              if (!srcCheck.ok) { setCorrectNote(`Blocked: ${srcCheck.errors.join(' ')}`); return; }
+            }
+            newValue = parsed.value;
+            targetPath = `${pid}.${correctField}`;
+          }
+          // CROSS-FIELD LINEAGE (5E defect, caught in the browser). Correcting a
+          // DIFFERENT field than the one published is not a correction of that
+          // lineage — `p_crabs.qtyPerGuest` has never been published, so claiming it
+          // supersedes `...p-crabs-provenance-v1` would fabricate an ancestor and
+          // wrongly retire the provenance record on the next bake. A new field starts
+          // its own lineage; only a same-field change supersedes.
+          // FIRST GOVERNANCE — no published prior anywhere for this asset+field.
+          if (!prior) {
+            if (newValue === undefined) {
+              setCorrectNote('Blocked: enter the corrected value — a first governance has no prior value to carry.');
+              return;
+            }
+            // DIVERGENCE GUARD (5F.5). `prior` above is derived from the SNAPSHOT alone,
+            // so a field already published in the STORE reaches here looking ungoverned —
+            // which is precisely how a second parentless lineage was created in 5F.4.
+            // The guard reads both, and blocks rather than choosing a winner.
+            const fg = firstGovernanceGuard(assetId, targetPath, kcrs, liveEntries);
+            if (!fg.ok) { setCorrectNote(`Blocked: ${fg.reason}`); return; }
+            const pbA = (ALL_PLAYBOOKS || []).find((x) => x && x.type === assetId);
+            const puA = pbA && (pbA.purchases || []).find((x) => x && x.id === pid);
+            const firstK = openAuthoredGovernance(
+              { assetId, fieldPath: targetPath, authoredValue: puA ? puA[correctField] : null },
+              { newValue,
+                // NEWPROVENANCE MUST MIRROR THE CITED SOURCES (5F.10). The composer left
+                // this null, so `format()` wrote the default
+                // `{verificationStatus: 'synthesized', sources: []}` — and the BAKE reads
+                // `newProvenance`, not `newValue`, for the entry-level provenance and
+                // `evidenceIds`. Measured on three records promoted to the corpus:
+                //
+                //   snapshot entry -> evidenceIds: []   provenance.verificationStatus: 'synthesized'
+                //   snapshotEntryToKcr(entry) -> no evidence ids to hydrate
+                //   canReachCited(reconstructed) -> FALSE
+                //
+                // A host still saw the Sourced line (that reads `newValue`), so this was
+                // invisible from the front — but the field could never be corrected again
+                // from the snapshot. The two provenance halves have to agree.
+                newProvenance: provenanceMirror(correctField, newValue),
+                reason: reason.trim(), by: role, asOf: new Date().toISOString(),
+                // EVIDENCE (5F.8). This argument was never supplied, so every record this
+                // path has ever created carried `evidence: []` — and `canReachCited`
+                // therefore refused it, making the record unpromotable to the corpus and
+                // the field permanently uncorrectable. Four such records are in the store.
+                // The sources are the ones the human picked from the axis-approved list;
+                // this records that choice in the shape the corpus requires.
+                evidence: evidenceFromSources(newValue && newValue.sources,
+                  { confidence: (newValue && newValue.confidence) || 'medium' }),
+                id: `authored-${assetId.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${targetPath.replace(/[^a-zA-Z0-9]+/g, '-')}-${Date.now()}` },
+            );
+            await upsertKCR(firstK);
+            setCorrectNote(`First governance opened for ${assetId} · ${targetPath} — authored value ${JSON.stringify(puA ? puA[correctField] : null)} recorded as the prior. Starts a new lineage and supersedes nothing. Awaiting review ✓`);
+            setCorrectRow(null); setAcqTarget(null); setCorrectReason('');
+            setCorrectDraft(null); setCorrectField('provenance');
+            await refresh();
+            return;
+          }
+          const isSameField = targetPath === prior.fieldPath;
+          const corr = openCorrection({ ...prior, fieldPath: targetPath }, {
+            newValue,
+            newProvenance: provenanceMirror(correctField, newValue),
+            reason: reason.trim(),
+            by: role,
+            asOf: new Date().toISOString(),
+            // Same fix on the supersession path. `openCorrection` carries the prior's
+            // evidence forward, which is right for a same-field correction — but a
+            // correction that changes the CITED SOURCES must carry the new ones too, or
+            // the evidence describes the superseded claim.
+            evidence: evidenceFromSources(newValue && newValue.sources,
+              { confidence: (newValue && newValue.confidence) || 'medium' }),
+            id: `${prior.id}-correction-${Date.now()}`,
+          });
+          await upsertKCR(prior);                // seed the ancestor so lineage resolves
+          // A new-field publication carries no ancestor; publishKCR then mints a
+          // fresh v1 instead of superseding an unrelated record.
+          await upsertKCR(isSameField ? corr : { ...corr, correctionOf: null });
+          // The message has to tell the SAME truth the record does. It used to claim
+          // "(supersedes <prior version>)" unconditionally — so opening the first
+          // correction of a new field from an unrelated published row announced that
+          // it would retire that row, while `correctionOf: null` two lines above says
+          // it will not. The lineage was right and the sentence was wrong, which is
+          // the worse of the two failures: an admin can only act on the sentence.
+          setCorrectNote(isSameField
+            ? `Correction opened for ${targetPath} (supersedes ${prior.publishedVersion}) — awaiting review ✓`
+            : `Correction opened for ${targetPath} — a newly governed field, so it starts its own lineage and supersedes nothing. Awaiting review ✓`);
+          setCorrectRow(null); setCorrectReason(''); setCorrectDraft(null); setCorrectField('provenance');
+          // REGRESSION FIX (Phase 5C.8). This is why the correction landed in the store
+          // but Review showed 0: the workspace's `kcrs` state was never re-read after
+          // upsertKCR. `refresh` is the component-level loader; Review filters purely on
+          // status, so once the state is current the correction appears.
+          await refresh();
+          setWs('Review');
+        } catch (e) { setCorrectNote(`Blocked: ${e.message}`); }
+      };
+
+      const doRollback = async (row) => {
+        const { head } = lineageHistory(row.assetId, row.fieldPath, kcrs);
+        if (!head) { setCorrectNote('Rollback blocked: no published head for that field.'); return; }
+        if (!rollbackReason.trim()) { setCorrectNote('A rollback must state its reason.'); return; }
+        try {
+          // rollbackKCR requires the head to be IN the store — seed it if this is the
+          // first action on a committed-but-never-loaded record.
+          const seeded = kcrs.find((k) => k.id === head.id) ? null : head;
+          if (seeded) await upsertKCR(seeded);
+          const reverted = rollbackKCR(head, { by: role, asOf: new Date().toISOString() });
+          await upsertKCR({
+            ...reverted,
+            // The reason rides on the record, not just in a toast — a withdrawal with no
+            // stated cause is indistinguishable from an accident.
+            reason: `ROLLBACK: ${rollbackReason.trim()} (was ${head.publishedVersion})`,
+          });
+          const target = rollbackTarget(row.assetId, row.fieldPath, kcrs);
+          setCorrectNote(`Rolled back ${row.fieldPath} — ${target
+            ? `${target.publishedVersion} becomes the head`
+            : 'the field reverts to its AUTHORED value'} on the next bake ✓`);
+          setRollbackRow(null); setRollbackReason('');
+          await refresh();
+        } catch (e) { setCorrectNote(`Blocked: ${e.message}`); }
+      };
+
+      const doExport = () => {
+        const blob = new Blob([serializePublishedExport(mergedForExport)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = EXPORT_FILENAME;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      };
       return (
         <div>
-          <Banner>KCRs approved and ready to publish — the final human gate. Publishing writes an override record that the runtime resolver applies. Nothing publishes automatically.</Banner>
+          <Banner>KCRs approved and ready to publish — the final human gate. Publishing writes a governed KCR record. Nothing publishes automatically, and nothing reaches a host until the export below is committed and baked.</Banner>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>
             <PBKpi label="Approved" value={byStatus.approved || 0} tone={D.good} />
             <PBKpi label="Published all time" value={byStatus.published || 0} tone={D.good} />
+            <PBKpi label="In export (heads)" value={expSum.heads} tone={D.accent} />
+            <PBKpi label="Superseded (history)" value={expSum.superseded} tone={D.faint} />
           </div>
+
+          {/* THE MISSING LINK. Publishing a KCR does not change what a host sees — the
+              runtime reads a BAKED artifact built from knowledge-exports/published-kcrs.json.
+              This projects the published KCRs into exactly that file. The bake stays a
+              deliberate human step (download -> commit -> `npm run bake:knowledge`), so a bad
+              publish is caught in a diff instead of discovered by a host. */}
+          <div style={{ border: `1px solid ${D.border}`, borderRadius: 8, padding: 12, marginBottom: 14, background: D.surface2 }}>
+            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 8 }}>
+              RUNTIME EXPORT — {expSum.records} published record{expSum.records === 1 ? '' : 's'} across {expSum.fields} field{expSum.fields === 1 ? '' : 's'}
+              {expSum.superseded > 0 && ` · ${expSum.superseded} superseded (kept for history, will not win resolution)`}
+            </div>
+            <div style={{ fontSize: 10, color: D.faint, marginBottom: 10, lineHeight: 1.5 }}>
+              Download replaces <code>knowledge-exports/{EXPORT_FILENAME}</code>, then run <code>npm run bake:knowledge</code>.
+              Nothing here writes to runtime. Verify any field afterwards in Runtime Preview.
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={doExport} disabled={!exported.length}
+                style={{ padding: '5px 11px', borderRadius: 6, fontSize: type.size.caption, fontFamily: D.ff,
+                  border: `1px solid ${D.accent}`, background: exported.length ? D.accent : 'transparent',
+                  color: exported.length ? '#0b0d10' : D.faint, cursor: exported.length ? 'pointer' : 'not-allowed' }}>
+                Export published KCRs
+              </button>
+              <button type="button" onClick={() => setWs('Runtime Preview')}
+                style={{ padding: '5px 11px', borderRadius: 6, fontSize: type.size.caption, fontFamily: D.ff,
+                  border: `1px solid ${D.border}`, background: 'transparent', color: D.muted, cursor: 'pointer' }}>
+                Verify in Runtime Preview →
+              </button>
+            </div>
+          </div>
+
+          {/* PUBLISHED KNOWLEDGE INVENTORY (Phase 5C.6, D1) — "what is currently live?"
+              Read from the baked artifact the runtime itself serves, so it cannot drift
+              from what a host sees. A projection, not a second store. */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
+              LIVE IN RUNTIME — {inventory.length} governed field{inventory.length === 1 ? '' : 's'}
+            </div>
+            {/* DIVERGENCE DETECTION (Phase 5F.4.1). Three states claim to know what is
+                governed — the admin store, the baked snapshot, and the committed corpus —
+                and they diverged twice in one session with nothing reporting it. Once a
+                duplicate lineage was created because the picker read the SNAPSHOT (which
+                had been restored) while the store already held a published record.
+                DETECTION ONLY: which side is right is a human judgement, and a tool that
+                guessed would sometimes delete real work. */}
+            {(() => {
+              const dv = detectDivergence(kcrs, publishedEntries());
+              if (dv.ok) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.warn, border: `1px solid ${D.warn}55`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong>{divergenceSummary(dv)}</strong>
+                  {dv.findings.slice(0, 5).map((f, i) => (
+                    <div key={i} style={{ color: D.muted, marginTop: 3, fontFamily: D.mono }}>
+                      {f.kind} — {f.detail}
+                    </div>
+                  ))}
+                  {dv.findings.length > 5 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{dv.findings.length - 5} more</div>
+                  )}
+                </div>
+              );
+            })()}
+            {/* RECONCILIATION (5F.6 W1). Divergence above says the store and the snapshot
+                disagree. This says what to DO about each record that exists only here —
+                with the caveat that the machine never says "promote". Every clean record
+                still needs a human to confirm the source's scope reaches the event. */}
+            {(() => {
+              const cands = reconciliationCandidates(kcrs, publishedEntries(), publishedCorpus);
+              if (!cands.length) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.muted, border: `1px solid ${D.border}`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong style={{ color: D.text }}>{reconciliationSummary(cands)}</strong>
+                  {cands.slice(0, 6).map((c) => (
+                    <div key={c.key} style={{ marginTop: 3, fontFamily: D.mono }}>
+                      <span style={{ color: c.recommended === 'reject' ? D.warn : D.faint }}>
+                        {c.recommended}
+                      </span>
+                      {' — '}{c.assetId} · {c.fieldPath}
+                      {c.blockers.length ? ` [${c.blockers.join(', ')}]` : ''}
+                      {' · host impact: '}{c.hostImpact}
+                    </div>
+                  ))}
+                  {cands.length > 6 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{cands.length - 6} more</div>
+                  )}
+                </div>
+              );
+            })()}
+            {/* SOURCE FRESHNESS (5F.6 W3). Recorded in 90 places, surfaced in none until
+                now. A WARNING only — nothing here withdraws grounding. */}
+            {(() => {
+              const fresh = sourceFreshness(new Date().toISOString());
+              const due = needsRecheck(fresh);
+              if (!due.length) return null;
+              return (
+                <div style={{ fontSize: 9, color: D.muted, border: `1px solid ${D.border}`,
+                  borderRadius: 6, padding: 8, marginBottom: 8, lineHeight: 1.55 }}>
+                  <strong style={{ color: D.text }}>{freshnessSummary(fresh)}</strong>
+                  {due.slice(0, 4).map((r) => (
+                    <div key={r.id} style={{ marginTop: 3, fontFamily: D.mono }}>
+                      {r.state} — {r.id} ({r.axis}) · {r.action}
+                    </div>
+                  ))}
+                  {due.length > 4 && (
+                    <div style={{ color: D.faint, marginTop: 3 }}>+{due.length - 4} more</div>
+                  )}
+                </div>
+              );
+            })()}
+            {correctNote && <div style={{ fontSize: 10, color: D.good, marginBottom: 6, fontFamily: D.mono }}>{correctNote}</div>}
+            {/* ACQUISITION TARGET (Phase 5F.2). The picker can select a field that has
+                never been published, which has no inventory row to attach a composer to.
+                Rather than fork the 297-line typed editor, the target is rendered as a
+                first-class row: same composer, same validation, same gates — the only
+                difference is that `doCorrect` finds no prior and opens a FIRST
+                governance instead of a supersession. One editor, two origins. */}
+            {(() => {
+              if (!acqTarget) return null;
+              const fp = `${acqTarget.purchaseId}.${acqTarget.field}`;
+              const already = inventory.some((r) => r.assetId === acqTarget.assetId && r.fieldPath === fp);
+              if (already) return null;                 // it IS governed — the real row handles it
+              const pseudo = { assetId: acqTarget.assetId, fieldPath: fp, version: '(not yet governed)' };
+              return (
+                <div style={{ padding: '6px 8px', border: `1px solid ${D.accent}55`, borderRadius: 6, marginBottom: 8, background: D.surface2 }}>
+                  <div style={{ fontSize: 10, color: D.text, fontFamily: D.mono }}>
+                    {pseudo.assetId} · {pseudo.fieldPath}
+                    <span style={{ color: D.accent, marginLeft: 8, fontSize: 9 }}>FROM ACQUISITION — never governed</span>
+                  </div>
+                  <div style={{ fontSize: 9, color: D.faint, marginTop: 2 }}>
+                    Authored value is the prior. This starts a new lineage and supersedes nothing.
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, marginTop: 5 }}>
+                    <button type="button" onClick={() => { setCorrectRow(pseudo); setRollbackRow(null); }}
+                      style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.accent}`, borderRadius: 5, padding: '3px 10px', color: D.accent, cursor: 'pointer' }}>
+                      Govern this field
+                    </button>
+                    <button type="button" onClick={() => { setAcqTarget(null); setCorrectRow(null); }}
+                      style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                      Clear
+                    </button>
+                  </div>
+                  {correctRow && correctRow.fieldPath === pseudo.fieldPath && correctRow.assetId === pseudo.assetId && (
+                    <div style={{ fontSize: 9, color: D.faint, marginTop: 4 }}>Composer open below.</div>
+                  )}
+                </div>
+              );
+            })()}
+            {inventory.length === 0 && !acqTarget
+              ? <Empty msg="No governed knowledge is live. Runtime is serving authored defaults for every field." />
+              : [
+                  ...(acqTarget && !inventory.some((r) => r.assetId === acqTarget.assetId
+                        && r.fieldPath === `${acqTarget.purchaseId}.${acqTarget.field}`)
+                    ? [{ assetId: acqTarget.assetId, fieldPath: `${acqTarget.purchaseId}.${acqTarget.field}`,
+                         version: '(not yet governed)', tier: 'authored', confidence: '-', asOf: '-', firstGovernance: true }]
+                    : []),
+                  ...inventory,
+                ].map((r) => (
+                <div key={`${r.assetId}-${r.fieldPath}`} style={{ padding: '6px 8px', borderBottom: `1px solid ${D.border}44` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 10, fontFamily: D.mono, color: D.text, flex: 1 }}>{r.assetId} · {r.fieldPath}</span>
+                    <span style={{ fontSize: 9, color: D.good, fontFamily: D.mono }}>{r.runtimeStatus}</span>
+                    <span style={{ fontSize: 9, color: D.faint, fontFamily: D.mono }}>{r.confidence || '—'}</span>
+                    <button type="button"
+                      onClick={() => { setRtType(r.assetId); setRtField(r.fieldPath); setRtResult(null); setWs('Runtime Preview'); }}
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.accent, cursor: 'pointer' }}>
+                      verify →
+                    </button>
+                    <button type="button" onClick={() => { setRollbackRow(r); setRollbackReason(''); setCorrectRow(null); }}
+                      title="Withdraw this published version. The prior version becomes live; nothing is deleted."
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.muted, cursor: 'pointer' }}>
+                      Rollback
+                    </button>
+                    <button type="button" onClick={() => { setCorrectRow(r); setCorrectReason(''); setRollbackRow(null); }}
+                      title="Open a governed correction that supersedes this version. Goes to Review — nothing publishes here."
+                      style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.warn}`, borderRadius: 5, padding: '2px 8px', color: D.warn, cursor: 'pointer' }}>
+                      Correct this
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 9, fontFamily: D.mono, color: D.faint, marginTop: 2 }}>
+                    {r.version || 'no version'} · {r.tier || 'no tier'} · {r.publishedAt ? String(r.publishedAt).slice(0, 10) : 'no date'}
+                  </div>
+                  {rollbackRow && rollbackRow.fieldPath === r.fieldPath && rollbackRow.assetId === r.assetId && (() => {
+                    const { history } = lineageHistory(r.assetId, r.fieldPath, kcrs);
+                    const target = rollbackTarget(r.assetId, r.fieldPath, kcrs);
+                    return (
+                      <div style={{ marginTop: 6, padding: 8, border: `1px solid ${D.border}`, borderRadius: 6, background: D.surface2 }}>
+                        <div style={{ fontSize: 9, color: D.muted, marginBottom: 5 }}>VERSION HISTORY — newest first</div>
+                        {history.map((h, i) => (
+                          <div key={h.id} style={{ fontSize: 9, fontFamily: D.mono, color: i === 0 ? D.text : D.faint, marginBottom: 2 }}>
+                            {i === 0 ? '● live  ' : '   ·    '}{h.publishedVersion}
+                          </div>
+                        ))}
+                        <div style={{ fontSize: 10, color: target ? D.warn : D.bad, margin: '7px 0 5px' }}>
+                          {target
+                            ? `Rolling back makes ${target.publishedVersion} live again.`
+                            : 'No earlier version — this field would revert to its AUTHORED value.'}
+                        </div>
+                        <textarea value={rollbackReason} onChange={(e) => setRollbackReason(e.target.value)}
+                          placeholder="Why is this version being withdrawn?"
+                          style={{ width: '100%', minHeight: 40, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                            color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 6 }} />
+                        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                          <button type="button" onClick={() => doRollback(r)} disabled={!rollbackReason.trim()}
+                            style={{ fontSize: 9, background: rollbackReason.trim() ? D.bad : 'transparent',
+                              border: `1px solid ${D.bad}`, borderRadius: 5, padding: '3px 10px',
+                              color: rollbackReason.trim() ? '#0b0d10' : D.faint, cursor: rollbackReason.trim() ? 'pointer' : 'not-allowed' }}>
+                            Confirm rollback
+                          </button>
+                          <button type="button" onClick={() => { setRollbackRow(null); setRollbackReason(''); }}
+                            style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                  {correctRow && correctRow.fieldPath === r.fieldPath && correctRow.assetId === r.assetId && (
+                    <div style={{ marginTop: 6, padding: 8, border: `1px solid ${D.warn}55`, borderRadius: 6, background: D.surface2 }}>
+                      <div style={{ fontSize: 9, color: D.muted, marginBottom: 5 }}>
+                        Correcting <code>{r.version}</code> — the new version will supersede it. Goes to Review; nothing publishes here.
+                      </div>
+                      {/* FIELD-AWARE VALUE EDITOR (Phase 5E). Which governed field is
+                          changing decides which inputs render, because the shapes differ:
+                          qtyPerGuest is a number, unitCostRange is a [min,max] tuple,
+                          provenance is a structured block. One free-text box would happily
+                          publish "0.5" as a string and the engine would resolve NaN in a
+                          host's shopping list — which is why there isn't one. */}
+                      {/* PURCHASE picker (5E.3). Governing a field that was never published
+                          is the normal case — the inventory only shows what is already live. */}
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 9, color: D.faint }}>ITEM</span>
+                        <select value={correctPurchase || String(r.fieldPath).split('.')[0]}
+                          onChange={(e) => { setCorrectPurchase(e.target.value); setCorrectDraft(null); }}
+                          style={{ fontSize: 9, fontFamily: D.mono, background: D.surface, color: D.text,
+                            border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 6px', maxWidth: 320 }}>
+                          {(((ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId) || {}).purchases || [])
+                            .map((pu) => (
+                              <option key={pu.id} value={pu.id}>
+                                {pu.id} — {String(pu.item).slice(0, 42)}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 9, color: D.faint }}>FIELD</span>
+                        {/* The two ENGINE-GOVERNING fields (5E.3) are offered only on a
+                            purchase that actually carries them. Listing priceLadder on
+                            Old Bay would offer a route that resolves to nothing — the
+                            same emptiness the ownership contract refuses elsewhere. */}
+                        {(() => {
+                        const pbF = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pidF = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const puF = pbF && (pbF.purchases || []).find((x) => x && x.id === pidF);
+                        return ['provenance', 'qtyPerGuest', 'unitCostRange']
+                          .concat(['priceLadder', 'servingGuide'].filter((f) => puF && puF[f]))
+                          .map((f) => {
+                          // The PURCHASE is passed so ownership reflects what this line
+                          // actually carries (e.g. `sourcingPrices` on a channel-priced
+                          // protein), not an id allowlist that can go stale.
+                          const own = fieldOwnership(r.assetId, `${pidF}.${f}`, puF);
+                          return (
+                          <button key={f} type="button" disabled={!own.editable}
+                            title={own.editable ? '' : blockedMessage(own)}
+                            onClick={() => {
+                              if (!own.editable) return;
+                              setCorrectField(f);
+                              if (f === 'provenance') { setCorrectDraft(null); return; }
+                              // PRE-FILL from what is CURRENTLY live (Phase 5E). A correction
+                              // is an old -> new decision, so the reviewer must see the number
+                              // being replaced; an empty box turns a governed change into a
+                              // guess. Reads the same purchase the engine reads.
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const purch = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              const live = purch ? purch[f] : undefined;
+                              setCorrectDraft(fieldTypeFor(`x.${f}`).format(live));
+                            }}
+                            style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5,
+                              cursor: own.editable ? 'pointer' : 'not-allowed',
+                              border: `1px solid ${correctField === f ? D.accent : D.border}`,
+                              background: correctField === f ? D.accent + '22' : 'transparent',
+                              opacity: own.editable ? 1 : 0.45,
+                              color: correctField === f ? D.accent : D.muted }}>
+                            {f}{own.editable ? '' : ' (engine-owned)'}
+                          </button>
+                          );
+                        });
+                        })()}
+                      </div>
+                      {/* OWNERSHIP (5E.1). Naming the engine and the governing rule, because
+                          "you cannot edit this" with no next step reads as a broken tool. */}
+                      {(() => {
+                        const _pbO = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const _pidO = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const _puO = _pbO && (_pbO.purchases || []).find((x) => x && x.id === _pidO);
+                        const own = fieldOwnership(r.assetId, `${_pidO}.${correctField}`, _puO);
+                        return own.editable ? null : (
+                          <div style={{ fontSize: 9, color: D.warn, marginBottom: 6, lineHeight: 1.5 }}>
+                            {blockedMessage(own)}
+                            <div style={{ color: D.faint, marginTop: 2 }}>{own.why}</div>
+                          </div>
+                        );
+                      })()}
+                      {/* PROVENANCE EDITOR (Phase 5F). `governedFieldTypes.provenance` has
+                          carried format/parse/validate/validateForEditor since 5E, and the
+                          composer rendered inputs for every OTHER typed field but not this
+                          one. Selecting `provenance` therefore left the draft null and
+                          doCorrect fell through to `newValue = entry.value` — the correction
+                          re-published the EXISTING provenance unchanged. An administrator
+                          could not author a new source attribution at all; every provenance
+                          block in the corpus got there by a developer editing a file.
+                          That is the acquisition bottleneck this phase exists to remove. */}
+                      {correctField === 'provenance' && (() => {
+                        const T = fieldTypeFor('x.provenance');
+                        const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                        const live = pu ? pu.provenance : undefined;
+                        const d = (correctDraft && typeof correctDraft === 'object' && 'sources' in correctDraft)
+                          ? correctDraft : T.format(live);
+                        const set = (k, v) => setCorrectDraft({ ...d, [k]: v });
+                        const box = { fontSize: 10, fontFamily: D.mono, background: D.surface, color: D.text,
+                          border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 };
+                        return (
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, lineHeight: 1.5 }}>{T.hint}</div>
+                            <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 4 }}>
+                              current: {live
+                                ? `${(live.sources || []).join(', ') || '(no sources)'} — ${String(live.note || '').slice(0, 60)}`
+                                : 'not set — this claim is currently ungrounded'}
+                            </div>
+                            {/* SOURCE PICKER (Phase 5F.2 Step 2). This was a free-text box.
+                                Typing `usda-meat-2026` — a REAL id, but a cost source —
+                                published cleanly and then failed `isGroundedItemQty`, which
+                                requires every cited id to resolve in QTY_SOURCES. The claim
+                                silently never grounded, the host showed no "Sourced -" line,
+                                and nothing reported an error. A silent ungrounding is
+                                indistinguishable from never having done the work.
+
+                                The options come from the registry the PREDICATE reads, so
+                                what an admin can cite and what can actually ground are the
+                                same list by construction. Free text is gone. */}
+                            {(() => {
+                              const fp = `${pid}.provenance`;
+                              const approved = approvedSourcesFor(fp);
+                              const chosen = String(d.sources || '').split(',').map((x) => x.trim()).filter(Boolean);
+                              const check = validateSourcesFor(fp, chosen);
+                              const toggle = (id) => set('sources',
+                                (chosen.includes(id) ? chosen.filter((x) => x !== id) : [...chosen, id]).join(', '));
+                              // TIER (Phase 5F.3 defect). `format()` carries the AUTHORED tier
+                              // forward, and `isGroundedItemQty` requires tier === 'researched'.
+                              // So a correction on a purchase already sitting at `norm` or
+                              // `trade-heuristic` cited an approved source, published cleanly,
+                              // and NEVER GROUNDED — while the verdict below said "Will ground",
+                              // because it only checked sources. Measured on The Cookout
+                              // (trade-heuristic) and Quinceanera (norm) in the 5F.3 cohort.
+                              //
+                              // The tier is not silently upgraded: it is a claim about evidence
+                              // quality and belongs to the human. It is SHOWN, made changeable,
+                              // and the verdict now runs the real predicate over the whole block.
+                              const tierNow = d.tier || 'researched';
+                              const draftProv = { tier: tierNow, confidence: d.confidence || 'medium',
+                                verificationStatus: 'researched', sources: chosen, note: d.note || '' };
+                              const grounds = wouldGround(fp, draftProv);
+                              return (
+                                <div style={{ marginBottom: 6 }}>
+                                  <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                                    APPROVED SOURCES — {check.axis ? check.axis.label : 'no axis'} ·
+                                    grounded by <code>{check.axis ? check.axis.predicateName : '-'}</code>
+                                  </div>
+                                  {approved.length === 0 && (
+                                    <div style={{ fontSize: 9, color: D.warn }}>
+                                      No approved sources exist for this axis yet. Registering one is a
+                                      reviewed code change — deciding who may be believed is not a text box.
+                                    </div>
+                                  )}
+                                  {approved.map((s) => {
+                                    const on = chosen.includes(s.id);
+                                    return (
+                                      <button key={s.id} type="button" onClick={() => toggle(s.id)}
+                                        title={`${s.claim}`}
+                                        style={{ display: 'block', width: '100%', textAlign: 'left', marginBottom: 3,
+                                          fontSize: 9, padding: '4px 7px', borderRadius: 5, cursor: 'pointer',
+                                          border: `1px solid ${on ? D.accent : D.border}`,
+                                          background: on ? D.accent + '18' : 'transparent',
+                                          color: on ? D.accent : D.muted }}>
+                                        <span style={{ fontFamily: D.mono }}>{on ? '✓ ' : '  '}{s.id}</span>
+                                        <span style={{ color: D.faint, marginLeft: 6 }}>{String(s.org).slice(0, 54)}</span>
+                                        <span style={{ color: D.faint, marginLeft: 6, fontFamily: D.mono }}>captured {s.fetched}</span>
+                                      </button>
+                                    );
+                                  })}
+                                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 5 }}>
+                                    <span style={{ fontSize: 9, color: D.faint, width: 74 }}>TIER</span>
+                                    {['researched', tierNow !== 'researched' ? tierNow : null].filter(Boolean).map((t) => (
+                                      <button key={t} type="button" onClick={() => set('tier', t)}
+                                        style={{ fontSize: 9, fontFamily: D.mono, padding: '2px 8px', borderRadius: 5,
+                                          cursor: 'pointer', border: `1px solid ${tierNow === t ? D.accent : D.border}`,
+                                          background: tierNow === t ? D.accent + '22' : 'transparent',
+                                          color: tierNow === t ? D.accent : D.muted }}>
+                                        {t}{t !== 'researched' ? ' (carried, will NOT ground)' : ''}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  {chosen.length > 0 && (
+                                    <div style={{ fontSize: 9, marginTop: 4, color: grounds ? D.good : D.warn, lineHeight: 1.5 }}>
+                                      {!check.ok
+                                        ? check.errors.join(' ')
+                                        : grounds
+                                          ? `Will ground — ${check.axis.hostImpact}`
+                                          : `Will NOT ground: tier is "${tierNow}" and ${check.axis.predicateName} requires "researched". The source is approved, but the host would show no Sourced line.`}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', marginBottom: 4 }}>
+                              <span style={{ fontSize: 9, color: D.faint, width: 74, paddingTop: 5 }}>CLAIM NOTE</span>
+                              <textarea value={d.note || ''} onChange={(e) => set('note', e.target.value)}
+                                placeholder="What does the source actually say? A source without a claim is not provenance."
+                                style={{ ...box, flex: 1, minHeight: 44 }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <span style={{ fontSize: 9, color: D.faint, width: 74 }}>CONFIDENCE</span>
+                              {CONFIDENCE_LEVELS.map((c) => (
+                                <button key={c} type="button" onClick={() => set('confidence', c)}
+                                  style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
+                                    border: `1px solid ${d.confidence === c ? D.accent : D.border}`,
+                                    background: d.confidence === c ? D.accent + '22' : 'transparent',
+                                    color: d.confidence === c ? D.accent : D.muted }}>{c}</button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                      {correctField === 'qtyPerGuest' && (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                            {fieldTypeFor('x.qtyPerGuest').hint}
+                          </div>
+                          <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 3 }}>
+                            current: {(() => {
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              return pu && pu.qtyPerGuest != null ? String(pu.qtyPerGuest) : 'not set';
+                            })()}
+                          </div>
+                          <input type="text" value={correctDraft == null ? '' : correctDraft}
+                            onChange={(e) => setCorrectDraft(e.target.value)}
+                            placeholder="e.g. 0.5"
+                            style={{ width: 120, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                              color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                        </div>
+                      )}
+                      {correctField === 'unitCostRange' && (
+                        <div style={{ marginBottom: 6 }}>
+                          <div style={{ fontSize: 9, color: D.faint, marginBottom: 3 }}>
+                            {fieldTypeFor('x.unitCostRange').hint}
+                          </div>
+                          <div style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, marginBottom: 3 }}>
+                            current: {(() => {
+                              const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                              const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                              const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                              return pu && Array.isArray(pu.unitCostRange) ? `$${pu.unitCostRange[0]}-$${pu.unitCostRange[1]}` : 'not set';
+                            })()}
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                            <input type="text" placeholder="min"
+                              value={(correctDraft && correctDraft.min) || ''}
+                              onChange={(e) => setCorrectDraft({ ...(correctDraft || {}), min: e.target.value })}
+                              style={{ width: 80, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                            <span style={{ color: D.faint, fontSize: 10 }}>to</span>
+                            <input type="text" placeholder="max"
+                              value={(correctDraft && correctDraft.max) || ''}
+                              onChange={(e) => setCorrectDraft({ ...(correctDraft || {}), max: e.target.value })}
+                              style={{ width: 80, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 5 }} />
+                          </div>
+                        </div>
+                      )}
+                      {/* ROW EDITORS for the two engine-governing fields (5E.3).
+                          Both are nested objects. A JSON textarea would have given the
+                          crab line — the costliest item a host buys, and the one the
+                          ownership contract sends admins here to fix — the least safe
+                          editor in the console, so each renders named numeric inputs
+                          for ONE size at a time with the live value beside each box.
+                          The untouched sizes ride through in the draft's `base`. */}
+                      {(correctField === 'priceLadder' || correctField === 'servingGuide') && (() => {
+                        const T = fieldTypeFor(`x.${correctField}`);
+                        const pbNow = (ALL_PLAYBOOKS || []).find((x) => x && x.type === r.assetId);
+                        const pid = correctPurchase || String(r.fieldPath).split('.')[0];
+                        const pu = pbNow && (pbNow.purchases || []).find((x) => x && x.id === pid);
+                        const live = pu ? pu[correctField] : undefined;
+                        const draft = (correctDraft && correctDraft.row) ? correctDraft : T.format(live);
+                        const isLadder = correctField === 'priceLadder';
+                        const keys = isLadder
+                          ? T.rowKeys(live)
+                          : Object.keys((live && live.bySize) || {}).filter((k) => T.sizes.includes(k));
+                        // What is live for the SELECTED size, so old and new sit side by side.
+                        const liveRow = isLadder
+                          ? ((live && live[draft.key]) || {})
+                          : (((live && live.bySize) || {})[draft.key] || {});
+                        const setRow = (f, val) => setCorrectDraft({ ...draft, row: { ...draft.row, [f]: val } });
+                        return (
+                          <div style={{ marginBottom: 6 }}>
+                            <div style={{ fontSize: 9, color: D.faint, marginBottom: 4, lineHeight: 1.5 }}>{T.hint}</div>
+                            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 9, color: D.faint }}>{isLadder ? 'SIZE / GRADE' : 'CRAB SIZE'}</span>
+                              {keys.map((k) => (
+                                <button key={k} type="button"
+                                  // Switching size re-seeds the inputs from what is LIVE for
+                                  // that size, while `base` stays the whole authored object so
+                                  // the sizes not being corrected survive the publish untouched.
+                                  onClick={() => setCorrectDraft({
+                                    base: live && typeof live === 'object' ? live : {},
+                                    key: k,
+                                    row: T.format(isLadder
+                                      ? { [k]: (live && live[k]) || {} }
+                                      : { bySize: { [k]: ((live && live.bySize) || {})[k] || {} } }).row,
+                                  })}
+                                  style={{ fontSize: 9, padding: '2px 8px', borderRadius: 5, cursor: 'pointer',
+                                    border: `1px solid ${draft.key === k ? D.accent : D.border}`,
+                                    background: draft.key === k ? D.accent + '22' : 'transparent',
+                                    color: draft.key === k ? D.accent : D.muted }}>
+                                  {k}
+                                </button>
+                              ))}
+                            </div>
+                            {isLadder ? T.fields.map((f) => (
+                              <div key={f} style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 3 }}>
+                                <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, width: 148 }}>{f}</span>
+                                <input type="text" value={draft.row[f] == null ? '' : draft.row[f]}
+                                  onChange={(e) => setRow(f, e.target.value)} placeholder="—"
+                                  style={{ width: 78, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                    color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>
+                                  current: {liveRow[f] == null ? 'not set' : `$${liveRow[f]}`}
+                                </span>
+                              </div>
+                            )) : T.fields.map((f) => (
+                              <div key={f} style={{ marginBottom: 5 }}>
+                                <div style={{ fontSize: 9, color: D.faint, marginBottom: 2 }}>{T.fieldHints[f]}</div>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.muted, width: 76 }}>{f}</span>
+                                  <input type="text" placeholder="low"
+                                    value={(draft.row[f] && draft.row[f].low) || ''}
+                                    onChange={(e) => setRow(f, { ...draft.row[f], low: e.target.value })}
+                                    style={{ width: 58, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                      color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                  <span style={{ color: D.faint, fontSize: 10 }}>to</span>
+                                  <input type="text" placeholder="high"
+                                    value={(draft.row[f] && draft.row[f].high) || ''}
+                                    onChange={(e) => setRow(f, { ...draft.row[f], high: e.target.value })}
+                                    style={{ width: 58, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                                      color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 4 }} />
+                                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>
+                                    current: {Array.isArray(liveRow[f]) ? `${liveRow[f][0]}–${liveRow[f][1]}` : 'not set'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                            {!isLadder && (
+                              <div style={{ fontSize: 9, color: D.faint, marginTop: 4, lineHeight: 1.5 }}>
+                                All three are required — the engine discards a row missing any of them,
+                                so a half-filled correction would publish and change nothing.
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      <textarea value={correctReason} onChange={(e) => setCorrectReason(e.target.value)}
+                        placeholder="Why is this being corrected? A correction without a stated defect is indistinguishable from an edit."
+                        style={{ width: '100%', minHeight: 46, fontSize: 10, fontFamily: D.mono, background: D.surface,
+                          color: D.text, border: `1px solid ${D.border}`, borderRadius: 5, padding: 6 }} />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <button type="button" onClick={() => doCorrect(r)} disabled={!correctReason.trim()}
+                          style={{ fontSize: 9, background: correctReason.trim() ? D.warn : 'transparent',
+                            border: `1px solid ${D.warn}`, borderRadius: 5, padding: '3px 10px',
+                            color: correctReason.trim() ? '#0b0d10' : D.faint, cursor: correctReason.trim() ? 'pointer' : 'not-allowed' }}>
+                          Open correction
+                        </button>
+                        <button type="button" onClick={() => { setCorrectRow(null); setCorrectReason(''); }}
+                          style={{ fontSize: 9, background: 'transparent', border: `1px solid ${D.border}`, borderRadius: 5, padding: '3px 10px', color: D.muted, cursor: 'pointer' }}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+          </div>
+
+          {/* Per-field verification: jump straight to what a host sees for THIS field. */}
+          {exported.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              {/* HEADING CORRECTED (5F.7). This list is the EXPORT, and the export
+                  deliberately carries every record that has ever been published —
+                  including rolled-back and ARCHIVED ones — so that history travels and
+                  rollback stays possible. Calling it "PUBLISHED FIELDS" told an
+                  operator that two records archived in 5F.4 for grounding dishonesty
+                  (The Cookout, Quinceanera) were published. They are refused at the
+                  bake by `isPublishable`, so no host could ever see them — but the
+                  console said otherwise, which is this phase's whole subject. */}
+              <div style={{ fontSize: type.size.caption, color: D.muted, marginBottom: 6 }}>
+                IN THE EXPORT — every version ever published, including superseded and archived.
+                Only <span style={{ color: D.good }}>published</span> rows reach a host.
+              </div>
+              {exported.map((k) => (
+                <div key={k.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: `1px solid ${D.border}44` }}>
+                  <span style={{ fontSize: 10, fontFamily: D.mono, color: k.status === 'published' ? D.text : D.faint, flex: 1 }}>{k.assetId} · {k.fieldPath}</span>
+                  <span style={{ fontSize: 9, fontFamily: D.mono,
+                    color: k.status === 'published' ? D.good : D.warn }}>{k.status || 'unknown'}</span>
+                  <span style={{ fontSize: 9, fontFamily: D.mono, color: D.faint }}>{k.publishedVersion || '—'}</span>
+                  <button type="button"
+                    onClick={() => { setRtType(k.assetId); setRtField(k.fieldPath); setRtResult(null); setWs('Runtime Preview'); }}
+                    style={{ fontSize: 9, background: D.surface2, border: `1px solid ${D.border}`, borderRadius: 5, padding: '2px 8px', color: D.accent, cursor: 'pointer' }}>
+                    verify →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {loading ? <Banner tone="muted">Loading…</Banner> : pubKcrs.length === 0 ? <Empty msg="No KCRs pending publish. Honest-empty." /> : <KcrTable items={pubKcrs} />}
         </div>
       );
@@ -3871,16 +4963,15 @@ function KcrStudioPanel() {
         }
       };
 
-      const handleMerge = () => {
-        if (!campRunResult || !gap) return;
-        // Auto-merge: mark as researched and update provenance
-        setCampRunResult({
-          ...campRunResult,
-          merged: true,
-          mergedAt: asOf,
-          message: `✓ Evidence merged into playbook. ${gap.label} cost factors now marked as researched.`
-        });
-      };
+      // REMOVED in Phase 5F.1: `handleMerge`. It set React state and wrote nothing —
+      // no KCR, no playbook write, no persistence — then reported
+      // "Evidence merged into playbook … now marked as researched."
+      //
+      // Deleted rather than left unreferenced. A dead function that fabricates a
+      // success message is one `onClick` from being live again, and its name reads
+      // like the feature it never was. When a real bridge is built it should be
+      // written against the governed path (openCorrection → Review → publish), not
+      // resurrected from this.
 
       const handleBatchGapClosure = async () => {
         if (!selectedPb || campSelectedGaps.length === 0 || campProviders.length === 0) return;
@@ -4701,16 +5792,35 @@ function KcrStudioPanel() {
                       </div>
                     )}
 
-                    <div style={{ fontSize: 11, color: D.good, marginBottom: 12 }}>✓ Campaign completed successfully</div>
-                    {campRunResult.merged ? (
-                      <div style={{ background: `${D.good}22`, border: `1px solid ${D.good}`, borderRadius: 6, padding: 10, fontSize: 11, color: D.good }}>
-                        {campRunResult.message}
+                    {/* TRUTH REPAIR (Phase 5F.1). This block used to read "✓ Campaign
+                        completed successfully" and offer "✓ Accept & Merge into Playbook",
+                        whose handler set React state and wrote NOTHING — no KCR, no
+                        playbook write, no persistence — then printed "✓ Evidence merged
+                        into playbook … now marked as researched."
+
+                        An operator was told a durable change had happened when none had.
+                        That is worse than a missing feature: it teaches the person running
+                        research that the loop is closed, so the gap never gets reported.
+
+                        Option B was taken (label honestly) rather than Option A (persist).
+                        Persisting would mean building an evidence→KCR bridge on top of a
+                        research layer whose fetchers were fabricating federal citations
+                        until this same phase. The bridge is the RIGHT next step — but only
+                        once records come from somewhere real. Wiring it first would have
+                        turned a silent no-op into a publisher of invented USDA data. */}
+                    <div style={{ fontSize: 11, color: D.muted, marginBottom: 8 }}>
+                      Campaign run finished — {(campCampaignEvidence || []).length} review candidate(s).
+                    </div>
+                    <div style={{ background: D.surface, border: `1px solid ${D.border}`, borderRadius: 6, padding: 10, fontSize: 10.5, color: D.muted, lineHeight: 1.55 }}>
+                      <strong style={{ color: D.text }}>Preview only — nothing is saved.</strong> These
+                      candidates are not evidence and are not governed knowledge. Nothing here
+                      reaches a host.
+                      <div style={{ marginTop: 6 }}>
+                        To make a finding real: register its source, then open a correction on the
+                        field from <em>Publishing → Correct this</em>. That path is reviewed,
+                        versioned and reversible; this panel is neither.
                       </div>
-                    ) : (
-                      <button onClick={handleMerge} style={{ width: '100%', padding: '10px', borderRadius: 6, border: 'none', background: D.good, color: '#fff', cursor: 'pointer', fontWeight: 600, fontSize: type.size.caption, fontFamily: 'inherit' }}>
-                        ✓ Accept & Merge into Playbook
-                      </button>
-                    )}
+                    </div>
                   </div>
                 )}
               </div>

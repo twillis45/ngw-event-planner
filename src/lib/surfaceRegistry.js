@@ -61,6 +61,7 @@ import { deriveVendorPromiseConflicts } from './vendorAccountability/conflicts';
 import { inferPromisesFromVendor } from './vendorAccountability/derive';
 import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks, playbookDecisionBoard } from './playbooks';
+import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd } from './dates';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
@@ -587,6 +588,26 @@ export const SURFACES = [
           // proof caught 4 of them being offered "back Jul 20".
           dueInDays: Number.isFinite(r.daysOut) ? r.daysOut : null,
           leadDays: Number.isFinite(r.daysOut) ? r.daysOut - days : null,
+          // ── THE BOARD'S CONSEQUENCE SURVIVES THE BOUNDARY (2026-07-31) ──────
+          // playbookDecisionBoard scores every row on weight, reversibility,
+          // heart, and how much it unblocks (gateHolder / _dependedOnCount), then
+          // sorts on it. Until now only `daysOut` crossed this boundary, so all
+          // of that ranking was computed and thrown away: downstream, every
+          // decision was just a date, and the action list re-sorted them on the
+          // date alone. The consequential call and the incidental one arrived
+          // indistinguishable, and whichever had the nearer window won.
+          // These are the board's OWN numbers, not new ones invented here.
+          priorityScore: Number.isFinite(r.priorityScore) ? r.priorityScore : null,
+          gateHolder: r.gateHolder === true,
+          unlocks: Number.isFinite(r._dependedOnCount) ? r._dependedOnCount : 0,
+          // The authored question, so the host reads the decision as written.
+          ask: r.ask || null,
+          // ── THE EVIDENCE ENVELOPE (2026-07-31) ────────────────────────────
+          // The board already computed the rank sentence, the importance basis
+          // and thirteen grounded axes with cited sources. Carried whole from
+          // here so a recommendation can answer "why this?" downstream. Read-only
+          // projection of THIS row — see lib/decisionEvidence.js.
+          evidence: evidenceFromDecisionRow(r),
         }));
     },
   },
@@ -716,6 +737,23 @@ export function raiseAll(event) {
         key: i.key != null ? String(i.key) : null,
         dueInDays: Number.isFinite(i.dueInDays) ? i.dueInDays : null,
         leadDays: Number.isFinite(i.leadDays) ? i.leadDays : null,
+        // ── THE FOURTH DEATH, AND THE FIFTH THROUGH EIGHTH (2026-07-31) ──────
+        // The sourceCategory note above records this normalizer as the last place
+        // that field silently died. Four MORE were still dying here, and every one
+        // of them has a consumer that was reading undefined:
+        //   priorityScore/gateHolder/unlocks — eventPlan's registry mapping copies
+        //     all three (CommandCenter ~:2090) and compareNextActions ranks on
+        //     them, so the board's score never reached the ranker: a decision
+        //     scored 308.5 arrived null and ranked as 0.
+        //   ask — heroAskFor prefers `a.ask`; the decisions raiser and the seating
+        //     raiser both author one, and neither could ever arrive.
+        // An explicit-field-list normalizer is a silent-drop machine; these are
+        // pinned by decisionEvidence.test.js so the next field cannot vanish here.
+        priorityScore: Number.isFinite(i.priorityScore) ? i.priorityScore : null,
+        gateHolder: i.gateHolder === true,
+        unlocks: Number.isFinite(i.unlocks) ? i.unlocks : 0,
+        ask: i.ask != null ? i.ask : null,
+        evidence: i.evidence || null,
       });
     }
   }

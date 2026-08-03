@@ -61,7 +61,30 @@ const CSS_RULES = [
   { sel: /\.hero\.elegant \.confrow:hover\{/, bad: /#[0-9a-fA-F]{6}/, label: '.confrow:hover uses a raw hex — use var(--steel-tint)' },
   { sel: /\.hero\.elegant \.whytog:hover\{/, bad: /#[0-9a-fA-F]{6}/, label: '.whytog:hover uses a raw hex — use var(--steel-tint)' },
   { sel: /\.hero\.elegant \.verdict\{/, bad: /color:\s*#[0-9a-fA-F]{6}/, label: 'the .verdict guide voice uses a raw hex color — use var(--ink-soft)' },
-  { sel: /\.app-elegant \.decopt\{/, bad: /#[0-9a-fA-F]{6}|13px 15px/, label: 'the .decopt row uses a raw hex/13px-15px pad — it is a TierRow parallel; use var(--card)/13px 16px/var(--r-md)' },
+  // ONE DECISION-OPTION COMPONENT (2026-07-31). This rule used to read
+  // `.app-elegant .decopt{` — when that duplicate was folded into the base
+  // component the selector stopped existing, and because a miss is a silent skip
+  // the gate would have gone on reporting PASS while checking nothing. Pointed at
+  // the consolidated rule, and widened below to the variants that were never
+  // covered at all: :hover and .pick:hover both carried #2c3138 for months.
+  { sel: /^\.decopt\{/, bad: /#[0-9a-fA-F]{6}|13px 15px/, label: 'the .decopt row uses a raw hex/13px-15px pad — it is a TierRow parallel; use var(--card)/13px 16px/var(--r-md)' },
+  { sel: /^\.decopt:hover\{/, bad: /#[0-9a-fA-F]{3,6}/, label: '.decopt:hover uses a raw hex — use var(--steel-tint)' },
+  { sel: /^\.decopt\.pick:hover\{/, bad: /#[0-9a-fA-F]{3,6}/, label: '.decopt.pick:hover uses a raw hex — use var(--line)' },
+  { sel: /^\.decopt-why\{/, bad: /background:\s*#[0-9a-fA-F]{3,6}|border:1px solid #[0-9a-fA-F]{3,6}/, label: '.decopt-why uses a raw hex surface/border — use var(--carbon-panel)/var(--carbon-line)' },
+  // The elegant duplicates must not come back: one component, base specificity.
+  { sel: /\.app-elegant \.decopt\{/, bad: /./, label: 'the .app-elegant .decopt duplicate is back — the decision option is ONE base component (host ruling 2026-07-31); do not re-fork it per surface' },
+  // THE PRIMARY CTA WAS NOT COVERED (2026-07-31). This gate passed for months
+  // while `.hero.elegant .cta` forked the atom with `background:#282d33` — a flat
+  // grey where every other `.cta` in the app renders `var(--cta-grad)`. The most
+  // important button on the surface was the one nobody was checking. Identity
+  // (background/color/radius/size) must come from the atom; layout may not.
+  { sel: /\.hero\.elegant \.cta\{/, bad: /background:\s*#[0-9a-fA-F]{3,6}|color:\s*#[0-9a-fA-F]{3,6}|border-radius:\s*\d|font-size:\s*\d/,
+    label: 'the elegant hero .cta re-declares atom identity as a literal — background/color must be the .cta.soft tokens (var(--steel-tint)/var(--steel-soft)), radius var(--r-row), size var(--t-cta-big)' },
+  // SOFT TIER, pinned (2026-07-31). The hero command wears .cta.soft's treatment.
+  // Asserting the exact two tokens means a drift back to the primary gradient — or
+  // to any third colour — fails here rather than shipping.
+  { sel: /\.hero\.elegant \.cta\{/, bad: /background:\s*var\(--cta-grad\)/,
+    label: 'the elegant hero .cta is back on the PRIMARY gradient — the host ruled it wears the soft tier: background:var(--steel-tint); color:var(--steel-soft)' },
 ];
 for (const r of CSS_RULES) {
   const line = lineFor(r.sel);

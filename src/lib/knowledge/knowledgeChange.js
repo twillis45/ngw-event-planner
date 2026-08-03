@@ -15,6 +15,16 @@
 // Reuses the Knowledge Registry (playbookRegistry.js); adds NO registry, NO lifecycle.
 
 import { playbookDependencies, playbookGrounding, playbookFreshness, playbookId } from '../playbooks/playbookRegistry';
+// PHASE 5E: typed validation at the publish gate. Reasoning corrections were
+// always safe; VALUE corrections are not, because a value has a schema the engine
+// depends on. This is the last gate before a number reaches a host.
+import { validateGovernedValue } from './governedFieldTypes';
+// PHASE 5E.1: ownership. A value that does not control runtime must not be
+// publishable at all - governing it produces a stated rate beside a count sized
+// by something else, which is worse than leaving it alone.
+import { fieldOwnership, blockedMessage } from './governedOwnership';
+import { groundingHonesty } from './sourceAuthority';
+import { commercialSourceCheck } from './commercialSourcePolicy';
 
 // ── Vocabulary ────────────────────────────────────────────────────────────────
 export const KCR_TYPES = [
@@ -92,8 +102,129 @@ export function addEvidence(kcr, ev, asOf) {
   return stamp({ ...kcr, evidence: [...kcr.evidence, evidence] }, { at: asOf, by: ev.by || 'steward', action: 'evidence-added', note: evidence.source || evidence.url || '' });
 }
 
+// ── PROVENANCE OWNERSHIP (Phase 5A-0, 2026-08-01) ────────────────────────────
+// A proposal used to carry provenance in TWO places, and the two halves of the
+// system read different ones:
+//
+//   GOVERNANCE  read proposal.verificationStatus / proposal.sources
+//               (publishKCR's cited-needs-evidence gate, kcrGateStatus)
+//   RUNTIME     read proposal.newProvenance
+//               (publishKCR's version record, overrideFromPublishedKCR,
+//                publishedSnapshotBuild)
+//
+// Two failure modes followed, and the second is the one that bites in practice:
+//
+//   1. DISAGREEMENT — a hand-authored nested `cited` with the top-level default
+//      still 'synthesized'. Governance evaluates 'synthesized', skips
+//      canReachCited(), and a cited value reaches runtime unchecked.
+//   2. LOSS — finding.js (the AUTOMATED research path: Observation -> Evidence ->
+//      Finding -> KCR) writes provenance at the top level ONLY. Governance sees a
+//      correct cited claim with real evidence ids and applies the full check; then
+//      the version, the override and the snapshot all read newProvenance and get
+//      `null`. A properly researched, properly reviewed KCR reached the transport
+//      with its provenance silently dropped.
+//
+// `newProvenance` is canonical from here: runtime already consumes it, published
+// snapshots already carry it, and it is the versioned knowledge state. Top-level
+// remains, mirrored, for backward compatibility with records and tests written
+// against it — never as an independent source of truth.
+//
+// ABSENCE IS DERIVED, DISAGREEMENT IS FATAL. A missing nested field is filled
+// from its legacy twin (that is what makes the automated path work at all). Two
+// values that are both present and different are an authoring bug: normalising
+// one away would hide it, so it throws.
+const SOURCE_KEY = (s) => (Array.isArray(s) ? s.map(String).slice().sort().join(' ') : null);
+
+// -- PROVENANCE GRADING (Phase 5A-1, 2026-08-01) ------------------------------
+// The canonical provenance object carries five fields:
+//
+//   tier               WHERE the knowledge came from. The playbook corpus works in
+//                      primary / researched / trade-heuristic / cultural-tradition /
+//                      culture-bearer / matriarch / norm / estimate / consensus /
+//                      community / host-coaching / heuristic. Deliberately NOT frozen
+//                      here - that vocabulary is still being earned, and a premature
+//                      enum would reject a real culture-bearer attribution.
+//   confidence         HOW SURE we are. FROZEN - see below.
+//   verificationStatus HOW IT WAS CHECKED (cited / researched / established-consensus
+//                      / synthesized). Drives the cited-needs-evidence gate.
+//   sources            [] of source ids that must resolve in a source catalogue.
+//   note               free prose for a human reader.
+//
+// CONFIDENCE IS FROZEN AT THREE VALUES. The playbook corpus already spells one
+// idea two ways - `medium` (82 items) and `med` (18) - which makes "how sure are
+// we" unaggregatable: a query for medium-confidence knowledge silently misses 18%
+// of it. Freezing at the point knowledge is MANUFACTURED stops 368 more rows
+// inheriting the split.
+//
+// `med` is REJECTED, not silently upgraded. An abbreviation is an authoring slip;
+// rewriting it here would hide the slip and teach the author that both spellings
+// work - which is how the corpus split in the first place. The error names the
+// canonical value instead.
+export const CONFIDENCE_VALUES = ['high', 'medium', 'low'];
+
+function assertConfidence(prov) {
+  if (!prov || prov.confidence === undefined || prov.confidence === null) return;
+  if (!CONFIDENCE_VALUES.includes(prov.confidence)) {
+    const hint = prov.confidence === 'med' ? " - use 'medium'" : '';
+    throw new Error(`KCR: invalid provenance confidence '${prov.confidence}'${hint}. Allowed: ${CONFIDENCE_VALUES.join(', ')}.`);
+  }
+}
+
+/**
+ * canonicalProvenance(proposal) -> provenance object | null
+ * The ONE resolution both governance and runtime must agree on. Throws when the
+ * nested and legacy shapes are both present and disagree.
+ */
+export function canonicalProvenance(proposal) {
+  if (!proposal || typeof proposal !== 'object') return null;
+  const nested = (proposal.newProvenance && typeof proposal.newProvenance === 'object') ? proposal.newProvenance : null;
+  const legacyVs = proposal.verificationStatus;
+  const legacySrc = Array.isArray(proposal.sources) ? proposal.sources : undefined;
+
+  if (nested) {
+    assertConfidence(nested);           // grading is validated before it is adopted
+    if (legacyVs !== undefined && nested.verificationStatus !== undefined && legacyVs !== nested.verificationStatus) {
+      throw new Error(`KCR: provenance conflict — proposal.verificationStatus='${legacyVs}' but newProvenance.verificationStatus='${nested.verificationStatus}'. Set one, or make them agree.`);
+    }
+    if (legacySrc !== undefined && Array.isArray(nested.sources) && SOURCE_KEY(legacySrc) !== SOURCE_KEY(nested.sources)) {
+      throw new Error(`KCR: provenance conflict — proposal.sources=${JSON.stringify(legacySrc)} but newProvenance.sources=${JSON.stringify(nested.sources)}. Set one, or make them agree.`);
+    }
+    // Absent nested fields inherit their legacy twin; present ones win.
+    return {
+      ...nested,
+      verificationStatus: nested.verificationStatus !== undefined ? nested.verificationStatus : legacyVs,
+      sources: Array.isArray(nested.sources) ? nested.sources : (legacySrc || []),
+    };
+  }
+  if (legacyVs !== undefined || legacySrc !== undefined) {
+    return { verificationStatus: legacyVs, sources: legacySrc || [] };
+  }
+  return null;
+}
+
+/**
+ * normalizeProposal(proposal) -> proposal with newProvenance canonical and the
+ * legacy top-level fields mirrored from it. Idempotent.
+ */
+export function normalizeProposal(proposal) {
+  if (!proposal || typeof proposal !== 'object') return proposal;
+  const canon = canonicalProvenance(proposal) || { verificationStatus: 'synthesized', sources: [] };
+  assertConfidence(canon);
+  const vs = canon.verificationStatus !== undefined ? canon.verificationStatus : 'synthesized';
+  const sources = Array.isArray(canon.sources) ? canon.sources : [];
+  return {
+    ...proposal,
+    newProvenance: { ...canon, verificationStatus: vs, sources },
+    // Mirrored for backward compatibility only. Readers should use
+    // canonicalProvenance(); these exist so records and gates written against the
+    // old shape keep working and can never drift from the canonical value.
+    verificationStatus: vs,
+    sources,
+  };
+}
+
 export function setProposal(kcr, proposal, asOf) {
-  return stamp({ ...kcr, proposal: { verificationStatus: 'synthesized', sources: [], ...proposal } }, { at: asOf, by: proposal.by || 'steward', action: 'proposal-set', note: proposal.rationale || '' });
+  return stamp({ ...kcr, proposal: normalizeProposal(proposal) }, { at: asOf, by: proposal.by || 'steward', action: 'proposal-set', note: proposal.rationale || '' });
 }
 
 export function recordReview(kcr, gate, decision, asOf) {
@@ -116,19 +247,105 @@ export function advanceKCR(kcr, toStatus, { by = 'steward', note = '', asOf = nu
 // Publishing is the ONLY write-path to canonical knowledge. It requires an APPROVED
 // KCR, mints a version record (the audit trail from insight → published value), and
 // records the rollback pointer. A cited proposal requires linked evidence (the gate).
+// -- PROVENANCE DERIVATION AT THE PUBLISH BOUNDARY (Phase 5A-1.5, 2026-08-01) --
+// 5A-1 made grading POSSIBLE. It did not make it PRESENT: the automated path
+// (findingToKCR) emits { verificationStatus:'cited', sources:[...] } and nothing
+// else, so a properly researched, properly reviewed KCR still published UNGRADED
+// - and `isGroundedCost()` requires tier === 'researched', so the runtime would
+// have rejected it as ungrounded. That is the T4 regression: researched knowledge
+// reporting as unsourced, silently.
+//
+// Derivation happens HERE and only here, because this is the only point that can
+// see BOTH the provenance claim and the evidence backing it. canReachCited() is a
+// property of the KCR, not of the proposal, so setProposal cannot make this call.
+//
+// WHAT IS DERIVED, AND ONLY WHEN THE CLAIM IS ALREADY EARNED:
+//   cited + qualifying evidence  ->  tier 'researched', confidence 'medium'
+//   cited + no qualifying evidence -> nothing derived; the gate above already threw
+//   anything not 'cited'         ->  nothing derived
+//
+// NEVER 'high'. Confidence is a claim about how sure we are, and a machine that
+// has only checked "a citation exists" has not earned high. 'medium' is the
+// conservative floor; an author who knows better sets it explicitly, and an
+// explicit value is never overwritten.
+//
+// Nothing is invented for a value that was not already cited-and-evidenced. A
+// synthesized claim stays ungraded rather than being dressed as researched.
+export function derivedProvenance(kcr, prov) {
+  if (!prov || typeof prov !== 'object') return prov;
+  const earned = prov.verificationStatus === 'cited' && canReachCited(kcr);
+  if (!earned) return prov;
+  const out = { ...prov };
+  if (out.tier === undefined || out.tier === null) out.tier = 'researched';
+  if (out.confidence === undefined || out.confidence === null) out.confidence = 'medium';
+  return out;
+}
+
 export function publishKCR(kcr, { prevVersion = null, versionId, by = 'publisher', asOf = null } = {}) {
   if (kcr.status !== 'approved') throw new Error('KCR: only an approved KCR may publish');
-  if (kcr.proposal && kcr.proposal.verificationStatus === 'cited' && !canReachCited(kcr)) {
+  // Resolve ONCE, canonically. A KCR may have been built by a writer that never
+  // went through setProposal — finding.js constructs `proposal` inline — so the
+  // gate and the version must not read a raw field. This also raises a conflict
+  // as an error at the publication boundary rather than shipping a disagreement.
+  const prov = canonicalProvenance(kcr.proposal);
+  if (prov && prov.verificationStatus === 'cited' && !canReachCited(kcr)) {
     throw new Error('KCR: cannot publish a cited value without supporting evidence');
   }
+  // TYPE GATE (5E). A governed value must match the schema its runtime consumer
+  // reads. Unknown field paths pass — this refuses to guess — but a known field
+  // with a wrong type, an inverted range or an implausible magnitude is refused
+  // here rather than resolving as NaN inside a host's shopping list.
+  if (kcr.proposal && kcr.proposal.newValue !== undefined) {
+    const v = validateGovernedValue(kcr.fieldPath, kcr.proposal.newValue);
+    if (!v.ok) throw new Error(`KCR: invalid value for ${kcr.fieldPath} — ${v.errors.join(' ')}`);
+    // OWNERSHIP GATE. Refuse a field an engine owns, whatever its type.
+    const own = fieldOwnership(kcr.assetId, kcr.fieldPath);
+    if (!own.drivesRuntime) throw new Error(`KCR: ${kcr.fieldPath} is not governable — ${blockedMessage(own)}`);
+    // GROUNDING-HONESTY GATE (Phase 5F.4). A provenance block that CITES SOURCES is
+    // making a claim about evidence. This gate refuses the two ways that claim can be
+    // false, both found by running the acquisition loop rather than by reading code:
+    //
+    //   1. an UNRESOLVABLE source id. `usda-meat-2026` (real, but a cost source) or a
+    //      pasted URL published cleanly, then failed the grounding predicate. The claim
+    //      showed sources and the host showed nothing. ~8 raw URLs are in the corpus
+    //      this way; none has ever grounded.
+    //
+    //   2. approved sources on a NON-GROUNDING TIER. `format()` carries the authored
+    //      tier forward, so a purchase already sitting at `norm` or `trade-heuristic`
+    //      kept it invisibly. The Cookout and Quinceanera both published citing approved
+    //      sources with qtyGrounded=false — a record that looks sourced and is not.
+    //
+    // WHAT IS STILL ALLOWED: provenance with NO sources on any tier. A heuristic that
+    // says it is a heuristic is honest. The gate fires only when sources are present,
+    // because that is when the record starts making a claim it may not be able to keep.
+    //
+    // TIERS ARE NEVER AUTO-UPGRADED. The gate refuses and explains; a human chooses.
+    const gs = groundingHonesty(kcr.fieldPath, kcr.proposal.newValue);
+    if (!gs.ok) throw new Error(`KCR: ${gs.error}`);
+
+    // COMMERCIAL PRACTITIONER POLICY (Phase 5F.9). A source that sells the thing it
+    // measures is admissible — it is often the only published figure — but it cannot
+    // carry a claim stronger than its standing. Enforced HERE, beside the grounding
+    // gate, because both answer the same question: is this record making a claim it can
+    // keep? Refuses and explains; never rewrites the claim.
+    const cs = commercialSourceCheck(kcr.proposal.newValue);
+    if (!cs.ok) throw new Error(`KCR: ${cs.violations.map((v) => v.detail).join(' ')}`);
+  }
+  // Complete the grading now that the evidence check has passed.
+  const finalProv = derivedProvenance(kcr, prov);
   const version = {
     id: versionId || `${playbookId(kcr.assetId || 'asset')}-v-${(_seq += 1)}`,
     kcrId: kcr.id, at: asOf, by,
     field: kcr.fieldPath, from: kcr.currentValue, to: kcr.proposal ? kcr.proposal.newValue : null,
-    provenance: kcr.proposal ? kcr.proposal.newProvenance : null,
+    provenance: finalProv,
     reason: kcr.reason, trigger: kcr.trigger, supersedes: prevVersion,
   };
-  const published = stamp({ ...kcr, status: 'published', publishedVersion: version.id, rollbackTo: prevVersion }, { at: asOf, by, action: 'published', note: version.id });
+  // The PUBLISHED record carries the normalized proposal. Publication is the
+  // moment knowledge becomes governed, so it is the right place to make the
+  // canonical shape permanent — and it is what lets overrideFromPublishedKCR and
+  // publishedSnapshotBuild (which read `newProvenance` directly, and are out of
+  // this slice's scope) see provenance from an automated-pipeline KCR at all.
+  const published = stamp({ ...kcr, proposal: kcr.proposal ? normalizeProposal(finalProv ? { ...kcr.proposal, newProvenance: finalProv } : kcr.proposal) : kcr.proposal, status: 'published', publishedVersion: version.id, rollbackTo: prevVersion }, { at: asOf, by, action: 'published', note: version.id });
   return { kcr: published, version };
 }
 
@@ -163,7 +380,15 @@ export function kcrGateStatus(kcr) {
         blocked: needed.length ? `Awaiting review: ${needed.join(', ')}` : null };
     }
     case 'approved': {
-      const citedOk = !(kcr.proposal && kcr.proposal.verificationStatus === 'cited') || canReachCited(kcr);
+      // Canonical read — the UI gate and publishKCR must evaluate the same value.
+      // Guarded: a conflicting proposal throws in canonicalProvenance, and a
+      // status readout must not explode; it reports the conflict as a blocker.
+      let citedOk = true; let conflict = null;
+      try {
+        const p = canonicalProvenance(kcr.proposal);
+        citedOk = !(p && p.verificationStatus === 'cited') || canReachCited(kcr);
+      } catch (e) { conflict = e.message; }
+      if (conflict) return { stage: s, next: null, action: null, cap: 'publish', blocked: conflict };
       return { stage: s, next: 'published', action: 'Publish', cap: 'publish',
         blocked: citedOk ? null : 'A cited value needs supporting evidence' };
     }
