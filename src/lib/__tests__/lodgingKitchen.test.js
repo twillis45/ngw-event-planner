@@ -96,7 +96,11 @@ describe('lodgingSearchBlocked — no town is a STEP, not a blank', () => {
 
   test('it says what is ALREADY in hand, so the host is not starting over', () => {
     const b = lodgingSearchBlocked(noTown);
-    expect(b.detail).toContain('2028-06-17 to 2028-06-21');
+    // HOST LANGUAGE, not ISO. This assertion originally demanded
+    // "2028-06-17 to 2028-06-21" and passed - which is how the ISO string reached
+    // a real screen. Pin the readable form so it cannot come back.
+    expect(b.detail).toContain('Jun 17-Jun 21');
+    expect(b.detail).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(b.detail).toContain('10 guests');
   });
 
