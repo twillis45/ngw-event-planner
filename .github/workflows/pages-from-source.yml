@@ -8,10 +8,11 @@
 # which builds and force-pushes the `gh-pages` branch, and pages.yml publishes
 # that branch's contents. That flow is untouched by this file.
 #
-# Making THIS workflow automatic is a one-line change (add the `push:` trigger
-# below and retire pages.yml), but it cannot be verified without actually
-# deploying — and a broken deploy takes the public site down. So it ships
-# dispatch-only: run it by hand once, confirm the published site, then flip.
+# FLIPPED 2026-08-03. This IS the live path now: push to main deploys, built here.
+# It was dispatch-only until it had been run by hand and the published site
+# confirmed — that happened on 96dd25c7, verified at the chunk level (the live
+# HostShellV2 bundle carried the new copy and no longer carried the old), and the
+# trigger was enabled immediately after. pages.yml is retired.
 # The migration steps and rollback are in docs/release/RELEASE_INTEGRITY.md.
 #
 # WHAT IT FIXES
@@ -31,9 +32,18 @@ on:
         default: demo
         type: choice
         options: [demo, live]
-  # ── To make this the live path, uncomment and retire pages.yml: ──
-  # push:
-  #   branches: [main]
+  # THE LIVE PATH (2026-08-03). Every merge to main publishes Pages, built from
+  # source in CI. This replaced pages.yml, which republished a laptop-built
+  # gh-pages BRANCH — that branch sat four days stale while main moved, and any
+  # push to it would have silently reverted the site to the older build.
+  #
+  # A push carries NO inputs, so release_profile is empty here and the env below
+  # floors it to `demo`. That is deliberate and load-bearing: an automatic deploy
+  # can only ever publish the open, localStorage-only demo. Publishing `live`
+  # (authenticated + backend-connected) stays a manual workflow_dispatch, because
+  # it changes what the product IS for every visitor.
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -68,7 +78,8 @@ jobs:
     #
     # Set them at: Settings → Secrets and variables → Actions → Variables.
     env:
-      RELEASE_PROFILE: ${{ inputs.release_profile }}
+      # `|| 'demo'` is the push-trigger floor — see the trigger comment above.
+      RELEASE_PROFILE: ${{ inputs.release_profile || 'demo' }}
       REACT_APP_API_BASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_API_BASE_URL || '' }}
       REACT_APP_SUPABASE_URL: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_URL || '' }}
       REACT_APP_SUPABASE_ANON_KEY: ${{ inputs.release_profile == 'live' && vars.REACT_APP_SUPABASE_ANON_KEY || '' }}

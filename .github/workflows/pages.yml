@@ -7,11 +7,27 @@
 # branch exactly as before, and this action publishes the branch content
 # directly. Repo Pages setting is build_type=workflow (flip back to legacy to
 # roll back).
-name: Deploy Pages
+name: Deploy Pages (RETIRED — gh-pages branch)
 
+# ── RETIRED 2026-08-03. Superseded by pages-from-source.yml ──────────────────
+#
+# This published the gh-pages BRANCH, which `npm run deploy` pushed from a
+# laptop. Two problems ended it:
+#
+#   1. The branch goes stale silently. On 2026-08-03 it sat at 61f6d661 (Jul 30)
+#      carrying hostv2/assets/index-f2a5ab3d.js while main had moved well past it.
+#      Any push to gh-pages would have republished the July build and reverted a
+#      correct deploy with no error anywhere.
+#   2. It shipped whatever a developer's working copy happened to contain. The
+#      from-source workflow builds main in CI with the backend tests, the unit
+#      suite, config validation and the secret scan in the same run.
+#
+# THE AUTOMATIC TRIGGER IS REMOVED so a stray push to gh-pages cannot republish
+# the old site. workflow_dispatch is deliberately KEPT: it is the documented
+# rollback if the from-source path ever needs to be bypassed. Running it will
+# publish whatever gh-pages currently holds, which is NOT main — check before
+# you use it.
 on:
-  push:
-    branches: [gh-pages]
   workflow_dispatch:
 
 permissions:
