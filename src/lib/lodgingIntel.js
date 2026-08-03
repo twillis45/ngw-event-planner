@@ -31,6 +31,7 @@ import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
 import { isAllowedMedia } from './lodgingBookmarklet';
+import { DEST_LODGING_OPTIONS } from './playbooks';
 
 // ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
 // Opening a listing's gallery keeps the listing URL and swaps the title, so a
@@ -205,6 +206,70 @@ export function lodgingKitchen(event) {
 
   // 3 · "Guests book on their own", or nothing asked yet. NOT TOLD.
   return null;
+}
+
+// ─── WHAT THE KITCHEN DECIDES (workflow census, 2026-08-03) ────────────────
+// `lodgingKitchen` had ZERO render sites on the lodging surface. The host
+// answered "where does everyone sleep" HERE and the consequence appeared only
+// on the food sheet and the reveal — the surface that owns the decision never
+// said what the decision does.
+//
+// Worse, the question that sets it can be switched off: `dest_lodging` is
+// removed whenever a `lodging` or `room_block` base decision already exists
+// (playbooks/index.js:756). On those events the only remaining source is a
+// pasted Airbnb/Vrbo URL, so a host who books a hotel by phone and types the
+// name reaches `kitchen === null` permanently and the food plan never learns.
+//
+// So this returns the consequence AND, when nothing has told us, the two
+// answers that can settle it in place. Answering writes the same
+// `foodChoices.dest_lodging` the playbook would have written, which is what
+// `lodgingKitchen` already reads — no second source of truth.
+// DERIVED, NOT RESTATED. The first cut hardcoded the two option strings, which
+// made this a second source of truth for `dest_lodging`'s wording — reword the
+// playbook and these buttons would quietly write a value `lodgingKitchen` no
+// longer matches. Instead the real option list is imported and each answer is
+// SELECTED from it by the very predicate lodgingKitchen uses, so a button can
+// never promise a kitchen value it does not produce. If no option matches, the
+// answer is dropped rather than guessed.
+export const KITCHEN_ANSWERS = (() => {
+  const pickBy = (re) => DEST_LODGING_OPTIONS.find((o) => re.test(String(o)));
+  const rental = pickBy(/airbnb|rental|house|cabin|villa/i);
+  const hotel = pickBy(/room block/i);
+  return [
+    rental ? { id: 'rental', label: 'A house we rent', kitchen: true, pick: rental } : null,
+    hotel ? { id: 'hotel', label: 'A hotel or room block', kitchen: false, pick: hotel } : null,
+  ].filter(Boolean);
+})();
+
+export function kitchenConsequence(event) {
+  const ev = event || {};
+  // Only a destination event has a lodging decision to have a consequence.
+  if (ev.isDestination !== true) return null;
+
+  const k = lodgingKitchen(ev);
+  if (k === true) {
+    return {
+      state: 'kitchen', answered: true,
+      headline: 'There is a kitchen.',
+      detail: 'So the food plan is a grocery run, and the shopping list is the real artifact.',
+      answers: [],
+    };
+  }
+  if (k === false) {
+    return {
+      state: 'no-kitchen', answered: true,
+      headline: 'There is no kitchen.',
+      detail: 'So the food plan is reservations. A shopping list is not the plan for a hotel stay.',
+      answers: [],
+    };
+  }
+  // NOT TOLD. Never assume a hotel — say it is open, and offer the answer.
+  return {
+    state: 'untold', answered: false,
+    headline: 'Nobody has told us yet.',
+    detail: 'Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations. Until it is answered the plan sizes one gathering.',
+    answers: KITCHEN_ANSWERS,
+  };
 }
 
 export function lodgingIntel(event) {

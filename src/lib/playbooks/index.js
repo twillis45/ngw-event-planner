@@ -701,8 +701,13 @@ function taskPhaseLabel(offset) {
 // deliberately generic across any occasion — a destination birthday, reunion,
 // or anniversary all get the same starting set, editable/removable like any
 // other decision or task.
+// ONE list. lodgingIntel's kitchen answers derive from this rather than
+// restating it -- a reworded option here must not silently produce a button
+// that writes a value `lodgingKitchen` no longer recognises.
+export const DEST_LODGING_OPTIONS = ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'];
+
 const DESTINATION_DECISIONS = [
-  { id: 'dest_lodging', label: 'How are guests staying?', options: ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'], default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
+  { id: 'dest_lodging', label: 'How are guests staying?', options: DEST_LODGING_OPTIONS, default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
   { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
   { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', optionGates: { 'Yes, a shuttle or van': { minGuests: 10 } }, why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
   { id: 'dest_childcare', whenKids: true, label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
