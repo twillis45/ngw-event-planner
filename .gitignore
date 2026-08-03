@@ -46,3 +46,8 @@ build-verify/
 
 # Drift/QA capture output — regenerate with `npx playwright test e2e/driftCapture.spec.mjs`
 hostv2/review-shots/drift/
+
+# Ad-hoc QA screenshots dropped at the repo root by a live drive. They are
+# throwaway evidence, not artifacts — 11 of them (~4MB) accumulated untracked
+# before this rule existed. Durable captures belong in hostv2/review-shots/.
+/*.png
