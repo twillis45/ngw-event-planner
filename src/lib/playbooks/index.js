@@ -542,6 +542,40 @@ export function choiceShown(event, whenChoice) {
   return v == null ? true : (Array.isArray(whenChoice.in) ? whenChoice.in : []).includes(v);
 }
 
+// ── TRAVEL MODE — how guests actually arrive ────────────────────────────────
+// Host-answered at intake ('drive' | 'fly' | 'mixed'), never inferred from
+// distance: the app holds no city coordinates, so any mileage would be invented.
+// null means unstated, and unstated is NOT a "no" — silence never removes
+// content, it only fails to remove it.
+export function travelModeFor(event) {
+  const m = event && event.travelMode;
+  return (m === 'drive' || m === 'fly' || m === 'mixed') ? m : null;
+}
+
+// A task or item tagged `whenMode` appears only for matching arrival modes.
+// `{ not: [...] }` drops it for those modes; `{ in: [...] }` keeps it only for
+// those. An unstated mode always shows — the same "silence is not a no" rule the
+// choice gate uses.
+export function modeShown(event, whenMode) {
+  if (!whenMode) return true;
+  const m = travelModeFor(event);
+  if (!m) return true;
+  if (Array.isArray(whenMode.not)) return !whenMode.not.includes(m);
+  if (Array.isArray(whenMode.in)) return whenMode.in.includes(m);
+  return true;
+}
+
+// The label the host should read for their arrival mode. Flight vocabulary on a
+// road trip is not a cosmetic slip: "who's flying in when" and "airport, hotel,
+// transport" describe an event the host is not having, which is the same
+// invented-detail failure as a fabricated number. `modeLabel` supplies the
+// honest wording per mode; anything unstated keeps the neutral base label.
+export function taskLabelFor(event, t) {
+  if (!t || !t.modeLabel) return t ? t.label : '';
+  const m = travelModeFor(event);
+  return (m && t.modeLabel[m]) || t.label;
+}
+
 // ── Decision-ANSWERED copy override (never assume an unconfirmed default) ─────
 // A schedule/task/vendor entry's instructional text (`what` / `label` / `altToDIY`)
 // may carry `copyByAnswer: { [decisionId]: { [answeredValue]: overrideText } }` so
@@ -777,14 +811,31 @@ const DESTINATION_TASKS = [
   // accessible?" about the room; the trip fails on everything between the car
   // and the chair. Grounded in accessibility-consultant guidance.
   { id: 'dest_t_access', label: 'Walk the whole guest path, not just the room — door widths, the ground between rooms and the event space, and the distance from parking', when: 'T-90d' },
-  { id: 'dest_t_grid', label: 'Build the arrivals/departures grid — who’s flying in when', when: 'T-60d' },
+  // The grid matters on ANY trip — the base label is arrival-neutral so a road
+  // trip is not told to track flights it does not have. modeLabel restores the
+  // specific wording once the host says how people are getting there.
+  { id: 'dest_t_grid', label: 'Build the arrivals/departures grid — who gets in when', when: 'T-60d',
+    modeLabel: {
+      fly: 'Build the arrivals/departures grid — who’s flying in when',
+      drive: 'Build the arrivals/departures grid — who’s driving in when, and roughly how long they’re on the road',
+      mixed: 'Build the arrivals/departures grid — who’s flying, who’s driving, and when each lands',
+    } },
   // DESTINATION-4: the yes-path of dest_health — appears only when the host
   // ANSWERED yes (whenChoice; the 'Not sure' default keeps it hidden, so an
   // unanswered question never claims a health need). No medical advice beyond
   // "worth a call to their doctor."
   { id: 'dest_t_health', label: 'Pace the schedule for the guests who need it — build in real rest, and if the destination is high-altitude or strenuous, a quick call to their doctor is worth it', when: 'T-60d', whenChoice: { id: 'dest_health', in: ['Yes'] } },
-  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
-  { id: 'dest_t_info', label: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates', when: 'T-30d' },
+  // whenMode as well as whenChoice: the dest_transport DECISION is dropped for a
+  // driving trip, and choiceShown treats an absent pick as "unanswered -> show".
+  // Without this gate the board correctly hid the question while the checklist
+  // still asked the host to confirm a shuttle plan for a group that is driving.
+  { id: 'dest_t_transport', label: 'Confirm the ground-transport plan — shuttle, self-drive, or real rideshare coverage', when: 'T-45d', whenMode: { not: ['drive'] }, whenChoice: { id: 'dest_transport', in: ['Yes, a shuttle or van', 'Not sure yet'] } },
+  { id: 'dest_t_info', label: 'Send guests the getting-here info — how to get there, hotel, transport, cutoff dates', when: 'T-30d',
+    modeLabel: {
+      fly: 'Send guests the getting-here info — airport, hotel, transport, cutoff dates',
+      drive: 'Send guests the getting-here info — directions and parking, hotel, cutoff dates',
+      mixed: 'Send guests the getting-here info — airport and parking, hotel, transport, cutoff dates',
+    } },
   // DESTINATION-4: kids get a real role in the adult event — not the center of
   // it, not parked away from it (Priya Parker's framing). Gated on kids actually
   // coming (whenKids → eventHasKids), never on event type.
@@ -881,6 +932,11 @@ export function playbookChecklist(event, asOf) {
     if (!t || !t.id || !t.label) continue;
     // Choice gate — a task tagged whenChoice appears only for the matching pick.
     if (!choiceShown(event, t.whenChoice)) continue;
+    // Arrival-mode gate — a task tagged whenMode appears only for matching modes.
+    // Needed alongside the choice gate: when a destination DECISION is dropped
+    // for a mode, choiceShown sees no pick and treats it as unanswered, so the
+    // dependent task would survive the very gate that removed its question.
+    if (!modeShown(event, t.whenMode)) continue;
     // Kids gate — a task tagged whenKids appears only when kids are actually coming.
     if (t.whenKids && !kidsComing) continue;
     // Caterer-action gate — drop booking/headcount-to-caterer tasks when the host cooks.
@@ -893,7 +949,9 @@ export function playbookChecklist(event, asOf) {
       id: `pbt-${event.id}-${t.id}`,
       // kidsLine — a sub-line that only exists when kids are coming (the crib/
       // connecting-room ask on the lodging call). Tasks without one are untouched.
-      task: resolveAnsweredCopy(t.label, t.copyByAnswer, event)
+      // taskLabelFor picks the arrival-mode wording BEFORE the answered-copy
+      // override, so a task can vary by both without either clobbering the other.
+      task: resolveAnsweredCopy(taskLabelFor(event, t), t.copyByAnswer, event)
         + (t.kidsLine && kidsComing ? ` — ${t.kidsLine}` : ''),
       // 'event-day' buckets a T0 task under THE DAY tab; everything else is planning.
       category: eventDay ? 'event-day' : 'planning',
