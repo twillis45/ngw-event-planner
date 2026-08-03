@@ -350,7 +350,15 @@ every segment in words; each segment carries a title attribute.
 
 **Copy is engine-picked, not free text:**
 
-    left    "{done} of {total} plan parts handled"
+    left    "{done} of {total} · {openPartsLabel}"   (eventOrientation.js)
+              1 open   -> "Food open"
+              2 open   -> "Date & time and Food open"
+              3+ open  -> "Date & time, Food +2 more"
+              none     -> "nothing open"
+            On hover, the line narrows to that ONE strip's label; the right
+            label becomes "handled" / "still open". Hover is a desktop
+            refinement only - the resting line already carries the names, so
+            touch loses nothing.
     right   done >= total          -> "you're set"       (renders in --ok)
             lead critical/overdue  -> "this one first"
             otherwise              -> "the rest can wait"
@@ -360,7 +368,11 @@ When complete, the fill switches to `--ok` and gains
 
 **"Settled" is a retired word here.** It collided with decision-settling, which
 is a different ledger - live, settling a decision left this line unchanged.
-Use the engine's own noun, "plan parts handled".
+Use the engine's own nouns - the dimension labels in `DIMENSION_LABELS`.
+
+**The left label must never re-print the count alone.** The strips already
+encode handled-vs-open; spending the line on the same fact left the NAMES
+reachable only through a hover tooltip, which no touch device can open.
 
 ### 7.5 Fold handle
 

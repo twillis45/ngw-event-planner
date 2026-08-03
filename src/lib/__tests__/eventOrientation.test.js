@@ -4,7 +4,7 @@
 // invents no readiness, and cannot disagree with the engine it reads.
 import { deriveEventPhaseProgress } from '../phaseProgress';
 import {
-  orientation, readinessSegments, severeBlocker, segmentsText,
+  orientation, readinessSegments, severeBlocker, segmentsText, openPartsLabel,
   LIFECYCLE_LABELS, DIMENSION_LABELS,
 } from '../eventOrientation';
 
@@ -190,5 +190,47 @@ describe('the visual has a text equivalent (accessibility)', () => {
 
   test('it degrades safely', () => {
     expect(segmentsText(null)).toBe('');
+  });
+});
+
+// The hairline's visible left label. It must carry the NAMES without a pointer,
+// because hover does not exist on touch — that is the whole reason it replaced the
+// bare count. These cover the arities the live surface cannot easily be driven into.
+describe('openPartsLabel — the open parts, named, with no pointer', () => {
+  const seg = (label, handled) => ({ id: label, label, handled });
+  const withSegments = (segments) => ({ segments });
+
+  test('one open part is named on its own', () => {
+    expect(openPartsLabel(withSegments([seg('Food', false), seg('Place', true)])))
+      .toBe('Food open');
+  });
+
+  test('two open parts are joined, not truncated', () => {
+    expect(openPartsLabel(withSegments([seg('Date & time', false), seg('Food', false)])))
+      .toBe('Date & time and Food open');
+  });
+
+  test('past two it names two and COUNTS the rest — the line is bounded', () => {
+    expect(openPartsLabel(withSegments([
+      seg('Date & time', false), seg('Food', false), seg('Budget', false), seg('Vendors', false),
+    ]))).toBe('Date & time, Food +2 more');
+  });
+
+  test('nothing open says so — never an empty line beside a full bar', () => {
+    expect(openPartsLabel(withSegments([seg('Food', true), seg('Place', true)])))
+      .toBe('nothing open');
+  });
+
+  test('it degrades safely', () => {
+    expect(openPartsLabel(null)).toBe('');
+  });
+
+  test('it names the SAME open parts the screen-reader sentence does', () => {
+    const o = orientation(cuesFor(DATED));
+    const spoken = segmentsText(o);
+    o.segments.filter((s) => !s.handled).slice(0, 2).forEach((s) => {
+      expect(spoken).toContain(s.label);
+      expect(openPartsLabel(o)).toContain(s.label);
+    });
   });
 });

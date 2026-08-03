@@ -143,6 +143,28 @@ export function orientation(phaseCues, queue = [], opts = {}) {
 }
 
 /**
+ * The parts still open, named, for the visible hairline.
+ *
+ * WHY THIS EXISTS: the hairline used to read "2 of 4 plan parts handled" beside a bar
+ * whose green-vs-grey strips already encode exactly that count — one truth, printed
+ * twice, and the NAMES (which only the strips' hover tooltip carried) reached no
+ * touch device at all. Naming the open parts here spends the same line on information
+ * the host does not otherwise have, and it needs no pointer, so touch, keyboard and
+ * assistive tech all get the same sentence. Hover stays a desktop refinement.
+ *
+ * Same two-then-rest idiom as `summary` above, so the surface does not grow a second
+ * way of saying the same thing.
+ */
+export function openPartsLabel(orientationResult) {
+  if (!orientationResult) return '';
+  const open = orientationResult.segments.filter((s) => !s.handled).map((s) => s.label);
+  if (!open.length) return 'nothing open';
+  if (open.length === 1) return `${open[0]} open`;
+  if (open.length === 2) return `${open[0]} and ${open[1]} open`;
+  return `${open[0]}, ${open[1]} +${open.length - 2} more`;
+}
+
+/**
  * A text equivalent of the segmented visual, for screen readers.
  *
  * The existing progress hairline is `aria-hidden="true"`, so its labels reach nobody

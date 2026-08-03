@@ -125,9 +125,12 @@ PROGRESS is a segmented readiness summary with THREE parts, all required:
      handled = --ok at 95% opacity · open = --steel-soft at 75% opacity
   3. labels, 13px, left and right
 Segments are CATEGORICAL - each item is handled or open, never a percentage of
-itself. Left label reads "{done} of {total} plan parts handled". Right label is
-"you're set" when complete (in --ok), "this one first" when something is
-overdue, otherwise "the rest can wait". Never use the word "settled" here.
+itself. Left label NAMES the open parts - "{done} of {total} · Date & time and
+Food open" - because the strips already encode the count, and hover (which is
+where the names used to live) does not exist on touch. Two names, then "+N
+more". Right label is "you're set" when complete (in --ok), "this one first"
+when something is overdue, otherwise "the rest can wait". Never use the word
+"settled" here.
 
 PRIMARY ACTIONS have a 46px minimum height. The tallest tap target on a screen
 should be the primary action.

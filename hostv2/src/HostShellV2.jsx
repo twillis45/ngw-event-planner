@@ -71,7 +71,7 @@ import { orchestratorStreamTransport, isOrchestratorApiConfigured } from '@app/l
 import { formatPhoneUS, isMalformedEmail } from '@app/lib/contactFormat';
 import { DAY_COMPLETE_COPY } from '@app/lib/dayOfCopy';
 import { identityStatement } from '@app/lib/eventIdentity';
-import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights } from '@app/lib/dates';
+import { daysUntil, daysUntilEnd, eventDateStatus, rsvpDeadlineFor , taskTimeStatus, isDuringEvent, dayIndexOf, spanNights, targetMonthLabel, saturdaysOfMonth } from '@app/lib/dates';
 import { duplicateEvent } from '@app/lib/duplicateEvent'; // copies the PLAN, resets the STATE — see that file
 import { proposeReplyBy } from '@app/lib/replyBy';
 import { taskLeadDays, taskDueLabel, taskIsOverdue } from '@app/lib/taskLead';
@@ -142,7 +142,7 @@ import { summarizeHostIntel, clearAllMemory, applyReconciliation, isReconciled }
 import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
-import { orientation as deriveOrientation, segmentsText } from '@app/lib/eventOrientation';
+import { orientation as deriveOrientation, segmentsText, openPartsLabel } from '@app/lib/eventOrientation';
 import { stagewrapClass } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
@@ -155,6 +155,7 @@ import { detectCoupleNames } from '@app/lib/guestSplit';
 import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
+import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -2405,6 +2406,13 @@ export default function HostShellV2() {
     try { return deriveOrientation(phaseCues, queue); } catch (_e) { return null; }
   }, [phaseCues, queue]);
 
+  // Which progress segment the pointer (or keyboard focus) is on, so the hairline
+  // can NAME the part of the plan a strip stands for. The strips already carried a
+  // native `title`, but that is a ~1s delayed OS tooltip that never appears on
+  // touch — the strip read as an anonymous tick. Host ruling: hovering a strip
+  // should say which part of the plan it is. Null = show the running count.
+  const [hoverSeg, setHoverSeg] = useState(null);
+
   // ONE calm read for the whole screen (re-audit 2026-07-14): the NEXT tile said
   // "All quiet" over a lone calm-category filler while the lifecycle "all clear"
   // suffix demanded a truly empty list — two strictnesses of calm 40px apart.
@@ -4543,12 +4551,37 @@ export default function HostShellV2() {
         // set, mark it host-confirmed in the same tap so BOTH halves of "when" clear together
         // (datetime is handled only when date AND start time are confirmed — phaseProgress.js).
         const patch = { date: v };
+        // The named month has been answered by a real day — drop it rather than
+        // leave a second, staler "when" on the record.
+        if (event.targetMonth) patch.targetMonth = null;
         if (String(event.startTime || '').trim() && !startTimeIsConfirmed(event)) patch.startTimeSource = 'host';
         patchEvent(patch, 'Date confirmed — every countdown, deadline, and shopping window just moved to it.');
         setDateDraft(null);
       };
       return (
       <div className="hc-row" style={{ flexWrap: 'wrap' }}>
+        {/* The host already named a MONTH. Opening a blank picker on it asked them
+            to answer twice — so offer that month's real Saturdays, the same
+            OPTIONS-not-guesses affordance intake uses. Still never invents a day:
+            nothing is written until one of these is tapped. */}
+        {!event.date && targetMonthLabel(event) && (() => {
+          const sats = saturdaysOfMonth(event.targetMonth.year, event.targetMonth.month);
+          if (!sats.length) return null;
+          return (
+            <div style={{ width: '100%' }}>
+              <p className="grounding" style={{ margin: '0 0 6px' }}>
+                You said {targetMonthLabel(event)} — pick a Saturday, or set the exact day.
+              </p>
+              <div className="chips" style={{ marginBottom: 6 }}>
+                {sats.map(s => (
+                  <button key={s} className="chip" onClick={() => setDateDraft(s)}>
+                    {new Date(s + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
         <input className="field" type="date" value={dateShown} aria-label="Event date"
           onChange={e => { const v = e.target.value; if (v) setDateDraft(v); }} />
         {/* CONFIRM (host report): a date change waits for a yes before it moves the plan. */}
@@ -4904,6 +4937,15 @@ export default function HostShellV2() {
       name: effName ? effName + '’s ' + milestoneName : 'My ' + milestoneName,
       honoree: effName || '',
       type: effType, date: effDate || '', ...(effEndDate ? { endDate: effEndDate } : {}), venue: parsed.venue || '', venueKind: parsed.venueKind || '',
+      // THE MONTH THE HOST NAMED, when they did not name a day ("in June of 2028",
+      // "next month", "this fall"). It was heard at intake — the chip said
+      // "Jun 2028 · pick a day" — and then dropped here, so the board answered
+      // "No date" to someone who had just given one, the countdown had nothing to
+      // stand on, and the date picker opened BLANK on a month already chosen.
+      // Honest to persist: `monthYear` is null unless the host actually said it
+      // (smartParseEvent ~229-260), and it is never a day — the day stays unset
+      // until they pick one. Written only when there is no exact date.
+      ...(!effDate && parsed.monthYear ? { targetMonth: parsed.monthYear } : {}),
       // "No kids." typed at create carries straight to the invite policy the
       // invite + DIFM copy already consume (parser 2026-07-27; never invented).
       ...(parsed.kidsPolicy ? { kidsPolicy: parsed.kidsPolicy } : {}),
@@ -6121,11 +6163,15 @@ export default function HostShellV2() {
                     {/* Mid-span truth (R1): on day 2 of a June 12–14 event `days`
                         is -1 — the old label said "1d ago" while the reunion was
                         LIVE. The span check must come before the ago branch. */}
-                    {days === null ? 'No date'
+                    {days === null ? (targetMonthLabel(event) || 'No date')
                       : isDuringEvent(event) ? (spanNights(event) > 0 ? `Day ${dayIndexOf(event)} of ${spanNights(event) + 1}` : 'Today')
                         : days < 0 ? `${daysAnim}d ago` : days === 1 ? `${daysAnim} day` : `${daysAnim} days`}
                   </div>
                   <p className="mega-sub">
+                    {/* The mega now says "Jun 2028" when that is all the host gave.
+                        Say what is still missing, so a month never reads as a settled
+                        day — the countdown genuinely cannot start until there is one. */}
+                    {days === null && targetMonthLabel(event) && 'pick a day and the countdown starts'}
                     {(dstat.status === 'today' || dstat.status === 'tomorrow') && dstat.reason}
                     {/* Past says it ONCE — the "How it landed · behind you" header carries it;
                         this sub and the empty-state used to re-say it (audit 2026-07-22, W7). */}
@@ -6932,10 +6978,17 @@ export default function HostShellV2() {
                   <div className={'eprog' + (done >= total && total > 0 ? ' is-done' : '')}
                     role="img" aria-label={segmentsText(orient)}>
                     {orient && orient.segments.length > 0 && (
-                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '0 0 2px' }}>
+                      // A 2px bar is not a hoverable target. Each strip gets a padded
+                      // hit area, and the row takes an equal negative margin back, so
+                      // the strips stay on exactly the pixel row they were drawn on —
+                      // the target grew, the composition did not move.
+                      <div aria-hidden="true" style={{ display: 'flex', gap: 3, margin: '-7px 0 -5px' }}>
                         {orient.segments.map(s => (
                           <span key={s.id} title={s.label + (s.handled ? ' — handled' : ' — open')}
-                            style={{
+                            onMouseEnter={() => setHoverSeg(s)}
+                            onMouseLeave={() => setHoverSeg(cur => (cur && cur.id === s.id ? null : cur))}
+                            style={{ flex: 1, padding: '7px 0', display: 'flex', alignItems: 'center' }}>
+                            <span style={{
                               flex: 1, height: 2, borderRadius: 1,
                               // Never colour-only: the aria-label above and the title
                               // attribute both name the state in words.
@@ -6947,6 +7000,7 @@ export default function HostShellV2() {
                               background: s.handled ? 'var(--ok, #6f9f7f)' : 'var(--steel-soft, #7d8590)',
                               opacity: s.handled ? 0.95 : 0.75,
                             }} />
+                          </span>
                         ))}
                       </div>
                     )}
@@ -6962,10 +7016,16 @@ export default function HostShellV2() {
                           uses the engine's own noun ("…parts of your plan handled",
                           phaseProgress ~220), which also frees "settled" to mean
                           decisions only. */}
-                      <span>{done} of {total} plan parts handled</span>
+                      {/* The resting line NAMES the open parts rather than re-printing
+                          the count the strips already encode — that is what makes this
+                          readable on touch, where there is no hover. Hovering a single
+                          strip narrows the same line to that one part. */}
+                      <span>{hoverSeg ? hoverSeg.label : `${done} of ${total} · ${openPartsLabel(orient)}`}</span>
                       {/* "the rest can wait" is a lie when the lead item is OVERDUE/critical —
                           it literally can't wait (host 2026-07-18). Say so instead. */}
-                      <span>{done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait')}</span>
+                      <span>{hoverSeg
+                        ? (hoverSeg.handled ? 'handled' : 'still open')
+                        : (done >= total ? 'you’re set' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
                     </div>
                   </div>
                 );
@@ -9492,6 +9552,17 @@ export default function HostShellV2() {
                   {event.isDestination ? 'yes' : 'no'}
                 </button>
               </div>
+            )}
+            {/* SPAN RECOGNITION: the engine knows when an event probably runs more
+                than one day — a destination trip, guests flying in or staying over,
+                or a type that spans by definition. It used to know this and say
+                nothing, so a five-day Santa Fe birthday sat as a one-afternoon plan
+                and was never asked. Ask here, with the reason, and let the host
+                answer with the control directly below. Never writes an endDate. */}
+            {sheet.kind === 'space' && shouldAskSpan(event) && (
+              <p className="grounding" style={{ padding: '2px 0 8px', margin: 0 }}>
+                {spanIntel(event).why}
+              </p>
             )}
             {sheet.kind === 'space' && (
               // R1 span ruling (2026-07-26): endDate is host-editable after
