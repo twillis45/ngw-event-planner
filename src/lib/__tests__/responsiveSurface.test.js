@@ -6,6 +6,7 @@
 // screen.
 import {
   responsiveSurfaceMode, stagewrapClass, optsOutOfFit, SURFACE_MODES, SURFACE_CLASS,
+  phoneStageForced,
 } from '../responsiveSurface';
 
 describe('exactly two surfaces are responsive in C1', () => {
@@ -82,5 +83,47 @@ describe('the --fit opt-out follows the mode, nothing else', () => {
 
   test('legacy contributes NO class — the existing stage is untouched', () => {
     expect(SURFACE_CLASS.legacy).toBe('');
+  });
+});
+
+// ?stage=phone — a LOCAL demo affordance. The shell picks its shape from the window,
+// so a laptop tab could never show the phone composition; this forces it. It must be
+// impossible to trigger in production.
+describe('?stage=phone forces the silhouette, and only on localhost', () => {
+  const loc = (hostname, search) => ({ hostname, search });
+
+  test('it fires on localhost with the flag', () => {
+    expect(phoneStageForced(loc('localhost', '?stage=phone'))).toBe(true);
+    expect(phoneStageForced(loc('127.0.0.1', '?stage=phone'))).toBe(true);
+  });
+
+  test('it is INERT on a deployed host — production cannot be changed by a URL', () => {
+    expect(phoneStageForced(loc('twillis45.github.io', '?stage=phone'))).toBe(false);
+    expect(phoneStageForced(loc('ngw.example.com', '?stage=phone'))).toBe(false);
+  });
+
+  test('localhost without the flag changes nothing', () => {
+    expect(phoneStageForced(loc('localhost', ''))).toBe(false);
+    expect(phoneStageForced(loc('localhost', '?other=1'))).toBe(false);
+  });
+
+  test('it does not match a look-alike param', () => {
+    expect(phoneStageForced(loc('localhost', '?stage=phoney'))).toBe(false);
+    expect(phoneStageForced(loc('localhost', '?mystage=phone'))).toBe(false);
+  });
+
+  test('it reads the flag anywhere in the query string', () => {
+    expect(phoneStageForced(loc('localhost', '?a=1&stage=phone'))).toBe(true);
+    expect(phoneStageForced(loc('localhost', '?stage=phone&b=2'))).toBe(true);
+  });
+
+  test('it degrades safely with no location at all', () => {
+    expect(phoneStageForced(null)).toBe(false);
+  });
+
+  test('the default mapping is UNCHANGED when the flag is absent', () => {
+    // jsdom is localhost with an empty search — the existing invariants must hold.
+    expect(responsiveSurfaceMode({ stage: 'plan', sheet: null })).toBe('command');
+    expect(optsOutOfFit({ stage: 'plan', sheet: null })).toBe(true);
   });
 });
