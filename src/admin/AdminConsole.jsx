@@ -22,8 +22,13 @@ import { researchQueueToKCRs } from '../lib/knowledge/researchIntake';
 import { syncIntake, loadKCRs, loadLocalKCRs, upsertKCR } from '../lib/knowledge/kcrStore';
 import { kcrBacklogMetrics } from '../lib/knowledge/kcrGovernance';
 import { kcrGateStatus, addEvidence, setProposal, recordReview, advanceKCR, publishKCR } from '../lib/knowledge/knowledgeChange';
+// `mergePublishedKnowledge` is no longer called from here: Phase 5D moved the merge
+// INSIDE `exportBase`, which combines the committed export with the snapshot
+// reconstruction in the load-bearing order. The import outlived the call, which is
+// what the CRA warning gate caught. `snapshotEntryToKcr` STAYS — the correction flow
+// below still reconstructs a prior KCR with it.
 import { publishedKcrsForExport, serializePublishedExport, exportSummary, EXPORT_FILENAME,
-  mergePublishedKnowledge, snapshotEntryToKcr, publishedInventory, exportBase, lineageHistory, rollbackTarget } from '../lib/knowledge/publishedExport';
+  snapshotEntryToKcr, publishedInventory, exportBase, lineageHistory, rollbackTarget } from '../lib/knowledge/publishedExport';
 import { publishedEntries } from '../lib/knowledge/publishedSnapshot';
 import { openCorrection, openAuthoredGovernance } from '../lib/knowledge/correctionWorkflow';
 import { rollbackKCR } from '../lib/knowledge/knowledgeChange';
@@ -3429,7 +3434,6 @@ function KcrStudioPanel() {
       // never heard of. The baked snapshot is the merge base: it is the same bytes
       // the runtime resolver serves, and it contains only lineage heads.
       const liveEntries = publishedEntries();
-      const liveAsKcrs = liveEntries.map(snapshotEntryToKcr).filter(Boolean);
       // PHASE 5D (P0): merge base is the COMMITTED EXPORT (full records, superseded
       // history included), not the snapshot. Reconstructing from heads dropped v1 on
       // the second correction and stripped 11 of 21 fields off every survivor.
