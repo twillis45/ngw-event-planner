@@ -205,6 +205,32 @@ function preProgress(ev, phase, daysOut) {
   const total = items.length;
   const done = items.filter(i => i.handled).length;
   const left = total - done;
+
+  // ── WHEN DOES THIS LEDGER NEXT CHANGE? (board finding, 2026-08-03) ──────────
+  //
+  // THE DENOMINATOR MOVES. Shopping is not an essential until the final week
+  // (see the `daysOut <= 7` gate above), so a host reading "5 of 5 handled" at 43
+  // days becomes "5 of 6" on day 7 — having done nothing wrong, and having been
+  // told nothing. Every completion claim this ledger supports is therefore a claim
+  // with a fuse, and the surfaces had no way to know it.
+  //
+  // This is the fuse, named. DERIVED from the same condition that gates the axis,
+  // read forward instead of now — never a guess, and null whenever nothing is
+  // pending (the axis is already counted, or can never apply to this event).
+  //
+  // A completion state MUST print this. "Settled" without "until when" is the
+  // defect; "settled until Sep 12, when the shopping list opens" is the fix.
+  const nextLedgerChange = (() => {
+    if (noDate || daysOut == null) return null;
+    // Shopping is the only date-gated axis today. If another is added, it joins here.
+    if (!(daysOut > 7 && usesFood && hasCount)) return null;
+    const start = String(ev.date || '').slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) return null;
+    const d = new Date(start + 'T00:00:00');
+    d.setDate(d.getDate() - 7);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return { date: iso, days: daysOut - 7, id: 'shopping', what: 'the shopping list opens' };
+  })();
   const label = noDate ? 'Planning setup' : 'Planning readiness';
   // SSOT #1 / R4 — a claim must not outrun its own scope. This said "Ready for
   // event day", which is a claim about the EVENT. The ledger is only the areas that
@@ -224,6 +250,9 @@ function preProgress(ev, phase, daysOut) {
     progress: total ? done / total : 0,
     summary,
     nextCue: pickCue(items),
+    // The date this ledger's DENOMINATOR next moves, or null. Additive; a reader
+    // that ignores it is unchanged, but a surface claiming completion must not.
+    nextLedgerChange,
     // The per-essential ledger behind the counts — same rows pickCue ranks.
     // Additive: readers that only want the counts are unaffected.
     items,

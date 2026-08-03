@@ -156,6 +156,7 @@ import { venueFor, setVenue } from '@app/lib/venueFor';
 import { moneyDatesFor, settleUpDraft } from '@app/lib/moneyDates';
 import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
+import { mayExhale } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
@@ -2424,6 +2425,24 @@ export default function HostShellV2() {
   // cleared on event switch so the same row on a different event counts again.
   const listIsCalm = queue.length === 0
     || (queue.length === 1 && CALM_CATEGORIES.has(String(queue[0].category || '')));
+
+  // ── THE ENGINE GRANTS CALM, NOT THE CHECKLIST (exhaleGate R3, wired 2026-08-03) ──
+  //
+  // `listIsCalm` reads `queue`, and `queue` is built from `actions` + `blockerDecisions`
+  // (~:2398). The over-budget heads-up is appended to `worries` (~:2321) and NEVER to
+  // either. So an overspend could not break the calm BY CONSTRUCTION: a host $1,400 past
+  // their number, with a quiet action queue, was shown "You're ahead."
+  //
+  // That is exactly R3 — a local completeness read outranking what the engine knows —
+  // and `lib/exhaleGate` was written on 2026-07-14 to forbid it. It had ZERO importers in
+  // hostv2: its only call site was the frozen `src/App.js`, which is scheduled for
+  // deletion, so the invariant was about to be left with no callers at all.
+  //
+  // The veto is scoped to MONEY on purpose. `worries` are deliberately non-blocking
+  // heads-ups, and the CALM_CATEGORIES ruling (one calm item is still calm) stands. Money
+  // is the one the board proved the checklist cannot see and must not talk over.
+  const calmVeto = (worries || []).find(w => w && String(w.category) === 'money') || null;
+  const mayBeCalm = mayExhale(listIsCalm, calmVeto);
   // REBALANCE (host-approved 2026-07-17): instruction-first Command. When the
   // engine has an ask, the display slot speaks it (the ASK) and queue[0]
   // renders as the one hero panel; when there is nothing to ask (calm, day-of,
@@ -6090,7 +6109,7 @@ export default function HostShellV2() {
                 // masthead + mega + verdict + heads-ups. The heads-ups / coming-up live below the
                 // fold behind "Look around anyway". Grounded: the on-track count is the real phase
                 // ledger; "next check" is the nearest dated thing. Elegant + genuinely-calm only.
-                if (elegantMode && listIsCalm && !isPast && days !== null && days > 0) {
+                if (elegantMode && mayBeCalm && !isPast && days !== null && days > 0) {
                   const cpDone = phaseCues && Number.isFinite(Number(phaseCues.completedCount)) ? Number(phaseCues.completedCount) : (plan.progress && plan.progress.done);
                   const cpTotal = phaseCues && Number(phaseCues.totalCount) ? Number(phaseCues.totalCount) : (plan.progress && plan.progress.total);
                   const nextUp = (upNext && upNext.find(u => u && u.due)) || null;
