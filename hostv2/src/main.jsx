@@ -36,9 +36,19 @@ const rsvpCode = (() => {
 if (!briefUrl) {
   const root = createRoot(document.getElementById('root'));
   const mount = (el) => root.render(<ErrorBoundary>{el}</ErrorBoundary>);
+  // ?demo=lodging is the REIMAGINED where-everyone-stays cockpit, running beside
+  // the live sheet on the same real event out of localStorage. It is a real
+  // behavioural change to the surface every destination host uses, so it gets
+  // driven and judged here before it replaces anything. Its own chunk: a host
+  // who never asks for it never downloads it.
+  const demo = (() => {
+    try { return new URLSearchParams(window.location.search).get('demo'); } catch { return null; }
+  })();
   const load = rsvpCode
     ? import('./InviteV2.jsx').then(m => <m.default code={rsvpCode} />)
-    : import('./HostShellV2.jsx').then(m => <m.default />);
+    : demo === 'lodging'
+      ? import('./LodgingCockpit.jsx').then(m => <m.default />)
+      : import('./HostShellV2.jsx').then(m => <m.default />);
   load.then(mount).catch(() => {
     // A chunk that fails to load must say so, not hang on a blank frame.
     mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);

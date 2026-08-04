@@ -1213,6 +1213,110 @@ export function lodgingRecommendation(event, intel) {
  *     a new one (see hostSpending's C1 note), and the fix if it bites is
  *     de-duplication at the source, not silently dropping the term.
  */
+// ─── THE STAGE THIS HOST IS ACTUALLY IN (reimagine, 2026-08-03) ────────────
+//
+// Host, after reading the live panel end to end: "not very readable... we need
+// way more than folding." Correct. Folding hid four surfaces behind carets; it
+// did not stop there being four.
+//
+// THE DIAGNOSIS: this sheet is five surfaces wearing one scroll —
+//   a search launcher · an intake · a comparison · a commitment · a record.
+// Those are five different MOMENTS, and a host is only ever in one of them.
+// Stacking all five forces the host to work out which part is theirs, every
+// time they open it. That is the opposite of a cockpit (02_STUDIO_MATTE
+// "Detail View Rule": readiness, why it matters, next action, phase sections)
+// and it breaks "every view has exactly one dominant element"
+// (UX_04 hierarchy enforcement).
+//
+// THE REIMAGINE: derive the stage from data the app already holds, show that
+// stage's cockpit, and make the other stages REACHABLE rather than stacked.
+// Nothing is deleted — the same blocks live behind a named step instead of
+// below a scroll. This is the D6 workflow made live.
+//
+// Stage is DERIVED, never stored: no new field, no second source of truth, and
+// it cannot drift from what the host actually has.
+export const LODGING_STAGES = ['no-town', 'looking', 'weighing', 'picked', 'booked'];
+
+export function lodgingStage(event, intel) {
+  const ev = event || {};
+  if (ev.isDestination !== true) return null;
+
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { li = null; } }
+  const opts = (li && li.options) || [];
+  const chosen = (li && li.chosen) || null;
+
+  // A booking RECORD exists once the host has written something only a booked
+  // stay produces — a name they typed off a confirmation, a code, or a date
+  // from the money-safe chain. Never inferred from a pick alone: choosing is
+  // not booking, and saying it is would be the kind of claim this file bans.
+  const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
+  const booked = !!(String(stay.hotelName || '').trim() || String(stay.bookingCode || '').trim()
+    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
+
+  let blocked = null;
+  try { blocked = lodgingSearchBlocked(ev); } catch (_e) { blocked = null; }
+
+  const stage = booked ? 'booked'
+    : chosen ? 'picked'
+    : opts.length > 0 ? 'weighing'
+    : blocked ? 'no-town'
+    : 'looking';
+
+  const guests = (li && li.guests) || 0;
+  const fits = opts.filter((o) => !guests || o.sleeps == null || o.sleeps >= guests).length;
+
+  // ONE dominant line per stage, and the ONE act that moves it forward. Both
+  // state what is true right now — never a target, never a guess.
+  const COPY = {
+    'no-town': {
+      title: 'Name the town.',
+      why: blocked ? blocked.detail : 'Every search needs a place.',
+      act: 'Use this town',
+    },
+    looking: {
+      title: 'Go find some places.',
+      why: 'Three doors, opened with your own answers already in them. Bring back a link — or the whole results page.',
+      act: 'Search Airbnb',
+    },
+    weighing: {
+      title: opts.length === 1 ? 'One place so far.' : `${opts.length} places, ${fits} that fit.`,
+      why: 'Side by side on the things you said matter. Nothing here is scraped.',
+      act: 'Make one the pick',
+    },
+    picked: {
+      // trimmed: a whitespace-only label is not a name, and must not become one
+      title: (chosen && String(chosen.label || '').trim()) ? `${String(chosen.label).trim()}.` : 'You have a pick.',
+      why: 'Book it on the platform, then bring the confirmation numbers back here so the money dates are watched.',
+      act: 'Save the stay details',
+    },
+    booked: {
+      title: 'The stay is on the books.',
+      why: 'What is watched from here: the refund window, the next payment, and who still needs a room.',
+      act: 'Open the money dates',
+    },
+  };
+
+  const c = COPY[stage];
+  return {
+    stage,
+    index: LODGING_STAGES.indexOf(stage),
+    total: LODGING_STAGES.length,
+    title: c.title,
+    why: c.why,
+    act: c.act,
+    counts: { options: opts.length, fits, guests },
+    // Every stage stays REACHABLE — the point is that only one is loud, not
+    // that the others are gone. `done` is the honest read of what is behind you.
+    steps: LODGING_STAGES.map((s, i) => ({
+      id: s,
+      done: i < LODGING_STAGES.indexOf(stage),
+      current: s === stage,
+    })),
+  };
+}
+
 // ─── THE COMPARISON, TRANSPOSED (research rec #1, 2026-08-01) ──────────────
 // "Adopt the Zillow transpose for the shortlist. Named attribute rows down a
 // left rail, candidates as columns. Missing data becomes a visible gap in a
