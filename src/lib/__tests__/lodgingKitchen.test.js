@@ -103,7 +103,11 @@ describe('lodgingSearchBlocked — no town is a STEP, not a blank', () => {
     // HOST LANGUAGE, not ISO. This assertion originally demanded
     // "2028-06-17 to 2028-06-21" and passed - which is how the ISO string reached
     // a real screen. Pin the readable form so it cannot come back.
-    expect(b.detail).toContain('Jun 17-Jun 21');
+    // EN DASH since 2026-08-04. This assertion pinned a HYPHEN while
+    // lodgingSearchLinks — one screen later — rendered the same span with an en
+    // dash. Walking the workflow end to end is what surfaced it; the two
+    // producers now share one character.
+    expect(b.detail).toContain('Jun 17–Jun 21');
     expect(b.detail).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(b.detail).toContain('10 guests');
   });
