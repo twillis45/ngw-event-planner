@@ -10098,7 +10098,7 @@ export default function HostShellV2() {
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
-                        <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                        <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
                               (lodgingSearchLinks — Airbnb, Vrbo, hotels), and a
@@ -10107,7 +10107,12 @@ export default function HostShellV2() {
                               host comparing hotels that this list was not for
                               them. The heading names the ACT, which is the same
                               act either way. */}
-                          <span>Places you’re weighing</span>
+                          {/* nowrap on BOTH halves: squeezed into one line they each
+                              broke mid-phrase ("PLACES YOU'RE / WEIGHING" beside
+                              "3 OPTIONS · 2 FIT YOUR / 10"). With the row allowed to
+                              wrap instead, the count drops to its own line intact
+                              rather than either half fracturing. */}
+                          <span style={{ whiteSpace: 'nowrap' }}>Places you’re weighing</span>
                           {/* HOW MANY (host 2026-07-28: "total number of listings
                               somewhere"). The count of what you are weighing, and how many
                               of them still fit the group — the second number is the one
@@ -10115,7 +10120,7 @@ export default function HostShellV2() {
                           {li.options.length > 0 && (() => {
                             const fits = li.options.filter((o) => !li.guests || o.sleeps == null || o.sleeps >= li.guests).length;
                             return (
-                              <span className="of" style={{ fontWeight: 650 }}>
+                              <span className="of" style={{ fontWeight: 650, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
                                 {li.options.length} {li.options.length === 1 ? 'option' : 'options'}
                                 {li.guests && fits < li.options.length ? ` · ${fits} fit your ${li.guests}` : ''}
                               </span>
