@@ -701,7 +701,7 @@ function Choices({ opts, event, intel, scores, onPick, onGone }) {
                     nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
                     .filter(Boolean).join(' · ')}
                 </p>
-                {hist && <p className="lc-card-was">{hist.text}</p>}
+                {hist && <p className="lc-card-was">{hist.full}</p>}
                 {sc && sc.met && sc.met.length > 0 && (
                   <div className="lc-chips">
                     {sc.met.slice(0, 3).map((m) => <span className="lc-chip" key={m}>{m}</span>)}
@@ -884,7 +884,7 @@ function Weighing({ event, intel, patch }) {
                       a place the host saved, and hiding it would punish them
                       twice for a thin paste. */}
                   <span className="lc-opt-sub">
-                    {[(() => { try { const h = lodgingPriceHistory(o); return h ? h.text : null; } catch { return null; } })(),
+                    {[(() => { try { const h = lodgingPriceHistory(o); return h ? h.full : null; } catch { return null; } })(),
                       'no picture yet — paste the listing’s photo link to weigh it against the others']
                       .filter(Boolean).join(' · ')}
                   </span>
@@ -916,7 +916,7 @@ function Weighing({ event, intel, patch }) {
                   const h = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
                   const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
                   const bits = [
-                    h ? h.text : null,
+                    h ? h.full : null,
                     // Letting the row be pickable must not make it quiet about
                     // what is missing. A place with no picture says so wherever
                     // it appears — the rule was never "hide the gap".

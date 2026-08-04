@@ -1526,6 +1526,16 @@ export function lodgingPriceHistory(option) {
     delta: Math.abs(Math.round(now - first)),
     // No adjective. It states the change and when the first number was taken.
     text: `was ${money(first)} when you saved it`,
+    // ── SAY WHICH NUMBER, AND SAY BOTH (driven 2026-08-04) ─────────────────
+    // `text` alone is only safe when it sits beside the very field it compares.
+    // On the W9 card it sat under the ALL-IN price ($4,500 with fees) while
+    // comparing the sticker ($4,200 against $4,480 first seen) — so the host
+    // read "$4,500 · was $4,480", a $20 RISE, when the engine had computed a
+    // $280 FALL. Two quantities stacked, pointing opposite ways.
+    //
+    // `full` carries its own subject and both numbers, so it stays true no
+    // matter what headline sits above it. Surfaces should prefer it.
+    full: `the total was ${money(first)} when you saved it — now ${money(now)}`,
   };
 }
 

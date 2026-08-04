@@ -81,6 +81,21 @@ describe('a price remembers what you first recorded', () => {
     expect(lodgingPriceHistory(null)).toBeNull();
   });
 
+  // ── AND IT NAMES ITS OWN SUBJECT (driven 2026-08-04) ─────────────────────
+  // `text` is only safe beside the exact field it compares. On the W9 card it
+  // sat under the ALL-IN price while comparing the sticker, so "$4,500 · was
+  // $4,480" read as a $20 rise when the engine had computed a $280 fall.
+  // `full` carries the subject and both numbers and cannot be misread that way.
+  it('offers a sentence that survives being placed anywhere', () => {
+    const h = lodgingPriceHistory({ totalPrice: 4200, priceFirstSeen: 4480 });
+    expect(h.full).toBe('the total was $4,480 when you saved it — now $4,200');
+    // still no deal language, in either form
+    expect(h.full).not.toMatch(/\bdeal\b|\bsavings?\b|discount|cheap|bargain/i);
+    // both endpoints are present, so no headline can flip its meaning
+    expect(h.full).toContain('$4,480');
+    expect(h.full).toContain('$4,200');
+  });
+
   it('states the first number and when it was taken — never a market claim', () => {
     const h = lodgingPriceHistory({ totalPrice: 4600, priceFirstSeen: 4200 });
     expect(h.text).toBe('was $4,200 when you saved it');
