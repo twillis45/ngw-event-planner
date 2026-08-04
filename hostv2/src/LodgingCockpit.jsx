@@ -69,7 +69,31 @@ export default function LodgingCockpit() {
   const stage = viewing || (derived && derived.stage) || null;
   const isCurrent = !viewing || (derived && viewing === derived.stage);
 
-  if (!event) return <Frame><Solo><p className="lc-note">No event on this device yet. Create one in the app first.</p></Solo></Frame>;
+  // ── AN EMPTY STORE IS A ROUTE, NOT A DEAD END ──────────────────────────
+  // Hit on a phone over the LAN (2026-08-04): localStorage is PER ORIGIN, so a
+  // handset on https://<lan-ip>:5210 has its own empty store even though the
+  // laptop on localhost:5199 is full of events. That is correct behaviour and
+  // it is exactly what a first-time device looks like.
+  //
+  // What was wrong is the copy: "Create one in the app first" names no route,
+  // which is the same defect as every other CTA that describes an act without
+  // offering it. The app IS on this origin — one link away.
+  if (!event) return (
+    <Frame><Solo>
+      <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+      <h1 className="lc-h1">Nothing to plan yet.</h1>
+      <p className="lc-why">
+        Events live on the device that made them, so this one starts empty. Make an
+        event here and this cockpit fills itself in.
+      </p>
+      <Panel label="START HERE">
+        <a className="cta" href="./" style={{ textDecoration: 'none' }}>Open the planner</a>
+        <p className="lc-note">
+          Then come back to this address with <code>?demo=lodging</code> on the end.
+        </p>
+      </Panel>
+    </Solo></Frame>
+  );
   if (!derived) return (
     <Frame><Solo>
       <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
