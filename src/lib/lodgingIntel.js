@@ -1024,7 +1024,9 @@ export function lodgingSearchLinks(event) {
   if (end) vr.set('endDate', end);
   if (guests) vr.set('adults', String(guests));
 
-  // ── WHY VRBO'S LINK IS DIFFERENT (review board, Liability ruling 2026-07-28) ──
+  // ── WHY VRBO'S LINK USED TO BE DIFFERENT (2026-07-28, REVERSED 2026-08-03) ──
+  // Kept because the reasoning is still the reasoning; only the decision changed.
+  // See the note on the vrbo link below for who reversed it and why.
   // Airbnb's terms carry no deep-link prohibition; Vrbo's §2 does, verbatim:
   // "deep link to any part of our Service". We were emitting a constructed URL
   // into a non-homepage path with parameters we chose — if "deep link" means
@@ -1057,11 +1059,24 @@ export function lodgingSearchLinks(event) {
 
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
-    { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
-      // Host language here too: `criteria` is what she reads and types into
-      // Vrbo's own date picker, so it is a THIRD producer of the same string.
-      // The first sweep fixed `applied` and missed this one — the gate now
-      // covers every field on every link.
+    // ── RULING REVERSED BY THE HOST, 2026-08-03 ──────────────────────────────
+    // Vrbo now gets the SAME constructed search Airbnb gets: destination,
+    // startDate, endDate, adults — all the host's own answers, carried into
+    // their own browser.
+    //
+    // What changed is the decision, not the facts. The clause below is still
+    // real and still says what it said. The host was shown it twice, in full,
+    // and chose to build the link anyway: hosts genuinely use Vrbo, sending
+    // them to a bare homepage with a string to re-type is a worse product, and
+    // the clause is widely regarded as unenforceable post-Ticketmaster v.
+    // Tickets.com. That is the host's call to make, and it is recorded here as
+    // theirs rather than dressed up as a technical finding.
+    //
+    // `criteria` stays. It is no longer the only path, but a host who prefers
+    // to type into Vrbo's own picker still has the words, and it costs nothing.
+    { id: 'vrbo', label: 'Open Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said,
+      // Host language: `criteria` is what she READS. The URL above carries ISO
+      // because Vrbo parses it; that split is exactly what the ISO gate encodes.
       criteria: [place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
     { id: 'hotels', label: 'Search hotels', href: `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`, applied: said },
   ];

@@ -70,9 +70,13 @@ describe('lodgingSearchLinks — hotels are covered, not just rentals', () => {
     expect(decodeURIComponent(h.href)).toContain('Santa Fe');
   });
 
-  test('Vrbo still goes to the front door — its terms forbid deep links', () => {
+  // Host reversed the front-door ruling on 2026-08-03 (see lodgingIntel.js).
+  // `criteria` is KEPT: it is no longer the only path, but a host who prefers
+  // to type into Vrbo's own picker still has the words.
+  test('Vrbo carries the search, and still hands over the criteria', () => {
     const v = lodgingSearchLinks(dest).find((l) => l.id === 'vrbo');
-    expect(v.href).toBe('https://www.vrbo.com/');
+    expect(v.href).toMatch(/^https:\/\/www\.vrbo\.com\/search\?/);
+    expect(v.href).toMatch(/destination=Santa\+Fe/);
     expect(v.criteria).toContain('Santa Fe');
   });
 

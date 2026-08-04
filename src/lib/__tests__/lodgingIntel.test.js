@@ -344,10 +344,24 @@ describe('lodgingSearchLinks', () => {
   // Airbnb's has no equivalent clause. So Airbnb keeps its pre-filled search and
   // Vrbo gets the front door plus the criteria rendered for the host to paste.
   // The asymmetry is the POINT — it is what reading the terms was for.
-  test('Vrbo gets the front door, not a constructed deep link', () => {
+  // WAS: "Vrbo gets the front door, not a constructed deep link" — asserting
+  // href === 'https://www.vrbo.com/'.
+  //
+  // REVERSED BY THE HOST, 2026-08-03. The clause that produced the old rule
+  // (Vrbo terms §2, "deep link to any part of our Service") is still real and
+  // was put in front of the host twice, in full. They chose to build the link:
+  // hosts genuinely use Vrbo, and handing them a bare homepage plus a string to
+  // re-type is a worse product. Recorded here as their decision, not as a
+  // technical finding — so whoever reads this next knows a judgement was made
+  // rather than a rule forgotten.
+  test('Vrbo gets the same constructed search Airbnb gets (host ruling 2026-08-03)', () => {
     const [, vr] = lodgingSearchLinks(EV2);
-    expect(vr.href).toBe('https://www.vrbo.com/');
-    expect(vr.href).not.toMatch(/\/search|destination=|startDate=/);
+    expect(vr.href).toMatch(/^https:\/\/www\.vrbo\.com\/search\?/);
+    // the host's OWN answers, and only those
+    expect(vr.href).toMatch(/destination=Deep\+Creek\+Lake/);
+    expect(vr.href).toMatch(/startDate=2026-09-11/);
+    expect(vr.href).toMatch(/endDate=2026-09-13/);
+    expect(vr.href).toMatch(/adults=10/);
   });
 
   test('…and the host is handed her own criteria to paste there', () => {

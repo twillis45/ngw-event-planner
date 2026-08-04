@@ -334,9 +334,8 @@ function EventPicker({ events, eventId, onPick }) {
 // type on one column, and at >=900px the step rail moves to its own left column
 // so the decision keeps the width instead of the rail stealing it.
 const CSS = `
-.lc-wrap{min-height:100vh;background:var(--bg);color:var(--ink);
-  background-image:radial-gradient(150% 500px at 50% -70px, rgba(86,116,140,.30) 0%, rgba(86,116,140,.09) 40%, transparent 74%);
-  background-repeat:no-repeat;font:400 15px/1.5 Inter,system-ui,sans-serif;
+/* ground + bloom come from .app.app-elegant — not restated here */
+.lc-wrap{color:var(--ink);font:400 15px/1.5 Inter,system-ui,sans-serif;
   padding:clamp(20px,4vw,40px) clamp(16px,5vw,48px) calc(48px + env(safe-area-inset-bottom,0px));}
 .lc-grid{width:min(100%,1180px);margin:0 auto;display:grid;grid-template-columns:1fr;gap:0;}
 .lc-main{min-width:0;max-width:68ch;}
@@ -383,7 +382,7 @@ const CSS = `
 .lc-t-val{font:650 13px/1.35 Inter,sans-serif;text-align:right;color:var(--ink);}
 .lc-t-val.is-gap{font-weight:400;color:var(--faint);}
 .lc-t-val.is-short{color:var(--muted);}
-@media (min-width:900px){
+@container (min-width:900px){
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
   .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);}
   .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:12px;}
@@ -393,10 +392,19 @@ const CSS = `
 @media (prefers-reduced-motion:reduce){.lc-wrap *{animation:none!important;transition:none!important;}}
 `;
 
-// Frame is the page shell only — the GRID belongs to whoever needs two columns,
-// so it is never emitted twice.
+// SAME FRAME AS THE APP. `.stagewrap > .app.app-elegant` is the host shell's own
+// structure, so the demo inherits the phone silhouette on a desktop window for
+// free (styles.css gates it at >=1280x700) and the --bg ground + top bloom come
+// from `.app.app-elegant` rather than being restated here. Mobile is the hero:
+// below that gate this is simply a full-bleed phone surface, which is the case
+// being judged.
 const Frame = ({ children }) => (
-  <div className="lc-wrap"><style>{CSS}</style>{children}</div>
+  <div className="stagewrap">
+    <div className="app app-elegant">
+      <style>{CSS}</style>
+      <div className="lc-wrap">{children}</div>
+    </div>
+  </div>
 );
 // The simple states (no event, not a destination) have no rail, so they get the
 // single-column body directly.
