@@ -984,7 +984,11 @@ export function lodgingSearchBlocked(event) {
   // at a host who has never typed a date that way.
   const nice = niceDay;
   const inHand = [
-    start && end ? `${nice(start)}-${nice(end)}` : (start ? nice(start) : null),
+    // EN DASH, matching lodgingSearchLinks' `said[]` one screen later. The two
+    // producers rendered the same span with different characters — "Jun 17-Jun
+    // 21" here, "Jun 17–Jun 21" there — which is the kind of drift that only
+    // shows when you walk the workflow end to end. One span, one dash.
+    start && end ? `${nice(start)}–${nice(end)}` : (start ? nice(start) : null),
     guests ? `${guests} guests` : null,
   ].filter(Boolean);
 

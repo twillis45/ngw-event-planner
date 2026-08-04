@@ -57,6 +57,10 @@ describe('the lodging surface never prints an ISO date', () => {
     expect(b).toBeTruthy();
     expect(ISO.test(String(b.detail))).toBe(false);
     expect(String(b.detail)).toMatch(/Jun 17/);
+    // ONE SPAN, ONE DASH. Walking the workflow end to end showed this producer
+    // rendering "Jun 17-Jun 21" while lodgingSearchLinks — the very next screen
+    // — rendered "Jun 17–Jun 21". Same span, two characters.
+    expect(String(b.detail)).toMatch(/Jun 17–Jun 21/);
   });
 
   it('a platform PARAMETER may carry ISO — the platform parses it', () => {

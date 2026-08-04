@@ -391,6 +391,7 @@ function Looking({ event, patch }) {
         const on = staged.pick.has(c.url);
         return (
           <button key={c.url} className="lc-staged" aria-pressed={on}
+            aria-label={`${lodgingTitleFor(c) || 'Unnamed place'} — ${on ? 'keeping' : 'not keeping'}`}
             onClick={() => setStaged((st) => {
               const pick = new Set(st.pick);
               if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
@@ -411,6 +412,19 @@ function Looking({ event, patch }) {
           </button>
         );
       })}
+      {/* LINKS ARE NOT DETAILS. A prose paste (or a plain list of URLs) yields
+          the links and nothing else, so every row reads "Airbnb listing" with
+          no name or price. That is honest, but silent about WHY — and the host
+          is one action away from the real thing. Device-aware, same as the
+          failure path: ⌘A is not a key on a phone. */}
+      {staged.linksOnly && (
+        <p className="lc-note lc-warn">
+          I got the links but not the details — that paste carried no names or prices.
+          {typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer:coarse)').matches
+            ? ' Open a listing and use Share → Copy Link for one with its facts.'
+            : ' Copy the results page itself (⌘A then ⌘C) and the names, beds and prices come with it.'}
+        </p>
+      )}
       <p className="lc-note">
         “sleeps —” because the results page never carries it. Type it once and the fit count works.
         {staged.dupes ? ` ${staged.dupes} were already on your list.` : ''}
@@ -573,7 +587,7 @@ function Weighing({ event, intel, patch }) {
                   patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
                     ? { ...x, photoUrl: clean, sources: { ...(x.sources || {}), photoUrl: 'typed' } }
                     : x)) });
-                }}>Add a picture</button>
+                }} aria-label={`Add a picture for ${o.label}`}>Add a picture</button>
               </div>
             );
           }
@@ -598,9 +612,16 @@ function Weighing({ event, intel, patch }) {
                 ? <span className="lc-note" style={{ margin: 0 }}>no longer available</span>
                 : (
                   <span className="lc-opt-acts">
-                    <button className="cta" onClick={() => pick(o.id)}>Make it the pick</button>
+                    {/* NAME THE OBJECT. With two houses on screen both buttons
+                        read "Make it the pick" — a screen reader announces the
+                        same phrase twice with no way to tell which house, and
+                        the accessibility tree collapsed them to one. The visible
+                        label stays short; the accessible name carries the house. */}
+                    <button className="cta" aria-label={`Make ${o.label} the pick`}
+                      onClick={() => pick(o.id)}>Make it the pick</button>
                     {/* PEER, not a fallback — same row, same weight class. */}
-                    <button className="cta soft" onClick={() => markGone(o.id)}>It’s gone</button>
+                    <button className="cta soft" aria-label={`${o.label} is gone`}
+                      onClick={() => markGone(o.id)}>It’s gone</button>
                   </span>
                 )}
             </div>
