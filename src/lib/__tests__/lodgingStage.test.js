@@ -61,6 +61,33 @@ describe('the lodging sheet knows which moment the host is in', () => {
     expect(s.stage).not.toBe('booked');
   });
 
+  // ── THE GATE BELOW HAND-BUILT ITS EVENTS, SO IT NEVER CAUGHT THIS ─────────
+  // "CHOOSING IS NOT BOOKING" was pinned above and still shipped broken: the
+  // cockpit's pick() writes stayFromPick(), which fills lodging.hotelName with
+  // the chosen option's label, and the check below read ANY hotelName as a
+  // booking. One press of "Make it the pick" jumped the host from weighing to
+  // "The stay is on the books." These drive the real write path instead.
+  it('picking through stayFromPick does NOT book the stay', () => {
+    const { stayFromPick } = require('../lodgingIntel');
+    const chosenEvent = { ...withTown, lodgingOptions: [
+      { id: 'a', label: 'The Ranch House', sleeps: 12, status: 'chosen', url: 'https://www.airbnb.com/rooms/1' },
+    ] };
+    const stay = stayFromPick(chosenEvent);
+    expect(stay.hotelName).toBe('The Ranch House');      // it DID record the place
+    const s = lodgingStage({ ...chosenEvent, lodging: stay });
+    expect(s.stage).toBe('picked');                       // ...without claiming a booking
+    expect(s.stage).not.toBe('booked');
+    expect(s.why).toMatch(/book it on the platform/i);
+  });
+
+  it('the same name typed off a confirmation DOES book it', () => {
+    const chosenEvent = { ...withTown, lodgingOptions: [
+      { id: 'a', label: 'The Ranch House', sleeps: 12, status: 'chosen' },
+    ] };
+    // no `from` stamp — this is the host writing what their confirmation says
+    expect(lodgingStage({ ...chosenEvent, lodging: { hotelName: 'The Ranch House' } }).stage).toBe('booked');
+  });
+
   it('only a real booking record reaches booked', () => {
     const picked = { ...withTown, lodgingOptions: [
       { id: 'a', label: 'Ranch House', sleeps: 12, status: 'chosen' },

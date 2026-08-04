@@ -671,6 +671,12 @@ function Weighing({ event, intel, patch }) {
       <Panel label="MAKE THE CALL">
         {opts.map((o) => {
           const isGone = o.status === 'gone';
+          // Is there anything to weigh this against? The thumbnail rule exists
+          // to stop a host comparing houses they cannot see — its own copy says
+          // "weigh it against the others". With no others there is no
+          // comparison to protect, and holding the row back only dead-ends the
+          // plan (see the thin branch below).
+          const others = opts.filter((x) => x && x.id !== o.id && x.status !== 'gone').length;
           // ── A PLACE IS NOT A PLACE WITHOUT A PICTURE (host, 2026-08-04:
           //    "don't have the app reference properties without a thumbnail") ──
           // A row that is only a name asks the host to choose between houses
@@ -680,7 +686,14 @@ function Weighing({ event, intel, patch }) {
           // and shown as what it actually is — a place still missing its
           // picture — with the one act that fixes it.
           const noPhoto = !String(o.photoUrl || '').trim() && !(Array.isArray(o.photos) && o.photos.length);
-          if (noPhoto && !isGone) {
+          // ── ...BUT A PICTURE GATES THE COMPARISON, NOT THE COMMITMENT ──────
+          // Driving this on 2026-08-04, host: "where's the pick" / "I don't see
+          // the listing". A bare link is the commonest paste on this surface and
+          // it produced a row with no pick, no dismiss and no way to open the
+          // place — the workflow simply stopped, and lodgingStage could never
+          // reach 'picked'. Held out of the CHOOSER while there is something to
+          // choose between; on its own it stays a full row.
+          if (noPhoto && !isGone && others > 0) {
             return (
               <div key={o.id} className="lc-opt is-thin">
                 <span className="lc-opt-main">
@@ -695,6 +708,13 @@ function Weighing({ event, intel, patch }) {
                       .filter(Boolean).join(' · ')}
                   </span>
                 </span>
+                {/* THE PLACE ITSELF. The host pasted a link and the row never
+                    offered it back — "I don't see the listing" was literal.
+                    This is also the route to the picture the row is asking for. */}
+                {String(o.url || '').trim() && (
+                  <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
+                    style={{ textDecoration: 'none' }} aria-label={`Open ${o.label}`}>Open it ↗</a>
+                )}
                 <button className="cta soft" onClick={() => {
                   const url = window.prompt('Paste the photo link for ' + o.label);
                   const clean = String(url || '').trim();
@@ -715,6 +735,10 @@ function Weighing({ event, intel, patch }) {
                   const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
                   const bits = [
                     h ? h.text : null,
+                    // Letting the row be pickable must not make it quiet about
+                    // what is missing. A place with no picture says so wherever
+                    // it appears — the rule was never "hide the gap".
+                    noPhoto ? 'no picture yet' : null,
                     // "our unfurl parses, normalises and infers, and says
                     // nothing" — it says something now.
                     pv && pv.read ? `${pv.read} read from the page` : null,
@@ -727,6 +751,20 @@ function Weighing({ event, intel, patch }) {
                 ? <span className="lc-note" style={{ margin: 0 }}>no longer available</span>
                 : (
                   <span className="lc-opt-acts">
+                    {String(o.url || '').trim() && (
+                      <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
+                        style={{ textDecoration: 'none' }} aria-label={`Open ${o.label}`}>Open it ↗</a>
+                    )}
+                    {noPhoto && (
+                      <button className="cta soft" onClick={() => {
+                        const url = window.prompt('Paste the photo link for ' + o.label);
+                        const clean = String(url || '').trim();
+                        if (!/^https:\/\//i.test(clean)) return;
+                        patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
+                          ? { ...x, photoUrl: clean, sources: { ...(x.sources || {}), photoUrl: 'typed' } }
+                          : x)) });
+                      }} aria-label={`Add a picture for ${o.label}`}>Add a picture</button>
+                    )}
                     {/* NAME THE OBJECT. With two houses on screen both buttons
                         read "Make it the pick" — a screen reader announces the
                         same phrase twice with no way to tell which house, and
@@ -779,6 +817,17 @@ function Picked({ event, intel, patch }) {
         ['Cancellation', String(chosen.cancellationTier || '').trim() || '—'],
       ]} />
       <p className="lc-note">Choosing is not booking. Book on the platform, then bring the confirmation back.</p>
+      {/* NAME THE ACT, THEN OFFER IT. This screen told the host to book it on
+          the platform and did not hand them the platform — while holding the
+          very URL they pasted to get here. Same defect as every CTA rewritten
+          this week; found by walking to this stage on 2026-08-04. */}
+      {String(chosen.url || '').trim() && (
+        <a className="cta" href={chosen.url} target="_blank" rel="noopener noreferrer"
+          style={{ textDecoration: 'none' }}
+          aria-label={`Open ${String(chosen.label || '').trim() || 'your pick'} to book it`}>
+          Open it to book ↗
+        </a>
+      )}
       <div className="lc-row-form">
         <input className="lc-field" placeholder="Booking code" value={code}
           onChange={(e) => setCode(e.target.value)} aria-label="Booking code" />

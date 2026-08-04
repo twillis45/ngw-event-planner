@@ -1563,7 +1563,21 @@ export function lodgingStage(event, intel) {
   // not booking, and saying it is would be the kind of claim this file bans.
   const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
   const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
-  const booked = !!(String(stay.hotelName || '').trim() || String(stay.bookingCode || '').trim()
+  // ── THE COMMENT ABOVE WAS RIGHT; THIS LINE USED TO CONTRADICT IT ──────────
+  // Driving the cockpit on 2026-08-04, one press of "Make it the pick" moved
+  // the host from "Weigh them" to "The stay is on the books." — skipping the
+  // whole pick stage and claiming a booking that does not exist.
+  //
+  // Because pick() writes stayFromPick(), and that fills hotelName with the
+  // chosen option's label. `hotelName` carries two different facts: the place
+  // you picked, and the name on your confirmation. Reading either as a booking
+  // made choosing into booking — the exact claim the comment above bans, and
+  // the one lodgingStage.test.js pins ("CHOOSING IS NOT BOOKING"). That gate
+  // passed because it hand-built the event; nothing ever drove pick().
+  //
+  // A name only counts as a booking record when it did NOT come from the pick.
+  const namedOffConfirmation = !!String(stay.hotelName || '').trim() && stay.from !== STAY_FROM_PICK;
+  const booked = !!(namedOffConfirmation || String(stay.bookingCode || '').trim()
     || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
 
   let blocked = null;
@@ -1733,6 +1747,15 @@ export function lodgingCommitted(event) {
   return already ? 0 : Math.round(n);
 }
 
+/**
+ * Where a `lodging` record came from. A stay written by CHOOSING carries this
+ * stamp; a stay the host typed off a booking confirmation does not. Two
+ * different facts have always lived in `lodging.hotelName` — "the place I
+ * picked" and "the name on my confirmation" — and this is what tells them
+ * apart. Compared in lodgingStage; never write the literal in either place.
+ */
+export const STAY_FROM_PICK = 'the option you picked';
+
 export function stayFromPick(event, intel) {
   const li = intel || lodgingIntel(event);
   const chosen = li.chosen;
@@ -1745,7 +1768,7 @@ export function stayFromPick(event, intel) {
     hotelName: chosen.label || '',
     rate: perNight,
     url: chosen.url || '',
-    from: 'the option you picked',
+    from: STAY_FROM_PICK,
   };
 }
 
