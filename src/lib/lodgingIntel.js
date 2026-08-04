@@ -1329,6 +1329,106 @@ export function lodgingTrouble(event, intel) {
   };
 }
 
+// ─── WHAT WE READ vs WHAT YOU TYPED (2026-08-03) ───────────────────────────
+// The listing research caught us in the same fault we levelled at Blink:
+// "our unfurl parses, normalises and infers, and says nothing." Airbnb marks
+// machine-touched text — "Some info has been automatically translated. Show
+// original" — and that is our own grounding doctrine applied to a listing.
+//
+// An option now remembers WHERE each field came from. `read` means it came off
+// the page or the unfurl; `typed` means the host wrote it. A field with no
+// recorded source is reported as unknown rather than credited to either — we do
+// not backfill provenance we never captured.
+export const LODGING_FIELD_LABELS = {
+  label: 'Name', beds: 'Beds', sleeps: 'Sleeps',
+  totalPrice: 'Total', pricePerNight: 'A night', fees: 'Fees',
+  photoUrl: 'Photo', notes: 'Notes', cancellationTier: 'Cancellation',
+};
+
+export function lodgingProvenance(option) {
+  const o = option || {};
+  const src = (o.sources && typeof o.sources === 'object') ? o.sources : {};
+  const has = (k) => {
+    const v = o[k];
+    return v != null && String(v).trim() !== '';
+  };
+  const rows = Object.keys(LODGING_FIELD_LABELS)
+    .filter(has)
+    .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown' }));
+  return {
+    rows,
+    read: rows.filter((r) => r.source === 'read').length,
+    typed: rows.filter((r) => r.source === 'typed').length,
+    unknown: rows.filter((r) => r.source === 'unknown').length,
+  };
+}
+
+// ─── WHY THESE, IN THIS ORDER (listing research: "Why these hotels?") ──────
+// HotelTonight puts a plain button at the foot of the list and the curation
+// explains itself on demand. "We rank candidates by must-have fit and currently
+// never say so." rankCandidates already computes the basis — matched must-haves,
+// real beds against the head count, the budget ceiling — so this states what it
+// actually did rather than describing an algorithm in the abstract.
+export function lodgingRankBasis(event, intel) {
+  const ev = event || {};
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
+  const opts = (li && li.options) || [];
+  if (opts.length < 2) return null;
+
+  let wants = [];
+  try { wants = mustHavesFor(ev) || []; } catch (_e) { wants = []; }
+  const guests = (li && li.guests) || 0;
+  const budget = Number(ev.totalBudget) || 0;
+
+  const lines = [];
+  if (wants.length) {
+    lines.push(`Ordered by how many of your ${wants.length} must-have${wants.length === 1 ? '' : 's'} each one matches.`);
+  }
+  if (guests) {
+    lines.push(`Real beds count, not headline capacity — a place with fewer than ${guests} beds drops, because the difference is someone on a sofa.`);
+  }
+  if (budget > 0) {
+    lines.push(`Anything over the $${budget.toLocaleString()} you set drops below the ones that clear it.`);
+  }
+  if (!lines.length) return null;
+
+  return {
+    lines,
+    // Stated so the order is never mistaken for a verdict.
+    caveat: 'Nothing is ruled out — this is the order they are shown in, not a judgement about which you should take.',
+  };
+}
+
+// ─── "WAS $412 WHEN YOU SAVED IT" (HotelTonight, via the listing research) ──
+// Their struck price is THEIR OWN HISTORY — "was on HT $210" — a checkable
+// claim about themselves rather than an unverifiable claim about the market
+// (compare Expedia's struck reference price, which nobody can audit).
+//
+// Ours is the same shape and the research names it outright: "was $412 when you
+// saved it — honest, checkable, and genuinely useful when a host returns to a
+// shortlist built three weeks ago." It compares against WHAT THE HOST FIRST
+// RECORDED, never against a price we fetched, because we never fetch prices.
+export function lodgingPriceHistory(option) {
+  const o = option || {};
+  const now = Number(o.totalPrice);
+  const first = Number(o.priceFirstSeen);
+  if (!Number.isFinite(now) || now <= 0) return null;
+  if (!Number.isFinite(first) || first <= 0) return null;
+  if (Math.round(now) === Math.round(first)) return null;
+
+  const money = (n) => `$${Math.round(n).toLocaleString()}`;
+  const up = now > first;
+  return {
+    first: Math.round(first),
+    now: Math.round(now),
+    direction: up ? 'up' : 'down',
+    delta: Math.abs(Math.round(now - first)),
+    // No adjective. It states the change and when the first number was taken.
+    text: `was ${money(first)} when you saved it`,
+  };
+}
+
 // ─── THE STAGE THIS HOST IS ACTUALLY IN (reimagine, 2026-08-03) ────────────
 //
 // Host, after reading the live panel end to end: "not very readable... we need

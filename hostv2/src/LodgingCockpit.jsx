@@ -25,7 +25,7 @@ import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, isUnfurlConfigured, rankCandidates,
-  lodgingTitleFor, lodgingTrouble,
+  lodgingTitleFor, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -318,6 +318,19 @@ function Looking({ event, patch }) {
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
+      // Provenance is captured HERE or not at all — reconstructing it later
+      // would be a guess, and lodgingProvenance deliberately reports an
+      // unrecorded source as unknown rather than crediting either side.
+      sources: {
+        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(c.beds != null ? { beds: 'read' } : null),
+        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(c.photo ? { photoUrl: 'read' } : null),
+        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+      },
+      // The first number the host ever recorded, kept so the price can say
+      // "was $X when you saved it" — our own history, never a market claim.
+      ...(c.priceShown != null ? { priceFirstSeen: c.priceShown } : null),
     }, before.length + i));
     patch({ lodgingOptions: [...before, ...next] });
     setText('');
@@ -344,6 +357,19 @@ function Looking({ event, patch }) {
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
+      // Provenance is captured HERE or not at all — reconstructing it later
+      // would be a guess, and lodgingProvenance deliberately reports an
+      // unrecorded source as unknown rather than crediting either side.
+      sources: {
+        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(c.beds != null ? { beds: 'read' } : null),
+        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(c.photo ? { photoUrl: 'read' } : null),
+        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+      },
+      // The first number the host ever recorded, kept so the price can say
+      // "was $X when you saved it" — our own history, never a market claim.
+      ...(c.priceShown != null ? { priceFirstSeen: c.priceShown } : null),
     }, before.length + i));
     patch({ lodgingOptions: [...before, ...next] });
     setStaged(null);
@@ -512,7 +538,21 @@ function Weighing({ event, intel, patch }) {
           const isGone = o.status === 'gone';
           return (
             <div key={o.id} className={'lc-opt' + (isGone ? ' is-gone' : '')}>
-              <span className="lc-opt-name">{o.label}</span>
+              <span className="lc-opt-main">
+                <span className="lc-opt-name">{o.label}</span>
+                {(() => {
+                  const h = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
+                  const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
+                  const bits = [
+                    h ? h.text : null,
+                    // "our unfurl parses, normalises and infers, and says
+                    // nothing" — it says something now.
+                    pv && pv.read ? `${pv.read} read from the page` : null,
+                    pv && pv.typed ? `${pv.typed} you typed` : null,
+                  ].filter(Boolean);
+                  return bits.length ? <span className="lc-opt-sub">{bits.join(' · ')}</span> : null;
+                })()}
+              </span>
               {isGone
                 ? <span className="lc-note" style={{ margin: 0 }}>no longer available</span>
                 : (
@@ -526,6 +566,22 @@ function Weighing({ event, intel, patch }) {
           );
         })}
         {!opts.length && <p className="lc-note">Nothing on the list yet.</p>}
+        {/* "Why these hotels?" — a plain button at the foot of the list; the
+            curation explains itself ON DEMAND rather than preaching up front.
+            Every line states what rankCandidates actually did. */}
+        {(() => {
+          const basis = (() => { try { return lodgingRankBasis(event, intel); } catch { return null; } })();
+          if (!basis) return null;
+          return (
+            <details className="lc-why">
+              <summary className="lc-why-sum">Why this order?</summary>
+              <ul className="lc-why-list">
+                {basis.lines.map((l) => <li key={l}>{l}</li>)}
+              </ul>
+              <p className="lc-note">{basis.caveat}</p>
+            </details>
+          );
+        })()}
       </Panel>
     </>
   );
@@ -734,6 +790,13 @@ const CSS = `
 /* struck, not deleted — a place you already ruled out is worth remembering */
 .lc-opt.is-gone .lc-opt-name{text-decoration:line-through;color:var(--faint);}
 .lc-opt-acts{display:flex;gap:8px;flex-wrap:wrap;}
+.lc-opt-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 160px;}
+.lc-opt-sub{font:400 11px/1.35 Inter,sans-serif;color:var(--faint);}
+.lc-why{margin-top:14px;}
+.lc-why-sum{cursor:pointer;list-style:none;font:500 12px/1 Inter,sans-serif;
+  color:var(--steel-soft);padding:8px 0;}
+.lc-why-list{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;
+  font:400 12px/1.5 Inter,sans-serif;color:var(--ink-soft);}
 .lc-opt-name{font:500 15px/1.3 Inter,sans-serif;min-width:0;}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}
