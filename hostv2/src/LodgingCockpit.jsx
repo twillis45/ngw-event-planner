@@ -24,7 +24,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, isUnfurlConfigured, rankCandidates,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -192,6 +192,7 @@ function Looking({ event, patch }) {
   // work out that the textarea below is now the point.
   const [wentLooking, setWentLooking] = useState(false);
   const [readErr, setReadErr] = useState('');
+  const [busy, setBusy] = useState(false);
   // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
   // After a door, the host copies a listing and comes back. Reading the
   // clipboard for them needs `clipboard-read`, which most configurations only
@@ -223,20 +224,72 @@ function Looking({ event, patch }) {
   let links = []; try { links = lodgingSearchLinks(event) || []; } catch { links = []; }
   // One paste can carry a whole results page — extractListingCandidates reads
   // every card on it, with no server call.
-  const add = (raw) => {
+  const add = async (raw) => {
     const src = typeof raw === 'string' ? raw : text;
     let found = { candidates: [] };
     try { found = extractListingCandidates(src) || found; } catch { /* unreadable paste */ }
-    const cands = (found.candidates || []).filter(Boolean);
+    let cands = (found.candidates || []).filter(Boolean);
+
+    // ── PARITY WITH THE LIVE INTAKE (2026-08-03) ───────────────────────────
+    // The live sheet's readPage does four things this did not, and each one is
+    // the difference between a list you trust and a pile:
+    //   · DEDUP against what is already on the shortlist, by url without query
+    //     — the same house copied twice is one house.
+    //   · RANK by fit against the event, so the ones that sleep the group come
+    //     first instead of arriving in page order.
+    //   · say WHAT WAS DROPPED, because silently discarding duplicates reads
+    //     as the paste half-failing.
+    //   · advise per DEVICE on failure — the live code carries a board finding
+    //     that telling a host on a phone to press ⌘A was "the single documented
+    //     abandonment point in the feature".
+    const known = new Set((event.lodgingOptions || []).map((o) => String((o && o.url) || '').split('?')[0]));
+    const fresh = cands.filter((c) => c && !known.has(String(c.url || '').split('?')[0]));
+    const dupes = cands.length - fresh.length;
+    try { const r = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 });
+      cands = (r && r.ranked && r.ranked.length) ? r.ranked : fresh; } catch { cands = fresh; }
+    if (!cands.length && dupes > 0) {
+      setReadErr(dupes === 1 ? 'That one is already on your list.' : `All ${dupes} of those are already on your list.`);
+      return;
+    }
+
+    // ── A SINGLE LISTING URL IS A SUPPORTED PASTE, AND WAS HALF-HANDLED ─────
+    // The instruction says "one link, or the whole results page", and one link
+    // DOES parse — but it comes back linksOnly, with name, price and bedrooms
+    // all empty, because a bare URL carries no facts. The extractor's own
+    // docstring says the caller "must say so rather than presenting nameless
+    // rows as a read"; this file was adding the blank row and saying nothing.
+    //
+    // Two honest outcomes now. If the unfurl backend is reachable, ONE link is
+    // read server-side and comes back with its name and price filled. If it is
+    // not, the link is still kept — losing it would be worse — and the surface
+    // states exactly which parts are missing and who has to supply them.
+    if (found.linksOnly && cands.length === 1 && isUnfurlConfigured()) {
+      setReadErr('');
+      setBusy(true);
+      try {
+        const r = await unfurlListing(cands[0].url);
+        if (r && r.ok) {
+          cands = [{ ...cands[0], name: r.title || cands[0].name, priceShown: r.price != null ? r.price : cands[0].priceShown, photo: r.photo || cands[0].photo }];
+          found = { ...found, linksOnly: !(r.title) };
+        } else if (r && r.reason) {
+          setReadErr(r.reason);
+        }
+      } catch { /* fall through to the honest keep-it path */ }
+      setBusy(false);
+    }
     if (!cands.length) {
       // NAME WHAT THEY ACTUALLY PASTED. The generic "nothing readable" was
       // aimed at junk, and the commonest paste here is the search link this
       // app just handed them — which carries no listing facts at all, because
       // the platform renders those in the browser. Say that, and say the step.
       const door = looksLikeSearchUrl(src);
+      const touch = typeof window !== 'undefined' && window.matchMedia
+        && window.matchMedia('(pointer:coarse)').matches;
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
-        : 'Nothing readable in that — paste a listing link, or the whole results page.');
+        : touch
+          ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+          : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
       return;
     }
     setReadErr('');
@@ -250,6 +303,17 @@ function Looking({ event, patch }) {
     }, before.length + i));
     patch({ lodgingOptions: [...before, ...next] });
     setText('');
+    // The link is kept either way; what is MISSING is named, never implied.
+    const drop = dupes ? ` ${dupes} were already on your list.` : '';
+    if (found.linksOnly) {
+      setReadErr((next.length === 1
+        ? 'Got the link — but a bare link carries no name, price or bed count, so those are yours to add.'
+        : `Got ${next.length} links — a bare link carries no name or price, so those are yours to add.`) + drop);
+    } else {
+      setReadErr(next.length === 1
+        ? `Added ${next[0].label || 'it'}.${drop}`
+        : `Added ${next.length}.${drop}`);
+    }
   };
   return (
     <>
@@ -298,7 +362,7 @@ function Looking({ event, patch }) {
           }}
           placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
         <p className="lc-note">One link, or the whole results page — every card on it is read, with no server call.</p>
-        {readErr && <p className="lc-note lc-warn">{readErr}</p>}
+        {readErr && <p className={'lc-note' + (/^(Added|Got)/.test(readErr) ? '' : ' lc-warn')}>{readErr}</p>}
         {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,
             which asked the host to work out which of them was theirs. They are
             the same act at two moments, so the label follows the box: empty and
@@ -313,7 +377,7 @@ function Looking({ event, patch }) {
             if (!t || !t.trim()) { setReadErr('Nothing copied yet — copy a link first.'); return; }
             setText(t); add(t);
           } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
-        }}>{text.trim() ? 'Read what I pasted' : 'Paste what I copied'}</button>
+        }}>{busy ? 'Reading…' : (text.trim() ? 'Read what I pasted' : 'Paste what I copied')}</button>
       </Panel>
     </>
   );
