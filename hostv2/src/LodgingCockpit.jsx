@@ -25,6 +25,7 @@ import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, isUnfurlConfigured, rankCandidates,
+  lodgingTitleFor, lodgingTrouble,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -311,7 +312,9 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = cands.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: c.name || '', beds: c.beds, totalPrice: c.priceShown,
+      // Airbnb's type+place pattern rather than "Option 1" — the paste has to
+      // visibly produce something, or the host has no reason to believe it worked.
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
@@ -337,7 +340,7 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: c.name || '', beds: c.beds, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
@@ -363,7 +366,7 @@ function Looking({ event, patch }) {
             })}>
             <span className={'lc-tick' + (on ? ' is-on' : '')} aria-hidden="true" />
             <span className="lc-staged-main">
-              <span className="lc-staged-name">{c.name || 'Unnamed place'}</span>
+              <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
               <span className="lc-staged-sub">
                 {[c.bedrooms ? `${c.bedrooms} bedrooms` : null,
                   c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null]
@@ -472,8 +475,28 @@ function Weighing({ event, intel, patch }) {
     patch({ lodgingOptions: next, ...(stay ? { lodging: { ...(event.lodging || {}), ...stay } } : null) });
   };
 
+  // "Report a Problem sits at the same level as Mark As Complete… reporting a
+  // problem does not force the job to end" (Blink addendum). A house gets taken,
+  // a rate lapses, a host is outbid — until now the only moves were forward, and
+  // a surface that offers only resolve-or-ignore trains hosts to mark things done
+  // that are not done. `gone` keeps the place and remembers whether it was the
+  // pick, so the fall-through can be its own state rather than a silent revert.
+  const markGone = (id) => {
+    const next = (event.lodgingOptions || []).map((o) => (o && o.id === id
+      ? { ...o, status: 'gone', wasChosen: o.status === 'chosen' }
+      : o));
+    const stay = next.some((o) => o && o.status === 'gone' && o.wasChosen)
+      ? { lodging: { ...(event.lodging || {}), hotelName: '' } } : null;
+    patch({ lodgingOptions: next, ...(stay || null) });
+  };
+  const trouble = (() => { try { return lodgingTrouble(event, intel); } catch { return null; } })();
+
   return (
     <>
+      {trouble && <Panel label="WHAT WENT WRONG">
+        <p className="lc-strong">{trouble.headline}</p>
+        <p className="lc-body">{trouble.detail}</p>
+      </Panel>}
       {kc && <Panel label="THE KITCHEN DECIDES THE FOOD PLAN">
         <p className="lc-strong">{kc.headline}</p>
         <p className="lc-body">{kc.detail}</p>
@@ -485,12 +508,23 @@ function Weighing({ event, intel, patch }) {
         <p className="lc-body">{rec.line}</p>
       </Panel>}
       <Panel label="MAKE THE CALL">
-        {opts.map((o) => (
-          <div key={o.id} className="lc-opt">
-            <span className="lc-opt-name">{o.label}</span>
-            <button className="cta" onClick={() => pick(o.id)}>Make it the pick</button>
-          </div>
-        ))}
+        {opts.map((o) => {
+          const isGone = o.status === 'gone';
+          return (
+            <div key={o.id} className={'lc-opt' + (isGone ? ' is-gone' : '')}>
+              <span className="lc-opt-name">{o.label}</span>
+              {isGone
+                ? <span className="lc-note" style={{ margin: 0 }}>no longer available</span>
+                : (
+                  <span className="lc-opt-acts">
+                    <button className="cta" onClick={() => pick(o.id)}>Make it the pick</button>
+                    {/* PEER, not a fallback — same row, same weight class. */}
+                    <button className="cta soft" onClick={() => markGone(o.id)}>It’s gone</button>
+                  </span>
+                )}
+            </div>
+          );
+        })}
         {!opts.length && <p className="lc-note">Nothing on the list yet.</p>}
       </Panel>
     </>
@@ -697,6 +731,9 @@ const CSS = `
 .lc-row-label{font:500 13px/1.35 Inter,sans-serif;color:var(--ink-soft);min-width:0;}
 .lc-row-val{font:400 13px/1.35 Inter,sans-serif;text-align:right;color:var(--ink);}
 .lc-opt{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid var(--line);padding:12px 0;flex-wrap:wrap;}
+/* struck, not deleted — a place you already ruled out is worth remembering */
+.lc-opt.is-gone .lc-opt-name{text-decoration:line-through;color:var(--faint);}
+.lc-opt-acts{display:flex;gap:8px;flex-wrap:wrap;}
 .lc-opt-name{font:500 15px/1.3 Inter,sans-serif;min-width:0;}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}

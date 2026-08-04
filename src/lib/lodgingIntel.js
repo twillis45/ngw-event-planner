@@ -1249,6 +1249,86 @@ export function looksLikeSearchUrl(text) {
   return null;
 }
 
+// ─── A NAME, NOT "OPTION 1" (lodging listing research, 2026-08-01) ─────────
+// The paste flow's weakest moment is the instant after it works: a bare link
+// carries no name, so a real house landed on the shortlist called "Option 1"
+// and the host had no reason to believe anything had happened.
+//
+// Airbnb's own card solves this and the research flags it as a gift to us:
+// their title is TYPE + PLACE — "Apartment in San Juan", "Room in Southeast
+// Washington" — and the listing's marketing headline is demoted to the detail
+// page. It is "cheaper to extract AND more scannable than whatever the host
+// pasted". Our extractor already recovers `kind` and `place` off a results card.
+//
+// Order: what the host typed wins; then what the page said; then type+place;
+// then the platform and nothing else. It never invents a place — an unnamed
+// listing on an unknown platform stays unnamed rather than being given a
+// plausible label.
+export function lodgingTitleFor(cand) {
+  const c = cand || {};
+  const typed = String(c.label || '').trim();
+  if (typed) return typed;
+  const name = String(c.name || '').trim();
+  if (name) return name;
+
+  const kind = String(c.kind || '').trim();
+  const place = String(c.place || '').trim();
+  if (kind && place) return `${kind[0].toUpperCase()}${kind.slice(1)} in ${place}`;
+  if (place) return `Place in ${place}`;
+  if (kind) return `${kind[0].toUpperCase()}${kind.slice(1)}`;
+
+  const platform = c.platform || lodgingPlatformFor(c.url);
+  if (platform === 'airbnb') return 'Airbnb listing';
+  if (platform === 'vrbo') return 'Vrbo listing';
+  return '';   // nothing known — the surface must ask, not guess
+}
+
+// ─── IT WENT WRONG, AND IT IS STILL RUNNING (Blink addendum, 2026-08-01) ───
+// "Report a Problem sits at the same level as Mark As Complete — not buried,
+// not a fallback — and forks to End Trip OR Continue Trip. Reporting a problem
+// does not force the job to end… A surface that offers only resolve-or-ignore
+// trains hosts to mark things done that are not done, which corrupts the
+// readiness signal our whole product rests on."
+//
+// Lodging has exactly this shape and could not express it: a house can be taken
+// by someone else, a group rate can lapse, a host can be outbid. Until now the
+// only moves were forward. `status: 'gone'` says a place is no longer available
+// WITHOUT deleting it — the host still wants to see what they lost and why the
+// shortlist got shorter — and the pick falling through is a first-class state
+// rather than a silent revert to weighing.
+export function lodgingTrouble(event, intel) {
+  const ev = event || {};
+  if (ev.isDestination !== true) return null;
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
+
+  const raw = Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : [];
+  const gone = raw.filter((o) => o && o.status === 'gone');
+  if (!gone.length) return null;
+
+  const chosenGone = gone.find((o) => o.wasChosen === true);
+  const named = (o) => String((o && o.label) || '').trim() || 'One of your places';
+  const left = raw.filter((o) => o && o.status !== 'gone').length;
+
+  if (chosenGone) {
+    return {
+      state: 'pick-fell-through',
+      headline: `${named(chosenGone)} fell through.`,
+      // Never "start again": the work is not lost, and saying so is the point.
+      detail: left > 0
+        ? `Your shortlist still has ${left === 1 ? 'one other place' : `${left} other places`} on it — the comparison is intact.`
+        : 'Nothing else is on the shortlist yet, so this one is back to looking.',
+      act: left > 0 ? 'Pick another' : 'Find more places',
+    };
+  }
+  return {
+    state: 'option-gone',
+    headline: gone.length === 1 ? `${named(gone[0])} is gone.` : `${gone.length} places are gone.`,
+    detail: 'Kept on the list, struck through — a place you already ruled out is worth remembering.',
+    act: null,
+  };
+}
+
 // ─── THE STAGE THIS HOST IS ACTUALLY IN (reimagine, 2026-08-03) ────────────
 //
 // Host, after reading the live panel end to end: "not very readable... we need
