@@ -60,3 +60,7 @@ hostv2/review-shots/drift/
 # release paths now BUILD it: `npm run release` (which predeploy runs) and the
 # from-source Pages workflow. Regenerate locally with `npm run sync:hostv2`.
 /public/hostv2/
+
+# Throwaway self-signed certs for LAN phone testing (HTTPS=1 npx vite --host).
+# A private key is never committed, even a disposable one.
+hostv2/.certs/

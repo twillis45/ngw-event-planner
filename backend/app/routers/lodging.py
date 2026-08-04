@@ -64,6 +64,7 @@ HONEST LIMITS the host should hear rather than discover:
     oversight — stated plainly, without the defence the earlier draft attached.
 """
 
+import json
 import logging
 import re
 from urllib.parse import urlparse
@@ -91,7 +92,18 @@ ALLOWED_HOSTS = (
 )
 
 TIMEOUT = httpx.Timeout(8.0, connect=4.0)
-MAX_BYTES = 512_000          # a listing head is small; stop reading long before a full page
+# A listing head is small; stop reading long before a full page. That was always
+# the intent of this cap and safe_get did the opposite with it — it REFUSED any
+# document bigger than the cap, so every real Airbnb page came back
+# "That document is too large to read." and the host got a row with no name, no
+# price and no picture (driven 2026-08-04). The og: tags we want live in <head>,
+# inside the first few tens of KB, so a prefix is exactly what we need.
+# Raised from 512_000 on 2026-08-04. Truncation is what makes the read WORK;
+# this is headroom so the prefix actually contains what we came for. Airbnb
+# inlines a lot of CSS and JSON-LD ahead of its og: tags, and 512KB is not a
+# reliable margin for reaching them. 1.5MB still stops far short of a full page
+# and is bounded per request — we never buffer more than this.
+MAX_BYTES = 1_500_000
 UA = "Mozilla/5.0 (compatible; EventBossLinkPreview/1.0; +link-unfurl-on-user-action)"
 
 _META = re.compile(
@@ -120,6 +132,82 @@ def _host_ok(url: str) -> bool:
     return p.scheme == "https" and (p.hostname or "").lower() in ALLOWED_HOSTS
 
 
+
+# ── THE LISTING'S OWN STRUCTURED RECORD (2026-08-04) ────────────────────────
+# Host: "if we have the link to go the site, what other information can we pull
+# from the listing" — and, decisively, "what other information do we need to
+# make the choices viable".
+#
+# The answer to both is one block we were already fetching and throwing away.
+# An Airbnb listing carries schema.org JSON-LD, and it holds the field the whole
+# comparison is blocked on:
+#
+#   containsPlace.occupancy.value  -> SLEEPS. Nothing else supplies it. A
+#       results card never carries it (see D6/W3b "sleeps —"), and without it
+#       `fits` cannot be computed, so "3 of 5 fit", the ranking and the
+#       per-person split are all stranded on a number the host has to type.
+#   aggregateRating                -> the rating and how many left it
+#   address.addressLocality        -> the town the listing itself claims
+#   latitude / longitude           -> a real position; we state DISTANCE from
+#       this, never a drive time, which would need routing we do not have
+#   name                           -> the host's own listing title, which is
+#       better than og:title's generated "Home in Santa Fe · ★4.79 · ..."
+#
+# What is NOT here, checked rather than assumed: no price on any meta tag or in
+# the JSON-LD, and `amenityFeature` appears zero times. Price and amenities stay
+# host-typed. We do not guess either, and the surface says which is which.
+_LD = re.compile(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', re.I | re.S)
+
+
+def _first_num(v):
+    try:
+        n = float(v)
+        return int(n) if n == int(n) else n
+    except (TypeError, ValueError):
+        return None
+
+
+def _listing_record(html: str) -> dict:
+    """Pull the listing's own structured record. Never raises — a page without
+    one, or with malformed JSON, simply yields nothing."""
+    out = {}
+    for block in _LD.findall(html)[:4]:
+        try:
+            data = json.loads(block.strip())
+        except Exception:
+            continue
+        for d in (data if isinstance(data, list) else [data]):
+            if not isinstance(d, dict):
+                continue
+            cp = d.get("containsPlace")
+            if isinstance(cp, dict):
+                occ = cp.get("occupancy")
+                if isinstance(occ, dict):
+                    n = _first_num(occ.get("value") or occ.get("maxValue"))
+                    if n and n > 0 and "sleeps" not in out:
+                        out["sleeps"] = int(n)
+            ar = d.get("aggregateRating")
+            if isinstance(ar, dict) and "rating" not in out:
+                r = _first_num(ar.get("ratingValue"))
+                c = _first_num(ar.get("ratingCount") or ar.get("reviewCount"))
+                if r is not None:
+                    out["rating"] = r
+                    if c is not None:
+                        out["ratingCount"] = int(c)
+            addr = d.get("address")
+            if isinstance(addr, dict) and "locality" not in out:
+                loc = str(addr.get("addressLocality") or "").strip()
+                if loc:
+                    out["locality"] = loc[:80]
+            lat, lon = _first_num(d.get("latitude")), _first_num(d.get("longitude"))
+            if lat is not None and lon is not None and "lat" not in out:
+                out["lat"], out["lon"] = lat, lon
+            nm = str(d.get("name") or "").strip()
+            if nm and "listingName" not in out:
+                out["listingName"] = nm[:120]
+    return out
+
+
 @router.get("/unfurl")
 async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
     """Read one listing page's own sharing metadata. Host-initiated, never bulk."""
@@ -139,6 +227,9 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
             allowed_hosts=ALLOWED_HOSTS,
             allowed_content_types=("text/html", "application/xhtml+xml"),
             max_bytes=MAX_BYTES,
+            # Read the head and stop — a truncated listing page is still a
+            # readable listing head. Same byte ceiling, we just keep what we got.
+            truncate_at_max=True,
             timeout=TIMEOUT,
             user_agent=UA,
         )
@@ -258,4 +349,7 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
         "image": image,
         "description": (meta.get("og:description") or "")[:400],
         "siteName": meta.get("og:site_name") or "",
+        # The listing's own structured record. Absent keys mean the page did not
+        # say — never a zero, never a guess.
+        **_listing_record(html),
     }

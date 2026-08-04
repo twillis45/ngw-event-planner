@@ -81,8 +81,16 @@ describe('the shortlist transposes into a comparison', () => {
   it('flags a too-small house as short, and says why it is not a fault', () => {
     const c = lodgingCompare(evt());
     const sleeps = c.rows.find((r) => r.id === 'sleeps');
-    expect(sleeps.values).toEqual(['12', '8']);
+    // WAS: expect(...).toEqual(['12','8']) with the gap carried only by a flag.
+    // The lodging-listing research (2026-08-01) names Booking.com's pattern as
+    // best in class: a place that cannot hold the party SAYS SO — "These
+    // options won't accommodate your entire group" — rather than being marked
+    // and left for the host to work out. The shortfall is now in the value.
+    expect(sleeps.values[0]).toBe('12');
+    expect(sleeps.values[1]).toBe('8 — 2 without a bed');
     expect(sleeps.flags).toEqual(['ok', 'short']);
+    // grey, never red: too small is disqualifying, not faulty (rec #7)
+    expect(sleeps.values.join(' ')).not.toMatch(/error|invalid|bad/i);
     expect(c.note).toMatch(/didn’t say/);
     expect(c.note).toMatch(/nothing here is scraped/i);
   });

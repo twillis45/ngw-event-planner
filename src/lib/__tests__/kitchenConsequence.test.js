@@ -36,7 +36,16 @@ describe('the kitchen consequence on the lodging surface', () => {
     expect(kc.state).toBe('kitchen');
     expect(kc.answered).toBe(true);
     expect(kc.detail).toMatch(/grocery run/i);
-    expect(kc.answers).toHaveLength(0);
+    // WAS toHaveLength(0), on the rule "an answered state offers nothing".
+    // That rule is right for an answer the HOST gave and wrong for one we
+    // INFERRED off a URL: driving the cockpit on 2026-08-04 showed "There is a
+    // kitchen" stated from an Airbnb link with no way to say "actually it's a
+    // room". An inference that decides the whole food plan has to stay
+    // correctable in place, so the answers remain on offer here — and the
+    // basis says where the claim came from.
+    expect(kc.from).toBe('inferred');
+    expect(kc.basis).toMatch(/Airbnb link/);
+    expect(kc.answers.length).toBeGreaterThan(0);
   });
 
   it('names the reservations consequence for a room block', () => {
@@ -44,6 +53,9 @@ describe('the kitchen consequence on the lodging surface', () => {
     expect(kc.state).toBe('no-kitchen');
     expect(kc.detail).toMatch(/reservations/i);
     expect(kc.detail).toMatch(/not the plan for a hotel stay/i);
+    // The host said it, so it is stated plainly and needs no escape hatch.
+    expect(kc.from).toBe('told');
+    expect(kc.answers).toEqual([]);
   });
 
   it('offers an answer in place when nothing has told us — never assumes a hotel', () => {

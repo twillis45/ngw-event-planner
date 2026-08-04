@@ -158,6 +158,21 @@ export function normalizeLodgingOption(raw, i = 0) {
     // rather than quietly pretending it is the whole cost.
     fees: num(o.fees),
     cancellationTier: String(o.cancellationTier || '').toLowerCase().trim(),
+    // ── METADATA THE NORMALIZER USED TO EAT (2026-08-03) ───────────────────
+    // This function rebuilds a clean option from known keys, which is right —
+    // but it silently dropped three fields the surfaces depend on, so the
+    // provenance line and the price history rendered blank while their engines
+    // and gates were green. A normalizer that discards a field is a data loss
+    // no unit test on the engine can catch; it only shows on the surface.
+    //   sources        which fields were READ off a page vs TYPED by the host
+    //   priceFirstSeen the first number the host ever recorded, for "was $X"
+    //   wasChosen      that a now-gone place HAD been the pick
+    // None of these are listing facts, so the host-entered-facts-only doctrine
+    // is untouched: they describe where our own data came from.
+    sources: (o.sources && typeof o.sources === 'object' && !Array.isArray(o.sources))
+      ? { ...o.sources } : undefined,
+    priceFirstSeen: num(o.priceFirstSeen),
+    wasChosen: o.wasChosen === true ? true : undefined,
     notes: String(o.notes || '').trim(),
     // The listing photos, HOST-PASTED (copy image address on the listing) —
     // never fetched from the listing page; https-only so a stray string can't
@@ -201,27 +216,71 @@ export function normalizeLodgingOption(raw, i = 0) {
  *
  * Reads host answers only. No inference from a city, a price, or an event type.
  */
-export function lodgingKitchen(event) {
+/**
+ * The same ladder lodgingKitchen has always walked, but it now reports WHERE the
+ * answer came from as well as what it is.
+ *
+ * Driving the cockpit on 2026-08-04: pasting one bare Airbnb link put "There is
+ * a kitchen." on screen in the same voice the app uses for facts the host typed.
+ * Nothing in that paste established a kitchen — the rule reads it off the URL
+ * host, and Airbnb lists private rooms, shared rooms and hotel rooms too. The
+ * inference is a reasonable default and stays; presenting it as settled fact,
+ * with no basis and no way to correct it, is the defect. This decides the whole
+ * food plan, so a wrong one is expensive.
+ *
+ * `from` is the tier, in the app's own vocabulary: 'told' is the host answering,
+ * 'inferred' is us reading it off a link.
+ */
+export function kitchenSignal(event) {
   const ev = event || {};
 
-  // 1 · A pasted listing outranks the multiple-choice answer: it is the more
-  //     specific act. Platform is derived from the URL host, never from prose.
+  // 1 · WHAT THE HOST TOLD US, FIRST. This used to run second, behind the URL
+  //     inference, and the ordering was asserted in a test heading — "a pasted
+  //     listing outranks the multiple choice" — that no test actually exercised:
+  //     every case there supplied a listing and no answer, so the two never met.
+  //
+  //     They met on the 2026-08-04 drive. The host pressed "A hotel or room
+  //     block" to correct a kitchen we had inferred from an Airbnb URL; the
+  //     answer was stored, and the screen went on saying "There is a kitchen."
+  //     A control that records your answer and then overrules it is worse than
+  //     no control at all.
+  //
+  //     Told beats inferred — the app's own grounding ladder, applied here. A
+  //     link is us reading a URL host; this is the host answering the question.
+  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  const pick = String(picks.dest_lodging || '').trim();
+  if (/airbnb|rental|house|cabin|villa/i.test(pick)) {
+    return { value: true, from: 'told', basis: `You said: “${pick}”.` };
+  }
+  // A room block IS a hotel — that is what a block is.
+  if (/room block/i.test(pick)) {
+    return { value: false, from: 'told', basis: `You said: “${pick}”.` };
+  }
+
+  // 2 · Nothing told, so read the listing. Platform comes from the URL host,
+  //     never from prose. This still outranks silence — it is a real signal —
+  //     it just no longer outranks the host.
   const opts = Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : [];
   for (const o of opts) {
     const platform = lodgingPlatformFor(o && o.url);
     // Whole-home rental platforms. A kitchen is what the host is booking.
-    if (platform === 'vrbo' || platform === 'airbnb') return true;
+    if (platform === 'vrbo' || platform === 'airbnb') {
+      return {
+        value: true,
+        from: 'inferred',
+        basis: `Taken from the ${platform === 'vrbo' ? 'Vrbo' : 'Airbnb'} link you brought back — most whole-home rentals have one. If this is a room rather than the whole place, say so.`,
+      };
+    }
   }
 
-  // 2 · The decision the playbook already asks. Stored with the other picks.
-  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
-  const pick = String(picks.dest_lodging || '').trim();
-  if (/airbnb|rental|house|cabin|villa/i.test(pick)) return true;
-  // A room block IS a hotel — that is what a block is.
-  if (/room block/i.test(pick)) return false;
-
   // 3 · "Guests book on their own", or nothing asked yet. NOT TOLD.
-  return null;
+  return { value: null, from: 'none', basis: '' };
+}
+
+/** The long-standing three-valued answer. Unchanged contract — the basis rides
+ *  alongside on kitchenSignal so no existing caller has to care. */
+export function lodgingKitchen(event) {
+  return kitchenSignal(event).value;
 }
 
 // ─── WHAT THE KITCHEN DECIDES (workflow census, 2026-08-03) ────────────────
@@ -262,26 +321,31 @@ export function kitchenConsequence(event) {
   // Only a destination event has a lodging decision to have a consequence.
   if (ev.isDestination !== true) return null;
 
-  const k = lodgingKitchen(ev);
+  const sig = kitchenSignal(ev);
+  const k = sig.value;
+  // An INFERRED answer keeps the answers on offer — it is a good guess about a
+  // decision that sets the entire food plan, and the host must be able to
+  // overrule it in place. An answer the host TOLD us needs no such escape.
+  const correctable = sig.from === 'inferred' ? KITCHEN_ANSWERS : [];
   if (k === true) {
     return {
-      state: 'kitchen', answered: true,
+      state: 'kitchen', answered: true, from: sig.from, basis: sig.basis,
       headline: 'There is a kitchen.',
       detail: 'So the food plan is a grocery run, and the shopping list is the real artifact.',
-      answers: [],
+      answers: correctable,
     };
   }
   if (k === false) {
     return {
-      state: 'no-kitchen', answered: true,
+      state: 'no-kitchen', answered: true, from: sig.from, basis: sig.basis,
       headline: 'There is no kitchen.',
       detail: 'So the food plan is reservations. A shopping list is not the plan for a hotel stay.',
-      answers: [],
+      answers: correctable,
     };
   }
   // NOT TOLD. Never assume a hotel — say it is open, and offer the answer.
   return {
-    state: 'untold', answered: false,
+    state: 'untold', answered: false, from: 'none', basis: '',
     headline: 'Nobody has told us yet.',
     detail: 'Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations. Until it is answered the plan sizes one gathering.',
     answers: KITCHEN_ANSWERS,
@@ -449,17 +513,44 @@ export const isUnfurlConfigured = () => Boolean(API_BASE);
  *
  * @returns {{ok:true, url, title, facts, image, description}|{ok:false, reason}}
  */
+// How long we will make a host watch a spinner before we answer them ourselves.
+// Long enough for a warm backend to read a real listing page, short enough that
+// it never reads as "stuck". A cold Render dyno takes far longer than this and
+// that is exactly the case this bounds.
+const UNFURL_MS = 12000;
+
 export async function unfurlListing(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
   const clean = String(url || '').trim();
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the listing.' };
+  // ── A READ THAT NEVER ANSWERS IS THE ONE WE HADN'T HANDLED ────────────────
+  // Driving this on 2026-08-04: a single Airbnb link left the button reading
+  // "Reading…" for 33 seconds and counting. Every FAILURE was handled — bad
+  // link, 404, 502, refused — but a server that simply never replies is not a
+  // failure, it is silence, and silence had no path out. The host was stranded
+  // on a spinner with no way to keep going.
+  //
+  // Render cold-starts and a heavy listing page can genuinely take a minute. We
+  // do not make the host wait it out: cut it at UNFURL_MS, say what happened in
+  // their words, and let the keep-the-link path do its job. The link is never
+  // lost — losing it would be worse than not filling it in.
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
   try {
-    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`);
+    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`,
+      ctl ? { signal: ctl.signal } : undefined);
     const body = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
     return { ok: true, ...body };
-  } catch {
-    return { ok: false, reason: 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+  } catch (err) {
+    // Distinguish "took too long" from "couldn't get there" — they are different
+    // situations and the host can act on them differently.
+    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+    return { ok: false, reason: timedOut
+      ? 'Reading that listing is taking too long — I’ve kept the link. Open it and paste the page if you want the name and price filled in.'
+      : 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -969,7 +1060,11 @@ export function lodgingSearchBlocked(event) {
   // at a host who has never typed a date that way.
   const nice = niceDay;
   const inHand = [
-    start && end ? `${nice(start)}-${nice(end)}` : (start ? nice(start) : null),
+    // EN DASH, matching lodgingSearchLinks' `said[]` one screen later. The two
+    // producers rendered the same span with different characters — "Jun 17-Jun
+    // 21" here, "Jun 17–Jun 21" there — which is the kind of drift that only
+    // shows when you walk the workflow end to end. One span, one dash.
+    start && end ? `${nice(start)}–${nice(end)}` : (start ? nice(start) : null),
     guests ? `${guests} guests` : null,
   ].filter(Boolean);
 
@@ -1024,7 +1119,9 @@ export function lodgingSearchLinks(event) {
   if (end) vr.set('endDate', end);
   if (guests) vr.set('adults', String(guests));
 
-  // ── WHY VRBO'S LINK IS DIFFERENT (review board, Liability ruling 2026-07-28) ──
+  // ── WHY VRBO'S LINK USED TO BE DIFFERENT (2026-07-28, REVERSED 2026-08-03) ──
+  // Kept because the reasoning is still the reasoning; only the decision changed.
+  // See the note on the vrbo link below for who reversed it and why.
   // Airbnb's terms carry no deep-link prohibition; Vrbo's §2 does, verbatim:
   // "deep link to any part of our Service". We were emitting a constructed URL
   // into a non-homepage path with parameters we chose — if "deep link" means
@@ -1057,11 +1154,24 @@ export function lodgingSearchLinks(event) {
 
   return [
     { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
-    { id: 'vrbo', label: 'Open Vrbo', href: 'https://www.vrbo.com/', applied: said,
-      // Host language here too: `criteria` is what she reads and types into
-      // Vrbo's own date picker, so it is a THIRD producer of the same string.
-      // The first sweep fixed `applied` and missed this one — the gate now
-      // covers every field on every link.
+    // ── RULING REVERSED BY THE HOST, 2026-08-03 ──────────────────────────────
+    // Vrbo now gets the SAME constructed search Airbnb gets: destination,
+    // startDate, endDate, adults — all the host's own answers, carried into
+    // their own browser.
+    //
+    // What changed is the decision, not the facts. The clause below is still
+    // real and still says what it said. The host was shown it twice, in full,
+    // and chose to build the link anyway: hosts genuinely use Vrbo, sending
+    // them to a bare homepage with a string to re-type is a worse product, and
+    // the clause is widely regarded as unenforceable post-Ticketmaster v.
+    // Tickets.com. That is the host's call to make, and it is recorded here as
+    // theirs rather than dressed up as a technical finding.
+    //
+    // `criteria` stays. It is no longer the only path, but a host who prefers
+    // to type into Vrbo's own picker still has the words, and it costs nothing.
+    { id: 'vrbo', label: 'Open Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said,
+      // Host language: `criteria` is what she READS. The URL above carries ISO
+      // because Vrbo parses it; that split is exactly what the ISO gate encodes.
       criteria: [place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
     { id: 'hotels', label: 'Search hotels', href: `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`, applied: said },
   ];
@@ -1163,7 +1273,12 @@ export function lodgingRecommendation(event, intel) {
       score += 1; reasons.push(`set up for kids — ${kids} coming`);
     }
 
-    return { id: o.id, label: o.label, score, fits, reasons };
+    // met/missing are computed above and were thrown away at the return, so
+    // "Fits 6 of your 6 musts" — the line D6/W9 leads its card with — had no
+    // source. These are COUNTS of the host's own stated requirements matched
+    // against what the host typed about the option; no listing was fetched.
+    return { id: o.id, label: o.label, score, fits, reasons, met, missing,
+      mustsMet: met.length, mustsTotal: met.length + missing.length };
   });
 
   const eligible = scored.filter((x) => x.fits);
@@ -1213,6 +1328,335 @@ export function lodgingRecommendation(event, intel) {
  *     a new one (see hostSpending's C1 note), and the fix if it bites is
  *     de-duplication at the source, not silently dropping the term.
  */
+// ─── "THAT IS THE SEARCH LINK, NOT A HOUSE" (2026-08-03) ───────────────────
+// Reported live: pasting the very URL this app builds —
+//   airbnb.com/s/Santa-Fe--NM/homes?checkin=…&adults=10
+// answered "Nothing readable in that". True, and useless: the extractor only
+// recognises LISTING urls (/rooms/<id>, vrbo.com/<id>), and a search page is
+// not one. But the host did not invent that link — WE handed it to them, so
+// answering as though they pasted junk is our defect, not their mistake.
+//
+// A search URL carries no listing facts at all: names, bedrooms and prices are
+// rendered by the platform in the browser, which is exactly why the round trip
+// exists. So this cannot be "read" — it can only be named, precisely, with the
+// next real step attached.
+export function looksLikeSearchUrl(text) {
+  const t = String(text || '').trim();
+  if (!t || /\s/.test(t)) return null;          // prose or a pasted page, not a bare url
+  if (/airbnb\.[a-z.]+\/s\//i.test(t)) return 'airbnb';
+  if (/vrbo\.com\/search/i.test(t)) return 'vrbo';
+  if (/google\.[a-z.]+\/travel\/search/i.test(t)) return 'hotels';
+  return null;
+}
+
+// ─── A NAME, NOT "OPTION 1" (lodging listing research, 2026-08-01) ─────────
+// The paste flow's weakest moment is the instant after it works: a bare link
+// carries no name, so a real house landed on the shortlist called "Option 1"
+// and the host had no reason to believe anything had happened.
+//
+// Airbnb's own card solves this and the research flags it as a gift to us:
+// their title is TYPE + PLACE — "Apartment in San Juan", "Room in Southeast
+// Washington" — and the listing's marketing headline is demoted to the detail
+// page. It is "cheaper to extract AND more scannable than whatever the host
+// pasted". Our extractor already recovers `kind` and `place` off a results card.
+//
+// Order: what the host typed wins; then what the page said; then type+place;
+// then the platform and nothing else. It never invents a place — an unnamed
+// listing on an unknown platform stays unnamed rather than being given a
+// plausible label.
+export function lodgingTitleFor(cand) {
+  const c = cand || {};
+  const typed = String(c.label || '').trim();
+  if (typed) return typed;
+  const name = String(c.name || '').trim();
+  if (name) return name;
+
+  const kind = String(c.kind || '').trim();
+  const place = String(c.place || '').trim();
+  if (kind && place) return `${kind[0].toUpperCase()}${kind.slice(1)} in ${place}`;
+  if (place) return `Place in ${place}`;
+  if (kind) return `${kind[0].toUpperCase()}${kind.slice(1)}`;
+
+  const platform = c.platform || lodgingPlatformFor(c.url);
+  if (platform === 'airbnb') return 'Airbnb listing';
+  if (platform === 'vrbo') return 'Vrbo listing';
+  return '';   // nothing known — the surface must ask, not guess
+}
+
+// ─── IT WENT WRONG, AND IT IS STILL RUNNING (Blink addendum, 2026-08-01) ───
+// "Report a Problem sits at the same level as Mark As Complete — not buried,
+// not a fallback — and forks to End Trip OR Continue Trip. Reporting a problem
+// does not force the job to end… A surface that offers only resolve-or-ignore
+// trains hosts to mark things done that are not done, which corrupts the
+// readiness signal our whole product rests on."
+//
+// Lodging has exactly this shape and could not express it: a house can be taken
+// by someone else, a group rate can lapse, a host can be outbid. Until now the
+// only moves were forward. `status: 'gone'` says a place is no longer available
+// WITHOUT deleting it — the host still wants to see what they lost and why the
+// shortlist got shorter — and the pick falling through is a first-class state
+// rather than a silent revert to weighing.
+export function lodgingTrouble(event, intel) {
+  const ev = event || {};
+  if (ev.isDestination !== true) return null;
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
+
+  const raw = Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : [];
+  const gone = raw.filter((o) => o && o.status === 'gone');
+  if (!gone.length) return null;
+
+  const chosenGone = gone.find((o) => o.wasChosen === true);
+  const named = (o) => String((o && o.label) || '').trim() || 'One of your places';
+  const left = raw.filter((o) => o && o.status !== 'gone').length;
+
+  if (chosenGone) {
+    return {
+      state: 'pick-fell-through',
+      headline: `${named(chosenGone)} fell through.`,
+      // Never "start again": the work is not lost, and saying so is the point.
+      detail: left > 0
+        ? `Your shortlist still has ${left === 1 ? 'one other place' : `${left} other places`} on it — the comparison is intact.`
+        : 'Nothing else is on the shortlist yet, so this one is back to looking.',
+      act: left > 0 ? 'Pick another' : 'Find more places',
+    };
+  }
+  return {
+    state: 'option-gone',
+    headline: gone.length === 1 ? `${named(gone[0])} is gone.` : `${gone.length} places are gone.`,
+    detail: 'Kept on the list, struck through — a place you already ruled out is worth remembering.',
+    act: null,
+  };
+}
+
+// ─── WHAT WE READ vs WHAT YOU TYPED (2026-08-03) ───────────────────────────
+// The listing research caught us in the same fault we levelled at Blink:
+// "our unfurl parses, normalises and infers, and says nothing." Airbnb marks
+// machine-touched text — "Some info has been automatically translated. Show
+// original" — and that is our own grounding doctrine applied to a listing.
+//
+// An option now remembers WHERE each field came from. `read` means it came off
+// the page or the unfurl; `typed` means the host wrote it. A field with no
+// recorded source is reported as unknown rather than credited to either — we do
+// not backfill provenance we never captured.
+export const LODGING_FIELD_LABELS = {
+  label: 'Name', beds: 'Beds', sleeps: 'Sleeps',
+  totalPrice: 'Total', pricePerNight: 'A night', fees: 'Fees',
+  photoUrl: 'Photo', notes: 'Notes', cancellationTier: 'Cancellation',
+};
+
+export function lodgingProvenance(option) {
+  const o = option || {};
+  const src = (o.sources && typeof o.sources === 'object') ? o.sources : {};
+  const has = (k) => {
+    const v = o[k];
+    return v != null && String(v).trim() !== '';
+  };
+  const rows = Object.keys(LODGING_FIELD_LABELS)
+    .filter(has)
+    .map((k) => ({ field: k, label: LODGING_FIELD_LABELS[k], source: src[k] || 'unknown' }));
+  return {
+    rows,
+    read: rows.filter((r) => r.source === 'read').length,
+    typed: rows.filter((r) => r.source === 'typed').length,
+    unknown: rows.filter((r) => r.source === 'unknown').length,
+  };
+}
+
+// ─── WHY THESE, IN THIS ORDER (listing research: "Why these hotels?") ──────
+// HotelTonight puts a plain button at the foot of the list and the curation
+// explains itself on demand. "We rank candidates by must-have fit and currently
+// never say so." rankCandidates already computes the basis — matched must-haves,
+// real beds against the head count, the budget ceiling — so this states what it
+// actually did rather than describing an algorithm in the abstract.
+export function lodgingRankBasis(event, intel) {
+  const ev = event || {};
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
+  const opts = (li && li.options) || [];
+  if (opts.length < 2) return null;
+
+  let wants = [];
+  try { wants = mustHavesFor(ev) || []; } catch (_e) { wants = []; }
+  const guests = (li && li.guests) || 0;
+  const budget = Number(ev.totalBudget) || 0;
+
+  const lines = [];
+  if (wants.length) {
+    lines.push(`Ordered by how many of your ${wants.length} must-have${wants.length === 1 ? '' : 's'} each one matches.`);
+  }
+  if (guests) {
+    lines.push(`Real beds count, not headline capacity — a place with fewer than ${guests} beds drops, because the difference is someone on a sofa.`);
+  }
+  if (budget > 0) {
+    lines.push(`Anything over the $${budget.toLocaleString()} you set drops below the ones that clear it.`);
+  }
+  if (!lines.length) return null;
+
+  return {
+    lines,
+    // Stated so the order is never mistaken for a verdict.
+    caveat: 'Nothing is ruled out — this is the order they are shown in, not a judgement about which you should take.',
+  };
+}
+
+// ─── "WAS $412 WHEN YOU SAVED IT" (HotelTonight, via the listing research) ──
+// Their struck price is THEIR OWN HISTORY — "was on HT $210" — a checkable
+// claim about themselves rather than an unverifiable claim about the market
+// (compare Expedia's struck reference price, which nobody can audit).
+//
+// Ours is the same shape and the research names it outright: "was $412 when you
+// saved it — honest, checkable, and genuinely useful when a host returns to a
+// shortlist built three weeks ago." It compares against WHAT THE HOST FIRST
+// RECORDED, never against a price we fetched, because we never fetch prices.
+export function lodgingPriceHistory(option) {
+  const o = option || {};
+  const now = Number(o.totalPrice);
+  const first = Number(o.priceFirstSeen);
+  if (!Number.isFinite(now) || now <= 0) return null;
+  if (!Number.isFinite(first) || first <= 0) return null;
+  if (Math.round(now) === Math.round(first)) return null;
+
+  const money = (n) => `$${Math.round(n).toLocaleString()}`;
+  const up = now > first;
+  return {
+    first: Math.round(first),
+    now: Math.round(now),
+    direction: up ? 'up' : 'down',
+    delta: Math.abs(Math.round(now - first)),
+    // No adjective. It states the change and when the first number was taken.
+    text: `was ${money(first)} when you saved it`,
+    // ── SAY WHICH NUMBER, AND SAY BOTH (driven 2026-08-04) ─────────────────
+    // `text` alone is only safe when it sits beside the very field it compares.
+    // On the W9 card it sat under the ALL-IN price ($4,500 with fees) while
+    // comparing the sticker ($4,200 against $4,480 first seen) — so the host
+    // read "$4,500 · was $4,480", a $20 RISE, when the engine had computed a
+    // $280 FALL. Two quantities stacked, pointing opposite ways.
+    //
+    // `full` carries its own subject and both numbers, so it stays true no
+    // matter what headline sits above it. Surfaces should prefer it.
+    full: `the total was ${money(first)} when you saved it — now ${money(now)}`,
+  };
+}
+
+// ─── THE STAGE THIS HOST IS ACTUALLY IN (reimagine, 2026-08-03) ────────────
+//
+// Host, after reading the live panel end to end: "not very readable... we need
+// way more than folding." Correct. Folding hid four surfaces behind carets; it
+// did not stop there being four.
+//
+// THE DIAGNOSIS: this sheet is five surfaces wearing one scroll —
+//   a search launcher · an intake · a comparison · a commitment · a record.
+// Those are five different MOMENTS, and a host is only ever in one of them.
+// Stacking all five forces the host to work out which part is theirs, every
+// time they open it. That is the opposite of a cockpit (02_STUDIO_MATTE
+// "Detail View Rule": readiness, why it matters, next action, phase sections)
+// and it breaks "every view has exactly one dominant element"
+// (UX_04 hierarchy enforcement).
+//
+// THE REIMAGINE: derive the stage from data the app already holds, show that
+// stage's cockpit, and make the other stages REACHABLE rather than stacked.
+// Nothing is deleted — the same blocks live behind a named step instead of
+// below a scroll. This is the D6 workflow made live.
+//
+// Stage is DERIVED, never stored: no new field, no second source of truth, and
+// it cannot drift from what the host actually has.
+export const LODGING_STAGES = ['no-town', 'looking', 'weighing', 'picked', 'booked'];
+
+export function lodgingStage(event, intel) {
+  const ev = event || {};
+  if (ev.isDestination !== true) return null;
+
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { li = null; } }
+  const opts = (li && li.options) || [];
+  const chosen = (li && li.chosen) || null;
+
+  // A booking RECORD exists once the host has written something only a booked
+  // stay produces — a name they typed off a confirmation, a code, or a date
+  // from the money-safe chain. Never inferred from a pick alone: choosing is
+  // not booking, and saying it is would be the kind of claim this file bans.
+  const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
+  // ── THE COMMENT ABOVE WAS RIGHT; THIS LINE USED TO CONTRADICT IT ──────────
+  // Driving the cockpit on 2026-08-04, one press of "Make it the pick" moved
+  // the host from "Weigh them" to "The stay is on the books." — skipping the
+  // whole pick stage and claiming a booking that does not exist.
+  //
+  // Because pick() writes stayFromPick(), and that fills hotelName with the
+  // chosen option's label. `hotelName` carries two different facts: the place
+  // you picked, and the name on your confirmation. Reading either as a booking
+  // made choosing into booking — the exact claim the comment above bans, and
+  // the one lodgingStage.test.js pins ("CHOOSING IS NOT BOOKING"). That gate
+  // passed because it hand-built the event; nothing ever drove pick().
+  //
+  // A name only counts as a booking record when it did NOT come from the pick.
+  const namedOffConfirmation = !!String(stay.hotelName || '').trim() && stay.from !== STAY_FROM_PICK;
+  const booked = !!(namedOffConfirmation || String(stay.bookingCode || '').trim()
+    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
+
+  let blocked = null;
+  try { blocked = lodgingSearchBlocked(ev); } catch (_e) { blocked = null; }
+
+  const stage = booked ? 'booked'
+    : chosen ? 'picked'
+    : opts.length > 0 ? 'weighing'
+    : blocked ? 'no-town'
+    : 'looking';
+
+  const guests = (li && li.guests) || 0;
+  const fits = opts.filter((o) => !guests || o.sleeps == null || o.sleeps >= guests).length;
+
+  // ONE dominant line per stage, and the ONE act that moves it forward. Both
+  // state what is true right now — never a target, never a guess.
+  const COPY = {
+    'no-town': {
+      title: 'Name the town.',
+      why: blocked ? blocked.detail : 'Every search needs a place.',
+      act: 'Use this town',
+    },
+    looking: {
+      title: 'Go find some places.',
+      why: 'Three doors, opened with your own answers already in them. Bring back a link — or the whole results page.',
+      act: 'Search Airbnb',
+    },
+    weighing: {
+      title: opts.length === 1 ? 'One place so far.' : `${opts.length} places, ${fits} that fit.`,
+      why: 'Side by side on the things you said matter. Nothing here is scraped.',
+      act: 'Make one the pick',
+    },
+    picked: {
+      // trimmed: a whitespace-only label is not a name, and must not become one
+      title: (chosen && String(chosen.label || '').trim()) ? `${String(chosen.label).trim()}.` : 'You have a pick.',
+      why: 'Book it on the platform, then bring the confirmation numbers back here so the money dates are watched.',
+      act: 'Save the stay details',
+    },
+    booked: {
+      title: 'The stay is on the books.',
+      why: 'What is watched from here: the refund window, the next payment, and who still needs a room.',
+      act: 'Open the money dates',
+    },
+  };
+
+  const c = COPY[stage];
+  return {
+    stage,
+    index: LODGING_STAGES.indexOf(stage),
+    total: LODGING_STAGES.length,
+    title: c.title,
+    why: c.why,
+    act: c.act,
+    counts: { options: opts.length, fits, guests },
+    // Every stage stays REACHABLE — the point is that only one is loud, not
+    // that the others are gone. `done` is the honest read of what is behind you.
+    steps: LODGING_STAGES.map((s, i) => ({
+      id: s,
+      done: i < LODGING_STAGES.indexOf(stage),
+      current: s === stage,
+    })),
+  };
+}
+
 // ─── THE COMPARISON, TRANSPOSED (research rec #1, 2026-08-01) ──────────────
 // "Adopt the Zillow transpose for the shortlist. Named attribute rows down a
 // left rail, candidates as columns. Missing data becomes a visible gap in a
@@ -1259,7 +1703,17 @@ export function lodgingCompare(event, intel) {
   push('allin', nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}, all-in` : 'All-in', (o) => money(allIn(o)));
   push('night', 'A night', (o) => money(o.pricePerNight != null ? o.pricePerNight
     : (allIn(o) && nights > 0 ? allIn(o) / nights : null)));
-  push('sleeps', 'Sleeps', (o) => (o.sleeps != null ? String(o.sleeps) : null));
+  // SAY THE SHORTFALL, DO NOT MARK IT (lodging listing research, 2026-08-01).
+  // Booking.com's best-in-class move: a room that cannot hold the party renders
+  // "These options won't accommodate your entire group" — visible, self-
+  // explaining, unselectable. The first cut of this appended a bare "·" to the
+  // number, which explains nothing and reads as a typo. The number now carries
+  // the gap in words the host can act on.
+  push('sleeps', 'Sleeps', (o) => {
+    if (o.sleeps == null) return null;
+    if (!guests || o.sleeps >= guests) return String(o.sleeps);
+    return `${o.sleeps} — ${guests - o.sleeps} without a bed`;
+  });
 
   // only the requirements the host actually asked for — not the whole catalogue
   let musts = [];
@@ -1308,6 +1762,15 @@ export function lodgingCommitted(event) {
   return already ? 0 : Math.round(n);
 }
 
+/**
+ * Where a `lodging` record came from. A stay written by CHOOSING carries this
+ * stamp; a stay the host typed off a booking confirmation does not. Two
+ * different facts have always lived in `lodging.hotelName` — "the place I
+ * picked" and "the name on my confirmation" — and this is what tells them
+ * apart. Compared in lodgingStage; never write the literal in either place.
+ */
+export const STAY_FROM_PICK = 'the option you picked';
+
 export function stayFromPick(event, intel) {
   const li = intel || lodgingIntel(event);
   const chosen = li.chosen;
@@ -1320,7 +1783,7 @@ export function stayFromPick(event, intel) {
     hotelName: chosen.label || '',
     rate: perNight,
     url: chosen.url || '',
-    from: 'the option you picked',
+    from: STAY_FROM_PICK,
   };
 }
 

@@ -167,10 +167,22 @@ async def safe_get(
     max_bytes: int = DEFAULT_MAX_BYTES,
     timeout: httpx.Timeout = DEFAULT_TIMEOUT,
     user_agent: Optional[str] = None,
+    truncate_at_max: bool = False,
 ) -> Tuple[bytes, str, str]:
     """
     Fetch a caller-supplied URL under every guard above.
     Returns (body_bytes, content_type, final_url).
+
+    `truncate_at_max` decides what an oversized document MEANS to the caller.
+
+    Default (False) is refusal, and that is right for anything that has to be
+    whole: a truncated JSON body is not small JSON, it is corrupt JSON.
+
+    True returns the first max_bytes and stops. Opt in only where a PREFIX is
+    genuinely useful — HTML we read <head> metadata out of. The byte ceiling is
+    identical either way: we stop reading and close the connection at the same
+    point, so this weakens no limit. It only stops us throwing away bytes we
+    already have and could use.
     """
     current = url
     # Only headers WE choose are ever sent. Nothing from the caller is forwarded,
@@ -218,13 +230,20 @@ async def safe_get(
                 # below is the real enforcement (a lying/absent header can't bypass it).
                 declared = resp.headers.get("content-length")
                 if declared and declared.isdigit() and int(declared) > max_bytes:
-                    raise SafeFetchError("That document is too large to read.", 400)
+                    if not truncate_at_max:
+                        raise SafeFetchError("That document is too large to read.", 400)
 
                 chunks, total = [], 0
                 async for chunk in resp.aiter_bytes():
                     total += len(chunk)
                     if total > max_bytes:
-                        raise SafeFetchError("That document is too large to read.", 400)
+                        if not truncate_at_max:
+                            raise SafeFetchError("That document is too large to read.", 400)
+                        # Keep the head of the final chunk, then stop reading.
+                        keep = max_bytes - (total - len(chunk))
+                        if keep > 0:
+                            chunks.append(chunk[:keep])
+                        break
                     chunks.append(chunk)
                 return b"".join(chunks), ctype, current
             finally:

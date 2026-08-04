@@ -10301,6 +10301,13 @@ export default function HostShellV2() {
                             </details>
                           );
                         })()}
+                        {/* CALM PASS (host 2026-08-03). The search doors, the storage note, the paste box and the bookmarklet are HOW YOU GET options -- machinery, not the decision. Once the host has options they are done with this and it should stop competing with the comparison above; with none, it is the whole job, so it opens itself. Native <details>, the app's own disclosure pattern (Figma 395:60) -- no new component. */}
+                        <details open={li.options.length === 0} style={{ marginBottom: 'var(--sp-4)' }}>
+                          <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                            alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="of" style={{ whiteSpace:'nowrap' }}>Find more places</span>
+                            <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>Airbnb · Vrbo · hotels ▾</span>
+                          </summary>
                         {/* GO LOOK, PRE-FILTERED (host question 2026-07-28). We can't search
                             those platforms — a live rental API is on the never-build list —
                             but we can hand over a search already carrying the town, the real
@@ -10727,6 +10734,7 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
+                        </details>
                         {/* WHAT THE GROUP SAID (migration 016 applied 2026-07-28). Guests
                             answer on the invite; the picks ride the per-guest upsert home.
                             A tally, never a verdict — and silence reads as silence. */}
@@ -10843,6 +10851,13 @@ export default function HostShellV2() {
                           </div>
                           );
                         })}
+                        {/* CALM PASS (host 2026-08-03: the panel 'not very readable'). An eight-field form, a photo box and four cancellation chips sat permanently open below the shortlist. It is the rarest path here -- most places arrive by paste -- so it rests as one line and opens when asked. */}
+                        <details style={{ marginBottom: 'var(--sp-4)' }}>
+                          <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                            alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="of" style={{ whiteSpace:'nowrap' }}>Add one by hand</span>
+                            <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>type the details ▾</span>
+                          </summary>
                         {/* THE COUNT WHERE THE HOST IS LOOKING (host 2026-07-28: "options
                             count is not changing"). It DOES change — 3 → 4 on every add,
                             verified live — but it lived in a header scrolled far off screen
@@ -10989,6 +11004,7 @@ export default function HostShellV2() {
                             </button>
                           )}
                         </div>
+                        </details>
                         <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
                           Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
                         </p>

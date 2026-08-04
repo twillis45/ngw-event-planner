@@ -1,9 +1,74 @@
 // A resort and a rental house produce nearly disjoint food plans. The app already
 // asked which it was and already derived the platform from a pasted listing; it
 // told neither to the food engine. This is that fact, made readable.
-import { lodgingKitchen } from '../lodgingIntel';
+import { lodgingKitchen, kitchenSignal, kitchenConsequence } from '../lodgingIntel';
 
 const ev = (o) => ({ id: 'e', type: 'Birthday', isDestination: true, ...o });
+
+// ── WHEN THE TWO SOURCES DISAGREE (live drive, 2026-08-04) ──────────────────
+// The describe below is titled "a pasted listing outranks the multiple choice"
+// and not one of its cases ever supplied both — so the precedence it named was
+// never actually exercised. Driving the cockpit put them in conflict: the host
+// pressed "A hotel or room block" to correct a kitchen inferred from an Airbnb
+// URL, the answer was written to foodChoices, and the surface kept saying
+// "There is a kitchen." Told beats inferred. These are the cases that were
+// missing, in both directions.
+describe('the host outranks the URL', () => {
+  const airbnbLink = [{ url: 'https://www.airbnb.com/rooms/99' }];
+
+  test('an explicit room block beats a kitchen inferred from an Airbnb link', () => {
+    const e = ev({ lodgingOptions: airbnbLink, foodChoices: { dest_lodging: 'A room block, no commitment' } });
+    expect(lodgingKitchen(e)).toBe(false);
+    expect(kitchenSignal(e).from).toBe('told');
+    expect(kitchenConsequence(e).headline).toBe('There is no kitchen.');
+  });
+
+  test('and the other way — a host-arranged rental stands with a hotel link present', () => {
+    const e = ev({
+      lodgingOptions: [{ url: 'https://www.marriott.com/x' }],
+      foodChoices: { dest_lodging: 'A host-arranged Airbnb' },
+    });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('told');
+  });
+
+  test('a listing still speaks when the host has said nothing', () => {
+    const e = ev({ lodgingOptions: airbnbLink });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('inferred');
+  });
+
+  test('an unanswered pick does not silence the listing', () => {
+    // "Guests book on their own" is NOT TOLD — it must not block the inference.
+    const e = ev({ lodgingOptions: airbnbLink, foodChoices: { dest_lodging: 'Guests book on their own' } });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('inferred');
+  });
+});
+
+// ── AN INFERENCE MUST SAY SO, AND STAY CORRECTABLE ──────────────────────────
+describe('a claim carries its basis', () => {
+  test('an inferred kitchen names the link it came from and keeps the answers', () => {
+    const kc = kitchenConsequence(ev({ lodgingOptions: [{ url: 'https://www.airbnb.com/rooms/99' }] }));
+    expect(kc.from).toBe('inferred');
+    expect(kc.basis).toMatch(/Airbnb link/);
+    // the host must be able to overrule it in place
+    expect(kc.answers.length).toBeGreaterThan(0);
+  });
+
+  test('an answer the host gave needs no escape hatch', () => {
+    const kc = kitchenConsequence(ev({ foodChoices: { dest_lodging: 'A room block, no commitment' } }));
+    expect(kc.from).toBe('told');
+    expect(kc.basis).toMatch(/You said/);
+    expect(kc.answers).toEqual([]);
+  });
+
+  test('the untold state still offers every answer', () => {
+    const kc = kitchenConsequence(ev({}));
+    expect(kc.answered).toBe(false);
+    expect(kc.answers.length).toBeGreaterThan(0);
+  });
+});
 
 describe('a pasted listing outranks the multiple choice', () => {
   test('a VRBO link means a kitchen', () => {
@@ -70,9 +135,13 @@ describe('lodgingSearchLinks — hotels are covered, not just rentals', () => {
     expect(decodeURIComponent(h.href)).toContain('Santa Fe');
   });
 
-  test('Vrbo still goes to the front door — its terms forbid deep links', () => {
+  // Host reversed the front-door ruling on 2026-08-03 (see lodgingIntel.js).
+  // `criteria` is KEPT: it is no longer the only path, but a host who prefers
+  // to type into Vrbo's own picker still has the words.
+  test('Vrbo carries the search, and still hands over the criteria', () => {
     const v = lodgingSearchLinks(dest).find((l) => l.id === 'vrbo');
-    expect(v.href).toBe('https://www.vrbo.com/');
+    expect(v.href).toMatch(/^https:\/\/www\.vrbo\.com\/search\?/);
+    expect(v.href).toMatch(/destination=Santa\+Fe/);
     expect(v.criteria).toContain('Santa Fe');
   });
 
@@ -99,7 +168,11 @@ describe('lodgingSearchBlocked — no town is a STEP, not a blank', () => {
     // HOST LANGUAGE, not ISO. This assertion originally demanded
     // "2028-06-17 to 2028-06-21" and passed - which is how the ISO string reached
     // a real screen. Pin the readable form so it cannot come back.
-    expect(b.detail).toContain('Jun 17-Jun 21');
+    // EN DASH since 2026-08-04. This assertion pinned a HYPHEN while
+    // lodgingSearchLinks — one screen later — rendered the same span with an en
+    // dash. Walking the workflow end to end is what surfaced it; the two
+    // producers now share one character.
+    expect(b.detail).toContain('Jun 17–Jun 21');
     expect(b.detail).not.toMatch(/\d{4}-\d{2}-\d{2}/);
     expect(b.detail).toContain('10 guests');
   });
