@@ -89,7 +89,17 @@ function preProgress(ev, phase, daysOut) {
   // already run off it); only a truly missing location is a readiness gap.
   // (Todd's report: home-hosted event was nagged 'Add the location' while the
   // app was simultaneously using Atlanta, GA for its own features.)
-  add('location', true, eventLocationStatus(ev) !== 'missing', 'Add the location', { tab: 'Event Details', focusField: 'event-venue' }, 5);
+  // A MISSING LOCATION IS A FOUNDATION, NOT A MID-LIST CHORE (live drive,
+  // 2026-08-03). At a flat 5 it sat BELOW the lodging axis (4), so the hero
+  // asked "Add the location." directly above a cue for "Sort where everyone
+  // stays" -- two different asks on one screen, and the louder one impossible:
+  // you cannot search Airbnb, Vrbo or hotels without a place, which is exactly
+  // what lodgingSearchBlocked says. Promoting the GAP (rather than demoting
+  // lodging) is the honest shape: the town also gates weather and shopping, and
+  // it leaves lodging's "rooms sell out, menus do not" ranking over food intact.
+  const _locationMissing = eventLocationStatus(ev) === 'missing';
+  add('location', true, !_locationMissing, 'Add the location',
+    { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host
   // having set a count: it's a real floor number, informative on its own.
@@ -163,6 +173,9 @@ function preProgress(ev, phase, daysOut) {
   // carries a deadline; a menu does not.
   const _lodgingPicked = !!(ev.lodging && typeof ev.lodging === 'object'
     && String(ev.lodging.hotelName || '').trim());
+  // Stays at 4 throughout: it must keep outranking food ("rooms sell out, menus
+  // do not"). What changes is that a MISSING location now outranks IT -- see the
+  // location axis above.
   add('lodging', ev.isDestination === true, _lodgingPicked,
     'Sort where everyone stays',
     { tab: 'Travel', focusField: 'lodging' }, 4);
@@ -303,7 +316,21 @@ const CUE_ACTIONS = {
   thankyous: 'Open guests',
   rentals: 'Open the rentals',
   'ros-next': 'Open the day plan',
+  // THREE AXES HAD NO ENTRY and fell through to the generic 'Open the plan'
+  // (found on a live drive, 2026-08-03: the hero read "Add the location." above
+  // a button that said "Open the plan" — a CTA that names no act, which is
+  // exactly what ctaNamesTheAct exists to forbid). The fallback made the hole
+  // silent: a new axis inherits a plausible-looking label and nobody notices.
+  // The gate below now fails when an axis has no label of its own.
+  lodging: 'Open where everyone stays',
+  crabs: 'Open the crab order',
+  moment: 'Open what matters most',
 };
+
+// Every axis phaseProgress can raise MUST name its own act. Exported so the
+// gate can assert coverage rather than trusting the fallback.
+export const CUE_ACTION_IDS = Object.keys(CUE_ACTIONS);
+export const CUE_ACTION_LABELS = { ...CUE_ACTIONS };
 export const cueActionLabel = (cue) =>
   (cue && CUE_ACTIONS[cue.id]) || (cue && CUE_ACTIONS[cue.source]) || 'Open the plan';
 

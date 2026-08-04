@@ -649,7 +649,7 @@ button{font-family:inherit}
    ("cta", "cta stay", …) and only one renders at a time; `.hero.elegant .cta` is
    the one selector that reliably reaches all of them. The parity gate pins these
    two tokens so this cannot drift back into a fork. */
-.hero.elegant .cta{ background:var(--steel-tint); color:var(--steel-soft); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
+.hero.elegant .cta{ background:var(--sheen); color:var(--ink); border-radius:var(--r-row); padding:15px 20px; min-height:54px;
   width:100%; justify-content:center; text-align:center; font-size:var(--t-cta-big);
   box-shadow:0 3px 0 #06080b, 0 9px 22px -9px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
   transition:transform .1s var(--ease-out), box-shadow .1s var(--ease-out); }
@@ -1056,7 +1056,14 @@ button{font-family:inherit}
    with NO matching rule — they rendered at the standard 13.5px (typography
    audit, 2026-07-11). A real tier now exists. */
 .cta.big{font-size:var(--t-cta-big); padding:14px 26px; border-radius:var(--r-row)}
-.cta.soft{background:var(--steel-tint); color:var(--steel-soft)}
+/* LABEL LIFTED TO NEAR-WHITE (host 2026-08-03: "light steel blue copy, maybe
+   almost white"). --steel-soft #8AA3B0 was chosen by the C1 colour audit purely
+   to clear the contrast floor that --steel failed (2.44:1) — clearing a floor is
+   not the same as being comfortable to read, and on a phone these labels sat
+   dim. --ink is the token the PRIMARY .cta already uses for its label, so the
+   soft tier now speaks the same vocabulary instead of a third one, and contrast
+   rises rather than falls. Ground is unchanged: no white surface. */
+.cta.soft{background:var(--steel-tint); color:var(--ink)}
 .cta.soft:hover{filter:none}
 .hc-row{margin-top:var(--sp-3); display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 

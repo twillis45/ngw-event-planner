@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, kitchenConsequence, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -10153,6 +10153,52 @@ export default function HostShellV2() {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          );
+                        })()}
+                        {/* ── THE TRANSPOSE (research rec #1, 2026-08-01) ────────────────
+                            "Named attribute rows down a left rail, candidates as columns.
+                            Missing data becomes a visible gap in a known row instead of an
+                            absent element." Summary before detail: this sits above the
+                            individual option cards because it is the decision, and they are
+                            the evidence.
+                            Absence is '—' (rec #2), a too-small house is grey not red
+                            (rec #7 — disqualifying is not faulty), and no amenity ever reads
+                            "no" because typed notes can confirm one and never deny one. */}
+                        {(() => {
+                          const cmp = (() => { try { return lodgingCompare(event, li); } catch { return null; } })();
+                          if (!cmp) return null;
+                          const n = cmp.columns.length;
+                          const grid = `minmax(96px,1.35fr) repeat(${n}, minmax(0,1fr))`;
+                          return (
+                            <div style={{ margin: '4px 0 var(--sp-4)' }}>
+                              <p className="eyebrow" style={{ margin: '0 0 8px' }}>
+                                SIDE BY SIDE{cmp.guests ? ` · YOUR ${cmp.guests}` : ''}
+                              </p>
+                              <div style={{ display: 'grid', gridTemplateColumns: grid, columnGap: 8, alignItems: 'end' }}>
+                                <span />
+                                {cmp.columns.map((c) => (
+                                  <span key={c.id} style={{ fontSize: 'var(--t-caption-min)', color: 'var(--faint)',
+                                    fontWeight: 650, letterSpacing: '.04em', textAlign: 'right',
+                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                                ))}
+                              </div>
+                              {cmp.rows.map((r) => (
+                                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: grid, columnGap: 8,
+                                  borderTop: '1px solid var(--line)', padding: '10px 0', alignItems: 'baseline' }}>
+                                  <span style={{ fontSize: 'var(--t-row-sub)', color: 'var(--ink-soft)' }}>{r.label}</span>
+                                  {r.values.map((v, i) => (
+                                    <span key={i} style={{ textAlign: 'right', fontSize: 'var(--t-row-sub)',
+                                      fontWeight: v === '—' ? 400 : 650,
+                                      // grey, never red: too small is not a fault
+                                      color: v === '—' ? 'var(--faint)'
+                                        : r.flags[i] === 'short' ? 'var(--muted)' : 'var(--ink)' }}>
+                                      {v}{r.flags[i] === 'short' ? ' ·' : ''}
+                                    </span>
+                                  ))}
+                                </div>
+                              ))}
+                              <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--faint)' }}>{cmp.note}</p>
                             </div>
                           );
                         })()}

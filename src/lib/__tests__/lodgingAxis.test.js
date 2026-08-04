@@ -44,11 +44,35 @@ describe('handled means a real stored pick, never an inference', () => {
 });
 
 describe('it outranks the things that can wait', () => {
-  test('lodging is louder than food and location — rooms sell out, menus do not', () => {
+  test('lodging is louder than food — rooms sell out, menus do not', () => {
     const all = deriveEventPhaseProgress({ ...base, isDestination: true }, NOW).items;
     const pri = (id) => (all.find((i) => i.id === id) || {}).priority;
-    expect(pri('lodging')).toBeLessThan(pri('location'));
     if (pri('food') != null) expect(pri('lodging')).toBeLessThan(pri('food'));
+  });
+
+  // WAS: expect(pri('lodging')).toBeLessThan(pri('location')) — unconditional.
+  //
+  // Driven live 2026-08-03: that produced a hero reading "Add the location."
+  // directly above a cue for "Sort where everyone stays". Two different asks on
+  // one screen, and the louder one impossible — you cannot search Airbnb, Vrbo
+  // or hotels without a place, which is exactly what lodgingSearchBlocked says
+  // ("Name the town and the searches open up").
+  //
+  // Urgency is a reason to promote an action, never a reason to promote one the
+  // host cannot take. Lodging still outranks food (above); it yields to the
+  // location only while the location is the thing blocking it.
+  test('but it yields to the location while the town is unknown', () => {
+    const noTown = deriveEventPhaseProgress({ ...base, isDestination: true }, NOW).items;
+    const p = (id) => (noTown.find((i) => i.id === id) || {}).priority;
+    expect(p('lodging')).toBeGreaterThan(p('location'));
+  });
+
+  test('and outranks it again once the town is known', () => {
+    const withTown = deriveEventPhaseProgress(
+      { ...base, isDestination: true, venue: 'Santa Fe, NM', venueCity: 'Santa Fe', venueState: 'NM' }, NOW).items;
+    const p = (id) => (withTown.find((i) => i.id === id) || {}).priority;
+    // location is handled now, but the ordering must still favour lodging
+    expect(p('lodging')).toBeLessThan(p('location'));
   });
 
   test('it routes somewhere real, and only while open', () => {
