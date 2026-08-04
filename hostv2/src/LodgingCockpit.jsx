@@ -358,7 +358,32 @@ function Looking({ event, patch }) {
       try {
         const r = await unfurlListing(cands[0].url);
         if (r && r.ok) {
-          cands = [{ ...cands[0], name: r.title || cands[0].name, priceShown: r.price != null ? r.price : cands[0].priceShown, photo: r.photo || cands[0].photo }];
+          // ── THE UNFURL'S ANSWER WAS BEING THROWN ON THE FLOOR ────────────
+          // Driven 2026-08-04. Three breaks stacked in one line:
+          //   · it read `r.photo`; the endpoint returns `image`
+          //   · it wrote `photo`; photoList() reads `photos` and `photoUrl`
+          //     and has never looked at `photo`
+          //   · it ignored `facts` entirely — bedrooms, beds and baths came
+          //     back on every successful read and went nowhere
+          // So a picture could not arrive from an unfurl under ANY conditions,
+          // which is why every read row still said "no picture yet".
+          const facts = (r.facts && typeof r.facts === 'object') ? r.facts : {};
+          // `image` is what the endpoint returns; this read `r.photo`, which has
+          // never existed on that response — so a successful read still produced
+          // a row with no picture, every time (driven 2026-08-04). Stay on the
+          // CANDIDATE's own field names: `photo` and `beds` here become
+          // `photoUrl` and provenance at commit, a few lines below.
+          const shot = String(r.image || '').trim();
+          cands = [{
+            ...cands[0],
+            name: r.title || cands[0].name,
+            priceShown: r.price != null ? r.price : cands[0].priceShown,
+            photo: shot || cands[0].photo,
+            // A COUNT OF BEDS, never mapped to `sleeps`: how many people a place
+            // holds is not something a bed count settles.
+            beds: facts.beds != null ? facts.beds : cands[0].beds,
+            bedrooms: facts.bedrooms != null ? facts.bedrooms : cands[0].bedrooms,
+          }];
           found = { ...found, linksOnly: !(r.title) };
         } else if (r && r.reason) {
           setReadErr(r.reason);
@@ -596,6 +621,21 @@ function Looking({ event, patch }) {
   );
 }
 
+// ── THE PICTURE, FINALLY ON SCREEN ─────────────────────────────────────────
+// The unfurl has been returning `image` all along and the row had nowhere to
+// put it — so a place the app could see stayed a line of text (driven
+// 2026-08-04). A remote image can 404 or be blocked; when it does this removes
+// itself rather than leaving a broken frame, which puts the row back in the
+// honest "no picture yet" state instead of a grey box pretending to be a house.
+function Thumb({ src, label }) {
+  const [dead, setDead] = useState(false);
+  if (!String(src || '').trim() || dead) return null;
+  return (
+    <img className="lc-thumb" src={src} alt={`${label || 'The place'} — the listing's own photo`}
+      loading="lazy" decoding="async" onError={() => setDead(true)} />
+  );
+}
+
 function Weighing({ event, intel, patch }) {
   let cmp = null; try { cmp = lodgingCompare(event, intel); } catch { cmp = null; }
   const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
@@ -728,6 +768,7 @@ function Weighing({ event, intel, patch }) {
           }
           return (
             <div key={o.id} className={'lc-opt' + (isGone ? ' is-gone' : '')}>
+              <Thumb src={o.photoUrl} label={o.label} />
               <span className="lc-opt-main">
                 <span className="lc-opt-name">{o.label}</span>
                 {(() => {
@@ -1027,6 +1068,7 @@ const CSS = `
 .lc-why-list{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;
   font:400 12px/1.5 Inter,sans-serif;color:var(--ink-soft);}
 .lc-opt-name{font:500 15px/1.3 Inter,sans-serif;min-width:0;}
+.lc-thumb{width:56px;height:56px;flex:0 0 auto;border-radius:10px;object-fit:cover;background:var(--sheen);border:1px solid var(--hair);}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}
 .lc-col{font:650 10px/1.2 Inter,sans-serif;letter-spacing:.04em;color:var(--faint);text-align:right;

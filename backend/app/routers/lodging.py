@@ -91,7 +91,18 @@ ALLOWED_HOSTS = (
 )
 
 TIMEOUT = httpx.Timeout(8.0, connect=4.0)
-MAX_BYTES = 512_000          # a listing head is small; stop reading long before a full page
+# A listing head is small; stop reading long before a full page. That was always
+# the intent of this cap and safe_get did the opposite with it — it REFUSED any
+# document bigger than the cap, so every real Airbnb page came back
+# "That document is too large to read." and the host got a row with no name, no
+# price and no picture (driven 2026-08-04). The og: tags we want live in <head>,
+# inside the first few tens of KB, so a prefix is exactly what we need.
+# Raised from 512_000 on 2026-08-04. Truncation is what makes the read WORK;
+# this is headroom so the prefix actually contains what we came for. Airbnb
+# inlines a lot of CSS and JSON-LD ahead of its og: tags, and 512KB is not a
+# reliable margin for reaching them. 1.5MB still stops far short of a full page
+# and is bounded per request — we never buffer more than this.
+MAX_BYTES = 1_500_000
 UA = "Mozilla/5.0 (compatible; EventBossLinkPreview/1.0; +link-unfurl-on-user-action)"
 
 _META = re.compile(
@@ -139,6 +150,9 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
             allowed_hosts=ALLOWED_HOSTS,
             allowed_content_types=("text/html", "application/xhtml+xml"),
             max_bytes=MAX_BYTES,
+            # Read the head and stop — a truncated listing page is still a
+            # readable listing head. Same byte ceiling, we just keep what we got.
+            truncate_at_max=True,
             timeout=TIMEOUT,
             user_agent=UA,
         )
