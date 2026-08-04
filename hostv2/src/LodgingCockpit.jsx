@@ -51,6 +51,12 @@ export default function LodgingCockpit() {
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
       localStorage.setItem(LS_CUSTOMS, JSON.stringify(next));
       setTick((t) => t + 1);
+      // FINISHING A STEP LANDS YOU ON THE NEXT ONE (host, 2026-08-04). The
+      // stage is derived, so the data moving forward already moves the host —
+      // EXCEPT while they are peeking at another step, where `viewing` pinned
+      // them to the screen they had just finished with. Any real write clears
+      // the peek, so completing an act always hands them wherever they now are.
+      setViewing(null);
     } catch { /* storage full or blocked — the surface simply does not change */ }
   }, [eventId]);
 
@@ -536,6 +542,41 @@ function Weighing({ event, intel, patch }) {
       <Panel label="MAKE THE CALL">
         {opts.map((o) => {
           const isGone = o.status === 'gone';
+          // ── A PLACE IS NOT A PLACE WITHOUT A PICTURE (host, 2026-08-04:
+          //    "don't have the app reference properties without a thumbnail") ──
+          // A row that is only a name asks the host to choose between houses
+          // they cannot see, which is not a choice — and it is exactly the row
+          // a thin paste produces. The place is NOT deleted and NOT hidden:
+          // that would lose work the host did. It is held out of the chooser
+          // and shown as what it actually is — a place still missing its
+          // picture — with the one act that fixes it.
+          const noPhoto = !String(o.photoUrl || '').trim() && !(Array.isArray(o.photos) && o.photos.length);
+          if (noPhoto && !isGone) {
+            return (
+              <div key={o.id} className="lc-opt is-thin">
+                <span className="lc-opt-main">
+                  <span className="lc-opt-name">{o.label}</span>
+                  {/* Held out of the chooser, but what we DO know about it
+                      still shows: a price that moved is real information about
+                      a place the host saved, and hiding it would punish them
+                      twice for a thin paste. */}
+                  <span className="lc-opt-sub">
+                    {[(() => { try { const h = lodgingPriceHistory(o); return h ? h.text : null; } catch { return null; } })(),
+                      'no picture yet — paste the listing’s photo link to weigh it against the others']
+                      .filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                <button className="cta soft" onClick={() => {
+                  const url = window.prompt('Paste the photo link for ' + o.label);
+                  const clean = String(url || '').trim();
+                  if (!/^https:\/\//i.test(clean)) return;
+                  patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
+                    ? { ...x, photoUrl: clean, sources: { ...(x.sources || {}), photoUrl: 'typed' } }
+                    : x)) });
+                }}>Add a picture</button>
+              </div>
+            );
+          }
           return (
             <div key={o.id} className={'lc-opt' + (isGone ? ' is-gone' : '')}>
               <span className="lc-opt-main">
@@ -789,6 +830,8 @@ const CSS = `
 .lc-opt{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:1px solid var(--line);padding:12px 0;flex-wrap:wrap;}
 /* struck, not deleted — a place you already ruled out is worth remembering */
 .lc-opt.is-gone .lc-opt-name{text-decoration:line-through;color:var(--faint);}
+/* Held out of the chooser, not hidden: still legible, visibly not ready. */
+.lc-opt.is-thin .lc-opt-name{color:var(--muted);}
 .lc-opt-acts{display:flex;gap:8px;flex-wrap:wrap;}
 .lc-opt-main{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 160px;}
 .lc-opt-sub{font:400 11px/1.35 Inter,sans-serif;color:var(--faint);}

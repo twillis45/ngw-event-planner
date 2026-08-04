@@ -158,6 +158,21 @@ export function normalizeLodgingOption(raw, i = 0) {
     // rather than quietly pretending it is the whole cost.
     fees: num(o.fees),
     cancellationTier: String(o.cancellationTier || '').toLowerCase().trim(),
+    // ── METADATA THE NORMALIZER USED TO EAT (2026-08-03) ───────────────────
+    // This function rebuilds a clean option from known keys, which is right —
+    // but it silently dropped three fields the surfaces depend on, so the
+    // provenance line and the price history rendered blank while their engines
+    // and gates were green. A normalizer that discards a field is a data loss
+    // no unit test on the engine can catch; it only shows on the surface.
+    //   sources        which fields were READ off a page vs TYPED by the host
+    //   priceFirstSeen the first number the host ever recorded, for "was $X"
+    //   wasChosen      that a now-gone place HAD been the pick
+    // None of these are listing facts, so the host-entered-facts-only doctrine
+    // is untouched: they describe where our own data came from.
+    sources: (o.sources && typeof o.sources === 'object' && !Array.isArray(o.sources))
+      ? { ...o.sources } : undefined,
+    priceFirstSeen: num(o.priceFirstSeen),
+    wasChosen: o.wasChosen === true ? true : undefined,
     notes: String(o.notes || '').trim(),
     // The listing photos, HOST-PASTED (copy image address on the listing) —
     // never fetched from the listing page; https-only so a stray string can't
