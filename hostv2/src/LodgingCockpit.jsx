@@ -20,11 +20,11 @@
 //
 // NOTHING HERE INVENTS DATA. Every number comes from the engines the live sheet
 // uses. A stage the data has not reached says so plainly.
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -173,7 +173,7 @@ function NoTown({ event, patch }) {
             it was GREY, because the field was empty. A dimmed primary action
             with no stated reason reads as broken, so it stays live and focuses
             the field it needs instead of silently refusing. */}
-        <button className="lc-cta" onClick={save}>Use this town</button>
+        <button className="cta" onClick={save}>Use this town</button>
       </div>
       {proposed && <p className="lc-note">Proposed {proposed.basis} — nothing here was guessed.</p>}
     </Panel>
@@ -192,6 +192,34 @@ function Looking({ event, patch }) {
   // work out that the textarea below is now the point.
   const [wentLooking, setWentLooking] = useState(false);
   const [readErr, setReadErr] = useState('');
+  // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
+  // After a door, the host copies a listing and comes back. Reading the
+  // clipboard for them needs `clipboard-read`, which most configurations only
+  // grant behind a gesture — so this ASKS the Permissions API first and does
+  // nothing at all unless the answer is already 'granted'. No prompt is
+  // triggered, no read is attempted behind their back, and every failure path
+  // is silent BY DESIGN: the one-tap button below is the floor, and this can
+  // only ever save a tap, never become the thing the flow depends on.
+  const [offer, setOffer] = useState('');
+  useEffect(() => {
+    if (!wentLooking) return undefined;
+    let dead = false;
+    const look = async () => {
+      try {
+        if (!navigator.permissions || !navigator.clipboard || !navigator.clipboard.readText) return;
+        const st = await navigator.permissions.query({ name: 'clipboard-read' });
+        if (st.state !== 'granted') return;
+        const t = await navigator.clipboard.readText();
+        if (dead || !t || !t.trim()) return;
+        if (looksLikeSearchUrl(t)) return;          // our own door — not a find
+        if (!/airbnb\.|vrbo\.com/i.test(t)) return; // not a lodging link
+        setOffer(t.trim());
+      } catch { /* denied, unsupported, or no gesture — the button stands */ }
+    };
+    window.addEventListener('focus', look);
+    look();
+    return () => { dead = true; window.removeEventListener('focus', look); };
+  }, [wentLooking]);
   let links = []; try { links = lodgingSearchLinks(event) || []; } catch { links = []; }
   // One paste can carry a whole results page — extractListingCandidates reads
   // every card on it, with no server call.
@@ -200,8 +228,17 @@ function Looking({ event, patch }) {
     let found = { candidates: [] };
     try { found = extractListingCandidates(src) || found; } catch { /* unreadable paste */ }
     const cands = (found.candidates || []).filter(Boolean);
-    // Silence after a paste reads as broken. Say what happened.
-    if (!cands.length) { setReadErr('Nothing readable in that — paste a listing link, or the whole results page.'); return; }
+    if (!cands.length) {
+      // NAME WHAT THEY ACTUALLY PASTED. The generic "nothing readable" was
+      // aimed at junk, and the commonest paste here is the search link this
+      // app just handed them — which carries no listing facts at all, because
+      // the platform renders those in the browser. Say that, and say the step.
+      const door = looksLikeSearchUrl(src);
+      setReadErr(door
+        ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
+        : 'Nothing readable in that — paste a listing link, or the whole results page.');
+      return;
+    }
     setReadErr('');
     const before = event.lodgingOptions || [];
     const next = cands.map((c, i) => normalizeLodgingOption({
@@ -226,7 +263,7 @@ function Looking({ event, patch }) {
               aria-label and title, so nothing is lost to a screen reader or a
               hover. Shortened HERE only — the live sheet's copy is untouched. */}
           {links.map((l) => (
-            <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="lc-cta lc-door"
+            <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="cta soft lc-door"
               aria-label={`${l.label} — opens in a new tab`} title={l.label}
               onClick={() => setWentLooking(true)}>{shortDoor(l)} <span aria-hidden="true">↗</span></a>
           ))}
@@ -235,6 +272,15 @@ function Looking({ event, patch }) {
         {!links.length && <p className="lc-note">No doors yet — the town is missing.</p>}
       </Panel>
       <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>
+        {/* Offered, never applied on its own: the host still decides that the
+            thing on their clipboard is the thing they meant. */}
+        {offer && (
+          <div className="lc-offer">
+            <p className="lc-body">Looks like you copied a link.</p>
+            <button className="cta" onClick={() => { setText(offer); add(offer); setOffer(''); }}>Read it</button>
+            <button className="cta soft" onClick={() => setOffer('')}>Not that</button>
+          </div>
+        )}
         {/* AUTO-READ ON PASTE. The host has already done the work of copying;
             making them press a second button to "read" it is a step that exists
             only because the code wanted one. The paste event fires the
@@ -253,18 +299,21 @@ function Looking({ event, patch }) {
           placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
         <p className="lc-note">One link, or the whole results page — every card on it is read, with no server call.</p>
         {readErr && <p className="lc-note lc-warn">{readErr}</p>}
-        <div className="lc-ctas lc-ctas-open">
-          {/* The clipboard needs a gesture, so it gets a button rather than
-              reading behind the host's back. Failure is stated, never silent. */}
-          <button className="lc-cta" onClick={async () => {
-            try {
-              const t = await navigator.clipboard.readText();
-              if (!t || !t.trim()) { setReadErr('Nothing copied yet — copy a link first.'); return; }
-              setText(t); add(t);
-            } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
-          }}>Paste what I copied</button>
-          <button className="lc-cta" onClick={() => add()}>Read what I pasted</button>
-        </div>
+        {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,
+            which asked the host to work out which of them was theirs. They are
+            the same act at two moments, so the label follows the box: empty and
+            it fetches from the clipboard (a gesture is required, so it stays a
+            button rather than a read behind their back); full and it reads what
+            is there. Pasting into the box still fires the extraction on its own,
+            so this is the fallback for typed or dragged text. */}
+        <button className="cta" onClick={async () => {
+          if (text.trim()) { add(); return; }
+          try {
+            const t = await navigator.clipboard.readText();
+            if (!t || !t.trim()) { setReadErr('Nothing copied yet — copy a link first.'); return; }
+            setText(t); add(t);
+          } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
+        }}>{text.trim() ? 'Read what I pasted' : 'Paste what I copied'}</button>
       </Panel>
     </>
   );
@@ -303,7 +352,7 @@ function Weighing({ event, intel, patch }) {
         {opts.map((o) => (
           <div key={o.id} className="lc-opt">
             <span className="lc-opt-name">{o.label}</span>
-            <button className="lc-cta lc-cta-sm" onClick={() => pick(o.id)}>Make it the pick</button>
+            <button className="cta" onClick={() => pick(o.id)}>Make it the pick</button>
           </div>
         ))}
         {!opts.length && <p className="lc-note">Nothing on the list yet.</p>}
@@ -330,7 +379,7 @@ function Picked({ event, intel, patch }) {
       <div className="lc-row-form">
         <input className="lc-field" placeholder="Booking code" value={code}
           onChange={(e) => setCode(e.target.value)} aria-label="Booking code" />
-        <button className="lc-cta" disabled={!code.trim()}
+        <button className="cta" disabled={!code.trim()}
           onClick={() => patch({ lodging: { ...stay, bookingCode: code.trim() } })}>Save the stay details</button>
       </div>
     </Panel>
@@ -400,7 +449,7 @@ function EventPicker({ events, eventId, onPick }) {
       <div className="lc-ctas">
         {events.map((e) => (
           <button key={e.id} onClick={() => onPick(e.id)}
-            className={'lc-cta lc-cta-sm' + (e.id === eventId ? '' : ' is-off')}>{e.name || 'Untitled'}</button>
+            className={'cta soft' + (e.id === eventId ? '' : ' is-off')}>{e.name || 'Untitled'}</button>
         ))}
       </div>
     </section>
@@ -463,24 +512,35 @@ const CSS = `
    third ("Search hotels") fell entirely past the mask — and a clipped edge is
    only an affordance when you can SEE the clip. Hotels are one of the three
    real answers, so it earns its place on the line rather than behind a drag. */
-.lc-ctas .lc-cta{font-size:15px;padding:10px 16px;min-height:46px;}
+/* SHORTER DOORS, LEGAL TARGETS. At the atom's 46px floor these read chunky —
+   the labels are one word, so the box was mostly air. The VISUAL box drops to
+   34px; the TOUCH target is restored to 44px by an ::after overlay, which is
+   the trick styles.css names in the .cta comment ("a real min-height works
+   where the ::after trick can't") — here it can, because these are inline
+   links in a rail rather than a full-width primary key.
+   The floor itself is not negotiable: 44px is the accessibility minimum, and
+   shrinking the hit area to match the paint would fail it. */
+.lc-ctas .cta{font-size:14px;padding:7px 14px;min-height:34px;position:relative;}
+.lc-ctas .cta::after{content:"";position:absolute;left:0;right:0;top:50%;
+  height:44px;transform:translateY(-50%);}
 /* A rail that must not scroll gets to spread; one that holds two actions wraps
    normally rather than clipping them. */
-.lc-ctas-open{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;}
-/* DOOR POLISH: an outbound door is not the same object as an in-app button —
-   it leaves. It carries a hairline so it reads as a door rather than a filled
-   key, a visible focus ring (keyboard users had none), and a press state. */
-.lc-door{border:1px solid var(--line);transition:background .12s ease,border-color .12s ease,transform .06s ease;}
-.lc-door:hover{background:var(--steel-tint);border-color:var(--steel-soft);}
-.lc-door:active{transform:translateY(1px);}
-.lc-door:focus-visible{outline:2px solid var(--steel-soft);outline-offset:2px;}
+/* The ONE thing the atom does not say: a door LEAVES. A hairline marks it as
+   outbound rather than a filled in-app key. Hover, press and focus all come
+   from ".cta" and the global ring — restating them here (as the first cut did)
+   was three duplicated rules and a second focus colour. */
+.lc-door{border:1px solid var(--line);text-decoration:none;}
 .lc-warn{color:var(--warn);}
-.lc-cta{background:var(--sheen);color:var(--ink);border:none;border-radius:14px;padding:10px 18px;min-height:46px;
-  display:inline-flex;align-items:center;justify-content:center;font:700 15px/1 Inter,sans-serif;
-  letter-spacing:-.01em;text-decoration:none;cursor:pointer;}
-.lc-cta[disabled]{opacity:.4;cursor:default;}
-.lc-cta-sm{font-size:13px;min-height:40px;padding:8px 14px;}
-.lc-cta.is-off{opacity:.5;}
+.lc-offer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);
+  border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
+.lc-offer .lc-body{margin:0;flex:1 1 100%;}
+/* NO BUTTON IDENTITY HERE. The app already owns it: ".cta" (--cta-grad ground,
+   --carbon-text label, --r-row radius, 46px floor, hover) and ".cta.soft"
+   (--steel-tint ground, --ink label), with a GLOBAL :focus-visible ring at
+   styles.css:106. This file used to restate all of it as ".lc-cta" — a second
+   vocabulary that would drift the first time the atom changed. It now uses the
+   real classes and styles only LAYOUT. */
+.cta.is-off{opacity:.5;}
 .lc-field{background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--ink);
   padding:12px 14px;font:400 15px/1.3 Inter,sans-serif;min-height:46px;width:100%;min-width:0;}
 .lc-field-sm{max-width:190px;min-height:40px;}

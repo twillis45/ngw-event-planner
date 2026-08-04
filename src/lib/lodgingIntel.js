@@ -1228,6 +1228,27 @@ export function lodgingRecommendation(event, intel) {
  *     a new one (see hostSpending's C1 note), and the fix if it bites is
  *     de-duplication at the source, not silently dropping the term.
  */
+// ─── "THAT IS THE SEARCH LINK, NOT A HOUSE" (2026-08-03) ───────────────────
+// Reported live: pasting the very URL this app builds —
+//   airbnb.com/s/Santa-Fe--NM/homes?checkin=…&adults=10
+// answered "Nothing readable in that". True, and useless: the extractor only
+// recognises LISTING urls (/rooms/<id>, vrbo.com/<id>), and a search page is
+// not one. But the host did not invent that link — WE handed it to them, so
+// answering as though they pasted junk is our defect, not their mistake.
+//
+// A search URL carries no listing facts at all: names, bedrooms and prices are
+// rendered by the platform in the browser, which is exactly why the round trip
+// exists. So this cannot be "read" — it can only be named, precisely, with the
+// next real step attached.
+export function looksLikeSearchUrl(text) {
+  const t = String(text || '').trim();
+  if (!t || /\s/.test(t)) return null;          // prose or a pasted page, not a bare url
+  if (/airbnb\.[a-z.]+\/s\//i.test(t)) return 'airbnb';
+  if (/vrbo\.com\/search/i.test(t)) return 'vrbo';
+  if (/google\.[a-z.]+\/travel\/search/i.test(t)) return 'hotels';
+  return null;
+}
+
 // ─── THE STAGE THIS HOST IS ACTUALLY IN (reimagine, 2026-08-03) ────────────
 //
 // Host, after reading the live panel end to end: "not very readable... we need

@@ -4,37 +4,42 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-03
+**Last updated:** 2026-08-04
 
 ---
 
 ## 1. Branch state
 
-**Branch:** `product/decision-soundness-p0` - **HEAD `7bbe1ad6`** - tree clean.
-**25 commits UNPUSHED. Not merged. Not deployed.**
+**Branch:** `feat/lodging-cockpit-demo` - **HEAD `cee3e559`** - pushed, 5 ahead of
+`origin/main` (`8093dfa2`). **One uncommitted file:** `hostv2/src/LodgingCockpit.jsx`.
 
-`main` has NOT moved (merge-base == origin/main == `5853f2ec2`, 0 commits ahead of us),
-so this is a clean fast-forward -- there is no conflict to resolve and no rebase needed.
+**PR #70 MERGED 2026-08-03** (the 25-commit span-intelligence / knowledge-governance stack).
+`main` has since taken #75-#78. The 2026-08-03 "25 commits UNPUSHED" state is closed.
 
-Latest four, this session (2026-08-03):
+**Two PRs open, both green on all six CI checks** (jest, e2e, backend, cra-build, hostv2-build):
 
-| Commit | What |
-|---|---|
-| `7bbe1ad6` | Re-sync the hostv2 artifact -- the committed bundle was 3 source commits stale |
-| `276f8bf8` | No date is an ask, not an absence -- undated events reach the elegant board |
-| `578c0ca5` | Clear the CRA warning gate; stop root-level QA screenshots re-accumulating |
-| `102a716d` | Span intelligence; the multi-day arc generalised from 1 of 39 types to all |
+| PR | Branch | What | Note |
+|---|---|---|---|
+| #79 | `feat/lodging-sheet-calm` | The lodging sheet leads with the decision, folds the machinery | `0be2c4bf` |
+| #80 | `feat/lodging-cockpit-demo` | `lodgingStage(event)` cockpit at `?demo=lodging`, derived never stored | **contains #79** |
 
-Earlier 21 are the knowledge-governance wave (#1-14) and the hostv2 responsive work
-(#15-21). **Worth splitting into two PRs**: the only cross-over is `314a88b9`.
+Both are based on `main`, and #79's commit is an ANCESTOR of #80 -- so merge #79 first, or
+merge #80 and let #79 close itself out. Do not merge them as independent PRs.
 
-PR #70: https://github.com/twillis45/ngw-event-planner/pull/70 (base `main` @ `5853f2ec`)
-
-**Open decision for the host: push the 25 (ideally as two PRs), or keep holding?**
+**Uncommitted, unbuilt, undriven:** `LodgingCockpit.jsx` retires the file-local `.lc-cta`
+button vocabulary for the app's real `.cta` / `.cta soft` atoms, and merges the paste + read
+buttons into one whose label follows the box. Both moves are backed by
+[`../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md`](../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md)
+section 5. **Nothing in it has reached a browser yet.**
 
 ---
 
-## 2. Gates (as of `7bbe1ad6`) -- ALL GREEN
+## 2. Gates -- CI green at `cee3e559`; the working-tree change is UNGATED
+
+CI on PR #80 at `cee3e559`: jest, e2e, backend, cra-build, hostv2-build all SUCCESS
+(2026-08-04 12:07Z). **No local gate run this session, and the uncommitted
+`LodgingCockpit.jsx` change has not been built, gated or driven.** The figures below are the
+2026-08-03 local numbers at `7bbe1ad6`, carried forward unchanged.
 
 Jest **5195 passed / 1 skipped** - **334 suites** - `gate:cra` GREEN (242 of 245
 baselined) - `gate:hostv2` GREEN (no drift, 12 files) - `gate:knowledge` GREEN -
@@ -109,19 +114,26 @@ Four things to hold in your head:
 
 ## 5. Next actions, in order
 
-1. **Decide the push.** 25 commits, clean fast-forward, all gates green. Splitting
-   knowledge (#1-14) from host (#15-25) is the reviewable shape.
-2. **Get `public/hostv2/` out of version control** and build it in CI -- the single
+1. **Land the lodging pair.** #79 then #80 (or #80 alone -- it contains #79). Both green.
+   Finish the uncommitted `LodgingCockpit.jsx` first: build, drive at `?demo=lodging`, commit.
+2. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
+   name the **7 bare `done`/`View` labels** (file:line listed; read each call site first --
+   do not guess the words), amend **UX_06 to sentence case** (shipped labels run 179 sentence
+   to 14 Title, so doctrine is the holdout), kill the **180deg** gradient keeping `#4E6877`
+   and `--sheen`, then put the number in the label where it is already in scope.
+   Deferred to its own audit: classifying the record-only surfaces tap-to-result (only 2 of
+   277 labels say `Mark`/`Record`, which is not plausible -- but it is a flag, not a finding).
+3. **Get `public/hostv2/` out of version control** and build it in CI -- the single
    highest-leverage change for parallel sessions (see section 2).
-3. **Label the 397 unlabeled priced items**, then point the research factory at the 34
+4. **Label the 397 unlabeled priced items**, then point the research factory at the 34
    zero-cited playbooks (`wedding` first). Unchanged from 2026-07-31 and still the
    binding constraint.
-4. **Activity content for the 4 destinations** (Santa Fe, Tulum, Deep Creek, one
+5. **Activity content for the 4 destinations** (Santa Fe, Tulum, Deep Creek, one
    DestWed locale). Now the ONLY thing standing between the multi-day arc and a real
    programme -- the machinery is finished and honest about the hole.
-5. **Extend the evidence envelope to ladder + phase actions** (`phaseProgress` = 47%).
-6. **Prove or retire the 6 silent registry surfaces**.
-7. **Human validation** -- one real event professional in front of the fixtures. Still
+6. **Extend the evidence envelope to ladder + phase actions** (`phaseProgress` = 47%).
+7. **Prove or retire the 6 silent registry surfaces**.
+8. **Human validation** -- one real event professional in front of the fixtures. Still
    the cheapest item here and the only one that cannot be done in code.
 
 ---
