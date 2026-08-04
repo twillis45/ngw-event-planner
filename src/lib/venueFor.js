@@ -20,7 +20,28 @@ const HOMEISH = /^(backyard|back\s?yard|home|house|my place|host'?s home|our (pl
 
 export function venueFor(event) {
   const ev = event || {};
-  const name = String(ev.venue || '').trim();
+  // ── A VENUE FIELD HOLDING "City, ST" IS A PLACE, NOT A VENUE NAME ────────
+  // Host ruling 2026-08-03: "if venue is recognized as a city, state then the
+  // actual venue name is blank and venueCity should have a value."
+  //
+  // Seen live this session: an event carried venue:"Santa Fe, NM" with
+  // venueCity:"" — because a CTA routed to `event-venue`, which writes the NAME
+  // field. Every consumer that needs a CITY (the lodging searches, weather,
+  // shopping) then read nothing, while the town sat in plain sight one field
+  // over. It also put two answers on one screen: the hero asked "Add the
+  // location." while the readiness ledger counted the location handled.
+  //
+  // Reconciled HERE, at the one reader, rather than by migrating stored data:
+  // every existing event is fixed on read, nothing has to be rewritten, and no
+  // write seam can reintroduce the split. parseVenueLocation is the same strict
+  // gate the manual "Which town?" field uses — it needs a real state, so a
+  // venue genuinely named "Chicago" is untouched; only "Santa Fe, NM" converts.
+  const rawName = String(ev.venue || '').trim();
+  const nameIsPlace = (() => {
+    if (!rawName) return null;
+    try { return parseVenueLocation(rawName) || null; } catch { return null; }
+  })();
+  const name = nameIsPlace ? '' : rawName;
   // Kind rule: explicit venueKind wins; a host_event record defaults to home
   // ONLY while no venue is named — naming "VFW Post 3150" makes it a venue,
   // and demanding a city on top of a named venue was the exact false blocker
@@ -29,8 +50,11 @@ export function venueFor(event) {
   const isHome = kind === 'home';
   // CITY-LEAK-1 gate rides INSIDE the accessor: a polluted venueCity ("VFW
   // Post 3150 — Alexandria, VA") never escapes as a city again.
-  const city = [ev.venueCity, ev.city].map((x) => String(x || '').trim()).find(isPlausibleCityText) || '';
-  const state = String(ev.venueState || ev.state || '').trim();
+  // An explicit venueCity still wins; the parsed one only fills a gap.
+  const city = [ev.venueCity, ev.city].map((x) => String(x || '').trim()).find(isPlausibleCityText)
+    || (nameIsPlace ? String(nameIsPlace.city || '').trim() : '') || '';
+  const state = String(ev.venueState || ev.state || '').trim()
+    || (nameIsPlace ? String(nameIsPlace.state || '').trim() : '');
   // event.address is a PHANTOM (whitelisted+read, never written) — deliberately
   // not consulted here; venueAddress and the structured parts are the truth.
   const street = String(ev.venueStreet || '').trim();

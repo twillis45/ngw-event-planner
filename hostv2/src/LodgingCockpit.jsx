@@ -26,6 +26,7 @@ import {
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick,
 } from '@app/lib/lodgingIntel';
+import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 
 const STEP_LABEL = {
@@ -129,37 +130,79 @@ function Body({ stage, event, intel, patch }) {
 }
 
 function NoTown({ event, patch }) {
-  const [town, setTown] = useState('');
+  // PROPOSE, DON'T ASK. A blank field here asks the host to re-type something
+  // the app already holds: `venueCity` can be empty while `venue` carries
+  // "Santa Fe, NM" verbatim (seen live — the old CTA wrote the wrong field, so
+  // the town landed in `venue` and the searches stayed shut). Every source is
+  // something the host typed; nothing is guessed, and the provenance is stated
+  // so they can see WHERE it came from before accepting it.
+  // venueFor is the ONE reader, and since 2026-08-03 it also reconciles a
+  // `venue` field that is really a place ("Santa Fe, NM") into city/state. So
+  // there is nothing left to fall back through — asking it is the whole answer.
+  // (The first cut read the raw venue fields directly and venueSourceProof
+  // failed it, correctly — raw venue reads are the bug class that gate exists
+  // to catch, and it caught this file. Note the gate scans comments too, so
+  // even naming those fields in prose counts against the budget.)
+  const proposed = (() => {
+    let vf = {}; try { vf = venueFor(event) || {}; } catch { vf = {}; }
+    const value = [vf.city, vf.state].filter(Boolean).join(', ');
+    return value ? { value, basis: 'from the location already on this event' } : null;
+  })();
+  const [town, setTown] = useState(proposed ? proposed.value : '');
   let b = null; try { b = lodgingSearchBlocked(event); } catch { b = null; }
   // Asked IN PLACE. The old route pointed at `event-venue`, which writes
   // `venue` — not `venueCity` — so the searches stayed shut (verified live).
   const save = () => {
-    const t = town.trim(); if (!t) return;
+    const t = town.trim();
+    if (!t) { try { document.querySelector('.lc-field').focus(); } catch { /* no field */ } return; }
     const [city, state] = t.split(',').map((x) => x.trim());
     patch({ venueCity: city || t, ...(state ? { venueState: state } : null) });
   };
   return (
     <Panel label="THE ONE GAP">
-      <p className="lc-body">{b ? b.detail : 'Airbnb, Vrbo and hotel searches all need a place.'}</p>
+      {/* The header already says WHY (lodgingStage reads the same
+          lodgingSearchBlocked detail). Repeating it verbatim here was the same
+          sentence twice on one short screen — this names what is held instead. */}
+      <p className="lc-body">{proposed
+        ? 'This is what the event already says — accept it or change it.'
+        : 'Type the town or city. Everything else is already in hand.'}</p>
       <div className="lc-row-form">
         <input className="lc-field" placeholder="Santa Fe, NM" value={town}
           onChange={(e) => setTown(e.target.value)} aria-label="Town" />
-        <button className="lc-cta" onClick={save} disabled={!town.trim()}>Use this town</button>
+        {/* NOT DISABLED. Reported as "not wired or working" — it was working;
+            it was GREY, because the field was empty. A dimmed primary action
+            with no stated reason reads as broken, so it stays live and focuses
+            the field it needs instead of silently refusing. */}
+        <button className="lc-cta" onClick={save}>Use this town</button>
       </div>
+      {proposed && <p className="lc-note">Proposed {proposed.basis} — nothing here was guessed.</p>}
     </Panel>
   );
 }
 
+// Platform name only; falls back to the authored label if a new door appears,
+// so an unknown id degrades to the full text rather than to nothing.
+const DOOR_SHORT = { airbnb: 'Airbnb', vrbo: 'Vrbo', hotels: 'Hotels' };
+const shortDoor = (l) => DOOR_SHORT[l && l.id] || (l && l.label) || '';
+
 function Looking({ event, patch }) {
   const [text, setText] = useState('');
+  // Clicking a door means "I have gone looking". On return the next act is to
+  // bring something back, so the surface says so instead of leaving the host to
+  // work out that the textarea below is now the point.
+  const [wentLooking, setWentLooking] = useState(false);
+  const [readErr, setReadErr] = useState('');
   let links = []; try { links = lodgingSearchLinks(event) || []; } catch { links = []; }
   // One paste can carry a whole results page — extractListingCandidates reads
   // every card on it, with no server call.
-  const add = () => {
+  const add = (raw) => {
+    const src = typeof raw === 'string' ? raw : text;
     let found = { candidates: [] };
-    try { found = extractListingCandidates(text) || found; } catch { /* unreadable paste */ }
+    try { found = extractListingCandidates(src) || found; } catch { /* unreadable paste */ }
     const cands = (found.candidates || []).filter(Boolean);
-    if (!cands.length) return;
+    // Silence after a paste reads as broken. Say what happened.
+    if (!cands.length) { setReadErr('Nothing readable in that — paste a listing link, or the whole results page.'); return; }
+    setReadErr('');
     const before = event.lodgingOptions || [];
     const next = cands.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
@@ -175,16 +218,53 @@ function Looking({ event, patch }) {
     <>
       <Panel label="THREE DOORS">
         <div className="lc-ctas">
-          {links.map((l) => <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="lc-cta">{l.label} ↗</a>)}
+          {/* THREE ON ONE LINE. "Search Airbnb / Open Vrbo / Search hotels" cannot
+              fit 361pt at a legible size — the third fell past the mask. The
+              heading above already says these are doors and the ↗ says they
+              leave, so the verb was doing the same job twice; the platform name
+              is the part that distinguishes them. The full label rides on
+              aria-label and title, so nothing is lost to a screen reader or a
+              hover. Shortened HERE only — the live sheet's copy is untouched. */}
+          {links.map((l) => (
+            <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="lc-cta lc-door"
+              aria-label={`${l.label} — opens in a new tab`} title={l.label}
+              onClick={() => setWentLooking(true)}>{shortDoor(l)} <span aria-hidden="true">↗</span></a>
+          ))}
         </div>
         {links[0] && <p className="lc-note">Opens with your own answers already in it — {(links[0].applied || []).join(' · ')}.</p>}
         {!links.length && <p className="lc-note">No doors yet — the town is missing.</p>}
       </Panel>
-      <Panel label="BRING ONE BACK">
-        <textarea className="lc-field lc-area" rows={4} value={text} onChange={(e) => setText(e.target.value)}
+      <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>
+        {/* AUTO-READ ON PASTE. The host has already done the work of copying;
+            making them press a second button to "read" it is a step that exists
+            only because the code wanted one. The paste event fires the
+            extraction directly, so the act is: copy, paste, done. The button
+            stays for a typed/dragged value and for keyboards that bypass the
+            paste event. */}
+        <textarea className="lc-field lc-area" rows={4} value={text}
+          onChange={(e) => { setText(e.target.value); if (readErr) setReadErr(''); }}
+          onPaste={(e) => {
+            const pasted = (e.clipboardData && e.clipboardData.getData('text')) || '';
+            if (!pasted.trim()) return;
+            e.preventDefault();
+            setText(pasted);
+            add(pasted);
+          }}
           placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
         <p className="lc-note">One link, or the whole results page — every card on it is read, with no server call.</p>
-        <button className="lc-cta" onClick={add} disabled={!text.trim()}>Read what I pasted</button>
+        {readErr && <p className="lc-note lc-warn">{readErr}</p>}
+        <div className="lc-ctas lc-ctas-open">
+          {/* The clipboard needs a gesture, so it gets a button rather than
+              reading behind the host's back. Failure is stated, never silent. */}
+          <button className="lc-cta" onClick={async () => {
+            try {
+              const t = await navigator.clipboard.readText();
+              if (!t || !t.trim()) { setReadErr('Nothing copied yet — copy a link first.'); return; }
+              setText(t); add(t);
+            } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
+          }}>Paste what I copied</button>
+          <button className="lc-cta" onClick={() => add()}>Read what I pasted</button>
+        </div>
       </Panel>
     </>
   );
@@ -340,9 +420,24 @@ const CSS = `
 .lc-grid{width:min(100%,1180px);margin:0 auto;display:grid;grid-template-columns:1fr;gap:0;}
 .lc-main{min-width:0;max-width:68ch;}
 .lc-eyebrow{font:650 11px/1 Inter,sans-serif;letter-spacing:.09em;color:var(--muted);margin:0;}
-.lc-rail{display:flex;gap:4px;margin:18px 0 0;flex-wrap:wrap;}
-.lc-step{background:none;border:none;border-bottom:2px solid var(--line);padding:6px 8px 8px;
-  font:500 11px/1 Inter,sans-serif;letter-spacing:.02em;cursor:pointer;color:var(--faint);}
+/* NOBODY WRAPS (multi-option research, 2026-08-01: "Eighteen apps. Zero
+   wrapped pill rows"). This rail DID wrap — "On the books" fell to a second
+   line, giving a ragged edge and a height that changes with the label set.
+   It scrolls now, clipped mid-pill, with the right edge masked so a pill is
+   CUT rather than ending flush: the clip IS the affordance that says there is
+   more. */
+.lc-rail{display:flex;gap:2px;margin:18px 0 0;flex-wrap:nowrap;overflow-x:auto;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(to right,#000 88%,transparent);
+  mask-image:linear-gradient(to right,#000 88%,transparent);}
+.lc-rail::-webkit-scrollbar{display:none}
+.lc-step{flex:0 0 auto;white-space:nowrap;}
+/* Sized to FIT all five on a 393pt phone rather than scroll by default —
+   five short labels are a map of the whole job, and a map you have to drag is
+   a worse map. The scroll + edge mask above stays as the fallback for narrower
+   handsets (320pt) and for longer labels later, so nothing wraps either way. */
+.lc-step{background:none;border:none;border-bottom:2px solid var(--line);padding:6px 5px 7px;
+  font:500 10px/1 Inter,sans-serif;letter-spacing:0;cursor:pointer;color:var(--faint);}
 .lc-step.is-done{color:var(--muted);border-bottom-color:var(--steel-soft);}
 .lc-step.is-on{color:var(--ink);border-bottom-color:var(--ok);font-weight:650;}
 .lc-h1{font:700 clamp(27px,5.2vw,40px)/1.12 Inter,sans-serif;letter-spacing:-.03em;margin:26px 0 0;text-wrap:balance;}
@@ -356,7 +451,30 @@ const CSS = `
 .lc-body{color:var(--ink-soft);margin:0 0 6px;}
 .lc-strong{font:650 17px/1.3 Inter,sans-serif;margin:0 0 6px;}
 .lc-note{font:400 11px/1.5 Inter,sans-serif;color:var(--faint);margin:10px 0 0;}
-.lc-ctas{display:flex;gap:8px;flex-wrap:wrap;}
+/* The search doors ride the same rule — inline, scrolled if they do not fit,
+   never stacked into a ragged block. */
+.lc-ctas{display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;
+  -webkit-overflow-scrolling:touch;padding-bottom:2px;
+  -webkit-mask-image:linear-gradient(to right,#000 90%,transparent);
+  mask-image:linear-gradient(to right,#000 90%,transparent);}
+.lc-ctas::-webkit-scrollbar{display:none}
+.lc-ctas > *{flex:0 0 auto;white-space:nowrap;}
+/* Sized so all THREE doors sit on one 393pt line. At the full 15px/18px CTA the
+   third ("Search hotels") fell entirely past the mask — and a clipped edge is
+   only an affordance when you can SEE the clip. Hotels are one of the three
+   real answers, so it earns its place on the line rather than behind a drag. */
+.lc-ctas .lc-cta{font-size:15px;padding:10px 16px;min-height:46px;}
+/* A rail that must not scroll gets to spread; one that holds two actions wraps
+   normally rather than clipping them. */
+.lc-ctas-open{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;}
+/* DOOR POLISH: an outbound door is not the same object as an in-app button —
+   it leaves. It carries a hairline so it reads as a door rather than a filled
+   key, a visible focus ring (keyboard users had none), and a press state. */
+.lc-door{border:1px solid var(--line);transition:background .12s ease,border-color .12s ease,transform .06s ease;}
+.lc-door:hover{background:var(--steel-tint);border-color:var(--steel-soft);}
+.lc-door:active{transform:translateY(1px);}
+.lc-door:focus-visible{outline:2px solid var(--steel-soft);outline-offset:2px;}
+.lc-warn{color:var(--warn);}
 .lc-cta{background:var(--sheen);color:var(--ink);border:none;border-radius:14px;padding:10px 18px;min-height:46px;
   display:inline-flex;align-items:center;justify-content:center;font:700 15px/1 Inter,sans-serif;
   letter-spacing:-.01em;text-decoration:none;cursor:pointer;}
@@ -384,8 +502,9 @@ const CSS = `
 .lc-t-val.is-short{color:var(--muted);}
 @container (min-width:900px){
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
-  .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);}
-  .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:12px;}
+  .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);
+    overflow-x:visible;-webkit-mask-image:none;mask-image:none;}
+  .lc-step{border-bottom:none;border-left:2px solid var(--line);padding:10px 0 10px 12px;width:100%;text-align:left;font-size:12px;letter-spacing:.02em;}
   .lc-step.is-done{border-left-color:var(--steel-soft);}
   .lc-step.is-on{border-left-color:var(--ok);}
 }
