@@ -1399,7 +1399,17 @@ export function lodgingCompare(event, intel) {
   push('allin', nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}, all-in` : 'All-in', (o) => money(allIn(o)));
   push('night', 'A night', (o) => money(o.pricePerNight != null ? o.pricePerNight
     : (allIn(o) && nights > 0 ? allIn(o) / nights : null)));
-  push('sleeps', 'Sleeps', (o) => (o.sleeps != null ? String(o.sleeps) : null));
+  // SAY THE SHORTFALL, DO NOT MARK IT (lodging listing research, 2026-08-01).
+  // Booking.com's best-in-class move: a room that cannot hold the party renders
+  // "These options won't accommodate your entire group" — visible, self-
+  // explaining, unselectable. The first cut of this appended a bare "·" to the
+  // number, which explains nothing and reads as a typo. The number now carries
+  // the gap in words the host can act on.
+  push('sleeps', 'Sleeps', (o) => {
+    if (o.sleeps == null) return null;
+    if (!guests || o.sleeps >= guests) return String(o.sleeps);
+    return `${o.sleeps} — ${guests - o.sleeps} without a bed`;
+  });
 
   // only the requirements the host actually asked for — not the whole catalogue
   let musts = [];

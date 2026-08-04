@@ -193,6 +193,7 @@ function Looking({ event, patch }) {
   const [wentLooking, setWentLooking] = useState(false);
   const [readErr, setReadErr] = useState('');
   const [busy, setBusy] = useState(false);
+  const [staged, setStaged] = useState(null);
   // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
   // After a door, the host copies a listing and comes back. Reading the
   // clipboard for them needs `clipboard-read`, which most configurations only
@@ -293,6 +294,20 @@ function Looking({ event, patch }) {
       return;
     }
     setReadErr('');
+    // ── SEVERAL HOUSES IS A REAL CHOICE; ONE IS NOT ────────────────────────
+    // The live sheet's rule, and it is the right one: "a results page with many
+    // candidates still asks — that IS a real choice about which houses to keep",
+    // while a single link means she already chose and a confirm just makes her
+    // "tap twice more to agree with herself" (board, 2026-07-28).
+    // So: many -> stage for review; one -> commit, after the unfurl fill above
+    // has had its chance to make the row worth having.
+    if (cands.length > 1) {
+      setStaged({ cands, dupes, pick: new Set(cands.map((c) => c.url)), linksOnly: !!found.linksOnly });
+      setText('');
+      setReadErr('');
+      return;
+    }
+
     const before = event.lodgingOptions || [];
     const next = cands.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
@@ -315,6 +330,63 @@ function Looking({ event, patch }) {
         : `Added ${next.length}.${drop}`);
     }
   };
+  // Commit only what is still ticked. Untick is the whole point of the review.
+  const commitStaged = () => {
+    const keep = staged.cands.filter((c) => staged.pick.has(c.url));
+    if (!keep.length) { setStaged(null); return; }
+    const before = event.lodgingOptions || [];
+    const next = keep.map((c, i) => normalizeLodgingOption({
+      id: 'lodge-' + Math.random().toString(36).slice(2, 8),
+      url: c.url, label: c.name || '', beds: c.beds, totalPrice: c.priceShown,
+      photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+        c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
+      status: 'option',
+    }, before.length + i));
+    patch({ lodgingOptions: [...before, ...next] });
+    setStaged(null);
+    setReadErr(`Added ${next.length}.`);
+  };
+
+  if (staged) return (
+    <Panel label="FROM THE PAGE YOU PASTED">
+      <p className="lc-body">
+        {staged.cands.length} found. Untick anything you were not really considering.
+      </p>
+      {staged.cands.map((c) => {
+        const on = staged.pick.has(c.url);
+        return (
+          <button key={c.url} className="lc-staged" aria-pressed={on}
+            onClick={() => setStaged((st) => {
+              const pick = new Set(st.pick);
+              if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
+              return { ...st, pick };
+            })}>
+            <span className={'lc-tick' + (on ? ' is-on' : '')} aria-hidden="true" />
+            <span className="lc-staged-main">
+              <span className="lc-staged-name">{c.name || 'Unnamed place'}</span>
+              <span className="lc-staged-sub">
+                {[c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null]
+                  .filter(Boolean).join(' · ') || 'no details on the card'}
+              </span>
+            </span>
+            {/* sleeps is never on a results card — say so rather than leave a
+                blank the host reads as "it does not sleep anyone". */}
+            <span className="lc-staged-fit">sleeps —</span>
+          </button>
+        );
+      })}
+      <p className="lc-note">
+        “sleeps —” because the results page never carries it. Type it once and the fit count works.
+        {staged.dupes ? ` ${staged.dupes} were already on your list.` : ''}
+      </p>
+      <div className="lc-ctas lc-ctas-wrap">
+        <button className="cta" onClick={commitStaged}>Add {staged.pick.size} to the shortlist</button>
+        <button className="cta soft" onClick={() => setStaged(null)}>Cancel</button>
+      </div>
+    </Panel>
+  );
+
   return (
     <>
       <Panel label="THREE DOORS">
@@ -595,6 +667,15 @@ const CSS = `
    was three duplicated rules and a second focus colour. */
 .lc-door{border:1px solid var(--line);text-decoration:none;}
 .lc-warn{color:var(--warn);}
+.lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
+.lc-staged{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
+  border-top:1px solid var(--line);padding:12px 0;cursor:pointer;text-align:left;}
+.lc-tick{flex:0 0 auto;width:18px;height:18px;border-radius:4px;border:1px solid var(--line);background:var(--card);}
+.lc-tick.is-on{background:var(--ok);border-color:var(--ok);}
+.lc-staged-main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px;}
+.lc-staged-name{font:500 15px/1.3 Inter,sans-serif;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lc-staged-sub{font:400 11px/1.3 Inter,sans-serif;color:var(--faint);}
+.lc-staged-fit{flex:0 0 auto;font:400 12px/1 Inter,sans-serif;color:var(--faint);}
 .lc-offer{display:flex;gap:8px;flex-wrap:wrap;align-items:center;border:1px solid var(--line);
   border-radius:var(--r-md);padding:12px;margin-bottom:12px;}
 .lc-offer .lc-body{margin:0;flex:1 1 100%;}
@@ -623,7 +704,9 @@ const CSS = `
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .lc-t-val{font:650 13px/1.35 Inter,sans-serif;text-align:right;color:var(--ink);}
 .lc-t-val.is-gap{font-weight:400;color:var(--faint);}
-.lc-t-val.is-short{color:var(--muted);}
+/* GREY, NEVER RED (research rec #7): a house that is too small is
+   disqualifying, not faulty. Red here would be a semantic lie under UX_02. */
+.lc-t-val.is-short{color:var(--muted);font-weight:400;font-size:12px;}
 @container (min-width:900px){
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
   .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);
