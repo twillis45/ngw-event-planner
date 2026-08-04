@@ -377,11 +377,43 @@ export function parseSmartEventText(text, opts = {}) {
   // profile ("Your area"), and eventGeoQuery reads it — the parser simply was
   // never handed it. With it, the weak signal only counts when the place
   // differs from home, which removes false positives as well as adding misses.
+  // A BARE "in <City>" WITH NO STATE (live probe, 2026-08-03).
+  // The comment above states the rule correctly — "the destination flag does not
+  // need a state: it needs to know the place is not home" — but the only
+  // stateless path was `awayPlace`, which requires a travel verb followed by
+  // "to". So "Family reunion in Asheville Aug 3 to Aug 7 2027, 24 people"
+  // produced placeName '' → placeAway false → isDestination FALSE, on a
+  // five-day event with a named city. That silently removed the entire
+  // destination stack: the lodging axis, kitchenConsequence, the reveal's
+  // lodging stage and foodSpanNote are all gated on isDestination === true.
+  //
+  // Captured for the home comparison ONLY, exactly like awayPlace — it never
+  // becomes venueCity, because committing a city without a state is still the
+  // thing parseVenueLocation rightly refuses to do.
+  //
+  // Guarded against the obvious false friends: "in June", "in Saturday" and
+  // bare years are not places.
+  const NOT_A_PLACE = /^(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t|tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|mon(?:day)?|tue(?:s|sday)?|wed(?:nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?|the|our|my|zoom)$/i;
+  //
+  // The multi-word capture must be TRIMMED, not just head-checked. "Reunion in
+  // Annapolis Aug 3" matches "Annapolis Aug" — two capitalised words — and
+  // "annapolisaug" never equals the host's "annapolis", so a hometown event
+  // read as a destination. Same over-capture that made the venue parser read
+  // "New Mexico June" as a state. Trailing non-place words are dropped.
+  const inM = t.match(/\bin\s+([A-Z][\w.'’-]+(?:\s+[A-Z][\w.'’-]+){0,2})\b/);
+  const spokenPlace = (() => {
+    if (!inM) return '';
+    const words = inM[1].trim().split(/\s+/);
+    while (words.length && NOT_A_PLACE.test(words[words.length - 1])) words.pop();
+    if (!words.length || NOT_A_PLACE.test(words[0])) return '';
+    return words.join(' ');
+  })();
+
   const normCity = (s) => String(s || '').toLowerCase().replace(/[^a-z]/g, '');
   const homeCity = normCity(opts.homeCity);
-  const placeName = (loc && loc.city) || awayPlace || '';
+  const placeName = (loc && loc.city) || awayPlace || spokenPlace || '';
   const placeAway = !!placeName && (!homeCity || normCity(placeName) !== homeCity);
-  const isDestination = travelSaid || ((!!loc || !!awayPlace) && placeAway);
+  const isDestination = travelSaid || ((!!loc || !!awayPlace || !!spokenPlace) && placeAway);
 
   // Why it was decided, for the "· heard" chip and any later explanation. Never
   // a silent commit: the host still confirms via the toggle.
