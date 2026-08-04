@@ -1273,7 +1273,12 @@ export function lodgingRecommendation(event, intel) {
       score += 1; reasons.push(`set up for kids — ${kids} coming`);
     }
 
-    return { id: o.id, label: o.label, score, fits, reasons };
+    // met/missing are computed above and were thrown away at the return, so
+    // "Fits 6 of your 6 musts" — the line D6/W9 leads its card with — had no
+    // source. These are COUNTS of the host's own stated requirements matched
+    // against what the host typed about the option; no listing was fetched.
+    return { id: o.id, label: o.label, score, fits, reasons, met, missing,
+      mustsMet: met.length, mustsTotal: met.length + missing.length };
   });
 
   const eligible = scored.filter((x) => x.fits);

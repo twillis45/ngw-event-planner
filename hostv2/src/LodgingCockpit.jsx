@@ -383,6 +383,16 @@ function Looking({ event, patch }) {
             // holds is not something a bed count settles.
             beds: facts.beds != null ? facts.beds : cands[0].beds,
             bedrooms: facts.bedrooms != null ? facts.bedrooms : cands[0].bedrooms,
+            // ── THE FIELD THE COMPARISON WAS BLOCKED ON (2026-08-04) ──────
+            // `sleeps` decides `fits`, and therefore "3 of 5 fit", the ranking
+            // and the per-person split. A results card never carries it — D6/W3b
+            // says so in its own copy — so it has always been a number the host
+            // had to type. The LISTING page carries it, in the structured record
+            // the unfurl now reads. This is that number, not an inference from
+            // beds or bedrooms.
+            sleeps: r.sleeps != null ? r.sleeps : cands[0].sleeps,
+            rating: r.rating != null ? r.rating : cands[0].rating,
+            ratingCount: r.ratingCount != null ? r.ratingCount : cands[0].ratingCount,
           }];
           found = { ...found, linksOnly: !(r.title) };
         } else if (r && r.reason) {
@@ -430,7 +440,7 @@ function Looking({ event, patch }) {
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
@@ -440,6 +450,7 @@ function Looking({ event, patch }) {
       sources: {
         ...(lodgingTitleFor(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
+        ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place ? { notes: 'read' } : null),
@@ -469,7 +480,7 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
         c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
       status: 'option',
@@ -479,6 +490,7 @@ function Looking({ event, patch }) {
       sources: {
         ...(lodgingTitleFor(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
+        ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place ? { notes: 'read' } : null),
@@ -627,16 +639,129 @@ function Looking({ event, patch }) {
 // 2026-08-04). A remote image can 404 or be blocked; when it does this removes
 // itself rather than leaving a broken frame, which puts the row back in the
 // honest "no picture yet" state instead of a grey box pretending to be a house.
-function Thumb({ src, label }) {
+function Thumb({ src, label, big }) {
   const [dead, setDead] = useState(false);
   if (!String(src || '').trim() || dead) return null;
   return (
-    <img className="lc-thumb" src={src} alt={`${label || 'The place'} — the listing's own photo`}
+    <img className={big ? 'lc-card-photo' : 'lc-thumb'} src={src} alt={`${label || 'The place'} — the listing's own photo`}
       loading="lazy" decoding="async" onError={() => setDead(true)} />
   );
 }
 
+// ── D6 · W9 · SWIPE THE ONES THAT FIT (983:136) ────────────────────────────
+// The board's choice screen, built. Host, 2026-08-03: "we need to be able to
+// swipe between the choices" — it was ruled, drawn, and never wired.
+//
+// One card per place, scroll-snapped so a thumb-flick moves one card and the
+// next one peeks at the edge. No JS drag handler: native overflow scrolling is
+// the real gesture on a phone, keeps momentum and rubber-banding, and works
+// with a trackpad and a keyboard for free.
+//
+// EVERY LINE IS SOURCED. The design shows a type chip and "18 min away"; we
+// hold neither — `kind` never survives the normalizer and no option carries a
+// drive time — so they are simply absent rather than invented. What we do hold
+// is rendered: the photo, the price, the nights it covers, the host's own
+// must-have count, the amenity chips those musts produce, and the per-field
+// provenance table, which is the point of the screen.
+function Choices({ opts, event, intel, scores, onPick, onGone }) {
+  const [at, setAt] = useState(0);
+  const live = opts.filter((o) => o.status !== 'gone');
+  if (live.length < 2) return null;
+  const nights = intel && intel.nights ? intel.nights : 0;
+  const money = (n) => (n == null ? null : `$${Math.round(n).toLocaleString()}`);
+
+  return (
+    <Panel label="THE ONES THAT FIT">
+      <p className="lc-deck-head">
+        <span className="lc-deck-name">{live[at] ? live[at].label : ''}</span>
+        <span className="lc-deck-count">{at + 1} of {live.length}</span>
+      </p>
+      <div className="lc-deck" onScroll={(e) => {
+        const el = e.currentTarget;
+        const i = Math.round(el.scrollLeft / (el.scrollWidth / live.length));
+        if (i !== at && i >= 0 && i < live.length) setAt(i);
+      }}>
+        {live.map((o) => {
+          const sc = (scores || []).find((x) => x.id === o.id) || null;
+          const hist = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
+          const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
+          const total = o.allIn != null ? o.allIn : o.totalPrice;
+          return (
+            <article className="lc-card" key={o.id}>
+              {o.photoUrl
+                ? <Thumb src={o.photoUrl} label={o.label} big />
+                : <div className="lc-card-nophoto"><span>no picture yet</span></div>}
+              <div className="lc-card-body">
+                <div className="lc-card-top">
+                  <h3 className="lc-card-name">{o.label}</h3>
+                  {money(total) && <span className="lc-card-price">{money(total)}</span>}
+                </div>
+                <p className="lc-card-sub">
+                  {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
+                    nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
+                    .filter(Boolean).join(' · ')}
+                </p>
+                {hist && <p className="lc-card-was">{hist.text}</p>}
+                {sc && sc.met && sc.met.length > 0 && (
+                  <div className="lc-chips">
+                    {sc.met.slice(0, 3).map((m) => <span className="lc-chip" key={m}>{m}</span>)}
+                  </div>
+                )}
+                {/* THE TABLE THAT WAS ALREADY COMPUTED. lodgingProvenance has
+                    returned per-field rows since it shipped and the cockpit
+                    rendered only the two counts — "4 read from the page" — so
+                    the host could see HOW MANY facts came off the page but
+                    never WHICH. This is that row set, unchanged. */}
+                {pv && pv.rows.length > 0 && (
+                  <>
+                    <p className="lc-card-eyebrow">WHAT WE READ · WHAT YOU TYPED</p>
+                    {pv.rows.map((r) => (
+                      <div className="lc-pv" key={r.field}>
+                        <span className="lc-pv-label">{r.label}</span>
+                        <span className="lc-pv-src">
+                          {r.source === 'read' ? 'read from the link'
+                            : r.source === 'typed' ? 'you typed it' : 'not recorded'}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+      <div className="lc-dots" aria-hidden="true">
+        {live.map((o, i) => <span key={o.id} className={'lc-dot' + (i === at ? ' is-on' : '')} />)}
+      </div>
+      <div className="lc-ctas lc-ctas-wrap">
+        <button className="cta" aria-label={`Make ${live[at] ? live[at].label : 'this place'} the pick`}
+          onClick={() => live[at] && onPick(live[at].id)}>Make it the pick</button>
+        {live[at] && String(live[at].url || '').trim() && (
+          <a className="cta soft" href={live[at].url} target="_blank" rel="noopener noreferrer"
+            style={{ textDecoration: 'none' }}>Open the listing ↗</a>
+        )}
+        <button className="cta soft" aria-label={`${live[at] ? live[at].label : 'This place'} is gone`}
+          onClick={() => live[at] && onGone(live[at].id)}>It’s gone</button>
+      </div>
+      {/* The board footer states this as a rule, so the surface states it too. */}
+      <p className="lc-note">Ranked by fit, then price. No countdowns, no deal badges — the only price claim here is your own.</p>
+    </Panel>
+  );
+}
+
 function Weighing({ event, intel, patch }) {
+  // ── THE SHORTLIST COULD NOT GROW (driven 2026-08-04) ─────────────────────
+  // One component renders per stage, which is right — one moment at a time.
+  // But the doors and the paste box live in <Looking>, and the moment a first
+  // place exists the stage is 'weighing', so the ONLY route to a second place
+  // disappeared. The screen said "add a second and this fills in" with nothing
+  // to press, the transpose could never fill, and the W9 card deck could never
+  // have two cards to swipe between.
+  //
+  // The same <Looking> is reused rather than a second intake built beside it:
+  // identical component, identical render, so the two can never drift.
+  const [adding, setAdding] = useState(false);
   let cmp = null; try { cmp = lodgingCompare(event, intel); } catch { cmp = null; }
   const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
   const rec = (() => { try { return lodgingRecommendation(event, intel); } catch { return null; } })();
@@ -703,8 +828,24 @@ function Weighing({ event, intel, patch }) {
         )}
       </Panel>}
       {cmp ? <Transpose cmp={cmp} /> : <Panel label="SIDE BY SIDE">
+        {/* The sentence and the act that answers it, in one place. This panel
+            named the need and a second panel repeated it — one moment, one
+            ask. */}
         <p className="lc-note">One option is not a comparison — add a second and this fills in.</p>
+        {!adding && (
+          <button className="cta soft" onClick={() => setAdding(true)}>Add another place</button>
+        )}
       </Panel>}
+      {adding && <Panel label="ADD ANOTHER PLACE">
+        <Looking event={event} patch={patch} />
+      </Panel>}
+      {/* With a comparison already on screen the ask is quieter — the host is
+          weighing, not short of options — but it must still be reachable. */}
+      {!adding && cmp && (
+        <button className="cta soft" onClick={() => setAdding(true)}>Add another place</button>
+      )}
+      <Choices opts={opts} event={event} intel={intel}
+        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone} />
       {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
         <p className="lc-body">{rec.line}</p>
       </Panel>}
@@ -1068,6 +1209,40 @@ const CSS = `
 .lc-why-list{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:6px;
   font:400 12px/1.5 Inter,sans-serif;color:var(--ink-soft);}
 .lc-opt-name{font:500 15px/1.3 Inter,sans-serif;min-width:0;}
+/* ── D6 · W9 card deck ─────────────────────────────────────────────────── */
+.lc-deck-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 10px;}
+.lc-deck-name{font:500 15px/1.3 Inter,sans-serif;color:var(--ink);min-width:0;}
+.lc-deck-count{font:400 13px/1.3 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
+/* Native scroll-snap IS the swipe: real momentum on a phone, trackpad and
+   keyboard for free, and no drag handler to fight the browser. */
+.lc-deck{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:4px;}
+.lc-deck::-webkit-scrollbar{display:none;}
+.lc-card{scroll-snap-align:start;flex:0 0 88%;max-width:340px;min-width:0;
+  background:var(--sheen);border:1px solid var(--hair);border-radius:14px;overflow:hidden;}
+.lc-card-photo{display:block;width:100%;height:172px;object-fit:cover;background:var(--hair);}
+.lc-card-nophoto{height:172px;display:grid;place-items:center;background:var(--hair);}
+.lc-card-nophoto span{font:400 13px/1.3 Inter,sans-serif;color:var(--muted);}
+.lc-card-body{padding:14px;}
+.lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.lc-card-name{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
+.lc-card-price{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
+  font-variant-numeric:tabular-nums;}
+.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:var(--ink-soft);margin:6px 0 0;}
+.lc-card-was{font:400 12px/1.4 Inter,sans-serif;color:var(--muted);margin:4px 0 0;}
+.lc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
+.lc-chip{font:400 12px/1 Inter,sans-serif;color:var(--ink-soft);padding:7px 10px;
+  border:1px solid var(--hair);border-radius:999px;}
+.lc-card-eyebrow{font:500 11px/1.2 Inter,sans-serif;letter-spacing:.08em;color:var(--muted);
+  margin:16px 0 2px;}
+.lc-pv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+  padding:10px 0;border-top:1px solid var(--hair);}
+.lc-pv-label{font:400 14px/1.35 Inter,sans-serif;color:var(--ink);min-width:0;}
+.lc-pv-src{font:400 12px/1.35 Inter,sans-serif;color:var(--muted);flex:0 0 auto;}
+.lc-dots{display:flex;gap:6px;justify-content:center;margin:12px 0 4px;}
+.lc-dot{width:6px;height:3px;border-radius:2px;background:var(--hair);transition:width .18s ease;}
+.lc-dot.is-on{width:16px;background:var(--ink-soft);}
+@media (prefers-reduced-motion:reduce){.lc-dot{transition:none;}.lc-deck{scroll-behavior:auto;}}
 .lc-thumb{width:56px;height:56px;flex:0 0 auto;border-radius:10px;object-fit:cover;background:var(--sheen);border:1px solid var(--hair);}
 .lc-t-head{display:grid;column-gap:8px;align-items:end;}
 .lc-t-row{display:grid;column-gap:8px;border-top:1px solid var(--line);padding:10px 0;align-items:baseline;}
