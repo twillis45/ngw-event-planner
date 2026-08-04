@@ -28,6 +28,7 @@ import {
   lodgingTitleFor, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
+import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 
 // ─── THE WORKED EXAMPLE (2026-08-04) ───────────────────────────────────────
@@ -132,10 +133,15 @@ export default function LodgingCockpit() {
           <button className="cta" onClick={seedExample}>Load the Santa Fe example</button>
           <a className="cta soft" href="./" style={{ textDecoration: 'none' }}>Open the planner</a>
         </div>
+        {/* DERIVED, never typed. The first cut of this read "five nights" while
+            spanNights() put the same fixture at four — a hardcoded sentence
+            describing data the engine already owns, drifting from it on the very
+            screen that introduces the example. Read the fixture instead. */}
         <p className="lc-note">
-          The example is Mom’s 80th in Santa Fe — five nights, ten guests, no places
-          weighed yet, so the whole path is still ahead of you. Make your own in the
-          planner instead and come back with <code>?demo=lodging</code> on the end.
+          The example is {SANTA_FE_EXAMPLE.name} in {SANTA_FE_EXAMPLE.venueCity} —{' '}
+          {spanNights(SANTA_FE_EXAMPLE)} nights, {SANTA_FE_EXAMPLE.guestCount} guests,
+          no places weighed yet, so the whole path is still ahead of you. Make your own
+          in the planner instead and come back with <code>?demo=lodging</code> on the end.
         </p>
       </Panel>
     </Solo></Frame>
@@ -358,7 +364,11 @@ function Looking({ event, patch }) {
           setReadErr(r.reason);
         }
       } catch { /* fall through to the honest keep-it path */ }
-      setBusy(false);
+      // FINALLY, not a trailing line. The spinner is the host's only signal that
+      // the app is still theirs; any path that leaves it spinning has taken the
+      // surface away from them. unfurlListing now bounds itself, but this makes
+      // stranding impossible rather than merely unlikely.
+      finally { setBusy(false); }
     }
     if (!cands.length) {
       // NAME WHAT THEY ACTUALLY PASTED. The generic "nothing readable" was
@@ -557,7 +567,14 @@ function Looking({ event, patch }) {
             add(pasted);
           }}
           placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
-        <p className="lc-note">One link, or the whole results page — every card on it is read, with no server call.</p>
+        {/* TRUTHFUL ABOUT WHICH PATH TOUCHES A SERVER. This read "every card on
+            it is read, with no server call" — true of a pasted PAGE, which is
+            parsed here, and false of a bare LINK, which we fetch. One sentence
+            covering both made the honest half carry the dishonest half. */}
+        <p className="lc-note">
+          Paste the whole results page and every card on it is read right here — nothing
+          leaves your phone. A bare link has to be fetched, so it takes a moment.
+        </p>
         {readErr && <p className={'lc-note' + (/^(Added|Got)/.test(readErr) ? '' : ' lc-warn')}>{readErr}</p>}
         {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,
             which asked the host to work out which of them was theirs. They are
@@ -618,9 +635,32 @@ function Weighing({ event, intel, patch }) {
         <p className="lc-strong">{trouble.headline}</p>
         <p className="lc-body">{trouble.detail}</p>
       </Panel>}
+      {/* ── THE ANSWER, WHERE IT CAME FROM, AND A WAY TO CHANGE IT ──────────
+          Two defects found by driving this on 2026-08-04:
+
+          · The headline spoke an INFERENCE ("There is a kitchen", read off an
+            Airbnb URL) in the same voice as a fact the host typed. It now says
+            what it was taken from.
+          · `kc.answers` had no render site at all, so the untold state put
+            "Nobody has told us yet" on screen and offered nothing — a question
+            naming an act without offering it, the same fault as every CTA we
+            have rewritten this week.
+
+          Both states now end in something the host can press. */}
       {kc && <Panel label="THE KITCHEN DECIDES THE FOOD PLAN">
         <p className="lc-strong">{kc.headline}</p>
         <p className="lc-body">{kc.detail}</p>
+        {kc.basis && <p className="lc-note">{kc.basis}</p>}
+        {kc.answers && kc.answers.length > 0 && (
+          <div className="lc-ctas lc-ctas-wrap">
+            {kc.answers.map((a) => (
+              <button key={a.id} className="cta soft"
+                onClick={() => patch({ foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } })}>
+                {a.label}
+              </button>
+            ))}
+          </div>
+        )}
       </Panel>}
       {cmp ? <Transpose cmp={cmp} /> : <Panel label="SIDE BY SIDE">
         <p className="lc-note">One option is not a comparison — add a second and this fills in.</p>

@@ -1,9 +1,74 @@
 // A resort and a rental house produce nearly disjoint food plans. The app already
 // asked which it was and already derived the platform from a pasted listing; it
 // told neither to the food engine. This is that fact, made readable.
-import { lodgingKitchen } from '../lodgingIntel';
+import { lodgingKitchen, kitchenSignal, kitchenConsequence } from '../lodgingIntel';
 
 const ev = (o) => ({ id: 'e', type: 'Birthday', isDestination: true, ...o });
+
+// ── WHEN THE TWO SOURCES DISAGREE (live drive, 2026-08-04) ──────────────────
+// The describe below is titled "a pasted listing outranks the multiple choice"
+// and not one of its cases ever supplied both — so the precedence it named was
+// never actually exercised. Driving the cockpit put them in conflict: the host
+// pressed "A hotel or room block" to correct a kitchen inferred from an Airbnb
+// URL, the answer was written to foodChoices, and the surface kept saying
+// "There is a kitchen." Told beats inferred. These are the cases that were
+// missing, in both directions.
+describe('the host outranks the URL', () => {
+  const airbnbLink = [{ url: 'https://www.airbnb.com/rooms/99' }];
+
+  test('an explicit room block beats a kitchen inferred from an Airbnb link', () => {
+    const e = ev({ lodgingOptions: airbnbLink, foodChoices: { dest_lodging: 'A room block, no commitment' } });
+    expect(lodgingKitchen(e)).toBe(false);
+    expect(kitchenSignal(e).from).toBe('told');
+    expect(kitchenConsequence(e).headline).toBe('There is no kitchen.');
+  });
+
+  test('and the other way — a host-arranged rental stands with a hotel link present', () => {
+    const e = ev({
+      lodgingOptions: [{ url: 'https://www.marriott.com/x' }],
+      foodChoices: { dest_lodging: 'A host-arranged Airbnb' },
+    });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('told');
+  });
+
+  test('a listing still speaks when the host has said nothing', () => {
+    const e = ev({ lodgingOptions: airbnbLink });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('inferred');
+  });
+
+  test('an unanswered pick does not silence the listing', () => {
+    // "Guests book on their own" is NOT TOLD — it must not block the inference.
+    const e = ev({ lodgingOptions: airbnbLink, foodChoices: { dest_lodging: 'Guests book on their own' } });
+    expect(lodgingKitchen(e)).toBe(true);
+    expect(kitchenSignal(e).from).toBe('inferred');
+  });
+});
+
+// ── AN INFERENCE MUST SAY SO, AND STAY CORRECTABLE ──────────────────────────
+describe('a claim carries its basis', () => {
+  test('an inferred kitchen names the link it came from and keeps the answers', () => {
+    const kc = kitchenConsequence(ev({ lodgingOptions: [{ url: 'https://www.airbnb.com/rooms/99' }] }));
+    expect(kc.from).toBe('inferred');
+    expect(kc.basis).toMatch(/Airbnb link/);
+    // the host must be able to overrule it in place
+    expect(kc.answers.length).toBeGreaterThan(0);
+  });
+
+  test('an answer the host gave needs no escape hatch', () => {
+    const kc = kitchenConsequence(ev({ foodChoices: { dest_lodging: 'A room block, no commitment' } }));
+    expect(kc.from).toBe('told');
+    expect(kc.basis).toMatch(/You said/);
+    expect(kc.answers).toEqual([]);
+  });
+
+  test('the untold state still offers every answer', () => {
+    const kc = kitchenConsequence(ev({}));
+    expect(kc.answered).toBe(false);
+    expect(kc.answers.length).toBeGreaterThan(0);
+  });
+});
 
 describe('a pasted listing outranks the multiple choice', () => {
   test('a VRBO link means a kitchen', () => {

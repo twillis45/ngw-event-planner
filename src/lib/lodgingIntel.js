@@ -216,27 +216,71 @@ export function normalizeLodgingOption(raw, i = 0) {
  *
  * Reads host answers only. No inference from a city, a price, or an event type.
  */
-export function lodgingKitchen(event) {
+/**
+ * The same ladder lodgingKitchen has always walked, but it now reports WHERE the
+ * answer came from as well as what it is.
+ *
+ * Driving the cockpit on 2026-08-04: pasting one bare Airbnb link put "There is
+ * a kitchen." on screen in the same voice the app uses for facts the host typed.
+ * Nothing in that paste established a kitchen — the rule reads it off the URL
+ * host, and Airbnb lists private rooms, shared rooms and hotel rooms too. The
+ * inference is a reasonable default and stays; presenting it as settled fact,
+ * with no basis and no way to correct it, is the defect. This decides the whole
+ * food plan, so a wrong one is expensive.
+ *
+ * `from` is the tier, in the app's own vocabulary: 'told' is the host answering,
+ * 'inferred' is us reading it off a link.
+ */
+export function kitchenSignal(event) {
   const ev = event || {};
 
-  // 1 · A pasted listing outranks the multiple-choice answer: it is the more
-  //     specific act. Platform is derived from the URL host, never from prose.
+  // 1 · WHAT THE HOST TOLD US, FIRST. This used to run second, behind the URL
+  //     inference, and the ordering was asserted in a test heading — "a pasted
+  //     listing outranks the multiple choice" — that no test actually exercised:
+  //     every case there supplied a listing and no answer, so the two never met.
+  //
+  //     They met on the 2026-08-04 drive. The host pressed "A hotel or room
+  //     block" to correct a kitchen we had inferred from an Airbnb URL; the
+  //     answer was stored, and the screen went on saying "There is a kitchen."
+  //     A control that records your answer and then overrules it is worse than
+  //     no control at all.
+  //
+  //     Told beats inferred — the app's own grounding ladder, applied here. A
+  //     link is us reading a URL host; this is the host answering the question.
+  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
+  const pick = String(picks.dest_lodging || '').trim();
+  if (/airbnb|rental|house|cabin|villa/i.test(pick)) {
+    return { value: true, from: 'told', basis: `You said: “${pick}”.` };
+  }
+  // A room block IS a hotel — that is what a block is.
+  if (/room block/i.test(pick)) {
+    return { value: false, from: 'told', basis: `You said: “${pick}”.` };
+  }
+
+  // 2 · Nothing told, so read the listing. Platform comes from the URL host,
+  //     never from prose. This still outranks silence — it is a real signal —
+  //     it just no longer outranks the host.
   const opts = Array.isArray(ev.lodgingOptions) ? ev.lodgingOptions : [];
   for (const o of opts) {
     const platform = lodgingPlatformFor(o && o.url);
     // Whole-home rental platforms. A kitchen is what the host is booking.
-    if (platform === 'vrbo' || platform === 'airbnb') return true;
+    if (platform === 'vrbo' || platform === 'airbnb') {
+      return {
+        value: true,
+        from: 'inferred',
+        basis: `Taken from the ${platform === 'vrbo' ? 'Vrbo' : 'Airbnb'} link you brought back — most whole-home rentals have one. If this is a room rather than the whole place, say so.`,
+      };
+    }
   }
 
-  // 2 · The decision the playbook already asks. Stored with the other picks.
-  const picks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
-  const pick = String(picks.dest_lodging || '').trim();
-  if (/airbnb|rental|house|cabin|villa/i.test(pick)) return true;
-  // A room block IS a hotel — that is what a block is.
-  if (/room block/i.test(pick)) return false;
-
   // 3 · "Guests book on their own", or nothing asked yet. NOT TOLD.
-  return null;
+  return { value: null, from: 'none', basis: '' };
+}
+
+/** The long-standing three-valued answer. Unchanged contract — the basis rides
+ *  alongside on kitchenSignal so no existing caller has to care. */
+export function lodgingKitchen(event) {
+  return kitchenSignal(event).value;
 }
 
 // ─── WHAT THE KITCHEN DECIDES (workflow census, 2026-08-03) ────────────────
@@ -277,26 +321,31 @@ export function kitchenConsequence(event) {
   // Only a destination event has a lodging decision to have a consequence.
   if (ev.isDestination !== true) return null;
 
-  const k = lodgingKitchen(ev);
+  const sig = kitchenSignal(ev);
+  const k = sig.value;
+  // An INFERRED answer keeps the answers on offer — it is a good guess about a
+  // decision that sets the entire food plan, and the host must be able to
+  // overrule it in place. An answer the host TOLD us needs no such escape.
+  const correctable = sig.from === 'inferred' ? KITCHEN_ANSWERS : [];
   if (k === true) {
     return {
-      state: 'kitchen', answered: true,
+      state: 'kitchen', answered: true, from: sig.from, basis: sig.basis,
       headline: 'There is a kitchen.',
       detail: 'So the food plan is a grocery run, and the shopping list is the real artifact.',
-      answers: [],
+      answers: correctable,
     };
   }
   if (k === false) {
     return {
-      state: 'no-kitchen', answered: true,
+      state: 'no-kitchen', answered: true, from: sig.from, basis: sig.basis,
       headline: 'There is no kitchen.',
       detail: 'So the food plan is reservations. A shopping list is not the plan for a hotel stay.',
-      answers: [],
+      answers: correctable,
     };
   }
   // NOT TOLD. Never assume a hotel — say it is open, and offer the answer.
   return {
-    state: 'untold', answered: false,
+    state: 'untold', answered: false, from: 'none', basis: '',
     headline: 'Nobody has told us yet.',
     detail: 'Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations. Until it is answered the plan sizes one gathering.',
     answers: KITCHEN_ANSWERS,
@@ -464,17 +513,44 @@ export const isUnfurlConfigured = () => Boolean(API_BASE);
  *
  * @returns {{ok:true, url, title, facts, image, description}|{ok:false, reason}}
  */
+// How long we will make a host watch a spinner before we answer them ourselves.
+// Long enough for a warm backend to read a real listing page, short enough that
+// it never reads as "stuck". A cold Render dyno takes far longer than this and
+// that is exactly the case this bounds.
+const UNFURL_MS = 12000;
+
 export async function unfurlListing(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
   const clean = String(url || '').trim();
   if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the listing.' };
+  // ── A READ THAT NEVER ANSWERS IS THE ONE WE HADN'T HANDLED ────────────────
+  // Driving this on 2026-08-04: a single Airbnb link left the button reading
+  // "Reading…" for 33 seconds and counting. Every FAILURE was handled — bad
+  // link, 404, 502, refused — but a server that simply never replies is not a
+  // failure, it is silence, and silence had no path out. The host was stranded
+  // on a spinner with no way to keep going.
+  //
+  // Render cold-starts and a heavy listing page can genuinely take a minute. We
+  // do not make the host wait it out: cut it at UNFURL_MS, say what happened in
+  // their words, and let the keep-the-link path do its job. The link is never
+  // lost — losing it would be worse than not filling it in.
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
   try {
-    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`);
+    const res = await fetch(`${API_BASE}/api/lodging/unfurl?url=${encodeURIComponent(clean)}`,
+      ctl ? { signal: ctl.signal } : undefined);
     const body = await res.json().catch(() => null);
     if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
     return { ok: true, ...body };
-  } catch {
-    return { ok: false, reason: 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+  } catch (err) {
+    // Distinguish "took too long" from "couldn't get there" — they are different
+    // situations and the host can act on them differently.
+    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+    return { ok: false, reason: timedOut
+      ? 'Reading that listing is taking too long — I’ve kept the link. Open it and paste the page if you want the name and price filled in.'
+      : 'Couldn’t reach the listing. Copy the page and paste it instead.' };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 
