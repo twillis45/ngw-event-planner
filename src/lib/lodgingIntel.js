@@ -1045,7 +1045,14 @@ export function lodgingSearchLinks(event) {
   // path had no way out of the app at all. Sent through a general search entry
   // point rather than any chain's booking surface: same construct-the-query,
   // host-runs-it rule as the two below, and no platform's terms to read.
-  const hotelQ = ['hotels in', place, start && end ? `${start} to ${end}` : null,
+  // A FOURTH PRODUCER, and the sneakiest one (2026-08-03). This string is
+  // encoded into an href, so the ISO sweep whitelisted it as machine-facing —
+  // but Google echoes the query verbatim into its own search box, so the host
+  // READS it the moment the door opens. The `href` exemption exists for
+  // parameters a platform parses (Airbnb's `checkin=`), not for prose that
+  // happens to travel inside a URL. Google parses "Jun 17-Jun 21" perfectly
+  // well, so there is nothing to trade away.
+  const hotelQ = ['hotels in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `for ${guests} guests` : null].filter(Boolean).join(' ');
 
   return [
@@ -1206,6 +1213,71 @@ export function lodgingRecommendation(event, intel) {
  *     a new one (see hostSpending's C1 note), and the fix if it bites is
  *     de-duplication at the source, not silently dropping the term.
  */
+// ─── THE COMPARISON, TRANSPOSED (research rec #1, 2026-08-01) ──────────────
+// "Adopt the Zillow transpose for the shortlist. Named attribute rows down a
+// left rail, candidates as columns. Missing data becomes a visible gap in a
+// known row instead of an absent element. This is the single highest-value item
+// here, because our comparison axis is a finite must-have list."
+//
+// THE HONESTY LIMIT THAT SHAPES THIS: a must-have is checked against the host's
+// own typed notes. Typed notes can CONFIRM an amenity and can never DENY one —
+// a blank note means she did not mention it, not that the house lacks it. So
+// every amenity row is two-valued: 'yes' or NOT SAID. There is no 'no', because
+// we would be inventing it. Only `sleeps` earns a real no, because it is a
+// number she typed and the comparison is arithmetic.
+//
+// Absence renders as '—', never blank and never zero (research rec #2), and a
+// disqualifying value is grey rather than red (rec #7): too small is not faulty.
+export function lodgingCompare(event, intel) {
+  const ev = event || {};
+  let li = intel;
+  if (!li) { try { li = lodgingIntel(ev); } catch (_e) { return null; } }
+  const opts = (li && li.options) || [];
+  if (opts.length < 2) return null;            // one option is not a comparison
+
+  const cols = opts.slice(0, 3);
+  const guests = li.guests || 0;
+  const money = (n) => (Number.isFinite(n) && n > 0 ? `$${Math.round(n).toLocaleString()}` : null);
+  const allIn = (o) => {
+    const t = Number(o.totalPrice) || 0;
+    const f = Number(o.fees) || 0;
+    return t > 0 ? t + f : null;
+  };
+  const nights = spanNights(ev) || 0;
+
+  const rows = [];
+  const push = (id, label, fn) => rows.push({
+    id, label,
+    values: cols.map((o) => { const v = fn(o); return v == null || v === '' ? '—' : v; }),
+    flags: cols.map((o) => {
+      if (id !== 'sleeps') return null;
+      if (!guests || o.sleeps == null) return null;
+      return o.sleeps >= guests ? 'ok' : 'short';
+    }),
+  });
+
+  push('allin', nights > 0 ? `${nights} night${nights === 1 ? '' : 's'}, all-in` : 'All-in', (o) => money(allIn(o)));
+  push('night', 'A night', (o) => money(o.pricePerNight != null ? o.pricePerNight
+    : (allIn(o) && nights > 0 ? allIn(o) / nights : null)));
+  push('sleeps', 'Sleeps', (o) => (o.sleeps != null ? String(o.sleeps) : null));
+
+  // only the requirements the host actually asked for — not the whole catalogue
+  let musts = [];
+  try { musts = mustHavesFor(ev) || []; } catch (_e) { musts = []; }
+  for (const m of musts) {
+    if (!m || !m.match) continue;
+    push(m.id, m.label, (o) => (m.match.test(String(o.notes || '')) ? 'yes' : null));
+  }
+
+  return {
+    columns: cols.map((o) => ({ id: o.id, label: o.label })),
+    rows,
+    guests,
+    // Stated on the surface so the dashes are never read as "the house lacks it".
+    note: '“—” means the listing didn’t say. Nothing here is scraped — these are the numbers you typed.',
+  };
+}
+
 export function lodgingCommitted(event) {
   let li = null;
   try { li = lodgingIntel(event); } catch (_e) { return 0; }

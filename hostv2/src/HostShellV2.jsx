@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, kitchenConsequence, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -10098,7 +10098,7 @@ export default function HostShellV2() {
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
-                        <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 }}>
+                        <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
                               (lodgingSearchLinks — Airbnb, Vrbo, hotels), and a
@@ -10107,7 +10107,12 @@ export default function HostShellV2() {
                               host comparing hotels that this list was not for
                               them. The heading names the ACT, which is the same
                               act either way. */}
-                          <span>Places you’re weighing</span>
+                          {/* nowrap on BOTH halves: squeezed into one line they each
+                              broke mid-phrase ("PLACES YOU'RE / WEIGHING" beside
+                              "3 OPTIONS · 2 FIT YOUR / 10"). With the row allowed to
+                              wrap instead, the count drops to its own line intact
+                              rather than either half fracturing. */}
+                          <span style={{ whiteSpace: 'nowrap' }}>Places you’re weighing</span>
                           {/* HOW MANY (host 2026-07-28: "total number of listings
                               somewhere"). The count of what you are weighing, and how many
                               of them still fit the group — the second number is the one
@@ -10115,7 +10120,7 @@ export default function HostShellV2() {
                           {li.options.length > 0 && (() => {
                             const fits = li.options.filter((o) => !li.guests || o.sleeps == null || o.sleeps >= li.guests).length;
                             return (
-                              <span className="of" style={{ fontWeight: 650 }}>
+                              <span className="of" style={{ fontWeight: 650, whiteSpace: 'nowrap', marginLeft: 'auto' }}>
                                 {li.options.length} {li.options.length === 1 ? 'option' : 'options'}
                                 {li.guests && fits < li.options.length ? ` · ${fits} fit your ${li.guests}` : ''}
                               </span>
@@ -10153,6 +10158,52 @@ export default function HostShellV2() {
                                   ))}
                                 </div>
                               )}
+                            </div>
+                          );
+                        })()}
+                        {/* ── THE TRANSPOSE (research rec #1, 2026-08-01) ────────────────
+                            "Named attribute rows down a left rail, candidates as columns.
+                            Missing data becomes a visible gap in a known row instead of an
+                            absent element." Summary before detail: this sits above the
+                            individual option cards because it is the decision, and they are
+                            the evidence.
+                            Absence is '—' (rec #2), a too-small house is grey not red
+                            (rec #7 — disqualifying is not faulty), and no amenity ever reads
+                            "no" because typed notes can confirm one and never deny one. */}
+                        {(() => {
+                          const cmp = (() => { try { return lodgingCompare(event, li); } catch { return null; } })();
+                          if (!cmp) return null;
+                          const n = cmp.columns.length;
+                          const grid = `minmax(96px,1.35fr) repeat(${n}, minmax(0,1fr))`;
+                          return (
+                            <div style={{ margin: '4px 0 var(--sp-4)' }}>
+                              <p className="eyebrow" style={{ margin: '0 0 8px' }}>
+                                SIDE BY SIDE{cmp.guests ? ` · YOUR ${cmp.guests}` : ''}
+                              </p>
+                              <div style={{ display: 'grid', gridTemplateColumns: grid, columnGap: 8, alignItems: 'end' }}>
+                                <span />
+                                {cmp.columns.map((c) => (
+                                  <span key={c.id} style={{ fontSize: 'var(--t-caption-min)', color: 'var(--faint)',
+                                    fontWeight: 650, letterSpacing: '.04em', textAlign: 'right',
+                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.label}</span>
+                                ))}
+                              </div>
+                              {cmp.rows.map((r) => (
+                                <div key={r.id} style={{ display: 'grid', gridTemplateColumns: grid, columnGap: 8,
+                                  borderTop: '1px solid var(--line)', padding: '10px 0', alignItems: 'baseline' }}>
+                                  <span style={{ fontSize: 'var(--t-row-sub)', color: 'var(--ink-soft)' }}>{r.label}</span>
+                                  {r.values.map((v, i) => (
+                                    <span key={i} style={{ textAlign: 'right', fontSize: 'var(--t-row-sub)',
+                                      fontWeight: v === '—' ? 400 : 650,
+                                      // grey, never red: too small is not a fault
+                                      color: v === '—' ? 'var(--faint)'
+                                        : r.flags[i] === 'short' ? 'var(--muted)' : 'var(--ink)' }}>
+                                      {v}{r.flags[i] === 'short' ? ' ·' : ''}
+                                    </span>
+                                  ))}
+                                </div>
+                              ))}
+                              <p className="grounding" style={{ margin: '8px 0 0', color: 'var(--faint)' }}>{cmp.note}</p>
                             </div>
                           );
                         })()}

@@ -79,12 +79,12 @@ const CSS_RULES = [
   // important button on the surface was the one nobody was checking. Identity
   // (background/color/radius/size) must come from the atom; layout may not.
   { sel: /\.hero\.elegant \.cta\{/, bad: /background:\s*#[0-9a-fA-F]{3,6}|color:\s*#[0-9a-fA-F]{3,6}|border-radius:\s*\d|font-size:\s*\d/,
-    label: 'the elegant hero .cta re-declares atom identity as a literal — background/color must be the .cta.soft tokens (var(--steel-tint)/var(--steel-soft)), radius var(--r-row), size var(--t-cta-big)' },
+    label: 'the elegant hero .cta re-declares atom identity as a literal — background/color must be TOKENS not literals (var(--sheen) ground + var(--ink) label since 2026-08-03), radius var(--r-row), size var(--t-cta-big)' },
   // SOFT TIER, pinned (2026-07-31). The hero command wears .cta.soft's treatment.
   // Asserting the exact two tokens means a drift back to the primary gradient — or
   // to any third colour — fails here rather than shipping.
   { sel: /\.hero\.elegant \.cta\{/, bad: /background:\s*var\(--cta-grad\)/,
-    label: 'the elegant hero .cta is back on the PRIMARY gradient — the host ruled it wears the soft tier: background:var(--steel-tint); color:var(--steel-soft)' },
+    label: 'the elegant hero .cta is back on the PRIMARY gradient — the host ruled it wears the soft tier: background:var(--sheen), with a var(--ink) label' },
 ];
 for (const r of CSS_RULES) {
   const line = lineFor(r.sel);

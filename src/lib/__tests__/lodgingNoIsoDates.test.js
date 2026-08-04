@@ -59,11 +59,22 @@ describe('the lodging surface never prints an ISO date', () => {
     expect(String(b.detail)).toMatch(/Jun 17/);
   });
 
-  it('the href may still carry ISO — platforms require it', () => {
-    // The GUARD is about what a host READS, not what a URL carries. Airbnb and
-    // Vrbo take ISO check-in params; stripping those would break the handoff.
+  it('a platform PARAMETER may carry ISO — the platform parses it', () => {
+    // The guard is about what a host READS. Airbnb takes ISO check-in params;
+    // stripping those would break the handoff for no gain.
     const links = lodgingSearchLinks(evt());
     const airbnb = links.find((l) => l.id === 'airbnb');
-    expect(airbnb.href).toMatch(/2028-06-17/);
+    expect(airbnb.href).toMatch(/checkin=2028-06-17/);
+  });
+
+  it('but a SEARCH QUERY inside an href is prose the host reads', () => {
+    // Google echoes ?q= straight into its own search box, so this string is
+    // host-facing even though it travels in a URL. The href exemption covers
+    // parameters a platform parses, not prose that rides along inside one.
+    const hotels = lodgingSearchLinks(evt()).find((l) => l.id === 'hotels');
+    const q = decodeURIComponent((hotels.href.split('?q=')[1] || ''));
+    expect(q).toMatch(/hotels in/);
+    expect(q).toMatch(/Jun 17/);
+    expect(ISO.test(q)).toBe(false);
   });
 });
