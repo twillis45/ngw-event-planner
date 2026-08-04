@@ -84,7 +84,21 @@ export function heroAskFor(a, event) {
     if (d === 'guests' || d === 'start' || /guest|who.s coming|rsvp/i.test(t)) return /rsvp/i.test(t) ? 'Nudge your RSVPs.' : 'Add who’s coming.';
     if (/start time/i.test(t)) return 'Confirm the start time.';
     if (d === 'date' || /pick (a|the) day|\bdate\b/i.test(t)) return 'Pick the day.';
-    if (/location|venue|where/i.test(t)) return 'Add the location.';
+    // ── "WHERE" IS A POSITION WORD, NOT A PLACE WORD ────────────────────────
+    // Driven live 2026-08-03 (?stage=phone, Santa Fe 80th): the lodging
+    // readiness cue "Sort where everyone stays" matched this branch on the bare
+    // word `where`, so the hero asked "Add the location." over an item about
+    // booking a house — while the card's own title and CTA below it correctly
+    // said "Sort / Open where everyone stays". One item, two voices.
+    //
+    // Same misfire as the seating case this file already documents: a surface
+    // whose DOMAIN is not its JOB gets classified by prose and answered wrong.
+    // "Who sits where" would have produced "Add the location." too.
+    //
+    // The branch now needs a real place word, or a `where` that is actually
+    // asking where the EVENT is. Anything else falls through to a later rung,
+    // which is the honest outcome — a wrong ask is worse than a general one.
+    if (/\blocation\b|\bvenue\b|\bwhere(?:'s| is| are)\s+(?:it|we|the event|things)\b/i.test(t)) return 'Add the location.';
     if (/conflict/i.test(t)) return 'Untangle your vendors.';
     const am = t.match(/^ask\s+.+?\s+about\s+(.{3,24})$/i);
     if (am) return 'Ask about ' + am[1].toLowerCase().replace(/\.+$/, '') + '.';
