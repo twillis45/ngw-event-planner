@@ -30,6 +30,47 @@ import {
 import { venueFor } from '@app/lib/venueFor';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
 
+// ─── THE WORKED EXAMPLE (2026-08-04) ───────────────────────────────────────
+// A fresh device has an empty store (localStorage is per origin), so a phone on
+// the LAN starts with nothing to plan. This is the same Santa Fe 80th the whole
+// workflow was built and driven against, offered as an EXPLICIT act rather than
+// seeded silently — the host taps to load it, and it is labelled an example.
+//
+// It carries NO lodging options on purpose: the point of a phone drive is to
+// walk the real path — doors, paste, review, pick — not to land mid-way through
+// somebody else's shortlist.
+//
+// `demoSeed: true` marks it so it can never be mistaken for a real event the
+// host made, by them or by us.
+const SANTA_FE_EXAMPLE = {
+  id: 'cust-demo-santafe',
+  demoSeed: true,
+  name: 'Mom’s 80th Birthday',
+  type: 'Birthday',
+  date: '2028-06-17',
+  endDate: '2028-06-21',
+  isDestination: true,
+  venueCity: 'Santa Fe',
+  venueState: 'NM',
+  guestCount: 10,
+  totalBudget: 4800,
+  lodgingMustHaves: ['stepfree', 'laundry', 'parking'],
+  lodgingOptions: [],
+  budget: [],
+  vendors: [],
+  guests: [],
+};
+
+function seedExample() {
+  try {
+    const all = loadCustomEvents() || [];
+    const without = all.filter((e) => e && e.id !== SANTA_FE_EXAMPLE.id);
+    localStorage.setItem(LS_CUSTOMS, JSON.stringify([...without, { ...SANTA_FE_EXAMPLE }]));
+    localStorage.setItem(LS_LAST_EVENT, SANTA_FE_EXAMPLE.id);
+    window.location.reload();
+  } catch { /* private mode — the planner link is still there */ }
+}
+
 const STEP_LABEL = {
   'no-town': 'The town', looking: 'Go look', weighing: 'Weigh them',
   picked: 'The pick', booked: 'On the books',
@@ -87,9 +128,14 @@ export default function LodgingCockpit() {
         event here and this cockpit fills itself in.
       </p>
       <Panel label="START HERE">
-        <a className="cta" href="./" style={{ textDecoration: 'none' }}>Open the planner</a>
+        <div className="lc-ctas lc-ctas-wrap">
+          <button className="cta" onClick={seedExample}>Load the Santa Fe example</button>
+          <a className="cta soft" href="./" style={{ textDecoration: 'none' }}>Open the planner</a>
+        </div>
         <p className="lc-note">
-          Then come back to this address with <code>?demo=lodging</code> on the end.
+          The example is Mom’s 80th in Santa Fe — five nights, ten guests, no places
+          weighed yet, so the whole path is still ahead of you. Make your own in the
+          planner instead and come back with <code>?demo=lodging</code> on the end.
         </p>
       </Panel>
     </Solo></Frame>
@@ -109,7 +155,12 @@ export default function LodgingCockpit() {
     <Frame>
       <div className="lc-grid">
         <aside className="lc-rail-col">
-          <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
+          <p className="lc-eyebrow">
+            WHERE EVERYONE STAYS
+            {/* A seeded example must SAY it is one, everywhere it is on screen —
+                otherwise the first honest-looking number a host reads is fiction. */}
+            {event.demoSeed ? <span className="lc-demo"> · EXAMPLE</span> : null}
+          </p>
           <nav className="lc-rail">
             {LODGING_STAGES.map((s) => {
               const st = derived.steps.find((x) => x.id === s) || {};
@@ -843,6 +894,7 @@ const CSS = `
    was three duplicated rules and a second focus colour. */
 .lc-door{border:1px solid var(--line);text-decoration:none;}
 .lc-warn{color:var(--warn);}
+.lc-demo{color:var(--warn);letter-spacing:.09em;}
 .lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
 .lc-staged{display:flex;align-items:center;gap:12px;width:100%;background:none;border:none;
   border-top:1px solid var(--line);padding:12px 0;cursor:pointer;text-align:left;}
