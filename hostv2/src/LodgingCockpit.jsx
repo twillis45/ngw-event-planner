@@ -663,7 +663,7 @@ function Thumb({ src, label, big }) {
 // is rendered: the photo, the price, the nights it covers, the host's own
 // must-have count, the amenity chips those musts produce, and the per-field
 // provenance table, which is the point of the screen.
-function Choices({ opts, event, intel, scores, onPick, onGone }) {
+function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto }) {
   const [at, setAt] = useState(0);
   const live = opts.filter((o) => o.status !== 'gone');
   if (live.length < 2) return null;
@@ -712,20 +712,35 @@ function Choices({ opts, event, intel, scores, onPick, onGone }) {
                     rendered only the two counts — "4 read from the page" — so
                     the host could see HOW MANY facts came off the page but
                     never WHICH. This is that row set, unchanged. */}
-                {pv && pv.rows.length > 0 && (
-                  <>
-                    <p className="lc-card-eyebrow">WHAT WE READ · WHAT YOU TYPED</p>
-                    {pv.rows.map((r) => (
-                      <div className="lc-pv" key={r.field}>
-                        <span className="lc-pv-label">{r.label}</span>
-                        <span className="lc-pv-src">
-                          {r.source === 'read' ? 'read from the link'
-                            : r.source === 'typed' ? 'you typed it' : 'not recorded'}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
+                {/* SOURCED ROWS ONLY. Listing every field with "not recorded"
+                    put three lines of noise in a seven-line table and buried
+                    the four that carry information — the board's card shows
+                    only rows with a real source. The unknowns are not hidden:
+                    they are counted in one line underneath, which is what a
+                    host can actually act on. */}
+                {(() => {
+                  const known = pv ? pv.rows.filter((r) => r.source === 'read' || r.source === 'typed') : [];
+                  const unknown = pv ? pv.rows.length - known.length : 0;
+                  if (!known.length && !unknown) return null;
+                  return (
+                    <>
+                      <p className="lc-card-eyebrow">WHAT WE READ · WHAT YOU TYPED</p>
+                      {known.map((r) => (
+                        <div className="lc-pv" key={r.field}>
+                          <span className="lc-pv-label">{r.label}</span>
+                          <span className="lc-pv-src">
+                            {r.source === 'read' ? 'read from the link' : 'you typed it'}
+                          </span>
+                        </div>
+                      ))}
+                      {unknown > 0 && (
+                        <p className="lc-card-was">
+                          {unknown} other field{unknown === 1 ? '' : 's'} with no source recorded.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </article>
           );
@@ -741,11 +756,30 @@ function Choices({ opts, event, intel, scores, onPick, onGone }) {
           <a className="cta soft" href={live[at].url} target="_blank" rel="noopener noreferrer"
             style={{ textDecoration: 'none' }}>Open the listing ↗</a>
         )}
+        {/* The card shows "no picture yet" — the act that fixes it belongs on
+            the card, not on a duplicate row further down the screen. */}
+        {live[at] && !String(live[at].photoUrl || '').trim() && (
+          <button className="cta soft" onClick={() => onPhoto(live[at])}>Add a picture</button>
+        )}
         <button className="cta soft" aria-label={`${live[at] ? live[at].label : 'This place'} is gone`}
           onClick={() => live[at] && onGone(live[at].id)}>It’s gone</button>
       </div>
       {/* The board footer states this as a rule, so the surface states it too. */}
       <p className="lc-note">Ranked by fit, then price. No countdowns, no deal badges — the only price claim here is your own.</p>
+      {/* HotelTonight's "Why these hotels?": the curation explains itself ON
+          DEMAND rather than preaching up front. It moved here with the chooser
+          — it explains THIS order, and the list it used to sit under is now
+          only the places that are gone. Every line states what rankCandidates
+          actually did. */}
+      {basis && (
+        <details className="lc-why">
+          <summary className="lc-why-sum">Why this order?</summary>
+          <ul className="lc-why-list">
+            {basis.lines.map((l) => <li key={l}>{l}</li>)}
+          </ul>
+          <p className="lc-note">{basis.caveat}</p>
+        </details>
+      )}
     </Panel>
   );
 }
@@ -762,6 +796,21 @@ function Weighing({ event, intel, patch }) {
   // The same <Looking> is reused rather than a second intake built beside it:
   // identical component, identical render, so the two can never drift.
   const [adding, setAdding] = useState(false);
+  // One prompt, two callers (the deck's card and the list row) — the duplicate
+  // handler is exactly how the two would drift apart.
+  const askPhoto = (o) => {
+    const url = window.prompt('Paste the photo link for ' + o.label);
+    const clean = String(url || '').trim();
+    if (!/^https:\/\//i.test(clean)) return;
+    patch({ lodgingOptions: (event.lodgingOptions || []).map((x) => (x && x.id === o.id
+      ? { ...x, photoUrl: clean, sources: { ...(x.sources || {}), photoUrl: 'typed' } }
+      : x)) });
+  };
+  // ONE definition of who is in the chooser, read by the deck and by the list
+  // below it — two copies of this filter is precisely how they would disagree.
+  const liveCount = (event.lodgingOptions || []).filter((o) => o && o.status !== 'gone').length;
+  const deckShown = liveCount >= 2;
+  const basis = (() => { try { return lodgingRankBasis(event, intel); } catch { return null; } })();
   let cmp = null; try { cmp = lodgingCompare(event, intel); } catch { cmp = null; }
   const kc = (() => { try { return kitchenConsequence(event); } catch { return null; } })();
   const rec = (() => { try { return lodgingRecommendation(event, intel); } catch { return null; } })();
@@ -845,12 +894,27 @@ function Weighing({ event, intel, patch }) {
         <button className="cta soft" onClick={() => setAdding(true)}>Add another place</button>
       )}
       <Choices opts={opts} event={event} intel={intel}
-        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone} />
+        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
+        onPhoto={askPhoto} basis={basis} />
       {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
         <p className="lc-body">{rec.line}</p>
       </Panel>}
-      <Panel label="MAKE THE CALL">
-        {opts.map((o) => {
+      {/* ── ONE CHOOSER, NOT TWO (host, 2026-08-04: "the make the call section
+             on the bottom of screen I believe will be redundant") ──────────
+          It was. The deck above already carries every LIVE place — including
+          ones with no picture, which get a placeholder card — with the same
+          three acts. This list repeated all of it.
+
+          So when the deck is showing, this keeps only what the deck cannot:
+          places that are gone. They must stay visible — a lost place is work
+          the host did and losing it silently would be worse — but they are not
+          a choice, so they do not belong in the chooser.
+
+          With fewer than two live places there is no deck, and this is the
+          full list again. */}
+      {(deckShown ? opts.filter((o) => o.status === 'gone') : opts).length > 0 && (
+      <Panel label={deckShown ? 'NO LONGER ON THE TABLE' : 'MAKE THE CALL'}>
+        {(deckShown ? opts.filter((o) => o.status === 'gone') : opts).map((o) => {
           const isGone = o.status === 'gone';
           // Is there anything to weigh this against? The thumbnail rule exists
           // to stop a host comparing houses they cannot see — its own copy says
@@ -963,23 +1027,8 @@ function Weighing({ event, intel, patch }) {
           );
         })}
         {!opts.length && <p className="lc-note">Nothing on the list yet.</p>}
-        {/* "Why these hotels?" — a plain button at the foot of the list; the
-            curation explains itself ON DEMAND rather than preaching up front.
-            Every line states what rankCandidates actually did. */}
-        {(() => {
-          const basis = (() => { try { return lodgingRankBasis(event, intel); } catch { return null; } })();
-          if (!basis) return null;
-          return (
-            <details className="lc-why">
-              <summary className="lc-why-sum">Why this order?</summary>
-              <ul className="lc-why-list">
-                {basis.lines.map((l) => <li key={l}>{l}</li>)}
-              </ul>
-              <p className="lc-note">{basis.caveat}</p>
-            </details>
-          );
-        })()}
       </Panel>
+      )}
     </>
   );
 }
