@@ -727,11 +727,23 @@ function tokenStream(html) {
 }
 
 /** A listing page URL on a platform we model — absolute or site-relative. */
-function listingUrl(href) {
+function listingUrl(href, hint) {
   const h = String(href || '').trim();
   const abs = /^https?:\/\//i.test(h) ? h
     : h.startsWith('/rooms/') ? `https://www.airbnb.com${h}`
-      : '';
+      // ── VRBO'S CARDS ARE BARE NUMBERS (real Vrbo page, 2026-08-05) ────────
+      // Airbnb's relative card link announces itself ("/rooms/123"); Vrbo's is
+      // just "/963775", so every card on a real pasted Vrbo results page was
+      // dropped before it was ever read — the app offered a Vrbo door, the
+      // door worked, and nothing could come back through it.
+      //
+      // A bare number is only a listing in context, so it resolves ONLY when
+      // the page itself is demonstrably Vrbo's (its own domain appears in the
+      // markup — media.vrbo.com on the card images, or a vrbo.com link). The
+      // caller passes that verdict in; without it, a bare number stays what it
+      // looks like on its own: not a listing.
+      : (hint === 'vrbo' && /^\/\d{5,}$/.test(h.split('?')[0])) ? `https://www.vrbo.com${h.split('?')[0]}`
+        : '';
   if (!abs) return '';
   const clean = abs.split('?')[0].split('#')[0];
   if (!/^https:\/\//i.test(clean)) return '';
@@ -759,12 +771,15 @@ export function extractListingCandidates(payload) {
   if (!html.trim()) return { candidates: [], source: null, linksOnly: false };
 
   const toks = tokenStream(html);
+  // Whose results page is this? Only used to resolve Vrbo's bare-numeric card
+  // links (see listingUrl) — never to label a listing we could not read.
+  const hint = /(^|[^a-z])(media\.)?vrbo\.com/i.test(html) ? 'vrbo' : null;
   const byUrl = new Map();
   const imgByUrl = new Map();
   let current = '';
   for (const t of toks) {
     if (t.link !== undefined) {
-      const u = listingUrl(t.link);
+      const u = listingUrl(t.link, hint);
       if (u) { current = u; if (!byUrl.has(u)) byUrl.set(u, []); }
       continue;
     }
@@ -777,7 +792,7 @@ export function extractListingCandidates(payload) {
   // A plain-text paste (or a page with no card markup) still yields URLs — say so.
   if (!byUrl.size) {
     const urls = (html.match(/https:\/\/[^\s"'<>)\]]+/gi) || [])
-      .map(listingUrl).filter(Boolean);
+      .map((u) => listingUrl(u, hint)).filter(Boolean);
     const uniq = [...new Set(urls)];
     return {
       candidates: uniq.map((url) => ({ url, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null })),
@@ -787,7 +802,7 @@ export function extractListingCandidates(payload) {
   }
 
   const candidates = candidatesFromGroups(
-    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })));
+    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })), hint);
   return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
 }
 
@@ -802,10 +817,10 @@ export function extractListingCandidates(payload) {
  *
  * @param {Array<{url:string, lines:string[]}>} groups
  */
-export function candidatesFromGroups(groups) {
+export function candidatesFromGroups(groups, hint) {
   const candidates = [];
   for (const { url, lines: raw, img } of (Array.isArray(groups) ? groups : [])) {
-    if (!listingUrl(url)) continue;
+    if (!listingUrl(url, hint)) continue;
     // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
     const lines = [];
     for (const l of raw) { if (!CARD_NOISE.test(l) && lines[lines.length - 1] !== l) lines.push(l); }
@@ -847,14 +862,34 @@ export function candidatesFromGroups(groups) {
     // an outright $0 — then keep taking the last of what remains. If nothing
     // survives, the price is unknown, which the surface already says honestly
     // rather than guessing.
-    const priceLine = lines.join(' ').replace(/\bpay\s+\$[\d,]+\s+today\b/gi, ' ');
+    //
+    // ── AND VRBO SAYS IT IN PROSE (real Vrbo page, 2026-08-05) ──────────────
+    // Vrbo writes "The current price is $1,705", and a discounted card carries
+    // three money figures in this order: the SAVING ("Early booking $580 off"),
+    // the OLD price ("The previous price was $1,850", then "$1,850" again), and
+    // only last the price being asked. Last-wins survives that one, but a card
+    // whose only money is a saving ("Early booking $145 off" — a real card on
+    // this page) would have reported $145 as the cost of the stay.
+    //
+    // So: when the page says outright which figure is current, believe it.
+    // Otherwise strip the figures that are demonstrably not the asking price —
+    // the deposit badge, a saving, an explicitly previous price — and keep
+    // taking the last of what remains. Nothing left means unknown, which the
+    // surface says honestly rather than guessing.
+    const joined = lines.join(' ');
+    const current = joined.match(/current price is\s*\$([\d,]+)/i);
+    const priceLine = joined
+      .replace(/\bpay\s+\$[\d,]+\s+today\b/gi, ' ')
+      .replace(/\$[\d,]+\s*off\b/gi, ' ')
+      .replace(/previous price was\s*\$[\d,]+/gi, ' ');
     const money = (priceLine.match(/\$[\d,]+/g) || [])
       .map((m) => Number(m.replace(/[$,]/g, '')))
       .filter((n) => Number.isFinite(n) && n > 0);
-    const priceShown = money.length ? money[money.length - 1] : null;
+    const priceShown = current ? Number(current[1].replace(/,/g, ''))
+      : money.length ? money[money.length - 1] : null;
 
     candidates.push({
-      url,
+      url: listingUrl(url, hint) || url,
       name,
       kind,
       place,
@@ -994,6 +1029,42 @@ export const GROUP_RENTAL_SOURCES = {
 const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id || '').trim()) || null;
 
 /**
+ * WHAT SHE ALREADY TOLD US SHE WANTED (host, 2026-08-05: "did we add that the
+ * 80th birthday was for resort spa?").
+ *
+ * She typed "Santa Fe, NM resort spa". The parser took the town and dropped the
+ * rest, so the requirement list proposed six things she never mentioned and not
+ * the ONE she did — while this module holds a hot-tub filter VERIFIED against
+ * Airbnb's own search. The words were heard, understood, and thrown away one
+ * step before the only place they could have been used.
+ *
+ * These are the same `match` regexes the ranker already scores pasted listings
+ * with, pointed at the host's own sentence. Nothing is invented: an id only
+ * appears here if her words matched the vocabulary this file already defines,
+ * and it arrives as a PROPOSAL like every other suggested must-have — the
+ * moment she edits the list, hers wins outright.
+ */
+export function heardMustHaves(text) {
+  const t = String(text || '').trim();
+  if (!t) return [];
+  // TWO GUARDS, both learned the hard way on real sentences.
+  //
+  // SCOPE: only the requirements carrying a VERIFIED platform filter. Those
+  // regexes are concrete amenity nouns (hot tub / jacuzzi / spa, pool, pets);
+  // the rest were written to score a LISTING's prose, where "family" hints
+  // kid-ready — pointed at a host's sentence, "family reunion in Deep Creek
+  // Lake" asked for a crib. Reading a request is a stricter job than scoring a
+  // description, and these are also exactly the ids that can change the search.
+  //
+  // BOUNDARY: anchored so an amenity is a word, not a substring — "carpet" is
+  // not a request to bring the dog.
+  return LODGING_MUST_HAVES
+    .filter((m) => m.search && m.match)
+    .filter((m) => { try { return new RegExp(`\\b(?:${m.match.source})`, 'i').test(t); } catch { return false; } })
+    .map((m) => m.id);
+}
+
+/**
  * WHAT THIS EVENT NEEDS FROM A HOUSE (host directive 2026-07-28: "app should
  * default to the options/amenities needed for event from intelligence engine").
  *
@@ -1017,6 +1088,15 @@ export function suggestedMustHaves(event) {
     const m = mustHaveById(id);
     if (m && !out.some((x) => x.id === id)) out.push({ id, label: m.label, why, source });
   };
+
+  // HER OWN WORDS COME FIRST. `lodgingWants` is what she said at intake, matched
+  // against this file's own vocabulary — a stronger signal than anything we infer
+  // from the event's shape, so it leads the list and says plainly where it came
+  // from rather than dressing itself up as a finding.
+  for (const id of (Array.isArray(ev.lodgingWants) ? ev.lodgingWants : [])) {
+    const m = mustHaveById(id);
+    if (m) add(id, `You said so when you started this — ${m.label.toLowerCase()}.`, null);
+  }
 
   // THE PERMISSION GATE — anything that reads as a party or a ceremony.
   if (/wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {

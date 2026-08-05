@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -5019,6 +5019,14 @@ export default function HostShellV2() {
       // makes it a real compound event; theme seeds the look. Only ever what the host actually said.
       ...(parsed.secondaryType ? { secondaryType: parsed.secondaryType } : {}),
       ...(parsed.theme ? { theme: parsed.theme } : {}),
+      // WHAT SHE ASKED FOR IN THE PLACE ITSELF (host 2026-08-05: "did we add
+      // that the 80th birthday was for resort spa?"). She typed "Santa Fe, NM
+      // resort spa"; the town was kept and the rest dropped, so the lodging
+      // requirement list proposed six things she never said and missed the one
+      // she did — with a hot-tub filter sitting VERIFIED in lodgingIntel the
+      // whole time. Matched against that file's own vocabulary, never invented,
+      // and written only when her words actually matched something.
+      ...(() => { const w = heardMustHaves(smartText); return w.length ? { lodgingWants: w } : {}; })(),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };
@@ -10385,20 +10393,23 @@ export default function HostShellV2() {
                                     style={{ textDecoration: 'none' }}>{l.label} ↗</a>
                                 ))}
                               </div>
+                              {/* SAY IT FOR THE DOORS IT IS TRUE OF (all three driven live,
+                                  2026-08-05). One sentence sat under three buttons claiming
+                                  every one of them opens pre-filled. Airbnb and Vrbo do —
+                                  their real results pages come back carrying these dates.
+                                  Google's hotel search does NOT: neither the prose in `q`
+                                  nor checkin/checkout params move it, so it opens on the
+                                  town alone and the host sets the rest there. Claiming
+                                  otherwise is the kind of small lie she finds out about one
+                                  tap later. */}
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
+                                Airbnb and Vrbo open with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
-                              {/* Vrbo opens at the front door (its terms forbid deep linking
-                                  where Airbnb's don't), so hand the host her own criteria to
-                                  type in rather than silently giving her less. */}
-                              {(() => {
-                                const v = links.find((l) => l.id === 'vrbo' && l.criteria);
-                                return v ? (
-                                  <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
-                                    Vrbo opens at its own search — put in {v.criteria}.
-                                  </p>
-                                ) : null;
-                              })()}
+                              {links.some((l) => l.id === 'hotels') && (
+                                <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
+                                  Hotels open at the town only — set the dates and guests once you’re there.
+                                </p>
+                              )}
                             </div>
                           );
                         })()}
