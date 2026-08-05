@@ -24,7 +24,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, isUnfurlConfigured, rankCandidates,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
@@ -282,6 +282,7 @@ function Looking({ event, patch }) {
   const [readErr, setReadErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [staged, setStaged] = useState(null);
+  const [searchOffer, setSearchOffer] = useState(null);
   // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
   // After a door, the host copies a listing and comes back. Reading the
   // clipboard for them needs `clipboard-read`, which most configurations only
@@ -411,6 +412,18 @@ function Looking({ event, patch }) {
       // app just handed them — which carries no listing facts at all, because
       // the platform renders those in the browser. Say that, and say the step.
       const door = looksLikeSearchUrl(src);
+      // ── A SEARCH LINK IS NOT A DEAD END ANY MORE (2026-08-04) ───────────
+      // It used to be: "that's the search link, not a house", and the host was
+      // sent back to do the work by hand. The page DOES carry its listing ids,
+      // so we can offer to read them. Offered, never automatic — this is one
+      // fetch of one page the host is already looking at, and only the places
+      // they KEEP are ever read individually. That line is what keeps this an
+      // offer rather than a crawler.
+      if (door && isUnfurlConfigured()) {
+        setSearchOffer({ url: src, door });
+        setReadErr('');
+        return;
+      }
       const touch = typeof window !== 'undefined' && window.matchMedia
         && window.matchMedia('(pointer:coarse)').matches;
       setReadErr(door
@@ -586,6 +599,34 @@ function Looking({ event, patch }) {
             <p className="lc-body">Looks like you copied a link.</p>
             <button className="cta" onClick={() => { setText(offer); add(offer); setOffer(''); }}>Read it</button>
             <button className="cta soft" onClick={() => setOffer('')}>Not that</button>
+          </div>
+        )}
+        {searchOffer && (
+          <div className="lc-offer">
+            <p className="lc-body">
+              That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
+              I can read the places on it — you’ll get the links, not names or prices,
+              because a results page doesn’t carry those.
+            </p>
+            <button className="cta" onClick={async () => {
+              setBusy(true);
+              setReadErr('');
+              try {
+                const r = await lodgingResults(searchOffer.url);
+                if (r && r.ok && Array.isArray(r.links) && r.links.length) {
+                  const cands = r.links.map((u) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null }));
+                  setSearchOffer(null);
+                  setText('');
+                  setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c.url)), linksOnly: true });
+                } else {
+                  setReadErr((r && r.reason) || 'Nothing readable on that search.');
+                }
+              } finally { setBusy(false); }
+            }}>{busy ? 'Reading the search…' : 'Pull the places in'}</button>
+            <button className="cta soft" onClick={() => {
+              setSearchOffer(null);
+              setReadErr(`Open it, then copy one place from the results and bring that back.`);
+            }}>No, I’ll pick one</button>
           </div>
         )}
         {/* AUTO-READ ON PASTE. The host has already done the work of copying;

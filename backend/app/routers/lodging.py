@@ -353,3 +353,96 @@ async def unfurl(url: str = Query(..., min_length=12, max_length=2048)):
         # say — never a zero, never a guess.
         **_listing_record(html),
     }
+
+# ── WHAT A SEARCH LINK CAN AND CANNOT GIVE (2026-08-04) ─────────────────────
+# Host: "can the app pull listings from results link". Probed rather than
+# guessed, and the first probe nearly produced the wrong answer: a fetched
+# Airbnb results page has ZERO /rooms/ links and zero JSON-LD, so it looks
+# empty. It is not. The ids are in an embedded Explore payload as
+# `"listingId":"20421338"` inside ExploreStayMapInfo objects — 18 of them on a
+# normal page, alongside 121 photos.
+#
+# What is NOT recoverable: those objects are MAP PINS. Names and prices live in
+# a different structure and are not adjacent to the ids, so pairing them by
+# position would be guesswork — and a confident wrong price is far worse here
+# than no price. `personCapacity` and `ratingAverage` appear zero times, so the
+# `sleeps` that gates the whole comparison is not here either.
+#
+# So this returns LINKS ONLY, and says so. The client already has an honest
+# path for that: the staged review tells the host their paste carried no names
+# or prices and what to do about it.
+#
+# WHY IT IS AN OFFER, NOT AN AUTOMATIC PULL. This is one fetch of one page the
+# host asked for. It deliberately does NOT walk the results and unfurl each
+# listing: that would be bulk automated reading, which is exactly what the
+# never-build rule and the egress guard in this file exist to prevent. The host
+# picks which places to keep; only those get read.
+_LISTING_ID = re.compile(r'"listingId":"(\d{4,20})"')
+MAX_RESULTS = 24
+
+
+def _is_search_url(url: str) -> bool:
+    """A results page, not a listing. Airbnb /s/…, Vrbo /search…"""
+    try:
+        p = urlparse(url)
+    except Exception:
+        return False
+    path = (p.path or "").lower()
+    host = (p.hostname or "").lower()
+    if "airbnb" in host:
+        return path.startswith("/s/")
+    if "vrbo" in host:
+        return path.startswith("/search") or path.startswith("/vacation-rentals")
+    return False
+
+
+@router.get("/results")
+async def results(url: str = Query(..., min_length=12, max_length=2048)):
+    """Read one results page the host is looking at and return the listing links
+    on it. Host-initiated, one page, never a crawl."""
+    if not _host_ok(url):
+        raise HTTPException(
+            status_code=400,
+            detail="Only https links to an Airbnb or Vrbo search can be read here.",
+        )
+    if not _is_search_url(url):
+        raise HTTPException(
+            status_code=400,
+            detail="That looks like a single listing rather than a search. Paste it in the box and I will read it.",
+        )
+    try:
+        html_bytes, _c, _f = await safe_get(
+            url,
+            allowed_hosts=ALLOWED_HOSTS,
+            allowed_content_types=("text/html", "application/xhtml+xml"),
+            max_bytes=MAX_BYTES,
+            truncate_at_max=True,
+            timeout=TIMEOUT,
+            user_agent=UA,
+        )
+    except SafeFetchError as exc:
+        raise HTTPException(status_code=502, detail=exc.reason)
+    except Exception as exc:
+        log.info("results transport failure: %s", exc)
+        raise HTTPException(status_code=502, detail="Couldn’t reach that search. Copy the results page and paste it instead.")
+
+    html = html_bytes.decode("utf-8", errors="replace")
+    host = (urlparse(url).hostname or "").lower()
+    base = "https://www.vrbo.com/" if "vrbo" in host else "https://www.airbnb.com/rooms/"
+    ids, seen = [], set()
+    for m in _LISTING_ID.finditer(html):
+        i = m.group(1)
+        if i not in seen:
+            seen.add(i)
+            ids.append(i)
+        if len(ids) >= MAX_RESULTS:
+            break
+    return {
+        "ok": True,
+        "url": url,
+        "count": len(ids),
+        # LINKS ONLY, and the field name says it. No name, no price, no sleeps —
+        # see the note above for why inventing them here would be worse.
+        "links": [base + i for i in ids],
+        "linksOnly": True,
+    }
