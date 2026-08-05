@@ -834,8 +834,24 @@ export function candidatesFromGroups(groups) {
     // ("$1,997 $1,668"). The LAST one is what the platform is actually asking.
     // Named `priceShown`, never `total` — we did not see a checkout, and the
     // page's own "prices include all fees" claim is theirs, not ours to repeat.
-    const money = lines.join(' ').match(/\$[\d,]+/g) || [];
-    const priceShown = money.length ? Number(money[money.length - 1].replace(/[$,]/g, '')) : null;
+    //
+    // ── "PAY $0 TODAY" IS NOT A PRICE (real Santa Fe page, 2026-08-05) ───────
+    // Taking the LAST money figure is right for the strike-through pair and
+    // wrong the moment a card ends on Airbnb's part-payment badge: two of six
+    // real cards carried "Pay $0 today" after their total, so a $2,180 house
+    // and a $4,371 house both reached the shortlist priced at $0 — under every
+    // budget, ahead of everything, and free-looking to the host. Every
+    // synthetic fixture we ever wrote missed this; the live page had it twice.
+    //
+    // Drop the figures that are not what the stay costs — the deposit badge and
+    // an outright $0 — then keep taking the last of what remains. If nothing
+    // survives, the price is unknown, which the surface already says honestly
+    // rather than guessing.
+    const priceLine = lines.join(' ').replace(/\bpay\s+\$[\d,]+\s+today\b/gi, ' ');
+    const money = (priceLine.match(/\$[\d,]+/g) || [])
+      .map((m) => Number(m.replace(/[$,]/g, '')))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const priceShown = money.length ? money[money.length - 1] : null;
 
     candidates.push({
       url,

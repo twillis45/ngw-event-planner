@@ -10671,11 +10671,18 @@ export default function HostShellV2() {
                                           {/* The card's OWN thumbnail — the picture the host was
                                               already judging the house by on the results page. It
                                               drops out silently if it fails to load, so a dead
-                                              image never makes a real listing look broken. */}
+                                              image never makes a real listing look broken.
+                                              BIG ENOUGH TO CHOOSE BY (host 2026-08-04). This is the
+                                              screen where she keeps or drops each house, yet the
+                                              photo was a 66x44 stamp — smaller than the one the
+                                              COMMITTED rows already get (PhotoStrip at 116-132).
+                                              The decision surface had the weakest image in the
+                                              flow. Sized to the same family, with the radius the
+                                              rest of the shell uses. */}
                                           {c.photo && (
                                             <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer"
                                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                              style={{ width: 66, height: 44, objectFit: 'cover', flex: '0 0 auto', display: 'block' }} />
+                                              style={{ width: 112, height: 78, objectFit: 'cover', flex: '0 0 auto', display: 'block', borderRadius: 'var(--r-sm)' }} />
                                           )}
                                           <span className="req-body">
                                             <span className="req-label">{c.name || c.url.replace(/^https:\/\/(www\.)?/, '')}</span>
@@ -10708,7 +10715,12 @@ export default function HostShellV2() {
                                         setLodgeStaged(null);
                                         commitLodging(chosen);
                                       }}>
-                                      Add {staged.pick.size} to the shortlist
+                                      {/* NEVER NAME AN ACT THE BUTTON CANNOT DO (sim drive
+                                          2026-08-04). Untick every row and this read "Add 0 to
+                                          the shortlist" — correctly disabled, but offering to
+                                          add nothing. Disabled state now says what would make
+                                          it work instead of naming an impossible act. */}
+                                      {staged.pick.size === 0 ? 'Pick at least one' : `Add ${staged.pick.size} to the shortlist`}
                                     </button>
                                     <button className="mini" onClick={() => setLodgeStaged(null)}>Never mind</button>
                                   </div>
@@ -11095,11 +11107,38 @@ export default function HostShellV2() {
                   {(() => {
                     const md = (event.moneyDates && typeof event.moneyDates === 'object') ? event.moneyDates : {};
                     const m = moneyDatesFor(event);
-                    const setMd = (k) => (e) => patchEvent({ moneyDates: { ...md, [k]: e.target.value || null } });
+                    // ── A DATE YOU DID NOT MEAN, THAT YOU CANNOT TAKE BACK ──────
+                    // Driving this on an iPhone (2026-08-04): these rows sit inside a
+                    // scrolling sheet, so a scroll that lands on the picker SPINS it
+                    // instead of scrolling — and iOS fires change on every notch. Today's
+                    // date committed itself, silently (this write passed no message, so
+                    // patchEvent's generic undo never armed and no receipt appeared), and
+                    // once set there is no way to empty a date input on iOS: no keyboard,
+                    // no clear. The phantom then spoke — "refund window closes in 0 days"
+                    // on the section index, a money claim she never made.
+                    //
+                    // Both halves are fixed here rather than by fighting the platform:
+                    // the write now ANNOUNCES itself (a message is all patchEvent needs to
+                    // arm Undo), and a filled row carries an explicit Clear. Nothing about
+                    // the transcription doctrine changes — these are still her numbers,
+                    // copied from her own confirmation, never derived.
+                    const niceMd = (iso) => {
+                      try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return iso; }
+                    };
+                    const writeMd = (k, label, val) => patchEvent(
+                      { moneyDates: { ...md, [k]: val || null } },
+                      val ? `${label}: ${niceMd(val)}.` : `${label} cleared.`);
+                    const setMd = (k, label) => (e) => writeMd(k, label, e.target.value);
                     const dateFld = (k, label) => (
                       <div className="line" key={k} style={{ padding: '2px 0 8px' }}>
                         <span>{label}</span>
-                        <input className="field" type="date" style={{ maxWidth: 150 }} value={md[k] || ''} onChange={setMd(k)} aria-label={label} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                          {md[k] ? (
+                            <button type="button" className="mini" onClick={() => writeMd(k, label, '')}
+                              aria-label={`Clear ${label.toLowerCase()}`}>Clear</button>
+                          ) : null}
+                          <input className="field" type="date" style={{ maxWidth: 150 }} value={md[k] || ''} onChange={setMd(k, label)} aria-label={label} />
+                        </span>
                       </div>
                     );
                     return (

@@ -321,7 +321,30 @@ export function parseSmartEventText(text, opts = {}) {
   const loc3 = l3 ? tryLoc(l3[2], l3[3]) : null;
   const venueAt = loc3 && l3 ? l3[1].trim() : '';
   const lm = t.match(/\b(?:in|at)\s+([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
-  const loc = loc3 || (lm ? tryLoc(lm[1], lm[2]) : null);
+  const locSaid = loc3 || (lm ? tryLoc(lm[1], lm[2]) : null);
+  // NOT EVERY HOST WRITES A PREPOSITION (live drive 2026-08-04). Both patterns
+  // above require "in"/"at" before the town, so the perfectly ordinary
+  // "80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa,
+  // June 17-21" dropped the town entirely — and with it the whole destination
+  // stack, because isDestination reads `loc`: the app answered "Local event"
+  // for a five-day trip to a Santa Fe resort. Hosts list facts comma-separated
+  // as often as they write sentences.
+  //
+  // So: scan the comma-separated segments for a City, ST pair anywhere in the
+  // text. This invents NOTHING — every candidate goes through the same strict
+  // parseVenueLocation gate, which requires a real state and refuses digits, so
+  // "Linda Stewart, 10 of us" and "Vida Haynes, 10 people" are rejected on the
+  // way past. Runs only when the prepositional forms found nothing.
+  const locLoose = locSaid || (() => {
+    const re = /([A-Z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*){0,3})\s*,\s*([A-Za-z][\w.'’-]*(?:\s+[A-Za-z][\w.'’-]*){0,3})/g;
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const r = tryLoc(m[1].trim(), m[2].trim());
+      if (r) return r;
+    }
+    return null;
+  })();
+  const loc = locLoose;
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't

@@ -261,3 +261,38 @@ describe('vacation areas (host ask 2026-07-27)', () => {
     expect(p.isDestination).toBe(false);
   });
 });
+
+// ── COMMA-LED LOCATIONS, NO PREPOSITION (live drive 2026-08-04) ──────────────
+// Both location patterns required "in"/"at" before the town, so the ordinary
+// comma-separated way hosts list facts dropped the town entirely — and with it
+// the whole destination stack, since isDestination reads the parsed location.
+// The app answered "Local event" for a five-day trip to a Santa Fe resort.
+describe('a town listed without a preposition', () => {
+  test('"…, Santa Fe, NM resort spa, …" resolves the town AND the destination read', () => {
+    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa, June 17-21', NOW);
+    expect(p.venueCity).toBe('Santa Fe');
+    expect(p.venueState).toBe('NM');
+    expect(p.isDestination).toBe(true);
+    expect(p.honoree).toBe('Linda');
+  });
+
+  test('the same shape for a lake area with a real state', () => {
+    const p = parseSmartEventText('birthday for Vida Haynes, 10 people, Deep Creek Lake, MD, June 17-21', NOW);
+    expect(p.venueCity).toBe('Deep Creek Lake');
+    expect(p.venueState).toBe('MD');
+    expect(p.honoree).toBe('Vida');
+  });
+
+  // The strict gate is what makes the loose scan safe: a name followed by a
+  // count is not a place, and never becomes one.
+  test('a person and a headcount are never mistaken for a town', () => {
+    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, June 17-21', NOW);
+    expect(p.venueCity == null || p.venueCity === '').toBe(true);
+  });
+
+  test('the prepositional forms still win when present', () => {
+    const p = parseSmartEventText('family reunion in Deep Creek Lake, MD, 24 of us, June 17-21', NOW);
+    expect(p.venueCity).toBe('Deep Creek Lake');
+    expect(p.venueState).toBe('MD');
+  });
+});
