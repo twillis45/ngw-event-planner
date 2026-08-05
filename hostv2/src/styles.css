@@ -427,6 +427,14 @@ button{font-family:inherit}
    (radiogroup chips, e.g. the invite's Yes/Maybe/No) — without the aria-checked
    half, radio chips render identically selected vs unselected. */
 .chip[aria-pressed="true"], .chip[aria-checked="true"]{background:var(--steel); border-color:var(--steel); color:var(--ink)}
+/* RECAP, NOT SELECTION (host 2026-08-04: "does the CTA stand out enough?").
+   The intake recognition row states what was HEARD; every filled chip there wore
+   solid --steel — the primary CTA's own weight — so five of them out-shouted the
+   one action on the screen. At tint weight they still read filled and known, and
+   the loud thing is the act again. Scoped to `.chips.heard`: real toggle and
+   radio chips everywhere else keep the solid selected state unchanged. */
+.chips.heard .chip[aria-pressed="true"], .chips.heard .chip[aria-checked="true"]{
+  background:var(--steel-tint); border-color:var(--steel); color:var(--ink)}
 /* .chip.reset deleted 2026-07-15 (wave-5 amber audit): warn-styled rule with no renderer anywhere in the shell — dead CSS spending amber budget on nothing. */
 
 .engine-error{

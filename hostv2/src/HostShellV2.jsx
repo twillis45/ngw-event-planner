@@ -5583,7 +5583,17 @@ export default function HostShellV2() {
                   {smartText.trim() !== '' && (
                     <>
                       {/* Recognition chips — what was understood; tap to correct. */}
-                      <div className="chips" style={{ marginTop: 14 }}>
+                      {/* ONE LOUD THING (host 2026-08-04: "does the CTA stand out
+                          enough?"). These chips are a READ-OUT of what was heard, not
+                          a set of live selections — but they wore `.chip[aria-pressed]`'s
+                          solid --steel, the same weight the primary CTA carries, so five
+                          of them shouted alongside "Put my plan together" and the one
+                          action on the screen had to compete with the recap above it.
+                          `.chips.heard` keeps the filled/known reading at tint weight,
+                          scoped to this row so every real toggle chip elsewhere is
+                          untouched. Steel still means identity + selection (theme.js S1);
+                          it is now spent ONCE per screen, on the act. */}
+                      <div className="chips heard" style={{ marginTop: 14 }}>
                         <button className="chip" aria-pressed={!!effType}
                           onClick={() => { setCreateEdit(createEdit === 'type' ? null : 'type'); setTypeOpen(true); setTypeQuery(''); }}>
                           {effType ? effType.replace(' Party', '') : 'Which occasion?'}
@@ -7152,9 +7162,18 @@ export default function HostShellV2() {
                           one state in which "you’re set" is guaranteed false. It now
                           says what is actually true: the ledger is closed, and the thing
                           on screen is not in that ledger. */}
+                      {/* "WAIT TILL WHEN?" (host 2026-08-04). "the rest can wait" is a
+                          comfort claim with no horizon — and this engine already knows
+                          the horizon: nextLedgerChange is the dated moment the plan next
+                          asks more of her (today, the week the shopping list opens). The
+                          calm pole two screens up prints it; the working hairline said
+                          the soothing half and swallowed the date. Same source, so the
+                          two can never disagree; the bare phrase survives only when
+                          nothing dated is pending. */}
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
-                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
+                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
+                          : (ledgerExpiryShort ? `the rest can wait till ${ledgerExpiryShort}` : 'the rest can wait')))}</span>
                     </div>
                   </div>
                 );
