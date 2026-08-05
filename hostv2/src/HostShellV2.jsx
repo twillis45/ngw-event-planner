@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { heardMustHaves, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -5027,6 +5027,11 @@ export default function HostShellV2() {
       // whole time. Matched against that file's own vocabulary, never invented,
       // and written only when her words actually matched something.
       ...(() => { const w = heardMustHaves(smartText); return w.length ? { lodgingWants: w } : {}; })(),
+      // The KIND of place she named ("resort spa"), kept verbatim. It leads the
+      // hotel search rather than being mapped onto an amenity filter we could
+      // not honour — searching "hotels in Santa Fe" for a host who asked for a
+      // resort spa hands back the wrong results.
+      ...(() => { const st = heardStayStyle(smartText); return st ? { lodgingStyle: st } : {}; })(),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };

@@ -1044,8 +1044,32 @@ const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id |
  * and it arrives as a PROPOSAL like every other suggested must-have — the
  * moment she edits the list, hers wins outright.
  */
+/**
+ * THE KIND OF PLACE SHE NAMED, not a feature inside one (host correction,
+ * 2026-08-05: "resort spa is a type of property not a hot tub").
+ *
+ * A first pass read "Santa Fe, NM resort spa" as a request for a hot tub,
+ * because the hot-tub matcher lists "spa" — correct when scoring a LISTING's
+ * prose, wrong when reading a host's sentence, where "resort spa" names the
+ * sort of place she wants to sleep in. That distinction decides which door she
+ * should be walking through: a resort is the hotels search, not a whole-home
+ * rental with an amenity checkbox.
+ *
+ * Returns the phrase VERBATIM so the surface can repeat her own words back and
+ * carry them into the hotel query. Never mapped onto a filter we cannot honour.
+ */
+const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude)?\s*(?:resort\s*(?:and\s*)?spa|spa\s*resort|resort|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel))\b/i;
+
+export function heardStayStyle(text) {
+  const m = String(text || '').trim().match(STAY_STYLE);
+  return m ? m[1].trim().replace(/\s+/g, ' ').toLowerCase() : null;
+}
+
 export function heardMustHaves(text) {
-  const t = String(text || '').trim();
+  // A stay style is consumed FIRST so the words that name a kind of place can
+  // never be re-read as a request for a feature: "resort spa" leaves nothing
+  // behind for the hot-tub matcher, while "a house with a hot tub" is untouched.
+  const t = String(text || '').replace(STAY_STYLE, ' ').trim();
   if (!t) return [];
   // TWO GUARDS, both learned the hard way on real sentences.
   //
@@ -1234,6 +1258,7 @@ export function lodgingSearchLinks(event) {
   const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;
 
   const said = [
+    ev.lodgingStyle ? String(ev.lodgingStyle).trim() : null,
     place,
     start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `${guests} guests` : null,
@@ -1292,7 +1317,11 @@ export function lodgingSearchLinks(event) {
   // parameters a platform parses (Airbnb's `checkin=`), not for prose that
   // happens to travel inside a URL. Google parses "Jun 17-Jun 21" perfectly
   // well, so there is nothing to trade away.
-  const hotelQ = ['hotels in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
+  // SEARCH FOR THE KIND OF PLACE SHE ASKED FOR. When the host named a stay
+  // style ("resort spa"), it leads the hotel query — searching "hotels in Santa
+  // Fe" for someone who said "resort spa" hands back the wrong 115 results.
+  const style = String((ev.lodgingStyle || '')).trim();
+  const hotelQ = [style || 'hotels', 'in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `for ${guests} guests` : null].filter(Boolean).join(' ');
 
   return [
