@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { heardMustHaves, heardStayStyle, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -452,6 +452,76 @@ function SheetHero({ eyebrow, star, tone, sub, grounding }) {
       <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(color !== 'var(--ink)' ? { color } : null) }}>{star}</BigValue>
       {sub ? <GuideLine style={grounding ? { marginBottom: 8 } : null}>{sub}</GuideLine> : null}
       {grounding ? <p className="grounding" style={{ margin: 0 }}>{grounding}</p> : null}
+    </div>
+  );
+}
+
+// ── SWIPE BETWEEN THE PLACES (host 2026-08-05: "we need to be able to swipe
+//    between the choices" — ported from the ?demo=lodging cockpit's Choices,
+//    which drew it, ruled it, and never wired it to the live sheet). ─────────
+// One card per place, scroll-snapped so a thumb-flick moves one card and the
+// next peeks at the edge — the same `.shelf` scroll-snap vocabulary the plan
+// parts strip already uses, not a new pattern. No JS drag handler: native
+// overflow scrolling is the real gesture on a phone, keeps momentum and
+// rubber-banding, and works with a trackpad and a keyboard for free.
+//
+// The vertical `li.options.map` list is NOT replaced — it moves inside a
+// <details>, "See them as a list", so screen readers and keyboard users keep
+// a fully linear path and nothing here is exclusive to touch. The deck reuses
+// the exact same actions (pick/unpick/remove) so the two views can never
+// diverge in what they let the host do.
+const LODGING_STAGE_LABEL = { 'no-town': 'The town', looking: 'Go look', weighing: 'Weigh them', picked: 'The pick', booked: 'On the books' };
+
+function LodgeDeck({ options, guests, isRec, write }) {
+  const [at, setAt] = useState(0);
+  const railRef = useRef(null);
+  if (!Array.isArray(options) || options.length < 2) return null;
+  return (
+    <div style={{ marginBottom: 'var(--sp-3)' }}>
+      <p className="of" style={{ margin: '0 0 6px' }}>
+        {(options[at] && options[at].label) || 'Place'} <span className="v-meta" style={{ fontWeight: 550 }}>· {at + 1} of {options.length}</span>
+      </p>
+      <div ref={railRef}
+        style={{ display: 'flex', gap: 'var(--sp-2)', overflowX: 'auto', scrollSnapType: 'x proximity', scrollbarWidth: 'none', paddingBottom: 2 }}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const w = el.scrollWidth / options.length;
+          const i = w > 0 ? Math.round(el.scrollLeft / w) : 0;
+          if (i !== at && i >= 0 && i < options.length) setAt(i);
+        }}>
+        {options.map((o) => {
+          const fit = (o.checks || []).find((c) => c.key === 'fit');
+          const money = o.allIn != null
+            ? `$${o.allIn.toLocaleString()}${o.feesKnown ? ' all in' : ' + fees'}${guests ? ` · $${Math.round(o.allIn / guests).toLocaleString()} each` : ''}`
+            : null;
+          return (
+            <div key={o.id} className="card" style={{ flex: '0 0 88%', scrollSnapAlign: 'start', margin: 0, maxWidth: 'none' }}>
+              <PhotoStrip photos={o.photos} alt={o.label} size={132} />
+              <div style={{ marginTop: 8 }}>
+                <span className="f-name">{o.label}
+                  {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
+                  {isRec === o.id && o.status !== 'chosen' ? <span className="tag plan" style={{ color: 'var(--steel-soft)', background: 'var(--steel-tint)' }}>what I&rsquo;d take</span> : null}
+                  {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
+                </span>
+                {money ? <span className="v-meta" style={{ display: 'block', fontWeight: 650, color: 'var(--ink-soft)' }}>{money}</span> : null}
+                {fit ? <span className="v-meta" style={{ display: 'block', color: fit.ok === false ? 'var(--warn)' : undefined }}>{fit.text}</span> : null}
+                {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)', marginTop: 2 }}>Open the listing ↗</a> : null}
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
+                {o.status !== 'chosen'
+                  ? <button className="cta" onClick={() => write(options.map((x) => ({ ...x, status: x.id === o.id ? 'chosen' : 'option' })), o.label + ' is the pick — the plan reads it now.')}>Make it the pick</button>
+                  : <button className="mini" onClick={() => write(options.map((x) => ({ ...x, status: 'option' })), 'Back to comparing.')}>Unpick</button>}
+                <button className="mini" onClick={() => write(options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8 }} aria-hidden="true">
+        {options.map((o, i) => (
+          <span key={o.id} style={{ width: 6, height: 6, borderRadius: '50%', background: i === at ? 'var(--steel)' : 'var(--line)' }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -10142,8 +10212,36 @@ export default function HostShellV2() {
                     const rf = rentalForm;
                     const canAdd = rf.url.trim() || rf.label.trim();
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+                    // ── ONE STAGE LOUD, THE REST REACHABLE (host 2026-08-05: "each of
+                    //    these will have to progress to next stage when complete";
+                    //    "the sheet is way too dense") ────────────────────────────────
+                    // lodgingStage already derives the stage purely from event state —
+                    // no-town → looking → weighing → picked → booked — so progression is
+                    // not something to wire, it is what this function already does: paste
+                    // a listing and `weighing` follows on the next render because li.options
+                    // now has something in it; make a pick and `picked` follows the same
+                    // way. This rail is the ONLY new thing — a plain read of the same
+                    // derivation the cockpit uses, so the two surfaces can never disagree
+                    // about where the host actually is. It does not gate content (nothing
+                    // here becomes unreachable); it names the ONE current step so a sheet
+                    // that stacks search doors, a paste box, must-haves, a shortlist and
+                    // money-safe dates in one scroll at least says which part is live.
+                    const lstage = (() => { try { return lodgingStage(event, li); } catch { return null; } })();
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
+                        {lstage && (
+                          <div style={{ display: 'flex', gap: 6, marginBottom: 'var(--sp-3)', flexWrap: 'wrap' }} aria-label={`Step ${lstage.index + 1} of ${lstage.total}: ${lstage.title}`}>
+                            {lstage.steps.map((s) => (
+                              <span key={s.id} className="tag plan" style={{
+                                color: s.current ? 'var(--ink)' : s.done ? 'var(--ok)' : 'var(--muted)',
+                                background: s.current ? 'var(--steel-tint)' : 'transparent',
+                                border: `1px solid ${s.current ? 'var(--steel)' : 'var(--line)'}`,
+                              }}>
+                                {LODGING_STAGE_LABEL[s.id] || s.id}{s.done ? ' ✓' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                         <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
@@ -10846,6 +10944,22 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
+                        {/* SWIPE BETWEEN THE PLACES (host 2026-08-05) — ported from the
+                            cockpit's Choices deck. Only earns its space at 2+, where there
+                            is a real comparison to make; one place has nothing to swipe to,
+                            and the vertical row below already covers it. */}
+                        {li.options.length >= 2 && (() => {
+                          const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
+                          return <LodgeDeck options={li.options} guests={li.guests} isRec={recNow && recNow.pick && recNow.pick.id} write={write} />;
+                        })()}
+                        <details open={li.options.length < 2} style={{ marginBottom: li.options.length >= 2 ? 'var(--sp-3)' : 0 }}>
+                          {li.options.length >= 2 && (
+                            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                              alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                              <span className="of" style={{ whiteSpace: 'nowrap' }}>See them as a list</span>
+                              <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>same places, one column ▾</span>
+                            </summary>
+                          )}
                         {li.options.map((o) => {
                           const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
                           const isRec = !!(recNow && recNow.pick && recNow.pick.id === o.id);
@@ -10912,6 +11026,7 @@ export default function HostShellV2() {
                           </div>
                           );
                         })}
+                        </details>
                         {/* CALM PASS (host 2026-08-03: the panel 'not very readable'). An eight-field form, a photo box and four cancellation chips sat permanently open below the shortlist. It is the rarest path here -- most places arrive by paste -- so it rests as one line and opens when asked. */}
                         <details style={{ marginBottom: 'var(--sp-4)' }}>
                           <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
