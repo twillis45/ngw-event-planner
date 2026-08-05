@@ -959,11 +959,8 @@ export default function HostShellV2() {
     if (!validPlace(venueDraft)) { setVenueErr('Give guests a real place — a name or an address, not just a number.'); return; }
     const v = venueDraft.trim();
     // pendingCity comes from the address-autocomplete pick (already "City, ST"
-    // when Nominatim returned a state) — same strict gate as saveCity so a
-    // bare-city result never slips through this second write path either.
-    const parsedCity = pendingCity ? parseVenueLocation(pendingCity) : null;
-    // setVenue (the constitution's ONE write path) owns kind inference + the
-    // strict city gate — this site carried its own copies of both.
+    // when Nominatim returned a state) — setVenue (the constitution's ONE write
+    // path) owns kind inference + the strict city gate for it.
     patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
@@ -10183,15 +10180,36 @@ export default function HostShellV2() {
                       let stay = null;
                       try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
                       const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+                      // Derived-vs-typed, decided ONCE for both branches: a stay whose name
+                      // matches a shortlist label came from a previous pick, not her hands.
+                      // (Pick-switch audit 2026-08-04, reapplied 2026-08-05 after a branch
+                      // split silently dropped it from this file: the fill-only-empty guard
+                      // below treated the OLD pick's derived name as host-typed, so re-picking
+                      // left "Option 1 is the plan" standing while the pick chip moved.)
+                      const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
+                      const prevDerived = !!prevLabel && (li.options || []).some(
+                        (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
                       if (stay && stay.hotelName) {
                         // Never clobber what the host typed herself: a hand-entered stay
-                        // outranks a derived one. Fill only what is empty.
-                        patch.lodging = {
-                          ...cur,
-                          hotelName: cur.hotelName || stay.hotelName,
-                          rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
-                          url: cur.url || stay.url,
-                        };
+                        // outranks a derived one. A DERIVED name follows the pick.
+                        //
+                        // `from: stay.from` (STAY_FROM_PICK) MUST ride along (caught live,
+                        // 2026-08-05, checking the stage rail against real data): without it
+                        // lodgingStage's `namedOffConfirmation` check — hotelName set AND
+                        // from !== STAY_FROM_PICK — reads `undefined !== 'pick'` as true, so
+                        // EVERY fresh pick was misread as a real booking the instant it was
+                        // made. "5 of 5 · The stay is on the books" fired off a bare pick,
+                        // before a single booking fact existed. A hand-typed stay has no
+                        // `stay.from` to carry (this branch only runs when the derived value
+                        // is winning), so it stays a real booking record, as it should.
+                        patch.lodging = (!prevLabel || prevDerived)
+                          ? { ...cur, hotelName: stay.hotelName, rate: stay.rate, url: stay.url, from: stay.from }
+                          : {
+                            ...cur,
+                            hotelName: cur.hotelName || stay.hotelName,
+                            rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
+                            url: cur.url || stay.url,
+                          };
                       } else {
                         // ── A STAY MUST NOT OUTLIVE THE PICK IT CAME FROM ──────────
                         // Audit finding 2026-07-28: un-picking cleared `chosen` but left
@@ -10202,10 +10220,7 @@ export default function HostShellV2() {
                         // Only what WE derived is withdrawn: the stay is cleared solely
                         // when its name still matches an option on the shortlist. A stay
                         // she typed herself is hers and survives untouched.
-                        const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
-                        const wasDerived = prevLabel && (li.options || []).some(
-                          (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
-                        if (wasDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
+                        if (prevDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '', from: null };
                       }
                       patchEvent(patch, msg);
                     };
@@ -10222,26 +10237,58 @@ export default function HostShellV2() {
                     // now has something in it; make a pick and `picked` follows the same
                     // way. This rail is the ONLY new thing — a plain read of the same
                     // derivation the cockpit uses, so the two surfaces can never disagree
-                    // about where the host actually is. It does not gate content (nothing
-                    // here becomes unreachable); it names the ONE current step so a sheet
-                    // that stacks search doors, a paste box, must-haves, a shortlist and
-                    // money-safe dates in one scroll at least says which part is live.
+                    // about where the host actually is.
+                    //
+                    // FIRST CUT WAS A LABEL, NOT A FIX (host, 2026-08-05: "I thought each
+                    // section was designed to our doctrine" / "each stage was going to
+                    // follow main hero, calm non-dense"). It wasn't. Two doctrine misses:
+                    //   1. FIVE chip pills is counted dots — the doctrine calls for a single
+                    //      CONTINUOUS hairline, and mixed steel (current) + green (done) on
+                    //      one screen is two accents where the rule is one, spent once.
+                    //   2. The label sat on TOP of the exact same dense stack — doors, paste,
+                    //      must-haves, the shortlist, money-safe dates — none of it gated.
+                    //      Naming the current step is not the same as showing only it.
+                    // Now: ONE hairline (steel only, continuous fill), a SheetHero carrying
+                    // the stage's own headline as the one loud thing, and the search/weigh
+                    // machinery collapses to a single reachable line once a pick exists — so
+                    // "The stay" hero directly below becomes the one thing on screen for
+                    // picked/booked, matching the calm the main hero already promises.
+                    // Never HIDDEN, only collapsed: reopening is one tap, per the standing
+                    // "always reachable" rule this file already applies to the shortlist view.
                     const lstage = (() => { try { return lodgingStage(event, li); } catch { return null; } })();
+                    const showWeighing = !lstage || lstage.stage === 'no-town' || lstage.stage === 'looking' || lstage.stage === 'weighing';
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         {lstage && (
-                          <div style={{ display: 'flex', gap: 6, marginBottom: 'var(--sp-3)', flexWrap: 'wrap' }} aria-label={`Step ${lstage.index + 1} of ${lstage.total}: ${lstage.title}`}>
-                            {lstage.steps.map((s) => (
-                              <span key={s.id} className="tag plan" style={{
-                                color: s.current ? 'var(--ink)' : s.done ? 'var(--ok)' : 'var(--muted)',
-                                background: s.current ? 'var(--steel-tint)' : 'transparent',
-                                border: `1px solid ${s.current ? 'var(--steel)' : 'var(--line)'}`,
-                              }}>
-                                {LODGING_STAGE_LABEL[s.id] || s.id}{s.done ? ' ✓' : ''}
-                              </span>
-                            ))}
-                          </div>
+                          <>
+                            <div style={{ display: 'flex', gap: 2, marginBottom: 'var(--sp-2)' }} role="img"
+                              aria-label={`Step ${lstage.index + 1} of ${lstage.total}: ${lstage.title}`}>
+                              {Array.from({ length: lstage.total }, (_, i) => (
+                                <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= lstage.index ? 'var(--steel)' : 'var(--line)' }} />
+                              ))}
+                            </div>
+                            <SheetHero eyebrow={LODGING_STAGE_LABEL[lstage.stage] || 'Where everyone stays'} star={lstage.title} sub={lstage.why} />
+                          </>
                         )}
+                        <details open={showWeighing}>
+                        {/* A <details> with no <summary> gets the BROWSER'S OWN default
+                            marker + the literal word "Details" (caught live, 2026-08-05) —
+                            worse than the chip rail this replaced. Always render ours: quiet
+                            (near-invisible, just a fold affordance) while open — the hero
+                            above is the one loud thing here — and the real "reopen this"
+                            copy once collapsed. */}
+                        <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                          alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--sp-2)',
+                          ...(showWeighing ? { color: 'var(--muted)', fontSize: 'var(--t-caption)' } : null) }}>
+                          {showWeighing ? (
+                            <span className="v-meta">Details ▾</span>
+                          ) : (
+                            <>
+                              <span className="of">Places you looked at — {li.options.length} on the list</span>
+                              <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>compare or add more ▾</span>
+                            </>
+                          )}
+                        </summary>
                         <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
@@ -11184,14 +11231,27 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
                           Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
                         </p>
+                        </details>
                       </div>
                     );
                   })()}
                   {/* Hero copy (host request 2026-07-11): the booked count is the
                       star in roster mode; the stay's own state otherwise. All
                       figures from lib/travelPlan — the roster summary line below
-                      was PROMOTED here, not duplicated. */}
-                  {travel.rosterMode && lg.roster.length > 0 ? (
+                      was PROMOTED here, not duplicated.
+                      ONE LOUD THING, NOT TWO (host, 2026-08-05): this hero and the
+                      weighing block's own SheetHero above both claim BigValue weight.
+                      During looking/weighing the block above IS the current step and
+                      stays open; this one goes quiet so it never competes. It returns
+                      the moment the block above collapses (picked/booked) — the same
+                      alternation `showWeighing` drives there, recomputed here since
+                      this sits outside that IIFE's scope. lodgingStage is a pure read
+                      of event.lodgingOptions/lodging/moneyDates; a second call costs
+                      nothing wrong, only a cheap recompute. */}
+                  {(() => {
+                    let outerStage = null; try { outerStage = lodgingStage(event); } catch { outerStage = null; }
+                    return outerStage && (outerStage.stage === 'no-town' || outerStage.stage === 'looking' || outerStage.stage === 'weighing') ? false : true;
+                  })() && (travel.rosterMode && lg.roster.length > 0 ? (
                     /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
                        booked and confirmed"). notBookedCount counts ONLY 'not_started'
                        — its own comment says "booked here means booked OR confirmation
@@ -11216,7 +11276,7 @@ export default function HostShellV2() {
                         ? `${lg.hotelName} is the plan — the details below feed the where-to-stay note.`
                         : 'Name the place below and the where-to-stay note writes itself.'}
                     />
-                  )}
+                  ))}
                   {/* The one dated fact on this card, said plainly — never "cutoff". */}
                   {lg.deadline && (() => {
                     let dd = null; try { dd = daysUntil(lg.deadline); } catch { dd = null; }

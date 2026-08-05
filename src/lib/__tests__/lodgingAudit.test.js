@@ -4,7 +4,7 @@
 // defects came out of it, all reproduced here so they cannot come back. Two of
 // the three were mine, shipped the same day.
 const { lodgingIntel, lodgingRecommendation, stayFromPick, backupFromRunnerUp,
-        lodgingCommitted, extractListingCandidates } = require('../lodgingIntel');
+        lodgingCommitted, extractListingCandidates, lodgingStage } = require('../lodgingIntel');
 const { hostSpending } = require('../hostSpending');
 
 const EV = (o) => ({ id: 'a', type: 'Family Reunion', date: '2026-09-11', endDate: '2026-09-13',
@@ -76,11 +76,17 @@ describe('a stay does not outlive the pick it came from', () => {
     // The withdrawal is in HostShellV2's lodging write helper: it clears
     // event.lodging only when the stored name still matches a shortlist option,
     // so a stay the host typed herself is hers and survives.
+    //
+    // RENAMED 2026-08-05 (pick-switch fix, reapplied after a branch split
+    // dropped it from this file): `wasDerived` became `prevDerived`, computed
+    // ONCE and shared with the pick branch above it — so a re-pick can also
+    // tell a derived name from a typed one, not just an unpick. Same fact,
+    // same guarantee this test locks; the assertion follows the rename.
     const fs = require('fs');
     const path = require('path');
     const shell = fs.readFileSync(path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
-    expect(shell).toMatch(/const wasDerived = prevLabel &&/);
-    expect(shell).toMatch(/if \(wasDerived\) patch\.lodging = \{ \.\.\.cur, hotelName: '', rate: null, url: '' \};/);
+    expect(shell).toMatch(/const prevDerived = !!prevLabel &&/);
+    expect(shell).toMatch(/if \(prevDerived\) patch\.lodging = \{ \.\.\.cur, hotelName: '', rate: null, url: '', from: null \};/);
   });
 });
 
@@ -115,5 +121,44 @@ describe('the parts that were already right — pinned so they stay right', () =
       + '<a href="https://www.airbnb.com/rooms/9?b=2"><img src="https://a0.muscache.com/2.jpg"></a>'
       + '<div>Home in X</div><div>Lake House</div><span>4 beds</span>';
     expect(extractListingCandidates(html).candidates).toHaveLength(1);
+  });
+});
+
+// ── A FRESH PICK IS NOT A BOOKING (sim drive 2026-08-05) ─────────────────────
+// Checking the new stage rail against real data caught this live: right after
+// picking a house — no confirmation, no code, no money dates — the stage read
+// "5 of 5 · The stay is on the books." The write helper filled event.lodging
+// from stayFromPick() but never carried its `from: STAY_FROM_PICK` marker, so
+// lodgingStage's own booked check (hotelName set AND from !== STAY_FROM_PICK)
+// read `undefined !== STAY_FROM_PICK` as true — every pick looked booked the
+// instant it was made. Locks the `from` field the same way the prior test
+// locks the withdrawal logic: by reading the real write helper's source.
+describe('a fresh pick is not a booking', () => {
+  test('the shell carries stay.from into event.lodging on both fill branches', () => {
+    const fs = require('fs');
+    const path = require('path');
+    const shell = fs.readFileSync(path.resolve(__dirname, '../../..', 'hostv2/src/HostShellV2.jsx'), 'utf8');
+    // The empty-slot / derived-switch branch — the one this bug hid in.
+    expect(shell).toMatch(/hotelName: stay\.hotelName, rate: stay\.rate, url: stay\.url, from: stay\.from/);
+  });
+
+  test('lodgingStage reads a bare pick as "picked", never "booked"', () => {
+    const ev = EV({
+      isDestination: true,
+      lodgingOptions: [OPT({ status: 'chosen', label: 'Villa in Bondi Beach' })],
+      lodging: { hotelName: 'Villa in Bondi Beach', rate: null, url: 'https://www.airbnb.com/rooms/1', from: 'the option you picked' },
+    });
+    const st = lodgingStage(ev);
+    expect(st.stage).toBe('picked');
+    expect(st.stage).not.toBe('booked');
+  });
+
+  test('a hotelName with no `from` (a real off-confirmation name) still reads as booked', () => {
+    const ev = EV({
+      isDestination: true,
+      lodgingOptions: [OPT({ status: 'chosen', label: 'Villa in Bondi Beach' })],
+      lodging: { hotelName: 'The Carlyle Hotel', rate: null, url: '' },
+    });
+    expect(lodgingStage(ev).stage).toBe('booked');
   });
 });
