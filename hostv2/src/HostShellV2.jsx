@@ -5597,7 +5597,21 @@ export default function HostShellV2() {
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
-                        {parsed.venue ? <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{parsed.venue}</span> : null}
+                        {/* ONE PLACE, ONE CHIP (sim drive 2026-08-04). "family reunion
+                            in Deep Creek Lake, MD" produced BOTH a venue chip reading
+                            "Deep Creek Lake" and a town chip reading "Deep Creek Lake,
+                            MD" — the same fact twice, and the venue one is the only
+                            dead chip in the row (pointerEvents:none, nothing to tap if
+                            the parse got it wrong). It earns its space only when it
+                            says something the town chip does not. */}
+                        {(() => {
+                          const v = String(parsed.venue || '').trim();
+                          if (!v) return null;
+                          const town = String(effCityText || '').trim().toLowerCase();
+                          const lv = v.toLowerCase();
+                          if (town && (town === lv || town.startsWith(lv + ',') || town.startsWith(lv + ' ') || lv.startsWith(town))) return null;
+                          return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{v}</span>;
+                        })()}
                         <button className="chip" aria-pressed={!!effCityText} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
                           {effCityText || 'Which town?'}
                         </button>

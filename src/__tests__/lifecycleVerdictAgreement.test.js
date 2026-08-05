@@ -53,6 +53,11 @@ const readyButOverdue = () => {
     startTime: '14:00',
     venueKind: 'venue', venue: 'VFW Post 3150 — Alexandria, VA',
     rainPlan: 'Move under the carport',
+    // The fixture's premise is "calm EVERYWHERE except the board", and as of
+    // 2026-08-04 an UNSET budget is a real, counted gap rather than an absent
+    // part (the denominator used to grow the moment she answered). So a
+    // genuinely calm event has a budget, and one the known costs fit inside.
+    totalBudget: 4000,
     guests: [], vendors: [], timeline: [], budget: [],
   };
   // The fixture's premise is "calm EVERYWHERE except the board". The Food essential
