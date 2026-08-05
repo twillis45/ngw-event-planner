@@ -116,6 +116,36 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     await expect(page.getByRole('link', { name: /Open .* to book it/i })).toBeVisible();
   });
 
+  // ── A SEARCH LINK USED TO BE A DEAD END ─────────────────────────────────
+  // It answered "that's the search link, not a house" and sent the host back to
+  // do it by hand. The page does carry its listing ids, so we offer to read
+  // them — links only, because names and prices are not reliably pairable to
+  // the ids, and only the places the host KEEPS are ever read individually.
+  test('a search link offers to pull its places in, and says what it cannot give', async ({ page }) => {
+    await seed(page);
+    await paste(page, 'https://www.airbnb.com/s/Santa-Fe--NM/homes?checkin=2028-06-17&checkout=2028-06-21&adults=10');
+
+    const offer = page.getByText(/I can read the places on it/i);
+    await expect(offer).toBeVisible({ timeout: 20_000 });
+    // It must say what it will NOT give, up front.
+    await expect(offer).toContainText(/links, not names or prices/i);
+    // And declining must still leave the host a route.
+    await expect(page.getByRole('button', { name: /No, I’ll pick one/i })).toBeVisible();
+
+    await page.getByRole('button', { name: /Pull the places in/i }).click();
+
+    // The staged review is the existing surface — the host unticks what they
+    // were not really considering before anything joins the shortlist.
+    await expect(page.getByText(/FROM THE PAGE YOU PASTED/i)).toBeVisible({ timeout: 25_000 });
+    const rows = page.locator('.lc-staged');
+    expect(await rows.count(), 'a Santa Fe search carries a page of places').toBeGreaterThan(3);
+    // Honest about what a results page never carries.
+    await expect(page.getByText(/sleeps —/).first()).toBeVisible();
+    await expect(page.getByText(/I got the links but not the details/i)).toBeVisible();
+    // The commit CTA counts what will actually be added.
+    await expect(page.getByRole('button', { name: /Add \d+ to the shortlist/i })).toBeVisible();
+  });
+
   test('nothing overflows the phone, and no console errors', async ({ page }) => {
     const errors = [];
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

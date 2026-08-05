@@ -519,6 +519,40 @@ export const isUnfurlConfigured = () => Boolean(API_BASE);
 // that is exactly the case this bounds.
 const UNFURL_MS = 12000;
 
+/**
+ * Read the listing LINKS off a results page the host is looking at.
+ *
+ * Host-initiated and one page — never a crawl. It returns links and nothing
+ * else, because that is all a results page reliably carries: the ids sit in an
+ * embedded map-pin payload with names and prices in a different structure, and
+ * pairing them by position would be a guess. A confident wrong price is worse
+ * than no price.
+ *
+ * The host then unticks what they were not really considering, and only the
+ * places they KEEP are ever read individually.
+ */
+export async function lodgingResults(url) {
+  if (!API_BASE) return { ok: false, reason: 'Reading searches isn’t switched on here — copy the results page and paste it instead.' };
+  const clean = String(url || '').trim();
+  if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the search.' };
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
+  try {
+    const res = await fetch(`${API_BASE}/api/lodging/results?url=${encodeURIComponent(clean)}`,
+      ctl ? { signal: ctl.signal } : undefined);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
+    return { ok: true, ...body };
+  } catch (err) {
+    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+    return { ok: false, reason: timedOut
+      ? 'Reading that search is taking too long. Open it and copy the page instead.'
+      : 'Couldn’t reach that search. Copy the results page and paste it instead.' };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function unfurlListing(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
   const clean = String(url || '').trim();
