@@ -1121,8 +1121,18 @@ export function lodgingSearchLinks(event) {
 
   const start = /^\d{4}-\d{2}-\d{2}/.test(String(ev.date || '')) ? String(ev.date).slice(0, 10) : null;
   const end = (() => {
+    // A STAY IS AT LEAST A NIGHT (sim drive 2026-08-04): a single-day event
+    // produced checkin==checkout — a zero-night search both platforms reject —
+    // and the copy read "Jun 20–Jun 20". Anyone sleeping over sleeps INTO the
+    // next day, so a same-day span searches one night, and the applied-copy
+    // shows the same span the URL carries (never two different stories).
     const e = spanEnd(ev);
-    return /^\d{4}-\d{2}-\d{2}/.test(String(e || '')) ? String(e).slice(0, 10) : null;
+    const iso = /^\d{4}-\d{2}-\d{2}/.test(String(e || '')) ? String(e).slice(0, 10) : null;
+    if (!start) return iso;
+    if (iso && iso !== start) return iso;
+    const d = new Date(start + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
   })();
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || (Array.isArray(ev.guests) ? ev.guests.length : 0) || null;
   const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;
@@ -1139,7 +1149,10 @@ export function lodgingSearchLinks(event) {
   const ab = new URLSearchParams();
   if (start) ab.set('checkin', start);
   if (end) ab.set('checkout', end);
-  if (guests) ab.set('adults', String(guests));
+  // Airbnb's own search stops at 16 guests — adults=40 lands on an error page
+  // or a silent clamp. Send the most the platform accepts; the applied-copy
+  // (`said`) keeps the REAL count, because that line is ours to say honestly.
+  if (guests) ab.set('adults', String(Math.min(guests, 16)));
   if (budget) ab.set('price_max', String(budget));
   // Only the filters proven against the live search page ride the URL.
   for (const m of musts) {
