@@ -32,6 +32,20 @@ buttons into one whose label follows the box. Both moves are backed by
 [`../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md`](../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md)
 section 5. **Nothing in it has reached a browser yet.**
 
+**Uncommitted, BUILT + DRIVEN (iOS-simulator session): `HostShellV2.jsx` pick-switch fix.**
+The lodging `write()` fill-only-empty guard treated a previously DERIVED `lodging.hotelName`
+("Option 1") as host-typed, so switching the pick never updated the stay — "Option 1 is the
+plan" survived while the pick chip moved. Now derived-vs-typed is decided once (name matches
+a shortlist label ⇒ derived, follows the pick); host-typed stays still win. Dead `parsedCity`
+var in `saveVenue` removed. Proof: vite build + check-parity green; driven live on iPhone 17
+Pro sim — unpick → "No place picked yet", re-pick → "Villa in Bondi Beach … is the plan".
+Unfixed, filed from the same drive: single-day events emit zero-night search links
+(checkin==checkout) with whole-event budget as `price_max` and `adults=40` over Airbnb's cap
+(`lodgingSearchLinks`); "in <City, ST>" alone sets `isDestination` (smartParseEvent) and
+re-shapes the whole plan toward lodging; iOS empty `<input type=date>` renders today's date
+AND a scroll gesture across it can COMMIT today into `moneyDates` (then shows "refund window
+closes in 0 days"), with no way to clear it on iOS.
+
 ---
 
 ## 2. Gates -- CI green at `cee3e559`; the working-tree change is UNGATED

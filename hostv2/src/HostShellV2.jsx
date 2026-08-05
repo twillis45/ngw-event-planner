@@ -889,11 +889,8 @@ export default function HostShellV2() {
     if (!validPlace(venueDraft)) { setVenueErr('Give guests a real place — a name or an address, not just a number.'); return; }
     const v = venueDraft.trim();
     // pendingCity comes from the address-autocomplete pick (already "City, ST"
-    // when Nominatim returned a state) — same strict gate as saveCity so a
-    // bare-city result never slips through this second write path either.
-    const parsedCity = pendingCity ? parseVenueLocation(pendingCity) : null;
-    // setVenue (the constitution's ONE write path) owns kind inference + the
-    // strict city gate — this site carried its own copies of both.
+    // when Nominatim returned a state) — setVenue (the constitution's ONE write
+    // path) owns kind inference + the strict city gate for it.
     patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
@@ -10067,15 +10064,25 @@ export default function HostShellV2() {
                       let stay = null;
                       try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
                       const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+                      // Derived-vs-typed, decided ONCE for both branches: a stay whose name
+                      // matches a shortlist label came from a previous pick, not her hands.
+                      // (Pick-switch audit 2026-08-04: the fill-only-empty guard below
+                      // treated the OLD pick's derived name as host-typed, so re-picking
+                      // left "Option 1 is the plan" standing while the pick chip moved.)
+                      const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
+                      const prevDerived = !!prevLabel && (li.options || []).some(
+                        (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
                       if (stay && stay.hotelName) {
                         // Never clobber what the host typed herself: a hand-entered stay
-                        // outranks a derived one. Fill only what is empty.
-                        patch.lodging = {
-                          ...cur,
-                          hotelName: cur.hotelName || stay.hotelName,
-                          rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
-                          url: cur.url || stay.url,
-                        };
+                        // outranks a derived one. A DERIVED name follows the pick.
+                        patch.lodging = (!prevLabel || prevDerived)
+                          ? { ...cur, hotelName: stay.hotelName, rate: stay.rate, url: stay.url }
+                          : {
+                            ...cur,
+                            hotelName: cur.hotelName || stay.hotelName,
+                            rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
+                            url: cur.url || stay.url,
+                          };
                       } else {
                         // ── A STAY MUST NOT OUTLIVE THE PICK IT CAME FROM ──────────
                         // Audit finding 2026-07-28: un-picking cleared `chosen` but left
@@ -10086,10 +10093,7 @@ export default function HostShellV2() {
                         // Only what WE derived is withdrawn: the stay is cleared solely
                         // when its name still matches an option on the shortlist. A stay
                         // she typed herself is hers and survives untouched.
-                        const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
-                        const wasDerived = prevLabel && (li.options || []).some(
-                          (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
-                        if (wasDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
+                        if (prevDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
                       }
                       patchEvent(patch, msg);
                     };
