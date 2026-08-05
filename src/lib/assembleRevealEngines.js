@@ -252,13 +252,21 @@ function buildBlockerStage(blocker) {
 function assemblePlanningDomains(event, profile, foodPP) {
   const domains = [];
 
-  // === TIMELINE ===
+  // === GUESTS — FIRST, BECAUSE EVERY OTHER NUMBER IS SIZED FROM IT ─────────
+  // Driven 2026-08-05: the reveal announced "4 items for 10 guests" three
+  // stages before it announced the ten guests. The count is not one more
+  // domain among seven — it is the input the food, the shopping and the day
+  // are all measured against, and the food stage already carries a comment
+  // about the confusion of two headcounts appearing near each other. Telling
+  // the story in the order the plan was actually derived is what makes "all of
+  // this came straight from your answers" legible rather than merely true.
+  // === GUESTS (if meaningful) ===
   try {
-    const ros = effectiveRos(event) || [];
-    if (ros.length > 0) {
+    const guestCount = resolveGuestCount(event);
+    if (guestCount > 0) {
       domains.push({
-        type: 'timeline',
-        data: { cueCount: ros.length, ros }
+        type: 'guests',
+        data: { guestCount, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
       });
     }
   } catch {}
@@ -316,13 +324,18 @@ function assemblePlanningDomains(event, profile, foodPP) {
     }
   } catch {}
 
-  // === GUESTS (if meaningful) ===
+  // === THE DAY — LAST OF THE PLANNING BEATS, because it is assembled FROM
+  // them. Driven 2026-08-05: the day used to open the reveal, promising 11
+  // moments before the count, the stay and the food that shape them had been
+  // named. Revealed here it reads as the culmination of her answers rather
+  // than a flourish that arrives ahead of its own inputs.
+  // === TIMELINE ===
   try {
-    const guestCount = resolveGuestCount(event);
-    if (guestCount > 0) {
+    const ros = effectiveRos(event) || [];
+    if (ros.length > 0) {
       domains.push({
-        type: 'guests',
-        data: { guestCount, rsvpCount: (event.guests || []).filter(g => g && g.rsvp === 'Yes').length || 0 }
+        type: 'timeline',
+        data: { cueCount: ros.length, ros }
       });
     }
   } catch {}
