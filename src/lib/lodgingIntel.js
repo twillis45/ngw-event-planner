@@ -150,6 +150,11 @@ export function normalizeLodgingOption(raw, i = 0) {
     sleeps: num(o.sleeps),
     beds: num(o.beds),
     pricePerNight: num(o.pricePerNight),
+    // 'room' when the rate buys ONE ROOM (a hotel) rather than the whole place
+    // (a rental). Decides whether rate x nights is a stay total or a fragment
+    // of one — see the allIn block. Absent means whole-place, the long-standing
+    // default for every Airbnb/Vrbo row.
+    rateBasis: o.rateBasis === 'room' ? 'room' : null,
     totalPrice: num(o.totalPrice),
     // FEES ARE PART OF THE PRICE (host directive 2026-07-28: "include fees in
     // rate for the per person cost"). Cleaning, service and taxes are what turn
@@ -416,10 +421,29 @@ export function lodgingIntel(event) {
       o.checks.push({ key: 'votes', ok: true,
         text: `${o.votes} ${o.votes === 1 ? 'person prefers' : 'people prefer'} this one${voted ? ` — ${voted} of ${roster.length || voted} have said` : ''}.` });
     }
-    // The real number: what the stay costs plus what the platform adds.
+    // ── A ROOM RATE IS NOT A STAY (2026-08-06, review board, both override
+    // seats). A rental's nightly rate buys the WHOLE HOUSE, so rate x nights is
+    // the stay. A hotel's buys ONE ROOM, and a party of ten needs about five of
+    // them. This computed rate x nights either way and then divided the result
+    // across every guest — so a $212 hotel read "$848 ÷ 10 ≈ $85 a person" when
+    // the real figure is nearer $4,240. That is the SAME defect this file fixed
+    // twice today (bed count read as capacity; a nightly rate stored as a stay
+    // total), surviving one multiplication further along.
+    //
+    // We do not know the room count and will not guess one: a party does not
+    // divide into rooms by arithmetic (couples, children, singles). So a
+    // per-room rate yields NO stay total and NO per-person split until a host
+    // says how many rooms. The rate itself still shows — it is real, and it is
+    // labelled as what it is.
+    o.perRoom = o.rateBasis === 'room';
     o.allIn = o.totalPrice != null ? o.totalPrice + (o.fees || 0)
-      : (o.pricePerNight != null && nights ? o.pricePerNight * nights + (o.fees || 0) : null);
+      : (!o.perRoom && o.pricePerNight != null && nights
+        ? o.pricePerNight * nights + (o.fees || 0) : null);
     o.feesKnown = o.fees != null;
+    if (o.perRoom && o.pricePerNight != null) {
+      o.checks.push({ key: 'total', ok: false,
+        text: `$${o.pricePerNight.toLocaleString()} a night for ONE ROOM${nights ? ` — ${nights} night${nights === 1 ? '' : 's'}` : ''}. How many rooms you need decides the real total, so nothing is totalled here yet.` });
+    }
     if (o.allIn != null) {
       o.checks.push({ key: 'total', ok: true,
         text: o.feesKnown
@@ -2112,8 +2136,17 @@ export function lodgingStage(event, intel) {
     : blocked ? 'no-town'
     : 'looking';
 
+  // ── UNKNOWN IS NOT A YES (2026-08-06, review board — two seats) ───────────
+  // `o.sleeps == null` used to COUNT AS FITTING, so a shortlist of hotels —
+  // which never carry an occupancy figure — rendered "3 places, 3 that fit."
+  // in the largest type on the screen, while every card eight lines below read
+  // "Fits 0 of your 3 musts" and the comparison table showed "—" for Sleeps.
+  // One screen, three different answers, and the loudest one was a claim over
+  // an absence. The hotel path made that the guaranteed outcome rather than an
+  // edge case.
   const guests = (li && li.guests) || 0;
-  const fits = opts.filter((o) => !guests || o.sleeps == null || o.sleeps >= guests).length;
+  const fits = guests ? opts.filter((o) => o.sleeps != null && o.sleeps >= guests).length : opts.length;
+  const unweighed = guests ? opts.filter((o) => o.sleeps == null).length : 0;
 
   // ONE dominant line per stage, and the ONE act that moves it forward. Both
   // state what is true right now — never a target, never a guess.
@@ -2129,7 +2162,11 @@ export function lodgingStage(event, intel) {
       act: 'Search Airbnb',
     },
     weighing: {
-      title: opts.length === 1 ? 'One place so far.' : `${opts.length} places, ${fits} that fit.`,
+      title: opts.length === 1 ? 'One place so far.'
+        : !guests ? `${opts.length} places.`
+        : unweighed === opts.length ? `${opts.length} places — none say how many they sleep.`
+        : unweighed ? `${opts.length} places, ${fits} known to fit.`
+        : `${opts.length} places, ${fits} that fit.`,
       why: 'Side by side on the things you said matter. Nothing here is scraped.',
       act: 'Make one the pick',
     },
@@ -2236,7 +2273,16 @@ export function lodgingCompare(event, intel) {
     rows,
     guests,
     // Stated on the surface so the dashes are never read as "the house lacks it".
-    note: '“—” means the listing didn’t say. Nothing here is scraped — these are the numbers you typed.',
+    //
+    // ── "THE NUMBERS YOU TYPED" WAS FALSE FOR MOST ROWS (2026-08-06) ────────
+    // The tail used to read "these are the numbers you typed". A pasted results
+    // page fills these values by READING, and each card's own provenance table
+    // says so ("read from the link") — so one screen carried two contradictory
+    // accounts of where the same price came from. The Grandmother seat: "I know
+    // I didn't type them. Once I catch it in one sentence I stop believing the
+    // other twelve." Provenance is per-value and already recorded per option;
+    // this footer must not overwrite it with a blanket claim.
+    note: '“—” means the listing didn’t say. Nothing here is scraped — each card says which of its numbers were read and which you typed.',
   };
 }
 

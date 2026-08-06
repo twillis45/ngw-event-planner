@@ -27,6 +27,7 @@ import {
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
+import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -543,7 +544,9 @@ function Looking({ event, patch }) {
       // (see extractHotelCandidates). Storing a nightly rate as a stay total
       // made the per-person split divide one room-night across the whole party.
       ...(c.priceBasis === 'night'
-        ? { pricePerNight: c.priceShown }
+        // A hotel card's rate buys ONE ROOM. `rateBasis` carries that through
+        // so nothing downstream multiplies it into a whole-party stay total.
+        ? { pricePerNight: c.priceShown, rateBasis: 'room' }
         : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
@@ -592,7 +595,9 @@ function Looking({ event, patch }) {
       // (see extractHotelCandidates). Storing a nightly rate as a stay total
       // made the per-person split divide one room-night across the whole party.
       ...(c.priceBasis === 'night'
-        ? { pricePerNight: c.priceShown }
+        // A hotel card's rate buys ONE ROOM. `rateBasis` carries that through
+        // so nothing downstream multiplies it into a whole-party stay total.
+        ? { pricePerNight: c.priceShown, rateBasis: 'room' }
         : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
@@ -892,6 +897,13 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
           const hist = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
           const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
           const total = o.allIn != null ? o.allIn : o.totalPrice;
+          // A per-room rate has no honest stay total (see the allIn block in
+          // lodgingIntel — a party of ten needs rooms we have not been told
+          // about). Suppressing the total must not also hide the one number we
+          // DO know: show the rate, and say what it buys. "More honest but less
+          // useful" was the Grandmother seat's explicit warning about this fix.
+          const perRoomRate = (total == null && o.rateBasis === 'room' && o.pricePerNight != null)
+            ? `${money(o.pricePerNight)} a night · one room` : null;
           return (
             <article className="lc-card" key={o.id}>
               {/* FLOAT ON THE PHOTO, NOT STACKED BELOW IT (host, 2026-08-05:
@@ -916,7 +928,9 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                   <>
                     <div className="lc-card-top">
                       <h3 className="lc-card-name">{o.label}</h3>
-                      {money(total) && <span className="lc-card-price">{money(total)}</span>}
+                      {money(total)
+                        ? <span className="lc-card-price">{money(total)}</span>
+                        : perRoomRate ? <span className="lc-card-price lc-card-price-room">{perRoomRate}</span> : null}
                     </div>
                     <p className="lc-card-sub">
                       {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
@@ -1421,9 +1435,142 @@ function Booked({ event, patch }) {
           </div>
         ))}
       </Panel>
+      <Backups event={event} patch={patch} />
+      <WhosBooked event={event} patch={patch} />
     </>
   );
 }
+
+// ─── THE TWO HALVES THAT WENT DARK ON 2026-08-05 ────────────────────────────
+// `goToLodgingCockpit` (HostShellV2.jsx:3176) navigates away before the old
+// sheet can open — the file says so itself at :10233, "This sheet is unreachable
+// now." Two things went with it, and the review board's event-industry seat
+// ruled them the real wound: three of four `dest_lodging` options are ROOM
+// BLOCKS, and a block is a rate, a code, a cutoff, backups, and the chase.
+//
+// The code and the cutoff came back in the same commit as this. These are the
+// other two. Nothing here is new intelligence — `travelPlan` has computed the
+// roster and `notBookedCount` the whole time, and `draftLodgingNote` has always
+// written the backups into the guest note. They had no reachable intake, so
+// they read empty and the engines had nothing to say.
+
+function Backups({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const saved = Array.isArray(stay.backupOptions) ? stay.backupOptions : [];
+  // ── A DRAFT ROW HAS TO SURVIVE BEING TYPED IN (2026-08-06, board) ─────────
+  // This filtered `!b.name.trim()` out on EVERY KEYSTROKE and then re-rendered
+  // from the filtered result. So typing into the note of a not-yet-named row
+  // deleted the row mid-keystroke — the field bounced back to its placeholder
+  // and the text was gone. "Add another backup" was inert for the same reason:
+  // it appended an empty row that its own filter dropped before paint.
+  //
+  // The engine's contract is right — travelPlan keeps only NAMED backups — so
+  // the filter belongs on what is PERSISTED, never on what is rendered. The
+  // draft lives here; only named rows reach the event.
+  const [rows, setRows] = useState(() => (saved.length ? saved : [{ name: '', note: '' }]));
+  const commit = (next) => {
+    setRows(next);
+    patch({ lodging: { ...stay, backupOptions: next.filter((b) => String(b.name || '').trim()) } });
+  };
+  const setAt = (i, key) => (e) => commit(rows.map((b, j) => (j === i ? { ...b, [key]: e.target.value } : b)));
+  const shown = rows;
+  // Only offer another row once the last one has a name — otherwise there is
+  // already an empty row on screen and the button would add a second.
+  const canAdd = shown.length > 0 && String(shown[shown.length - 1].name || '').trim();
+  return (
+    <Panel label="IF THE FIRST ONE FILLS">
+      {/* travelPlan keeps `{name, note}` and drops any row with no name
+          (travelPlan.js:328-331); draftLodgingNote reads them into the guest
+          note. Same field names, so what is typed here is what those read. */}
+      <p className="lc-note">Rooms sell out. A second place, named now, is what the group gets told instead of nothing.</p>
+      {shown.map((b, i) => (
+        <div key={i} className="lc-row-form">
+          <input className="lc-field" value={b.name || ''} onChange={setAt(i, 'name')}
+            placeholder={i === 0 ? 'Backup place' : 'One more option'}
+            aria-label={`Backup place ${i + 1}`} />
+          <input className="lc-field" value={b.note || ''} onChange={setAt(i, 'note')}
+            placeholder="Farther? Cheaper?" aria-label={`What to know about backup ${i + 1}`} />
+        </div>
+      ))}
+      {canAdd && (
+        <button className="cta soft" onClick={() => setRows([...rows, { name: '', note: '' }])}>
+          Add another backup
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function WhosBooked({ event, patch }) {
+  let plan = null;
+  try { plan = buildTravelPlan(event); } catch { plan = null; }
+  const lg = (plan && plan.relevant && plan.lodging) ? plan.lodging : null;
+  const roster = (lg && Array.isArray(lg.roster)) ? lg.roster : [];
+
+  // HEADCOUNT MODE IS NOT ZERO. travelPlan returns notBookedCount:null when
+  // there is no guest list, because it cannot know — and this must not render
+  // "0 still need a room" over an absence. Same rule as everywhere else here.
+  if (!lg) return null;
+  if (!roster.length) {
+    return (
+      <Panel label="WHO’S BOOKED A ROOM">
+        <p className="lc-note">
+          {plan.rosterMode
+            ? 'Everyone on the list has declined — nobody needs a room right now.'
+            : 'Add the guest list and this tracks who still needs a room.'}
+        </p>
+      </Panel>
+    );
+  }
+
+  const setStatus = (row, status) => {
+    const gs = (event.guests || []).filter(Boolean).map((g) => ({ ...g }));
+    const i = gs.findIndex((g) => (row.guestId != null && g.id === row.guestId)
+      || (row.guestId == null && String(g.name || '').trim() === row.name));
+    if (i < 0) return;
+    const tr = (gs[i].travel && typeof gs[i].travel === 'object') ? gs[i].travel : {};
+    const cur = (tr.lodging && typeof tr.lodging === 'object') ? tr.lodging : {};
+    patch({ guests: gs.map((g, j) => (j === i
+      ? { ...g, travel: { ...tr, lodging: { ...cur, status, updatedAt: Date.now() } } }
+      : g)) });
+  };
+
+  const left = lg.notBookedCount;
+  return (
+    <Panel label="WHO’S BOOKED A ROOM">
+      {/* THE CUTOFF IS WHY THIS EXISTS. A group rate expires, and the work it
+          creates is chasing the people who have not booked yet — which is
+          exactly what `notBookedCount` feeds (HostShellV2.jsx:1534 raises
+          "Group rate ends — N of M have no room yet" from it). Without this
+          list the deadline had nobody attached to it. */}
+      <p className="lc-note">
+        {left === 0
+          ? 'Everyone has a room.'
+          : `${left} of ${roster.length} still need a room${String(stayDeadline(event)).trim() ? ' before the rate ends' : ''}.`}
+      </p>
+      {roster.map((r, i) => (
+        <button key={r.guestId != null ? r.guestId : `g${i}`} className="lc-staged"
+          onClick={() => setStatus(r, nextLodgingStatus(r.status))}
+          aria-label={`${r.name} — ${LODGING_STATUS_LABEL[r.status]}. Tap to change.`}>
+          <span className="lc-staged-main">
+            <span className="lc-staged-name">{r.name}</span>
+            {(r.roommate || r.accessibility) && (
+              <span className="lc-staged-sub">
+                {[r.roommate ? `rooming with ${r.roommate}` : null, r.accessibility].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </span>
+          <span className="lc-staged-fit">{LODGING_STATUS_LABEL[r.status]}</span>
+        </button>
+      ))}
+    </Panel>
+  );
+}
+
+const stayDeadline = (event) => {
+  const stay = (event && event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  return stay.deadline || '';
+};
 
 // UX_03 MULTI-VIEWPORT DOCTRINE (rule 5: "No information-dense tables. Use
 // stacked card layouts" — rule 6 sanctions horizontal scroll ONLY for image
@@ -1639,7 +1786,25 @@ const CSS = `
 .lc-stayhero-flat{margin-bottom:14px;}
 .lc-stayhero-flat-sub{margin-top:4px;}
 .lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
-.lc-card-nophoto{height:100%;width:100%;display:flex;flex-direction:column;
+/* ── height:100% CLIPPED THE ONLY BUTTON THAT MATTERS (2026-08-06) ──────────
+   Found by the board and reproduced by measurement. The photo branch overlays
+   name/price/Pick ON the image (absolute, inside .lc-card-photo-wrap), so a
+   full-bleed hero costs it nothing. This branch puts them in NORMAL FLOW below
+   the placeholder — and "height:100%" against a stretch-sized card meant the
+   placeholder consumed the entire card, pushing the body past "overflow:hidden"
+   on .lc-card. Measured on a 3-hotel shortlist: card 372→731, placeholder 359px
+   (the whole card), "Pick this place" at 822 — 91px BELOW the card's bottom
+   edge, and document.elementFromPoint returned .lc-why-sum instead of the
+   button. Not visible, not hit-testable.
+
+   It became unreachable the moment hotel photos started being refused by
+   isAllowedMedia earlier the same day: before that every hotel card HAD a photo
+   and took the working branch, so the privacy fix — which is right — silently
+   closed the hotel path. An all-hotel shortlist could not reach "picked" at all.
+
+   Bounded so the placeholder is a hero and not the whole card. Gated by an e2e
+   assertion that the button is hit-testable on a photo-less card. */
+.lc-card-nophoto{height:clamp(120px,20vh,180px);width:100%;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
   padding:0;font:inherit;}
 .lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
@@ -1656,6 +1821,8 @@ const CSS = `
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 .lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:#fff;margin:0;min-width:0;
   text-shadow:0 1px 3px rgba(0,0,0,.5);}
+/* A room rate is a smaller claim than a stay total, and reads as one. */
+.lc-card-price-room{font-size:13px;font-weight:500;white-space:nowrap;}
 .lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
 .lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}

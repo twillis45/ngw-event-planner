@@ -121,3 +121,60 @@ describe('the booking code and the rate deadline reach their engines', () => {
     expect(lodgingIsHeld(heldEvent({ code: 'NEW123' }))).toBe(true);
   });
 });
+
+// ─── THE TWO HALVES THAT WERE DARK (2026-08-06) ─────────────────────────────
+// The board's event-industry seat ruled the room-block half the real wound:
+// `goToLodgingCockpit` navigates away from the sheet that held the backups list
+// and the who's-booked roster, and the file says so itself ("This sheet is
+// unreachable now"). travelPlan and draftLodgingNote had computed and written
+// both the whole time — they just had no reachable intake, so they read empty.
+//
+// These lock the ENGINE CONTRACT the reconnected intake writes against, so a
+// future port cannot quietly write fields nothing reads (which is exactly how
+// `bookingCode` vs `code` happened).
+describe('the reconnected room-block intake feeds its engines', () => {
+  const { buildTravelPlan } = require('../travelPlan');
+  const { draftLodgingNote } = require('../doItForMe');
+
+  const withGuests = (lodging, guests) => ({
+    id: 'ev-block', type: 'Birthday', isDestination: true,
+    venueCity: 'Santa Fe, NM', date: '2027-09-15', endDate: '2027-09-19',
+    guestCount: 3, guests, lodging,
+  });
+
+  test('backups typed as {name, note} reach travelPlan and the guest note', () => {
+    const ev = withGuests({
+      hotelName: 'The Eldorado', code: 'NGW2027',
+      backupOptions: [{ name: 'Hotel Santa Fe', note: 'Farther, cheaper' }, { name: '', note: 'dropped' }],
+    }, []);
+    const plan = buildTravelPlan(ev);
+    // A row with no name is dropped by the engine — so the always-empty input
+    // row the intake renders can never become a phantom backup.
+    expect(plan.lodging.backupOptions).toEqual([{ name: 'Hotel Santa Fe', note: 'Farther, cheaper' }]);
+    expect(String(draftLodgingNote(ev).body || draftLodgingNote(ev))).toMatch(/Hotel Santa Fe/);
+  });
+
+  test('who has not booked is counted off the guests the intake writes', () => {
+    const guests = [
+      { id: 'g1', name: 'Ada', rsvp: 'yes', travel: { lodging: { status: 'booked' } } },
+      { id: 'g2', name: 'Grace', rsvp: 'yes', travel: { lodging: { status: 'not_started' } } },
+      { id: 'g3', name: 'Kay', rsvp: 'yes' },
+    ];
+    const plan = buildTravelPlan(withGuests({ hotelName: 'The Eldorado' }, guests));
+    expect(plan.lodging.roster).toHaveLength(3);
+    // A guest with no lodging entry at all is not_started, never assumed booked.
+    expect(plan.lodging.notBookedCount).toBe(2);
+  });
+
+  test('with NO guest list the count is null, never a confident zero', () => {
+    const plan = buildTravelPlan(withGuests({ hotelName: 'The Eldorado' }, []));
+    expect(plan.lodging.notBookedCount).toBeNull();
+    expect(plan.lodging.roster).toEqual([]);
+  });
+
+  test('the status cycle the row taps through is the engine’s own', () => {
+    const { nextLodgingStatus } = require('../travelPlan');
+    expect(nextLodgingStatus('not_started')).toBe('booked');
+    expect(nextLodgingStatus(nextLodgingStatus(nextLodgingStatus('not_started')))).toBe('not_started');
+  });
+});
