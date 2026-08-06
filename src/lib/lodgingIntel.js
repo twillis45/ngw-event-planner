@@ -31,6 +31,7 @@ import { spanNights, spanEnd } from './dates';
 import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
 import { isAllowedMedia } from './lodgingBookmarklet';
+import { googleTravelTs } from './googleTravelTs';
 import { DEST_LODGING_OPTIONS } from './playbooks';
 
 // ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
@@ -1381,16 +1382,31 @@ export function lodgingSearchLinks(event) {
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || (Array.isArray(ev.guests) ? ev.guests.length : 0) || null;
   const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;
 
-  const said = [
-    ev.lodgingStyle ? String(ev.lodgingStyle).trim() : null,
-    place,
-    start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
-    guests ? `${guests} guests` : null,
-    budget ? `under $${budget.toLocaleString()}` : null,
-  ].filter(Boolean);
+  // ── EACH DOOR SAYS WHAT ITS OWN URL CARRIES (2026-08-06) ───────────────────
+  // One shared `said` list used to be handed to all three doors under the copy
+  // "Opens with your own answers already in it — …". It was not true of any of
+  // them. Only Airbnb's URL takes the budget (`price_max`) and the must-have
+  // filters; Vrbo's takes destination, dates and adults and nothing else; the
+  // style rides the Google query alone; and until this same commit the Hotels
+  // door carried neither the dates nor the party at all.
+  //
+  // An overclaim here is not cosmetic. The line's whole job is to tell the host
+  // she does not need to re-enter her answers — a host who believes "under
+  // $3,000" reached Vrbo stops checking, and the door quietly shows her houses
+  // at any price. So each door now states its own truth, built from the params
+  // that door actually sets rather than from one list written once.
+  const dateSaid = start && end ? `${niceDay(start)}–${niceDay(end)}` : null;
+  const guestSaid = guests ? `${guests} guests` : null;
+  const budgetSaid = budget ? `under $${budget.toLocaleString()}` : null;
 
   const musts = mustHavesFor(ev);
-  for (const m of musts) if (m.search) said.push(m.label.toLowerCase());
+  const mustSaid = musts.filter((m) => m.search).map((m) => m.label.toLowerCase());
+
+  // Airbnb: checkin / checkout / adults / price_max / the must-have filters,
+  // with the town in the path slug.
+  const said = [place, dateSaid, guestSaid, budgetSaid, ...mustSaid].filter(Boolean);
+  // Vrbo: destination / startDate / endDate / adults. No budget, no filters.
+  const saidVrbo = [place, dateSaid, guestSaid].filter(Boolean);
   const ab = new URLSearchParams();
   if (start) ab.set('checkin', start);
   if (end) ab.set('checkout', end);
@@ -1439,17 +1455,51 @@ export function lodgingSearchLinks(event) {
   // but Google echoes the query verbatim into its own search box, so the host
   // READS it the moment the door opens. The `href` exemption exists for
   // parameters a platform parses (Airbnb's `checkin=`), not for prose that
-  // happens to travel inside a URL. Google parses "Jun 17-Jun 21" perfectly
-  // well, so there is nothing to trade away.
+  // happens to travel inside a URL.
+  //
+  // ── THE CLAIM THAT USED TO SIT HERE WAS FALSE (corrected 2026-08-06) ───────
+  // It read: "Google parses 'Jun 17-Jun 21' perfectly well, so there is nothing
+  // to trade away." Driven live: it does not. Google takes the PLACE out of `q`
+  // and discards the dates and the party, then falls back to its own defaults —
+  // tomorrow, one night, two guests. So the host arrived at a page of one-night,
+  // two-guest, wrong-month prices, and extractHotelCandidates() would store one
+  // of those as `priceShown`. Same defect class as the occupancy/capacity bug:
+  // a number carrying the page's authority while meaning something else.
+  //
+  // The dates and the party now ride `ts`, the one parameter Google actually
+  // parses — see googleTravelTs.js for the decoded shape and what was proven
+  // live. `ts` is null when the trip cannot be carried truthfully (no dates, or
+  // a stay already under way, which Google silently ignores); in that case the
+  // door still opens on the place, and `applied` below does not claim otherwise.
+  //
+  // The prose dates came OUT of `q` in the same move. With `ts` carrying them,
+  // leaving "Jun 17–Jun 21" in the search box would tell the host one story
+  // while the date pickers beside it told another.
+  //
   // SEARCH FOR THE KIND OF PLACE SHE ASKED FOR. When the host named a stay
   // style ("resort spa"), it leads the hotel query — searching "hotels in Santa
   // Fe" for someone who said "resort spa" hands back the wrong 115 results.
   const style = String((ev.lodgingStyle || '')).trim();
-  const hotelQ = [style || 'hotels', 'in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
-    guests ? `for ${guests} guests` : null].filter(Boolean).join(' ');
+  const hotelQ = [style || 'hotels', 'in', place].join(' ');
+  const hotelTs = googleTravelTs({ place, start, end, guests });
+  const hotelHref = `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`
+    + (hotelTs ? `&ts=${hotelTs}` : '');
+  // The style is in `q`; the dates and party are in `ts` — and ONLY when `ts`
+  // was actually built. No budget and no must-have filters ride this door.
+  const saidHotels = [
+    style || null,
+    place,
+    hotelTs ? dateSaid : null,
+    hotelTs ? guestSaid : null,
+  ].filter(Boolean);
 
+  // `carriesDates` is what the SURFACES branch on. HostShellV2 had to hard-code
+  // "Hotels open at the town only" on 2026-08-05 because that was then true;
+  // now that it can be false, no surface should be deciding it from the door's
+  // id. It is one boolean, set by the code that builds each URL.
+  const dated = !!(start && end);
   return [
-    { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said },
+    { id: 'airbnb', label: 'Search Airbnb', href: `https://www.airbnb.com/s/${encodeURIComponent(abSlug)}/homes?${ab.toString()}`, applied: said, carriesDates: dated },
     // ── RULING REVERSED BY THE HOST, 2026-08-03 ──────────────────────────────
     // Vrbo now gets the SAME constructed search Airbnb gets: destination,
     // startDate, endDate, adults — all the host's own answers, carried into
@@ -1465,12 +1515,32 @@ export function lodgingSearchLinks(event) {
     //
     // `criteria` stays. It is no longer the only path, but a host who prefers
     // to type into Vrbo's own picker still has the words, and it costs nothing.
-    { id: 'vrbo', label: 'Open Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: said,
+    { id: 'vrbo', label: 'Open Vrbo', href: `https://www.vrbo.com/search?${vr.toString()}`, applied: saidVrbo,
       // Host language: `criteria` is what she READS. The URL above carries ISO
       // because Vrbo parses it; that split is exactly what the ISO gate encodes.
-      criteria: [place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · ') },
-    { id: 'hotels', label: 'Search hotels', href: `https://www.google.com/travel/search?q=${encodeURIComponent(hotelQ)}`, applied: said },
+      criteria: [place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null, guests ? `${guests} guests` : null].filter(Boolean).join(' · '),
+      carriesDates: dated },
+    { id: 'hotels', label: 'Search hotels', href: hotelHref, applied: saidHotels, carriesDates: !!hotelTs },
   ];
+}
+
+/**
+ * What EVERY door in the list actually carries — the intersection, not the
+ * union.
+ *
+ * One line sits under all three doors saying "opens with your own answers
+ * already in it". Rendering `links[0].applied` there spoke for Airbnb and put
+ * its budget and must-have filters into a sentence that also covered Vrbo and
+ * Google, neither of which takes them. The intersection is the only list that
+ * sentence can honestly show. Underclaiming for Airbnb is the safe direction:
+ * a host who re-checks a filter loses a moment, one who trusts a filter that
+ * was never sent gets the wrong houses.
+ */
+export function appliedByEveryDoor(links) {
+  const lists = (Array.isArray(links) ? links : [])
+    .map((l) => (l && Array.isArray(l.applied) ? l.applied : []));
+  if (!lists.length) return [];
+  return lists[0].filter((item) => lists.every((l) => l.includes(item)));
 }
 
 /**

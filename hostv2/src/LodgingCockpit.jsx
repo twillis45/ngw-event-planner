@@ -23,7 +23,7 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
-  kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
+  kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
@@ -642,7 +642,21 @@ function Looking({ event, patch }) {
               onClick={() => setWentLooking(true)}>{shortDoor(l)} <span aria-hidden="true">↗</span></a>
           ))}
         </div>
-        {links[0] && <p className="lc-note">Opens with your own answers already in it — {(links[0].applied || []).join(' · ')}.</p>}
+        {/* THIS LINE NEVER GOT THE 2026-08-05 CORRECTION the live sheet got, so
+            the two surfaces disagreed: HostShellV2 said hotels open on the town
+            alone, and this one — under the same three doors — said all three
+            arrive pre-filled. It also rendered links[0].applied, which is
+            AIRBNB'S list, putting its budget and must-have filters into a
+            sentence covering doors that never took them. Both halves are fixed
+            here from the same source the live sheet uses. */}
+        {links[0] && (
+          <p className="lc-note">
+            {links.every((l) => l.carriesDates) ? 'These open' : 'Airbnb and Vrbo open'} with your own answers already in it — {appliedByEveryDoor(links).join(' · ')}.
+          </p>
+        )}
+        {links.some((l) => l.id === 'hotels' && !l.carriesDates) && (
+          <p className="lc-note">Hotels open at the town only — set the dates and guests once you’re there.</p>
+        )}
         {!links.length && <p className="lc-note">No doors yet — the town is missing.</p>}
       </Panel>
       <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>

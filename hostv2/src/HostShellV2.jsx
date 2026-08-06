@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -10616,18 +10616,22 @@ export default function HostShellV2() {
                                 ))}
                               </div>
                               {/* SAY IT FOR THE DOORS IT IS TRUE OF (all three driven live,
-                                  2026-08-05). One sentence sat under three buttons claiming
-                                  every one of them opens pre-filled. Airbnb and Vrbo do —
-                                  their real results pages come back carrying these dates.
-                                  Google's hotel search does NOT: neither the prose in `q`
-                                  nor checkin/checkout params move it, so it opens on the
-                                  town alone and the host sets the rest there. Claiming
-                                  otherwise is the kind of small lie she finds out about one
-                                  tap later. */}
+                                  2026-08-05; the hotels half re-driven and FIXED 2026-08-06).
+                                  One sentence sat under three buttons claiming every one of
+                                  them opens pre-filled. Airbnb and Vrbo did; Google's hotel
+                                  search did not — neither the prose in `q` nor
+                                  checkin/checkout params moved it, so it opened on the town
+                                  alone. That is no longer true: the dates and the party now
+                                  ride Google's own `ts` parameter (googleTravelTs.js), so
+                                  the caveat below is CONDITIONAL, not permanent. It still
+                                  fires when `ts` could not be built truthfully — no dates
+                                  yet, or a stay already under way, which Google ignores.
+                                  The list itself is the intersection across the doors, so
+                                  one sentence never speaks for a door that never got it. */}
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                Airbnb and Vrbo open with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
+                                {links.every((l) => l.carriesDates) ? 'These open' : 'Airbnb and Vrbo open'} with your own answers already in it — {appliedByEveryDoor(links).join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
-                              {links.some((l) => l.id === 'hotels') && (
+                              {links.some((l) => l.id === 'hotels' && !l.carriesDates) && (
                                 <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
                                   Hotels open at the town only — set the dates and guests once you’re there.
                                 </p>
