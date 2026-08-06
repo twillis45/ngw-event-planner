@@ -4,46 +4,61 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-06
 
 ---
 
 ## 1. Branch state
 
-**Branch:** `feat/lodging-cockpit-demo` - **HEAD `cee3e559`** - pushed, 5 ahead of
-`origin/main` (`8093dfa2`). **One uncommitted file:** `hostv2/src/LodgingCockpit.jsx`.
+**Branch:** `feat/lodging-search-offer` - **HEAD `0d273115`**, 3 ahead of `origin/main`.
+PRs #79/#80 are closed/merged; **#81 merged 2026-08-06**; **#82 is open and green on all
+five checks** (jest, e2e, backend, cra-build, hostv2-build).
 
-**PR #70 MERGED 2026-08-03** (the 25-commit span-intelligence / knowledge-governance stack).
-`main` has since taken #75-#78. The 2026-08-03 "25 commits UNPUSHED" state is closed.
+| Commit | What |
+|---|---|
+| `d4ab4f5f` | occupancy is the bed count, not the capacity - and amenities were on the page |
+| `961a86b8` | the Hotels door carries the trip (dates + party) instead of a sentence about it |
+| `0d273115` | the review board killed the URL-capture feature and found six live defects under it |
 
-**Two PRs open, both green on all six CI checks** (jest, e2e, backend, cra-build, hostv2-build):
+**`public/hostv2/` IS NOW GITIGNORED** (`.gitignore:62`, zero tracked files). Section 2's
+old warning about it being a committed artifact that conflicts across branches is CLOSED -
+that was item 3 on this list and it is done.
 
-| PR | Branch | What | Note |
-|---|---|---|---|
-| #79 | `feat/lodging-sheet-calm` | The lodging sheet leads with the decision, folds the machinery | `0be2c4bf` |
-| #80 | `feat/lodging-cockpit-demo` | `lodgingStage(event)` cockpit at `?demo=lodging`, derived never stored | **contains #79** |
+### The Hotels door carried nothing, and said it did
 
-Both are based on `main`, and #79's commit is an ANCESTOR of #80 -- so merge #79 first, or
-merge #80 and let #79 close itself out. Do not merge them as independent PRs.
+Driven live 2026-08-06: Google reads the PLACE out of `?q=` and **discards the dates and the
+party**, falling back to tomorrow / one night / two guests. `checkin=`/`checkout=`/`adults=`
+are ignored too. So the door opened on wrong-month, wrong-party prices and
+`extractHotelCandidates` would store one as `priceShown`. The code comment above it asserted
+the opposite ("Google parses 'Jun 17-Jun 21' perfectly well") and had been wrong since the
+door was built.
 
-**Uncommitted, unbuilt, undriven:** `LodgingCockpit.jsx` retires the file-local `.lc-cta`
-button vocabulary for the app's real `.cta` / `.cta soft` atoms, and merges the paste + read
-buttons into one whose label follows the box. Both moves are backed by
-[`../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md`](../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md)
-section 5. **Nothing in it has reached a browser yet.**
+`ts` is the only parameter that carries a trip - a base64url protobuf, decoded from a real
+shared link and re-captured from Google's own picker. Full shape in `src/lib/googleTravelTs.js`.
+Three findings that are not obvious and cost real time to establish:
+
+- **Name-only works.** The captured links carry a Knowledge Graph id we never hold for a town
+  the host typed; field `3.1.2.7` alone is honoured.
+- **The party size IS a repeat count** - one submessage per adult. No integer field holds it.
+- **A past check-in is silently ignored** and Google reverts to defaults. Two verification
+  attempts were misread as "the mechanism doesn't work" because of this. Emitting a `ts`
+  anyway would restore the original bug in a form that LOOKS fixed, so it returns null.
+
+**Do not propose passing a hotel NAME as the place** to get a per-hotel dated door - driven,
+returns an empty page (83 chars, no results). That field is a location.
 
 ---
 
-## 2. Gates -- CI green at `cee3e559`; the working-tree change is UNGATED
+## 2. Gates -- all green locally at `0d273115` (2026-08-06)
 
-CI on PR #80 at `cee3e559`: jest, e2e, backend, cra-build, hostv2-build all SUCCESS
-(2026-08-04 12:07Z). **No local gate run this session, and the uncommitted
-`LodgingCockpit.jsx` change has not been built, gated or driven.** The figures below are the
-2026-08-03 local numbers at `7bbe1ad6`, carried forward unchanged.
+Jest **5430 passed / 1 skipped** - **358 suites** - `gate:cra` GREEN (242 of 245
+baselined) - `gate:hostv2` GREEN (no drift, 14 files, after `sync:hostv2`) -
+`gate:knowledge` GREEN - hostv2 build + `check-parity` GREEN. CI on PR #82 green on all
+five checks.
 
-Jest **5195 passed / 1 skipped** - **334 suites** - `gate:cra` GREEN (242 of 245
-baselined) - `gate:hostv2` GREEN (no drift, 12 files) - `gate:knowledge` GREEN -
-hostv2 build + `check-parity` GREEN.
+**NOT run: the lodging e2e.** Its port (5233) was held by an orphaned `vite preview` that
+session did not start, and `playwright.config` sets `reuseExistingServer: false` on purpose -
+so a reused server would have tested a STALE bundle. Kill the orphan and run it.
 
 Two gates that had been red for weeks were closed this session:
 
@@ -53,10 +68,11 @@ Two gates that had been red for weeks were closed this session:
 - **`gate:cra`** was red on two dead symbols in `AdminConsole.jsx` left behind when
   Phase 5D moved the merge inside `exportBase`.
 
-**`public/hostv2/` is a committed BUILD ARTIFACT rewritten by 12 commits on this
-branch.** Linear, it is noise; across two parallel branches every one of those files
-conflicts and minified bundles cannot be hand-resolved. This is the mechanism behind
-the 2026-07-30 sweep. Moving it to a CI build is the only fix that scales.
+**RESOLVED: `public/hostv2/` is gitignored** (`.gitignore:62`, zero tracked files). It used
+to be a committed build artifact rewritten by every hostv2 commit, whose minified bundles
+could not be hand-resolved across parallel branches -- the mechanism behind the 2026-07-30
+sweep. It is still a real artifact on disk that a deploy serves, so **`npm run sync:hostv2`
+before trusting `gate:hostv2`** remains true; what changed is that it no longer conflicts.
 
 Commands that matter:
 
@@ -114,17 +130,27 @@ Four things to hold in your head:
 
 ## 5. Next actions, in order
 
-1. **Land the lodging pair.** #79 then #80 (or #80 alone -- it contains #79). Both green.
-   Finish the uncommitted `LodgingCockpit.jsx` first: build, drive at `?demo=lodging`, commit.
-2. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
+1. **Land #82**, then the two commits after it. All gates green locally.
+2. **The room-block half of lodging is still dark** - the biggest open item, and it is a
+   RECONNECTION not a build. A review board convened 2026-08-06 (8 seats, full ruling in
+   `0d273115`) put this above everything else on this surface: three of four `dest_lodging`
+   options are room blocks, and `goToLodgingCockpit` (`HostShellV2.jsx:3176`) navigates away
+   from the sheet that held them. The file says so itself at `:10233` - "This sheet is
+   unreachable now."
+   - **Reconnected in `0d273115`:** the booking code (it was written to `lodging.bookingCode`
+     while every engine reads `lodging.code`, so `draftLodgingNote` - the guest note that IS
+     the group-lodging deliverable - silently omitted it), and **Group rate ends** →
+     `lodging.deadline`, which `travelPlan` turns into the dated obligation.
+   - **STILL DARK:** the backups list, and **"Who's booked a room"** (`HostShellV2.jsx:11565+`).
+     For a block the roster IS the work - the cutoff matters because you chase the people who
+     have not booked.
+3. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
    name the **7 bare `done`/`View` labels** (file:line listed; read each call site first --
    do not guess the words), amend **UX_06 to sentence case** (shipped labels run 179 sentence
    to 14 Title, so doctrine is the holdout), kill the **180deg** gradient keeping `#4E6877`
    and `--sheen`, then put the number in the label where it is already in scope.
    Deferred to its own audit: classifying the record-only surfaces tap-to-result (only 2 of
    277 labels say `Mark`/`Record`, which is not plausible -- but it is a flag, not a finding).
-3. **Get `public/hostv2/` out of version control** and build it in CI -- the single
-   highest-leverage change for parallel sessions (see section 2).
 4. **Label the 397 unlabeled priced items**, then point the research factory at the 34
    zero-cited playbooks (`wedding` first). Unchanged from 2026-07-31 and still the
    binding constraint.
@@ -165,6 +191,21 @@ Four things to hold in your head:
 - **hostv2-drift**: rebuild with `npm run sync:hostv2` (Node 20) before trusting the gate.
 - **Never claim absent/dead/disconnected from one probe.** Four such claims were wrong or
   imprecise in the 2026-07-31 audit. Close the search space first.
+- **A pasted page is not a DOM.** Building a parser against markup (hrefs, `aria-label`,
+  anchor counts) assumes the clipboard carried it; a plain-text copy carries none of it.
+  Match on VISIBLE TEXT where the discrimination has to hold. Three markup discriminators
+  for "is this a results list or one hotel" were measured live and all three failed - `/aclk`
+  counts (9 vs 67, both pages have them), "exactly one non-Google anchor" (the detail page
+  has 27), and entity hrefs.
+- **One field, two meanings, is this repo's recurring defect.** Three instances landed in a
+  single day 2026-08-06: `occupancy` (bed count) read as guest capacity, the Hotels door's
+  dates read as carried when Google dropped them, and a hotel's NIGHTLY rate stored as a stay
+  total then split across the party. Each wore `sources: 'read'`. When a value arrives from a
+  platform, establish what the platform MEANS by it before storing it - a field that returns
+  a plausible number is not the same as a field that means what you assumed.
+- **Choosing is not booking, on every surface.** `lodgingIsHeld` is the one predicate;
+  `phaseProgress` had its own looser copy (bare `hotelName`) and marked a mere PICK as a held
+  room. Gated by `lodgingHeldNotPicked.test.js` from both ends.
 - **Every number ships with its command.** Proof ledger:
   `review-artifacts/2026-07-31-intelligence-audits/12-PROOF-LEDGER.md`. If a figure is not
   in the ledger, it is unproven -- say so.
