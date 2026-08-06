@@ -15,7 +15,7 @@
 //     readiness signal our whole product rests on." Lodging had exactly this
 //     shape and no way to express it: a house gets taken, a rate lapses, a host
 //     is outbid.
-const { lodgingTitleFor, lodgingTrouble } = require('../lodgingIntel');
+const { lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble } = require('../lodgingIntel');
 
 describe('a candidate gets a name a host recognises', () => {
   it('prefers what the host typed above everything', () => {
@@ -39,6 +39,31 @@ describe('a candidate gets a name a host recognises', () => {
     // nothing known at all — the surface must ask rather than label
     expect(lodgingTitleFor({})).toBe('');
     expect(lodgingTitleFor(null)).toBe('');
+  });
+});
+
+// Live drive 2026-08-05: a paste of plain listing text (no real DOM markup)
+// recovered links but no names, yet LodgingCockpit.jsx was crediting the
+// platform-generic fallback ("Airbnb listing") as `sources.label: 'read'` —
+// every card on the deck showed "Name — read from the link" for a name we
+// wrote in ourselves. lodgingTitleIsReal is the gate that stops that: true
+// only when a REAL name/kind/place was found, false for the bare fallback.
+describe('the fallback title is never credited as "read"', () => {
+  it('a typed or read name is real', () => {
+    expect(lodgingTitleIsReal({ label: 'The Ranch House' })).toBe(true);
+    expect(lodgingTitleIsReal({ name: 'Lakefront A-frame' })).toBe(true);
+    expect(lodgingTitleIsReal({ kind: 'cabin', place: 'McHenry' })).toBe(true);
+  });
+
+  it('the bare platform fallback is NOT real, even though lodgingTitleFor returns text for it', () => {
+    const cand = { url: 'https://www.airbnb.com/rooms/111' };
+    expect(lodgingTitleFor(cand)).toBe('Airbnb listing');
+    expect(lodgingTitleIsReal(cand)).toBe(false);
+  });
+
+  it('nothing at all is not real', () => {
+    expect(lodgingTitleIsReal({})).toBe(false);
+    expect(lodgingTitleIsReal(null)).toBe(false);
   });
 });
 

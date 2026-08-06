@@ -25,7 +25,7 @@ import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
-  lodgingTitleFor, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
+  lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
@@ -461,7 +461,7 @@ function Looking({ event, patch }) {
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
       sources: {
-        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
@@ -501,7 +501,7 @@ function Looking({ event, patch }) {
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
       sources: {
-        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
@@ -644,7 +644,8 @@ function Looking({ event, patch }) {
             setText(pasted);
             add(pasted);
           }}
-          placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
+          placeholder="…or paste it here" aria-label="Paste a listing link or a results page"
+          autoCapitalize="off" autoCorrect="off" spellCheck="false" />
         {/* TRUTHFUL ABOUT WHICH PATH TOUCHES A SERVER. This read "every card on
             it is read, with no server call" — true of a pasted PAGE, which is
             parsed here, and false of a bare LINK, which we fetch. One sentence
@@ -731,7 +732,21 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
             <article className="lc-card" key={o.id}>
               {o.photoUrl
                 ? <Thumb src={o.photoUrl} label={o.label} big />
-                : <div className="lc-card-nophoto"><span>no picture yet</span></div>}
+                : (
+                  /* UX_08: missing data says "missing," never nothing — a
+                     fabricated stock photo is not an option. But a small grey
+                     box was an inert placeholder eating hero space it hadn't
+                     earned (host, 2026-08-05: "we shouldn't have these
+                     placeholders showing... listings that take real estate of
+                     the viewport"). Same honest label, same hero-sized area —
+                     now the area itself is the "add a picture" act, not a
+                     dead box with the CTA duplicated further down the card. */
+                  <button type="button" className="lc-card-nophoto" onClick={() => onPhoto(o)}
+                    aria-label={`Add a picture for ${o.label}`}>
+                    <span className="lc-card-nophoto-add">+ Add a picture</span>
+                    <span className="lc-card-nophoto-sub">no picture yet — this one's still real</span>
+                  </button>
+                )}
               <div className="lc-card-body">
                 <div className="lc-card-top">
                   <h3 className="lc-card-name">{o.label}</h3>
@@ -742,6 +757,24 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                     nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
                     .filter(Boolean).join(' · ')}
                 </p>
+                {/* IN THE SAME VIEWPORT AS THE OPTION (host, 2026-08-05: "make
+                    the pick should be in the viewport with the option") — this
+                    used to be one shared row below the whole scrollable deck,
+                    reachable only after scrolling past every card's price
+                    history, must-chips and the full read/typed table. Each
+                    card now carries its own act, right under the fact that
+                    justifies it, so picking never requires leaving the card
+                    you're looking at. Renamed too: "Make it the pick" was a
+                    noun phrase describing the outcome, not the act — UX_07's
+                    own Level-1 rule is "use the real verb." */}
+                <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0' }}>
+                  <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>
+                  {String(o.url || '').trim() && (
+                    <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
+                      style={{ textDecoration: 'none' }}>Open the listing ↗</a>
+                  )}
+                  <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
+                </div>
                 {hist && <p className="lc-card-was">{hist.full}</p>}
                 {sc && sc.met && sc.met.length > 0 && (
                   <div className="lc-chips">
@@ -790,21 +823,10 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
       <div className="lc-dots" aria-hidden="true">
         {live.map((o, i) => <span key={o.id} className={'lc-dot' + (i === at ? ' is-on' : '')} />)}
       </div>
-      <div className="lc-ctas lc-ctas-wrap">
-        <button className="cta" aria-label={`Make ${live[at] ? live[at].label : 'this place'} the pick`}
-          onClick={() => live[at] && onPick(live[at].id)}>Make it the pick</button>
-        {live[at] && String(live[at].url || '').trim() && (
-          <a className="cta soft" href={live[at].url} target="_blank" rel="noopener noreferrer"
-            style={{ textDecoration: 'none' }}>Open the listing ↗</a>
-        )}
-        {/* The card shows "no picture yet" — the act that fixes it belongs on
-            the card, not on a duplicate row further down the screen. */}
-        {live[at] && !String(live[at].photoUrl || '').trim() && (
-          <button className="cta soft" onClick={() => onPhoto(live[at])}>Add a picture</button>
-        )}
-        <button className="cta soft" aria-label={`${live[at] ? live[at].label : 'This place'} is gone`}
-          onClick={() => live[at] && onGone(live[at].id)}>It’s gone</button>
-      </div>
+      {/* Pick / open / gone now live INSIDE each card (2026-08-05) — a shared
+          row here duplicated them a second time, this time detached from
+          whichever card was actually snapped to. The "no picture yet" area
+          is the add-a-picture act, same pattern. */}
       {/* The board footer states this as a rule, so the surface states it too. */}
       <p className="lc-note">Ranked by fit, then price. No countdowns, no deal badges — the only price claim here is your own.</p>
       {/* HotelTonight's "Why these hotels?": the curation explains itself ON
@@ -890,6 +912,20 @@ function Weighing({ event, intel, patch }) {
         <p className="lc-strong">{trouble.headline}</p>
         <p className="lc-body">{trouble.detail}</p>
       </Panel>}
+      {/* ── THE DECK COMES FIRST (host, 2026-08-05: "layout has to capture
+             swipe the ones that fit in the viewport. Copy is too dense
+             above") — UX_03 rule 4: the primary CTA visible without
+             scrolling. The deck IS the primary act on this stage (make the
+             pick); the kitchen-consequence explainer and the side-by-side
+             detail table are secondary reads that used to sit above it,
+             pushing the one thing a host actually does off the first
+             screen. They still exist, just after, not before. */}
+      <Choices opts={opts} event={event} intel={intel}
+        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
+        onPhoto={askPhoto} basis={basis} />
+      {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
+        <p className="lc-body">{rec.line}</p>
+      </Panel>}
       {/* ── THE ANSWER, WHERE IT CAME FROM, AND A WAY TO CHANGE IT ──────────
           Two defects found by driving this on 2026-08-04:
 
@@ -934,12 +970,6 @@ function Weighing({ event, intel, patch }) {
       {!adding && cmp && (
         <button className="cta soft" onClick={() => setAdding(true)}>Add another place</button>
       )}
-      <Choices opts={opts} event={event} intel={intel}
-        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
-        onPhoto={askPhoto} basis={basis} />
-      {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
-        <p className="lc-body">{rec.line}</p>
-      </Panel>}
       {/* ── ONE CHOOSER, NOT TWO (host, 2026-08-04: "the make the call section
              on the bottom of screen I believe will be redundant") ──────────
           It was. The deck above already carries every LIVE place — including
@@ -1136,23 +1166,44 @@ function Booked({ event, patch }) {
   );
 }
 
+// UX_03 MULTI-VIEWPORT DOCTRINE (rule 5: "No information-dense tables. Use
+// stacked card layouts" — rule 6 sanctions horizontal scroll ONLY for image
+// carousels / swipe lanes). A CSS-grid table with a row per attribute and a
+// column per option is exactly the pattern rule 5 bans on a phone; the deck
+// below (Choices — a scroll-snapped image carousel) is the doctrine-legal
+// form of the SAME comparison. So the grid renders at tablet+ width, where a
+// side-by-side table is the more legible read (host, in a client meeting,
+// showing the screen — UX_03's own tablet framing); below that it steps
+// aside for a one-line pointer at the swipe deck, which already carries every
+// value this table does, just as stacked cards instead of dense rows.
 function Transpose({ cmp }) {
   const grid = { gridTemplateColumns: `minmax(92px,1.3fr) repeat(${cmp.columns.length}, minmax(0,1fr))` };
   return (
     <Panel label={`SIDE BY SIDE${cmp.guests ? ` · YOUR ${cmp.guests}` : ''}`}>
-      <div className="lc-t-head" style={grid}>
-        <span />
-        {cmp.columns.map((c) => <span key={c.id} className="lc-col">{c.label}</span>)}
-      </div>
-      {cmp.rows.map((r) => (
-        <div key={r.id} className="lc-t-row" style={grid}>
-          <span className="lc-row-label">{r.label}</span>
-          {r.values.map((v, i) => (
-            <span key={i} className={'lc-t-val' + (v === '—' ? ' is-gap' : r.flags[i] === 'short' ? ' is-short' : '')}>{v}</span>
-          ))}
+      {/* "Below" was true when this table sat above the deck; the reorder
+          that put the deck first (2026-08-05, "layout has to capture swipe
+          the ones that fit in the viewport") left this pointing the wrong
+          way — a host scrolling down from THE ONES THAT FIT into this note
+          would be told to look below for something already behind them. On a
+          phone the grid itself stays hidden (UX_03 rule 5), so there is
+          nothing further to point at: the deck above already IS the
+          comparison. */}
+      <p className="lc-note lc-t-mobile-note">The places you swiped through above are this comparison — a wider screen shows it as one table instead.</p>
+      <div className="lc-t-wide">
+        <div className="lc-t-head" style={grid}>
+          <span />
+          {cmp.columns.map((c) => <span key={c.id} className="lc-col">{c.label}</span>)}
         </div>
-      ))}
-      <p className="lc-note">{cmp.note}</p>
+        {cmp.rows.map((r) => (
+          <div key={r.id} className="lc-t-row" style={grid}>
+            <span className="lc-row-label">{r.label}</span>
+            {r.values.map((v, i) => (
+              <span key={i} className={'lc-t-val' + (v === '—' ? ' is-gap' : r.flags[i] === 'short' ? ' is-short' : '')}>{v}</span>
+            ))}
+          </div>
+        ))}
+        <p className="lc-note">{cmp.note}</p>
+      </div>
     </Panel>
   );
 }
@@ -1253,7 +1304,13 @@ const CSS = `
    outbound rather than a filled in-app key. Hover, press and focus all come
    from ".cta" and the global ring — restating them here (as the first cut did)
    was three duplicated rules and a second focus colour. */
-.lc-door{border:1px solid var(--line);text-decoration:none;}
+/* Balanced, not ragged (host, 2026-08-05): "Airbnb" / "Vrbo" / "Hotels" are
+   three different lengths, and a plain flex row sizes each to its own text —
+   three pills of visibly different widths reading as three separate weights
+   instead of one row of three equal doors. flex:1 makes all three share the
+   row evenly; text-align centers each label inside its share. */
+.lc-door{border:1px solid var(--line);text-decoration:none;flex:1 1 0;text-align:center;
+  justify-content:center;}
 .lc-warn{color:var(--warn);}
 .lc-demo{color:var(--warn);letter-spacing:.09em;}
 .lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
@@ -1310,9 +1367,16 @@ const CSS = `
 .lc-deck::-webkit-scrollbar{display:none;}
 .lc-card{scroll-snap-align:start;flex:0 0 88%;max-width:340px;min-width:0;
   background:var(--sheen);border:1px solid var(--hair);border-radius:14px;overflow:hidden;}
-.lc-card-photo{display:block;width:100%;height:172px;object-fit:cover;background:var(--hair);}
-.lc-card-nophoto{height:172px;display:grid;place-items:center;background:var(--hair);}
-.lc-card-nophoto span{font:400 13px/1.3 Inter,sans-serif;color:var(--muted);}
+/* Hero-sized (host, 2026-08-05): 172px read as a strip, not the dominant
+   element on the card the swipe deck's own comment calls the primary act.
+   clamp() keeps it real-estate-dominant across phone heights without ever
+   pushing the price/CTA row below the fold on a short device. */
+.lc-card-photo{display:block;width:100%;height:clamp(240px,44vh,440px);object-fit:cover;background:var(--hair);}
+.lc-card-nophoto{height:clamp(240px,44vh,440px);width:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
+  padding:0;font:inherit;}
+.lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
+.lc-card-nophoto-sub{font:400 12px/1.3 Inter,sans-serif;color:var(--muted);}
 .lc-card-body{padding:14px;}
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 .lc-card-name{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
@@ -1343,6 +1407,17 @@ const CSS = `
 /* GREY, NEVER RED (research rec #7): a house that is too small is
    disqualifying, not faulty. Red here would be a semantic lie under UX_02. */
 .lc-t-val.is-short{color:var(--muted);font-weight:400;font-size:12px;}
+/* UX_03 rule 5: no information-dense tables on a phone — the grid steps
+   aside for the swipe deck below 640px. A real @media query, not
+   @container: nothing in this file declares container-type on an ancestor,
+   so the @container rule below (min-width:900px) never actually activates —
+   a media query needs no such setup and is guaranteed to apply. */
+.lc-t-mobile-note{display:none;}
+.lc-t-wide{display:block;}
+@media (max-width:639px){
+  .lc-t-wide{display:none;}
+  .lc-t-mobile-note{display:block;}
+}
 @container (min-width:900px){
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
   .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);

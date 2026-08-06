@@ -1037,6 +1037,17 @@ export default function HostShellV2() {
   useEffect(() => clearRevealTimers, []);
   const [typeOpen, setTypeOpen] = useState(false);   // occasion browser: collapsed until asked
   const [typeQuery, setTypeQuery] = useState('');
+  // DENSE ON ARRIVAL (host, 2026-08-05: "why is creation pulling all of
+  // those choices, bad and dense. pull what the host needs and no more") —
+  // the free-text box failing to detect a type at all (an ambiguous or very
+  // short description) used to dump the ENTIRE catalog, every parent group,
+  // unconditionally. A search box already existed right above it; the fix is
+  // to trust it — six common occasions plus search by default, the full
+  // grouped catalog only on an explicit ask, same progressive-disclosure
+  // pattern as every other picker in this file (count, date).
+  const [browseAllTypes, setBrowseAllTypes] = useState(false);
+  const QUICK_TYPES = ['Birthday', 'Wedding', 'Anniversary', 'Graduation', 'Reunion', 'Get-Together']
+    .filter((t) => HOST_TYPES.includes(t));
 
   // Type-ahead over the catalog, backed by the REAL alias resolver — "bbq",
   // "crab boil", "40th" all resolve through the taxonomy's own regexes.
@@ -5804,7 +5815,7 @@ export default function HostShellV2() {
                                 ))
                                 : <p className="grounding">Nothing matches — “bbq”, “boil”, and “get together” all work.</p>}
                             </div>
-                          ) : (
+                          ) : browseAllTypes ? (
                             TYPE_GROUPS.map(([group, list]) => (
                               <div key={group} className="shelf-wrap">
                                 <div className="shelf-label">{group}</div>
@@ -5815,6 +5826,18 @@ export default function HostShellV2() {
                                 </div>
                               </div>
                             ))
+                          ) : (
+                            <>
+                              <div className="chips" style={{ marginTop: 'var(--sp-3)' }}>
+                                {QUICK_TYPES.map(t => (
+                                  <button key={t} className="chip" aria-pressed={effType === t} onClick={() => { pickType(t); setCreateEdit(null); }}>{t.replace(' Party', '')}</button>
+                                ))}
+                              </div>
+                              <button type="button" style={{ marginTop: 'var(--sp-2)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                onClick={() => setBrowseAllTypes(true)}>
+                                <span style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>See every occasion  ▸</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       )}

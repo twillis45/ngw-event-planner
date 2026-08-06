@@ -1555,6 +1555,22 @@ export function lodgingTitleFor(cand) {
   return '';   // nothing known — the surface must ask, not guess
 }
 
+// lodgingTitleFor's own last resort — "Airbnb listing" / "Vrbo listing" — is
+// a platform-generic label WE wrote in, not a name read off the page. A
+// caller crediting `lodgingTitleFor(c)` truthy as `sources.label: 'read'`
+// (LodgingCockpit.jsx, found live 2026-08-05: a paste with no real names
+// still showed "Name — read from the link" on every card) claims provenance
+// for a value we made up ourselves. This mirrors lodgingTitleFor's own
+// precedence but stops before the platform fallback, so it is true exactly
+// when a REAL name was read or typed.
+export function lodgingTitleIsReal(cand) {
+  const c = cand || {};
+  if (String(c.label || '').trim()) return true;
+  if (String(c.name || '').trim()) return true;
+  if (String(c.kind || '').trim() || String(c.place || '').trim()) return true;
+  return false;
+}
+
 // ─── IT WENT WRONG, AND IT IS STILL RUNNING (Blink addendum, 2026-08-01) ───
 // "Report a Problem sits at the same level as Mark As Complete — not buried,
 // not a fallback — and forks to End Trip OR Continue Trip. Reporting a problem
