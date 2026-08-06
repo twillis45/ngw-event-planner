@@ -945,9 +945,33 @@ function Weighing({ event, intel, patch }) {
       <Choices opts={opts} event={event} intel={intel}
         scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
         onPhoto={askPhoto} basis={basis} />
-      {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
-        <p className="lc-body">{rec.line}</p>
-      </Panel>}
+      {/* THE PANEL THAT NEVER RENDERED (found 2026-08-05, single-threaded
+          re-test of the review-board pass — "which is the recommended?").
+          lodgingRecommendation() returns {pick, why, unweighed, scores, tie}
+          — it has never had a `.line` field, so `rec.line` was always
+          undefined and this whole panel was dead on every event, forever.
+          Built here from the real fields instead: the pick's own name plus
+          its strongest reason (why[0], the same reasons the deck's cards
+          already show per-option — nothing new invented), a tie said
+          honestly rather than an arbitrary winner, and `unweighed` surfaced
+          as what the recommendation could NOT account for — this is the
+          direct answer to "do the options fit our guest size?": if sleeps
+          was never known, unweighed says so instead of the pick silently
+          skipping the guest-fit question. */}
+      {rec && (rec.tie ? (
+        <Panel label="WHAT THE PLAN WOULD PICK">
+          <p className="lc-body">Too close to call — your top places are tied on what you told us matters. This one's yours to make.</p>
+        </Panel>
+      ) : rec.pick && (
+        <Panel label="WHAT THE PLAN WOULD PICK">
+          <p className="lc-body">
+            {rec.pick.label}{rec.why && rec.why[0] ? ` — ${rec.why[0]}.` : '.'}
+          </p>
+          {rec.unweighed && rec.unweighed.length > 0 && (
+            <p className="lc-note">Couldn't weigh {rec.unweighed.join(' or ')} — none of your places say.</p>
+          )}
+        </Panel>
+      ))}
       {/* ── THE ANSWER, WHERE IT CAME FROM, AND A WAY TO CHANGE IT ──────────
           Two defects found by driving this on 2026-08-04:
 
