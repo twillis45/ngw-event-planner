@@ -29,6 +29,7 @@ import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd } from './dates';
 import { venueFor } from './venueFor';
 import { startTimeIsConfirmed } from './startTime';
+import { lodgingIsHeld } from './lodgingIntel';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -171,8 +172,18 @@ function preProgress(ev, phase, daysOut) {
   //
   // Priority 4 — above location (5) and food (6). Rooms sell out and a group rate
   // carries a deadline; a menu does not.
-  const _lodgingPicked = !!(ev.lodging && typeof ev.lodging === 'object'
-    && String(ev.lodging.hotelName || '').trim());
+  // ── A PICK IS NOT A HOLD (2026-08-06, review board, event-pro seat) ───────
+  // This read `ev.lodging.hotelName` alone. `stayFromPick` writes that field
+  // from a PICK, so one press of "Make it the pick" marked the whole lodging
+  // axis DONE — the command board read "sorted" with no rooms held, no booking
+  // code and no group-rate cutoff on file. For a group stay that is the exact
+  // wrong moment to go quiet: rooms sell out and the rate carries a deadline,
+  // which is the very reason this axis outranks food.
+  //
+  // lodgingStage already had the correct test and disagreed with this line
+  // about the same event. It is now one shared predicate (lodgingIsHeld), so
+  // the surface and the readiness board cannot drift apart again.
+  const _lodgingPicked = lodgingIsHeld(ev);
   // Stays at 4 throughout: it must keep outranking food ("rooms sell out, menus
   // do not"). What changes is that a MISSING location now outranks IT -- see the
   // location axis above.

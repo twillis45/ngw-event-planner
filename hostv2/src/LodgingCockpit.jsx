@@ -24,7 +24,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
@@ -346,8 +346,14 @@ function Looking({ event, patch }) {
     // ('' === ''): ticking one hotel's checkbox ticked or unticked all of
     // them. `_k` falls back to url when there is one (unchanged behavior for
     // Airbnb/Vrbo) and to a per-paste index otherwise.
+    // ALWAYS index-prefixed (2026-08-06, review board). The `c.url ||` form
+    // above still collided whenever two candidates in one paste shared a url —
+    // the same '' === '' failure this key was invented to end, just needing two
+    // identical hrefs instead of two empty ones. The index makes it unique by
+    // construction. Nothing compares `_k` to a url: it is Set membership and a
+    // React key, and nothing else (see 490, 536, 571-577).
     let cands = (found.candidates || []).filter(Boolean)
-      .map((c, i) => ({ ...c, _k: c.url || `k${i}-${c.name || ''}` }));
+      .map((c, i) => ({ ...c, _k: `k${i}-${c.url || c.name || ''}` }));
 
     // ── PARITY WITH THE LIVE INTAKE (2026-08-03) ───────────────────────────
     // The live sheet's readPage does four things this did not, and each one is
@@ -361,8 +367,32 @@ function Looking({ event, patch }) {
     //   · advise per DEVICE on failure — the live code carries a board finding
     //     that telling a host on a phone to press ⌘A was "the single documented
     //     abandonment point in the feature".
-    const known = new Set((event.lodgingOptions || []).map((o) => String((o && o.url) || '').split('?')[0]));
-    const fresh = cands.filter((c) => c && !known.has(String(c.url || '').split('?')[0]));
+    // ── A URL-LESS ROW IS NOT EVERY OTHER URL-LESS ROW (2026-08-06) ─────────
+    // Six seats of the review board arrived at this line independently, and two
+    // reproduced it. `known` was built from EVERY stored option including the
+    // url-less ones, so it contained ''. Hotel candidates are url-less by
+    // design (extractHotelCandidates refuses Google's /aclk ad redirects), so
+    // every one of them matched '' and was dropped as a duplicate. The host
+    // read "All 9 of those are already on your list." about nine hotels she had
+    // never seen — a confident, specific, FALSE claim, on the second paste,
+    // exactly when she was starting to trust the surface.
+    //
+    // One typed or hand-added option was enough to poison every hotel paste
+    // that followed, so this was never hotels-only.
+    //
+    // Dedup is a URL question. A candidate with no url cannot be answered by it
+    // and must not be silently discarded by it — it goes to staging, where the
+    // host can see it and untick it herself.
+    const known = new Set(
+      (event.lodgingOptions || [])
+        .map((o) => String((o && o.url) || '').split('?')[0])
+        .filter(Boolean),
+    );
+    const fresh = cands.filter((c) => {
+      if (!c) return false;
+      const u = String(c.url || '').split('?')[0];
+      return u ? !known.has(u) : true;
+    });
     const dupes = cands.length - fresh.length;
     try { const r = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 });
       cands = (r && r.ranked && r.ranked.length) ? r.ranked : fresh; } catch { cands = fresh; }
@@ -460,22 +490,31 @@ function Looking({ event, patch }) {
       const touch = typeof window !== 'undefined' && window.matchMedia
         && window.matchMedia('(pointer:coarse)').matches;
       // HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05: "honest copy").
-      // Airbnb and Vrbo card links are the only ones this file can read —
-      // Hotels has no card parser (no verified Google results fixture to
-      // build one against). The generic "tap Share, then Copy Link, try
-      // again" message below implies retrying would work; for a Hotels-door
-      // paste it never will, so say that specifically instead of the generic
-      // line. door (from looksLikeSearchUrl) only catches a BARE search
-      // link with no whitespace — a real "select all, copy" of the whole
-      // results page is exactly the shape this checks for instead.
+      // door (from looksLikeSearchUrl) only catches a BARE search link with no
+      // whitespace — a real "select all, copy" of the whole results page is a
+      // different shape, checked separately.
+      //
+      // ── TWO SENTENCES CORRECTED 2026-08-06 (review board) ─────────────────
+      // The line here used to read "Hotels can't be read back the way Airbnb
+      // and Vrbo can yet — open the hotel's own booking page and add what it
+      // says by hand below." Three seats flagged it. It was true when written
+      // on 2026-08-05 and false the next morning: extractHotelCandidates
+      // shipped, and a hotels results page IS read (name, price, rating, star
+      // class, amenities, photo). It also pointed at an "add by hand below"
+      // control that has never existed anywhere in this file. So the surface
+      // was talking the host out of a feature it has, and sending her to a
+      // form that isn't there.
+      const detailPage = looksLikeHotelDetailPage(src);
       const hotelsPage = looksLikeHotelsResultsPage(src);
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
-        : hotelsPage
-          ? 'Hotels can’t be read back the way Airbnb and Vrbo can yet — open the hotel’s own booking page and add what it says by hand below.'
-          : touch
-            ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
-            : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+        : detailPage
+          ? 'That’s one hotel’s page — go back to the list of hotels and copy that instead. It reads every hotel on it at once.'
+          : hotelsPage
+            ? 'I couldn’t find any hotels on that page — copy the whole list (⌘A then ⌘C) and paste it again.'
+            : touch
+              ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+              : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
       return;
     }
     setReadErr('');
@@ -498,7 +537,14 @@ function Looking({ event, patch }) {
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
+      // stay total. `priceBasis` says which, set by the extractor that read it
+      // (see extractHotelCandidates). Storing a nightly rate as a stay total
+      // made the per-person split divide one room-night across the whole party.
+      ...(c.priceBasis === 'night'
+        ? { pricePerNight: c.priceShown }
+        : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -509,7 +555,9 @@ function Looking({ event, patch }) {
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
-        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(c.priceShown != null
+          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
+          : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
@@ -538,7 +586,14 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
+      // stay total. `priceBasis` says which, set by the extractor that read it
+      // (see extractHotelCandidates). Storing a nightly rate as a stay total
+      // made the per-person split divide one room-night across the whole party.
+      ...(c.priceBasis === 'night'
+        ? { pricePerNight: c.priceShown }
+        : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -549,7 +604,9 @@ function Looking({ event, patch }) {
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
-        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(c.priceShown != null
+          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
+          : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
@@ -874,6 +931,24 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                       )}
                       <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
                     </div>
+                    {/* SAY IT, LIKE THE MISSING PHOTO ALREADY DOES (2026-08-06,
+                        Grandmother seat, overriding two design stars). Twelve
+                        lines below, a place with no photo says "no picture yet
+                        — this one's still real". A place with no LINK rendered
+                        nothing at all: the button was simply absent, with the
+                        neighbouring row's button still there. UX_08:179 bans
+                        exactly this ("hide the field entirely — user doesn't
+                        know it exists"), and the seat reported the consequence
+                        precisely: "I think I did it wrong" → she re-does the
+                        whole copy for nothing → the identical result → and now
+                        she distrusts the rows that DID work. The self-blame is
+                        the damage; one sentence removes it and tells her this
+                        is how hotels come back, not a failure she caused. */}
+                    {!String(o.url || '').trim() && (
+                      <p className="lc-note" style={{ margin: '6px 0 0' }}>
+                        No link — Google’s hotel cards point at its advertisers, not the hotel. This one’s still real.
+                      </p>
+                    )}
                   </>
                 );
                 return o.photoUrl ? (
@@ -1256,7 +1331,10 @@ function Weighing({ event, intel, patch }) {
 function Picked({ event, intel, patch }) {
   const chosen = (intel && intel.chosen) || null;
   const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
-  const [code, setCode] = useState(stay.bookingCode || '');
+  // `code` is canonical (travelPlan and the guest note read it); `bookingCode`
+  // is what this panel used to write alone, so it seeds from either.
+  const [code, setCode] = useState(stay.code || stay.bookingCode || '');
+  const [rateEnds, setRateEnds] = useState(stay.deadline || '');
   if (!chosen) return <Panel label="THE PICK"><p className="lc-note">Nothing picked yet — this is what it will show once one is.</p></Panel>;
   const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `$${Math.round(Number(n)).toLocaleString()}` : '—');
   const pickSub = [
@@ -1279,11 +1357,43 @@ function Picked({ event, intel, patch }) {
           Open it to book ↗
         </a>
       )}
+      {/* ── THE CODE WAS BEING WRITTEN WHERE NOTHING READS IT (2026-08-06) ───
+          Found tracing the review board's room-block ruling. This panel wrote
+          `lodging.bookingCode`. Every engine downstream reads `lodging.code`:
+          travelPlan.js:326 builds the group-rate obligation from it, and
+          draftLodgingNote (doItForMe.js:995-997) is the guest note itself —
+          "give them the code X when you book". So a host typed her booking code
+          into the live surface, saw it echoed back on the next screen, and the
+          note that goes to the guests silently omitted it. The one deliverable
+          of a group stay went out empty, and nothing anywhere said so.
+
+          Writes `code` — the key the engines read — and keeps `bookingCode` in
+          step so events saved before today, and the hero line below, keep
+          working. lodgingIsHeld accepts either.
+
+          GROUP RATE ENDS is the other half of the same wire. travelPlan reads
+          `lodging.deadline` and raises a real dated obligation from it
+          (HostShellV2.jsx:1534, "Group rate ends — N of M have no room yet"),
+          and the guest note says "Book by DATE — after that the group rate goes
+          away." No reachable field had written it since the old sheet went dark
+          on 2026-08-05, so the deadline the app warns about had no face. This
+          is the narrow port; the backups list and the who's-booked roster are
+          still dark and are a larger job. */}
       <div className="lc-row-form">
         <input className="lc-field" placeholder="Booking code" value={code}
           onChange={(e) => setCode(e.target.value)} aria-label="Booking code" />
-        <button className="cta" disabled={!code.trim()}
-          onClick={() => patch({ lodging: { ...stay, bookingCode: code.trim() } })}>Save the stay details</button>
+        <label className="lc-field-label" htmlFor="lc-rate-ends">Group rate ends</label>
+        <input className="lc-field" id="lc-rate-ends" type="date" value={rateEnds}
+          onChange={(e) => setRateEnds(e.target.value)}
+          aria-label="Last day to book at the group rate" />
+        <button className="cta" disabled={!code.trim() && !rateEnds}
+          onClick={() => patch({
+            lodging: {
+              ...stay,
+              ...(code.trim() ? { code: code.trim(), bookingCode: code.trim() } : null),
+              ...(rateEnds ? { deadline: rateEnds } : null),
+            },
+          })}>Save the stay details</button>
       </div>
     </Panel>
   );
@@ -1297,7 +1407,9 @@ function Booked({ event, patch }) {
     <>
       <Panel label="ON THE BOOKS">
         <StayHero photoUrl={stay.photoUrl} label={stay.hotelName}
-          sub={String(stay.bookingCode || '').trim() ? `Booking code ${stay.bookingCode.trim()}` : 'No booking code on file'} />
+          sub={String(stay.code || stay.bookingCode || '').trim()
+            ? `Booking code ${String(stay.code || stay.bookingCode).trim()}`
+            : 'No booking code on file'} />
       </Panel>
       <Panel label="THE MONEY-SAFE DATES">
         <p className="lc-note">Copy these off the booking confirmation — they are the ones with a deadline.</p>

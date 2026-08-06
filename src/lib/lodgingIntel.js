@@ -436,12 +436,28 @@ export function lodgingIntel(event) {
   // Grounded guidance — platform-aware, from the booking-risk registry.
   const guidance = [];
   const platforms = new Set(options.map((o) => o.platform).filter(Boolean));
-  guidance.push({
-    key: 'checkout',
-    text: 'Book through the platform’s own checkout, never off-platform — rebooking help, refunds, and fraud protection only exist inside it.',
-    sources: ['airbnb-rebooking', 'vrbo-book-confidence'],
-  });
-  if (platforms.has('airbnb') || platforms.size === 0) {
+  // ── A CLAIM RENDERS ONLY WHERE ITS SOURCES REACH (2026-08-06, review board)
+  // Every line below is sourced from Airbnb's and Vrbo's own consumer-
+  // protection regimes. They were rendering on ANY shortlist, including one
+  // made entirely of hotels — telling a host that "rebooking help, refunds and
+  // fraud protection" cover a booking that inherits none of them, and citing
+  // "Airbnb's inaccuracy claims close 72 hours after discovery" over a Marriott.
+  //
+  // `platforms.size === 0` was doing the damage: a hotel row has no url and so
+  // no platform, which made an all-hotel shortlist indistinguishable from an
+  // EMPTY one, and the empty case deliberately shows the general guidance.
+  // Splitting the two restores that default without extending these particular
+  // claims past the platforms that back them.
+  const noneYet = !options.length;
+  const hasRental = platforms.has('airbnb') || platforms.has('vrbo');
+  if (hasRental || noneYet) {
+    guidance.push({
+      key: 'checkout',
+      text: 'Book through the platform’s own checkout, never off-platform — rebooking help, refunds, and fraud protection only exist inside it.',
+      sources: ['airbnb-rebooking', 'vrbo-book-confidence'],
+    });
+  }
+  if (platforms.has('airbnb') || noneYet) {
     guidance.push({
       key: 'tier',
       text: 'The listing’s cancellation tier is visible before you book. A big group booking far out should weigh Flexible/Moderate listings — your own attrition shouldn’t be a total loss.',
@@ -827,6 +843,14 @@ export function extractListingCandidates(payload) {
     // stores that href as `url` — a real name/price/rating/amenities comes
     // back, "Open the listing" simply has nothing to point at, same honest
     // no-url pattern normalizeLodgingOption already supports.
+    // ONE HOTEL'S PAGE IS REFUSED OUTRIGHT, not fed to the card parser — see
+    // looksLikeHotelDetailPage for the row it used to manufacture. `source`
+    // names it so the surface can say the true thing instead of the generic
+    // "nothing readable", which would send the host back to re-copy a page that
+    // will never parse.
+    if (looksLikeHotelDetailPage(html)) {
+      return { candidates: [], source: 'HotelsDetail', linksOnly: false };
+    }
     if (looksLikeHotelsResultsPage(html)) {
       const candidates = extractHotelCandidates(toks);
       if (candidates.length) return { candidates, source: 'Hotels', linksOnly: false };
@@ -897,7 +921,45 @@ function extractHotelCandidates(toks) {
     if (name || priceShown != null) {
       out.push({
         url: '', name, kind: '', place: '', bedrooms: null, beds: null,
-        priceShown, rating, ratingCount, starClass, amenities, photo: g.img || '',
+        // ── THE NUMBER CARRIES ITS OWN MEANING (2026-08-06, review board) ──
+        // A Google hotel card quotes a NIGHTLY rate for one room — its own
+        // control says "Nightly price with fees", and a live 4-night Santa Fe
+        // search returned $125–$258 where a stay total would have been four
+        // times that. The Airbnb/Vrbo card that shares this field quotes a STAY
+        // TOTAL ("for 2 nights"), so one field held two different meanings and
+        // the caller could not tell them apart. It mapped both into
+        // `totalPrice`, and the per-person split then divided ONE ROOM FOR ONE
+        // NIGHT across the whole party — "$389 ÷ 12 ≈ $32 a person for 3
+        // nights" — under sources.totalPrice:'read'.
+        //
+        // Third instance of the same defect class in one day, after occupancy
+        // (bed count read as capacity) and the Hotels door's dates. Same shape
+        // every time: a number that means something other than what it is
+        // stored as, wearing 'read' provenance.
+        //
+        // The rate is not suppressed — routed. `pricePerNight` already exists
+        // and allIn computes rate × nights + fees, so the split becomes true.
+        // (`fees` is host-typed and absent here; Google's figure already
+        // includes fees, so nothing double-counts unless the host adds them.)
+        priceBasis: 'night',
+        priceShown, rating, ratingCount, starClass, amenities,
+        // ── THE SAME GATE THE RENTAL PATH USES (2026-08-06, review board) ──
+        // This stored `g.img` RAW while the Airbnb/Vrbo path one function down
+        // runs the identical value through isAllowedMedia. The asymmetry was
+        // not a judgement call, it was an omission, and the Liability seat
+        // found what it costs: `lodgingOptions` is on the guest-published
+        // whitelist (backend/app/routers/rsvp.py:105) and InviteV2 renders
+        // photoList(o) straight to guests — so an image host that never
+        // cleared the allowlist fires a request from EVERY GUEST'S BROWSER on
+        // a public invite link, disclosing who is looking at a private guest
+        // list and when, to a party that was never in the transaction.
+        //
+        // DELIBERATELY NOT WIDENING MEDIA_HOSTS to admit Google's CDN, which
+        // was the obvious "fix" and is the wrong one for exactly that reason.
+        // A hotel row therefore arrives without a photo, and the card already
+        // has honest words for that — "no picture yet, this one's still real"
+        // — plus a paste-your-own-photo path if the host wants one.
+        photo: isAllowedMedia(g.img) ? String(g.img).trim() : '',
       });
     }
   }
@@ -1737,6 +1799,47 @@ export function looksLikeHotelsResultsPage(text) {
   return /travel\/(search|hotels)\b/i.test(t) || /lh3\.googleusercontent\.com/i.test(t);
 }
 
+// ─── ONE HOTEL'S PAGE IS NOT A RESULTS PAGE (2026-08-06, review board) ──────
+// Two board seats found the same shipped defect and one reproduced it: a pasted
+// property DETAIL view satisfies looksLikeHotelsResultsPage above (it carries
+// both `travel/hotels` and lh3.googleusercontent.com), so it fell into
+// extractHotelCandidates — which groups on the <a> BOUNDARY and therefore
+// discards everything before the first anchor. The hotel's name, price and
+// rating all sit above the Visit-site button, so they were thrown away and the
+// first text AFTER that anchor became the name. The row committed as:
+//
+//   { name: 'Visit site', priceShown: null, amenities: ['Hot tub', 'Spa',
+//     'Guests loved the pools. Check-in 4pm. Cancellation policy varies…'] }
+//
+// — a shortlist row literally called "Visit site", with review prose stored as
+// amenities, carrying sources:{label:'read', amenities:'read'}. Fabricated
+// provenance is the one thing UX_08 forbids outright, and it shipped.
+//
+// WHY THIS MATCHES ON TEXT AND NOT ON MARKUP. The obvious discriminators were
+// measured live and all three failed:
+//   · `/aclk` anchor count — BOTH pages carry them (9 on the list, 67 on the
+//     detail view). Not a discriminator.
+//   · "exactly one absolute non-Google anchor" (proposed by a board seat) —
+//     the detail page carries 27. Measured; the proposal was wrong.
+//   · entity-href count — real (0 vs 37), but hrefs are the part of a paste
+//     least likely to survive: a plain-text copy drops them entirely.
+//
+// The tab strip is VISIBLE TEXT. Every paste carries it, HTML or plain, and it
+// appears on the detail view and never on the results list. Two independent
+// markers are required so an ordinary listing that happens to say "Overview"
+// cannot trip it.
+const DETAIL_TABS = ['overview', 'prices', 'reviews', 'location', 'about', 'photos'];
+export function looksLikeHotelDetailPage(text) {
+  const t = String(text || '');
+  if (!looksLikeHotelsResultsPage(t)) return false;
+  const low = t.toLowerCase();
+  const tabs = DETAIL_TABS.filter((w) => new RegExp(`(^|[>\\s])${w}([<\\s]|$)`, 'i').test(low)).length;
+  // The whole strip, or most of it plus the control that only a property page
+  // carries. "Visit site" is the label on the one real anchor a detail view
+  // has; a results page carried zero of them (measured live, twice).
+  return tabs >= 5 || (tabs >= 3 && /visit site/i.test(low));
+}
+
 // ─── A NAME, NOT "OPTION 1" (lodging listing research, 2026-08-01) ─────────
 // The paste flow's weakest moment is the instant after it works: a bare link
 // carries no name, so a real house landed on the shortlist called "Option 1"
@@ -1980,8 +2083,6 @@ export function lodgingStage(event, intel) {
   // stay produces — a name they typed off a confirmation, a code, or a date
   // from the money-safe chain. Never inferred from a pick alone: choosing is
   // not booking, and saying it is would be the kind of claim this file bans.
-  const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
-  const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
   // ── THE COMMENT ABOVE WAS RIGHT; THIS LINE USED TO CONTRADICT IT ──────────
   // Driving the cockpit on 2026-08-04, one press of "Make it the pick" moved
   // the host from "Weigh them" to "The stay is on the books." — skipping the
@@ -1995,9 +2096,12 @@ export function lodgingStage(event, intel) {
   // passed because it hand-built the event; nothing ever drove pick().
   //
   // A name only counts as a booking record when it did NOT come from the pick.
-  const namedOffConfirmation = !!String(stay.hotelName || '').trim() && stay.from !== STAY_FROM_PICK;
-  const booked = !!(namedOffConfirmation || String(stay.bookingCode || '').trim()
-    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
+  //
+  // MOVED OUT 2026-08-06 (review board). The test used to live only here, and
+  // phaseProgress had its own looser copy — a bare `hotelName` — so the
+  // readiness board called the stay sorted while THIS surface still called it a
+  // pick. It is one exported predicate now, read by both.
+  const booked = lodgingIsHeld(ev);
 
   let blocked = null;
   try { blocked = lodgingSearchBlocked(ev); } catch (_e) { blocked = null; }
@@ -2174,6 +2278,38 @@ export function lodgingCommitted(event) {
  * apart. Compared in lodgingStage; never write the literal in either place.
  */
 export const STAY_FROM_PICK = 'the option you picked';
+
+/**
+ * IS THE STAY ACTUALLY HELD — not merely picked.
+ *
+ * This test lived inside lodgingStage and nowhere else, which is how the
+ * readiness engines came to disagree with the lodging surface about the same
+ * event (review board, 2026-08-06, event-pro seat). `phaseProgress` marked
+ * lodging DONE on a bare `ev.lodging.hotelName`, and `stayFromPick` writes
+ * exactly that field from a PICK — so one press of "Make it the pick" flipped
+ * the command board to "sorted" with no rooms held, no code, and no cutoff on
+ * file. The surface knew better and the board did not.
+ *
+ * `hotelName` carries two different facts — the place you picked, and the name
+ * on your confirmation — so it can only be read as a booking when it did NOT
+ * come from the pick. Everything else here is something only a booked stay
+ * produces: a code, or a date off the money-safe chain.
+ *
+ * Choosing is not booking. One predicate, so nothing can claim otherwise again.
+ */
+export function lodgingIsHeld(event) {
+  const ev = event || {};
+  const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
+  const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
+  const namedOffConfirmation = !!String(stay.hotelName || '').trim() && stay.from !== STAY_FROM_PICK;
+  // TWO KEYS FOR ONE FACT, and both are real. `code` is what travelPlan and the
+  // guest note read; `bookingCode` is what the cockpit wrote alone until
+  // 2026-08-06, so events saved before that carry only it. Reading either is
+  // the only answer that does not silently un-hold somebody's existing stay.
+  const bookingCode = String(stay.code || stay.bookingCode || '').trim();
+  return !!(namedOffConfirmation || bookingCode
+    || String(md.refundDeadline || '').trim() || String(md.installmentDue || '').trim());
+}
 
 export function stayFromPick(event, intel) {
   const li = intel || lodgingIntel(event);
