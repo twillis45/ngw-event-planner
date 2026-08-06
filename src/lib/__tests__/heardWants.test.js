@@ -21,6 +21,16 @@ describe('the amenity the host actually asked for', () => {
     expect(heardMustHaves(said)).toEqual([]);
   });
 
+  // HOST CORRECTION 2026-08-05: "a resort spa retreat is a type of property
+  // that caters to health and wellness." The style vocabulary knew "resort
+  // spa" but not the trailing "retreat" or the "wellness" variant, so a full
+  // "resort spa retreat" only matched its first two words.
+  test('"resort spa retreat" and "wellness retreat" are heard whole, not truncated', () => {
+    expect(heardStayStyle('a resort spa retreat with a pool')).toBe('resort spa retreat');
+    expect(heardStayStyle('looking for a wellness retreat')).toBe('wellness retreat');
+    expect(heardMustHaves('a resort spa retreat with a pool')).toEqual(['pool']);
+  });
+
   test('a feature she really did ask for is still heard', () => {
     expect(heardMustHaves('lake house with a hot tub')).toContain('hottub');
     expect(heardMustHaves('reunion at the lake house with a pool and pets welcome'))

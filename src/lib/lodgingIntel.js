@@ -1058,7 +1058,13 @@ const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id |
  * Returns the phrase VERBATIM so the surface can repeat her own words back and
  * carry them into the hotel query. Never mapped onto a filter we cannot honour.
  */
-const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude)?\s*(?:resort\s*(?:and\s*)?spa|spa\s*resort|resort|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel))\b/i;
+// "Resort spa retreat" and "wellness retreat" (host, 2026-08-05: "a resort
+// spa retreat is a type of property that caters to health and wellness") —
+// the style vocabulary knew "resort spa" but not the trailing "retreat" or
+// the "wellness" variant, so a full "resort spa retreat" only matched its
+// first two words and left "retreat" as leftover text for the amenity
+// matcher to (harmlessly, but incompletely) ignore.
+const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude|wellness)?\s*(?:resort\s*(?:and\s*)?spa(?:\s*retreat)?|spa\s*resort|spa\s*retreat|wellness\s*retreat|resort(?:\s*retreat)?|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel))\b/i;
 
 export function heardStayStyle(text) {
   const m = String(text || '').trim().match(STAY_STYLE);
