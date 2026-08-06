@@ -159,6 +159,21 @@ def _host_ok(url: str) -> bool:
 _LD = re.compile(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', re.I | re.S)
 
 
+
+# The listing's real guest capacity. personCapacity and maxGuestCapacity agree
+# on every sample; either is accepted so one being renamed cannot silently zero
+# the field out.
+_CAPACITY = re.compile(r'"personCapacity":(\d{1,3})|"maxGuestCapacity":(\d{1,3})')
+# One AmenityItem object, scanned whole so FIELD ORDER cannot break it — the
+# first cut of this assumed "title" preceded "available" and matched nothing at
+# all, because the real shape is {"__typename":"AmenityItem","available":true,
+# "title":"Kitchen","icon":…}. Scanning the object and pulling each field out of
+# it separately is immune to that, and to any field added between them.
+_AMENITY_ITEM = re.compile(r'\{"__typename":"AmenityItem"[^{}]{0,400}\}')
+_AM_TITLE = re.compile(r'"title":"([^"]{2,60})"')
+_AM_AVAIL = re.compile(r'"available":(true|false)')
+
+
 def _first_num(v):
     try:
         n = float(v)
@@ -179,13 +194,22 @@ def _listing_record(html: str) -> dict:
         for d in (data if isinstance(data, list) else [data]):
             if not isinstance(d, dict):
                 continue
-            cp = d.get("containsPlace")
-            if isinstance(cp, dict):
-                occ = cp.get("occupancy")
-                if isinstance(occ, dict):
-                    n = _first_num(occ.get("value") or occ.get("maxValue"))
-                    if n and n > 0 and "sleeps" not in out:
-                        out["sleeps"] = int(n)
+            # ── occupancy IS NOT CAPACITY (driven 2026-08-06) ──────────────
+            # This used to feed `sleeps`, and it was wrong in the most damaging
+            # way available. containsPlace.occupancy.value is the BED count:
+            #   6BR / 8 beds  -> occupancy 8,  personCapacity 16
+            #   4BR / 6 beds  -> occupancy 6,  personCapacity 10
+            #   4BR / 4 beds  -> occupancy 4,  personCapacity 10
+            # A host planning for 10 was told two houses that BOTH fit — one
+            # sleeping 16, one sleeping exactly 10 — slept 8 and 6, i.e. that
+            # neither fit. Understating capacity makes a host discard the right
+            # house, and `sources.sleeps: 'read'` vouched for the wrong number,
+            # which is worse than leaving it blank.
+            #
+            # It was verified as "returns a number", never as "means capacity";
+            # occupancy matching the bed count on every sample was the tell.
+            # Real capacity comes from personCapacity below. Nothing reads
+            # occupancy now — beds already come off the title.
             ar = d.get("aggregateRating")
             if isinstance(ar, dict) and "rating" not in out:
                 r = _first_num(ar.get("ratingValue"))
@@ -205,6 +229,35 @@ def _listing_record(html: str) -> dict:
             nm = str(d.get("name") or "").strip()
             if nm and "listingName" not in out:
                 out["listingName"] = nm[:120]
+
+    # ── WHAT THE PAGE SAYS OUTSIDE ITS JSON-LD ──────────────────────────────
+    # Both of these sit in the embedded render payload rather than the
+    # schema.org block, which is why an og:/JSON-LD-only reader missed them.
+    cap = _CAPACITY.search(html)
+    if cap:
+        n = _first_num(cap.group(1) or cap.group(2))
+        if n and n > 0:
+            out["sleeps"] = int(n)
+
+    # Amenities carry their own availability flag, so this stays three-valued:
+    # listed-and-present, listed-and-absent, or never mentioned. We keep only
+    # what the page affirms and record the rest as absent — we never infer.
+    have, lack = [], []
+    seen = set()
+    for m in _AMENITY_ITEM.finditer(html):
+        obj = m.group(0)
+        t_m, a_m = _AM_TITLE.search(obj), _AM_AVAIL.search(obj)
+        if not t_m or not a_m:
+            continue
+        t = _unescape(t_m.group(1)).strip()[:60]
+        if not t or t.lower() in seen:
+            continue
+        seen.add(t.lower())
+        (have if a_m.group(1) == "true" else lack).append(t)
+    if have:
+        out["amenities"] = have[:40]
+    if lack:
+        out["amenitiesAbsent"] = lack[:40]
     return out
 
 

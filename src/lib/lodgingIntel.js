@@ -183,8 +183,34 @@ export function normalizeLodgingOption(raw, i = 0) {
     // reader; `photos` is the strip.
     photos: photoList(o),
     photoUrl: photoList(o)[0] || '',
+    // ── WHAT THE LISTING SAID IT HAS (2026-08-06) ──────────────────────────
+    // The page carries a structured amenity list — "Kitchen", "Hot tub",
+    // "Free washer – In unit" — and the normalizer used to drop it, so every
+    // must-have row in the side-by-side read "—" even when the listing plainly
+    // said yes. These are the page's OWN words, kept verbatim; nothing is
+    // inferred from them beyond the host's own must-have patterns.
+    amenities: Array.isArray(o.amenities)
+      ? o.amenities.map((a) => String(a || '').trim()).filter(Boolean).slice(0, 40)
+      : [],
     status: o.status === 'chosen' ? 'chosen' : 'option',
   };
+}
+
+/**
+ * Everything we may match a host's must-have against, for ONE option.
+ *
+ * There were two matchers reading two different things: the ranker used
+ * `label + notes`, and the side-by-side used `notes` ALONE. Neither saw the
+ * amenity list, so a house whose listing said "Free washer – In unit" showed
+ * "—" against "Washer & dryer" (host report, 2026-08-06). One hay, both
+ * callers, so they cannot disagree about what a place offers.
+ *
+ * Only the host's own typed words and the listing's own words — never a guess.
+ */
+export function optionHay(option) {
+  const o = option || {};
+  const am = Array.isArray(o.amenities) ? o.amenities.join(' ') : '';
+  return `${o.label || ''} ${o.notes || ''} ${am}`;
 }
 
 /**
@@ -1523,7 +1549,7 @@ export function lodgingRecommendation(event, intel) {
     // An option is credited for meeting one and named for missing one; we match
     // against what the HOST typed about the option, never against a listing fact
     // we went and fetched.
-    const hay = `${o.label} ${o.notes || ''}`;
+    const hay = optionHay(o);
     const met = [], missing = [];
     for (const m of musts) (m.match.test(hay) ? met : missing).push(m.label.toLowerCase());
     // Cap the LISTS, not just the reason count — the run-on was inside a single
@@ -1748,7 +1774,7 @@ export function lodgingTrouble(event, intel) {
 // recorded source is reported as unknown rather than credited to either — we do
 // not backfill provenance we never captured.
 export const LODGING_FIELD_LABELS = {
-  label: 'Name', beds: 'Beds', sleeps: 'Sleeps',
+  label: 'Name', beds: 'Beds', sleeps: 'Sleeps', amenities: 'What it has',
   totalPrice: 'Total', pricePerNight: 'A night', fees: 'Fees',
   photoUrl: 'Photo', notes: 'Notes', cancellationTier: 'Cancellation',
 };
@@ -2028,7 +2054,7 @@ export function lodgingCompare(event, intel) {
   try { musts = mustHavesFor(ev) || []; } catch (_e) { musts = []; }
   for (const m of musts) {
     if (!m || !m.match) continue;
-    push(m.id, m.label, (o) => (m.match.test(String(o.notes || '')) ? 'yes' : null));
+    push(m.id, m.label, (o) => (m.match.test(optionHay(o)) ? 'yes' : null));
   }
 
   return {

@@ -423,6 +423,10 @@ function Looking({ event, patch }) {
             sleeps: r.sleeps != null ? r.sleeps : cands[0].sleeps,
             rating: r.rating != null ? r.rating : cands[0].rating,
             ratingCount: r.ratingCount != null ? r.ratingCount : cands[0].ratingCount,
+            // The listing's OWN amenity words. Every must-have row read "—"
+            // without them, even where the page said yes (host, 2026-08-06).
+            amenities: Array.isArray(r.amenities) && r.amenities.length
+              ? r.amenities : cands[0].amenities,
           }];
           found = { ...found, linksOnly: !(r.title) };
         } else if (r && r.reason) {
@@ -494,7 +498,7 @@ function Looking({ event, patch }) {
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -504,6 +508,7 @@ function Looking({ event, patch }) {
         ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
+        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
@@ -533,7 +538,7 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities, totalPrice: c.priceShown,
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -543,6 +548,7 @@ function Looking({ event, patch }) {
         ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
+        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
