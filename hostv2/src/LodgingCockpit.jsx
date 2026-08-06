@@ -24,8 +24,8 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, isUnfurlConfigured, rankCandidates,
-  lodgingTitleFor, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
+  lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
@@ -150,7 +150,11 @@ export default function LodgingCockpit() {
     <Frame><Solo>
       <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
       <h1 className="lc-h1">Not a destination event.</h1>
-      <p className="lc-why">This cockpit only has a job when guests travel — the whole stack is gated on <code>isDestination</code>.</p>
+      {/* UX_06 planner-friendly-language: the raw internal field name was
+          leaking straight into host-facing copy (found live, host-panel
+          review 2026-08-05, repro'd independently by multiple reviewers).
+          Say what it means, not what it's called in the code. */}
+      <p className="lc-why">This cockpit only has a job when guests are traveling in for the event.</p>
       <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
     </Solo></Frame>
   );
@@ -273,6 +277,23 @@ function NoTown({ event, patch }) {
 const DOOR_SHORT = { airbnb: 'Airbnb', vrbo: 'Vrbo', hotels: 'Hotels' };
 const shortDoor = (l) => DOOR_SHORT[l && l.id] || (l && l.label) || '';
 
+// normalizeLodgingOption only knows a fixed field set (id/label/url/beds/
+// sleeps/price/fees/cancellationTier/sources/notes/photos/status) — a hotel
+// candidate's star class, rating and amenity tags aren't among them, and
+// would be silently dropped the same way this file's own comment on
+// normalizeLodgingOption warns about ("a normalizer that discards a field
+// is a data loss no unit test on the engine can catch"). Folding them into
+// `notes` — already the free-text home for exactly this kind of extra
+// context (bedrooms, place) — keeps the real schema singular instead of
+// growing it for one candidate shape.
+const notesFor = (c) => [
+  c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+  c.place ? `in ${c.place}` : null,
+  c.starClass ? `${c.starClass}-star hotel` : null,
+  c.rating != null ? `${c.rating}/5${c.ratingCount ? ` (${c.ratingCount})` : ''}` : null,
+  Array.isArray(c.amenities) && c.amenities.length ? c.amenities.join(', ') : null,
+].filter(Boolean).join(' · ');
+
 function Looking({ event, patch }) {
   const [text, setText] = useState('');
   // Clicking a door means "I have gone looking". On return the next act is to
@@ -282,6 +303,7 @@ function Looking({ event, patch }) {
   const [readErr, setReadErr] = useState('');
   const [busy, setBusy] = useState(false);
   const [staged, setStaged] = useState(null);
+  const [searchOffer, setSearchOffer] = useState(null);
   // ── HONEST FALLBACK ON RETURN ────────────────────────────────────────────
   // After a door, the host copies a listing and comes back. Reading the
   // clipboard for them needs `clipboard-read`, which most configurations only
@@ -317,7 +339,15 @@ function Looking({ event, patch }) {
     const src = typeof raw === 'string' ? raw : text;
     let found = { candidates: [] };
     try { found = extractListingCandidates(src) || found; } catch { /* unreadable paste */ }
-    let cands = (found.candidates || []).filter(Boolean);
+    // A STABLE KEY THAT DOES NOT REQUIRE A URL (host, 2026-08-06: hotel
+    // candidates have no url to key on — see extractHotelCandidates). Every
+    // staging Set/React-key below used to read `c.url` directly, which
+    // collapsed every hotel candidate in the SAME paste onto one shared key
+    // ('' === ''): ticking one hotel's checkbox ticked or unticked all of
+    // them. `_k` falls back to url when there is one (unchanged behavior for
+    // Airbnb/Vrbo) and to a per-paste index otherwise.
+    let cands = (found.candidates || []).filter(Boolean)
+      .map((c, i) => ({ ...c, _k: c.url || `k${i}-${c.name || ''}` }));
 
     // ── PARITY WITH THE LIVE INTAKE (2026-08-03) ───────────────────────────
     // The live sheet's readPage does four things this did not, and each one is
@@ -411,13 +441,37 @@ function Looking({ event, patch }) {
       // app just handed them — which carries no listing facts at all, because
       // the platform renders those in the browser. Say that, and say the step.
       const door = looksLikeSearchUrl(src);
+      // ── A SEARCH LINK IS NOT A DEAD END ANY MORE (2026-08-04) ───────────
+      // It used to be: "that's the search link, not a house", and the host was
+      // sent back to do the work by hand. The page DOES carry its listing ids,
+      // so we can offer to read them. Offered, never automatic — this is one
+      // fetch of one page the host is already looking at, and only the places
+      // they KEEP are ever read individually. That line is what keeps this an
+      // offer rather than a crawler.
+      if (door && isUnfurlConfigured()) {
+        setSearchOffer({ url: src, door });
+        setReadErr('');
+        return;
+      }
       const touch = typeof window !== 'undefined' && window.matchMedia
         && window.matchMedia('(pointer:coarse)').matches;
+      // HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05: "honest copy").
+      // Airbnb and Vrbo card links are the only ones this file can read —
+      // Hotels has no card parser (no verified Google results fixture to
+      // build one against). The generic "tap Share, then Copy Link, try
+      // again" message below implies retrying would work; for a Hotels-door
+      // paste it never will, so say that specifically instead of the generic
+      // line. door (from looksLikeSearchUrl) only catches a BARE search
+      // link with no whitespace — a real "select all, copy" of the whole
+      // results page is exactly the shape this checks for instead.
+      const hotelsPage = looksLikeHotelsResultsPage(src);
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
-        : touch
-          ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
-          : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+        : hotelsPage
+          ? 'Hotels can’t be read back the way Airbnb and Vrbo can yet — open the hotel’s own booking page and add what it says by hand below.'
+          : touch
+            ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+            : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
       return;
     }
     setReadErr('');
@@ -429,7 +483,7 @@ function Looking({ event, patch }) {
     // So: many -> stage for review; one -> commit, after the unfurl fill above
     // has had its chance to make the row worth having.
     if (cands.length > 1) {
-      setStaged({ cands, dupes, pick: new Set(cands.map((c) => c.url)), linksOnly: !!found.linksOnly });
+      setStaged({ cands, dupes, pick: new Set(cands.map((c) => c._k)), linksOnly: !!found.linksOnly });
       setText('');
       setReadErr('');
       return;
@@ -441,19 +495,18 @@ function Looking({ event, patch }) {
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
-      photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-        c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
+      photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
       sources: {
-        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
@@ -475,25 +528,24 @@ function Looking({ event, patch }) {
   };
   // Commit only what is still ticked. Untick is the whole point of the review.
   const commitStaged = () => {
-    const keep = staged.cands.filter((c) => staged.pick.has(c.url));
+    const keep = staged.cands.filter((c) => staged.pick.has(c._k));
     if (!keep.length) { setStaged(null); return; }
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
-      photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-        c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
+      photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
       // unrecorded source as unknown rather than crediting either side.
       sources: {
-        ...(lodgingTitleFor(c) ? { label: 'read' } : null),
+        ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
@@ -510,27 +562,36 @@ function Looking({ event, patch }) {
         {staged.cands.length} found. Untick anything you were not really considering.
       </p>
       {staged.cands.map((c) => {
-        const on = staged.pick.has(c.url);
+        const on = staged.pick.has(c._k);
         return (
-          <button key={c.url} className="lc-staged" aria-pressed={on}
+          <button key={c._k} className="lc-staged" aria-pressed={on}
             aria-label={`${lodgingTitleFor(c) || 'Unnamed place'} — ${on ? 'keeping' : 'not keeping'}`}
             onClick={() => setStaged((st) => {
               const pick = new Set(st.pick);
-              if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
+              if (pick.has(c._k)) pick.delete(c._k); else pick.add(c._k);
               return { ...st, pick };
             })}>
             <span className={'lc-tick' + (on ? ' is-on' : '')} aria-hidden="true" />
             <span className="lc-staged-main">
               <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
               <span className="lc-staged-sub">
-                {[c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null]
+                {/* A hotel card carries star class, rating and amenity tags
+                    instead of bedrooms — extractHotelCandidates reads them
+                    off the real Google card (host, 2026-08-06). */}
+                {[c.starClass ? `${c.starClass}-star` : null,
+                  c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null,
+                  c.rating != null ? `${c.rating}/5${c.ratingCount ? ` (${c.ratingCount})` : ''}` : null,
+                  Array.isArray(c.amenities) && c.amenities.length ? c.amenities.join(', ') : null]
                   .filter(Boolean).join(' · ') || 'no details on the card'}
               </span>
             </span>
             {/* sleeps is never on a results card — say so rather than leave a
-                blank the host reads as "it does not sleep anyone". */}
-            <span className="lc-staged-fit">sleeps —</span>
+                blank the host reads as "it does not sleep anyone". A hotel
+                candidate (identified by carrying a rating) isn't measured in
+                "sleeps N" the way a shared rental is, so this stays quiet
+                for those instead of showing a confusing dash. */}
+            {c.rating == null && <span className="lc-staged-fit">sleeps —</span>}
           </button>
         );
       })}
@@ -588,6 +649,34 @@ function Looking({ event, patch }) {
             <button className="cta soft" onClick={() => setOffer('')}>Not that</button>
           </div>
         )}
+        {searchOffer && (
+          <div className="lc-offer">
+            <p className="lc-body">
+              That’s the {DOOR_SHORT[searchOffer.door] || 'search'} search, not one house.
+              I can read the places on it — you’ll get the links, not names or prices,
+              because a results page doesn’t carry those.
+            </p>
+            <button className="cta" onClick={async () => {
+              setBusy(true);
+              setReadErr('');
+              try {
+                const r = await lodgingResults(searchOffer.url);
+                if (r && r.ok && Array.isArray(r.links) && r.links.length) {
+                  const cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, _k: u || `k${i}` }));
+                  setSearchOffer(null);
+                  setText('');
+                  setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c._k)), linksOnly: true });
+                } else {
+                  setReadErr((r && r.reason) || 'Nothing readable on that search.');
+                }
+              } finally { setBusy(false); }
+            }}>{busy ? 'Reading the search…' : 'Pull the places in'}</button>
+            <button className="cta soft" onClick={() => {
+              setSearchOffer(null);
+              setReadErr(`Open it, then copy one place from the results and bring that back.`);
+            }}>No, I’ll pick one</button>
+          </div>
+        )}
         {/* AUTO-READ ON PASTE. The host has already done the work of copying;
             making them press a second button to "read" it is a step that exists
             only because the code wanted one. The paste event fires the
@@ -603,14 +692,20 @@ function Looking({ event, patch }) {
             setText(pasted);
             add(pasted);
           }}
-          placeholder="…or paste it here" aria-label="Paste a listing link or a results page" />
+          placeholder="…or paste it here" aria-label="Paste a listing link or a results page"
+          autoCapitalize="off" autoCorrect="off" spellCheck="false" />
         {/* TRUTHFUL ABOUT WHICH PATH TOUCHES A SERVER. This read "every card on
             it is read, with no server call" — true of a pasted PAGE, which is
             parsed here, and false of a bare LINK, which we fetch. One sentence
-            covering both made the honest half carry the dishonest half. */}
+            covering both made the honest half carry the dishonest half.
+            TRUTHFUL ABOUT WHICH DOOR (host, 2026-08-05: "honest copy") — this
+            also read as a blanket promise across all three doors, but only
+            Airbnb and Vrbo have a card reader; Hotels doesn't yet, and the
+            error message that fires for it says so on its own. */}
         <p className="lc-note">
-          Paste the whole results page and every card on it is read right here — nothing
-          leaves your phone. A bare link has to be fetched, so it takes a moment.
+          Paste the whole Airbnb or Vrbo results page and every card on it is read
+          right here — nothing leaves your phone. A bare link has to be fetched, so
+          it takes a moment.
         </p>
         {readErr && <p className={'lc-note' + (/^(Added|Got)/.test(readErr) ? '' : ' lc-warn')}>{readErr}</p>}
         {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,
@@ -645,6 +740,40 @@ function Thumb({ src, label, big }) {
   return (
     <img className={big ? 'lc-card-photo' : 'lc-thumb'} src={src} alt={`${label || 'The place'} — the listing's own photo`}
       loading="lazy" decoding="async" onError={() => setDead(true)} />
+  );
+}
+
+// ── ONE STAY, SHOWN LIKE IT MATTERS (host, 2026-08-05: "The Stay section is
+//    underwhelming for the choices, wrapping, no image. This is where we are
+//    all staying for our beautiful trip.") ──────────────────────────────────
+// The Choices deck already renders a place's own photo hero-sized the moment
+// it's a candidate — the exact photo then went missing the moment a host
+// actually chose it. Not a rendering gap: stayFromPick() only ever wrote
+// hotelName/rate/url/from, so the photo was never carried past the pick. Now
+// that it is (lodgingIntel.js stayFromPick), Picked and Booked both get the
+// SAME hero — a photo, a scrim, the name and facts overlaid — instead of a
+// label/value row that wraps a long listing name into two narrow columns.
+// Honest when there is no photo (typed-in bookings, off-confirmation): a
+// plain identity block, same as the deck's own no-photo cards.
+function StayHero({ photoUrl, label, sub }) {
+  const name = String(label || '').trim() || 'Your stay';
+  if (!photoUrl) {
+    return (
+      <div className="lc-stayhero-flat">
+        <p className="lc-strong">{name}</p>
+        {sub && <p className="lc-card-sub lc-stayhero-flat-sub">{sub}</p>}
+      </div>
+    );
+  }
+  return (
+    <div className="lc-card-photo-wrap lc-stayhero">
+      <Thumb src={photoUrl} label={name} big />
+      <div className="lc-card-scrim" aria-hidden="true" />
+      <div className="lc-card-overlay">
+        <h3 className="lc-card-name">{name}</h3>
+        {sub && <p className="lc-card-sub">{sub}</p>}
+      </div>
+    </div>
   );
 }
 
@@ -688,19 +817,69 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
           const total = o.allIn != null ? o.allIn : o.totalPrice;
           return (
             <article className="lc-card" key={o.id}>
-              {o.photoUrl
-                ? <Thumb src={o.photoUrl} label={o.label} big />
-                : <div className="lc-card-nophoto"><span>no picture yet</span></div>}
+              {/* FLOAT ON THE PHOTO, NOT STACKED BELOW IT (host, 2026-08-05:
+                  "innovative way to pull the CTAs into the viewport... they're
+                  spilling out"). Moving the buttons up under the price line
+                  helped but didn't fix it — the photo alone is
+                  clamp(240px,44vh,440px), so on a short phone the buttons
+                  still landed past the fold. Stacking adds height; overlaying
+                  doesn't. Same pattern Airbnb's own card and every swipe-deck
+                  UI (Tinder, Hinge) use: the hero image IS the card's frame,
+                  and the name/price/act ride a gradient scrim anchored to its
+                  bottom edge — inside the hero's own bounds, never below it.
+                  The scrim is a real gradient, not a filled bar, so the photo
+                  underneath still reads as the primary surface (one hero, one
+                  accent — the "Pick" button is the one accent this card
+                  spends). Secondary detail (musts fit, price history, chips,
+                  the read/typed table) stays in normal flow below, for a host
+                  who scrolls further; nothing here is missing, only ordered
+                  by whether picking needs it FIRST. */}
+              {(() => {
+                const identity = (
+                  <>
+                    <div className="lc-card-top">
+                      <h3 className="lc-card-name">{o.label}</h3>
+                      {money(total) && <span className="lc-card-price">{money(total)}</span>}
+                    </div>
+                    <p className="lc-card-sub">
+                      {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
+                        nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
+                        .filter(Boolean).join(' · ')}
+                    </p>
+                    <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0 0' }}>
+                      <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>
+                      {String(o.url || '').trim() && (
+                        <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
+                          style={{ textDecoration: 'none' }}>Open the listing ↗</a>
+                      )}
+                      <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
+                    </div>
+                  </>
+                );
+                return o.photoUrl ? (
+                  <div className="lc-card-photo-wrap">
+                    <Thumb src={o.photoUrl} label={o.label} big />
+                    <div className="lc-card-scrim" aria-hidden="true" />
+                    <div className="lc-card-overlay">{identity}</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* UX_08: missing data says "missing," never nothing — a
+                        fabricated stock photo is not an option. The overlay
+                        pattern only works ON a photo; with none, "+ Add a
+                        picture" IS the hero act, and name/price/pick stay in
+                        normal flow below it rather than fighting the same
+                        space. */}
+                    <button type="button" className="lc-card-nophoto" onClick={() => onPhoto(o)}
+                      aria-label={`Add a picture for ${o.label}`}>
+                      <span className="lc-card-nophoto-add">+ Add a picture</span>
+                      <span className="lc-card-nophoto-sub">no picture yet — this one's still real</span>
+                    </button>
+                    <div className="lc-card-body lc-card-identity-noPhoto">{identity}</div>
+                  </>
+                );
+              })()}
               <div className="lc-card-body">
-                <div className="lc-card-top">
-                  <h3 className="lc-card-name">{o.label}</h3>
-                  {money(total) && <span className="lc-card-price">{money(total)}</span>}
-                </div>
-                <p className="lc-card-sub">
-                  {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
-                    nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
-                    .filter(Boolean).join(' · ')}
-                </p>
                 {hist && <p className="lc-card-was">{hist.full}</p>}
                 {sc && sc.met && sc.met.length > 0 && (
                   <div className="lc-chips">
@@ -749,21 +928,10 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
       <div className="lc-dots" aria-hidden="true">
         {live.map((o, i) => <span key={o.id} className={'lc-dot' + (i === at ? ' is-on' : '')} />)}
       </div>
-      <div className="lc-ctas lc-ctas-wrap">
-        <button className="cta" aria-label={`Make ${live[at] ? live[at].label : 'this place'} the pick`}
-          onClick={() => live[at] && onPick(live[at].id)}>Make it the pick</button>
-        {live[at] && String(live[at].url || '').trim() && (
-          <a className="cta soft" href={live[at].url} target="_blank" rel="noopener noreferrer"
-            style={{ textDecoration: 'none' }}>Open the listing ↗</a>
-        )}
-        {/* The card shows "no picture yet" — the act that fixes it belongs on
-            the card, not on a duplicate row further down the screen. */}
-        {live[at] && !String(live[at].photoUrl || '').trim() && (
-          <button className="cta soft" onClick={() => onPhoto(live[at])}>Add a picture</button>
-        )}
-        <button className="cta soft" aria-label={`${live[at] ? live[at].label : 'This place'} is gone`}
-          onClick={() => live[at] && onGone(live[at].id)}>It’s gone</button>
-      </div>
+      {/* Pick / open / gone now live INSIDE each card (2026-08-05) — a shared
+          row here duplicated them a second time, this time detached from
+          whichever card was actually snapped to. The "no picture yet" area
+          is the add-a-picture act, same pattern. */}
       {/* The board footer states this as a rule, so the surface states it too. */}
       <p className="lc-note">Ranked by fit, then price. No countdowns, no deal badges — the only price claim here is your own.</p>
       {/* HotelTonight's "Why these hotels?": the curation explains itself ON
@@ -849,6 +1017,44 @@ function Weighing({ event, intel, patch }) {
         <p className="lc-strong">{trouble.headline}</p>
         <p className="lc-body">{trouble.detail}</p>
       </Panel>}
+      {/* ── THE DECK COMES FIRST (host, 2026-08-05: "layout has to capture
+             swipe the ones that fit in the viewport. Copy is too dense
+             above") — UX_03 rule 4: the primary CTA visible without
+             scrolling. The deck IS the primary act on this stage (make the
+             pick); the kitchen-consequence explainer and the side-by-side
+             detail table are secondary reads that used to sit above it,
+             pushing the one thing a host actually does off the first
+             screen. They still exist, just after, not before. */}
+      <Choices opts={opts} event={event} intel={intel}
+        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
+        onPhoto={askPhoto} basis={basis} />
+      {/* THE PANEL THAT NEVER RENDERED (found 2026-08-05, single-threaded
+          re-test of the review-board pass — "which is the recommended?").
+          lodgingRecommendation() returns {pick, why, unweighed, scores, tie}
+          — it has never had a `.line` field, so `rec.line` was always
+          undefined and this whole panel was dead on every event, forever.
+          Built here from the real fields instead: the pick's own name plus
+          its strongest reason (why[0], the same reasons the deck's cards
+          already show per-option — nothing new invented), a tie said
+          honestly rather than an arbitrary winner, and `unweighed` surfaced
+          as what the recommendation could NOT account for — this is the
+          direct answer to "do the options fit our guest size?": if sleeps
+          was never known, unweighed says so instead of the pick silently
+          skipping the guest-fit question. */}
+      {rec && (rec.tie ? (
+        <Panel label="WHAT THE PLAN WOULD PICK">
+          <p className="lc-body">Too close to call — your top places are tied on what you told us matters. This one's yours to make.</p>
+        </Panel>
+      ) : rec.pick && (
+        <Panel label="WHAT THE PLAN WOULD PICK">
+          <p className="lc-body">
+            {rec.pick.label}{rec.why && rec.why[0] ? ` — ${rec.why[0]}.` : '.'}
+          </p>
+          {rec.unweighed && rec.unweighed.length > 0 && (
+            <p className="lc-note">Couldn't weigh {rec.unweighed.join(' or ')} — none of your places say.</p>
+          )}
+        </Panel>
+      ))}
       {/* ── THE ANSWER, WHERE IT CAME FROM, AND A WAY TO CHANGE IT ──────────
           Two defects found by driving this on 2026-08-04:
 
@@ -893,12 +1099,6 @@ function Weighing({ event, intel, patch }) {
       {!adding && cmp && (
         <button className="cta soft" onClick={() => setAdding(true)}>Add another place</button>
       )}
-      <Choices opts={opts} event={event} intel={intel}
-        scores={rec && rec.scores ? rec.scores : null} onPick={pick} onGone={markGone}
-        onPhoto={askPhoto} basis={basis} />
-      {rec && rec.line && <Panel label="WHAT THE PLAN WOULD PICK">
-        <p className="lc-body">{rec.line}</p>
-      </Panel>}
       {/* ── ONE CHOOSER, NOT TWO (host, 2026-08-04: "the make the call section
              on the bottom of screen I believe will be redundant") ──────────
           It was. The deck above already carries every LIVE place — including
@@ -1039,14 +1239,14 @@ function Picked({ event, intel, patch }) {
   const [code, setCode] = useState(stay.bookingCode || '');
   if (!chosen) return <Panel label="THE PICK"><p className="lc-note">Nothing picked yet — this is what it will show once one is.</p></Panel>;
   const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `$${Math.round(Number(n)).toLocaleString()}` : '—');
+  const pickSub = [
+    money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice) !== '—' ? money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice) : null,
+    chosen.sleeps != null ? `sleeps ${chosen.sleeps}` : null,
+    String(chosen.cancellationTier || '').trim() || null,
+  ].filter(Boolean).join(' · ');
   return (
     <Panel label="THE PICK">
-      <p className="lc-strong">{String(chosen.label || '').trim() || 'Your pick'}</p>
-      <Rows rows={[
-        ['All-in', money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice)],
-        ['Sleeps', chosen.sleeps != null ? String(chosen.sleeps) : '—'],
-        ['Cancellation', String(chosen.cancellationTier || '').trim() || '—'],
-      ]} />
+      <StayHero photoUrl={chosen.photoUrl} label={chosen.label} sub={pickSub} />
       <p className="lc-note">Choosing is not booking. Book on the platform, then bring the confirmation back.</p>
       {/* NAME THE ACT, THEN OFFER IT. This screen told the host to book it on
           the platform and did not hand them the platform — while holding the
@@ -1076,10 +1276,8 @@ function Booked({ event, patch }) {
   return (
     <>
       <Panel label="ON THE BOOKS">
-        <Rows rows={[
-          ['The stay', String(stay.hotelName || '').trim() || '—'],
-          ['Booking code', String(stay.bookingCode || '').trim() || '—'],
-        ]} />
+        <StayHero photoUrl={stay.photoUrl} label={stay.hotelName}
+          sub={String(stay.bookingCode || '').trim() ? `Booking code ${stay.bookingCode.trim()}` : 'No booking code on file'} />
       </Panel>
       <Panel label="THE MONEY-SAFE DATES">
         <p className="lc-note">Copy these off the booking confirmation — they are the ones with a deadline.</p>
@@ -1095,23 +1293,44 @@ function Booked({ event, patch }) {
   );
 }
 
+// UX_03 MULTI-VIEWPORT DOCTRINE (rule 5: "No information-dense tables. Use
+// stacked card layouts" — rule 6 sanctions horizontal scroll ONLY for image
+// carousels / swipe lanes). A CSS-grid table with a row per attribute and a
+// column per option is exactly the pattern rule 5 bans on a phone; the deck
+// below (Choices — a scroll-snapped image carousel) is the doctrine-legal
+// form of the SAME comparison. So the grid renders at tablet+ width, where a
+// side-by-side table is the more legible read (host, in a client meeting,
+// showing the screen — UX_03's own tablet framing); below that it steps
+// aside for a one-line pointer at the swipe deck, which already carries every
+// value this table does, just as stacked cards instead of dense rows.
 function Transpose({ cmp }) {
   const grid = { gridTemplateColumns: `minmax(92px,1.3fr) repeat(${cmp.columns.length}, minmax(0,1fr))` };
   return (
     <Panel label={`SIDE BY SIDE${cmp.guests ? ` · YOUR ${cmp.guests}` : ''}`}>
-      <div className="lc-t-head" style={grid}>
-        <span />
-        {cmp.columns.map((c) => <span key={c.id} className="lc-col">{c.label}</span>)}
-      </div>
-      {cmp.rows.map((r) => (
-        <div key={r.id} className="lc-t-row" style={grid}>
-          <span className="lc-row-label">{r.label}</span>
-          {r.values.map((v, i) => (
-            <span key={i} className={'lc-t-val' + (v === '—' ? ' is-gap' : r.flags[i] === 'short' ? ' is-short' : '')}>{v}</span>
-          ))}
+      {/* "Below" was true when this table sat above the deck; the reorder
+          that put the deck first (2026-08-05, "layout has to capture swipe
+          the ones that fit in the viewport") left this pointing the wrong
+          way — a host scrolling down from THE ONES THAT FIT into this note
+          would be told to look below for something already behind them. On a
+          phone the grid itself stays hidden (UX_03 rule 5), so there is
+          nothing further to point at: the deck above already IS the
+          comparison. */}
+      <p className="lc-note lc-t-mobile-note">The places you swiped through above are this comparison — a wider screen shows it as one table instead.</p>
+      <div className="lc-t-wide">
+        <div className="lc-t-head" style={grid}>
+          <span />
+          {cmp.columns.map((c) => <span key={c.id} className="lc-col">{c.label}</span>)}
         </div>
-      ))}
-      <p className="lc-note">{cmp.note}</p>
+        {cmp.rows.map((r) => (
+          <div key={r.id} className="lc-t-row" style={grid}>
+            <span className="lc-row-label">{r.label}</span>
+            {r.values.map((v, i) => (
+              <span key={i} className={'lc-t-val' + (v === '—' ? ' is-gap' : r.flags[i] === 'short' ? ' is-short' : '')}>{v}</span>
+            ))}
+          </div>
+        ))}
+        <p className="lc-note">{cmp.note}</p>
+      </div>
     </Panel>
   );
 }
@@ -1212,7 +1431,13 @@ const CSS = `
    outbound rather than a filled in-app key. Hover, press and focus all come
    from ".cta" and the global ring — restating them here (as the first cut did)
    was three duplicated rules and a second focus colour. */
-.lc-door{border:1px solid var(--line);text-decoration:none;}
+/* Balanced, not ragged (host, 2026-08-05): "Airbnb" / "Vrbo" / "Hotels" are
+   three different lengths, and a plain flex row sizes each to its own text —
+   three pills of visibly different widths reading as three separate weights
+   instead of one row of three equal doors. flex:1 makes all three share the
+   row evenly; text-align centers each label inside its share. */
+.lc-door{border:1px solid var(--line);text-decoration:none;flex:1 1 0;text-align:center;
+  justify-content:center;}
 .lc-warn{color:var(--warn);}
 .lc-demo{color:var(--warn);letter-spacing:.09em;}
 .lc-ctas-wrap{flex-wrap:wrap;overflow:visible;-webkit-mask-image:none;mask-image:none;margin-top:12px;}
@@ -1269,15 +1494,45 @@ const CSS = `
 .lc-deck::-webkit-scrollbar{display:none;}
 .lc-card{scroll-snap-align:start;flex:0 0 88%;max-width:340px;min-width:0;
   background:var(--sheen);border:1px solid var(--hair);border-radius:14px;overflow:hidden;}
-.lc-card-photo{display:block;width:100%;height:172px;object-fit:cover;background:var(--hair);}
-.lc-card-nophoto{height:172px;display:grid;place-items:center;background:var(--hair);}
-.lc-card-nophoto span{font:400 13px/1.3 Inter,sans-serif;color:var(--muted);}
+/* Hero-sized (host, 2026-08-05): 172px read as a strip, not the dominant
+   element on the card the swipe deck's own comment calls the primary act.
+   clamp() keeps it real-estate-dominant across phone heights without ever
+   pushing the price/CTA row below the fold on a short device. */
+.lc-card-photo-wrap{position:relative;height:clamp(240px,44vh,440px);width:100%;}
+/* Standalone use (Picked/Booked — one stay, not a deck card): the rounding
+   and clipping the deck got for free from .lc-card has to be stated here
+   instead, and the height reads a touch calmer (36vh) since this is a
+   settled fact on the screen, not the primary decision surface. */
+.lc-stayhero{border-radius:14px;overflow:hidden;height:clamp(200px,36vh,360px);margin-bottom:14px;}
+.lc-stayhero-flat{margin-bottom:14px;}
+.lc-stayhero-flat-sub{margin-top:4px;}
+.lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
+.lc-card-nophoto{height:100%;width:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
+  padding:0;font:inherit;}
+.lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
+.lc-card-nophoto-sub{font:400 12px/1.3 Inter,sans-serif;color:var(--muted);}
+/* A real gradient, not a filled bar — the photo stays the primary surface;
+   the scrim only exists to keep the overlaid name/price/CTA legible over
+   whatever the photo happens to be. Height is generous (65%) because a
+   light sky or wall behind white text is a real, common case, not an edge
+   case to under-design for. */
+.lc-card-scrim{position:absolute;left:0;right:0;bottom:0;height:65%;pointer-events:none;
+  background:linear-gradient(to top, rgba(10,12,16,.92) 0%, rgba(10,12,16,.6) 45%, rgba(10,12,16,0) 100%);}
+.lc-card-overlay{position:absolute;left:0;right:0;bottom:0;padding:14px;}
 .lc-card-body{padding:14px;}
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
-.lc-card-name{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
-.lc-card-price{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
-  font-variant-numeric:tabular-nums;}
-.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:var(--ink-soft);margin:6px 0 0;}
+.lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:#fff;margin:0;min-width:0;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}
+/* The no-photo card has no scrim to sit on — plain body text, not white on
+   nothing. Same markup as the overlay identity block, different context. */
+.lc-card-identity-noPhoto .lc-card-name,.lc-card-identity-noPhoto .lc-card-price{
+  color:var(--ink);text-shadow:none;}
+.lc-card-identity-noPhoto .lc-card-sub{color:var(--ink-soft);}
+.lc-card-nophoto .lc-card-nophoto-add,.lc-card-nophoto .lc-card-nophoto-sub{position:relative;z-index:1;}
 .lc-card-was{font:400 12px/1.4 Inter,sans-serif;color:var(--muted);margin:4px 0 0;}
 .lc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
 .lc-chip{font:400 12px/1 Inter,sans-serif;color:var(--ink-soft);padding:7px 10px;
@@ -1302,6 +1557,17 @@ const CSS = `
 /* GREY, NEVER RED (research rec #7): a house that is too small is
    disqualifying, not faulty. Red here would be a semantic lie under UX_02. */
 .lc-t-val.is-short{color:var(--muted);font-weight:400;font-size:12px;}
+/* UX_03 rule 5: no information-dense tables on a phone — the grid steps
+   aside for the swipe deck below 640px. A real @media query, not
+   @container: nothing in this file declares container-type on an ancestor,
+   so the @container rule below (min-width:900px) never actually activates —
+   a media query needs no such setup and is guaranteed to apply. */
+.lc-t-mobile-note{display:none;}
+.lc-t-wide{display:block;}
+@media (max-width:639px){
+  .lc-t-wide{display:none;}
+  .lc-t-mobile-note{display:block;}
+}
 @container (min-width:900px){
   .lc-grid{grid-template-columns:190px minmax(0,1fr);gap:clamp(28px,4vw,64px);}
   .lc-rail{flex-direction:column;align-items:flex-start;gap:0;position:sticky;top:clamp(20px,4vw,40px);

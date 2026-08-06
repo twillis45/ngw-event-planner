@@ -57,6 +57,15 @@ describe('guests', () => {
   test('no guest count in the text → null (never guessed here)', () => {
     expect(parseSmartEventText('destination 80th birthday celebration', { now: NOW }).guests).toBeNull();
   });
+  // Live drive 2026-08-05: "12 guys flying in" fell through every counting
+  // noun (COUNT_NOUNS had no word for a bachelor/bachelorette party's own
+  // crowd) and silently fell back to the playbook's typical headcount (10)
+  // instead of the 12 the host actually said.
+  test('bachelor/bachelorette party count words are recognized', () => {
+    expect(parseSmartEventText('bachelor party, 12 guys flying in', { now: NOW }).guests).toBe(12);
+    expect(parseSmartEventText('bachelorette weekend, 8 girls', { now: NOW }).guests).toBe(8);
+    expect(parseSmartEventText('wedding party, 6 bridesmaids and 5 groomsmen', { now: NOW }).guests).toBe(6);
+  });
 });
 
 describe('budget', () => {
@@ -259,5 +268,58 @@ describe('vacation areas (host ask 2026-07-27)', () => {
     const p = parseSmartEventText('Birthday June 12 for 20 people', opts);
     expect(p.vacationArea).toBe(null);
     expect(p.isDestination).toBe(false);
+  });
+});
+
+// ── COMMA-LED LOCATIONS, NO PREPOSITION (live drive 2026-08-04) ──────────────
+// Both location patterns required "in"/"at" before the town, so the ordinary
+// comma-separated way hosts list facts dropped the town entirely — and with it
+// the whole destination stack, since isDestination reads the parsed location.
+// The app answered "Local event" for a five-day trip to a Santa Fe resort.
+describe('a town listed without a preposition', () => {
+  test('"…, Santa Fe, NM resort spa, …" resolves the town AND the destination read', () => {
+    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa, June 17-21', NOW);
+    expect(p.venueCity).toBe('Santa Fe');
+    expect(p.venueState).toBe('NM');
+    expect(p.isDestination).toBe(true);
+    expect(p.honoree).toBe('Linda');
+  });
+
+  test('the same shape for a lake area with a real state', () => {
+    const p = parseSmartEventText('birthday for Vida Haynes, 10 people, Deep Creek Lake, MD, June 17-21', NOW);
+    expect(p.venueCity).toBe('Deep Creek Lake');
+    expect(p.venueState).toBe('MD');
+    expect(p.honoree).toBe('Vida');
+  });
+
+  // The strict gate is what makes the loose scan safe: a name followed by a
+  // count is not a place, and never becomes one.
+  test('a person and a headcount are never mistaken for a town', () => {
+    const p = parseSmartEventText('80th birthday for Linda Stewart, 10 of us, June 17-21', NOW);
+    expect(p.venueCity == null || p.venueCity === '').toBe(true);
+  });
+
+  test('the prepositional forms still win when present', () => {
+    const p = parseSmartEventText('family reunion in Deep Creek Lake, MD, 24 of us, June 17-21', NOW);
+    expect(p.venueCity).toBe('Deep Creek Lake');
+    expect(p.venueState).toBe('MD');
+  });
+});
+
+// A CITY AND ITS STATE WITH NO COMMA BETWEEN THEM (live drive 2026-08-05):
+// "Santa Fe NM" reads perfectly naturally to a host but every pattern above
+// requires a comma before the state, so "destination trip in Santa Fe NM,
+// resort spa" dropped the town — and with it isDestination — entirely.
+describe('a city glued straight onto its state abbreviation, no comma', () => {
+  test('"Santa Fe NM" resolves the same as "Santa Fe, NM"', () => {
+    const p = parseSmartEventText("Mom's 80th birthday destination trip in Santa Fe NM, resort spa, 10 guests, June 17-21, budget $4000", NOW);
+    expect(p.venueCity).toBe('Santa Fe');
+    expect(p.venueState).toBe('NM');
+    expect(p.isDestination).toBe(true);
+  });
+
+  test('a two-letter word that is not a real state is still rejected', () => {
+    const p = parseSmartEventText('birthday for Linda Stewart TV dinner, 10 of us, June 17-21', NOW);
+    expect(p.venueCity == null || p.venueCity === '').toBe(true);
   });
 });

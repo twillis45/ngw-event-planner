@@ -222,17 +222,28 @@ function preProgress(ev, phase, daysOut) {
   // rows) PLUS what is owed to committed vendors — the term hostSpending has never
   // had, which is why every host money surface was blind to vendor balances. Both
   // numbers come from canonical sources; neither is re-derived here.
-  if (num(ev.totalBudget) > 0) {
+  //
+  // THE DENOMINATOR MUST NOT MOVE WHEN SHE ANSWERS (sim drive 2026-08-04).
+  // This whole block sat behind `if (totalBudget > 0)`, so an unset budget was not
+  // a part of the plan at all: the hero asked "Set your budget." while the ledger
+  // one line below counted 6 parts, and the instant she answered it counted 7 —
+  // "2 of 6" became "3 of 7" in a single tap. Answering a question must never
+  // enlarge the question set; that reads as running in place, and it made the
+  // ledger disagree with the very ask the hero was making. Budget ALWAYS applies
+  // to a host planning an event. Unset is the open state, not an absent one.
+  {
     // C1: hostSpending().committed NOW INCLUDES what is owed to vendors (it had no
     // vendor term at all until then, which is why this used to add vendorOutstanding
     // separately). Adding it again here would double-count the balance — caught by
     // this file's own test 11c. One source: read `committed` and nothing else.
+    const totalBudget = num(ev.totalBudget);
+    const budgetSet = totalBudget > 0;
     const money = (() => { try { return hostSpending(ev); } catch { return null; } })();
     const knownCosts = money ? num(money.committed) : 0;
-    const totalBudget = num(ev.totalBudget);
-    const over = Math.round(knownCosts - totalBudget);
-    add('budget', true, over <= 0,
-      over > 0 ? `Known costs are $${over.toLocaleString()} over your budget` : null,
+    const over = budgetSet ? Math.round(knownCosts - totalBudget) : 0;
+    add('budget', true, budgetSet && over <= 0,
+      !budgetSet ? 'Set your budget'
+        : over > 0 ? `Known costs are $${over.toLocaleString()} over your budget` : null,
       { tab: 'Budget' }, 9);
   }
   if (String(ev.must_have_moment || '').trim()) add('moment', true, true, null, null, 9);

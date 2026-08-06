@@ -396,10 +396,14 @@ describe('lodgingSearchLinks', () => {
     expect(lodgingSearchLinks(null)).toEqual([]);
   });
 
-  test('a single-day event still produces a real checkout date', () => {
+  // SUPERSEDED 2026-08-04: this used to accept checkout==checkin. The intent —
+  // "never emit a search without a checkout" — stands, but a zero-night span is
+  // a search both platforms reject; a stay is at least a night, so a same-day
+  // event checks out the NEXT morning. The one-night rule's own suite is below.
+  test('a single-day event still produces a real checkout date — one night out', () => {
     const [ab] = lodgingSearchLinks({ ...EV2, endDate: null });
     expect(ab.href).toMatch(/checkin=2026-09-11/);
-    expect(ab.href).toMatch(/checkout=2026-09-11/);
+    expect(ab.href).toMatch(/checkout=2026-09-12/);
   });
 });
 
@@ -612,5 +616,43 @@ describe('unfurl failures never show a raw HTTP phrase', () => {
   test('a missing or malformed body still yields real guidance', () => {
     expect(failureReason(502, null)).toMatch(/paste/i);
     expect(failureReason(502, { detail: 42 })).toMatch(/paste/i);
+  });
+});
+
+// ── A STAY IS AT LEAST A NIGHT (sim drive 2026-08-04) ─────────────────────────
+// A single-day event emitted checkin==checkout — a zero-night search both
+// platforms reject — with "Jun 20–Jun 20" in the applied copy, and adults=40
+// where Airbnb's own search stops at 16. The URL must be one the platform
+// accepts; the applied copy stays honest about the real numbers.
+describe('lodgingSearchLinks — single-day stays and platform caps', () => {
+  const { lodgingSearchLinks: links } = require('../lodgingIntel');
+  const ONE_DAY = { id: 's1', type: 'Birthday', date: '2027-06-20',
+    venueCity: 'Alexandria', venueState: 'VA', guestCount: 40, totalBudget: 16000 };
+
+  test('a same-day span searches one night, never checkin==checkout', () => {
+    const [ab, vr] = links(ONE_DAY);
+    expect(ab.href).toMatch(/checkin=2027-06-20/);
+    expect(ab.href).toMatch(/checkout=2027-06-21/);
+    expect(vr.href).toMatch(/startDate=2027-06-20/);
+    expect(vr.href).toMatch(/endDate=2027-06-21/);
+  });
+
+  test('the applied copy tells the same one-night story as the URL', () => {
+    const [ab] = links(ONE_DAY);
+    const saidLine = ab.applied.join(' ');
+    expect(saidLine).toMatch(/Jun 20–Jun 21/);
+    expect(saidLine).not.toMatch(/Jun 20–Jun 20/);
+  });
+
+  test('Airbnb adults clamps to the platform cap of 16; the honesty line keeps the real 40', () => {
+    const [ab] = links(ONE_DAY);
+    expect(ab.href).toMatch(/adults=16/);
+    expect(ab.applied).toContain('40 guests');
+  });
+
+  test('a real multi-day span rides through untouched', () => {
+    const [ab] = links({ ...ONE_DAY, endDate: '2027-06-22', guestCount: 10 });
+    expect(ab.href).toMatch(/checkout=2027-06-22/);
+    expect(ab.href).toMatch(/adults=10/);
   });
 });

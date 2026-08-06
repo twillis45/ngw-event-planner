@@ -81,7 +81,7 @@ import { normalizeCategory } from '@app/lib/vendorAccountability/playbooks';
 import { canSnooze, proposedSnoozeUntil, clampSnoozeUntil, snoozedUntil } from '@app/lib/snooze';
 import { vendorPricingHint } from '@app/lib/knowledge/vendorPricing';
 import { incidentPlanFor } from '@app/lib/knowledge/incidentContext';
-import { lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
+import { heardMustHaves, heardStayStyle, lodgingStage, lodgingIntel, kitchenConsequence, lodgingCompare, extractPhotoUrls, lodgingRecommendation, lodgingSearchLinks, lodgingSearchBlocked, LODGING_MUST_HAVES, extractListingMeta, suggestedMustHaves, mustHavesFor, mustHaveBasis, unfurlListing, isUnfurlConfigured, stayFromPick, backupFromRunnerUp, extractListingCandidates, candidatesFromGroups, rankCandidates } from '@app/lib/lodgingIntel';
 import { foodSpanNote } from '@app/lib/foodSpan';
 import { buildBookmarklet, parseBookmarkletPayload, lodgingHashPayload, isAllowedMedia } from '@app/lib/lodgingBookmarklet';
 import { track as trackEvent, EVENTS as ANALYTICS } from '@app/lib/analytics';
@@ -452,6 +452,76 @@ function SheetHero({ eyebrow, star, tone, sub, grounding }) {
       <BigValue style={{ fontVariantNumeric: 'tabular-nums', ...(color !== 'var(--ink)' ? { color } : null) }}>{star}</BigValue>
       {sub ? <GuideLine style={grounding ? { marginBottom: 8 } : null}>{sub}</GuideLine> : null}
       {grounding ? <p className="grounding" style={{ margin: 0 }}>{grounding}</p> : null}
+    </div>
+  );
+}
+
+// ── SWIPE BETWEEN THE PLACES (host 2026-08-05: "we need to be able to swipe
+//    between the choices" — ported from the ?demo=lodging cockpit's Choices,
+//    which drew it, ruled it, and never wired it to the live sheet). ─────────
+// One card per place, scroll-snapped so a thumb-flick moves one card and the
+// next peeks at the edge — the same `.shelf` scroll-snap vocabulary the plan
+// parts strip already uses, not a new pattern. No JS drag handler: native
+// overflow scrolling is the real gesture on a phone, keeps momentum and
+// rubber-banding, and works with a trackpad and a keyboard for free.
+//
+// The vertical `li.options.map` list is NOT replaced — it moves inside a
+// <details>, "See them as a list", so screen readers and keyboard users keep
+// a fully linear path and nothing here is exclusive to touch. The deck reuses
+// the exact same actions (pick/unpick/remove) so the two views can never
+// diverge in what they let the host do.
+const LODGING_STAGE_LABEL = { 'no-town': 'The town', looking: 'Go look', weighing: 'Weigh them', picked: 'The pick', booked: 'On the books' };
+
+function LodgeDeck({ options, guests, isRec, write }) {
+  const [at, setAt] = useState(0);
+  const railRef = useRef(null);
+  if (!Array.isArray(options) || options.length < 2) return null;
+  return (
+    <div style={{ marginBottom: 'var(--sp-3)' }}>
+      <p className="of" style={{ margin: '0 0 6px' }}>
+        {(options[at] && options[at].label) || 'Place'} <span className="v-meta" style={{ fontWeight: 550 }}>· {at + 1} of {options.length}</span>
+      </p>
+      <div ref={railRef}
+        style={{ display: 'flex', gap: 'var(--sp-2)', overflowX: 'auto', scrollSnapType: 'x proximity', scrollbarWidth: 'none', paddingBottom: 2 }}
+        onScroll={(e) => {
+          const el = e.currentTarget;
+          const w = el.scrollWidth / options.length;
+          const i = w > 0 ? Math.round(el.scrollLeft / w) : 0;
+          if (i !== at && i >= 0 && i < options.length) setAt(i);
+        }}>
+        {options.map((o) => {
+          const fit = (o.checks || []).find((c) => c.key === 'fit');
+          const money = o.allIn != null
+            ? `$${o.allIn.toLocaleString()}${o.feesKnown ? ' all in' : ' + fees'}${guests ? ` · $${Math.round(o.allIn / guests).toLocaleString()} each` : ''}`
+            : null;
+          return (
+            <div key={o.id} className="card" style={{ flex: '0 0 88%', scrollSnapAlign: 'start', margin: 0, maxWidth: 'none' }}>
+              <PhotoStrip photos={o.photos} alt={o.label} size={132} />
+              <div style={{ marginTop: 8 }}>
+                <span className="f-name">{o.label}
+                  {o.status === 'chosen' ? <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>the pick</span> : null}
+                  {isRec === o.id && o.status !== 'chosen' ? <span className="tag plan" style={{ color: 'var(--steel-soft)', background: 'var(--steel-tint)' }}>what I&rsquo;d take</span> : null}
+                  {o.platform && o.platform !== 'other' ? <span className="tag plan">{o.platform}</span> : null}
+                </span>
+                {money ? <span className="v-meta" style={{ display: 'block', fontWeight: 650, color: 'var(--ink-soft)' }}>{money}</span> : null}
+                {fit ? <span className="v-meta" style={{ display: 'block', color: fit.ok === false ? 'var(--warn)' : undefined }}>{fit.text}</span> : null}
+                {o.url ? <a className="v-meta" href={o.url} target="_blank" rel="noopener noreferrer" style={{ display: 'block', color: 'var(--steel-soft)', marginTop: 2 }}>Open the listing ↗</a> : null}
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
+                {o.status !== 'chosen'
+                  ? <button className="cta" onClick={() => write(options.map((x) => ({ ...x, status: x.id === o.id ? 'chosen' : 'option' })), o.label + ' is the pick — the plan reads it now.')}>Make it the pick</button>
+                  : <button className="mini" onClick={() => write(options.map((x) => ({ ...x, status: 'option' })), 'Back to comparing.')}>Unpick</button>}
+                <button className="mini" onClick={() => write(options.filter((x) => x.id !== o.id), 'Off the shortlist.')}>Remove</button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: 6, justifyContent: 'center', marginTop: 8 }} aria-hidden="true">
+        {options.map((o, i) => (
+          <span key={o.id} style={{ width: 6, height: 6, borderRadius: '50%', background: i === at ? 'var(--steel)' : 'var(--line)' }} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -889,11 +959,8 @@ export default function HostShellV2() {
     if (!validPlace(venueDraft)) { setVenueErr('Give guests a real place — a name or an address, not just a number.'); return; }
     const v = venueDraft.trim();
     // pendingCity comes from the address-autocomplete pick (already "City, ST"
-    // when Nominatim returned a state) — same strict gate as saveCity so a
-    // bare-city result never slips through this second write path either.
-    const parsedCity = pendingCity ? parseVenueLocation(pendingCity) : null;
-    // setVenue (the constitution's ONE write path) owns kind inference + the
-    // strict city gate — this site carried its own copies of both.
+    // when Nominatim returned a state) — setVenue (the constitution's ONE write
+    // path) owns kind inference + the strict city gate for it.
     patchEvent(setVenue(event, { name: v, locationText: pendingCity }),
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
@@ -970,6 +1037,17 @@ export default function HostShellV2() {
   useEffect(() => clearRevealTimers, []);
   const [typeOpen, setTypeOpen] = useState(false);   // occasion browser: collapsed until asked
   const [typeQuery, setTypeQuery] = useState('');
+  // DENSE ON ARRIVAL (host, 2026-08-05: "why is creation pulling all of
+  // those choices, bad and dense. pull what the host needs and no more") —
+  // the free-text box failing to detect a type at all (an ambiguous or very
+  // short description) used to dump the ENTIRE catalog, every parent group,
+  // unconditionally. A search box already existed right above it; the fix is
+  // to trust it — six common occasions plus search by default, the full
+  // grouped catalog only on an explicit ask, same progressive-disclosure
+  // pattern as every other picker in this file (count, date).
+  const [browseAllTypes, setBrowseAllTypes] = useState(false);
+  const QUICK_TYPES = ['Birthday', 'Wedding', 'Anniversary', 'Graduation', 'Reunion', 'Get-Together']
+    .filter((t) => HOST_TYPES.includes(t));
 
   // Type-ahead over the catalog, backed by the REAL alias resolver — "bbq",
   // "crab boil", "40th" all resolve through the taxonomy's own regexes.
@@ -1839,7 +1917,7 @@ export default function HostShellV2() {
     if (/pickers|light eaters/i.test(t)) { setSheet({ kind: 'crabs', focus: 'pickers' }); return; }
     if (/crab house|pre-?order|bushel|dozen|steam/i.test(t)) { setSheet({ kind: 'crabs', focus: 'order' }); return; }
     if (/rent or borrow|steamer pot|propane|tables|chairs|canopy/i.test(t)) { setSheet({ kind: 'space' }); return; }
-    if (u.kind === 'lodging') { setSheet({ kind: 'lodging', focus: 'deadline' }); return; }
+    if (u.kind === 'lodging') { goToLodgingCockpit(); return; }
     if (u.kind === 'ground') { setSheet({ kind: 'ground', focus: 'riders' }); return; } // land on the rows that still need a ride
     if (u.kind === 'air') { setSheet({ kind: 'air', focus: u.guestId != null ? u.guestId : null }); return; } // land on the exact conflicted row
     if (u.kind === 'call') { setSheet({ kind: 'decisions', focus: u.id || null }); return; }
@@ -3085,6 +3163,23 @@ export default function HostShellV2() {
   };
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
+  // ── "WHERE EVERYONE STAYS" NOW MEANS THE COCKPIT (host, 2026-08-05) ────────
+  // LodgingCockpit.jsx is the real, staged, one-screen-at-a-time redesign —
+  // already built, already writing through the SAME localStorage this shell
+  // reads (main.jsx's own words: "running beside the live sheet on the same
+  // real event"). The in-sheet fold/rail this file carried through three
+  // passes today was reinventing what already exists. Every entry point now
+  // navigates there instead of opening the modal — a real page, not an SPA
+  // route, since the cockpit is its own top-level mount (main.jsx). The sheet
+  // render path stays for now (removal is its own careful pass, not bundled
+  // into a navigation change); this makes it unreachable.
+  const goToLodgingCockpit = () => {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('demo', 'lodging');
+      window.location.href = u.toString();
+    } catch { window.location.href = window.location.pathname + '?demo=lodging'; }
+  };
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
   // Candidates read off a pasted results page or handed over by the bookmarklet,
@@ -3127,6 +3222,13 @@ export default function HostShellV2() {
     try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
     setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
       linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+    // NOT moved to goToLodgingCockpit (2026-08-05): the bookmarklet round-trips
+    // through THIS page's own hash, staged into this sheet's own lodgeStaged
+    // state — the cockpit has no matching consumer for that payload yet. Every
+    // other entry point navigates to the cockpit; this one keeps the old sheet
+    // reachable on purpose so the bookmarklet (a real, working, if secondary,
+    // path) does not silently break. Port lodgingHashPayload consumption into
+    // LodgingCockpit.jsx and this can move too.
     setSheet({ kind: 'lodging' });
     // Mount only: the hash is consumed and cleared on arrival.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3519,6 +3621,14 @@ export default function HostShellV2() {
       return true;
     }
     if (r.kind === 'stage:day') { setStage('day'); setSheet(null); return true; }
+    // THE ACTUAL MISSED WIRE (host, 2026-08-05: caught by real clicks, not the
+    // 4 literal `setSheet({kind:'lodging'})` call sites this file already had
+    // fixed). Every route-driven CTA — the essentials hero on this exact
+    // screen included — lands here via resolveRoute(), generic across every
+    // sheet kind. Patching the 4 direct call sites missed this ONE shared
+    // dispatcher underneath all of them, which is why "Open where everyone
+    // stays" kept opening the old sheet through every rebuild.
+    if (r.kind === 'lodging') { goToLodgingCockpit(); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -5019,6 +5129,19 @@ export default function HostShellV2() {
       // makes it a real compound event; theme seeds the look. Only ever what the host actually said.
       ...(parsed.secondaryType ? { secondaryType: parsed.secondaryType } : {}),
       ...(parsed.theme ? { theme: parsed.theme } : {}),
+      // WHAT SHE ASKED FOR IN THE PLACE ITSELF (host 2026-08-05: "did we add
+      // that the 80th birthday was for resort spa?"). She typed "Santa Fe, NM
+      // resort spa"; the town was kept and the rest dropped, so the lodging
+      // requirement list proposed six things she never said and missed the one
+      // she did — with a hot-tub filter sitting VERIFIED in lodgingIntel the
+      // whole time. Matched against that file's own vocabulary, never invented,
+      // and written only when her words actually matched something.
+      ...(() => { const w = heardMustHaves(smartText); return w.length ? { lodgingWants: w } : {}; })(),
+      // The KIND of place she named ("resort spa"), kept verbatim. It leads the
+      // hotel search rather than being mapped onto an amenity filter we could
+      // not honour — searching "hotels in Santa Fe" for a host who asked for a
+      // resort spa hands back the wrong results.
+      ...(() => { const st = heardStayStyle(smartText); return st ? { lodgingStyle: st } : {}; })(),
       budget: [],
       guests: [], vendors: [], timeline: [],
     };
@@ -5583,7 +5706,17 @@ export default function HostShellV2() {
                   {smartText.trim() !== '' && (
                     <>
                       {/* Recognition chips — what was understood; tap to correct. */}
-                      <div className="chips" style={{ marginTop: 14 }}>
+                      {/* ONE LOUD THING (host 2026-08-04: "does the CTA stand out
+                          enough?"). These chips are a READ-OUT of what was heard, not
+                          a set of live selections — but they wore `.chip[aria-pressed]`'s
+                          solid --steel, the same weight the primary CTA carries, so five
+                          of them shouted alongside "Put my plan together" and the one
+                          action on the screen had to compete with the recap above it.
+                          `.chips.heard` keeps the filled/known reading at tint weight,
+                          scoped to this row so every real toggle chip elsewhere is
+                          untouched. Steel still means identity + selection (theme.js S1);
+                          it is now spent ONCE per screen, on the act. */}
+                      <div className="chips heard" style={{ marginTop: 14 }}>
                         <button className="chip" aria-pressed={!!effType}
                           onClick={() => { setCreateEdit(createEdit === 'type' ? null : 'type'); setTypeOpen(true); setTypeQuery(''); }}>
                           {effType ? effType.replace(' Party', '') : 'Which occasion?'}
@@ -5597,7 +5730,21 @@ export default function HostShellV2() {
                         <button className="chip" onClick={() => setCreateEdit(createEdit === 'name' ? null : 'name')}>
                           {effName ? 'For ' + effName : 'Who’s it for?'}
                         </button>
-                        {parsed.venue ? <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{parsed.venue}</span> : null}
+                        {/* ONE PLACE, ONE CHIP (sim drive 2026-08-04). "family reunion
+                            in Deep Creek Lake, MD" produced BOTH a venue chip reading
+                            "Deep Creek Lake" and a town chip reading "Deep Creek Lake,
+                            MD" — the same fact twice, and the venue one is the only
+                            dead chip in the row (pointerEvents:none, nothing to tap if
+                            the parse got it wrong). It earns its space only when it
+                            says something the town chip does not. */}
+                        {(() => {
+                          const v = String(parsed.venue || '').trim();
+                          if (!v) return null;
+                          const town = String(effCityText || '').trim().toLowerCase();
+                          const lv = v.toLowerCase();
+                          if (town && (town === lv || town.startsWith(lv + ',') || town.startsWith(lv + ' ') || lv.startsWith(town))) return null;
+                          return <span className="chip" aria-pressed="true" style={{ pointerEvents: 'none' }}>{v}</span>;
+                        })()}
                         <button className="chip" aria-pressed={!!effCityText} onClick={() => setCreateEdit(createEdit === 'city' ? null : 'city')}>
                           {effCityText || 'Which town?'}
                         </button>
@@ -5668,7 +5815,7 @@ export default function HostShellV2() {
                                 ))
                                 : <p className="grounding">Nothing matches — “bbq”, “boil”, and “get together” all work.</p>}
                             </div>
-                          ) : (
+                          ) : browseAllTypes ? (
                             TYPE_GROUPS.map(([group, list]) => (
                               <div key={group} className="shelf-wrap">
                                 <div className="shelf-label">{group}</div>
@@ -5679,6 +5826,18 @@ export default function HostShellV2() {
                                 </div>
                               </div>
                             ))
+                          ) : (
+                            <>
+                              <div className="chips" style={{ marginTop: 'var(--sp-3)' }}>
+                                {QUICK_TYPES.map(t => (
+                                  <button key={t} className="chip" aria-pressed={effType === t} onClick={() => { pickType(t); setCreateEdit(null); }}>{t.replace(' Party', '')}</button>
+                                ))}
+                              </div>
+                              <button type="button" style={{ marginTop: 'var(--sp-2)', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                                onClick={() => setBrowseAllTypes(true)}>
+                                <span style={{ color: 'var(--faint)', fontWeight: 450, fontSize: '12.5px' }}>See every occasion  ▸</span>
+                              </button>
+                            </>
                           )}
                         </div>
                       )}
@@ -7138,9 +7297,18 @@ export default function HostShellV2() {
                           one state in which "you’re set" is guaranteed false. It now
                           says what is actually true: the ledger is closed, and the thing
                           on screen is not in that ledger. */}
+                      {/* "WAIT TILL WHEN?" (host 2026-08-04). "the rest can wait" is a
+                          comfort claim with no horizon — and this engine already knows
+                          the horizon: nextLedgerChange is the dated moment the plan next
+                          asks more of her (today, the week the shopping list opens). The
+                          calm pole two screens up prints it; the working hairline said
+                          the soothing half and swallowed the date. Same source, so the
+                          two can never disagree; the bare phrase survives only when
+                          nothing dated is pending. */}
                       <span>{hoverSeg
                         ? (hoverSeg.handled ? 'handled' : 'still open')
-                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first' : 'the rest can wait'))}</span>
+                        : (done >= total ? 'this one’s still open' : ((queue[0] && (queue[0].level === 'critical' || queue[0].status === 'overdue' || queue[0].dueInDays < 0)) ? 'this one first'
+                          : (ledgerExpiryShort ? `the rest can wait till ${ledgerExpiryShort}` : 'the rest can wait')))}</span>
                     </div>
                   </div>
                 );
@@ -8248,7 +8416,7 @@ export default function HostShellV2() {
                           // WAVE-6 (one number per row): raises here are aggregates —
                           // the sub carries the real fact. Tint only, no ledger badge.
                           attn: (raised['lodging'] || 0) + (raised['money-dates'] || 0) > 0,
-                          go: () => setSheet({ kind: 'lodging' }),
+                          go: () => goToLodgingCockpit(),
                         };
                       })() : null,
                   // DESTINATION-2 slice 3: getting here, same gate. The sub is
@@ -10038,6 +10206,35 @@ export default function HostShellV2() {
               const setF = (k) => (e) => setLodgeForm({ ...f, [k]: e.target.value });
               const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const focusDeadline = sheet.focus === 'deadline';
+              // ── ONE STAGE, ONE SCREEN — for real this time (host, 2026-08-05:
+              //    "we already restructured and built this" / "separating the
+              //    section of this screen"). That work is real — it is
+              //    LodgingCockpit.jsx's Body({stage}), which renders exactly ONE
+              //    stage's content and nothing else. It was never wired into this
+              //    live sheet; a `<details>` fold (this file, two passes) is a
+              //    collapse, not a switch — the other stage's DOM is still there,
+              //    just hidden, and a screen reader or a Cmd-F still finds it.
+              //
+              // This does not import the cockpit's component tree — it has its
+              // own throwaway CSS system (.lc-*, a raw <style> string, zero
+              // overlap with this app's styles.css) that would be a second design
+              // language inside the one surface the parity gate exists to keep
+              // singular. Same STRUCTURE (compute the stage once, render only its
+              // section), the app's REAL atoms (SheetHero, .cta, .mini,
+              // PhotoStrip) — which is what productionizing a validated prototype
+              // means, not copying its scaffolding.
+              //
+              // Computed HERE, once, so both halves below (the search/weigh
+              // machinery and the stay/money-dates half) read the SAME value —
+              // the two-source drift that made "Step 5 of 5 · booked" possible
+              // right after a bare pick is exactly what a single shared value
+              // rules out structurally.
+              let lstage = null; try { lstage = lodgingStage(event); } catch { lstage = null; }
+              // This sheet is unreachable now (goToLodgingCockpit navigates away
+              // before it ever opens) — left compiling, not deleted, per the
+              // careful-separate-pass note above. `lodgePeekWeighing` no longer
+              // exists; onWeighingSide reverts to a plain stage read.
+              const onWeighingSide = !lstage || lstage.stage === 'no-town' || lstage.stage === 'looking' || lstage.stage === 'weighing';
               return (
                 <>
                   {/* ── THE RENTAL SHORTLIST (host directive 2026-07-28) ──
@@ -10067,15 +10264,36 @@ export default function HostShellV2() {
                       let stay = null;
                       try { stay = stayFromPick({ ...event, lodgingOptions: opts }); } catch (_e) { stay = null; }
                       const cur = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+                      // Derived-vs-typed, decided ONCE for both branches: a stay whose name
+                      // matches a shortlist label came from a previous pick, not her hands.
+                      // (Pick-switch audit 2026-08-04, reapplied 2026-08-05 after a branch
+                      // split silently dropped it from this file: the fill-only-empty guard
+                      // below treated the OLD pick's derived name as host-typed, so re-picking
+                      // left "Option 1 is the plan" standing while the pick chip moved.)
+                      const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
+                      const prevDerived = !!prevLabel && (li.options || []).some(
+                        (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
                       if (stay && stay.hotelName) {
                         // Never clobber what the host typed herself: a hand-entered stay
-                        // outranks a derived one. Fill only what is empty.
-                        patch.lodging = {
-                          ...cur,
-                          hotelName: cur.hotelName || stay.hotelName,
-                          rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
-                          url: cur.url || stay.url,
-                        };
+                        // outranks a derived one. A DERIVED name follows the pick.
+                        //
+                        // `from: stay.from` (STAY_FROM_PICK) MUST ride along (caught live,
+                        // 2026-08-05, checking the stage rail against real data): without it
+                        // lodgingStage's `namedOffConfirmation` check — hotelName set AND
+                        // from !== STAY_FROM_PICK — reads `undefined !== 'pick'` as true, so
+                        // EVERY fresh pick was misread as a real booking the instant it was
+                        // made. "5 of 5 · The stay is on the books" fired off a bare pick,
+                        // before a single booking fact existed. A hand-typed stay has no
+                        // `stay.from` to carry (this branch only runs when the derived value
+                        // is winning), so it stays a real booking record, as it should.
+                        patch.lodging = (!prevLabel || prevDerived)
+                          ? { ...cur, hotelName: stay.hotelName, rate: stay.rate, url: stay.url, from: stay.from }
+                          : {
+                            ...cur,
+                            hotelName: cur.hotelName || stay.hotelName,
+                            rate: (cur.rate != null && cur.rate !== '') ? cur.rate : stay.rate,
+                            url: cur.url || stay.url,
+                          };
                       } else {
                         // ── A STAY MUST NOT OUTLIVE THE PICK IT CAME FROM ──────────
                         // Audit finding 2026-07-28: un-picking cleared `chosen` but left
@@ -10086,18 +10304,55 @@ export default function HostShellV2() {
                         // Only what WE derived is withdrawn: the stay is cleared solely
                         // when its name still matches an option on the shortlist. A stay
                         // she typed herself is hers and survives untouched.
-                        const prevLabel = String(cur.hotelName || '').trim().toLowerCase();
-                        const wasDerived = prevLabel && (li.options || []).some(
-                          (o) => String(o.label || '').trim().toLowerCase() === prevLabel);
-                        if (wasDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '' };
+                        if (prevDerived) patch.lodging = { ...cur, hotelName: '', rate: null, url: '', from: null };
                       }
                       patchEvent(patch, msg);
                     };
                     const rf = rentalForm;
                     const canAdd = rf.url.trim() || rf.label.trim();
                     const fldR = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
+                    // ── ONE STAGE LOUD, THE REST REACHABLE (host 2026-08-05: "each of
+                    //    these will have to progress to next stage when complete";
+                    //    "the sheet is way too dense") ────────────────────────────────
+                    // lodgingStage already derives the stage purely from event state —
+                    // no-town → looking → weighing → picked → booked — so progression is
+                    // not something to wire, it is what this function already does: paste
+                    // a listing and `weighing` follows on the next render because li.options
+                    // now has something in it; make a pick and `picked` follows the same
+                    // way. This rail is the ONLY new thing — a plain read of the same
+                    // derivation the cockpit uses, so the two surfaces can never disagree
+                    // about where the host actually is.
+                    //
+                    // SECOND CUT WAS A FOLD, NOT A SWITCH (host, 2026-08-05: "we already
+                    // restructured and built this" / "separating the section of this
+                    // screen"). Right — that build is LodgingCockpit.jsx's Body({stage}),
+                    // which renders exactly ONE stage's content, full stop. A <details>
+                    // fold (the shape this replaces) still puts the other stage's DOM on
+                    // the page, just closed — a screen reader, Cmd-F, or `display` CSS
+                    // override still finds it. This reads the SAME lstage the outer scope
+                    // already computed (one source, so the two halves of this sheet can
+                    // never disagree about the stage the way the rail and the booked-state
+                    // bug did) and does not render the other half's markup at all.
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
+                        {lstage && (
+                          <>
+                            <div style={{ display: 'flex', gap: 2, marginBottom: 'var(--sp-2)' }} role="img"
+                              aria-label={`Step ${lstage.index + 1} of ${lstage.total}: ${lstage.title}`}>
+                              {Array.from({ length: lstage.total }, (_, i) => (
+                                <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i <= lstage.index ? 'var(--steel)' : 'var(--line)' }} />
+                              ))}
+                            </div>
+                            <SheetHero eyebrow={LODGING_STAGE_LABEL[lstage.stage] || 'Where everyone stays'} star={lstage.title} sub={lstage.why} />
+                          </>
+                        )}
+                        {!onWeighingSide && (
+                          <p className="v-meta" style={{ marginBottom: 'var(--sp-3)' }}>
+                            Places you looked at — {li.options.length} on the list.
+                          </p>
+                        )}
+                        {onWeighingSide && (
+                        <>
                         <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
@@ -10148,9 +10403,17 @@ export default function HostShellV2() {
                               <p style={{ margin: 0, fontSize: 'var(--t-row)', fontWeight: 650, color: 'var(--ink)' }}>{kc.headline}</p>
                               <p className="grounding" style={{ margin: '4px 0 0', color: tone }}>{kc.detail}</p>
                               {!kc.answered && (
+                                // INLINE, NOT STACKED (host, 2026-08-05: "house cta and hotel cta
+                                // can go inline"). `.cta soft` is full weight — sized for a
+                                // screen's ONE loud action — so two of them wrapped to their own
+                                // rows even though this fork is a binary either/or, not the loud
+                                // thing (the SheetHero above already carries that). `.mini` is the
+                                // same row-action weight "Make it the pick"/"Unpick"/"Remove" use
+                                // a few lines down: light enough that both fit one line at normal
+                                // sheet width, and correctly reads as secondary to the hero.
                                 <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
                                   {kc.answers.map((a) => (
-                                    <button key={a.id} className="cta soft" onClick={() => patchEvent(
+                                    <button key={a.id} className="mini" onClick={() => patchEvent(
                                       { foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } },
                                       a.kitchen
                                         ? 'A kitchen — the food plan is a grocery run.'
@@ -10352,20 +10615,23 @@ export default function HostShellV2() {
                                     style={{ textDecoration: 'none' }}>{l.label} ↗</a>
                                 ))}
                               </div>
+                              {/* SAY IT FOR THE DOORS IT IS TRUE OF (all three driven live,
+                                  2026-08-05). One sentence sat under three buttons claiming
+                                  every one of them opens pre-filled. Airbnb and Vrbo do —
+                                  their real results pages come back carrying these dates.
+                                  Google's hotel search does NOT: neither the prose in `q`
+                                  nor checkin/checkout params move it, so it opens on the
+                                  town alone and the host sets the rest there. Claiming
+                                  otherwise is the kind of small lie she finds out about one
+                                  tap later. */}
                               <p className="grounding" style={{ margin: '4px 0 0' }}>
-                                Opens with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
+                                Airbnb and Vrbo open with your own answers already in it — {links[0].applied.join(' · ')}. Bring the whole page back and I’ll read every listing on it.
                               </p>
-                              {/* Vrbo opens at the front door (its terms forbid deep linking
-                                  where Airbnb's don't), so hand the host her own criteria to
-                                  type in rather than silently giving her less. */}
-                              {(() => {
-                                const v = links.find((l) => l.id === 'vrbo' && l.criteria);
-                                return v ? (
-                                  <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
-                                    Vrbo opens at its own search — put in {v.criteria}.
-                                  </p>
-                                ) : null;
-                              })()}
+                              {links.some((l) => l.id === 'hotels') && (
+                                <p className="grounding" style={{ margin: '2px 0 0', color: 'var(--muted)' }}>
+                                  Hotels open at the town only — set the dates and guests once you’re there.
+                                </p>
+                              )}
                             </div>
                           );
                         })()}
@@ -10638,11 +10904,18 @@ export default function HostShellV2() {
                                           {/* The card's OWN thumbnail — the picture the host was
                                               already judging the house by on the results page. It
                                               drops out silently if it fails to load, so a dead
-                                              image never makes a real listing look broken. */}
+                                              image never makes a real listing look broken.
+                                              BIG ENOUGH TO CHOOSE BY (host 2026-08-04). This is the
+                                              screen where she keeps or drops each house, yet the
+                                              photo was a 66x44 stamp — smaller than the one the
+                                              COMMITTED rows already get (PhotoStrip at 116-132).
+                                              The decision surface had the weakest image in the
+                                              flow. Sized to the same family, with the radius the
+                                              rest of the shell uses. */}
                                           {c.photo && (
                                             <img src={c.photo} alt="" loading="lazy" referrerPolicy="no-referrer"
                                               onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                              style={{ width: 66, height: 44, objectFit: 'cover', flex: '0 0 auto', display: 'block' }} />
+                                              style={{ width: 112, height: 78, objectFit: 'cover', flex: '0 0 auto', display: 'block', borderRadius: 'var(--r-sm)' }} />
                                           )}
                                           <span className="req-body">
                                             <span className="req-label">{c.name || c.url.replace(/^https:\/\/(www\.)?/, '')}</span>
@@ -10675,7 +10948,12 @@ export default function HostShellV2() {
                                         setLodgeStaged(null);
                                         commitLodging(chosen);
                                       }}>
-                                      Add {staged.pick.size} to the shortlist
+                                      {/* NEVER NAME AN ACT THE BUTTON CANNOT DO (sim drive
+                                          2026-08-04). Untick every row and this read "Add 0 to
+                                          the shortlist" — correctly disabled, but offering to
+                                          add nothing. Disabled state now says what would make
+                                          it work instead of naming an impossible act. */}
+                                      {staged.pick.size === 0 ? 'Pick at least one' : `Add ${staged.pick.size} to the shortlist`}
                                     </button>
                                     <button className="mini" onClick={() => setLodgeStaged(null)}>Never mind</button>
                                   </div>
@@ -10785,6 +11063,22 @@ export default function HostShellV2() {
                             </div>
                           );
                         })()}
+                        {/* SWIPE BETWEEN THE PLACES (host 2026-08-05) — ported from the
+                            cockpit's Choices deck. Only earns its space at 2+, where there
+                            is a real comparison to make; one place has nothing to swipe to,
+                            and the vertical row below already covers it. */}
+                        {li.options.length >= 2 && (() => {
+                          const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
+                          return <LodgeDeck options={li.options} guests={li.guests} isRec={recNow && recNow.pick && recNow.pick.id} write={write} />;
+                        })()}
+                        <details open={li.options.length < 2} style={{ marginBottom: li.options.length >= 2 ? 'var(--sp-3)' : 0 }}>
+                          {li.options.length >= 2 && (
+                            <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
+                              alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                              <span className="of" style={{ whiteSpace: 'nowrap' }}>See them as a list</span>
+                              <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>same places, one column ▾</span>
+                            </summary>
+                          )}
                         {li.options.map((o) => {
                           const recNow = (() => { try { return lodgingRecommendation(event, li); } catch { return null; } })();
                           const isRec = !!(recNow && recNow.pick && recNow.pick.id === o.id);
@@ -10851,6 +11145,7 @@ export default function HostShellV2() {
                           </div>
                           );
                         })}
+                        </details>
                         {/* CALM PASS (host 2026-08-03: the panel 'not very readable'). An eight-field form, a photo box and four cancellation chips sat permanently open below the shortlist. It is the rarest path here -- most places arrive by paste -- so it rests as one line and opens when asked. */}
                         <details style={{ marginBottom: 'var(--sp-4)' }}>
                           <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
@@ -11008,14 +11303,24 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
                           Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
                         </p>
+                        </>
+                        )}
                       </div>
                     );
                   })()}
                   {/* Hero copy (host request 2026-07-11): the booked count is the
                       star in roster mode; the stay's own state otherwise. All
                       figures from lib/travelPlan — the roster summary line below
-                      was PROMOTED here, not duplicated. */}
-                  {travel.rosterMode && lg.roster.length > 0 ? (
+                      was PROMOTED here, not duplicated.
+                      THE OTHER HALF OF THE SAME SWITCH (host, 2026-08-05: "separating
+                      the section of this screen"). `lstage`/`onWeighingSide`, computed
+                      ONCE at the top of the enclosing IIFE, are in scope here — this is
+                      a sibling `{}` inside that same returned fragment, not a separate
+                      closure, so there is only ever one read of the stage on this
+                      screen. Renders precisely when the block above does not: the
+                      weighing machinery OR the stay/money-dates half, never both,
+                      never neither (bar the local-event early return above). */}
+                  {!onWeighingSide && (travel.rosterMode && lg.roster.length > 0 ? (
                     /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
                        booked and confirmed"). notBookedCount counts ONLY 'not_started'
                        — its own comment says "booked here means booked OR confirmation
@@ -11040,7 +11345,7 @@ export default function HostShellV2() {
                         ? `${lg.hotelName} is the plan — the details below feed the where-to-stay note.`
                         : 'Name the place below and the where-to-stay note writes itself.'}
                     />
-                  )}
+                  ))}
                   {/* The one dated fact on this card, said plainly — never "cutoff". */}
                   {lg.deadline && (() => {
                     let dd = null; try { dd = daysUntil(lg.deadline); } catch { dd = null; }
@@ -11062,11 +11367,38 @@ export default function HostShellV2() {
                   {(() => {
                     const md = (event.moneyDates && typeof event.moneyDates === 'object') ? event.moneyDates : {};
                     const m = moneyDatesFor(event);
-                    const setMd = (k) => (e) => patchEvent({ moneyDates: { ...md, [k]: e.target.value || null } });
+                    // ── A DATE YOU DID NOT MEAN, THAT YOU CANNOT TAKE BACK ──────
+                    // Driving this on an iPhone (2026-08-04): these rows sit inside a
+                    // scrolling sheet, so a scroll that lands on the picker SPINS it
+                    // instead of scrolling — and iOS fires change on every notch. Today's
+                    // date committed itself, silently (this write passed no message, so
+                    // patchEvent's generic undo never armed and no receipt appeared), and
+                    // once set there is no way to empty a date input on iOS: no keyboard,
+                    // no clear. The phantom then spoke — "refund window closes in 0 days"
+                    // on the section index, a money claim she never made.
+                    //
+                    // Both halves are fixed here rather than by fighting the platform:
+                    // the write now ANNOUNCES itself (a message is all patchEvent needs to
+                    // arm Undo), and a filled row carries an explicit Clear. Nothing about
+                    // the transcription doctrine changes — these are still her numbers,
+                    // copied from her own confirmation, never derived.
+                    const niceMd = (iso) => {
+                      try { return new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); } catch { return iso; }
+                    };
+                    const writeMd = (k, label, val) => patchEvent(
+                      { moneyDates: { ...md, [k]: val || null } },
+                      val ? `${label}: ${niceMd(val)}.` : `${label} cleared.`);
+                    const setMd = (k, label) => (e) => writeMd(k, label, e.target.value);
                     const dateFld = (k, label) => (
                       <div className="line" key={k} style={{ padding: '2px 0 8px' }}>
                         <span>{label}</span>
-                        <input className="field" type="date" style={{ maxWidth: 150 }} value={md[k] || ''} onChange={setMd(k)} aria-label={label} />
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
+                          {md[k] ? (
+                            <button type="button" className="mini" onClick={() => writeMd(k, label, '')}
+                              aria-label={`Clear ${label.toLowerCase()}`}>Clear</button>
+                          ) : null}
+                          <input className="field" type="date" style={{ maxWidth: 150 }} value={md[k] || ''} onChange={setMd(k, label)} aria-label={label} />
+                        </span>
                       </div>
                     );
                     return (
@@ -12205,7 +12537,11 @@ export default function HostShellV2() {
               // them, but the CORE eight always have a door, on-track or not — the
               // whole point (before this, checklist/decisions/vendors/etc. had no
               // visible entry when the event was calm).
-              const go = (kind) => { if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); } setSheet({ kind }); };
+              const go = (kind) => {
+                if (kind === 'lodging') { goToLodgingCockpit(); return; }
+                if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
+                setSheet({ kind });
+              };
               const groups = [
                 { title: 'Your plan', rows: [
                   { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
@@ -15198,7 +15534,7 @@ export default function HostShellV2() {
                 const owed = Math.round(spend.vendorOwed || 0);
                 const stays = Math.round(spend.lodgingCommitted || 0);
                 if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
-                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => setSheet({ kind: 'lodging', focus: null }) });
+                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => goToLodgingCockpit() });
                 return rows;
               })();
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }

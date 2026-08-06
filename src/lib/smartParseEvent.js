@@ -56,6 +56,7 @@ export function parseSmartEventText(text, opts = {}) {
     'cousins', 'relatives', 'family members', 'siblings', 'aunts', 'uncles', 'nieces', 'nephews',
     'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
     'students', 'staff', 'employees', 'players', 'members',
+    'guys', 'girls', 'gals', 'ladies', 'dudes', 'bridesmaids', 'groomsmen',
   ].join('|');
   const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i)
     || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
@@ -321,7 +322,46 @@ export function parseSmartEventText(text, opts = {}) {
   const loc3 = l3 ? tryLoc(l3[2], l3[3]) : null;
   const venueAt = loc3 && l3 ? l3[1].trim() : '';
   const lm = t.match(/\b(?:in|at)\s+([A-Z][a-zA-Z.'-]+(?:\s+[A-Z][a-zA-Z.'-]+){0,2}),\s*([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)*)\b/);
-  const loc = loc3 || (lm ? tryLoc(lm[1], lm[2]) : null);
+  const locSaid = loc3 || (lm ? tryLoc(lm[1], lm[2]) : null);
+  // NOT EVERY HOST WRITES A PREPOSITION (live drive 2026-08-04). Both patterns
+  // above require "in"/"at" before the town, so the perfectly ordinary
+  // "80th birthday for Linda Stewart, 10 of us, Santa Fe, NM resort spa,
+  // June 17-21" dropped the town entirely — and with it the whole destination
+  // stack, because isDestination reads `loc`: the app answered "Local event"
+  // for a five-day trip to a Santa Fe resort. Hosts list facts comma-separated
+  // as often as they write sentences.
+  //
+  // So: scan the comma-separated segments for a City, ST pair anywhere in the
+  // text. This invents NOTHING — every candidate goes through the same strict
+  // parseVenueLocation gate, which requires a real state and refuses digits, so
+  // "Linda Stewart, 10 of us" and "Vida Haynes, 10 people" are rejected on the
+  // way past. Runs only when the prepositional forms found nothing.
+  const locLoose = locSaid || (() => {
+    const re = /([A-Z][\w.'’-]*(?:\s+[A-Z][\w.'’-]*){0,3})\s*,\s*([A-Za-z][\w.'’-]*(?:\s+[A-Za-z][\w.'’-]*){0,3})/g;
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const r = tryLoc(m[1].trim(), m[2].trim());
+      if (r) return r;
+    }
+    return null;
+  })();
+  // NO COMMA BEFORE THE STATE (live drive 2026-08-05): "Santa Fe NM, resort
+  // spa" reads fine to a host but has no comma between city and abbreviation
+  // — every pattern above requires one, so the whole destination stack was
+  // silently dropped for phrasing this ordinary. A bare two-letter state
+  // abbreviation glued straight onto the city is unambiguous on its own (it
+  // still goes through parseVenueLocation's real state gate), so try it only
+  // after the comma-bearing forms have had their chance.
+  const locBare = locLoose || (() => {
+    const re = /\b([A-Z][a-zA-Z.'’-]+(?:\s+[A-Z][a-zA-Z.'’-]+){0,2})\s+([A-Z]{2})\b(?!\.\w)/g;
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const r = tryLoc(m[1].trim(), m[2]);
+      if (r) return r;
+    }
+    return null;
+  })();
+  const loc = locBare;
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't

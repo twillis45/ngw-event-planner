@@ -14,7 +14,7 @@
 //      clears them.
 //   4. FOLD PEEK (W9 class): on future-event ask screens the see-all pull
 //      handle intersects the first viewport.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 
 const COI_PATCH = {
   vendors: [

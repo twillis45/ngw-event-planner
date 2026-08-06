@@ -117,11 +117,31 @@ test('10 · outdoor event counts the rain plan; handled once saved', () => {
 // thousands owed. Presence of a number is not control of the money.
 // Now: PRESENCE still never opens a gap (a budget that covers the costs stays
 // handled) — but a real OVERSPEND does, which is the whole point of a budget.
+// AMENDED 2026-08-04 (sim drive): budget used to be absent from the ledger until a
+// number existed, so the hero asked "Set your budget." while the ledger counted 6
+// parts, and answering made it 7 — the denominator moved when she answered. Budget
+// is now ALWAYS a part; unset is its open state. `moment` stays a true optional
+// good, so it is what this test now measures for the +1.
 test('11 · a budget that covers the known costs is handled — presence alone never opens a gap', () => {
   const without = deriveEventPhaseProgress(base(), NOW);
   const withBoth = deriveEventPhaseProgress(base({ totalBudget: 50000, must_have_moment: 'The toast' }), NOW);
-  expect(withBoth.totalCount).toBe(without.totalCount + 2);
+  // Only the optional `moment` enlarges the ledger; budget was already in it.
+  expect(withBoth.totalCount).toBe(without.totalCount + 1);
+  // Both the newly-set budget and the moment land handled.
   expect(withBoth.completedCount).toBe(without.completedCount + 2);
+});
+
+test('11d · answering the budget never enlarges the plan — the denominator holds still', () => {
+  const unset = deriveEventPhaseProgress(base(), NOW);
+  const set = deriveEventPhaseProgress(base({ totalBudget: 50000 }), NOW);
+  expect(set.totalCount).toBe(unset.totalCount);
+  expect(set.completedCount).toBe(unset.completedCount + 1);
+
+  const openBudget = unset.items.find(i => i.id === 'budget');
+  expect(openBudget).toBeTruthy();               // present while still unanswered
+  expect(openBudget.handled).toBe(false);
+  expect(openBudget.cueLabel).toMatch(/set your budget/i);
+  expect(set.items.find(i => i.id === 'budget').handled).toBe(true);
 });
 
 test('11b · a budget the known costs BLOW THROUGH is an open gap, and says by how much', () => {

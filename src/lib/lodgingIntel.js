@@ -519,6 +519,40 @@ export const isUnfurlConfigured = () => Boolean(API_BASE);
 // that is exactly the case this bounds.
 const UNFURL_MS = 12000;
 
+/**
+ * Read the listing LINKS off a results page the host is looking at.
+ *
+ * Host-initiated and one page — never a crawl. It returns links and nothing
+ * else, because that is all a results page reliably carries: the ids sit in an
+ * embedded map-pin payload with names and prices in a different structure, and
+ * pairing them by position would be a guess. A confident wrong price is worse
+ * than no price.
+ *
+ * The host then unticks what they were not really considering, and only the
+ * places they KEEP are ever read individually.
+ */
+export async function lodgingResults(url) {
+  if (!API_BASE) return { ok: false, reason: 'Reading searches isn’t switched on here — copy the results page and paste it instead.' };
+  const clean = String(url || '').trim();
+  if (!HTTPS.test(clean)) return { ok: false, reason: 'That needs to be an https link to the search.' };
+  const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), UNFURL_MS) : null;
+  try {
+    const res = await fetch(`${API_BASE}/api/lodging/results?url=${encodeURIComponent(clean)}`,
+      ctl ? { signal: ctl.signal } : undefined);
+    const body = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, reason: failureReason(res.status, body) };
+    return { ok: true, ...body };
+  } catch (err) {
+    const timedOut = err && (err.name === 'AbortError' || String(err).includes('aborted'));
+    return { ok: false, reason: timedOut
+      ? 'Reading that search is taking too long. Open it and copy the page instead.'
+      : 'Couldn’t reach that search. Copy the results page and paste it instead.' };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export async function unfurlListing(url) {
   if (!API_BASE) return { ok: false, reason: 'Reading listings isn’t switched on here — copy the page and paste it instead.' };
   const clean = String(url || '').trim();
@@ -693,11 +727,23 @@ function tokenStream(html) {
 }
 
 /** A listing page URL on a platform we model — absolute or site-relative. */
-function listingUrl(href) {
+function listingUrl(href, hint) {
   const h = String(href || '').trim();
   const abs = /^https?:\/\//i.test(h) ? h
     : h.startsWith('/rooms/') ? `https://www.airbnb.com${h}`
-      : '';
+      // ── VRBO'S CARDS ARE BARE NUMBERS (real Vrbo page, 2026-08-05) ────────
+      // Airbnb's relative card link announces itself ("/rooms/123"); Vrbo's is
+      // just "/963775", so every card on a real pasted Vrbo results page was
+      // dropped before it was ever read — the app offered a Vrbo door, the
+      // door worked, and nothing could come back through it.
+      //
+      // A bare number is only a listing in context, so it resolves ONLY when
+      // the page itself is demonstrably Vrbo's (its own domain appears in the
+      // markup — media.vrbo.com on the card images, or a vrbo.com link). The
+      // caller passes that verdict in; without it, a bare number stays what it
+      // looks like on its own: not a listing.
+      : (hint === 'vrbo' && /^\/\d{5,}$/.test(h.split('?')[0])) ? `https://www.vrbo.com${h.split('?')[0]}`
+        : '';
   if (!abs) return '';
   const clean = abs.split('?')[0].split('#')[0];
   if (!/^https:\/\//i.test(clean)) return '';
@@ -725,12 +771,15 @@ export function extractListingCandidates(payload) {
   if (!html.trim()) return { candidates: [], source: null, linksOnly: false };
 
   const toks = tokenStream(html);
+  // Whose results page is this? Only used to resolve Vrbo's bare-numeric card
+  // links (see listingUrl) — never to label a listing we could not read.
+  const hint = /(^|[^a-z])(media\.)?vrbo\.com/i.test(html) ? 'vrbo' : null;
   const byUrl = new Map();
   const imgByUrl = new Map();
   let current = '';
   for (const t of toks) {
     if (t.link !== undefined) {
-      const u = listingUrl(t.link);
+      const u = listingUrl(t.link, hint);
       if (u) { current = u; if (!byUrl.has(u)) byUrl.set(u, []); }
       continue;
     }
@@ -742,8 +791,21 @@ export function extractListingCandidates(payload) {
 
   // A plain-text paste (or a page with no card markup) still yields URLs — say so.
   if (!byUrl.size) {
+    // HOTELS HAS NO CARD LINK TO GROUP ON (host, 2026-08-06: "get a real
+    // google page for our hotel and our options/amenities"). A real captured
+    // page proved every card's <a href> is a Google ad-click redirect
+    // (/aclk?...&adurl=), not a stable per-hotel URL like Airbnb's /rooms/N —
+    // there is no canonical link anywhere on the page to key a candidate on.
+    // So this groups on the <a> tag BOUNDARY instead of its href, and never
+    // stores that href as `url` — a real name/price/rating/amenities comes
+    // back, "Open the listing" simply has nothing to point at, same honest
+    // no-url pattern normalizeLodgingOption already supports.
+    if (looksLikeHotelsResultsPage(html)) {
+      const candidates = extractHotelCandidates(toks);
+      if (candidates.length) return { candidates, source: 'Hotels', linksOnly: false };
+    }
     const urls = (html.match(/https:\/\/[^\s"'<>)\]]+/gi) || [])
-      .map(listingUrl).filter(Boolean);
+      .map((u) => listingUrl(u, hint)).filter(Boolean);
     const uniq = [...new Set(urls)];
     return {
       candidates: uniq.map((url) => ({ url, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null })),
@@ -753,8 +815,66 @@ export function extractListingCandidates(payload) {
   }
 
   const candidates = candidatesFromGroups(
-    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })));
+    [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })), hint);
   return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
+}
+
+// ── A HOTEL CARD, READ WITHOUT A URL TO KEY ON ──────────────────────────────
+// Every field here self-identifies by shape (a price looks like "$389", a
+// rating like "4.2/5"), not by position — real captured cards put the OTA
+// badge line in different places, and Hilton's own badge alt text duplicates
+// the hotel's name outright, so position alone would misread it.
+function extractHotelCandidates(toks) {
+  const groups = [];
+  let cur = null;
+  for (const t of toks) {
+    if (t.link !== undefined) { cur = { lines: [], img: '' }; groups.push(cur); continue; }
+    if (!cur) continue;
+    if (t.img !== undefined) {
+      if (!cur.img && t.img) cur.img = t.img.startsWith('//') ? `https:${t.img}` : t.img;
+      continue;
+    }
+    if (t.text) cur.lines.push(t.text);
+  }
+  const PRICE = /^\$[\d,]+$/;
+  const RATING = /^(\d(?:\.\d)?)\/5$/;
+  const REVIEWS = /^\(([\d.,]+[KM]?)\)$/;
+  const STAR = /^(\d)-star hotel$/i;
+  // The OTA badge line, whenever it names a domain rather than the hotel
+  // itself — "Expedia.com", "Booking.com". When the badge alt text is the
+  // hotel's OWN name instead (Hilton's real card does this), the exact-match
+  // check below catches it — this regex only needs the common case.
+  const SITE = /\.(com|net|org)$/i;
+  const SEP = /^[·•]$/;
+
+  const out = [];
+  for (const g of groups) {
+    let name = '';
+    let priceShown = null;
+    let rating = null;
+    let ratingCount = null;
+    let starClass = null;
+    const amenities = [];
+    for (const raw of g.lines) {
+      const l = raw.trim();
+      if (!l || SEP.test(l)) continue;
+      if (PRICE.test(l)) { priceShown = Number(l.replace(/[$,]/g, '')); continue; }
+      const rm = l.match(RATING); if (rm) { rating = Number(rm[1]); continue; }
+      const cm = l.match(REVIEWS); if (cm) { ratingCount = cm[1]; continue; }
+      const sm = l.match(STAR); if (sm) { starClass = Number(sm[1]); continue; }
+      if (SITE.test(l)) continue;
+      if (!name) { name = l; continue; }
+      if (l === name) continue;   // the OTA badge repeated the hotel's own name
+      amenities.push(l);
+    }
+    if (name || priceShown != null) {
+      out.push({
+        url: '', name, kind: '', place: '', bedrooms: null, beds: null,
+        priceShown, rating, ratingCount, starClass, amenities, photo: g.img || '',
+      });
+    }
+  }
+  return out;
 }
 
 /**
@@ -768,10 +888,10 @@ export function extractListingCandidates(payload) {
  *
  * @param {Array<{url:string, lines:string[]}>} groups
  */
-export function candidatesFromGroups(groups) {
+export function candidatesFromGroups(groups, hint) {
   const candidates = [];
   for (const { url, lines: raw, img } of (Array.isArray(groups) ? groups : [])) {
-    if (!listingUrl(url)) continue;
+    if (!listingUrl(url, hint)) continue;
     // Collapse the accessibility duplicates ("8 beds" twice) while keeping order.
     const lines = [];
     for (const l of raw) { if (!CARD_NOISE.test(l) && lines[lines.length - 1] !== l) lines.push(l); }
@@ -800,11 +920,47 @@ export function candidatesFromGroups(groups) {
     // ("$1,997 $1,668"). The LAST one is what the platform is actually asking.
     // Named `priceShown`, never `total` — we did not see a checkout, and the
     // page's own "prices include all fees" claim is theirs, not ours to repeat.
-    const money = lines.join(' ').match(/\$[\d,]+/g) || [];
-    const priceShown = money.length ? Number(money[money.length - 1].replace(/[$,]/g, '')) : null;
+    //
+    // ── "PAY $0 TODAY" IS NOT A PRICE (real Santa Fe page, 2026-08-05) ───────
+    // Taking the LAST money figure is right for the strike-through pair and
+    // wrong the moment a card ends on Airbnb's part-payment badge: two of six
+    // real cards carried "Pay $0 today" after their total, so a $2,180 house
+    // and a $4,371 house both reached the shortlist priced at $0 — under every
+    // budget, ahead of everything, and free-looking to the host. Every
+    // synthetic fixture we ever wrote missed this; the live page had it twice.
+    //
+    // Drop the figures that are not what the stay costs — the deposit badge and
+    // an outright $0 — then keep taking the last of what remains. If nothing
+    // survives, the price is unknown, which the surface already says honestly
+    // rather than guessing.
+    //
+    // ── AND VRBO SAYS IT IN PROSE (real Vrbo page, 2026-08-05) ──────────────
+    // Vrbo writes "The current price is $1,705", and a discounted card carries
+    // three money figures in this order: the SAVING ("Early booking $580 off"),
+    // the OLD price ("The previous price was $1,850", then "$1,850" again), and
+    // only last the price being asked. Last-wins survives that one, but a card
+    // whose only money is a saving ("Early booking $145 off" — a real card on
+    // this page) would have reported $145 as the cost of the stay.
+    //
+    // So: when the page says outright which figure is current, believe it.
+    // Otherwise strip the figures that are demonstrably not the asking price —
+    // the deposit badge, a saving, an explicitly previous price — and keep
+    // taking the last of what remains. Nothing left means unknown, which the
+    // surface says honestly rather than guessing.
+    const joined = lines.join(' ');
+    const current = joined.match(/current price is\s*\$([\d,]+)/i);
+    const priceLine = joined
+      .replace(/\bpay\s+\$[\d,]+\s+today\b/gi, ' ')
+      .replace(/\$[\d,]+\s*off\b/gi, ' ')
+      .replace(/previous price was\s*\$[\d,]+/gi, ' ');
+    const money = (priceLine.match(/\$[\d,]+/g) || [])
+      .map((m) => Number(m.replace(/[$,]/g, '')))
+      .filter((n) => Number.isFinite(n) && n > 0);
+    const priceShown = current ? Number(current[1].replace(/,/g, ''))
+      : money.length ? money[money.length - 1] : null;
 
     candidates.push({
-      url,
+      url: listingUrl(url, hint) || url,
       name,
       kind,
       place,
@@ -944,6 +1100,72 @@ export const GROUP_RENTAL_SOURCES = {
 const mustHaveById = (id) => LODGING_MUST_HAVES.find((m) => m.id === String(id || '').trim()) || null;
 
 /**
+ * WHAT SHE ALREADY TOLD US SHE WANTED (host, 2026-08-05: "did we add that the
+ * 80th birthday was for resort spa?").
+ *
+ * She typed "Santa Fe, NM resort spa". The parser took the town and dropped the
+ * rest, so the requirement list proposed six things she never mentioned and not
+ * the ONE she did — while this module holds a hot-tub filter VERIFIED against
+ * Airbnb's own search. The words were heard, understood, and thrown away one
+ * step before the only place they could have been used.
+ *
+ * These are the same `match` regexes the ranker already scores pasted listings
+ * with, pointed at the host's own sentence. Nothing is invented: an id only
+ * appears here if her words matched the vocabulary this file already defines,
+ * and it arrives as a PROPOSAL like every other suggested must-have — the
+ * moment she edits the list, hers wins outright.
+ */
+/**
+ * THE KIND OF PLACE SHE NAMED, not a feature inside one (host correction,
+ * 2026-08-05: "resort spa is a type of property not a hot tub").
+ *
+ * A first pass read "Santa Fe, NM resort spa" as a request for a hot tub,
+ * because the hot-tub matcher lists "spa" — correct when scoring a LISTING's
+ * prose, wrong when reading a host's sentence, where "resort spa" names the
+ * sort of place she wants to sleep in. That distinction decides which door she
+ * should be walking through: a resort is the hotels search, not a whole-home
+ * rental with an amenity checkbox.
+ *
+ * Returns the phrase VERBATIM so the surface can repeat her own words back and
+ * carry them into the hotel query. Never mapped onto a filter we cannot honour.
+ */
+// "Resort spa retreat" and "wellness retreat" (host, 2026-08-05: "a resort
+// spa retreat is a type of property that caters to health and wellness") —
+// the style vocabulary knew "resort spa" but not the trailing "retreat" or
+// the "wellness" variant, so a full "resort spa retreat" only matched its
+// first two words and left "retreat" as leftover text for the amenity
+// matcher to (harmlessly, but incompletely) ignore.
+const STAY_STYLE = /\b((?:all[- ]inclusive|boutique|luxury|historic|mountain|desert|beach(?:front)?|ski|golf|dude|wellness)?\s*(?:resort\s*(?:and\s*)?spa(?:\s*retreat)?|spa\s*resort|spa\s*retreat|wellness\s*retreat|resort(?:\s*retreat)?|lodge|inn|ranch|hacienda|villa|casita|bed\s*(?:and|&)\s*breakfast|b&b|guest\s*house|hotel))\b/i;
+
+export function heardStayStyle(text) {
+  const m = String(text || '').trim().match(STAY_STYLE);
+  return m ? m[1].trim().replace(/\s+/g, ' ').toLowerCase() : null;
+}
+
+export function heardMustHaves(text) {
+  // A stay style is consumed FIRST so the words that name a kind of place can
+  // never be re-read as a request for a feature: "resort spa" leaves nothing
+  // behind for the hot-tub matcher, while "a house with a hot tub" is untouched.
+  const t = String(text || '').replace(STAY_STYLE, ' ').trim();
+  if (!t) return [];
+  // TWO GUARDS, both learned the hard way on real sentences.
+  //
+  // SCOPE: only the requirements carrying a VERIFIED platform filter. Those
+  // regexes are concrete amenity nouns (hot tub / jacuzzi / spa, pool, pets);
+  // the rest were written to score a LISTING's prose, where "family" hints
+  // kid-ready — pointed at a host's sentence, "family reunion in Deep Creek
+  // Lake" asked for a crib. Reading a request is a stricter job than scoring a
+  // description, and these are also exactly the ids that can change the search.
+  //
+  // BOUNDARY: anchored so an amenity is a word, not a substring — "carpet" is
+  // not a request to bring the dog.
+  return LODGING_MUST_HAVES
+    .filter((m) => m.search && m.match)
+    .filter((m) => { try { return new RegExp(`\\b(?:${m.match.source})`, 'i').test(t); } catch { return false; } })
+    .map((m) => m.id);
+}
+
+/**
  * WHAT THIS EVENT NEEDS FROM A HOUSE (host directive 2026-07-28: "app should
  * default to the options/amenities needed for event from intelligence engine").
  *
@@ -968,22 +1190,52 @@ export function suggestedMustHaves(event) {
     if (m && !out.some((x) => x.id === id)) out.push({ id, label: m.label, why, source });
   };
 
-  // THE PERMISSION GATE — anything that reads as a party or a ceremony.
-  if (/wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {
+  // A ROOM BLOCK IS NOT A SHARED HOUSE (host, 2026-08-05: testing the Hotels
+  // door for a Santa Fe resort spa birthday surfaced "Real beds, not
+  // pull-outs", "Enough bathrooms" and "Washer & dryer" as suggested musts —
+  // every one of them a ONE-SHARED-RENTAL-HOUSE concern (source:
+  // multigen-rental-fit) applied to a hotel stay where each guest has their
+  // own room and bath. The app already asks this exact question and already
+  // has the answer — kitchenSignal() reads `foodChoices.dest_lodging`, "How
+  // are guests staying?" — so this reads the SAME signal rather than a
+  // second one. Only gates when the host has POSITIVELY said hotel/room
+  // block; unknown or "renting a house" still gets the rental defaults, same
+  // propose-don't-ask stance as everywhere else in this file.
+  let kitchen = null;
+  try { kitchen = kitchenSignal(ev); } catch { kitchen = null; }
+  const isHotelStay = !!kitchen && kitchen.value === false;
+
+  // HER OWN WORDS COME FIRST. `lodgingWants` is what she said at intake, matched
+  // against this file's own vocabulary — a stronger signal than anything we infer
+  // from the event's shape, so it leads the list and says plainly where it came
+  // from rather than dressing itself up as a finding.
+  for (const id of (Array.isArray(ev.lodgingWants) ? ev.lodgingWants : [])) {
+    const m = mustHaveById(id);
+    if (m) add(id, `You said so when you started this — ${m.label.toLowerCase()}.`, null);
+  }
+
+  // THE PERMISSION GATE — anything that reads as a party or a ceremony. Also
+  // a rental-specific concern: a hotel books its own event space through its
+  // own process, not Airbnb's community-disturbance policy.
+  if (!isHotelStay && /wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {
     add('eventok', 'A rental is a home, not a venue — the platform bans disruptive gatherings regardless of size and makes no exception for host approval, so get the yes in writing before you book.', 'airbnb-disturbance');
   }
-  // A GROUP SLEEPING SOMEWHERE — real beds and enough bathrooms.
-  if (guests >= 6 && nights >= 1) {
+  // A GROUP SLEEPING SOMEWHERE — real beds and enough bathrooms. Meaningless
+  // once every guest has their own hotel room and bath.
+  if (!isHotelStay && guests >= 6 && nights >= 1) {
     add('realbeds', `Sleeping ${guests} on paper often means sofa beds and air mattresses — the guidance is to book under the headline capacity so everyone gets a real bed.`, 'multigen-rental-fit');
     add('baths', `One bathroom per two or three people is the working ratio; ${guests} people sharing one is the morning everybody remembers.`, 'multigen-rental-fit');
   }
   // WHO IS ACTUALLY COMING — the roster decides these, not the event type.
+  // Step-free access and kid-readiness are real regardless of house or hotel.
   const access = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane|elder/i.test(String(g.needs || ''))).length;
   if (access > 0) add('stepfree', `${access === 1 ? 'Someone' : access + ' people'} asked about stairs — a ground-floor bed and bath is the most overlooked thing in a group house.`, 'multigen-rental-fit');
   const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0) || Number(ev.kidsCount) || 0;
   if (kids > 0) add('kids', `${kids} ${kids === 1 ? 'child' : 'children'} coming — cribs, a fence and doors that close matter more than square footage.`, 'multigen-rental-fit');
-  // MULTI-DAY UNDER ONE ROOF — somewhere to be together, and somewhere not to be.
-  if (nights >= 2) {
+  // MULTI-DAY UNDER ONE ROOF — somewhere to be together, and somewhere not
+  // to be. A hotel already has a lobby/bar for "together" and a door that
+  // closes for "not together"; laundry is the hotel's problem, not the host's.
+  if (!isHotelStay && nights >= 2) {
     add('bigtable', 'More than one night together means at least one meal where everyone sits down at once.', 'multigen-rental-fit');
     add('quiet', 'A few days under one roof needs somewhere to escape to as much as it needs the big room.', 'multigen-rental-fit');
     add('laundry', 'Past a couple of nights, laundry stops being a luxury.', 'multigen-rental-fit');
@@ -1087,13 +1339,24 @@ export function lodgingSearchLinks(event) {
 
   const start = /^\d{4}-\d{2}-\d{2}/.test(String(ev.date || '')) ? String(ev.date).slice(0, 10) : null;
   const end = (() => {
+    // A STAY IS AT LEAST A NIGHT (sim drive 2026-08-04): a single-day event
+    // produced checkin==checkout — a zero-night search both platforms reject —
+    // and the copy read "Jun 20–Jun 20". Anyone sleeping over sleeps INTO the
+    // next day, so a same-day span searches one night, and the applied-copy
+    // shows the same span the URL carries (never two different stories).
     const e = spanEnd(ev);
-    return /^\d{4}-\d{2}-\d{2}/.test(String(e || '')) ? String(e).slice(0, 10) : null;
+    const iso = /^\d{4}-\d{2}-\d{2}/.test(String(e || '')) ? String(e).slice(0, 10) : null;
+    if (!start) return iso;
+    if (iso && iso !== start) return iso;
+    const d = new Date(start + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().slice(0, 10);
   })();
   const guests = Number(ev.guestCount) || Number(ev.guestEstimate) || (Array.isArray(ev.guests) ? ev.guests.length : 0) || null;
   const budget = Number(ev.totalBudget) > 0 ? Math.round(Number(ev.totalBudget)) : null;
 
   const said = [
+    ev.lodgingStyle ? String(ev.lodgingStyle).trim() : null,
     place,
     start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `${guests} guests` : null,
@@ -1105,7 +1368,10 @@ export function lodgingSearchLinks(event) {
   const ab = new URLSearchParams();
   if (start) ab.set('checkin', start);
   if (end) ab.set('checkout', end);
-  if (guests) ab.set('adults', String(guests));
+  // Airbnb's own search stops at 16 guests — adults=40 lands on an error page
+  // or a silent clamp. Send the most the platform accepts; the applied-copy
+  // (`said`) keeps the REAL count, because that line is ours to say honestly.
+  if (guests) ab.set('adults', String(Math.min(guests, 16)));
   if (budget) ab.set('price_max', String(budget));
   // Only the filters proven against the live search page ride the URL.
   for (const m of musts) {
@@ -1149,7 +1415,11 @@ export function lodgingSearchLinks(event) {
   // parameters a platform parses (Airbnb's `checkin=`), not for prose that
   // happens to travel inside a URL. Google parses "Jun 17-Jun 21" perfectly
   // well, so there is nothing to trade away.
-  const hotelQ = ['hotels in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
+  // SEARCH FOR THE KIND OF PLACE SHE ASKED FOR. When the host named a stay
+  // style ("resort spa"), it leads the hotel query — searching "hotels in Santa
+  // Fe" for someone who said "resort spa" hands back the wrong 115 results.
+  const style = String((ev.lodgingStyle || '')).trim();
+  const hotelQ = [style || 'hotels', 'in', place, start && end ? `${niceDay(start)}–${niceDay(end)}` : null,
     guests ? `for ${guests} guests` : null].filter(Boolean).join(' ');
 
   return [
@@ -1349,6 +1619,28 @@ export function looksLikeSearchUrl(text) {
   return null;
 }
 
+// HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05). extractListingCandidates
+// only recognizes airbnb.com/rooms/N and vrbo.com/N card links — the Hotels
+// door has no card parser at all (there is no verified Google Hotels fixture
+// to build one against, the same discipline that gates every OTHER unverified
+// filter in this file). A host who follows the paste box's own instruction —
+// "Paste the whole results page and every card on it is read right here" —
+// from the Hotels door gets zero candidates back, and looksLikeSearchUrl()
+// only catches a BARE search link, not a full pasted page, so the failure
+// fell through to a generic "tap Share, then Copy Link, try again" message
+// that implies retrying would work. It would not. This checks the pasted
+// TEXT itself (any shape, not just a bare url) for Google Travel/Hotels
+// markers, so the caller can say the true thing instead.
+export function looksLikeHotelsResultsPage(text) {
+  const t = String(text || '');
+  // The door's own href is absolute (google.com/travel/search); a card link
+  // ON that results page is typically relative (/travel/hotels/entity/…),
+  // so the domain prefix can't be required for both. lh3.googleusercontent.com
+  // is Google's own photo host and a second, independent signal — either one
+  // firing is enough, neither appears on an Airbnb or Vrbo page.
+  return /travel\/(search|hotels)\b/i.test(t) || /lh3\.googleusercontent\.com/i.test(t);
+}
+
 // ─── A NAME, NOT "OPTION 1" (lodging listing research, 2026-08-01) ─────────
 // The paste flow's weakest moment is the instant after it works: a bare link
 // carries no name, so a real house landed on the shortlist called "Option 1"
@@ -1381,6 +1673,22 @@ export function lodgingTitleFor(cand) {
   if (platform === 'airbnb') return 'Airbnb listing';
   if (platform === 'vrbo') return 'Vrbo listing';
   return '';   // nothing known — the surface must ask, not guess
+}
+
+// lodgingTitleFor's own last resort — "Airbnb listing" / "Vrbo listing" — is
+// a platform-generic label WE wrote in, not a name read off the page. A
+// caller crediting `lodgingTitleFor(c)` truthy as `sources.label: 'read'`
+// (LodgingCockpit.jsx, found live 2026-08-05: a paste with no real names
+// still showed "Name — read from the link" on every card) claims provenance
+// for a value we made up ourselves. This mirrors lodgingTitleFor's own
+// precedence but stops before the platform fallback, so it is true exactly
+// when a REAL name was read or typed.
+export function lodgingTitleIsReal(cand) {
+  const c = cand || {};
+  if (String(c.label || '').trim()) return true;
+  if (String(c.name || '').trim()) return true;
+  if (String(c.kind || '').trim() || String(c.place || '').trim()) return true;
+  return false;
 }
 
 // ─── IT WENT WRONG, AND IT IS STILL RUNNING (Blink addendum, 2026-08-01) ───
@@ -1784,6 +2092,17 @@ export function stayFromPick(event, intel) {
     rate: perNight,
     url: chosen.url || '',
     from: STAY_FROM_PICK,
+    // "ON THE BOOKS... no image. This is where we are all staying for our
+    // beautiful trip" (host, 2026-08-05). The pick already carried a real
+    // photo — Choices renders it hero-sized on Weigh Them — but stayFromPick
+    // only ever wrote hotelName/rate/url/from, so the moment a place became
+    // the actual booked stay, its own picture was left behind. Same host-
+    // pasted photo, same fields Choices already trusts; nothing new fetched.
+    photoUrl: chosen.photoUrl || '',
+    photos: Array.isArray(chosen.photos) ? chosen.photos : [],
+    sleeps: chosen.sleeps != null ? chosen.sleeps : null,
+    beds: chosen.beds != null ? chosen.beds : null,
+    cancellationTier: chosen.cancellationTier || '',
   };
 }
 
