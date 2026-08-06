@@ -28,6 +28,8 @@ import {
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
+import { normalizeCvbContact } from '@app/lib/cvbIntel';
+import { draftLodgingNote } from '@app/lib/doItForMe';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -806,7 +808,56 @@ function Looking({ event, patch }) {
           } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
         }}>{busy ? 'Reading…' : (text.trim() ? 'Read what I pasted' : 'Paste what I copied')}</button>
       </Panel>
+      <AlreadySorted event={event} patch={patch} />
     </>
+  );
+}
+
+// ─── THE FRONT DOOR FOR A ROOM BLOCK (2026-08-06, event-industry seat) ──────
+// Her P0, and she was right: three of the four `dest_lodging` answers are room
+// BLOCKS, and every room-block field on this surface sat behind a shortlist
+// pick. A host who phoned the hotel, negotiated twelve rooms and got a code —
+// the actual workflow — could not enter one character of it. Her only route was
+// to paste a results page, find the hotel she had ALREADY BOOKED, and "pick" it,
+// which is both absurd and a lie about what happened.
+//
+// This writes the one field the stage machine reads as a real booking:
+// `hotelName` with `from` set to something other than the pick, which is
+// precisely what lodgingIsHeld tests. That moves the stage to `booked` and
+// everything the block needs — code, cutoff, backups, who to call, the roster,
+// the guest note — is there. No new stage, no parallel intake: the same door
+// the confirmation-typing host was always supposed to have.
+function AlreadySorted({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const [name, setName] = useState('');
+  const [rate, setRate] = useState('');
+  if (String(stay.hotelName || '').trim()) return null;   // already sorted
+  const n = Number(rate);
+  return (
+    <Panel label="ALREADY SORTED IT YOURSELF?">
+      <p className="lc-note">
+        Booked a block on the phone, or know where everyone’s staying? Put it here and skip the shopping.
+      </p>
+      <div className="lc-row-form">
+        <input className="lc-field" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Hotel or place" aria-label="Where everyone is staying" />
+        <input className="lc-field" value={rate} onChange={(e) => setRate(e.target.value)}
+          placeholder="$ a night" inputMode="decimal" aria-label="Nightly rate you were quoted" />
+        <button className="cta" disabled={!name.trim()}
+          onClick={() => patch({
+            lodging: {
+              ...stay,
+              hotelName: name.trim(),
+              // NOT the pick. This is what makes it read as a booking rather
+              // than a shortlist choice — and it is true: she typed it off her
+              // own confirmation. The rate is hers too, so the guest note may
+              // honestly call it a GROUP rate (see draftLodgingNote).
+              from: 'typed off the confirmation',
+              ...(Number.isFinite(n) && n > 0 ? { rate: Math.round(n) } : null),
+            },
+          })}>Save where we’re staying</button>
+      </div>
+    </Panel>
   );
 }
 
@@ -1435,9 +1486,92 @@ function Booked({ event, patch }) {
           </div>
         ))}
       </Panel>
+      <StayContact event={event} patch={patch} />
       <Backups event={event} patch={patch} />
       <WhosBooked event={event} patch={patch} />
+      <GuestNote event={event} />
     </>
+  );
+}
+
+// ─── A NUMBER SHE CAN PRESS (2026-08-06, both override seats) ───────────────
+// The event-industry seat's strongest practical point, twice: "a number I can
+// press at 4pm on a Tuesday beats a homepage every single time." A group stay
+// is not a consumer booking flow — a hotel will not put twenty people through a
+// web form, it hands you to group sales. And the Grandmother seat, on the same
+// gap: "I am going to CALL them. I was always going to call them."
+//
+// Host-typed, never harvested: nothing in this repo may invent a phone number,
+// and the one page that carries one is refused for good reasons elsewhere. The
+// rendering runs through normalizeCvbContact so a real `tel:` is built by the
+// same code the bureau panel already trusts, rather than a second guess at what
+// a dialable number looks like.
+function StayContact({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const saved = (stay.contact && typeof stay.contact === 'object') ? stay.contact : {};
+  const [name, setName] = useState(saved.name || '');
+  const [phone, setPhone] = useState(saved.phone || '');
+  const c = normalizeCvbContact({ name, phone });
+  const town = String(venueFor(event).city || '').trim();
+  const hotel = String(stay.hotelName || '').trim();
+  return (
+    <Panel label="WHO TO CALL">
+      <p className="lc-note">A block is a phone call, not a checkout. Keep the desk’s number where the dates are.</p>
+      <div className="lc-row-form">
+        <input className="lc-field" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Group sales contact" aria-label="Group sales contact name" />
+        <input className="lc-field" value={phone} onChange={(e) => setPhone(e.target.value)}
+          placeholder="Phone" inputMode="tel" aria-label="Group sales phone number" />
+        <button className="cta" disabled={!name.trim() && !phone.trim()}
+          onClick={() => patch({ lodging: { ...stay, contact: { name: name.trim(), phone: phone.trim() } } })}>
+          Save who to call
+        </button>
+      </div>
+      {c && c.telHref && (
+        <a className="cta soft" href={c.telHref} style={{ textDecoration: 'none' }}
+          aria-label={`Call ${c.name || hotel || 'the hotel'} on ${c.phone}`}>
+          Call {c.name || hotel || 'the hotel'} — {c.phone}
+        </a>
+      )}
+      {!(c && c.telHref) && (hotel || town) && (
+        // No number yet. A LABELLED search is truthful; a fabricated number is
+        // not. Same shape cvbIntel already uses for the bureau.
+        <a className="cta soft" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}
+          href={`https://www.google.com/search?q=${encodeURIComponent(`${town} ${hotel} group sales room block`.trim())}`}>
+          Find their group sales desk ↗
+        </a>
+      )}
+    </Panel>
+  );
+}
+
+// ─── THE NOTE HAD NO BUTTON (2026-08-06, event-industry seat) ───────────────
+// `draftLodgingNote` is the deliverable of group lodging — the hotel, the rate,
+// the code, the cutoff and the backups, written for the guests. Its only render
+// site was inside the sheet this cockpit navigates away from, which the file
+// itself calls unreachable. So the wiring repaired earlier today (the code
+// reaching `lodging.code` rather than dying in `bookingCode`) still ended in a
+// engine with no outlet: a host could enter everything correctly and have no
+// way to send it.
+//
+// Offered, never sent — UX_07 Level 5. The host reads it and sends it herself.
+function GuestNote({ event }) {
+  const [copied, setCopied] = useState('');
+  let note = null;
+  try { note = draftLodgingNote(event); } catch { note = null; }
+  if (!note || !String(note.body || '').trim()) return null;
+  return (
+    <Panel label="WHAT THE GROUP GETS TOLD">
+      <p className="lc-note">Everything above, written out. Read it, change what you want, then send it yourself.</p>
+      <pre className="lc-draft">{note.body}</pre>
+      <button className="cta" onClick={() => {
+        try {
+          navigator.clipboard.writeText(`${note.subject}\n\n${note.body}`);
+          setCopied('Copied — paste it wherever your group talks.');
+        } catch { setCopied('Select the text above and copy it.'); }
+      }}>Copy the note</button>
+      {copied && <p className="lc-note">{copied}</p>}
+    </Panel>
   );
 }
 
@@ -1823,6 +1957,11 @@ const CSS = `
   text-shadow:0 1px 3px rgba(0,0,0,.5);}
 /* A room rate is a smaller claim than a stay total, and reads as one. */
 .lc-card-price-room{font-size:13px;font-weight:500;white-space:nowrap;}
+/* The guest note, shown as written. Wraps rather than scrolls sideways:
+   UX_03 rule 6 sanctions horizontal scroll for carousels, not for prose. */
+.lc-draft{white-space:pre-wrap;word-break:break-word;font:400 13px/1.55 Inter,sans-serif;
+  color:var(--ink);background:var(--sheen);border:1px solid var(--hair);border-radius:10px;
+  padding:12px;margin:0 0 10px;max-height:280px;overflow:auto;}
 .lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
 .lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}

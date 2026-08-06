@@ -8,6 +8,7 @@
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
+import { STAY_FROM_PICK } from './lodgingIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
@@ -990,10 +991,20 @@ export function draftLodgingNote(event) {
   const backups = (Array.isArray(lo.backupOptions) ? lo.backupOptions : [])
     .filter(b => b && String(b.name || '').trim())
     .slice(0, 2);
+  // ── ONLY A NEGOTIATED RATE IS A "GROUP RATE" (2026-08-06, review board) ───
+  // `stayFromPick` fills `lodging.rate` from the chosen option's nightly price
+  // — which, for a hotel row, was READ off a Google card. This note then told
+  // the guests "The group rate is $X a night", asserting a negotiation that
+  // never happened, on the one artifact that leaves the app. A rate the host
+  // typed off a confirmation is a group rate; a rate we read off a listing is
+  // just the rate. `from === STAY_FROM_PICK` is exactly that distinction, and
+  // it is already stored.
+  const rateWasNegotiated = String(lo.from || '') !== STAY_FROM_PICK;
+  const rateWord = rateWasNegotiated ? 'group rate' : 'rate';
   const lines = [`Hi everyone — here’s where to stay${forName}:`, ''];
   lines.push(`We’ve lined up rooms at ${hotel}.`);
-  if (hasRate && code) lines.push(`The group rate is $${rate} a night — give them the code ${code} when you book.`);
-  else if (hasRate) lines.push(`The group rate is $${rate} a night.`);
+  if (hasRate && code) lines.push(`The ${rateWord} is $${rate} a night — give them the code ${code} when you book.`);
+  else if (hasRate) lines.push(`The ${rateWord} is $${rate} a night.`);
   else if (code) lines.push(`Give them the code ${code} when you book to get the group rate.`);
   if (deadline) lines.push(`Book by ${deadline} — after that the group rate goes away and rooms may cost more.`);
   if (backups.length) {

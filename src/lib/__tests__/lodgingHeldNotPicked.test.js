@@ -178,3 +178,38 @@ describe('the reconnected room-block intake feeds its engines', () => {
     expect(nextLodgingStatus(nextLodgingStatus(nextLodgingStatus('not_started')))).toBe('not_started');
   });
 });
+
+// ─── "THE GROUP RATE" IS A CLAIM ABOUT A NEGOTIATION (2026-08-06) ───────────
+// stayFromPick fills `lodging.rate` from the chosen option's nightly price —
+// which for a hotel row was READ off a Google card. The guest note then told
+// the group "The group rate is $X a night", asserting a negotiation that never
+// happened, on the one artifact that leaves the app. A rate the host typed off
+// her own confirmation IS a group rate; a rate we read off a listing is not.
+describe('the guest note only claims a group rate when there was one', () => {
+  const { draftLodgingNote } = require('../doItForMe');
+  const base = {
+    id: 'ev-note2', type: 'Birthday', isDestination: true,
+    venueCity: 'Santa Fe, NM', date: '2027-09-15', endDate: '2027-09-19', guestCount: 10,
+  };
+  const body = (lodging) => String(draftLodgingNote({ ...base, lodging }).body || '');
+
+  test('a rate the host typed off her confirmation is a GROUP rate', () => {
+    const t = body({ hotelName: 'The Eldorado', rate: 189, from: 'typed off the confirmation' });
+    expect(t).toMatch(/The group rate is \$189 a night/);
+  });
+
+  test('a rate carried in from a shortlist pick is just "the rate"', () => {
+    const t = body({ hotelName: 'The Eldorado', rate: 212, from: STAY_FROM_PICK });
+    expect(t).toMatch(/The rate is \$212 a night/);
+    expect(t).not.toMatch(/group rate is/);
+  });
+
+  test('the front door’s write reads as a real booking, not a pick', () => {
+    // What AlreadySorted patches: a name the host typed, and `from` set to
+    // anything other than the pick. That is exactly what unlocks the room-block
+    // panels, which previously sat behind a shortlist choice.
+    const ev = { ...base, lodging: { hotelName: 'The Eldorado', from: 'typed off the confirmation', rate: 189 } };
+    expect(lodgingIsHeld(ev)).toBe(true);
+    expect(lodgingStage(ev).stage).toBe('booked');
+  });
+});
