@@ -10,7 +10,7 @@
 // numbers come from the same build and the same app state. It asserts nothing about
 // what the design SHOULD be — it records what is, so the after-sweep has something
 // honest to compare against.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 
 const VIEWPORTS = [
   { name: 'narrow-mobile', width: 360, height: 780 },

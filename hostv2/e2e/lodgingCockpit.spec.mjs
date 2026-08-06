@@ -21,7 +21,7 @@
 // deterministically — the same discipline the backend suite already uses
 // ("stubs every outbound client and asserts the real ones are never called")
 // — rather than depending on a live external service being up during CI.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 
 const DEMO = './?demo=lodging';
 const LISTING = 'https://www.airbnb.com/rooms/20421338';

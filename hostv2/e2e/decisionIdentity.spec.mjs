@@ -8,7 +8,7 @@
 //
 // Chrome's window minimum bottoms out around 500 CSS px, so a resized desktop
 // window CANNOT reach 390. These run under real device geometry instead.
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.mjs';
 
 // The host's own Game Night, exactly as it sits in storage — a real created
 // event in 'ngw-events' plus its shell patch. sourcing:'host cooks' is the

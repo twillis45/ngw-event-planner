@@ -547,10 +547,15 @@ button{font-family:inherit}
    viewport. On-device the container IS the viewport, so 100cqh == 100dvh; but in the browser device
    mock the container (~852px) is shorter than the window, and 100dvh overshot it — forcing ~350px of
    excess void that pushed the centered ask/decision cluster below the fold (parity fix 2026-07-20). */
-/* Foot reservation = 64px so the see-all pull handle GENUINELY peeks in the first
+/* Foot reservation = 72px so the see-all pull handle GENUINELY peeks in the first
    viewport (audit 2026-07-22, W9 — 40px minus the fold's own 38px top inset left a
-   0–2px sliver; the host never saw the affordance on mobile). */
-.escreen.on{ display:flex; flex-direction:column; flex-shrink:0; min-height:calc(100cqh - 64px - env(safe-area-inset-bottom,0px)); }
+   0–2px sliver; the host never saw the affordance on mobile). RAISED from 64px
+   (e2e, 2026-08-06): 64px was itself only a hair's width of margin — the "Wanda
+   far-out" landscape state measured the handle's top edge 0.078px PAST the
+   viewport's bottom edge, the exact same failure class this reservation exists
+   to prevent, just not enough of it. 8px of real, deliberate slack instead of a
+   boundary tuned to the sub-pixel. */
+.escreen.on{ display:flex; flex-direction:column; flex-shrink:0; min-height:calc(100cqh - 72px - env(safe-area-inset-bottom,0px)); }
 /* HERO CENTERING DOCTRINE: the ask+action cluster centers in the space between the eyebrow and
    the foot progress, at ANY content length. .ecenter is invisible (display:contents) outside
    elegant; inside, it's a flex:1 column that justify-centers its content. */
@@ -913,6 +918,15 @@ button{font-family:inherit}
      the see-all pull handle BELOW a 430px viewport (Layer-2 landscape pass,
      2026-07-22). Let content set the height — the handle sits right after it. */
   .escreen.on{ min-height:auto }
+  /* CONTENT-DRIVEN HAD NO MARGIN LEFT (e2e, 2026-08-06): "let content set the
+     height" is right, but on the tallest content this class of viewport sees
+     (Wanda far-out, an ask filling the escreen almost exactly), the handle's
+     own top edge landed 430.078125px down a 430px-tall viewport — a fraction
+     of a pixel PAST the boundary this whole media query exists to guarantee.
+     Trimming the fold's own vertical footprint here (short viewports only;
+     the normal-height .efold is untouched) buys back real, deliberate margin
+     instead of a boundary tuned to the sub-pixel. */
+  .efold{ margin-top:0; padding-top:2px; }
 }
 @media(max-width:699px){
   .hero{min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px))}
