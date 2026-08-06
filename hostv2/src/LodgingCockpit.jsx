@@ -150,7 +150,11 @@ export default function LodgingCockpit() {
     <Frame><Solo>
       <p className="lc-eyebrow">WHERE EVERYONE STAYS</p>
       <h1 className="lc-h1">Not a destination event.</h1>
-      <p className="lc-why">This cockpit only has a job when guests travel — the whole stack is gated on <code>isDestination</code>.</p>
+      {/* UX_06 planner-friendly-language: the raw internal field name was
+          leaking straight into host-facing copy (found live, host-panel
+          review 2026-08-05, repro'd independently by multiple reviewers).
+          Say what it means, not what it's called in the code. */}
+      <p className="lc-why">This cockpit only has a job when guests are traveling in for the event.</p>
       <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
     </Solo></Frame>
   );
@@ -730,51 +734,69 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
           const total = o.allIn != null ? o.allIn : o.totalPrice;
           return (
             <article className="lc-card" key={o.id}>
-              {o.photoUrl
-                ? <Thumb src={o.photoUrl} label={o.label} big />
-                : (
-                  /* UX_08: missing data says "missing," never nothing — a
-                     fabricated stock photo is not an option. But a small grey
-                     box was an inert placeholder eating hero space it hadn't
-                     earned (host, 2026-08-05: "we shouldn't have these
-                     placeholders showing... listings that take real estate of
-                     the viewport"). Same honest label, same hero-sized area —
-                     now the area itself is the "add a picture" act, not a
-                     dead box with the CTA duplicated further down the card. */
-                  <button type="button" className="lc-card-nophoto" onClick={() => onPhoto(o)}
-                    aria-label={`Add a picture for ${o.label}`}>
-                    <span className="lc-card-nophoto-add">+ Add a picture</span>
-                    <span className="lc-card-nophoto-sub">no picture yet — this one's still real</span>
-                  </button>
-                )}
+              {/* FLOAT ON THE PHOTO, NOT STACKED BELOW IT (host, 2026-08-05:
+                  "innovative way to pull the CTAs into the viewport... they're
+                  spilling out"). Moving the buttons up under the price line
+                  helped but didn't fix it — the photo alone is
+                  clamp(240px,44vh,440px), so on a short phone the buttons
+                  still landed past the fold. Stacking adds height; overlaying
+                  doesn't. Same pattern Airbnb's own card and every swipe-deck
+                  UI (Tinder, Hinge) use: the hero image IS the card's frame,
+                  and the name/price/act ride a gradient scrim anchored to its
+                  bottom edge — inside the hero's own bounds, never below it.
+                  The scrim is a real gradient, not a filled bar, so the photo
+                  underneath still reads as the primary surface (one hero, one
+                  accent — the "Pick" button is the one accent this card
+                  spends). Secondary detail (musts fit, price history, chips,
+                  the read/typed table) stays in normal flow below, for a host
+                  who scrolls further; nothing here is missing, only ordered
+                  by whether picking needs it FIRST. */}
+              {(() => {
+                const identity = (
+                  <>
+                    <div className="lc-card-top">
+                      <h3 className="lc-card-name">{o.label}</h3>
+                      {money(total) && <span className="lc-card-price">{money(total)}</span>}
+                    </div>
+                    <p className="lc-card-sub">
+                      {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
+                        nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
+                        .filter(Boolean).join(' · ')}
+                    </p>
+                    <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0 0' }}>
+                      <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>
+                      {String(o.url || '').trim() && (
+                        <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
+                          style={{ textDecoration: 'none' }}>Open the listing ↗</a>
+                      )}
+                      <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
+                    </div>
+                  </>
+                );
+                return o.photoUrl ? (
+                  <div className="lc-card-photo-wrap">
+                    <Thumb src={o.photoUrl} label={o.label} big />
+                    <div className="lc-card-scrim" aria-hidden="true" />
+                    <div className="lc-card-overlay">{identity}</div>
+                  </div>
+                ) : (
+                  <>
+                    {/* UX_08: missing data says "missing," never nothing — a
+                        fabricated stock photo is not an option. The overlay
+                        pattern only works ON a photo; with none, "+ Add a
+                        picture" IS the hero act, and name/price/pick stay in
+                        normal flow below it rather than fighting the same
+                        space. */}
+                    <button type="button" className="lc-card-nophoto" onClick={() => onPhoto(o)}
+                      aria-label={`Add a picture for ${o.label}`}>
+                      <span className="lc-card-nophoto-add">+ Add a picture</span>
+                      <span className="lc-card-nophoto-sub">no picture yet — this one's still real</span>
+                    </button>
+                    <div className="lc-card-body lc-card-identity-noPhoto">{identity}</div>
+                  </>
+                );
+              })()}
               <div className="lc-card-body">
-                <div className="lc-card-top">
-                  <h3 className="lc-card-name">{o.label}</h3>
-                  {money(total) && <span className="lc-card-price">{money(total)}</span>}
-                </div>
-                <p className="lc-card-sub">
-                  {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
-                    nights ? `for ${nights} night${nights === 1 ? '' : 's'}` : null]
-                    .filter(Boolean).join(' · ')}
-                </p>
-                {/* IN THE SAME VIEWPORT AS THE OPTION (host, 2026-08-05: "make
-                    the pick should be in the viewport with the option") — this
-                    used to be one shared row below the whole scrollable deck,
-                    reachable only after scrolling past every card's price
-                    history, must-chips and the full read/typed table. Each
-                    card now carries its own act, right under the fact that
-                    justifies it, so picking never requires leaving the card
-                    you're looking at. Renamed too: "Make it the pick" was a
-                    noun phrase describing the outcome, not the act — UX_07's
-                    own Level-1 rule is "use the real verb." */}
-                <div className="lc-ctas lc-ctas-wrap" style={{ margin: '10px 0' }}>
-                  <button className="cta" aria-label={`Pick ${o.label}`} onClick={() => onPick(o.id)}>Pick this place</button>
-                  {String(o.url || '').trim() && (
-                    <a className="cta soft" href={o.url} target="_blank" rel="noopener noreferrer"
-                      style={{ textDecoration: 'none' }}>Open the listing ↗</a>
-                  )}
-                  <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
-                </div>
                 {hist && <p className="lc-card-was">{hist.full}</p>}
                 {sc && sc.met && sc.met.length > 0 && (
                   <div className="lc-chips">
@@ -1371,18 +1393,34 @@ const CSS = `
    element on the card the swipe deck's own comment calls the primary act.
    clamp() keeps it real-estate-dominant across phone heights without ever
    pushing the price/CTA row below the fold on a short device. */
-.lc-card-photo{display:block;width:100%;height:clamp(240px,44vh,440px);object-fit:cover;background:var(--hair);}
-.lc-card-nophoto{height:clamp(240px,44vh,440px);width:100%;display:flex;flex-direction:column;
+.lc-card-photo-wrap{position:relative;height:clamp(240px,44vh,440px);width:100%;}
+.lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
+.lc-card-nophoto{height:100%;width:100%;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
   padding:0;font:inherit;}
 .lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
 .lc-card-nophoto-sub{font:400 12px/1.3 Inter,sans-serif;color:var(--muted);}
+/* A real gradient, not a filled bar — the photo stays the primary surface;
+   the scrim only exists to keep the overlaid name/price/CTA legible over
+   whatever the photo happens to be. Height is generous (65%) because a
+   light sky or wall behind white text is a real, common case, not an edge
+   case to under-design for. */
+.lc-card-scrim{position:absolute;left:0;right:0;bottom:0;height:65%;pointer-events:none;
+  background:linear-gradient(to top, rgba(10,12,16,.92) 0%, rgba(10,12,16,.6) 45%, rgba(10,12,16,0) 100%);}
+.lc-card-overlay{position:absolute;left:0;right:0;bottom:0;padding:14px;}
 .lc-card-body{padding:14px;}
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
-.lc-card-name{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);margin:0;min-width:0;}
-.lc-card-price{font:500 17px/1.25 Inter,sans-serif;color:var(--ink);flex:0 0 auto;
-  font-variant-numeric:tabular-nums;}
-.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:var(--ink-soft);margin:6px 0 0;}
+.lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:#fff;margin:0;min-width:0;
+  text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
+  font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
+.lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}
+/* The no-photo card has no scrim to sit on — plain body text, not white on
+   nothing. Same markup as the overlay identity block, different context. */
+.lc-card-identity-noPhoto .lc-card-name,.lc-card-identity-noPhoto .lc-card-price{
+  color:var(--ink);text-shadow:none;}
+.lc-card-identity-noPhoto .lc-card-sub{color:var(--ink-soft);}
+.lc-card-nophoto .lc-card-nophoto-add,.lc-card-nophoto .lc-card-nophoto-sub{position:relative;z-index:1;}
 .lc-card-was{font:400 12px/1.4 Inter,sans-serif;color:var(--muted);margin:4px 0 0;}
 .lc-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 0;}
 .lc-chip{font:400 12px/1 Inter,sans-serif;color:var(--ink-soft);padding:7px 10px;
