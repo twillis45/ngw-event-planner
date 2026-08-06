@@ -67,3 +67,34 @@ describe('the amenity the host actually asked for', () => {
     expect(mustHavesFor(ev).map((m) => m.id)).toEqual(['pool']);
   });
 });
+
+// A ROOM BLOCK IS NOT A SHARED HOUSE (host, 2026-08-05: testing the Hotels
+// door for a Santa Fe resort spa birthday). suggestedMustHaves() was
+// proposing "Real beds, not pull-outs", "Enough bathrooms" and "Washer &
+// dryer" — every one a shared-rental-house concern (source:
+// multigen-rental-fit) — for a host who had already told the app "A hotel or
+// room block" via the SAME dest_lodging answer kitchenSignal() already reads.
+describe('a hotel stay does not get shared-house requirements', () => {
+  test('the rental-only musts drop once the host says hotel', () => {
+    const rental = suggestedMustHaves(linda());
+    expect(rental.map((m) => m.id)).toEqual(expect.arrayContaining(
+      ['realbeds', 'baths', 'bigtable', 'quiet', 'laundry']));
+
+    const hotel = suggestedMustHaves(linda({ foodChoices: { dest_lodging: 'A hotel or room block' } }));
+    const hotelIds = hotel.map((m) => m.id);
+    expect(hotelIds).not.toEqual(expect.arrayContaining(
+      ['realbeds', 'baths', 'bigtable', 'quiet', 'laundry', 'eventok']));
+  });
+
+  test('parking still applies at a hotel — guests still arrive by car', () => {
+    const hotel = suggestedMustHaves(linda({ foodChoices: { dest_lodging: 'A hotel or room block' } }));
+    expect(hotel.map((m) => m.id)).toContain('parking');
+  });
+
+  test('unknown or "renting a house" still gets the rental defaults — only a positive hotel answer gates them', () => {
+    const unknown = suggestedMustHaves(linda());
+    expect(unknown.map((m) => m.id)).toEqual(expect.arrayContaining(['realbeds', 'baths']));
+    const rentalTold = suggestedMustHaves(linda({ foodChoices: { dest_lodging: 'An Airbnb / rental house' } }));
+    expect(rentalTold.map((m) => m.id)).toEqual(expect.arrayContaining(['realbeds', 'baths']));
+  });
+});

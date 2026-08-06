@@ -1119,6 +1119,21 @@ export function suggestedMustHaves(event) {
     if (m && !out.some((x) => x.id === id)) out.push({ id, label: m.label, why, source });
   };
 
+  // A ROOM BLOCK IS NOT A SHARED HOUSE (host, 2026-08-05: testing the Hotels
+  // door for a Santa Fe resort spa birthday surfaced "Real beds, not
+  // pull-outs", "Enough bathrooms" and "Washer & dryer" as suggested musts —
+  // every one of them a ONE-SHARED-RENTAL-HOUSE concern (source:
+  // multigen-rental-fit) applied to a hotel stay where each guest has their
+  // own room and bath. The app already asks this exact question and already
+  // has the answer — kitchenSignal() reads `foodChoices.dest_lodging`, "How
+  // are guests staying?" — so this reads the SAME signal rather than a
+  // second one. Only gates when the host has POSITIVELY said hotel/room
+  // block; unknown or "renting a house" still gets the rental defaults, same
+  // propose-don't-ask stance as everywhere else in this file.
+  let kitchen = null;
+  try { kitchen = kitchenSignal(ev); } catch { kitchen = null; }
+  const isHotelStay = !!kitchen && kitchen.value === false;
+
   // HER OWN WORDS COME FIRST. `lodgingWants` is what she said at intake, matched
   // against this file's own vocabulary — a stronger signal than anything we infer
   // from the event's shape, so it leads the list and says plainly where it came
@@ -1128,22 +1143,28 @@ export function suggestedMustHaves(event) {
     if (m) add(id, `You said so when you started this — ${m.label.toLowerCase()}.`, null);
   }
 
-  // THE PERMISSION GATE — anything that reads as a party or a ceremony.
-  if (/wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {
+  // THE PERMISSION GATE — anything that reads as a party or a ceremony. Also
+  // a rental-specific concern: a hotel books its own event space through its
+  // own process, not Airbnb's community-disturbance policy.
+  if (!isHotelStay && /wedding|vow|quince|sweet 16|engagement|bachelor|bachelorette|reception|party|reunion|anniversary|retirement|graduation|shower/.test(type)) {
     add('eventok', 'A rental is a home, not a venue — the platform bans disruptive gatherings regardless of size and makes no exception for host approval, so get the yes in writing before you book.', 'airbnb-disturbance');
   }
-  // A GROUP SLEEPING SOMEWHERE — real beds and enough bathrooms.
-  if (guests >= 6 && nights >= 1) {
+  // A GROUP SLEEPING SOMEWHERE — real beds and enough bathrooms. Meaningless
+  // once every guest has their own hotel room and bath.
+  if (!isHotelStay && guests >= 6 && nights >= 1) {
     add('realbeds', `Sleeping ${guests} on paper often means sofa beds and air mattresses — the guidance is to book under the headline capacity so everyone gets a real bed.`, 'multigen-rental-fit');
     add('baths', `One bathroom per two or three people is the working ratio; ${guests} people sharing one is the morning everybody remembers.`, 'multigen-rental-fit');
   }
   // WHO IS ACTUALLY COMING — the roster decides these, not the event type.
+  // Step-free access and kid-readiness are real regardless of house or hotel.
   const access = roster.filter((g) => g && /wheelchair|step-free|stairs|mobility|walker|cane|elder/i.test(String(g.needs || ''))).length;
   if (access > 0) add('stepfree', `${access === 1 ? 'Someone' : access + ' people'} asked about stairs — a ground-floor bed and bath is the most overlooked thing in a group house.`, 'multigen-rental-fit');
   const kids = roster.reduce((n, g) => n + (Number(g && g.kids) || 0), 0) || Number(ev.kidsCount) || 0;
   if (kids > 0) add('kids', `${kids} ${kids === 1 ? 'child' : 'children'} coming — cribs, a fence and doors that close matter more than square footage.`, 'multigen-rental-fit');
-  // MULTI-DAY UNDER ONE ROOF — somewhere to be together, and somewhere not to be.
-  if (nights >= 2) {
+  // MULTI-DAY UNDER ONE ROOF — somewhere to be together, and somewhere not
+  // to be. A hotel already has a lobby/bar for "together" and a door that
+  // closes for "not together"; laundry is the hotel's problem, not the host's.
+  if (!isHotelStay && nights >= 2) {
     add('bigtable', 'More than one night together means at least one meal where everyone sits down at once.', 'multigen-rental-fit');
     add('quiet', 'A few days under one roof needs somewhere to escape to as much as it needs the big room.', 'multigen-rental-fit');
     add('laundry', 'Past a couple of nights, laundry stops being a luxury.', 'multigen-rental-fit');
