@@ -277,6 +277,23 @@ function NoTown({ event, patch }) {
 const DOOR_SHORT = { airbnb: 'Airbnb', vrbo: 'Vrbo', hotels: 'Hotels' };
 const shortDoor = (l) => DOOR_SHORT[l && l.id] || (l && l.label) || '';
 
+// normalizeLodgingOption only knows a fixed field set (id/label/url/beds/
+// sleeps/price/fees/cancellationTier/sources/notes/photos/status) — a hotel
+// candidate's star class, rating and amenity tags aren't among them, and
+// would be silently dropped the same way this file's own comment on
+// normalizeLodgingOption warns about ("a normalizer that discards a field
+// is a data loss no unit test on the engine can catch"). Folding them into
+// `notes` — already the free-text home for exactly this kind of extra
+// context (bedrooms, place) — keeps the real schema singular instead of
+// growing it for one candidate shape.
+const notesFor = (c) => [
+  c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+  c.place ? `in ${c.place}` : null,
+  c.starClass ? `${c.starClass}-star hotel` : null,
+  c.rating != null ? `${c.rating}/5${c.ratingCount ? ` (${c.ratingCount})` : ''}` : null,
+  Array.isArray(c.amenities) && c.amenities.length ? c.amenities.join(', ') : null,
+].filter(Boolean).join(' · ');
+
 function Looking({ event, patch }) {
   const [text, setText] = useState('');
   // Clicking a door means "I have gone looking". On return the next act is to
@@ -322,7 +339,15 @@ function Looking({ event, patch }) {
     const src = typeof raw === 'string' ? raw : text;
     let found = { candidates: [] };
     try { found = extractListingCandidates(src) || found; } catch { /* unreadable paste */ }
-    let cands = (found.candidates || []).filter(Boolean);
+    // A STABLE KEY THAT DOES NOT REQUIRE A URL (host, 2026-08-06: hotel
+    // candidates have no url to key on — see extractHotelCandidates). Every
+    // staging Set/React-key below used to read `c.url` directly, which
+    // collapsed every hotel candidate in the SAME paste onto one shared key
+    // ('' === ''): ticking one hotel's checkbox ticked or unticked all of
+    // them. `_k` falls back to url when there is one (unchanged behavior for
+    // Airbnb/Vrbo) and to a per-paste index otherwise.
+    let cands = (found.candidates || []).filter(Boolean)
+      .map((c, i) => ({ ...c, _k: c.url || `k${i}-${c.name || ''}` }));
 
     // ── PARITY WITH THE LIVE INTAKE (2026-08-03) ───────────────────────────
     // The live sheet's readPage does four things this did not, and each one is
@@ -458,7 +483,7 @@ function Looking({ event, patch }) {
     // So: many -> stage for review; one -> commit, after the unfurl fill above
     // has had its chance to make the row worth having.
     if (cands.length > 1) {
-      setStaged({ cands, dupes, pick: new Set(cands.map((c) => c.url)), linksOnly: !!found.linksOnly });
+      setStaged({ cands, dupes, pick: new Set(cands.map((c) => c._k)), linksOnly: !!found.linksOnly });
       setText('');
       setReadErr('');
       return;
@@ -470,8 +495,7 @@ function Looking({ event, patch }) {
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
-      photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-        c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
+      photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
@@ -482,7 +506,7 @@ function Looking({ event, patch }) {
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
@@ -504,14 +528,13 @@ function Looking({ event, patch }) {
   };
   // Commit only what is still ticked. Untick is the whole point of the review.
   const commitStaged = () => {
-    const keep = staged.cands.filter((c) => staged.pick.has(c.url));
+    const keep = staged.cands.filter((c) => staged.pick.has(c._k));
     if (!keep.length) { setStaged(null); return; }
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
-      photoUrl: c.photo, notes: [c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-        c.place ? `in ${c.place}` : null].filter(Boolean).join(' · '),
+      photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
       // would be a guess, and lodgingProvenance deliberately reports an
@@ -522,7 +545,7 @@ function Looking({ event, patch }) {
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
         ...(c.priceShown != null ? { totalPrice: 'read' } : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
-        ...(c.bedrooms || c.place ? { notes: 'read' } : null),
+        ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
       // The first number the host ever recorded, kept so the price can say
       // "was $X when you saved it" — our own history, never a market claim.
@@ -539,27 +562,36 @@ function Looking({ event, patch }) {
         {staged.cands.length} found. Untick anything you were not really considering.
       </p>
       {staged.cands.map((c) => {
-        const on = staged.pick.has(c.url);
+        const on = staged.pick.has(c._k);
         return (
-          <button key={c.url} className="lc-staged" aria-pressed={on}
+          <button key={c._k} className="lc-staged" aria-pressed={on}
             aria-label={`${lodgingTitleFor(c) || 'Unnamed place'} — ${on ? 'keeping' : 'not keeping'}`}
             onClick={() => setStaged((st) => {
               const pick = new Set(st.pick);
-              if (pick.has(c.url)) pick.delete(c.url); else pick.add(c.url);
+              if (pick.has(c._k)) pick.delete(c._k); else pick.add(c._k);
               return { ...st, pick };
             })}>
             <span className={'lc-tick' + (on ? ' is-on' : '')} aria-hidden="true" />
             <span className="lc-staged-main">
               <span className="lc-staged-name">{lodgingTitleFor(c) || 'Unnamed place'}</span>
               <span className="lc-staged-sub">
-                {[c.bedrooms ? `${c.bedrooms} bedrooms` : null,
-                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null]
+                {/* A hotel card carries star class, rating and amenity tags
+                    instead of bedrooms — extractHotelCandidates reads them
+                    off the real Google card (host, 2026-08-06). */}
+                {[c.starClass ? `${c.starClass}-star` : null,
+                  c.bedrooms ? `${c.bedrooms} bedrooms` : null,
+                  c.priceShown != null ? `$${Math.round(c.priceShown).toLocaleString()}` : null,
+                  c.rating != null ? `${c.rating}/5${c.ratingCount ? ` (${c.ratingCount})` : ''}` : null,
+                  Array.isArray(c.amenities) && c.amenities.length ? c.amenities.join(', ') : null]
                   .filter(Boolean).join(' · ') || 'no details on the card'}
               </span>
             </span>
             {/* sleeps is never on a results card — say so rather than leave a
-                blank the host reads as "it does not sleep anyone". */}
-            <span className="lc-staged-fit">sleeps —</span>
+                blank the host reads as "it does not sleep anyone". A hotel
+                candidate (identified by carrying a rating) isn't measured in
+                "sleeps N" the way a shared rental is, so this stays quiet
+                for those instead of showing a confusing dash. */}
+            {c.rating == null && <span className="lc-staged-fit">sleeps —</span>}
           </button>
         );
       })}
@@ -630,10 +662,10 @@ function Looking({ event, patch }) {
               try {
                 const r = await lodgingResults(searchOffer.url);
                 if (r && r.ok && Array.isArray(r.links) && r.links.length) {
-                  const cands = r.links.map((u) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null }));
+                  const cands = r.links.map((u, i) => ({ url: u, name: '', kind: '', place: '', bedrooms: null, beds: null, priceShown: null, _k: u || `k${i}` }));
                   setSearchOffer(null);
                   setText('');
-                  setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c.url)), linksOnly: true });
+                  setStaged({ cands, dupes: [], pick: new Set(cands.map((c) => c._k)), linksOnly: true });
                 } else {
                   setReadErr((r && r.reason) || 'Nothing readable on that search.');
                 }

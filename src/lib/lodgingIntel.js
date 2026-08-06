@@ -791,6 +791,19 @@ export function extractListingCandidates(payload) {
 
   // A plain-text paste (or a page with no card markup) still yields URLs — say so.
   if (!byUrl.size) {
+    // HOTELS HAS NO CARD LINK TO GROUP ON (host, 2026-08-06: "get a real
+    // google page for our hotel and our options/amenities"). A real captured
+    // page proved every card's <a href> is a Google ad-click redirect
+    // (/aclk?...&adurl=), not a stable per-hotel URL like Airbnb's /rooms/N —
+    // there is no canonical link anywhere on the page to key a candidate on.
+    // So this groups on the <a> tag BOUNDARY instead of its href, and never
+    // stores that href as `url` — a real name/price/rating/amenities comes
+    // back, "Open the listing" simply has nothing to point at, same honest
+    // no-url pattern normalizeLodgingOption already supports.
+    if (looksLikeHotelsResultsPage(html)) {
+      const candidates = extractHotelCandidates(toks);
+      if (candidates.length) return { candidates, source: 'Hotels', linksOnly: false };
+    }
     const urls = (html.match(/https:\/\/[^\s"'<>)\]]+/gi) || [])
       .map((u) => listingUrl(u, hint)).filter(Boolean);
     const uniq = [...new Set(urls)];
@@ -804,6 +817,64 @@ export function extractListingCandidates(payload) {
   const candidates = candidatesFromGroups(
     [...byUrl].map(([url, lines]) => ({ url, lines, img: imgByUrl.get(url) || '' })), hint);
   return { candidates, source: candidates.length ? platformOf(candidates[0].url) : null, linksOnly: false };
+}
+
+// ── A HOTEL CARD, READ WITHOUT A URL TO KEY ON ──────────────────────────────
+// Every field here self-identifies by shape (a price looks like "$389", a
+// rating like "4.2/5"), not by position — real captured cards put the OTA
+// badge line in different places, and Hilton's own badge alt text duplicates
+// the hotel's name outright, so position alone would misread it.
+function extractHotelCandidates(toks) {
+  const groups = [];
+  let cur = null;
+  for (const t of toks) {
+    if (t.link !== undefined) { cur = { lines: [], img: '' }; groups.push(cur); continue; }
+    if (!cur) continue;
+    if (t.img !== undefined) {
+      if (!cur.img && t.img) cur.img = t.img.startsWith('//') ? `https:${t.img}` : t.img;
+      continue;
+    }
+    if (t.text) cur.lines.push(t.text);
+  }
+  const PRICE = /^\$[\d,]+$/;
+  const RATING = /^(\d(?:\.\d)?)\/5$/;
+  const REVIEWS = /^\(([\d.,]+[KM]?)\)$/;
+  const STAR = /^(\d)-star hotel$/i;
+  // The OTA badge line, whenever it names a domain rather than the hotel
+  // itself — "Expedia.com", "Booking.com". When the badge alt text is the
+  // hotel's OWN name instead (Hilton's real card does this), the exact-match
+  // check below catches it — this regex only needs the common case.
+  const SITE = /\.(com|net|org)$/i;
+  const SEP = /^[·•]$/;
+
+  const out = [];
+  for (const g of groups) {
+    let name = '';
+    let priceShown = null;
+    let rating = null;
+    let ratingCount = null;
+    let starClass = null;
+    const amenities = [];
+    for (const raw of g.lines) {
+      const l = raw.trim();
+      if (!l || SEP.test(l)) continue;
+      if (PRICE.test(l)) { priceShown = Number(l.replace(/[$,]/g, '')); continue; }
+      const rm = l.match(RATING); if (rm) { rating = Number(rm[1]); continue; }
+      const cm = l.match(REVIEWS); if (cm) { ratingCount = cm[1]; continue; }
+      const sm = l.match(STAR); if (sm) { starClass = Number(sm[1]); continue; }
+      if (SITE.test(l)) continue;
+      if (!name) { name = l; continue; }
+      if (l === name) continue;   // the OTA badge repeated the hotel's own name
+      amenities.push(l);
+    }
+    if (name || priceShown != null) {
+      out.push({
+        url: '', name, kind: '', place: '', bedrooms: null, beds: null,
+        priceShown, rating, ratingCount, starClass, amenities, photo: g.img || '',
+      });
+    }
+  }
+  return out;
 }
 
 /**
