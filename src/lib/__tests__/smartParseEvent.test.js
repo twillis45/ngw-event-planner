@@ -57,6 +57,15 @@ describe('guests', () => {
   test('no guest count in the text → null (never guessed here)', () => {
     expect(parseSmartEventText('destination 80th birthday celebration', { now: NOW }).guests).toBeNull();
   });
+  // Live drive 2026-08-05: "12 guys flying in" fell through every counting
+  // noun (COUNT_NOUNS had no word for a bachelor/bachelorette party's own
+  // crowd) and silently fell back to the playbook's typical headcount (10)
+  // instead of the 12 the host actually said.
+  test('bachelor/bachelorette party count words are recognized', () => {
+    expect(parseSmartEventText('bachelor party, 12 guys flying in', { now: NOW }).guests).toBe(12);
+    expect(parseSmartEventText('bachelorette weekend, 8 girls', { now: NOW }).guests).toBe(8);
+    expect(parseSmartEventText('wedding party, 6 bridesmaids and 5 groomsmen', { now: NOW }).guests).toBe(6);
+  });
 });
 
 describe('budget', () => {
@@ -294,5 +303,23 @@ describe('a town listed without a preposition', () => {
     const p = parseSmartEventText('family reunion in Deep Creek Lake, MD, 24 of us, June 17-21', NOW);
     expect(p.venueCity).toBe('Deep Creek Lake');
     expect(p.venueState).toBe('MD');
+  });
+});
+
+// A CITY AND ITS STATE WITH NO COMMA BETWEEN THEM (live drive 2026-08-05):
+// "Santa Fe NM" reads perfectly naturally to a host but every pattern above
+// requires a comma before the state, so "destination trip in Santa Fe NM,
+// resort spa" dropped the town — and with it isDestination — entirely.
+describe('a city glued straight onto its state abbreviation, no comma', () => {
+  test('"Santa Fe NM" resolves the same as "Santa Fe, NM"', () => {
+    const p = parseSmartEventText("Mom's 80th birthday destination trip in Santa Fe NM, resort spa, 10 guests, June 17-21, budget $4000", NOW);
+    expect(p.venueCity).toBe('Santa Fe');
+    expect(p.venueState).toBe('NM');
+    expect(p.isDestination).toBe(true);
+  });
+
+  test('a two-letter word that is not a real state is still rejected', () => {
+    const p = parseSmartEventText('birthday for Linda Stewart TV dinner, 10 of us, June 17-21', NOW);
+    expect(p.venueCity == null || p.venueCity === '').toBe(true);
   });
 });

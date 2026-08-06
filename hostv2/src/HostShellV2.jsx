@@ -1906,7 +1906,7 @@ export default function HostShellV2() {
     if (/pickers|light eaters/i.test(t)) { setSheet({ kind: 'crabs', focus: 'pickers' }); return; }
     if (/crab house|pre-?order|bushel|dozen|steam/i.test(t)) { setSheet({ kind: 'crabs', focus: 'order' }); return; }
     if (/rent or borrow|steamer pot|propane|tables|chairs|canopy/i.test(t)) { setSheet({ kind: 'space' }); return; }
-    if (u.kind === 'lodging') { setSheet({ kind: 'lodging', focus: 'deadline' }); return; }
+    if (u.kind === 'lodging') { goToLodgingCockpit(); return; }
     if (u.kind === 'ground') { setSheet({ kind: 'ground', focus: 'riders' }); return; } // land on the rows that still need a ride
     if (u.kind === 'air') { setSheet({ kind: 'air', focus: u.guestId != null ? u.guestId : null }); return; } // land on the exact conflicted row
     if (u.kind === 'call') { setSheet({ kind: 'decisions', focus: u.id || null }); return; }
@@ -3152,6 +3152,23 @@ export default function HostShellV2() {
   };
   const [lodgeForm, setLodgeForm] = useState(null);
   const lodgeSheetOpen = !!(sheet && sheet.kind === 'lodging');
+  // ── "WHERE EVERYONE STAYS" NOW MEANS THE COCKPIT (host, 2026-08-05) ────────
+  // LodgingCockpit.jsx is the real, staged, one-screen-at-a-time redesign —
+  // already built, already writing through the SAME localStorage this shell
+  // reads (main.jsx's own words: "running beside the live sheet on the same
+  // real event"). The in-sheet fold/rail this file carried through three
+  // passes today was reinventing what already exists. Every entry point now
+  // navigates there instead of opening the modal — a real page, not an SPA
+  // route, since the cockpit is its own top-level mount (main.jsx). The sheet
+  // render path stays for now (removal is its own careful pass, not bundled
+  // into a navigation change); this makes it unreachable.
+  const goToLodgingCockpit = () => {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.set('demo', 'lodging');
+      window.location.href = u.toString();
+    } catch { window.location.href = window.location.pathname + '?demo=lodging'; }
+  };
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
   // Candidates read off a pasted results page or handed over by the bookmarklet,
@@ -3194,6 +3211,13 @@ export default function HostShellV2() {
     try { ranked = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 }); } catch (_e) { /* unranked still useful */ }
     setLodgeStaged({ ...ranked, source: cands.length ? (/airbnb/i.test(cands[0].url) ? 'Airbnb' : /vrbo/i.test(cands[0].url) ? 'Vrbo' : null) : null,
       linksOnly: false, dupes: cands.length - fresh.length, pick: new Set(ranked.clearing.map((c) => c.url)) });
+    // NOT moved to goToLodgingCockpit (2026-08-05): the bookmarklet round-trips
+    // through THIS page's own hash, staged into this sheet's own lodgeStaged
+    // state — the cockpit has no matching consumer for that payload yet. Every
+    // other entry point navigates to the cockpit; this one keeps the old sheet
+    // reachable on purpose so the bookmarklet (a real, working, if secondary,
+    // path) does not silently break. Port lodgingHashPayload consumption into
+    // LodgingCockpit.jsx and this can move too.
     setSheet({ kind: 'lodging' });
     // Mount only: the hash is consumed and cleared on arrival.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3586,6 +3610,14 @@ export default function HostShellV2() {
       return true;
     }
     if (r.kind === 'stage:day') { setStage('day'); setSheet(null); return true; }
+    // THE ACTUAL MISSED WIRE (host, 2026-08-05: caught by real clicks, not the
+    // 4 literal `setSheet({kind:'lodging'})` call sites this file already had
+    // fixed). Every route-driven CTA — the essentials hero on this exact
+    // screen included — lands here via resolveRoute(), generic across every
+    // sheet kind. Patching the 4 direct call sites missed this ONE shared
+    // dispatcher underneath all of them, which is why "Open where everyone
+    // stays" kept opening the old sheet through every rebuild.
+    if (r.kind === 'lodging') { goToLodgingCockpit(); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -8361,7 +8393,7 @@ export default function HostShellV2() {
                           // WAVE-6 (one number per row): raises here are aggregates —
                           // the sub carries the real fact. Tint only, no ledger badge.
                           attn: (raised['lodging'] || 0) + (raised['money-dates'] || 0) > 0,
-                          go: () => setSheet({ kind: 'lodging' }),
+                          go: () => goToLodgingCockpit(),
                         };
                       })() : null,
                   // DESTINATION-2 slice 3: getting here, same gate. The sub is
@@ -10151,6 +10183,35 @@ export default function HostShellV2() {
               const setF = (k) => (e) => setLodgeForm({ ...f, [k]: e.target.value });
               const fld = { maxWidth: 'none', fontSize: 'var(--t-input)', padding: '9px var(--sp-3)' };
               const focusDeadline = sheet.focus === 'deadline';
+              // ── ONE STAGE, ONE SCREEN — for real this time (host, 2026-08-05:
+              //    "we already restructured and built this" / "separating the
+              //    section of this screen"). That work is real — it is
+              //    LodgingCockpit.jsx's Body({stage}), which renders exactly ONE
+              //    stage's content and nothing else. It was never wired into this
+              //    live sheet; a `<details>` fold (this file, two passes) is a
+              //    collapse, not a switch — the other stage's DOM is still there,
+              //    just hidden, and a screen reader or a Cmd-F still finds it.
+              //
+              // This does not import the cockpit's component tree — it has its
+              // own throwaway CSS system (.lc-*, a raw <style> string, zero
+              // overlap with this app's styles.css) that would be a second design
+              // language inside the one surface the parity gate exists to keep
+              // singular. Same STRUCTURE (compute the stage once, render only its
+              // section), the app's REAL atoms (SheetHero, .cta, .mini,
+              // PhotoStrip) — which is what productionizing a validated prototype
+              // means, not copying its scaffolding.
+              //
+              // Computed HERE, once, so both halves below (the search/weigh
+              // machinery and the stay/money-dates half) read the SAME value —
+              // the two-source drift that made "Step 5 of 5 · booked" possible
+              // right after a bare pick is exactly what a single shared value
+              // rules out structurally.
+              let lstage = null; try { lstage = lodgingStage(event); } catch { lstage = null; }
+              // This sheet is unreachable now (goToLodgingCockpit navigates away
+              // before it ever opens) — left compiling, not deleted, per the
+              // careful-separate-pass note above. `lodgePeekWeighing` no longer
+              // exists; onWeighingSide reverts to a plain stage read.
+              const onWeighingSide = !lstage || lstage.stage === 'no-town' || lstage.stage === 'looking' || lstage.stage === 'weighing';
               return (
                 <>
                   {/* ── THE RENTAL SHORTLIST (host directive 2026-07-28) ──
@@ -10239,24 +10300,16 @@ export default function HostShellV2() {
                     // derivation the cockpit uses, so the two surfaces can never disagree
                     // about where the host actually is.
                     //
-                    // FIRST CUT WAS A LABEL, NOT A FIX (host, 2026-08-05: "I thought each
-                    // section was designed to our doctrine" / "each stage was going to
-                    // follow main hero, calm non-dense"). It wasn't. Two doctrine misses:
-                    //   1. FIVE chip pills is counted dots — the doctrine calls for a single
-                    //      CONTINUOUS hairline, and mixed steel (current) + green (done) on
-                    //      one screen is two accents where the rule is one, spent once.
-                    //   2. The label sat on TOP of the exact same dense stack — doors, paste,
-                    //      must-haves, the shortlist, money-safe dates — none of it gated.
-                    //      Naming the current step is not the same as showing only it.
-                    // Now: ONE hairline (steel only, continuous fill), a SheetHero carrying
-                    // the stage's own headline as the one loud thing, and the search/weigh
-                    // machinery collapses to a single reachable line once a pick exists — so
-                    // "The stay" hero directly below becomes the one thing on screen for
-                    // picked/booked, matching the calm the main hero already promises.
-                    // Never HIDDEN, only collapsed: reopening is one tap, per the standing
-                    // "always reachable" rule this file already applies to the shortlist view.
-                    const lstage = (() => { try { return lodgingStage(event, li); } catch { return null; } })();
-                    const showWeighing = !lstage || lstage.stage === 'no-town' || lstage.stage === 'looking' || lstage.stage === 'weighing';
+                    // SECOND CUT WAS A FOLD, NOT A SWITCH (host, 2026-08-05: "we already
+                    // restructured and built this" / "separating the section of this
+                    // screen"). Right — that build is LodgingCockpit.jsx's Body({stage}),
+                    // which renders exactly ONE stage's content, full stop. A <details>
+                    // fold (the shape this replaces) still puts the other stage's DOM on
+                    // the page, just closed — a screen reader, Cmd-F, or `display` CSS
+                    // override still finds it. This reads the SAME lstage the outer scope
+                    // already computed (one source, so the two halves of this sheet can
+                    // never disagree about the stage the way the rail and the booked-state
+                    // bug did) and does not render the other half's markup at all.
                     return (
                       <div style={{ marginBottom: 'var(--sp-4)' }}>
                         {lstage && (
@@ -10270,25 +10323,13 @@ export default function HostShellV2() {
                             <SheetHero eyebrow={LODGING_STAGE_LABEL[lstage.stage] || 'Where everyone stays'} star={lstage.title} sub={lstage.why} />
                           </>
                         )}
-                        <details open={showWeighing}>
-                        {/* A <details> with no <summary> gets the BROWSER'S OWN default
-                            marker + the literal word "Details" (caught live, 2026-08-05) —
-                            worse than the chip rail this replaced. Always render ours: quiet
-                            (near-invisible, just a fold affordance) while open — the hero
-                            above is the one loud thing here — and the real "reopen this"
-                            copy once collapsed. */}
-                        <summary style={{ cursor: 'pointer', listStyle: 'none', display: 'flex',
-                          alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 'var(--sp-2)',
-                          ...(showWeighing ? { color: 'var(--muted)', fontSize: 'var(--t-caption)' } : null) }}>
-                          {showWeighing ? (
-                            <span className="v-meta">Details ▾</span>
-                          ) : (
-                            <>
-                              <span className="of">Places you looked at — {li.options.length} on the list</span>
-                              <span className="v-meta" style={{ color: 'var(--muted)', whiteSpace: 'nowrap', marginLeft: 'auto' }}>compare or add more ▾</span>
-                            </>
-                          )}
-                        </summary>
+                        {!onWeighingSide && (
+                          <p className="v-meta" style={{ marginBottom: 'var(--sp-3)' }}>
+                            Places you looked at — {li.options.length} on the list.
+                          </p>
+                        )}
+                        {onWeighingSide && (
+                        <>
                         <div className="shelf-label" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
                           {/* NOT "the rental shortlist" (2026-08-03): hotels are
                               now one of THREE doors out of this surface
@@ -10339,9 +10380,17 @@ export default function HostShellV2() {
                               <p style={{ margin: 0, fontSize: 'var(--t-row)', fontWeight: 650, color: 'var(--ink)' }}>{kc.headline}</p>
                               <p className="grounding" style={{ margin: '4px 0 0', color: tone }}>{kc.detail}</p>
                               {!kc.answered && (
+                                // INLINE, NOT STACKED (host, 2026-08-05: "house cta and hotel cta
+                                // can go inline"). `.cta soft` is full weight — sized for a
+                                // screen's ONE loud action — so two of them wrapped to their own
+                                // rows even though this fork is a binary either/or, not the loud
+                                // thing (the SheetHero above already carries that). `.mini` is the
+                                // same row-action weight "Make it the pick"/"Unpick"/"Remove" use
+                                // a few lines down: light enough that both fit one line at normal
+                                // sheet width, and correctly reads as secondary to the hero.
                                 <div style={{ display: 'flex', gap: 8, marginTop: 'var(--sp-3)', flexWrap: 'wrap' }}>
                                   {kc.answers.map((a) => (
-                                    <button key={a.id} className="cta soft" onClick={() => patchEvent(
+                                    <button key={a.id} className="mini" onClick={() => patchEvent(
                                       { foodChoices: { ...(event.foodChoices || {}), dest_lodging: a.pick } },
                                       a.kitchen
                                         ? 'A kitchen — the food plan is a grocery run.'
@@ -11231,7 +11280,8 @@ export default function HostShellV2() {
                         <p className="grounding" style={{ marginTop: 'var(--sp-2)', opacity: .8 }}>
                           Book through the platform’s own checkout — that’s where refunds and rebooking help live. Full sourced guidance rides the plan; sources under You &amp; settings → Grounding.
                         </p>
-                        </details>
+                        </>
+                        )}
                       </div>
                     );
                   })()}
@@ -11239,19 +11289,15 @@ export default function HostShellV2() {
                       star in roster mode; the stay's own state otherwise. All
                       figures from lib/travelPlan — the roster summary line below
                       was PROMOTED here, not duplicated.
-                      ONE LOUD THING, NOT TWO (host, 2026-08-05): this hero and the
-                      weighing block's own SheetHero above both claim BigValue weight.
-                      During looking/weighing the block above IS the current step and
-                      stays open; this one goes quiet so it never competes. It returns
-                      the moment the block above collapses (picked/booked) — the same
-                      alternation `showWeighing` drives there, recomputed here since
-                      this sits outside that IIFE's scope. lodgingStage is a pure read
-                      of event.lodgingOptions/lodging/moneyDates; a second call costs
-                      nothing wrong, only a cheap recompute. */}
-                  {(() => {
-                    let outerStage = null; try { outerStage = lodgingStage(event); } catch { outerStage = null; }
-                    return outerStage && (outerStage.stage === 'no-town' || outerStage.stage === 'looking' || outerStage.stage === 'weighing') ? false : true;
-                  })() && (travel.rosterMode && lg.roster.length > 0 ? (
+                      THE OTHER HALF OF THE SAME SWITCH (host, 2026-08-05: "separating
+                      the section of this screen"). `lstage`/`onWeighingSide`, computed
+                      ONCE at the top of the enclosing IIFE, are in scope here — this is
+                      a sibling `{}` inside that same returned fragment, not a separate
+                      closure, so there is only ever one read of the stage on this
+                      screen. Renders precisely when the block above does not: the
+                      weighing machinery OR the stay/money-dates half, never both,
+                      never neither (bar the local-event early return above). */}
+                  {!onWeighingSide && (travel.rosterMode && lg.roster.length > 0 ? (
                     /* SAY WHAT THIS NUMBER COUNTS (host 2026-07-28: "difference between
                        booked and confirmed"). notBookedCount counts ONLY 'not_started'
                        — its own comment says "booked here means booked OR confirmation
@@ -12468,7 +12514,11 @@ export default function HostShellV2() {
               // them, but the CORE eight always have a door, on-track or not — the
               // whole point (before this, checklist/decisions/vendors/etc. had no
               // visible entry when the event was calm).
-              const go = (kind) => { if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); } setSheet({ kind }); };
+              const go = (kind) => {
+                if (kind === 'lodging') { goToLodgingCockpit(); return; }
+                if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
+                setSheet({ kind });
+              };
               const groups = [
                 { title: 'Your plan', rows: [
                   { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
@@ -15461,7 +15511,7 @@ export default function HostShellV2() {
                 const owed = Math.round(spend.vendorOwed || 0);
                 const stays = Math.round(spend.lodgingCommitted || 0);
                 if (owed > 0) rows.push({ label: 'People you’re hiring', kind: 'vendors', est: owed, got: 0, go: () => setSheet({ kind: 'vendors', focus: null }) });
-                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => setSheet({ kind: 'lodging', focus: null }) });
+                if (stays > 0) rows.push({ label: 'Where everyone stays', kind: 'lodging', est: stays, got: 0, go: () => goToLodgingCockpit() });
                 return rows;
               })();
               let heroCopy = null; try { heroCopy = budgetHeroCopy(event, foodPP.priceFactor); } catch { heroCopy = null; }

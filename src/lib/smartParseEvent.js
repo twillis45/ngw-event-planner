@@ -56,6 +56,7 @@ export function parseSmartEventText(text, opts = {}) {
     'cousins', 'relatives', 'family members', 'siblings', 'aunts', 'uncles', 'nieces', 'nephews',
     'coworkers', 'colleagues', 'classmates', 'teammates', 'neighbors', 'neighbours',
     'students', 'staff', 'employees', 'players', 'members',
+    'guys', 'girls', 'gals', 'ladies', 'dudes', 'bridesmaids', 'groomsmen',
   ].join('|');
   const gm = t.match(/(?:for|about|around|~)\s*(\d{1,3})\b/i)
     || t.match(new RegExp(`\\b(\\d{1,3})\\s*(?:${COUNT_NOUNS})\\b`, 'i'))
@@ -344,7 +345,23 @@ export function parseSmartEventText(text, opts = {}) {
     }
     return null;
   })();
-  const loc = locLoose;
+  // NO COMMA BEFORE THE STATE (live drive 2026-08-05): "Santa Fe NM, resort
+  // spa" reads fine to a host but has no comma between city and abbreviation
+  // — every pattern above requires one, so the whole destination stack was
+  // silently dropped for phrasing this ordinary. A bare two-letter state
+  // abbreviation glued straight onto the city is unambiguous on its own (it
+  // still goes through parseVenueLocation's real state gate), so try it only
+  // after the comma-bearing forms have had their chance.
+  const locBare = locLoose || (() => {
+    const re = /\b([A-Z][a-zA-Z.'’-]+(?:\s+[A-Z][a-zA-Z.'’-]+){0,2})\s+([A-Z]{2})\b(?!\.\w)/g;
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const r = tryLoc(m[1].trim(), m[2]);
+      if (r) return r;
+    }
+    return null;
+  })();
+  const loc = locBare;
 
   // ── Destination modifier — a real signal, surfaced as a SUGGESTION ───────
   // (the host confirms/edits it via a real toggle, same "suggest don't
