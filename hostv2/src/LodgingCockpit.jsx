@@ -24,7 +24,7 @@ import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
   kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
 } from '@app/lib/lodgingIntel';
 import { venueFor } from '@app/lib/venueFor';
@@ -430,11 +430,23 @@ function Looking({ event, patch }) {
       }
       const touch = typeof window !== 'undefined' && window.matchMedia
         && window.matchMedia('(pointer:coarse)').matches;
+      // HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05: "honest copy").
+      // Airbnb and Vrbo card links are the only ones this file can read —
+      // Hotels has no card parser (no verified Google results fixture to
+      // build one against). The generic "tap Share, then Copy Link, try
+      // again" message below implies retrying would work; for a Hotels-door
+      // paste it never will, so say that specifically instead of the generic
+      // line. door (from looksLikeSearchUrl) only catches a BARE search
+      // link with no whitespace — a real "select all, copy" of the whole
+      // results page is exactly the shape this checks for instead.
+      const hotelsPage = looksLikeHotelsResultsPage(src);
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
-        : touch
-          ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
-          : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+        : hotelsPage
+          ? 'Hotels can’t be read back the way Airbnb and Vrbo can yet — open the hotel’s own booking page and add what it says by hand below.'
+          : touch
+            ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+            : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
       return;
     }
     setReadErr('');
@@ -653,10 +665,15 @@ function Looking({ event, patch }) {
         {/* TRUTHFUL ABOUT WHICH PATH TOUCHES A SERVER. This read "every card on
             it is read, with no server call" — true of a pasted PAGE, which is
             parsed here, and false of a bare LINK, which we fetch. One sentence
-            covering both made the honest half carry the dishonest half. */}
+            covering both made the honest half carry the dishonest half.
+            TRUTHFUL ABOUT WHICH DOOR (host, 2026-08-05: "honest copy") — this
+            also read as a blanket promise across all three doors, but only
+            Airbnb and Vrbo have a card reader; Hotels doesn't yet, and the
+            error message that fires for it says so on its own. */}
         <p className="lc-note">
-          Paste the whole results page and every card on it is read right here — nothing
-          leaves your phone. A bare link has to be fetched, so it takes a moment.
+          Paste the whole Airbnb or Vrbo results page and every card on it is read
+          right here — nothing leaves your phone. A bare link has to be fetched, so
+          it takes a moment.
         </p>
         {readErr && <p className={'lc-note' + (/^(Added|Got)/.test(readErr) ? '' : ' lc-warn')}>{readErr}</p>}
         {/* ONE BUTTON, TWO JOBS. Paste and read were two buttons side by side,

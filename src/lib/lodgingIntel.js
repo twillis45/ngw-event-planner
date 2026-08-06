@@ -1548,6 +1548,28 @@ export function looksLikeSearchUrl(text) {
   return null;
 }
 
+// HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05). extractListingCandidates
+// only recognizes airbnb.com/rooms/N and vrbo.com/N card links — the Hotels
+// door has no card parser at all (there is no verified Google Hotels fixture
+// to build one against, the same discipline that gates every OTHER unverified
+// filter in this file). A host who follows the paste box's own instruction —
+// "Paste the whole results page and every card on it is read right here" —
+// from the Hotels door gets zero candidates back, and looksLikeSearchUrl()
+// only catches a BARE search link, not a full pasted page, so the failure
+// fell through to a generic "tap Share, then Copy Link, try again" message
+// that implies retrying would work. It would not. This checks the pasted
+// TEXT itself (any shape, not just a bare url) for Google Travel/Hotels
+// markers, so the caller can say the true thing instead.
+export function looksLikeHotelsResultsPage(text) {
+  const t = String(text || '');
+  // The door's own href is absolute (google.com/travel/search); a card link
+  // ON that results page is typically relative (/travel/hotels/entity/…),
+  // so the domain prefix can't be required for both. lh3.googleusercontent.com
+  // is Google's own photo host and a second, independent signal — either one
+  // firing is enough, neither appears on an Airbnb or Vrbo page.
+  return /travel\/(search|hotels)\b/i.test(t) || /lh3\.googleusercontent\.com/i.test(t);
+}
+
 // ─── A NAME, NOT "OPTION 1" (lodging listing research, 2026-08-01) ─────────
 // The paste flow's weakest moment is the instant after it works: a bare link
 // carries no name, so a real house landed on the shortlist called "Option 1"
