@@ -1978,6 +1978,17 @@ export function stayFromPick(event, intel) {
     rate: perNight,
     url: chosen.url || '',
     from: STAY_FROM_PICK,
+    // "ON THE BOOKS... no image. This is where we are all staying for our
+    // beautiful trip" (host, 2026-08-05). The pick already carried a real
+    // photo — Choices renders it hero-sized on Weigh Them — but stayFromPick
+    // only ever wrote hotelName/rate/url/from, so the moment a place became
+    // the actual booked stay, its own picture was left behind. Same host-
+    // pasted photo, same fields Choices already trusts; nothing new fetched.
+    photoUrl: chosen.photoUrl || '',
+    photos: Array.isArray(chosen.photos) ? chosen.photos : [],
+    sleeps: chosen.sleeps != null ? chosen.sleeps : null,
+    beds: chosen.beds != null ? chosen.beds : null,
+    cancellationTier: chosen.cancellationTier || '',
   };
 }
 

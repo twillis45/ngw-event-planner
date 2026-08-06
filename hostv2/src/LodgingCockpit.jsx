@@ -694,6 +694,40 @@ function Thumb({ src, label, big }) {
   );
 }
 
+// ── ONE STAY, SHOWN LIKE IT MATTERS (host, 2026-08-05: "The Stay section is
+//    underwhelming for the choices, wrapping, no image. This is where we are
+//    all staying for our beautiful trip.") ──────────────────────────────────
+// The Choices deck already renders a place's own photo hero-sized the moment
+// it's a candidate — the exact photo then went missing the moment a host
+// actually chose it. Not a rendering gap: stayFromPick() only ever wrote
+// hotelName/rate/url/from, so the photo was never carried past the pick. Now
+// that it is (lodgingIntel.js stayFromPick), Picked and Booked both get the
+// SAME hero — a photo, a scrim, the name and facts overlaid — instead of a
+// label/value row that wraps a long listing name into two narrow columns.
+// Honest when there is no photo (typed-in bookings, off-confirmation): a
+// plain identity block, same as the deck's own no-photo cards.
+function StayHero({ photoUrl, label, sub }) {
+  const name = String(label || '').trim() || 'Your stay';
+  if (!photoUrl) {
+    return (
+      <div className="lc-stayhero-flat">
+        <p className="lc-strong">{name}</p>
+        {sub && <p className="lc-card-sub lc-stayhero-flat-sub">{sub}</p>}
+      </div>
+    );
+  }
+  return (
+    <div className="lc-card-photo-wrap lc-stayhero">
+      <Thumb src={photoUrl} label={name} big />
+      <div className="lc-card-scrim" aria-hidden="true" />
+      <div className="lc-card-overlay">
+        <h3 className="lc-card-name">{name}</h3>
+        {sub && <p className="lc-card-sub">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
 // ── D6 · W9 · SWIPE THE ONES THAT FIT (983:136) ────────────────────────────
 // The board's choice screen, built. Host, 2026-08-03: "we need to be able to
 // swipe between the choices" — it was ruled, drawn, and never wired.
@@ -1156,14 +1190,14 @@ function Picked({ event, intel, patch }) {
   const [code, setCode] = useState(stay.bookingCode || '');
   if (!chosen) return <Panel label="THE PICK"><p className="lc-note">Nothing picked yet — this is what it will show once one is.</p></Panel>;
   const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `$${Math.round(Number(n)).toLocaleString()}` : '—');
+  const pickSub = [
+    money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice) !== '—' ? money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice) : null,
+    chosen.sleeps != null ? `sleeps ${chosen.sleeps}` : null,
+    String(chosen.cancellationTier || '').trim() || null,
+  ].filter(Boolean).join(' · ');
   return (
     <Panel label="THE PICK">
-      <p className="lc-strong">{String(chosen.label || '').trim() || 'Your pick'}</p>
-      <Rows rows={[
-        ['All-in', money(chosen.allIn != null ? chosen.allIn : chosen.totalPrice)],
-        ['Sleeps', chosen.sleeps != null ? String(chosen.sleeps) : '—'],
-        ['Cancellation', String(chosen.cancellationTier || '').trim() || '—'],
-      ]} />
+      <StayHero photoUrl={chosen.photoUrl} label={chosen.label} sub={pickSub} />
       <p className="lc-note">Choosing is not booking. Book on the platform, then bring the confirmation back.</p>
       {/* NAME THE ACT, THEN OFFER IT. This screen told the host to book it on
           the platform and did not hand them the platform — while holding the
@@ -1193,10 +1227,8 @@ function Booked({ event, patch }) {
   return (
     <>
       <Panel label="ON THE BOOKS">
-        <Rows rows={[
-          ['The stay', String(stay.hotelName || '').trim() || '—'],
-          ['Booking code', String(stay.bookingCode || '').trim() || '—'],
-        ]} />
+        <StayHero photoUrl={stay.photoUrl} label={stay.hotelName}
+          sub={String(stay.bookingCode || '').trim() ? `Booking code ${stay.bookingCode.trim()}` : 'No booking code on file'} />
       </Panel>
       <Panel label="THE MONEY-SAFE DATES">
         <p className="lc-note">Copy these off the booking confirmation — they are the ones with a deadline.</p>
@@ -1418,6 +1450,13 @@ const CSS = `
    clamp() keeps it real-estate-dominant across phone heights without ever
    pushing the price/CTA row below the fold on a short device. */
 .lc-card-photo-wrap{position:relative;height:clamp(240px,44vh,440px);width:100%;}
+/* Standalone use (Picked/Booked — one stay, not a deck card): the rounding
+   and clipping the deck got for free from .lc-card has to be stated here
+   instead, and the height reads a touch calmer (36vh) since this is a
+   settled fact on the screen, not the primary decision surface. */
+.lc-stayhero{border-radius:14px;overflow:hidden;height:clamp(200px,36vh,360px);margin-bottom:14px;}
+.lc-stayhero-flat{margin-bottom:14px;}
+.lc-stayhero-flat-sub{margin-top:4px;}
 .lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
 .lc-card-nophoto{height:100%;width:100%;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
