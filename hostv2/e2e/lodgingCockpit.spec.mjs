@@ -9,13 +9,43 @@
 // -> correct -> pick. It runs at the project viewports, so the phone tier
 // (<=430px) is exercised for the first time.
 //
-// It talks to a REAL unfurl backend (whatever REACT_APP_API_BASE_URL points at
-// when dist was built). Nothing here is stubbed, so a green run means the round
-// trip works end to end.
+// MOCKED, NOT LIVE (host, 2026-08-06: "mock the unfurl call in these 2 e2e
+// tests"). This used to talk to the REAL unfurl backend, and said so here —
+// but the e2e job's own build has never set REACT_APP_API_BASE_URL (the same
+// config-free build hostv2-build and the demo release profile use), so
+// isUnfurlConfigured() was false and the two specs that depend on it could
+// never pass. The CI workflow now bakes a fake, reserved-TLD host
+// (e2e-mock.invalid, RFC 2606 — guaranteed to never resolve) into the build
+// JUST so isUnfurlConfigured() reads true; every request to it is intercepted
+// below and answered with a fixed response. This tests the CODE PATH
+// deterministically — the same discipline the backend suite already uses
+// ("stubs every outbound client and asserts the real ones are never called")
+// — rather than depending on a live external service being up during CI.
 import { test, expect } from '@playwright/test';
 
 const DEMO = './?demo=lodging';
 const LISTING = 'https://www.airbnb.com/rooms/20421338';
+
+// Shapes match the real backend's response, confirmed live 2026-08-05
+// against https://ngw-events-api.onrender.com/api/lodging/unfurl.
+const UNFURL_MOCK = {
+  ok: true,
+  title: 'Home in Santa Fe · ★4.86 · 4 bedrooms · 6 beds · 3 baths',
+  price: 2180,
+  image: 'https://a0.muscache.com/im/pictures/mock-e2e-fixture.jpg',
+  facts: { beds: 6, bedrooms: 4 },
+  sleeps: 10,
+  rating: 4.86,
+  ratingCount: 214,
+};
+const RESULTS_MOCK = {
+  ok: true,
+  links: Array.from({ length: 6 }, (_, i) => `https://www.airbnb.com/rooms/300000000${i}`),
+};
+const mockUnfurl = (page) => page.route('**/api/lodging/unfurl**',
+  (route) => route.fulfill({ json: UNFURL_MOCK }));
+const mockResults = (page) => page.route('**/api/lodging/results**',
+  (route) => route.fulfill({ json: RESULTS_MOCK }));
 
 // Playwright gives every test its own context, so storage already starts empty.
 // An addInitScript clear() here was WRONG: it re-runs on every navigation, so it
@@ -62,6 +92,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
   });
 
   test('a pasted listing comes back with its own facts', async ({ page }) => {
+    await mockUnfurl(page);
     await seed(page);
     await paste(page, LISTING);
     // Bounded: unfurlListing aborts at 12s, so this can never hang the suite.
@@ -82,6 +113,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
   });
 
   test('the kitchen claim says where it came from, and the host can overrule it', async ({ page }) => {
+    await mockUnfurl(page);
     await seed(page);
     await paste(page, LISTING);
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
@@ -97,6 +129,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
   });
 
   test('the shortlist can grow, and picking is not booking', async ({ page }) => {
+    await mockUnfurl(page);
     await seed(page);
     await paste(page, LISTING);
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
@@ -122,6 +155,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
   // them — links only, because names and prices are not reliably pairable to
   // the ids, and only the places the host KEEPS are ever read individually.
   test('a search link offers to pull its places in, and says what it cannot give', async ({ page }) => {
+    await mockResults(page);
     await seed(page);
     await paste(page, 'https://www.airbnb.com/s/Santa-Fe--NM/homes?checkin=2028-06-17&checkout=2028-06-21&adults=10');
 
@@ -151,6 +185,7 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
     page.on('pageerror', e => errors.push(String(e)));
 
+    await mockUnfurl(page);
     await seed(page);
     await paste(page, LISTING);
     await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
