@@ -11,7 +11,7 @@
 // it"). No fake AI, no invented data: everything shown comes off the event.
 import { useMemo, useState, useEffect, useRef } from 'react';
 import PhotoStrip from './PhotoStrip.jsx';
-import { photoList } from '@app/lib/lodgingIntel';
+import { photoList, STAY_FROM_PICK, STAY_FROM_PLAN } from '@app/lib/lodgingIntel';
 import { track as trackInvite, EVENTS as INVITE_EVENTS } from '@app/lib/analytics';
 import { isRsvpApiConfigured, submitRsvp, rsvpIdempotencyKey, flushRsvpOutbox, fetchPublicInvite, INVITE_FETCH_FAILED } from '@app/lib/api/rsvp';
 import { rsvpDeadlineFor, daysUntil, daysUntilEnd, spanEnd } from '@app/lib/dates';
@@ -816,7 +816,13 @@ export default function InviteV2({ code }) {
               {!isPast && event.lodging && event.lodging.hotelName && (<><div className="inv2-label lp">Stay</div>
                 <div className="inv2-val lp">
                   {event.lodging.hotelName}
-                  {event.lodging.rate ? ` · $${event.lodging.rate}/night group rate` : ''}
+                  {/* "group rate" ONLY when the rooms were actually held — the
+                      rate on a picked listing was read off a card, and this is
+                      the most guest-facing artifact the app produces. Same gate
+                      as draftLodgingNote; it was fixed there and missed here. */}
+                  {event.lodging.rate
+                    ? ` · $${event.lodging.rate}/night${(String(event.lodging.from || '') !== STAY_FROM_PICK && String(event.lodging.from || '') !== STAY_FROM_PLAN) ? ' group rate' : ''}`
+                    : ''}
                   {event.lodging.code ? ` · code ${event.lodging.code}` : ''}
                   {event.lodging.deadline ? ` · book by ${dfmt(String(event.lodging.deadline).slice(0, 10), { month: 'long', day: 'numeric' })}` : ''}
                 </div></>)}

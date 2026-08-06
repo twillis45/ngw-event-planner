@@ -26,6 +26,7 @@ import {
   kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
   extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
+  STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
 } from '@app/lib/lodgingIntel';
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
@@ -833,30 +834,45 @@ function AlreadySorted({ event, patch }) {
   const [rate, setRate] = useState('');
   if (String(stay.hotelName || '').trim()) return null;   // already sorted
   const n = Number(rate);
+  // The rate is only a GROUP rate when the rooms are actually held — the guest
+  // note reads `from` to decide exactly that.
+  const save = (from) => patch({
+    lodging: {
+      ...stay, hotelName: name.trim(), from,
+      ...(Number.isFinite(n) && n > 0 ? { rate: Math.round(n) } : null),
+    },
+  });
   return (
     <Panel label="ALREADY SORTED IT YOURSELF?">
+      {/* ── ASK, DO NOT ASSUME (2026-08-06, 3rd sitting) ──────────────────────
+          The first cut of this panel invited BOTH "booked a block on the phone"
+          and "know where everyone's staying" — then stamped every answer
+          `typed off the confirmation`. So a host who had merely decided where
+          she wanted everyone got "The stay is on the books" in the largest type
+          on screen, lodging marked done on the command board, and a note
+          telling her guests "We've lined up rooms at X."
+          That is the same defect this board already killed twice: choosing is
+          not booking, a listing price is not a group rate, and INTENDING IS NOT
+          BOOKING. This one was the worst of the three because it asserted a
+          provenance the host was never asked about. So it asks. */}
       <p className="lc-note">
-        Booked a block on the phone, or know where everyone’s staying? Put it here and skip the shopping.
+        Already know where everyone’s staying? Put it here and skip the shopping.
       </p>
       <div className="lc-row-form">
         <input className="lc-field" value={name} onChange={(e) => setName(e.target.value)}
           placeholder="Hotel or place" aria-label="Where everyone is staying" />
         <input className="lc-field" value={rate} onChange={(e) => setRate(e.target.value)}
           placeholder="$ a night" inputMode="decimal" aria-label="Nightly rate you were quoted" />
-        <button className="cta" disabled={!name.trim()}
-          onClick={() => patch({
-            lodging: {
-              ...stay,
-              hotelName: name.trim(),
-              // NOT the pick. This is what makes it read as a booking rather
-              // than a shortlist choice — and it is true: she typed it off her
-              // own confirmation. The rate is hers too, so the guest note may
-              // honestly call it a GROUP rate (see draftLodgingNote).
-              from: 'typed off the confirmation',
-              ...(Number.isFinite(n) && n > 0 ? { rate: Math.round(n) } : null),
-            },
-          })}>Save where we’re staying</button>
       </div>
+      <div className="lc-ctas lc-ctas-wrap">
+        <button className="cta" disabled={!name.trim()}
+          onClick={() => save(STAY_FROM_CONFIRMATION)}>The rooms are held</button>
+        <button className="cta soft" disabled={!name.trim()}
+          onClick={() => save(STAY_FROM_PLAN)}>That’s the plan, not booked</button>
+      </div>
+      <p className="lc-note">
+        Only “held” counts as booked — it is what the rest of the plan reads when it says lodging is sorted.
+      </p>
     </Panel>
   );
 }
@@ -1068,7 +1084,13 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                         <div className="lc-pv" key={r.field}>
                           <span className="lc-pv-label">{r.label}</span>
                           <span className="lc-pv-src">
-                            {r.source === 'read' ? 'read from the link' : 'you typed it'}
+                            {/* "read from the link" sat two inches under "No link"
+                                on the same hotel card — the card denying its own
+                                link and citing it three times. The value really
+                                was read; it was read off the PAGE she pasted, not
+                                from a per-place link. Say that, and the card stops
+                                contradicting itself. */}
+                            {r.source === 'read' ? 'read from the page you pasted' : 'you typed it'}
                           </span>
                         </div>
                       ))}
@@ -1410,7 +1432,19 @@ function Picked({ event, intel, patch }) {
   return (
     <Panel label="THE PICK">
       <StayHero photoUrl={chosen.photoUrl} label={chosen.label} sub={pickSub} />
-      <p className="lc-note">Choosing is not booking. Book on the platform, then bring the confirmation back.</p>
+      {/* ── DO NOT SEND HER TO A DOOR WE JUST SAID ISN'T THERE ───────────────
+          Grandmother seat, third sitting, on the worst moment in the flow: "I've
+          done everything right, I've picked the place, I'm holding my phone, and
+          the app points me at a thing it has already told me doesn't exist. That
+          is the moment I decide the app doesn't know what's going on."
+          A hotel row has no url BY DESIGN — Google's cards point at advertisers.
+          So when there is nothing to open, the honest next step is the phone,
+          and the app already holds the number if she typed one. */}
+      <p className="lc-note">
+        {String(chosen.url || '').trim()
+          ? 'Choosing is not booking. Book on the platform, then bring the confirmation back.'
+          : 'Choosing is not booking — and this one came back without a link, so it’s a phone call.'}
+      </p>
       {/* NAME THE ACT, THEN OFFER IT. This screen told the host to book it on
           the platform and did not hand them the platform — while holding the
           very URL they pasted to get here. Same defect as every CTA rewritten
@@ -1422,6 +1456,28 @@ function Picked({ event, intel, patch }) {
           Open it to book ↗
         </a>
       )}
+      {/* No link — offer the call instead of a dead instruction. Uses the number
+          the host already typed into WHO TO CALL; when there is none, the same
+          labelled search that panel uses, never an invented number. */}
+      {!String(chosen.url || '').trim() && (() => {
+        const c = normalizeCvbContact(stay.contact);
+        const town = String(venueFor(event).city || '').trim();
+        const place = String(chosen.label || '').trim();
+        if (c && c.telHref) {
+          return (
+            <a className="cta" href={c.telHref} style={{ textDecoration: 'none' }}
+              aria-label={`Call ${c.name || place} on ${c.phone} to book`}>
+              Call {c.name || place} — {c.phone}
+            </a>
+          );
+        }
+        return (
+          <a className="cta soft" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}
+            href={`https://www.google.com/search?q=${encodeURIComponent(`${town} ${place} group sales room block`.trim())}`}>
+            Find their number ↗
+          </a>
+        );
+      })()}
       {/* ── THE CODE WAS BEING WRITTEN WHERE NOTHING READS IT (2026-08-06) ───
           Found tracing the review board's room-block ruling. This panel wrote
           `lodging.bookingCode`. Every engine downstream reads `lodging.code`:

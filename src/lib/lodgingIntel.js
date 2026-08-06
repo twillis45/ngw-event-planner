@@ -2324,6 +2324,17 @@ export function lodgingCommitted(event) {
  * apart. Compared in lodgingStage; never write the literal in either place.
  */
 export const STAY_FROM_PICK = 'the option you picked';
+/**
+ * The one stamp that says a room is actually HELD.
+ *
+ * Written only where the host has said so in as many words. It is a literal
+ * because it is also host-facing provenance ("where this came from"), and it is
+ * exported so no surface has to retype the string that decides whether the
+ * command board tells her lodging is done.
+ */
+export const STAY_FROM_CONFIRMATION = 'typed off the confirmation';
+/** A name with no booking behind it — where we PLAN to stay, not a held room. */
+export const STAY_FROM_PLAN = 'the plan, not booked yet';
 
 /**
  * IS THE STAY ACTUALLY HELD — not merely picked.
@@ -2347,7 +2358,25 @@ export function lodgingIsHeld(event) {
   const ev = event || {};
   const stay = (ev.lodging && typeof ev.lodging === 'object') ? ev.lodging : {};
   const md = (ev.moneyDates && typeof ev.moneyDates === 'object') ? ev.moneyDates : {};
-  const namedOffConfirmation = !!String(stay.hotelName || '').trim() && stay.from !== STAY_FROM_PICK;
+  // ── WHICH NAMES ARE BOOKINGS (2026-08-06, third sitting) ─────────────────
+  // The board's event seat wanted this inverted outright — require an explicit
+  // confirmation stamp, because "held by negation" means any writer that
+  // forgets the stamp gets a booking for free.
+  //
+  // Inverting it wholesale would have been wrong, and the tests said so before
+  // I did: a bare `hotelName` with NO `from` is the old booking form's own
+  // shape (lodgingAudit.test.js pins it as "a real off-confirmation name"),
+  // and stored events carry it. Flipping that would have silently un-booked
+  // real stays to satisfy a rule about writers.
+  //
+  // So the fix is on the CLAIMING side, which is where the actual complaint
+  // was: there is now an explicit value for "this is the plan, not a booking"
+  // (STAY_FROM_PLAN), and the front door asks which one the host means instead
+  // of stamping every answer as a confirmation. A name is a booking unless it
+  // says otherwise — and now it CAN say otherwise.
+  const from = String(stay.from || '');
+  const namedOffConfirmation = !!String(stay.hotelName || '').trim()
+    && from !== STAY_FROM_PICK && from !== STAY_FROM_PLAN;
   // TWO KEYS FOR ONE FACT, and both are real. `code` is what travelPlan and the
   // guest note read; `bookingCode` is what the cockpit wrote alone until
   // 2026-08-06, so events saved before that carry only it. Reading either is

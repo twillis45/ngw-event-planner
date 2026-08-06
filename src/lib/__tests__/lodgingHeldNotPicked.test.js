@@ -213,3 +213,60 @@ describe('the guest note only claims a group rate when there was one', () => {
     expect(lodgingStage(ev).stage).toBe('booked');
   });
 });
+
+// ─── INTENDING IS NOT BOOKING (2026-08-06, third sitting) ───────────────────
+// The front door first stamped every answer `typed off the confirmation`,
+// including a host who had only decided where she WANTED everyone. She then got
+// "The stay is on the books", lodging marked done on the command board, and a
+// note telling her guests "We've lined up rooms at X". Third form of one
+// defect: choosing is not booking, a listing price is not a group rate, and a
+// plan is not a reservation.
+//
+// Inverting lodgingIsHeld to demand an explicit stamp was the board's
+// suggestion and would have un-booked real stored stays — a bare `hotelName`
+// with no `from` is the old booking form's own shape, pinned deliberately in
+// lodgingAudit.test.js. So the fix is on the claiming side: there is now a
+// value that means "plan", and the door asks.
+describe('a stated plan is not a held room', () => {
+  const { STAY_FROM_PLAN } = require('../lodgingIntel');
+  const base = {
+    id: 'ev-plan', type: 'Birthday', isDestination: true,
+    venueCity: 'Santa Fe, NM', date: '2027-09-15', endDate: '2027-09-19', guestCount: 10,
+  };
+
+  test('"that\'s the plan" does not read as booked', () => {
+    const ev = { ...base, lodging: { hotelName: 'The Eldorado', rate: 189, from: STAY_FROM_PLAN } };
+    expect(lodgingIsHeld(ev)).toBe(false);
+    expect(lodgingStage(ev).stage).not.toBe('booked');
+  });
+
+  test('"the rooms are held" does', () => {
+    const ev = { ...base, lodging: { hotelName: 'The Eldorado', rate: 189, from: 'typed off the confirmation' } };
+    expect(lodgingIsHeld(ev)).toBe(true);
+  });
+
+  test('a legacy name with no `from` keeps its meaning — nobody is un-booked', () => {
+    // The old form wrote exactly this and meant "I booked it".
+    expect(lodgingIsHeld({ ...base, lodging: { hotelName: 'The Carlyle' } })).toBe(true);
+  });
+
+  test('a plan’s rate is never called a group rate to the guests', () => {
+    const { draftLodgingNote } = require('../doItForMe');
+    const t = String(draftLodgingNote({ ...base,
+      lodging: { hotelName: 'The Eldorado', rate: 189, code: 'X1', deadline: '2027-08-01', from: STAY_FROM_PLAN } }).body || '');
+    expect(t).not.toMatch(/group rate/);
+    expect(t).toMatch(/We’re staying at The Eldorado/);
+  });
+
+  test('the phone number the host typed reaches the note', () => {
+    const { draftLodgingNote } = require('../doItForMe');
+    const t = String(draftLodgingNote({ ...base, lodging: {
+      hotelName: 'The Eldorado', code: 'NGW1', from: 'typed off the confirmation',
+      contact: { name: 'Dana', phone: '(505) 988-4455' },
+    } }).body || '');
+    // "I have told ten people to go book, with a code, and given them no way to
+    // do it." — the Grandmother seat, on the omission that cost her the day.
+    expect(t).toMatch(/\(505\) 988-4455/);
+    expect(t).toMatch(/Dana/);
+  });
+});
