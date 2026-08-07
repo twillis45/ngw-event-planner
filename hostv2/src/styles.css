@@ -375,8 +375,15 @@ button{font-family:inherit}
 .chips{display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 /* Guest avatar — deterministic initials on a muted on-brand tint (glanceability
    layer, per-screen audit). Fixed light ink on the tints for legibility. */
-.gav{display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px;
-  border-radius:50%; font-size:11px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
+/* 32px, not 28 (Mobbin tier read, 2026-08-07). Leaders run 32–40 — Discord 32,
+   Riot ~36, Telegram 40 — and 28 was the smallest avatar in 30 iOS screens.
+   The same read killed the opposite instinct: an earlier audit of mine said
+   this row was "1.5x to 3x taller than every leader" and it was WRONG, because
+   it compared our two-line row to leaders' SINGLE-line rows. Two-line rows run
+   56–73pt on iOS. We are UNDER that band at 55, so the row can afford the 4px
+   this costs and should not be shrunk. Initials go 11 -> 12px to match. */
+.gav{display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+  border-radius:50%; font-size:12px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
   color:#e8edf2; box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
