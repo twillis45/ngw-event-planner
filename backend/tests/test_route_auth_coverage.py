@@ -48,9 +48,10 @@ INTENTIONALLY_PUBLIC = {
     # Guarded by safe_fetch rather than by auth
     ("GET", "/unfurl"): "caller URL, but routed through safe_fetch",
     ("GET", "/results"): "caller URL, but routed through safe_fetch",
-    # Payments — anonymous today; a product decision, recorded in the audit
-    ("POST", "/create-checkout-session"): "RECORDED as a finding: require_planner means signed-in",
-    ("GET", "/verify-session"): "RECORDED as a finding: keyed on an unguessable session id",
+    # create-checkout-session was here as "anonymous today, a product decision".
+    # The board ruled 2026-08-07: require signed-in. The entry is DELETED rather
+    # than reworded, so the sweep now fails if it ever goes public again.
+    ("GET", "/verify-session"): "keyed on an unguessable session id; carries auth from the client but not required server-side",
 }
 
 
@@ -87,6 +88,15 @@ def test_every_public_route_is_a_declared_intent():
         "New unauthenticated route(s). If public is correct, add it to "
         "INTENTIONALLY_PUBLIC with the reason:\n  " + "\n  ".join(surprises)
     )
+
+
+def test_the_checkout_is_gated():
+    # Two-sided pin. The sweep above already fails if this route goes public,
+    # but only while the allowlist entry stays deleted — someone silencing the
+    # sweep by re-adding it still fails here.
+    pub = {(m, pth) for m, pth, _f, _ln in unauthenticated_routes()}
+    assert ("POST", "/create-checkout-session") not in pub, \
+        "minting a Stripe charge is anonymous again"
 
 
 def test_the_channel_write_is_gated():

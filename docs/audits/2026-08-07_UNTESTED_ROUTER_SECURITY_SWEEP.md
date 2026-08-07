@@ -45,7 +45,58 @@ all, and logs a warning when taken.
 
 ---
 
-## FOUND, NOT FIXED — both are product decisions, not bugs
+## RULED AND FIXED — the board settled both Stripe questions
+
+Convened 2026-08-07 (backend/security seat, a planner who invoices, Grandmother
+override). Both rulings were unanimous, and one **corrected me**.
+
+### 1. Minting a charge was anonymous — NOW SIGNED-IN ONLY
+
+The argument I had not made: the anonymous path **cannot deliver the product**.
+There is no server-side entitlement — `feeSchedule` is localStorage and the
+webhook only logs, with a `# Future:` where the write would go — so an anonymous
+purchase produces a Stripe charge and nothing the host can ever recover.
+
+Nothing in production breaks, because nothing in production could reach it
+through the product: the CRA sits behind `AuthGate`, and
+`pages-from-source.yml` forces the demo profile to ship an empty
+`REACT_APP_API_BASE_URL`. The exposure was curl. Auth is checked BEFORE the
+`_configured()` 503, so an anonymous caller cannot learn whether this deployment
+has Stripe wired. Added with it: a $100k per-charge ceiling (sized to clear a
+real wedding balance, per the planner seat) and a bounded single-line `label`,
+which renders as `product_data.name` on a Stripe page carrying this account's
+business name.
+
+**Still owed before billing goes live** (`REACT_APP_BILLING_LIVE=1`): the
+Grandmother seat's sequencing ruling. hostv2's `buyPass` must ask for the email
+INSIDE the purchase — "your email first, that's how the pass stays yours on
+every device" — reusing the `sendMagicLink` / `authSent` state already in scope.
+A 401 surfacing as "Checkout isn't available right now" must never be how a
+signed-out host learns they need an account. Not done here: it is a UI flow
+change in `HostShellV2.jsx` while a second session is active in that file, and
+billing is gated off today.
+
+### 2. The redirect targets — NOW VALIDATED. My stated blocker was wrong.
+
+I had deferred this believing an env-backed allowlist would fail closed wherever
+unset. **False for this variable.** `config.py` gives `ALLOWED_ORIGINS` a real
+non-empty default (the production Pages origin plus localhost) and
+`ALLOWED_ORIGIN_REGEX` a second covering localhost/127.0.0.1/RFC1918 on any
+port. The canonical list I was waiting to decide on already existed and already
+gates every browser caller — so the check cannot be wrong in a way CORS is not
+already wrong.
+
+`app/app_origins.py` (a module, because `webhooks.py` proved what happens when a
+guard exists and one router is not wired to it). Exact origin equality, never
+`startswith` — `https://twillis45.github.io.evil.com` defeats it. `re.fullmatch`,
+never `match` — the LAN regex is unanchored at the end, so `match` accepts
+`http://localhost.evil.com`. And `"*"` is not honoured: it is defensible for
+CORS, where the boundary is the JWT, but as a redirect allowlist it would make
+the validation a silent no-op that still looks installed.
+
+---
+
+## PREVIOUSLY FOUND, NOT FIXED — superseded above
 
 ### 1. `POST /api/stripe/create-checkout-session` is unauthenticated
 
@@ -76,8 +127,17 @@ the canonical origin list before anything is enforced.
 ### 3. `GET /api/stripe/verify-session` is unauthenticated
 
 Returns `amount_total`, `currency` and `fee_id` for any `session_id`. Session
-ids are long and unguessable, so this is low severity — recorded for
-completeness rather than as a call to act.
+ids are long and unguessable, so this stays low severity and the server-side
+requirement was NOT added. The client now sends the headers anyway — one line,
+and it means nobody has to revisit the decision.
+
+### 4. NEW, from the board's sweep: a CTA that calls an endpoint that does not exist
+
+`src/lib/stripeApi.js:63` POSTs to `/api/stripe/create-subscription-session`.
+That route does not exist in `backend/` — verified. `src/App.js:19108` calls it
+from the plan-upgrade flow, so on a `live` release that path 404s. The file is
+frozen donor code, so this is recorded rather than fixed, but it is a
+CTA-truthfulness defect (UX_07), not merely a dead route.
 
 ---
 
