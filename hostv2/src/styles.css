@@ -4284,7 +4284,11 @@ button.vc-pill::after{
    way rather than reserving space. */
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
   display:grid;
-  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(232px,288px);
+  /* The stat track grew by exactly what the bounding inset takes (:border-left
+     + 20px), so the CONTENT width is unchanged at ~288 and the plan-part chips
+     keep their two rows. Adding the edge without this squeezed them to three —
+     bounding a region must not cost the region its contents. */
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(253px,309px);
   /* TWO rows, declared. `.efold` never renders on this canvas, so the third row
      was a PHANTOM — an empty auto track, and a spanning item distributes its
      size into exactly those. Measured: `grid-template-rows: 324px 93.66px 142px`
@@ -4935,4 +4939,26 @@ button.vc-pill::after{
   .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .content{
     padding-left:36px; padding-right:36px;
   }
+}
+
+/* ══ BOUND THE COLUMN, OR ITS EMPTINESS READS AS A FAULT (board, 2026-08-07) ══
+   The warmth seat's finding, and it is the cheapest real move on the ruling:
+   compare a leader's list with ten rows against the same list with three — the
+   column headers persist, so three rows reads as a SHORT LIST, not a broken
+   screen. Same with a near-empty card that still has its border: it reads as a
+   slot. Bounded emptiness is capacity. Unbounded emptiness is a defect.
+
+   Our stat column had a name and no edge, so the ~270px under the budget block
+   was carbon that simply stopped — indistinguishable from something that failed
+   to load. One hairline and a little inset, and the same pixels become "nothing
+   selected yet".
+
+   Deliberately a hairline and not a card: `--line-soft` is the same rule the
+   bento's own rows use between figures, so the column reads as one object with
+   the surface rather than a panel dropped onto it. This is also the region the
+   standing ruling at :3582 reserves for on-demand detail — bounding it now is
+   what makes that build a fill rather than a re-zone. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
+  border-left:1px solid var(--line);
+  padding-left:20px;
 }
