@@ -281,10 +281,16 @@ button{font-family:inherit}
     margin-left:calc(min(300px, max(240px, 23%)) + 56px);
     max-width:68ch;
   }
-  /* The grab handle is a PHONE affordance — it says "there is more below the
-     bottom edge". On a wide canvas the next section is already visible, so the
-     handle would be pointing at something in plain sight. */
-  .stagewrap--responsive-command .hero.elegant > .efold{ display:none; }
+  /* The grab handle WAS hidden here unconditionally, and that declaration has
+     moved (2026-08-07). Its reasoning was right — the handle says "there is more
+     below the bottom edge" and on a wide canvas the next section is usually in
+     plain sight — but "usually" is not "always", and this rule sits inside a
+     `min-height:700px` media query while the fact it is guessing at does not.
+     It now lives ONCE, gated on `.app:not(.has-more)` (whether the scroll
+     container actually overflows) and outside any height condition. Leaving a
+     copy here would have re-hidden the handle at 1440 and 1920 while the short
+     laptop obeyed the other rule — which is exactly what it did do for two full
+     matrix runs before this was found. */
 
   /* The docked action follows the main column too — a 755px pill spanning the
      whole canvas belongs to no column at all. */
