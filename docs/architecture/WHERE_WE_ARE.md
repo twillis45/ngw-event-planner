@@ -207,6 +207,38 @@ blocker card at y=734. The blocker now defers to the hero, and the hero is deriv
 list). Guard also mirrors the editor's own render condition so it can never remove the
 LAST venue input.
 
+**THE WIDE-SCREEN SLOPE, MEASURED 2026-08-07.** The board's finding was never the
+number, it was the direction: *the surface degrades as the canvas grows.* Now quantified
+on the command surface (ink = area of leaf text nodes over canvas area):
+
+```
+viewport      .app        ink     hero      stat column
+1280x654      1010x804    63%     645x461   288x475
+1440x900      1170x840    51%     645x437   288x475
+1728x1080     1278x900    44%     645x437   288x475
+1920x1080     1278x900    44%     645x437   288x475
+```
+
+Three facts in that table, and they are the whole problem:
+- **`.app` hard-caps at 1278x900**, so 1728 and 1920 render IDENTICALLY. Above 1440 the
+  product stops responding to the canvas at all.
+- **Nothing is fluid.** Hero 645 and stat column 288 at every width.
+- **Ink FALLS as the canvas grows.** More room produces more nothing.
+
+**THE VENUE BLOCKER IS IN THE WRONG PLACE, and it is a symptom.**
+`assembleRevealEngines.js:127` pushes it `urgency:'critical'`, `reversibility:'locked'`,
+`blocks:['catering']` — the gate on the sequence — and the layout renders it dead last,
+below "Worth keeping an eye on", which is explicitly the BACKGROUND lane. A critical item
+wearing a footnote's position. Worse, the same question is already on screen as an open
+`Venue` chip in the named set ~300px above it: one question, two surfaces, again.
+Two builds, materially different, NOT chosen:
+  A. the blocker becomes the ask (board wave 2) — an ENGINE ranking change, a critical
+     blocker outranking the queue head. The stand-down mechanism already exists
+     (`heroCarriesVenue`, 57f48c33); it does not fire because the queue's head is lodging.
+  B. the open chip resolves it in the right column — removes a duplicate surface rather
+     than relocating it, and earns the empty column (the design seat's standing dissent:
+     the stat column and the detail pane are ONE region).
+
 **Board rulings still unbuilt:**
 
 - Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
