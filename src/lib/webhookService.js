@@ -10,6 +10,7 @@
 // what to do with the payload.
 
 import { venueFor } from './venueFor';
+import { plannerAuthHeaders } from './commApi';
 
 const BASE = process.env.REACT_APP_API_BASE_URL;
 const LOG_KEY  = 'ngw-webhook-log';
@@ -68,9 +69,14 @@ export async function fireWebhook(webhookUrl, eventType, payload) {
 
     if (BASE) {
       // ── Server-side relay (preferred) ─────────────────────────────────────
+      // The relay is PLANNER-ONLY as of 2026-08-07. It used to accept an
+      // arbitrary destination from an unauthenticated body, which made it an
+      // SSRF into the deployment's own network; closing that added
+      // require_planner server-side, so this call has to carry the same headers
+      // every other planner endpoint sends or it now gets a 401.
       const res = await fetch(`${BASE}/api/webhooks/relay`, {
         method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
         body:    JSON.stringify({ url: webhookUrl, payload: body }),
       });
       ok         = res.ok;

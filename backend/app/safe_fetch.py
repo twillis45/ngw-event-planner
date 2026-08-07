@@ -159,6 +159,62 @@ async def validate_url(url: str, allowed_hosts: Iterable[str]) -> Tuple[str, str
     return host, url
 
 
+async def validate_public_url(url: str) -> Tuple[str, str]:
+    """
+    Validate a caller-supplied DESTINATION url for an outbound POST.
+
+    Returns (hostname, url). Raises SafeFetchError with a caller-safe reason.
+
+    HOW THIS DIFFERS FROM validate_url, AND WHY IT IS NOT A WEAKENING.
+    `validate_url` additionally demands a host ALLOWLIST and fails closed on an
+    empty one. That is right for document fetch, where the server reads a URL a
+    stranger handed it and only a handful of storage hosts are ever legitimate.
+
+    It is wrong for a webhook destination. A planner's Zapier/Make/n8n/self-hosted
+    receiver is legitimately an arbitrary public host, so an allowlist would mean
+    the feature is off for everyone until an operator edits an env var — and the
+    pressure would then be to widen the list until it means nothing.
+
+    So this keeps every check that actually stops SSRF and drops only the one
+    that cannot apply:
+      • https only — a webhook body carries event data and must not go plaintext
+      • no credentials in the URL
+      • the host is resolved and EVERY returned address must be global unicast,
+        so loopback, private, link-local (169.254.169.254 cloud metadata),
+        multicast and reserved are all refused, including IPv4-mapped IPv6 forms
+    The caller must also not follow redirects, or a 302 would move the request to
+    an address that was never checked.
+    """
+    try:
+        p = urlparse(url)
+    except Exception:
+        raise SafeFetchError("That webhook URL could not be read.", 400)
+
+    if p.scheme != "https":
+        raise SafeFetchError("A webhook URL must start with https.", 400)
+    if p.username or p.password:
+        raise SafeFetchError("Webhook URLs containing credentials are not accepted.", 400)
+
+    host = (p.hostname or "").lower()
+    if not host:
+        raise SafeFetchError("That webhook URL is missing a host.", 400)
+
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    addresses = [literal] if literal is not None else await _resolve_all(host)
+
+    for ip in addresses:
+        if not _ip_is_public(ip):
+            log.warning("safe_fetch: BLOCKED non-public webhook destination host=%s", host)
+            raise SafeFetchError(
+                "That webhook URL points at an address on this server's own network.", 400
+            )
+
+    return host, url
+
+
 async def safe_get(
     url: str,
     *,

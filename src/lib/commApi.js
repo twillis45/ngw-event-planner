@@ -38,6 +38,11 @@ const mapChannel = (ch) => CHANNEL_MAP[ch] || 'CLIENT';
 
 // Build auth headers per request: prefer the signed-in Supabase session, fall
 // back to the shared dev token during the auth rollout.
+// EXPORTED as plannerAuthHeaders (2026-08-07): the webhook relay became
+// planner-only when its SSRF was closed, and webhookService needs exactly these
+// headers. Re-deriving them there would be a second place to update when the
+// auth rollout finishes, so there is one.
+export async function plannerAuthHeaders() { return authHeaders(); }
 async function authHeaders() {
   const headers = {};
   if (isSupabaseConfigured() && supabase) {
