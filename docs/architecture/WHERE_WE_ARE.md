@@ -10,29 +10,31 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
 ## 1. Branch state
 
-> ### ⚠ A SECOND SESSION IS LIVE IN THIS TREE - DO NOT COMMIT `hostv2/src/styles.css`
+> ### ⚠ A SECOND SESSION IS LIVE IN THIS TREE - AND IT SWEPT MY WORK INTO ITS COMMIT
 >
-> A vite preview owned by another agent has been listening on **:5233 since 01:39 on
-> 2026-08-07**, and its scratch harness `hostv2/e2e/_railAudit.mjs` says "delete after the
-> review" - it is mid-flight, not finished.
+> Still running as of 2026-08-07 (vite preview on :5233, restarted at least once).
+> It is building the **persistent section rail** (`VIEWPORT_PORT_RULING` step 3):
+> `src/lib/sectionDirectory.js`, `showsRail()`, `hostv2/src/sectionIcons.jsx`, `.srail*` CSS.
 >
-> That session is building **the persistent section rail** (`VIEWPORT_PORT_RULING` step 3):
-> `src/lib/sectionDirectory.js`, `showsRail()` in `src/lib/responsiveSurface.js`, `.srail*`
-> in `styles.css`, and the `HostShellV2.jsx` wiring. All of it is UNCOMMITTED.
+> **What happened.** `hostv2/src/styles.css` carried that session's rail CSS and this
+> session's wide-canvas fixes inside ONE diff hunk, so there was no pathspec that
+> committed either alone - the wide-canvas work was deliberately left uncommitted while
+> the entanglement lasted. That session then committed the whole tree in `cf0336c0`
+> ("The menu existed as an attribute..."), sweeping in `wideSurfaceCss.test.js`,
+> `wideCanvas.spec.mjs`, `playwright.config.mjs` and the styles.css fixes.
 >
-> **The tree is entangled.** `hostv2/src/styles.css` carries that session's rail CSS and this
-> session's wide-canvas fixes inside the SAME diff hunk (`@@ -3522,17 +3522,100`), so there
-> is no pathspec that commits one without the other. `git add hostv2/src/styles.css` publishes
-> a half-built rail. Committing the wide-canvas tests WITHOUT the CSS turns CI red, because
-> `wideSurfaceCss.test.js` reads the stylesheet as its fixture.
+> **Nothing was lost and nothing is broken** - both CSS fixes are present and
+> `wideSurfaceCss.test.js` passes as committed. The only damage is attribution: that
+> work is described by an unrelated commit message. **History was deliberately NOT
+> rewritten** - rebasing shared history while another session is actively committing
+> is how work actually gets destroyed. Read `cf0336c0` as two changes, not one.
 >
-> **Do this instead:** let the rail session land its own commit first, then commit the
-> wide-canvas work on top. Do not `git checkout` or `git stash` these paths - that is the
-> exact move that swept a session's work on 2026-07-30.
->
-> Also note the rail session has ALREADY built what the design seat filed as item #7
+> That session has also already built what the design seat filed as item #7
 > ("fill the 356x422 command-rail void"). Do not build it twice.
-
+>
+> **Before any `git add` in this tree:** `lsof -nP -iTCP:5233 -sTCP:LISTEN` and
+> `git status --porcelain`. Untracked `src/lib/*.js` you did not write is someone's
+> in-flight work; its header carries a dated "EXTRACTED <date> from ..." note.
 
 **Branch:** `feat/lodging-search-offer` - **HEAD `0d273115`**, 3 ahead of `origin/main`.
 PRs #79/#80 are closed/merged; **#81 merged 2026-08-06**; **#82 is open and green on all
