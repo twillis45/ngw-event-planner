@@ -4242,6 +4242,132 @@ button.vc-pill::after{
   left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
 }
 
+/* ── THE COMMAND SURFACE BECOMES ZONES, NOT A STRETCHED COLUMN (UX_04) ───────
+   MEASURED AT 1440x900 BEFORE THIS RULE. `.escreen` spans the full 1130px
+   canvas, and then every block below it is 685px wide and left-aligned:
+
+       y=402  .then-fold   w=685   "Then, in order"
+       y=536  .ef-watch    w=685   "Worth keeping an eye on"
+       y=665  .bento       w=685   Guests 24 / Budget $24,000
+
+   That leaves 445px of dead canvas down the right at 1440 and 553px at 1920 —
+   the "command is just a version of the mobile in column 2" the host named in
+   Chrome. The 685px is not a mystery and not a bug in itself: :282 caps
+   `.escreen ~ *` at 68ch so the reference lane keeps a readable measure on a
+   phone-shaped canvas. :4235 already cleared that block's margin-left once a
+   rail was up, but left the CAP — so the content kept a phone's width at a desk.
+
+   UX_04 asks for zones: a command header carrying 3-4 stat cards, a priority
+   lane, then the work. UX_03 adds the hard number this surface was failing —
+   "stat cards must never stretch wider than 300px". Ours measured 685.
+
+   PLACEMENT IS EXPLICIT BECAUSE THE CHILD LIST IS KNOWN, not assumed. `.hero`
+   closes at HostShellV2.jsx:8172 and has exactly six possible children:
+   .escreen, .efold (display:none here since :287), .then-fold, .ef-watch,
+   .bento, and the conditional .tile-d. Every one is placed by name below, so
+   nothing auto-places into a track it was never meant for — which is the way a
+   grid written against a guessed child list fails.
+
+   .then-fold (askMode) and .tile-d (calm / day-of) are near-mutually-exclusive,
+   so row 2 is rarely more than half-used; it collapses to its content either
+   way rather than reserving space. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(232px,288px);
+  align-content:start;
+  column-gap:var(--sp-5);
+}
+/* Zone 1 + 2 — the eyebrow (title), the ask, and the progress foot keep one
+   stage, spanning the two work columns with the stat cards beside them. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .escreen{
+  grid-column:1 / span 2; grid-row:1;
+}
+/* Zone 3 — the work, side by side in the width that just freed up. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
+/* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
+   The track ceiling is 288px, under UX_03's 300px rule, and they stack down
+   their own column instead of stretching. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .bento{
+  grid-column:3; grid-row:1;
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  align-self:start; margin-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .tile-d{
+  grid-column:3; grid-row:2; align-self:start;
+}
+/* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
+   :287 already hides this handle on a wide canvas, for the right reason — it
+   is a phone affordance that says "there is more below the bottom edge", and
+   on a real canvas the next section is already in plain sight. But :287 lives
+   inside `@media (min-width:1280px) and (min-height:700px)`, and `data-rail`
+   comes from showsRail(), which is WIDTH-ONLY (isWideBp, >=1280).
+
+   So on any canvas at least 1280 wide and UNDER 700 tall the two gates
+   disagree: the rail is up, this grid is on, and the handle is still visible.
+   That is not hypothetical — it is the host's own machine. Chrome on a 1280x800
+   display has an inner viewport of 1280x654, measured live, and there the
+   unhidden handle AUTO-PLACED into column 3 as a 288x259 block sitting under
+   the stat cards, because an unplaced child of a grid goes wherever the
+   auto-flow puts it. That is also why an earlier sweep recorded "a second fold
+   handle survives" and could not find it: it was driven at 1440x900, where the
+   height condition passes and the handle is correctly hidden.
+
+   Hiding it here keys the rule to the SAME signal the composition keys to, so
+   the handle cannot come back the moment a viewport is short. The wider
+   mismatch between showsRail()'s width-only test and the stylesheet's
+   width+height media queries is recorded for the board — it is not fixed here,
+   because changing showsRail() would take the rail off this very machine. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .efold{
+  display:none;
+}
+
+/* ── AND THE SAME DISAGREEMENT, ONE LAYER DOWN ──────────────────────────────
+   :4201 writes the rail-mode composition for the first screen — one column,
+   `grid-template-areas: eyebrow / head / main / prog`, progress returned to the
+   foot. Those are grid properties, and they are INERT unless something makes
+   `.escreen.on` a grid. The `display:grid` that does it lives back in the
+   @media at :162 — height-gated again.
+
+   Measured on the host's 1280x654 Chrome before this rule: `.escreen.on`
+   computes `display:flex`, every grid-template above is dead, and `.eprog`
+   renders at x=621 w=330 — a 330px progress block floated to the right of a
+   710px column instead of a full-width hairline at the foot. That is exactly
+   the "progress stranded far-right with nothing near it" the last handoff
+   recorded and could not place; it was never a placement bug, it was this
+   declaration never arriving.
+
+   One line, keyed to the rail rather than to a height, and :4201's rules mean
+   what they say wherever the rail is up. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
+  display:grid;
+}
+/* The 68ch cap was a phone measure standing in for a column. Each block now has
+   a real track that bounds it, so keeping the cap would only re-narrow it. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen ~ *{
+  max-width:none;
+}
+
+/* ── THE REFERENCE ROWS, FOUND (2026-08-07) ─────────────────────────────────
+   ":201 recorded this same defect once already" and four selectors written for
+   it matched NOTHING and were deleted. They matched nothing because every one
+   of them was scoped to `.hero`, and THESE ROWS ARE NOT IN `.hero`. Measured
+   ancestor chain at 1440:
+
+       button.frow  x=267 w=1126  max-width:none
+         div.slidepanel-inner   w=1130
+           div.slidepanel
+             section              <- sibling of .hero, not a descendant
+
+   So the rows sit in the "what's counted" slide-down panel and inherit the full
+   canvas: `Set the start time` with its `›` roughly 1100px away from its label,
+   which is the stretched-phone tell :269 already names. The panel is reference
+   prose plus rows — it wants a measure, not a column — so it takes the same
+   68ch the below-fold lane used to carry. */
+.stagewrap--responsive-command[data-rail="1"] .slidepanel-inner{
+  max-width:68ch;
+}
+
 /* The reply is a CHIP, not a bar. On the phone it sits at the end of a flex row
    and sizes to its text; in the table it was taking every remaining pixel and
    rendering "Yes" inside a ~320px pill, which reads as a progress bar rather
