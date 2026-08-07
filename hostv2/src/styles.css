@@ -4581,16 +4581,26 @@ button.vc-pill::after{
   background:var(--steel-tint);
   border-radius:0 var(--r-md) var(--r-md) 0;
 }
-.stagewrap--responsive-data[data-rail="1"] .roster{
+/* ── [data-bp="desktop"] IS LWA REQUIRED, AND I LEARNED IT TWICE TODAY ───────
+   Gated on [data-rail="1"] alone this ran from 1024, because showsRail() is
+   width-only from there — the exact misreading UX_03:23 documents, from the P0
+   I shipped earlier the same day. Measured at 1024x768 and 1194x834 it gave
+   `280px 340px`: THE DETAIL PANEL WIDER THAN THE ROSTER IT BELONGS TO, on a
+   sheet that only offers 640px total. A table crushed to 280px is worse than
+   the accordion it replaced.
+   Below 1280 the accordion stays, and that is the right answer rather than a
+   concession: at 1024 with a 200px rail there is no room for list AND detail,
+   which is why the phone pattern is still the correct one there. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster{
   display:grid; width:100%; grid-template-columns:minmax(0,1fr) 340px;
   column-gap:var(--sp-5); align-items:start;
 }
-.stagewrap--responsive-data[data-rail="1"] .roster .rrow,
-.stagewrap--responsive-data[data-rail="1"] .roster .rgroup{ display:contents; }
-.stagewrap--responsive-data[data-rail="1"] .roster .ghead,
-.stagewrap--responsive-data[data-rail="1"] .roster .rgroup-l,
-.stagewrap--responsive-data[data-rail="1"] .roster .grow{ grid-column:1; }
-.stagewrap--responsive-data[data-rail="1"] .roster .gdetail{
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rrow,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rgroup{ display:contents; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .ghead,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rgroup-l,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .grow{ grid-column:1; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .gdetail{
   grid-column:2; grid-row:1 / span 9999; align-self:start;
   position:sticky; top:0; margin-left:0; padding:var(--sp-3);
   border-left:1px solid var(--line); border-radius:var(--r-md);
