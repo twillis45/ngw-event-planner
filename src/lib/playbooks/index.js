@@ -707,7 +707,25 @@ function taskPhaseLabel(offset) {
 export const DEST_LODGING_OPTIONS = ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'];
 
 const DESTINATION_DECISIONS = [
-  { id: 'dest_lodging', label: 'How are guests staying?', options: DEST_LODGING_OPTIONS, default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
+  // ── weight ADDED 2026-08-06 (board ruling D) ─────────────────────────────
+  // This row was the one destination decision the priority-axis authoring pass
+  // missed, and the omission was visible to a host: the board's anchor test
+  // reads authored weight only, so a gate-holder with `blocks:['vendors','food']`
+  // was misfiled as a low-stakes leaf and shelved to the horizon — rendered as
+  // "Comes up closer to the date." Meanwhile the home hero led with "Sort where
+  // everyone stays". One event, one instant, two surfaces, opposite verdicts.
+  //
+  // The board was already incoherent with itself before the hero entered: it
+  // showed the LATER-opening `dest_transport` (T-60d, weight 'high') as open
+  // while hiding the EARLIER-opening lodging row (T-210d). Timing was not
+  // driving that partition — a missing field was.
+  //
+  // 'high' is honest here rather than generous: on a destination event where
+  // everyone sleeps IS the venue-class call, it gates vendors and food, and the
+  // answer decides whether there is a kitchen — which decides the whole food
+  // path. `dest_transport` already carries 'high' and is strictly less
+  // consequential. No engine changed, no `when` changed, no special case.
+  { id: 'dest_lodging', label: 'How are guests staying?', options: DEST_LODGING_OPTIONS, default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], weight: 'high', optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
   { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
   { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', optionGates: { 'Yes, a shuttle or van': { minGuests: 10 } }, why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
   { id: 'dest_childcare', whenKids: true, label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },

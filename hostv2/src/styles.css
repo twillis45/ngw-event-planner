@@ -3097,7 +3097,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    the full-width single column the portrait ruling above explicitly preserves.
    The width test was standing in for a shape test; this states the shape.
    iPad 11" landscape (1194x834) still matches and keeps variant B. */
-@media (min-width:1024px) and (max-width:1279px) and (min-height:700px) and (orientation:landscape){
+/* ── THE SPLIT ALSO HAS TO FIT (2026-08-06, board — P0) ───────────────────────
+   The shape test above was right and still not sufficient. At 1024x768 landscape
+   the content column is ~680px, while this block asks for a FIXED 440px answer
+   column plus an 88px gap — leaving ~152px for the ask. A 64px headline in 152px
+   breaks one word per line and physically overprints the "Open where everyone
+   stays" card. Measured: .ask = 152x261 at 64px.
+   Two changes, because either alone is a half-fix:
+     · the gate now also requires enough WIDTH for the split to exist (a shape
+       test AND a size test — 1024 landscape keeps the single 648px column, which
+       is the composition that already works there);
+     · and the columns are made resilient rather than rigid, so the next viewport
+       nobody anticipated degrades by shrinking instead of colliding.
+   1024x768 was item 5 in UX_03's own testing protocol; the portrait fix above
+   was verified and landscape was not re-driven after it. */
+@media (min-width:1200px) and (max-width:1279px) and (min-height:700px) and (orientation:landscape){
   /* Tablet-land ruling: variant B "question | answer" — the hzone (ask headline +
      guide voice) owns the left half; the settle mechanics (status, option card,
      other-ways) stack in a 440px right column, both vertically centered. The
@@ -3110,8 +3124,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      without the gate they squeezed into the left half over a dead right zone. */
   .hero.elegant:has(.escreen.on > .ecenter > .eanswer .card){ max-width:1008px; }
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card){ flex-direction:row; align-items:center; column-gap:88px; }
-  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{ flex:1 1 0; min-width:0; margin-top:0; }
-  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 0 440px; min-width:0; }
+  /* A floor on the ask, and an answer column that SHRINKS rather than pushing.
+     The collision came from `flex:0 0 440px` — an unshrinkable column beside a
+     `min-width:0` one, which is a layout that can only fail by overlap. */
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{ flex:1 1 0; min-width:360px; margin-top:0; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 1 440px; min-width:300px; }
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
 }
 

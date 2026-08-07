@@ -187,9 +187,17 @@ function preProgress(ev, phase, daysOut) {
   // Stays at 4 throughout: it must keep outranking food ("rooms sell out, menus
   // do not"). What changes is that a MISSING location now outranks IT -- see the
   // location axis above.
+  // `records` names the decision row this cue summarises — the same mechanism
+  // the food cue uses. It exists here so the two surfaces can be CHECKED against
+  // each other: an invariant test asserts that nothing this cue leads with may
+  // sit on the board's horizon shelf. Without the link there was no way to state
+  // the contradiction that shipped on 2026-08-06, where the hero led with
+  // lodging while the board filed dest_lodging under "Comes up closer to the
+  // date." See destinationOrderingContract / heroBoardAgreement.
   add('lodging', ev.isDestination === true, _lodgingPicked,
     'Sort where everyone stays',
-    { tab: 'Travel', focusField: 'lodging' }, 4);
+    { tab: 'Travel', focusField: 'lodging' }, 4,
+    { records: ['dest_lodging'] });
 
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
@@ -364,6 +372,14 @@ function pickCue(items) {
   return {
     id: best.id, label: best.cueLabel, route: best.route, source: best.id,
     actionLabel: CUE_ACTIONS[best.id] || 'Open the plan',
+    // `records` names the decision rows this cue summarises. It was being
+    // DROPPED here: axes declare it (food since wave 6, lodging since the
+    // 2026-08-06 ruling) and this narrowing returned an object without it, so
+    // every consumer read undefined. Found because an invariant test written
+    // against cue.records passed while the defect it targeted was live — the
+    // helper was silently comparing an empty list. Carried through now, so the
+    // hero can be checked against the board it is supposed to agree with.
+    ...(Array.isArray(best.records) && best.records.length ? { records: best.records } : null),
   };
 }
 
