@@ -4798,3 +4798,15 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
   max-width:64ch;
 }
+
+/* The watch row gains the Then row's right-hand cells, so give it the Then
+   row's layout for them: the reason takes the slack and right-aligns, the glyph
+   holds its size. Same declarations as :744/:761 — deliberately, because
+   identical render is the proof that the two lanes are one object now. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .watch-row .ef-why{
+  flex:1 1 auto; min-width:0; text-align:right; white-space:normal;
+  font-size:12.5px; font-weight:500; color:var(--steel-soft); letter-spacing:.01em;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .watch-row .ef-g{
+  flex:0 0 auto; color:var(--faint); font-weight:800;
+}

@@ -7897,6 +7897,29 @@ export default function HostShellV2() {
                       <button key={String((w && w.id) || 'worry-' + i)} className="watch-row" onClick={() => goWorry(w)}>
                         <span className="watch-dot" aria-hidden="true" />
                         <span className="t">{wlabel(w)}</span>
+                        {/* ── ROW ANATOMY, FROM REAL FIELDS (board, 2026-08-07) ──
+                            "Worth keeping an eye on" rendered as four sentences
+                            while "Then, in order" beside it rendered as rows with
+                            a destination and an arrow — two grammars in one
+                            composition, and the board read them as such.
+                            A worry is not a string: it is the same action object
+                            the queue carries (CommandCenter.jsx:2177 files it off
+                            `surface === 'risks'`), so it has a route, and
+                            `describeRoute` already names where that route lands.
+                            Rendering it in `.ef-why` — the exact cell the Then
+                            rows use — makes the two lanes the same object.
+                            Rail-only: on a phone the row is the whole width and a
+                            second cell would squeeze the title to noise, which is
+                            the case :758 already handles for `.ef-why`.
+                            The glyph is bound to the SAME condition as the
+                            destination, so a row that does not navigate never
+                            grows an arrow. */}
+                        {railUp && w && w.route && describeRoute(w.route, event) && (
+                          <>
+                            <span className="ef-why">{describeRoute(w.route, event)}</span>
+                            <span className="ef-g" aria-hidden="true">→</span>
+                          </>
+                        )}
                       </button>
                     ))}
                   </div>
