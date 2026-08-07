@@ -9653,7 +9653,14 @@ export default function HostShellV2() {
                     directory (and from there to any other surface) instead of
                     Close → re-open. Hidden on the directory itself. */}
                 {sheet.kind !== 'sections' && (
-                  <button onClick={() => setSheet({ kind: 'sections' })} aria-label="Back to all sections"
+                  /* sheet-back: the 44px hit area comes from a ::after in the
+                     stylesheet, NOT from padding or min-height here. Measured at
+                     67x16 on a phone (2026-08-07 mobile sweep) — under half the
+                     floor, on EVERY sheet, and it is how a host leaves one.
+                     Padding would push the title down; min-height is what broke
+                     the fold peek on .ev-eyebrow, so this uses the same
+                     zero-layout expander that fixed it. */
+                  <button className="sheet-back" onClick={() => setSheet({ kind: 'sections' })} aria-label="Back to all sections"
                     style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--steel-soft)', font: 'inherit', fontSize: 'var(--t-pill)', fontWeight: 650, letterSpacing: '.02em', textAlign: 'left', alignSelf: 'flex-start' }}>
                     ‹ Sections
                   </button>
