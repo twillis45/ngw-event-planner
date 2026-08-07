@@ -202,11 +202,23 @@ direction mattered more than the number: *the surface degraded as the canvas gre
 **At `bc0429fd` (2026-08-07): Jest 5640 passed / 1 skipped - 379 suites.** hostv2 build
 + `check-parity` green.
 
-**Playwright matrix, first trustworthy run with `desktop` + `wide`: 321 passed / 21 failed
-/ 36 skipped (16.5m).** An earlier attempt is not a result - its preview server died
-mid-run under concurrent load and returned **exit 0 having run nothing**.
+**Playwright matrix, re-run at `c2fb53b4` after every change: 325 passed / 18 failed /
+35 skipped (16.4m).** Baseline earlier the same session was 321 / 21 / 36. So eleven
+commits of change produced **zero regressions**, and closed 3. An earlier attempt than
+either is not a result at all - its preview server died mid-run under concurrent load and
+returned **exit 0 having run nothing**. Never trust a green exit code from this harness
+without a pass count.
 
-**All 21 failures are PRE-EXISTING - reproduced, not inferred.** Method: revert
+The 18 are exactly the pre-existing set, by project:
+
+```
+desktop      boardMatrix.spec:292  fold peek        4
+wide         boardMatrix.spec:292  fold peek        4
+tablet-land  boardMatrix.spec:224  decisions sheet  5
+tablet-land  boardMatrix.spec:254  checklist CTA    5
+```
+
+**All PRE-EXISTING - reproduced, not inferred.** Method: revert
 `styles.css` to `f8ae0a50` (before any of this session's work), rebuild, re-run both
 clusters. Same 10 and same 8.
 
