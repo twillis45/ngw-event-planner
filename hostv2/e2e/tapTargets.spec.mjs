@@ -27,16 +27,31 @@ test('covered controls clear 44px on a phone', async ({ page }) => {
   await page.waitForTimeout(2500);
 
   const small = await page.evaluate(() => {
-    // EVERY interactive control in the viewport, not a list of classes I guessed
-    // at. The first version of this test named four classes, none of which were
-    // actually under the floor — so it passed with the rule disabled and proved
-    // nothing. A full sweep found exactly one offender (.ev-eyebrow, 32px).
+    // EFFECTIVE TARGET = the box, or a ::after overlay that extends it.
+    //
+    // Three versions of this test were wrong before this one, which is the
+    // point of writing it down:
+    //   1. it named four CSS classes and asserted on those — none of them were
+    //      ever under the floor, so it passed with the rule disabled;
+    //   2. it measured raw box height — which forced .ev-eyebrow to GROW 12px,
+    //      pushing the fold handle out of the 430px landscape viewport;
+    //   3. it probed elementFromPoint — which returns the TOPMOST element, so
+    //      any scrim above a control reported a false miss (.cta, already 46px,
+    //      failed).
+    // This reads the geometry directly: a control satisfies the rule if its own
+    // box clears 44px OR it carries a ::after overlay that does. That is what
+    // "a thumb can hit it" means, without depending on stacking order.
     const sel = 'button, a[href], [role=button], input';
+    const afterH = (el) => {
+      const cs = getComputedStyle(el, '::after');
+      if (!cs || cs.content === 'none' || cs.position !== 'absolute') return 0;
+      return parseFloat(cs.height) || 0;
+    };
     return [...document.querySelectorAll(sel)]
       .filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && r.top < innerHeight && r.top >= -50; })
       .map((e) => ({ label: (e.innerText || e.value || e.getAttribute('aria-label') || '').trim().slice(0, 28),
                      cls: (e.className || '').toString().slice(0, 30),
-                     h: Math.round(e.getBoundingClientRect().height) }))
+                     h: Math.round(Math.max(e.getBoundingClientRect().height, afterH(e))) }))
       .filter((x) => x.h < 44);
   });
   expect({ under44: small }).toEqual({ under44: [] });

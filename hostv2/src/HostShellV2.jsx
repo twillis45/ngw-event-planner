@@ -12947,7 +12947,7 @@ export default function HostShellV2() {
               ].filter(f => !f.done);
               return (
                 <>
-                  <p className="grounding" style={{ margin: '0 0 14px' }}>Take a breath — you don’t have to figure this out alone. Here’s exactly where you stand and the next move.{ready ? ` You’re at ${ready}.` : ''}</p>
+                  <p className="grounding" style={{ margin: '0 0 14px' }}>Take a breath — you don’t have to figure this out alone. Here’s exactly where you stand and the next move.{ready ? ` So far, ${ready}.` : ''}</p>
                   {nc && (
                     <div className="brow" style={{ borderTop: 'none', background: 'var(--steel-tint)', borderRadius: 'var(--r-md)', padding: 'var(--sp-3) 14px', marginBottom: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '0 0 4px', color: 'var(--steel-soft)' }}>Your next move</div>
@@ -15868,7 +15868,7 @@ export default function HostShellV2() {
                             — and this is the surface that exists to be honest
                             about money, so it says so in full rather than
                             leaving the host to infer it from the rows. */}
-                        <b>{fmt(money.committed)}</b> spoken for of your <b>{fmt(money.planned)}</b>{money.committedEstimated > 0 ? <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</> : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
+                        <b>{fmt(money.committed)}</b> spoken for, of a <b>{fmt(money.planned)}</b> budget{money.committedEstimated > 0 ? <> (<b>{fmt(money.committedEstimated)}</b> of that still an estimate)</> : null}{money.spent ? <> · <b>{fmt(money.spent)}</b> actually spent{money.spentEstimated > 0 ? <> (<b>{fmt(money.spentEstimated)}</b> of it still estimated)</> : null}</> : null}{guestPhrase ? ' · sized for ' + guestPhrase : ''}.
                       </>}
                     />
                     );

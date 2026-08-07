@@ -518,16 +518,25 @@ button{font-family:inherit}
 /* The eyebrow IS the menu (host "menu is not accessible yet"): a clear hamburger + caret so it
    reads unmistakably as tappable — the only nav entry now that the bar + dock are gone. */
 .ev-eyebrow{ display:inline-flex; align-items:center; gap:10px; background:none; border:none; padding:8px 0; cursor:pointer;
-  /* 44px floor (2026-08-06): measured at 32px on a 393px phone and it is a
-     real button — it opens the event switcher. Padding alone would push the
-     text down; min-height with the existing centring keeps it optically in
-     place while giving the thumb the box UX_03 requires. */
-  min-height:44px;
+  /* 44px THUMB TARGET, ZERO LAYOUT COST (2026-08-06). Measured at 32px on a
+     393px phone and it is a real button — it opens the event switcher.
+     min-height:44px was the first fix and it REGRESSED the fold peek: on the
+     860x430 landscape geometry the extra 12px pushed .efold-grab to y=440.6 in
+     a 430px viewport, 10.6px below the fold, and boardMatrix caught it. The
+     e2e retry config added the same day is what proved it was a real failure
+     rather than the flake it would otherwise have looked like.
+     So the HIT AREA grows and the BOX does not: a ::after overlay centred on
+     the control gives the thumb its 44px while the eyebrow still occupies 32px
+     of layout. The rule is about what a finger can hit, not how tall the ink
+     is. */
+  position:relative;
   font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); line-height:1.4; }
 .eb-menu{ display:inline-flex; flex-direction:column; justify-content:center; gap:3.5px; width:16px; flex:0 0 auto; }
 .eb-menu > span{ display:block; height:1.5px; border-radius:1px; background:var(--muted); transition:background .16s var(--ease-out); }
 .eb-menu > span:nth-child(2){ width:11px; }
 .eb-caret{ font-size:9px; color:var(--faint); margin-left:-2px; }
+.ev-eyebrow::after{ content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px; }
 .ev-eyebrow:hover{ color:var(--steel-soft); }
 .ev-eyebrow:hover .eb-menu > span{ background:var(--steel-soft); }
 .ev-eyebrow:active{ opacity:.7; }
