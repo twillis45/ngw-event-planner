@@ -7890,6 +7890,16 @@ export default function HostShellV2() {
               )}
 
               <div className="bento" style={elegantMode && isPast ? { display: 'none' } : undefined}>
+                {/* "WHERE YOU STAND" WAS A PSEUDO-ELEMENT (board, 2026-08-07).
+                    styles.css:889 carried it as `.bento::before{content:"Where
+                    you stand"}` — so the section header of the command header
+                    was not text: unreadable to a screen reader, unselectable,
+                    untranslatable, and unfindable by in-page search. It is a
+                    real element now, and the ::before is gone.
+                    Elegant only, and deliberately so: outside elegant the bento
+                    is a 2x2 `grid-template-areas` and an extra child would
+                    auto-place into a track it was never meant for. */}
+                {elegantMode && <h2 className="bento-head">Where you stand</h2>}
                 {/* role=button div, NOT a <button> — it contains its own interactive
                     "what's counted" caret, and a native button-in-button is invalid
                     HTML + ambiguous to screen readers (per-screen re-audit). */}

@@ -636,7 +636,9 @@ button{font-family:inherit}
    carries "N of M settled" — kills the duplication); flatten Guests/Budget from filled tiles
    into quiet hairline rows (label left · value right). The MIND lane, "Coming up", and the
    set-aside pile are already rows, so the whole see-all now reads as one calm list. */
-.hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:22px; }
+/* (A second `.hero.elegant .bento{display:flex;...;margin-top:22px}` stood here
+   and was dead — :888 redeclares the identical rule with margin-top:24px and
+   wins on order. Removed; the surviving declaration is the one below.) */
 .hero.elegant .bento .tile-a{ display:none; }
 .hero.elegant .bento .tile-b,
 .hero.elegant .bento .tile-c{ min-height:0; padding:16px 0; background:none; border:none; border-radius:0; border-top:1px solid rgba(255,255,255,.08); flex-direction:row; align-items:center; justify-content:space-between; gap:18px; }
@@ -886,7 +888,10 @@ button{font-family:inherit}
    "Where you stand" tile + the NEXT tile aren't part of this zone — the foot progress bar
    already carries phase. Elegant-only override; non-elegant bento is untouched. */
 .hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:24px; }
-.hero.elegant .bento::before{ content:"Where you stand"; font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+/* Was `.bento::before{content:"Where you stand"}` — a section header that was
+   not text. Now a real <h2 class="bento-head"> in the DOM (HostShellV2.jsx
+   :7893), styled identically. Same pixels, and a screen reader can read it. */
+.hero.elegant .bento-head{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin:0 0 2px; }
 .hero.elegant .bento .tile{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); border-radius:0; padding:14px 0; text-align:left; box-shadow:none; min-height:0; }
 .hero.elegant .bento .tile-a, .hero.elegant .bento .tile-d{ display:none !important; }
 .hero.elegant .bento .tile-b{ border-top:none; }
