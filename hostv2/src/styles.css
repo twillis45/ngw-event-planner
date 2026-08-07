@@ -4522,3 +4522,35 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog .eprog-labels > span:last-child{
   flex:none; text-align:right;
 }
+
+/* ── THE VOID WAS A RESERVED PHONE (board wave 2, 2026-08-07) ────────────────
+   Every seat on this board spent the sitting arguing about a "void budget" as
+   though someone had chosen the emptiness. Nobody chose it. :931 is
+
+       .hero{ min-height:calc(852px - 64px - 88px) }      -- resolves to 700px
+
+   (written without the inner comment markers on purpose: CSS has no nested
+   comments, and a `slash-star ... star-slash` inside this block would close it
+   early and feed the rest of the prose to the parser as declarations. That is
+   this session's own trap in its purest form — the @media below was silently
+   swallowed the first time and only the COMPUTED box showed it, minH=700px on
+   an element whose selector said auto.)
+
+   852 is an iPhone. That is a phone viewport minus its chrome, hard-reserved
+   inside .hero at EVERY width, and released in exactly one place — :942's
+   `@media (max-height:699px)`, whose own comment already calls it "a phantom
+   700px". Measured live at 1440 and 1728: the last real hero child ends at
+   y=473 and the hero box runs to y=737. 264px of dead air, and it is a phone.
+
+   That is also why the host's 1280x654 laptop looked DIFFERENT rather than
+   better: at 654 the max-height release fires, so the reservation vanishes and
+   the content simply runs to the bottom edge instead — two different wrong
+   answers from one rule.
+
+   Released here for the responsive command canvas only, where the grid above
+   sets height from content. Phones, tablets and every legacy phone-silhouette
+   surface keep the reservation, which is correct: on a real phone the number is
+   not phantom, it is the frame. */
+@media (min-width:1280px){
+  .stagewrap--responsive-command .hero{ min-height:auto; }
+}
