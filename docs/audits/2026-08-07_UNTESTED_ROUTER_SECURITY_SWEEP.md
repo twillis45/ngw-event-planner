@@ -6,15 +6,17 @@ security-sensitive of them each carried a live hole.
 
 | Router | LOC | Test file before | Now |
 |---|---|---|---|
-| `communication` | 584 | none | still none |
-| `kroger` | 231 | none | still none |
+| `communication` | 584 | none | auth gated + covered by `test_route_auth_coverage.py`; no behavioural tests yet |
+| `kroger` | 231 | none | auth coverage only |
 | `stripe_payments` | 181 | none | **`test_stripe_webhook_signature.py`** |
-| `food_prices` | 130 | none | still none |
-| `kcr` | 127 | none | still none |
-| `kas` | 120 | none | still none |
-| `weather` | 109 | none | still none |
-| `instacart` | 93 | none | still none |
-| `webhooks` | 83 | none | **`test_webhook_relay_ssrf.py`** |
+| `food_prices` | 130 | none | **`test_food_price_factor.py`** (14) |
+| `kcr` | 127 | none | **`test_admin_kcr_kas_helpers.py`** (16, shared) |
+| `kas` | 120 | none | **`test_admin_kcr_kas_helpers.py`** (16, shared) |
+| `weather` | 109 | none | **`test_weather_daily.py`** (10) |
+| `instacart` | 93 | none | auth coverage only |
+| `webhooks` | 83 | none | **`test_webhook_relay_ssrf.py`** (20) |
+
+Backend suite over this sweep: **238 -> 308 tests.**
 
 ---
 
@@ -118,6 +120,7 @@ edit rather than an omission.
 
 ## Still unswept
 
-Nothing structural. `communication` now has auth coverage gated but still no
-behavioural tests, and neither do `kroger` / `kcr` / `kas` / `instacart` /
-`food_prices` / `weather`.
+Nothing structural. `communication` (584 LOC) and the two thin HTTP wrappers
+`kroger` / `instacart` still have no behavioural tests — they are mostly request
+shaping around an upstream API, so the value there is lower than what has been
+covered, but it is not zero.
