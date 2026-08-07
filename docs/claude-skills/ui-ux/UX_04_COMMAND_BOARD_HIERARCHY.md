@@ -28,6 +28,15 @@ Every command-level surface (Home, Events, Event Command, Vendor Detail) follows
 
 Rule: Stat card numbers must be computed from real data. No placeholder numbers. No fake "95% readiness." If the data doesn't exist to compute the stat, don't show the stat card.
 
+### The display-ask clause (board, 2026-08-07)
+
+"Title on the left, stat cards on the right" was written for **Events (L2)** and **Vendor Detail (L4)**, where the title is a 20–24px text label with room beside it. It does not describe **Event Command (L3)**, where the top element is a display-type ask — "Decide the menu." at 60px — which is Zone 1's title and Zone 2's priority ask *in the same element*. Stat figures placed beside it become a tall narrow column that cannot fill: measured at 288×246 of content in a 288×640 column, 61% empty, in one unbroken band.
+
+- **A vertical stat column is legal only when it carries at least three blocks, one of which is a list or a named set.** Stat figures may never occupy a column they cannot fill.
+- When the title is a display ask and no third block exists, the figures run as a **horizontal ledger row spanning the content width, placed below the ask and above Zone 3.** Never above the ask — that puts the inventory in front of the decision and demotes the one loud thing to second.
+- **The figures may render as hairline rows rather than cards.** The Stat Card Rules table above is a maximum, not a requirement.
+- **A Zone 1 figure may not restate a fact already stated elsewhere in the visible viewport.** If the countdown is in the eyebrow, it is not also a tile; if the fraction is in the progress rule, it is not also a tile. Manufacturing a third and fourth figure by looting other elements was rejected 7–0 — the only unanimous verdict in that sitting.
+
 ### Zone 2: Priority Lane ("Start Here")
 
 **What it is:** The 1-3 items that need attention RIGHT NOW.
@@ -183,3 +192,13 @@ When a zone has no data (no events, no attention items, no upcoming deadlines):
 4. **Filter-heavy, content-light**: Elaborate filter system with 8 options, but only 3 items to filter.
 5. **Double header**: Zone 1 has a title, and the page wrapper also has a title. Two titles = broken hierarchy.
 6. **Ghost zone**: Zone 2 header says "Start Here" but there are no priority items. Remove the zone, don't show an empty container.
+
+7. **Abandoned canvas** (board, 2026-08-07): any contiguous region 200px tall or 320px wide carrying no content, at tablet-land or above. If a zone has nothing to say, the zones below and beside it move up and out to close the region. **Empty space is not a layout element.**
+
+   Anti-patterns 1–6 are all about too MUCH content or mis-ordered content. Not one was about too little — and the defining property of every leader console (Railway, ClickUp, Asana, Airtable, Plane) is that every horizontal band carries something.
+
+8. **Phone disclosure at a desk** (board, 2026-08-07): a progressive-disclosure affordance — a fold handle, a `▸` expander, a `…` truncation, an "and more" tail — may not hide content **at any viewport where the hidden content would fit in visible void.** Truncation and folding are density tools; using them beside empty canvas is a phone habit, not restraint. At desktop and wide, disclosures whose content fits open by default.
+
+   Found live: five of them at once — `Other ways ▸`, `Speeches run long — and more…`, `Too few chairs — and more…`, `0 of 5 confirmed gue…` (cut mid-word), and a fold handle — all beside ~400px of empty column. Every one was correct at 390px and none had been given a desktop clause.
+
+**No density floor is adopted.** It was proposed and rejected 2–1–1: a floor stated in ROWS is a quota, and a quota is an instruction to manufacture content — the same thing anti-pattern 1 forbids. The enforceable form, which the board did adopt: *at desktop, Zone 3 renders every already-computed list its engines produce, or the surface records why it does not.* Our failure was never row count; it was `display:none !important` over a block the engines had already built. And per the workflow seat: **every row rendered in Zone 3 at desktop must be reachable from the row above it by keyboard** — density without traversal is wallpaper.

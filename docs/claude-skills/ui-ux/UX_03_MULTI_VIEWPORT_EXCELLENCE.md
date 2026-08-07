@@ -20,6 +20,32 @@ isWide = bp === 'desktop' || bp === 'tablet-land'
 
 `isWide` = sidebar is visible. `!isWide` = hamburger navigation.
 
+**`isWide` STARTS AT 1024, NOT 1280.** It includes `tablet-land`. This is the single most misread line in this document — it was misread in a commit message on 2026-08-07 and shipped a three-column desktop grid into a ~700px tablet-land content area. If you are writing a rule that needs *desktop*, test `bp === 'desktop'`; `isWide` answers "is navigation up", which is a different question.
+
+### Height is an axis, and `desktop-short` is the common case (board, 2026-08-07)
+
+| Axis | Values |
+|---|---|
+| Width | `mobile` <640 · `tablet` 640–1023 · `tablet-land` 1024–1279 · `desktop` 1280–1535 · **`wide` ≥1536** |
+| Height | `short` <700 · `tall` ≥700 |
+
+**`wide` is 1536, reusing the existing `WIDESCREEN` constant (`viewport.js:31`). Do not introduce 1600 or 1680.** A previous board ruling moved this threshold 1680 → 1536 precisely because 1680 stranded the 1440/1536 laptops planners actually triage on. A new number would overrule that by arithmetic accident.
+
+**`desktop-short` — ≥1280 wide and <700 tall — is a stock laptop in Chrome, not an edge case.** A 1280×800 display gives a 1280×654 inner viewport. Every desktop pattern must be specified for it.
+
+### Rule: one gate
+
+Rail visibility, the responsive-canvas class, and every composition rule keyed to them must derive from a **single exported predicate**.
+
+- A composition rule may not be gated on `[data-rail="1"]` alone while the `display` that arms it lives inside a height-gated media query.
+- A rule may not be gated on a media query whose conditions differ from the predicate that set the attribute it reads.
+
+This is not theoretical. `showsRail()` was width-only from 1024 while every desktop rule in `styles.css` was `min-width:1280px AND min-height:700px`. On the host's own 1280×654 laptop the rail was up and **not one desktop rule applied** — a full-bleed square-cornered slab where 1440 showed an inset rounded panel. Four separate defects came out of that one split, and three of them had been chased across earlier sessions as unrelated bugs.
+
+### Rule: the QA matrix must include 1280×654 and 1024×768
+
+The scripted matrix ran 1440×900 and 1920×1080 — both pass `min-height:700px`, so it was **structurally blind** to the entire short-desktop class. Every defect above was found by driving a real browser and none by CI.
+
 ## Per-Breakpoint Layout Rules
 
 ### Mobile (< 640px)

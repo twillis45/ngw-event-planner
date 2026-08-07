@@ -86,6 +86,18 @@ When you have more horizontal space, add more columns and show more data. Do not
 
 If two adjacent cards have 40px+ of empty space between them, the layout is too loose. Tighten it.
 
+### Rule: The void budget is absolute above the phone, and it bounds both axes
+
+(Board, 2026-08-07.) The rule above governs the gap *between two siblings*. It says nothing about a large empty **region**, and that is where this product was losing.
+
+The minimalist budget — one loud thing per screen, roughly 45% deliberate emptiness — was calibrated on a 393×852 phone: about **150,000 px²**, and at that size it reads as composure. Held as a percentage it becomes **2.5× that area on a 1280×654 laptop and 6.2× at 1920×1080.** Emptiness does not scale as a feeling. Six times the void is not six times the calm; it is an unfinished page.
+
+- **The proportional budget applies to the phone tier only.** It also survives *inside the hero's own band* at every size — the hero's air is what makes this product not a CRM template, and this rule is not licence to fill it.
+- **At tablet and above the budget is absolute and applies on BOTH axes:** no contiguous empty region exceeding **200px in height or 320px in width** within the content canvas. Height alone does not catch it — the worst void found on the command surface was 418px *wide*.
+- **The governing principle: void must be bounded by content on at least two sides.** Unbounded void running to a canvas edge is not composition.
+
+**Before theorising about a void, grep the literal numbers in the min-heights.** The 264px of dead air on this product's command surface was not a design choice at all: `.hero{ min-height:calc(852px - 64px - 88px) }` reserved 700px — *an iPhone viewport minus its chrome* — at every width. A phone frame nailed into a desktop composition looks exactly like a deliberate budget and is not one.
+
 ## Border and Divider Rules
 
 ### Borders
