@@ -26,7 +26,20 @@ describe('the responsive surface set is pinned by explicit identity', () => {
   // that should USE width"), and desktop was measured at 2 responsive surfaces
   // out of 45. Everything below them stays legacy — the invariant is unchanged in
   // kind, only its membership moved, and it moved by explicit identity.
-  test('the dense-data sheets widen — Budget and Guests', () => {
+  test('every dense-data sheet widens', () => {
+    for (const sheet of ['budget', 'guests', 'vendors', 'tasks', 'risks',
+      'decisions', 'seating', 'supplies']) {
+      expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('data');
+    }
+  });
+
+  test('a form or single-decision sheet never widens — width costs it measure', () => {
+    for (const sheet of ['ask', 'date', 'settings', 'qr', 'pass', 'help']) {
+      expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('legacy');
+    }
+  });
+
+  test('the data mode resolves to its own stagewrap class', () => {
     expect(responsiveSurfaceMode({ stage: 'plan', sheet: 'budget' })).toBe('data');
     expect(responsiveSurfaceMode({ stage: 'plan', sheet: 'guests' })).toBe('data');
     expect(stagewrapClass({ stage: 'plan', sheet: 'budget' })).toBe('stagewrap--responsive-data');
@@ -43,8 +56,8 @@ describe('the responsive surface set is pinned by explicit identity', () => {
   test('EVERY other plan sheet stays legacy — no silent widening', () => {
     // The whole point of the ruling: Vendors and the rest are documented debt,
     // not surfaces that get stretched because they happen to share a stage.
-    for (const sheet of ['vendors', 'timeline', 'risks', 'decisions',
-      'seating', 'travel', 'ask', 'settings', 'invite', 'unknown-future-sheet']) {
+    for (const sheet of ['timeline', 'travel', 'ask', 'settings', 'invite',
+      'date', 'qr', 'pass', 'help', 'meaning', 'thanks', 'unknown-future-sheet']) {
       expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('legacy');
       expect(stagewrapClass({ stage: 'plan', sheet })).toBe('');
     }
@@ -89,9 +102,11 @@ describe('the --fit opt-out follows the mode, nothing else', () => {
     expect(optsOutOfFit({ stage: 'plan', sheet: null })).toBe(true);
     expect(optsOutOfFit({ stage: 'plan', sheet: 'food' })).toBe(true);
     // guests is a `data` surface now, so it opts out like the other responsive
-    // modes. vendors is the surface that still proves legacy keeps the transform.
+    // modes. `ask` is a FORM — it stays legacy and is what still proves the
+    // transform is kept. (vendors was the exemplar here until it became a data
+    // sheet itself; an exemplar has to be chosen from the side it demonstrates.)
     expect(optsOutOfFit({ stage: 'plan', sheet: 'guests' })).toBe(true);
-    expect(optsOutOfFit({ stage: 'plan', sheet: 'vendors' })).toBe(false);
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'ask' })).toBe(false);
     expect(optsOutOfFit({ stage: 'day', sheet: null })).toBe(false);
   });
 

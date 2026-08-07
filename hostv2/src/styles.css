@@ -3513,6 +3513,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 var(--sp-5);
 }
 .stagewrap[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+/* Desktop keeps 3; widescreen earns a 4th. The directory is unordered short
+   rows, which is the one list where more columns cost the reader nothing. */
+.stagewrap[data-bp="desktop"] .navrows{
+  display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0 var(--sp-5);
+}
+.stagewrap[data-bp="desktop"][data-wide="1"] .navrows{ grid-template-columns:repeat(4, minmax(0,1fr)); }
 /* The row's own border-bottom becomes a grid artifact once rows sit side by side,
    so the divider is redrawn per cell rather than per row. */
 .stagewrap[data-bp="tablet"] .navrows > .navrow,
@@ -3564,8 +3570,27 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .stagewrap--responsive-data > .sheet > *{ grid-column:1; }
   .stagewrap--responsive-data > .sheet > .shelf-label,
   .stagewrap--responsive-data > .sheet > .brow,
-  .stagewrap--responsive-data > .sheet > div:has(> .brow){
+  .stagewrap--responsive-data > .sheet > .later-row,
+  .stagewrap--responsive-data > .sheet > .frow,
+  .stagewrap--responsive-data > .sheet > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > div:has(> .frow){
     grid-column:2;
+  }
+
+  /* ── WIDESCREEN (>=1536) — the board's ruling, 2026-08-07 ─────────────────
+     Tufte holds the widescreen-real-estate seat and the answer is his: extra
+     width shows MORE DATA, never larger type. Rams and Ive rule out chrome
+     added for its own sake, and the pros' standing precedent kills a third
+     pane outright ("the overwhelm we just escaped, repainted"). So widescreen
+     buys exactly two things and stops: the `data` tier reaches its own
+     measure, and the directory gains one column.
+
+     1480 is not a new number — it is measureFor('data', wide) from the
+     board-ratified table. The tiers deliberately sit ~80-200px apart so the
+     app reads as one app rather than five widths. */
+  @media (min-width:1536px){
+    .stagewrap--responsive-data{ width:min(100% - 48px, 1480px); max-width:1480px; }
   }
 }
 

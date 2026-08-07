@@ -45,8 +45,25 @@ export const SURFACE_CLASS = Object.freeze({
   legacy: '',
 });
 
-/** The dense-data sheets, per UX_03's `data` measure tier. Explicit identity only. */
-export const DATA_SHEETS = Object.freeze(['budget', 'guests']);
+/** The dense-data sheets, per UX_03's `data` measure tier. Explicit identity only.
+ *
+ * EXTENDED 2026-08-07 from [budget, guests] to every sheet whose body is a
+ * REPEATED ROW LIST — the shape where width buys density instead of longer
+ * lines. Verified against the JSX rather than guessed from names: these render
+ * `.brow` / `.later-row` / `.frow` lists, which is what the two-column
+ * composition is built around.
+ *
+ * Safe by construction if a sheet turns out to be thinner than expected: column
+ * one is capped at 420px, close to the phone's own 393, so a sheet with no rows
+ * degrades to a normal-measure single column rather than 1360px of blown-out
+ * prose. That cap is why extending this list is not a risk.
+ *
+ * Still NOT here, still deliberate debt: single-decision sheets and forms
+ * (ask, date, settings, qr, pass, help, meaning, thanks...). Width buys them
+ * nothing and costs them measure. */
+export const DATA_SHEETS = Object.freeze([
+  'budget', 'guests', 'vendors', 'tasks', 'risks', 'decisions', 'seating', 'supplies',
+]);
 
 /**
  * responsiveSurfaceMode({ stage, sheet }) -> 'command' | 'food-recommendation' | 'legacy'
