@@ -4234,7 +4234,12 @@ button.vc-pill::after{
    than a tag. Give it its own track width so it stays a chip and the column of
    replies lines up down the list. */
 .stagewrap--responsive-data[data-rail="1"] .grow > button + button{
-  flex:0 0 var(--gt-reply); text-align:center;
+  /* !important for the same reason as the button's display and the metadata's
+     gap: the control carries inline flex styles from the JSX. Third time this
+     row has needed it — every one of these was found by measuring the computed
+     box, never by reading the selector. Measured before: "No reply" rendered in
+     a 320px pill, which reads as a progress bar rather than a tag. */
+  flex:0 0 var(--gt-reply) !important; text-align:center;
 }
 
 
