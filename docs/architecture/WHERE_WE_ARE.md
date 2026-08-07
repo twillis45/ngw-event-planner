@@ -207,6 +207,24 @@ blocker card at y=734. The blocker now defers to the hero, and the hero is deriv
 list). Guard also mirrors the editor's own render condition so it can never remove the
 LAST venue input.
 
+**TWO SCORES, MEASURING DIFFERENT THINGS — do not conflate them.**
+
+```
+HOST, layout specifically, 2026-08-07 .......... 7.5 / 10
+BOARD, composite (layout + density + traversal
+       + data honesty), 1280x654 ............... 5.0 / 10
+BOARD, composite, 1920 ......................... 4.0 / 10
+```
+
+Both can be right and probably are. The board's composite is dragged down by things
+that are NOT layout — a 1.5% citation rate, no keyboard layer, six rows where leaders
+run 8-20. The host is scoring the composition. **When someone quotes a number for this
+surface, make them say which one.** The board's own ruling is that 8.5 composite is
+reachable on layout/CSS/copy and 9 is not, because the last point is research.
+
+On the host's axis the gap from 7.5 is roughly: nothing fluid above 1440, ink falling as
+the canvas grows, no traversal, and the Lodging Cockpit still a 393px phone.
+
 **THE WIDE-SCREEN SLOPE, MEASURED 2026-08-07.** The board's finding was never the
 number, it was the direction: *the surface degrades as the canvas grows.* Now quantified
 on the command surface (ink = area of leaf text nodes over canvas area):
