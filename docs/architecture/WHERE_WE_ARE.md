@@ -183,17 +183,37 @@ engine with a phone.**
 Board verdict before this session's fixes: **4/10 at 1280x654, 3/10 at 1728** - and the
 direction mattered more than the number: *the surface degraded as the canvas grew.*
 
-**Board rulings still unbuilt** (`2026-08-07_COMMAND_DOCTRINE_GAPS.md` + the sitting):
+**THE VENUE CAPTURE - DONE** (`62fd873b`, `57f48c33`). It was never four copies of one
+thing; the copies had DRIFTED, and each difference was a defect:
+
+```
+site                        source attribution   validation error
+hero wired editor           absent               .because / --warn   (AMBER)
+blocker card                absent               .grounding / --danger
+"Where is it happening?"    PRESENT              .grounding / --danger
+Venue sheet                 absent               .grounding / --danger
+```
+
+The address suggestions carried their source line on ONE of four surfaces - a provenance
+gap, not a style nit - and the same validation error rendered amber on one and red on
+three, which the colour doctrine forbids outright. `renderVenueCapture()` is the single
+control now (a plain function returning JSX, NOT a nested component: a component declared
+inside a render gets a fresh type each pass, so React would remount the input on every
+keystroke and drop focus mid-address).
+
+Then driving it showed the surface still rendered **two at once** - hero editor at y=189,
+blocker card at y=734. The blocker now defers to the hero, and the hero is derived as
+`queue.filter(show)[0]`, **not `queue[0]`** (an order-preserving filter is not the same
+list). Guard also mirrors the editor's own render condition so it can never remove the
+LAST venue input.
+
+**Board rulings still unbuilt:**
 
 - Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
-- Four duplicate venue-capture cards (`:8396`, `:8526`, `:4653`, `:9692`) collapse to one -
-  two of them are mutually exclusive on the same surface. Violates "no duplicate surfaces".
 - `.tile-a` is `display:none !important` (`styles.css:891`) and carries the lifecycle line
   plus **six named, routed, dot-marked plan-part chips**. The richest computed block on the
-  surface is suppressed. "Only two honest stats exist" was FALSE.
-- Doctrine amendments 1-4, with the board's amended wordings (use the existing
-  `WIDESCREEN = 1536`, **not** a new 1600 threshold - that would overrule a prior ruling
-  by arithmetic accident).
+  surface is suppressed. "Only two honest stats exist" was FALSE. Note it now COLLIDES with
+  the `<h2 class="bento-head">` added in `89063812` - both say "Where you stand".
 
 ---
 
@@ -328,15 +348,21 @@ Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before
       `urgency:'critical'`; the layout puts it after the hero. Let the engine win.
    c. **Collapse the four venue-capture cards to one.**
 
-**3. Settle the fold-peek contradiction** (section 2). Either `boardMatrix.spec:292` gains
-a desktop clause or `:287` is wrong. 8 failures ride on it. Note the spec's skip guard
-uses `count()`, which a `display:none` node passes - fix that either way.
+**3. DONE 2026-08-07** (`43287dd3`, `ffd2db9f`). The fold-peek contradiction is settled by
+fixing the PRODUCT, not the test. `.efold` is gated on `.app.has-more` - whether the
+scroll container actually overflows - instead of on a width breakpoint, so the handle
+appears exactly when it is telling the truth and stays hidden when the page fits. It also
+needed an explicit grid cell: the moment it could render it auto-placed into the stat
+column, the second time that element has found that orphan. The spec's guard used
+`count()`, which a `display:none` node passes; it now skips when nothing is below and
+asserts visibility when something is - a stronger contract than before.
 
-**4. Write the four doctrine amendments** into the UX_0* files, using the board's AMENDED
-wordings, not the originals in the gaps doc. Watch two traps the board caught: the void
-budget must bound BOTH axes (the worst void was 418px WIDE), and the wide tier is
-`WIDESCREEN = 1536`, already defined - introducing 1600 would re-strand the 1440/1536
-laptops a previous board ruling rescued.
+**4. DONE 2026-08-07** (`5624ae6e`). The four amendments are written into UX_01, UX_03 and
+UX_04 in the board's AMENDED wordings. Two places my originals were wrong and would have
+shipped a worse rule: the void budget must bound BOTH axes (the worst void measured was
+418px WIDE, and my draft said height only), and the wide tier is `WIDESCREEN = 1536`,
+already defined at `viewport.js:31` - my proposed 1600 would have re-stranded the
+1440/1536 laptops a previous board ruling explicitly rescued.
 
 **5. Two board calls still untouched:** move the RSVP picker out of its trigger; add an
 on-demand detail pane (permanent third pane already refused). Note Ive's dissent: the
@@ -411,6 +437,29 @@ binding constraint on the product, and none of the viewport work touched it.
   after your change, revert the file to the last known commit, rebuild, re-run the failing
   cluster. On 2026-08-07 that turned "21 failures" into "13 mine, 8 not" and then into
   "all 21 pre-existing" after the 13 were fixed. Never argue it from reading.
+- **A `const` USED ABOVE ITS DECLARATION FAILS SILENTLY AND LOOKS LIKE A LAYOUT BUG.**
+  Twice on 2026-08-07. Naming a below-declared const in an effect's dependency array is
+  the obvious form; the dangerous form is inside an EXPRESSION, where nothing warns you.
+  Two flags placed at ~:987 that read `queue` (:2661), `askMode` (:2741), `show` (:2990)
+  and `wiredKind` (:4596) threw at render, took the WHOLE component down, and presented as
+  "the probe found zero venue inputs" - indistinguishable from a guard that hid one too
+  many. **If a UI element vanishes entirely after a small change, suspect a render throw
+  before you suspect your selector.**
+- **THE HERO IS `queue.filter(show)[0]`, NEVER `queue[0]`.** `shown = queue.filter(show)`
+  is an order-preserving FILTER, so position 0 of the two lists differ whenever the first
+  queued action is lensed out. This repo has already shipped one bug from reading position
+  0 of the wrong list.
+- **A TEST AND THE CODE UNDER TEST MUST NOT BOTH COMPUTE THE SAME BORDERLINE PREDICATE.**
+  They will eventually disagree and it will look like flake. The fold-peek spec measured
+  `scrollHeight - clientHeight > 24` while the shell measured the same thing a beat
+  earlier: run alone the page did not overflow and every case SKIPPED; run under load it
+  did, so the spec demanded a control the shell had already declined. One of them has to
+  be the authority - the product's own flag is.
+- **ISOLATION LIES, AND SO DOES ONE VIEWPORT.** `-g "fold peek"` returned green twice
+  while the full matrix failed the same eight. And a fix verified only in the host's
+  1280x654 Chrome looked complete while it was broken at 1440 and 1920 - because the
+  duplicate rule that was breaking them sits inside a `min-height:700px` media query that
+  654 cannot reach. Solo greens and single-viewport drives are evidence, never proof.
 - **A CSS RULE THAT MATCHES NOTHING IS INDISTINGUISHABLE FROM ONE THAT WORKS.** Five
   times in one day (2026-08-07): `68ch`, `> .app .sheet` (`.sheet` is a direct child of
   `.stagewrap`, not inside `.app`), a `.ghead` rule with no markup, four uncapped-row
