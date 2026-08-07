@@ -3767,7 +3767,19 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .stagewrap--responsive-data > .sheet > div:has(> .later-row),
   .stagewrap--responsive-data > .sheet > div:has(> .frow),
   .stagewrap--responsive-data > .sheet > div:has(> .vcard),
-  .stagewrap--responsive-data > .sheet > div:has(> .grow){ max-width:none; }
+  .stagewrap--responsive-data > .sheet > div:has(> .grow),
+  /* ── AND THE ROSTER, WHICH IS ONE LEVEL DEEPER (2026-08-07) ──────────────
+     Every exemption above matches `:has(> X)` — a DIRECT child. The roster
+     now wraps its rows in .roster, so .grow became a GRANDchild and the
+     exemption silently stopped applying: the table inherited the 820px prose
+     measure while its own .sheet offered 1358, and a 340px detail column then
+     squeezed the list to 460 instead of using the empty canvas.
+     Cost an hour, because the symptom (a squeezed table) looks exactly like a
+     grid sizing bug and nothing points at a max-width two rules away. Found
+     by walking the ancestor chain in the live DOM and reading `maxWidth` off
+     each one — after eliminating three candidate rules by reading, all wrong.
+     A structural cap must be matched by structure, not by depth. */
+  .stagewrap--responsive-data > .sheet > .roster{ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.
@@ -4568,6 +4580,20 @@ button.vc-pill::after{
   border-left:2px solid var(--steel);
   background:var(--steel-tint);
   border-radius:0 var(--r-md) var(--r-md) 0;
+}
+.stagewrap--responsive-data[data-rail="1"] .roster{
+  display:grid; width:100%; grid-template-columns:minmax(0,1fr) 340px;
+  column-gap:var(--sp-5); align-items:start;
+}
+.stagewrap--responsive-data[data-rail="1"] .roster .rrow,
+.stagewrap--responsive-data[data-rail="1"] .roster .rgroup{ display:contents; }
+.stagewrap--responsive-data[data-rail="1"] .roster .ghead,
+.stagewrap--responsive-data[data-rail="1"] .roster .rgroup-l,
+.stagewrap--responsive-data[data-rail="1"] .roster .grow{ grid-column:1; }
+.stagewrap--responsive-data[data-rail="1"] .roster .gdetail{
+  grid-column:2; grid-row:1 / span 9999; align-self:start;
+  position:sticky; top:0; margin-left:0; padding:var(--sp-3);
+  border-left:1px solid var(--line); border-radius:var(--r-md);
 }
 
 

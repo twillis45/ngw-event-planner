@@ -16722,7 +16722,7 @@ export default function HostShellV2() {
                     const avaFor = (nm) => { const s = String(nm || ''); let h = 0; for (let k = 0; k < s.length; k++) h = (h * 31 + s.charCodeAt(k)) >>> 0; return AVA_TINTS[h % AVA_TINTS.length]; };
                     const initialsOf = (nm) => { const p = String(nm || '').trim().split(/\s+/).filter(Boolean); if (!p.length) return '?'; return (p[0][0] + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase(); };
                     const row = ({ g, i }) => (
-                      <div key={i}>
+                      <div className="rrow" key={i}>
                         <div className="grow" style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
                           <span className="gav" aria-hidden="true" style={{ background: avaFor(g.name) }}>{initialsOf(g.name)}</span>
                           <button style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', font: 'inherit', padding: 0, display: 'block' }}
@@ -17020,14 +17020,14 @@ export default function HostShellV2() {
                       </div>
                     );
                     const names = [...new Set(withIdx.map(x => String(x.g.group || '').trim()).filter(Boolean))];
-                    if (names.length <= 1) return (<>{ghead}{withIdx.map(row)}</>);
+                    if (names.length <= 1) return (<div className="roster">{ghead}{withIdx.map(row)}</div>);
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
-                    return (<>{ghead}{buckets.map(b => (
-                      <div key={b.gr || 'ungrouped'}>
-                        <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
+                    return (<div className="roster">{ghead}{buckets.map(b => (
+                      <div className="rgroup" key={b.gr || 'ungrouped'}>
+                        <div className="shelf-label rgroup-l" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
                         {b.items.map(row)}
                       </div>
-                    ))}</>);
+                    ))}</div>);
                   })()}
                   <datalist id="v2-groups">
                     <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />
