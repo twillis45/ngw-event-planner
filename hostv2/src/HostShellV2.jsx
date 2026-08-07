@@ -162,6 +162,12 @@ import { mayExhale } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
+// The viewport system, ported 2026-08-07. hostv2 had NO breakpoint machinery at
+// all — 0 uses of useBreakpoint/innerWidth against 117 in the donor shell — so
+// tablet, desktop and widescreen were the phone layout stretched. The bp lands
+// on the root as a data attribute rather than forking JSX at every call site:
+// layout is the stylesheet's job, and one attribute lets it do that job.
+import { useBreakpoint, useWideScreen, isWideBp } from '@app/lib/viewport';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
 // engine's PROSE — /on track|nothing urgent|good shape/ against actions[0].title —
@@ -714,6 +720,13 @@ export default function HostShellV2() {
   const SS_SPLASH_SEEN = 'ngw-v2-splash-seen-session';
   const SPLASH_REPLAY_DAYS = 21;
   const [splash, setSplash] = useState('up');
+  // Viewport band + the widescreen refinement. Read once here, published to the
+  // DOM on the app root, and consumed by CSS via [data-bp]. Cheap: the hooks
+  // share ONE resize listener and only re-render when the BAND changes, not on
+  // every pixel of a drag.
+  const bp = useBreakpoint();
+  const isWideScreen = useWideScreen();
+  const railVisible = isWideBp(bp);
   const splashTimer = useRef(null);
   const endSplash = () => setSplash(s => {
     if (s !== 'up') return s;
@@ -5197,9 +5210,27 @@ export default function HostShellV2() {
     // the fully-lit plan and the ask arrives. Audio deferred to native port —
     // device haptics carry each stop there; here the haptic fires on resolve.
     setRevealPhase('intro');
-    const SP_START = 1300; // the name breathes before the spine ignites
-    const SP_CYCLE = 2000; // dwell per node — long enough to actually read it
-    const nodeN = Math.max(rows - 1, 1);
+    // ── THE CEREMONY WAS CHARGING FOR THE PARSE (2026-08-06, board, mobile) ──
+    // Measured on a real iPhone profile: 18.5s from boot to the primary action
+    // being visible and in view, on the ONE boot that decides whether she keeps
+    // using this. The formula was 1300 + nodeN*2000 + 900 with nodeN uncapped at
+    // rows-1 (up to 8) — so the BETTER the parser did, the longer she waited.
+    // That is exactly backwards: a richer read should feel faster, not slower.
+    //
+    // The fast path already shipped and is already sanctioned: prefers-
+    // reduced-motion does the same journey in 279ms. So this is not a question
+    // of whether a short version is acceptable — it is, and some hosts already
+    // get it. Leaders set the bar at proportion: Linear keeps nothing over
+    // ~400ms, and Partiful goes from cold tap to a shareable event in under ten
+    // seconds total.
+    //
+    // The ceremony stays — it is the moment the plan appears and it earns a
+    // beat. What changes is that it is now BOUNDED (~3.9s worst case) and its
+    // length no longer scales with how much the app understood.
+    const SP_START = 800;  // the name breathes before the spine ignites
+    const SP_CYCLE = 600;  // dwell per node — a beat, not a dwell
+    const SP_NODE_CAP = 4; // past four the spine reads as a list, not a reveal
+    const nodeN = Math.min(Math.max(rows - 1, 1), SP_NODE_CAP);
     for (let i = 0; i < nodeN; i++) {
       const idx = i;
       revealTimers.current.push(setTimeout(() => setRevealPhase('s' + idx), SP_START + i * SP_CYCLE));
@@ -5207,7 +5238,7 @@ export default function HostShellV2() {
     revealTimers.current.push(setTimeout(() => {
       setRevealPhase('rest');
       try { if (!isSolemnEvent(ev)) feedback('magic'); } catch { /* no haptics */ }
-    }, SP_START + nodeN * SP_CYCLE + 900));
+    }, SP_START + nodeN * SP_CYCLE + 700));
   };
   // The REAL identity classifier via ctx (audit fix: the old stub hardcoded
   // confidence .8 / isCompound false — compound events got a false single-
@@ -5505,7 +5536,8 @@ export default function HostShellV2() {
             activate welcome/dashboard controls that are invisible to them
             under an opaque splash. Lifted the instant it starts fading, same
             moment sighted users get their first real look. */}
-        <div className="app" id="app" inert={splash !== 'gone'}>
+        <div className="app" id="app" inert={splash !== 'gone'}
+          data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
           {/* splash-hold: the welcome stagger stays paused at frame one while
               the boot splash is up; the class drops the instant the splash
               starts fading, so the lines begin as it dissolves — one sequence. */}
@@ -5542,7 +5574,8 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}>
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
