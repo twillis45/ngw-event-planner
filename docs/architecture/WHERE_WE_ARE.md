@@ -229,7 +229,26 @@ either is not a result at all - its preview server died mid-run under concurrent
 returned **exit 0 having run nothing**. Never trust a green exit code from this harness
 without a pass count.
 
-The 18 are exactly the pre-existing set, by project:
+LATEST (after the fold-handle and venue work): **14 real failures.**
+
+```
+tablet-land  boardMatrix:224/254   decisions sheet + checklist CTA   10   PRE-EXISTING
+desktop      boardMatrix:292       fold peek                          3   OPEN
+wide         boardMatrix:292       fold peek                          1   OPEN
+```
+
+Fold peek was **8**; the handle now renders on real overflow so 4 closed. The remaining 4
+are NOT understood - `.has-more` is set (the spec's guard passes) and `.efold` exists, yet
+it computes hidden. Do not assume it is the same cause as the four that were fixed.
+
+**BEWARE THE CONTENDED RUN.** One matrix took **27.2m against a normal 16.4m** and
+returned 15 failures including four names that had never failed: `ignitionBudget:25`
+("warm boot took 10305ms"), `responsiveBaseline:24` and `driftCapture:47`
+("Test timeout of 30000ms exceeded"), `lodgingCockpit`. Re-run alone: **75 passed, 0
+failed.** All four were load artifacts. A wall-clock much above 16-17m invalidates the
+run - check it before reading the failures.
+
+The 18-failure baseline was exactly the pre-existing set, by project:
 
 ```
 desktop      boardMatrix.spec:292  fold peek        4
