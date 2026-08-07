@@ -3508,3 +3508,51 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    so the divider is redrawn per cell rather than per row. */
 .app[data-bp="tablet"] .navrows > .navrow,
 .app[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
+
+/* ── The `data` surfaces at desktop — Budget and Guests ──────────────────────
+   Added 2026-08-07 with the responsiveSurface `data` mode. Before this, 43 of
+   45 surfaces (38 sheet kinds + 7 stages) rendered as a 393x852 phone
+   silhouette on a 1440px screen. These two are UX_03's `data` tier — "dense
+   tables & boards that should USE width" — so they are the ones where width
+   buys density rather than longer lines.
+
+   Same construction as --responsive-command: replace the silhouette with real
+   width and drop the bezel, because a phone bezel is a silhouette affordance
+   with no meaning once the surface is a real canvas. NOT scaled — --fit is
+   height-driven, and scaling a reflowed layout gives fuzzy text and wrong hit
+   areas. Scaling and reflow solve different problems. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-data{
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1360px); max-width:1360px;   /* UX_03 `data` measure */
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  .stagewrap--responsive-data .app{
+    border-radius:var(--r-xl); box-shadow:none; height:auto; min-height:60vh;
+  }
+
+  /* TWO COLUMNS, NOT THREE. The pros killed a 3-pane cockpit as "the overwhelm
+     we just escaped, repainted", so width buys one companion column and stops.
+     The summary (the headline number and its chart) is the thing a host reads
+     first and returns to, so it holds the left column and stays put while the
+     detail list scrolls beside it — the master-detail Luma and Aboard both run,
+     and what UX_03 calls ideal for desktop. */
+  .stagewrap--responsive-data .app > .sheet > .content{
+    display:grid;
+    grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);
+    align-items:start; gap:0 var(--sp-6);
+  }
+  /* The summary block is every child up to the allocation rows; the rows carry
+     `.brow`, so the grid is told explicitly where the second column starts
+     rather than guessing from child order. */
+  .stagewrap--responsive-data .app > .sheet > .content > .shelf-label,
+  .stagewrap--responsive-data .app > .sheet > .content > .brow,
+  .stagewrap--responsive-data .app > .sheet > .content > div:has(> .brow){
+    grid-column:2;
+  }
+  .stagewrap--responsive-data .app > .sheet > .content > .sheet-head,
+  .stagewrap--responsive-data .app > .sheet > .content > .bignum,
+  .stagewrap--responsive-data .app > .sheet > .content > div:has(> .mbar){
+    grid-column:1;
+  }
+}

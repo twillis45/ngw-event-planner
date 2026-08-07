@@ -19,14 +19,34 @@
 // Guests, Vendors, Budget and every other sheet stay legacy on purpose. They are
 // documented responsive debt, not silently stretched surfaces.
 
-export const SURFACE_MODES = Object.freeze(['command', 'food-recommendation', 'legacy']);
+// SCOPE EXTENDED 2026-08-07 — the `data` mode.
+//
+// Measured before extending: 38 sheet kinds + 7 stages = 45 surfaces, of which
+// exactly 2 had a desktop layout. The other 43 rendered as a 393x852 phone
+// silhouette on a 1440px screen. The host's ruling is that desktop and wide
+// "can't be just a larger version of a mobile viewport", so the debt this file
+// documents is now being paid down — through this function, by explicit surface
+// identity, which is the mechanism it was built to allow.
+//
+// WHICH SURFACES, and why not all 38 at once. UX_03 already names the tier that
+// should use width: "data — dense tables & boards that should USE width (Budget
+// · Guests · triage)". Those are surfaces whose content is a LIST WITH COLUMNS,
+// so width buys real density rather than longer lines. Every other sheet is a
+// single decision or a form, where extra width buys nothing and costs measure —
+// widening those would produce exactly the "silently stretched surfaces" this
+// module was written to prevent. They stay legacy, still documented debt.
+export const SURFACE_MODES = Object.freeze(['command', 'food-recommendation', 'data', 'legacy']);
 
 /** The shell class for each mode. `legacy` adds nothing — it is the existing stage. */
 export const SURFACE_CLASS = Object.freeze({
   command: 'stagewrap--responsive-command',
   'food-recommendation': 'stagewrap--responsive-food',
+  data: 'stagewrap--responsive-data',
   legacy: '',
 });
+
+/** The dense-data sheets, per UX_03's `data` measure tier. Explicit identity only. */
+export const DATA_SHEETS = Object.freeze(['budget', 'guests']);
 
 /**
  * responsiveSurfaceMode({ stage, sheet }) -> 'command' | 'food-recommendation' | 'legacy'
@@ -74,6 +94,7 @@ export function responsiveSurfaceMode(state) {
   const { stage, sheet } = (state || {});
   if (stage === 'plan' && !sheet) return 'command';
   if (stage === 'plan' && sheet === 'food') return 'food-recommendation';
+  if (stage === 'plan' && DATA_SHEETS.includes(sheet)) return 'data';
   return 'legacy';
 }
 

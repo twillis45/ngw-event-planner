@@ -41,7 +41,41 @@ export function venueFor(event) {
     if (!rawName) return null;
     try { return parseVenueLocation(rawName) || null; } catch { return null; }
   })();
-  const name = nameIsPlace ? '' : rawName;
+  // ── "VENUE, CITY, ST" IS A TOWN TOO (2026-08-06, board, mobile seat) ──────
+  // parseVenueLocation is strict on purpose and reads the WHOLE string, so it
+  // only ever recovered a town when the venue field contained nothing BUT the
+  // town. The hero field invites "Name or address", so a host who typed
+  // "Casa Alegria, Santa Fe, NM" got no town recovered — and the lodging screen
+  // then asked her to name the town a THIRD time, behind a placeholder that
+  // already read "Santa Fe, NM" as ghost text. Driven live; it is the moment
+  // the seat named as where she blames herself.
+  //
+  // Only the TRAILING pair is tried, and only through the same strict parser —
+  // no new leniency. "Casa Alegria, Santa Fe, NM" yields Santa Fe, NM and keeps
+  // "Casa Alegria" as the venue name. A venue genuinely called "Chicago, Nebraska
+  // Room" still fails the parser and is left alone.
+  //
+  // SCOPE, measured rather than assumed — the first draft of this comment got
+  // it wrong and the probe corrected it:
+  //   "Casa Alegria, Santa Fe, NM"      → name "Casa Alegria",   Santa Fe NM ✓
+  //   "The Lodge, Room 2, Santa Fe, NM" → name "The Lodge, Room 2", Santa Fe NM ✓
+  //   "1234 Canyon Rd, Santa Fe, NM"    → name "1234 Canyon Rd",  Santa Fe NM ✓
+  //     (the whole string is digit-rejected, but the TAIL is not — so a street
+  //      address with a trailing town now recovers the town, which is the
+  //      behaviour a host typing an address actually wants)
+  //   "Casa Alegria, Santa Fe NM"       → unchanged, still asks
+  //     (no comma before the state; the parser requires one and stays strict)
+  //   "Casa Alegria"                    → unchanged, still asks
+  const tailIsPlace = (() => {
+    if (nameIsPlace || !rawName) return null;
+    const parts = rawName.split(',').map((p) => p.trim()).filter(Boolean);
+    if (parts.length < 3) return null;
+    try { return parseVenueLocation(parts.slice(-2).join(', ')) || null; } catch { return null; }
+  })();
+  // The venue keeps its own name; only the trailing town is lifted out of it.
+  const name = nameIsPlace ? ''
+    : tailIsPlace ? rawName.split(',').map((p) => p.trim()).filter(Boolean).slice(0, -2).join(', ')
+      : rawName;
   // Kind rule: explicit venueKind wins; a host_event record defaults to home
   // ONLY while no venue is named — naming "VFW Post 3150" makes it a venue,
   // and demanding a city on top of a named venue was the exact false blocker
@@ -51,10 +85,11 @@ export function venueFor(event) {
   // CITY-LEAK-1 gate rides INSIDE the accessor: a polluted venueCity ("VFW
   // Post 3150 — Alexandria, VA") never escapes as a city again.
   // An explicit venueCity still wins; the parsed one only fills a gap.
+  const placeFromName = nameIsPlace || tailIsPlace;
   const city = [ev.venueCity, ev.city].map((x) => String(x || '').trim()).find(isPlausibleCityText)
-    || (nameIsPlace ? String(nameIsPlace.city || '').trim() : '') || '';
+    || (placeFromName ? String(placeFromName.city || '').trim() : '') || '';
   const state = String(ev.venueState || ev.state || '').trim()
-    || (nameIsPlace ? String(nameIsPlace.state || '').trim() : '');
+    || (placeFromName ? String(placeFromName.state || '').trim() : '');
   // event.address is a PHANTOM (whitelisted+read, never written) — deliberately
   // not consulted here; venueAddress and the structured parts are the truth.
   const street = String(ev.venueStreet || '').trim();

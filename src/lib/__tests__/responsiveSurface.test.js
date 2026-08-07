@@ -9,7 +9,7 @@ import {
   phoneStageForced,
 } from '../responsiveSurface';
 
-describe('exactly two surfaces are responsive in C1', () => {
+describe('the responsive surface set is pinned by explicit identity', () => {
   test('the orientation command surface', () => {
     expect(responsiveSurfaceMode({ stage: 'plan', sheet: null })).toBe('command');
     expect(responsiveSurfaceMode({ stage: 'plan' })).toBe('command');
@@ -21,10 +21,29 @@ describe('exactly two surfaces are responsive in C1', () => {
     expect(stagewrapClass({ stage: 'plan', sheet: 'food' })).toBe('stagewrap--responsive-food');
   });
 
+  // SCOPE CHANGE 2026-08-07: budget and guests moved OUT of the legacy list into
+  // the `data` mode. They are UX_03's named `data` tier ("dense tables & boards
+  // that should USE width"), and desktop was measured at 2 responsive surfaces
+  // out of 45. Everything below them stays legacy — the invariant is unchanged in
+  // kind, only its membership moved, and it moved by explicit identity.
+  test('the dense-data sheets widen — Budget and Guests', () => {
+    expect(responsiveSurfaceMode({ stage: 'plan', sheet: 'budget' })).toBe('data');
+    expect(responsiveSurfaceMode({ stage: 'plan', sheet: 'guests' })).toBe('data');
+    expect(stagewrapClass({ stage: 'plan', sheet: 'budget' })).toBe('stagewrap--responsive-data');
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'guests' })).toBe(true);
+  });
+
+  test('a data sheet outside the plan stage does NOT widen', () => {
+    // Identity is stage AND sheet. A budget sheet reached from the day stage is a
+    // different surface and keeps the phone stage until it is ruled on.
+    expect(responsiveSurfaceMode({ stage: 'day', sheet: 'budget' })).toBe('legacy');
+    expect(responsiveSurfaceMode({ stage: 'after', sheet: 'guests' })).toBe('legacy');
+  });
+
   test('EVERY other plan sheet stays legacy — no silent widening', () => {
-    // The whole point of the ruling: Guests/Vendors/Budget are documented debt,
+    // The whole point of the ruling: Vendors and the rest are documented debt,
     // not surfaces that get stretched because they happen to share a stage.
-    for (const sheet of ['guests', 'vendors', 'budget', 'timeline', 'risks', 'decisions',
+    for (const sheet of ['vendors', 'timeline', 'risks', 'decisions',
       'seating', 'travel', 'ask', 'settings', 'invite', 'unknown-future-sheet']) {
       expect(responsiveSurfaceMode({ stage: 'plan', sheet })).toBe('legacy');
       expect(stagewrapClass({ stage: 'plan', sheet })).toBe('');
@@ -52,7 +71,7 @@ describe('exactly two surfaces are responsive in C1', () => {
     }
   });
 
-  test('only the three declared modes can ever be produced', () => {
+  test('only the declared modes can ever be produced', () => {
     const seen = new Set();
     for (const stage of ['plan', 'day', 'after', 'create', null]) {
       for (const sheet of [null, 'food', 'guests', 'vendors', 'budget']) {
@@ -60,15 +79,19 @@ describe('exactly two surfaces are responsive in C1', () => {
       }
     }
     for (const m of seen) expect(SURFACE_MODES).toContain(m);
-    expect(seen.size).toBe(3);
+    // 4 since 2026-08-07: command · food-recommendation · data · legacy.
+    expect(seen.size).toBe(4);
   });
 });
 
 describe('the --fit opt-out follows the mode, nothing else', () => {
-  test('both responsive surfaces opt out; legacy keeps the transform', () => {
+  test('every responsive surface opts out; legacy keeps the transform', () => {
     expect(optsOutOfFit({ stage: 'plan', sheet: null })).toBe(true);
     expect(optsOutOfFit({ stage: 'plan', sheet: 'food' })).toBe(true);
-    expect(optsOutOfFit({ stage: 'plan', sheet: 'guests' })).toBe(false);
+    // guests is a `data` surface now, so it opts out like the other responsive
+    // modes. vendors is the surface that still proves legacy keeps the transform.
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'guests' })).toBe(true);
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'vendors' })).toBe(false);
     expect(optsOutOfFit({ stage: 'day', sheet: null })).toBe(false);
   });
 
