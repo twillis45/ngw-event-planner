@@ -4748,3 +4748,53 @@ button.vc-pill::after{
   min-width:min(240px, 100%);
   padding-left:var(--sp-5); padding-right:var(--sp-5);
 }
+
+/* ══ THE ACTION AREA WAS TAKING OVER THE SCREEN (host, 2026-08-07) ═══════════
+   Measured against a 1150k-px canvas:
+
+       .escreen   457px tall   37% of the canvas
+       .then-fold 120px         5%
+       .ef-watch  118px         5%
+
+   The ask block owned seven times the area of the work it is meant to sit
+   above. But its CONTENT is only ~240px — eyebrow, progress rule, the ask, the
+   guide line, the button. The other ~215px is borrowed, and the mechanism is
+   this grid: `.escreen` and `.bento` are both in ROW 1, a grid row is as tall as
+   its tallest item, and the stat column became 457px the moment `.tile-a` was
+   un-hidden into it. So the escreen stretched to match, and `.ecenter`
+   (justify-content:center) dutifully centred the ask inside the borrowed space,
+   which is where the air came from.
+
+   Un-hiding the chips was right; inflating the ask to match them was a
+   side-effect nobody chose. `align-self:start` opts the first screen out of the
+   row stretch so it takes its own content height, and the work moves up under
+   it. The stat column keeps its full height — it has content for it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
+  align-self:start;
+}
+
+/* ══ THE HERO SAT IN A BOX TWICE ITS OWN WIDTH (host, 2026-08-07) ════════════
+   "hero on wider command is next to white space that doesn't quite work with
+   the whole screen."
+
+   `.escreen` spans the two work columns — 930px — while everything inside it is
+   bounded by its own measure: the ask caps at 18ch (484px), the guide line at
+   52ch, the button now sizes to its label (261px). So the first screen was a
+   930px container holding a 484px column, and the leftover 446px read as a hole
+   beside the hero rather than as canvas.
+
+   The same 930 was stretching the progress pair to opposite ends of the row —
+   "3 of 6 plan parts handled" and "the rest can wait till Jun 13" ~770px apart,
+   which is the detached-label defect :201 and :4432 already name, arriving in a
+   third place.
+
+   Capping the first screen to its own measure fixes both at once: the hero
+   becomes a correctly-proportioned block, and the space to its right stops
+   being a hole INSIDE the composition and becomes canvas beside it — which is
+   what the stat column is already occupying the far side of.
+
+   The work below keeps the full two-column span: a narrower lede over a wider
+   body is a composition; a headline rattling around a container is not. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
+  max-width:64ch;
+}
