@@ -4810,3 +4810,31 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .watch-row .ef-g{
   flex:0 0 auto; color:var(--faint); font-weight:800;
 }
+
+/* ══ THE BLOCKER CARD OUTWEIGHED THE THING IT IS BLOCKING (host, 2026-08-07) ══
+   "not set yet venue should not be taking over that much of screen." Measured:
+
+       venue blocker card   1238px wide · 179px tall · 19% of the canvas
+       its text input       1117px wide
+       the hero above it      799px
+
+   So a below-fold blocker was HALF AGAIN WIDER than the priority lane, and a
+   one-line "Name or address" field ran 1117px — wider than the entire hero
+   block. UX_04's hierarchy rule is that the dominant element is Zone 2; a Zone 3
+   card that outweighs it inverts the whole board, and a text input sized to the
+   canvas rather than to its content is the same stretched-phone tell this
+   sprint keeps closing, arriving in the one place nobody had measured.
+
+   These cards are siblings of `.hero` in `section`, so the hero grid never
+   bounded them. Capped to the SAME 64ch the first screen now uses, so the whole
+   column — hero, work, blockers — reads as one width instead of three. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] section > article.card{
+  max-width:64ch;
+}
+/* The field is `style={{maxWidth:'none', flex:1}}` INLINE, and an inline style
+   beats the stylesheet — the trap this repo has already recorded three times in
+   one row. Overriding it needs the flex basis, not max-width: bounding the
+   growth is what stops a name field becoming a banner. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] section > article.card input.field{
+  flex:1 1 auto; min-width:0; max-width:44ch !important;
+}
