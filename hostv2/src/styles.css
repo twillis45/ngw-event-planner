@@ -4838,3 +4838,34 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] section > article.card input.field{
   flex:1 1 auto; min-width:0; max-width:44ch !important;
 }
+
+/* ══ P0 — THE PANEL WAS TALLER THAN THE SCREEN IT SITS ON ════════════════════
+   Board sitting 2026-08-07 put this above everything else in its ruling, and
+   driving it confirms the mechanism is worse than "the rules are off":
+
+       viewport   654    (1280x800 display, Chrome — the host's own machine)
+       .stagewrap 654    `@media(max-height:699px){ .stagewrap{height:100dvh} }` (:143)
+       .app       804    its height cap at :193 is inside min-height:700px
+       overflow   hidden on .stagewrap
+
+   So the panel is 150px TALLER than the frame that clips it, and the bottom
+   ~171px — "parts of your plan", the Next tile, the whole handled shelf — is
+   not scrolled off. It is CUT OFF and unreachable, because `.app` scrolls
+   INSIDE a box whose lower third is outside the stagewrap.
+
+   And nothing says so: the fold handle that would have hinted at it was removed
+   from desktop by ruling, correctly and for an unrelated reason. Correct rule,
+   wrong machine — which is this session's recurring shape.
+
+   I left :193 height-gated on purpose an hour ago, quoting a panel that said to
+   keep the height condition on the one rule genuinely about vertical room. That
+   was wrong for this case and I should have driven it: a SHORT viewport needs
+   the height bound MORE than a tall one, not less. min() already makes it a
+   no-op where there is room (a 900px laptop still resolves to ~840). */
+@media (min-width:1280px){
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app{
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    min-height:0;
+  }
+}
