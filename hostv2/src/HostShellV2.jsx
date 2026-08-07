@@ -12852,7 +12852,13 @@ export default function HostShellV2() {
                       figure. Conditional groups drop out when the event lacks them,
                       so this number genuinely moves. */}
                   <SheetHero
-                    eyebrow="Everything in your plan"
+                    /* The eyebrow LABELS THE NUMBER — it must not repeat the sheet
+                       title. Shipped as "Everything in your plan", which is exactly
+                       what the sheet head already says one line above, so the surface
+                       printed the same six words twice. Every other hero does this
+                       correctly: money reads "Left to spend" over "$3,165". Caught by
+                       driving it, not by the suite. */
+                    eyebrow="Places to go"
                     star={String(groups.reduce((n, g) => n + g.rows.length, 0))}
                     tone="ink"
                     sub="Every part of your plan, in one place — tap any to open it."
