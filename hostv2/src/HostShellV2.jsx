@@ -16647,15 +16647,35 @@ export default function HostShellV2() {
                         )}
                       </div>
                     );
+                    // ── COLUMN HEADER, WIDE ONLY ────────────────────────────
+                    // At the data tier the row's metadata is laid out in tracks
+                    // (styles.css). A column of bare values with no header is a
+                    // table missing its top row — "2" means nothing until
+                    // something says "kids". Rendered always and hidden by CSS
+                    // below the rail band, so the phone is untouched and the
+                    // markup has exactly one home.
+                    // aria-hidden: it labels a visual grid, and every row's own
+                    // controls already carry their own accessible names, so a
+                    // screen reader reading these would be duplication.
+                    const ghead = (
+                      <div className="ghead" aria-hidden="true" key="ghead">
+                        <span />
+                        <span>Name</span>
+                        <span>Kids</span>
+                        <span>Meal</span>
+                        <span>Dietary</span>
+                        <span className="gh-reply">Reply</span>
+                      </div>
+                    );
                     const names = [...new Set(withIdx.map(x => String(x.g.group || '').trim()).filter(Boolean))];
-                    if (names.length <= 1) return withIdx.map(row);
+                    if (names.length <= 1) return (<>{ghead}{withIdx.map(row)}</>);
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);
-                    return buckets.map(b => (
+                    return (<>{ghead}{buckets.map(b => (
                       <div key={b.gr || 'ungrouped'}>
                         <div className="shelf-label" style={{ margin: 'var(--sp-4) 0 var(--sp-2)' }}>{b.gr || 'Everyone else'} · {b.items.length}</div>
                         {b.items.map(row)}
                       </div>
-                    ));
+                    ))}</>);
                   })()}
                   <datalist id="v2-groups">
                     <option value="Family" /><option value="Friends" /><option value="Work" /><option value="Neighbors" />

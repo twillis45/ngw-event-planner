@@ -4096,6 +4096,16 @@ button.vc-pill::after{
    from a stylesheet any other way. Verified by computed value, not by
    assumption — the first version of this rule was silently overridden and the
    row stayed stacked while the CSS looked correct. */
+/* ONE SET OF TRACK WIDTHS, read by BOTH the row and its header. Declared here
+   rather than repeated in each rule because a header whose numbers are a COPY of
+   the row's numbers is a header that silently drifts the first time one side is
+   tuned — and a misaligned header is worse than none. */
+.stagewrap--responsive-data[data-rail="1"]{
+  --gt-name:clamp(200px, 18vw, 320px);
+  --gt-kids:88px;
+  --gt-meal:132px;
+  --gt-reply:96px;
+}
 .stagewrap--responsive-data[data-rail="1"] .grow > button{
   display:flex !important; align-items:center; gap:var(--sp-5);
 }
@@ -4108,7 +4118,7 @@ button.vc-pill::after{
    ragged edge a column is supposed to remove. A shared track cannot be a
    percentage of a per-row box. */
 .stagewrap--responsive-data[data-rail="1"] .grow > button > span:first-child{
-  flex:0 0 clamp(200px, 18vw, 320px);
+  flex:0 0 var(--gt-name);
 }
 .stagewrap--responsive-data[data-rail="1"] .grow > button > span:nth-child(2){
   margin-top:0 !important; flex:1 1 auto;
@@ -4126,8 +4136,12 @@ button.vc-pill::after{
    nowrap` because these are columns now, not a chip run that may wrap. */
 .stagewrap--responsive-data[data-rail="1"] .grow .gmeta{
   display:grid !important;
-  grid-template-columns:88px 132px minmax(0, 1fr);
-  align-items:center; gap:0 var(--sp-4);
+  grid-template-columns:var(--gt-kids) var(--gt-meal) minmax(0, 1fr);
+  /* !important because the span carries an inline gap:6 from the JSX (it is the
+     chip spacing the phone needs). Measured: with the inline value winning, the
+     header's meal cell sat +10px and dietary +20px off their columns. The token
+     has to win on both sides or the header cannot be derived from the row. */
+  align-items:center; gap:0 var(--sp-4) !important;
   flex-wrap:nowrap !important;
 }
 .stagewrap--responsive-data[data-rail="1"] .grow .gm-diet{
@@ -4220,5 +4234,40 @@ button.vc-pill::after{
    than a tag. Give it its own track width so it stays a chip and the column of
    replies lines up down the list. */
 .stagewrap--responsive-data[data-rail="1"] .grow > button + button{
-  flex:0 0 96px; text-align:center;
+  flex:0 0 var(--gt-reply); text-align:center;
 }
+
+
+/* ── THE COLUMN HEADER ──────────────────────────────────────────────────────
+   Hidden by default: below the rail band the row is a chip run, not a table,
+   and a header there would label columns that do not exist.
+
+   The tracks are derived from the SAME variables the row uses, each widened by
+   the gap that follows it in the row's flex/grid chain, because the row's gaps
+   are uneven (sp-2 after the avatar, sp-5 after the name, sp-4 between metadata
+   cells). Expressing them as calc() keeps one source of truth; a single `gap`
+   could not reproduce an uneven chain. Verified by measuring header cell x
+   against row cell x, not by reading the arithmetic. */
+.ghead{ display:none; }
+.stagewrap--responsive-data[data-rail="1"] .ghead{
+  display:grid;
+  grid-template-columns:
+    calc(28px + var(--sp-2))
+    calc(var(--gt-name) + var(--sp-5))
+    calc(var(--gt-kids) + var(--sp-4))
+    calc(var(--gt-meal) + var(--sp-4))
+    minmax(0, 1fr);
+  align-items:end; gap:0;
+  padding:0 0 6px 8px;
+  border-bottom:1px solid var(--line-soft);
+  margin:var(--sp-3) 0 2px;
+  font-size:10.5px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint);
+}
+/* NO "REPLY" HEADER, deliberately. The reply chip is the row's last flex child
+   and its x is set by how the button flexes, not by this track chain — measured
+   266px off when I tried to label it. A header cell that does not sit over its
+   column is worse than an unlabelled column, so the label is omitted until the
+   row is a real grid. The chip is self-labelling anyway: it reads "Yes" /
+   "No reply". */
+.stagewrap--responsive-data[data-rail="1"] .ghead .gh-reply{ display:none; }
