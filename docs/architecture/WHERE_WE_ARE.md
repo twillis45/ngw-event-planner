@@ -269,13 +269,53 @@ Two builds, materially different, NOT chosen:
 
 ## 2. Gates
 
-### THE MATRIX IS FULLY GREEN - `453c910e` (2026-08-07, latest)
+### THE MATRIX IS FULLY GREEN - `d3493840` (2026-08-07, latest)
 
 ```
-Playwright   355 passed /  0 failed / 34 skipped   (~16.7m)
+Playwright   356 passed /  0 failed / 40 skipped   (16.8m)
 Jest         5643 passed / 1 skipped - 380 suites
 build        hostv2 + check-parity green
 ```
+
+40 skipped = 34 + 6 board-capture skips (`_boardCapture.spec.mjs`, env-guarded).
+
+**Shipped since the all-green run**, all driven and gated:
+- The 2026-08-07 BOARD SITTING (three panels, render-first, 7/6/7 · 6.0/6.5 · 5/6/4).
+  Nine findings taken. The sharpest was theirs, not mine: `styles.css:4478` said outright
+  "THE REAL FIX is to move the picker out of the trigger... Board call" — I did exactly
+  that four commits earlier and never went back to collect, so the reply chip was still
+  rendering 258-311px wide. Now 96px, right edge identical on every row.
+- The guest editor moved into a RIGHT PANEL at >=1280 (Mobbin: 5 of 5 leaders do this,
+  none expands a row). Measured 1728: roster 1318, cols 958+340, list identical open and
+  closed.
+- Tier gating on that panel. See the trap below — it is the same one twice in one day.
+
+**Read the two audits before touching the roster:**
+`docs/audits/2026-08-07_SPACING_DENSITY_LAYOUT_MOBBIN_READ.md` and
+`..._TIER_READ_DENSITY_TYPE_COMMIT_MOTION.md` (~80 screens, three parallel reads). The
+second CORRECTS the first on row height, and both correct me.
+
+### Traps earned 2026-08-07, late
+
+- **`[data-rail="1"]` IS NOT `desktop`, AND I SHIPPED THAT TWICE IN ONE DAY.** The
+  two-column roster gated on rail-up alone ran from 1024 and gave `280px 340px` — the
+  detail panel WIDER than the roster it belongs to, on a sheet offering 640px total.
+  UX_03:23 documents this exact misreading *because of the earlier P0 the same session*.
+  Any composition rule that needs desktop must test `[data-bp="desktop"]`.
+- **A STRUCTURAL CAP MUST BE MATCHED BY STRUCTURE, NOT BY DEPTH.** `:3758` caps
+  `.sheet > *` at 820px (the prose measure) and `:3760-3771` exempt the wide things with
+  `:has(> X)` — a DIRECT-child test. Wrapping the rows in `.roster` made `.grow` a
+  GRANDchild, the exemption silently stopped matching, and the table inherited a prose
+  measure. The symptom looks exactly like a grid sizing bug and nothing points at a
+  max-width two rules away.
+- **WALK THE ANCESTOR CHAIN, DO NOT GREP FOR THE CAP.** I eliminated three candidate rules
+  by reading, all three wrong, and committed a revert note saying "nobody knows what caps
+  it". One probe reading `maxWidth` off each ancestor found it immediately. Third time in
+  one session that reading lost to measuring.
+- **DO NOT PIPE A BACKGROUND MATRIX THROUGH `tail`.** The output file then holds only the
+  tail, so the failure detail you need is gone.
+- **`jest` MUST RUN FROM `demo/`, NOT `demo/hostv2/`.** A compound `cd hostv2 && ...`
+  silently produced an empty log and a bare exit 1 twice.
 
 The 355 includes the 12 new `guestReplyPicker.spec.mjs` cases (6 projects x 2). That
 suite's own first run WAS the only failure in the 355/1 matrix, at `[landscape]` 860x430,
