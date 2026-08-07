@@ -154,7 +154,28 @@ async def stripe_webhook(
 
     payload = await request.body()
 
-    if STRIPE_WEBHOOK_SECRET and stripe_signature:
+    # ── A MISSING SIGNATURE USED TO BE A FREE PASS (fixed 2026-08-07) ────────
+    # The condition here was `if STRIPE_WEBHOOK_SECRET and stripe_signature:`,
+    # with an else branch commented "Dev mode — no signature verification" that
+    # json.loads()'d the body and trusted it.
+    #
+    # Both halves of that `and` were attacker-controlled in effect: a caller who
+    # simply OMITTED the stripe-signature header fell straight into the
+    # unverified branch, even on a deployment where the secret WAS configured.
+    # Forging a checkout.session.completed was a request with no header.
+    #
+    # Today the handler only logs, so the blast radius is a false payment record
+    # in the logs — but the docstring names this the hook point for Supabase
+    # writes when feeSchedule moves server-side, and at that point the same
+    # request marks a fee paid.
+    #
+    # The rule now: if a secret is configured, the signature is REQUIRED. The
+    # unverified path survives only for a deployment with no secret at all,
+    # which is a genuine local dev box, and it says so in the log.
+    if STRIPE_WEBHOOK_SECRET:
+        if not stripe_signature:
+            log.warning("stripe: webhook rejected — no stripe-signature header")
+            raise HTTPException(status_code=400, detail="Missing Stripe signature.")
         try:
             stripe.api_key = STRIPE_SECRET_KEY
             event = stripe.Webhook.construct_event(payload, stripe_signature, STRIPE_WEBHOOK_SECRET)
@@ -164,7 +185,11 @@ async def stripe_webhook(
         event_type = event.type
         session_data = event.data.object
     else:
-        # Dev mode — no signature verification
+        # No secret configured — local dev only. Unverified, and loud about it.
+        log.warning(
+            "stripe: STRIPE_WEBHOOK_SECRET is unset — accepting an UNVERIFIED webhook. "
+            "This must never be the case on a deployed environment."
+        )
         data = json.loads(payload)
         event_type   = data.get("type", "")
         session_data = data.get("data", {}).get("object", {})
