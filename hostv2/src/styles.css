@@ -4288,3 +4288,30 @@ button.vc-pill::after{
    row is a real grid. The chip is self-labelling anyway: it reads "Yes" /
    "No reply". */
 .stagewrap--responsive-data[data-rail="1"] .ghead .gh-reply{ display:none; }
+
+/* ── A FULL-WIDTH CTA IS A PHONE AFFORDANCE ─────────────────────────────────
+   Host, in Chrome at 1280: "command is just a version of the mobile in
+   column 2." Measured on that render — the primary CTA spanning ~1220px, and
+   action rows whose arrow sits ~1200px from the label they belong to. The
+   codebase has already named that second one once: "one-line rows ran the full
+   1280 with their chevron a thousand pixels from the label" (:201). It came
+   back the moment the surface got real width and nothing capped the row.
+
+   A button stretches to the screen on a phone because the thumb needs the
+   target and there is no other column. Neither is true here. No leader in the
+   viewport ruling full-widths a primary action at desktop; the action takes its
+   own measure and the space around it is what makes it read as primary.
+
+   This is measure discipline, NOT the redesign. The zone structure UX_04 asks
+   for at desktop — command header with stat cards, then the priority lane, then
+   the work — is a real composition change and it is a board call, recorded
+   rather than smuggled in as a stylesheet tweak. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ecenter .cta{
+  max-width:min(42ch, 420px);
+}
+/* THE ROW MEASURE IS NOT FIXED HERE. I wrote four selectors for the reference
+   rows and drove it: the arrows were still ~1200px from their labels, so all
+   four matched nothing. Rather than leave dead CSS — the trap this stylesheet
+   has now recorded five times in one day — they are removed. The rows live
+   somewhere other than where I guessed, and finding them is the next pass, not
+   a guess dressed as a fix. */
