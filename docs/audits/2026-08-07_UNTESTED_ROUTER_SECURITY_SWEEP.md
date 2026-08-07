@@ -79,10 +79,45 @@ completeness rather than as a call to act.
 
 ---
 
+## FIXED — an anonymous write with no foreign key behind it
+
+`POST /api/events/{event_id}/communication/channels/ensure` required nothing.
+`_ensure_channels` inserts into `event_channels` for whatever `event_id` string
+it is handed, and `migrations/0001_communication.sql` declares that column
+`text not null` with **no foreign key to events** — so any caller could create
+two rows per arbitrary string, without limit and without owning anything.
+
+Safe to gate: its only caller is `commApi.ensureChannels`, and commApi's `req()`
+already attaches auth headers to every request, which is how the eight
+already-gated routes in the same file work. Now `require_planner` +
+`_assert_event_access`.
+
+The `GET /channels` beside it is deliberately left alone. `list_messages` in the
+same module requires a planner ONLY for `INTERNAL_TEAM`, which shows the module
+intends unauthenticated reads for the client portal — quietly gating a read
+could break it. Recorded above, not changed.
+
+## The outbound-wrapper follow-up: clean
+
+The previous version of this document said each outbound wrapper should be
+checked for the caller-supplied-URL pattern that made the relay exploitable.
+Done. `kroger` (3 calls), `instacart` (1), `food_prices` (1) and `weather` (2)
+all build their URL from an env-configured base constant — `KROGER_API_BASE`,
+`INSTACART_API_BASE`, `_BLS_URL`, `GEO_URL`/`FORECAST_URL`. None accepts a
+destination from the caller. `webhooks` was the only one.
+
+## A false reading the sweep produced, worth knowing
+
+The first auth scanner looked 30 lines ahead of each `@router` decorator for
+`require_planner`. Routes therefore inherited the auth of the route BELOW them,
+and `/channels/ensure` reported as gated when it was not. The AST version reads
+each function's own signature and body and nothing else, and it is now committed
+as `tests/test_route_auth_coverage.py` — an allowlist of intent, where every
+public route must be named with a reason, so making one public is a deliberate
+edit rather than an omission.
+
 ## Still unswept
 
-`communication` (584 LOC) is the largest untested router and was not read in
-this pass. `kroger` / `kcr` / `kas` / `instacart` / `food_prices` / `weather` are
-outbound API wrappers — the same class as the relay, so **each should be checked
-for whether it fetches a caller-supplied URL**, which is the pattern that made
-`webhooks` exploitable.
+Nothing structural. `communication` now has auth coverage gated but still no
+behavioural tests, and neither do `kroger` / `kcr` / `kas` / `instacart` /
+`food_prices` / `weather`.
