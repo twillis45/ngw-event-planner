@@ -4462,3 +4462,63 @@ button.vc-pill::after{
    has now recorded five times in one day — they are removed. The rows live
    somewhere other than where I guessed, and finding them is the next pass, not
    a guess dressed as a fix. */
+
+/* ═══ THE HEIGHT CONDITION COMES OFF THE COMPOSITION (board, 2026-08-07) ═════
+   Both design panels adopted Amendment 3 unanimously — the only 4-0 in the
+   sitting — and named the mechanism: strip the height condition from
+   COMPOSITION and MEASURE rules, and keep it only on the one rule that is
+   genuinely about vertical room (`.app{height:min(...)}` at :193).
+
+   The rules below are re-declared at `min-width:1280px` with NO height
+   condition. Each already exists inside the @media at :125 / :162; each was
+   dead on any desktop shorter than 700px, which is a stock laptop in Chrome. */
+@media (min-width:1280px){
+  /* THE HOST'S MACHINE HAD NO CANVAS. :162 gives the responsive surfaces real
+     width and an inset; :141 gives .app the 48px radius and the carbon frame.
+     Both are height-gated, so at 1280x654 the surface rendered edge-to-edge and
+     square-cornered — a full-bleed slab, not a board on a field. Measured
+     against 1440x900, where it is an inset rounded panel: the host and the
+     review board have not been looking at the same product. Scoped to the two
+     responsive surfaces rather than all of .app, so no legacy phone-silhouette
+     sheet changes shape at a short height. */
+  .stagewrap--responsive-command,
+  .stagewrap--responsive-food{
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1280px); max-width:1280px;
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app{
+    border-radius:48px;
+    box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line),
+               0 42px 90px -28px rgba(0,0,0,.5);
+  }
+  /* THE MEASURE CAP .cta GOT AND .hero-card DID NOT. :272 caps all three at
+     62ch, height-gated. `.cta` was later given a rail-scoped, height-independent
+     cap at :4449; `.hero-card` was left behind. Measured: the recommendation
+     card runs 709px at 1280x654 against 624px at 1440x900, which puts the
+     `our pick` chip ~400px from the label it modifies — the same
+     "glyph detached from its label" defect :201 and :4432 each already name. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hero-card,
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hc-row{
+    max-width:62ch;
+  }
+}
+
+/* THE PROGRESS LABELS WERE STACKED FOR A RAIL THAT NO LONGER EXISTS.
+   :251 sets `flex-direction:column` on the label pair, and its own comment says
+   why: the hero's INTERNAL 260px rail made the line cramped, so it spent height
+   instead of width. :4201 retired that internal rail. The rule survived it and
+   still fires wherever height >= 700, so at 1440 and 1728 the fraction and the
+   judgement stack left-aligned and read as two unrelated facts — while the
+   host's 654px viewport renders the correct justified version BY ACCIDENT, only
+   because the media query fails there.
+   Restored to the base :908 behaviour wherever a rail is up, keeping :254's
+   wrap-instead-of-clip so a long name still cannot be truncated. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog .eprog-labels{
+  flex-direction:row; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3);
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog .eprog-labels > span:last-child{
+  flex:none; text-align:right;
+}
