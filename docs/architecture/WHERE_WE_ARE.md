@@ -269,6 +269,37 @@ Two builds, materially different, NOT chosen:
 
 ## 2. Gates
 
+### THE MATRIX IS FULLY GREEN - `20ee56e2` (2026-08-07, latest)
+
+```
+Playwright   344 passed /  0 failed / 34 skipped   (16.3m)
+Jest         5643 passed / 1 skipped - 380 suites
+build        hostv2 + check-parity green
+```
+
+First all-green matrix on this branch. Progression across the session:
+
+```
+321 passed / 21 failed   baseline, before any of this session's work
+335 passed / 10 failed   after the wide-screen layout work
+344 passed /  0 failed   after 20ee56e2
+```
+
+The last 10 closed together, and **they were never pre-existing** - see the trap below,
+which corrects three separate claims made earlier in this same document. One test moved
+into `skipped` (33 -> 34) because the spec's own `no Calls to make section on this state`
+guard finally gets a chance to fire now that the sheet is reachable. 344 + 34 = 378.
+
+**THE "PRE-EXISTING" CLAIM BELOW WAS WRONG, AND THE METHOD THAT PRODUCED IT WAS WRONG.**
+The revert test was real - `styles.css` at `f8ae0a50` did reproduce all 10. But
+`f8ae0a50` **already contained `cf0336c09`**, the commit that caused them. Reverting to a
+point that still includes the cause proves nothing except that the cause was already
+there. `git merge-base --is-ancestor <suspect> <revert-target>` takes one second and
+would have caught it. Everything from "LATEST (after the fold-handle...)" down to the
+18-failure table is retained as the record of a wrong call, not as current state.
+
+---
+
 **At `bc0429fd` (2026-08-07): Jest 5640 passed / 1 skipped - 379 suites.** hostv2 build
 + `check-parity` green.
 
@@ -506,6 +537,26 @@ binding constraint on the product, and none of the viewport work touched it.
   after your change, revert the file to the last known commit, rebuild, re-run the failing
   cluster. On 2026-08-07 that turned "21 failures" into "13 mine, 8 not" and then into
   "all 21 pre-existing" after the 13 were fixed. Never argue it from reading.
+- **...AND THE REVERT TARGET MUST PREDATE THE SUSPECT, WHICH IS NOT THE SAME AS BEING
+  OLD.** The corollary that cost the most on 2026-08-07. Ten tablet-land failures were
+  called pre-existing three times in this document on the strength of a revert of
+  `styles.css` to `f8ae0a50` that reproduced all ten. `f8ae0a50` **already contained**
+  `cf0336c09`, the commit that caused them. A revert to a point that still includes the
+  cause reproduces the bug perfectly and proves nothing. **Run
+  `git merge-base --is-ancestor <suspect> <revert-target>` before believing your own
+  revert test** - it is one second, and "reproduced at an earlier commit" is worthless
+  until you know what that commit contained. The tell was there the whole time: the
+  Playwright log named the intercepting element (`srail-t intercepts pointer events`) in
+  every one of the ten, and that was read as noise for hours because the conclusion was
+  already filed. **A failure with a named mechanism in the log has never earned the label
+  "pre-existing" - it has earned five minutes of measurement.**
+- **`left` IS A CENTRE ANCHOR WHEREVER `translate(-50%,-50%)` IS IN PLAY.** Sheets are
+  edge-to-edge on the phone and at >=1280, but between 640 and 1279 at >=700 tall they are
+  the centred floating panel (`styles.css:3174`). A later rule that sets `left` on `.sheet`
+  without knowing which idiom is live will silently move the panel by half its own width:
+  `left:220px` rendered at `l:-119` with `w:680`, half off-screen and the rest under the
+  rail. **Grep for a `transform` on any element before writing its `left`,** and scope the
+  rule to the same media query the idiom uses.
 - **A `const` USED ABOVE ITS DECLARATION FAILS SILENTLY AND LOOKS LIKE A LAYOUT BUG.**
   Twice on 2026-08-07. Naming a below-declared const in an effect's dependency array is
   the obvious form; the dangerous form is inside an EXPRESSION, where nothing warns you.
