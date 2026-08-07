@@ -12,21 +12,20 @@
 # Error details
 
 ```
-Error: expect(locator).toBeVisible() failed
+Test timeout of 30000ms exceeded.
+```
 
-Locator: locator('.lc-h1')
-Expected: visible
-Timeout: 5000ms
-Error: element(s) not found
-
+```
+Error: locator.click: Test timeout of 30000ms exceeded.
 Call log:
-  - Expect "toBeVisible" with timeout 5000ms
-  - waiting for locator('.lc-h1')
+  - waiting for getByRole('button', { name: /Load the Santa Fe example/i })
 
 ```
 
+# Page snapshot
+
 ```yaml
-- text: Couldn’t load — please refresh.
+- generic [ref=e2]: Cannot GET /ngw-event-planner/hostv2/
 ```
 
 # Test source
@@ -91,9 +90,9 @@ Call log:
   57  | // is precisely how the unit gates missed the pick-claims-a-booking defect.
   58  | const seed = async (page) => {
   59  |   await fresh(page);
-  60  |   await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
-> 61  |   await expect(page.locator('.lc-h1')).toBeVisible();
-      |                                        ^ Error: expect(locator).toBeVisible() failed
+> 60  |   await page.getByRole('button', { name: /Load the Santa Fe example/i }).click();
+      |                                                                          ^ Error: locator.click: Test timeout of 30000ms exceeded.
+  61  |   await expect(page.locator('.lc-h1')).toBeVisible();
   62  | };
   63  | 
   64  | const paste = async (page, text) => {
@@ -193,5 +192,4 @@ Call log:
   158 |     await page.getByRole('button', { name: /Make .* the pick/i }).first().click();
   159 |     // CHOOSING IS NOT BOOKING — one press used to jump straight to "on the books".
   160 |     await expect(page.getByText(/Choosing is not booking/i)).toBeVisible();
-  161 |     await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
 ```

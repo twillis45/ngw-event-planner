@@ -2447,7 +2447,24 @@ function decisionRankReason(row) {
   // they read as derived, never as an authored human rationale (Honesty guardrail: a
   // derived-ranked row must sound derived). Only reached for un-authored rows.
   if (row.importanceBasis === 'derived') {
-    if (row._derivedReason === 'diet') return 'Worth settling early — allergies gate the menu.';
+    // ── A HEALTH QUESTION IS NOT AN ALLERGY QUESTION (2026-08-06, board) ────
+    // `_derivedReason === 'diet'` comes from DIETARY_SAFETY_RE, which is a
+    // SAFETY regex and deliberately matches heart / lung / condition / mobility
+    // / health as well as allergy / dietary. This line assumed safety meant
+    // food, so the destination altitude question — "Any guests with heart or
+    // lung conditions?" — shipped with the reason "Worth settling early —
+    // allergies gate the menu." Seen in a live trace of the real host event.
+    //
+    // A fabricated rationale on a MEDICAL row is the sharpest form of the thing
+    // 06_AI_GROUNDING bans: it is confident, it is specific, and it is about
+    // someone's health. The regex is right and stays; the sentence has to know
+    // which half of it matched.
+    if (row._derivedReason === 'diet') {
+      const hay = `${row.id || ''} ${row.label || ''}`;
+      return /allerg|dietary|\bnut(s|-free|\b)|shellfish|epi.?pen/i.test(hay)
+        ? 'Worth settling early — allergies gate the menu.'
+        : 'Worth settling early — it affects who can do what.';
+    }
     if (row.timeCritical) return 'Its window is open and the runway is short — worth doing now.';
     if (row._derivedReason === 'gates') return 'This decides other choices.';
     if (row._derivedReason === 'cost') return 'This one costs real money.';
