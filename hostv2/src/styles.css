@@ -4060,3 +4060,104 @@ button.vc-pill::after{
     max-width:none;
   }
 }
+
+/* ── THE ROW'S TWO LINES BECOME TWO COLUMNS AT THE DATA TIER ────────────────
+   Host: the wide layouts "are just squished phone layouts."
+
+   Measured at 1920 after the main area went single-column: a guest row is
+   1318px wide and its NAME BUTTON ALONE is 1215px of it. The row was not
+   missing information — it already renders kids, meal, the needs tag and the
+   structured allergens/diets. It was rendering them the PHONE way: name on
+   line 1, meta wrapped onto line 2, because at 393px there is no other choice.
+   Widening that composition does not make it dense, it makes it sparse — a
+   name, then 900px of nothing, then a chip.
+
+   Leaders (Asana, Wrike, Plane) spend width on columns INSIDE the row. So do
+   we, using the elements already there: the two stacked lines become two
+   tracks. No new data, no new markup — the same row, laid out for the space it
+   actually has.
+
+   `!important` on the meta's margin-top is deliberate and narrow: that 2px is
+   an inline style on the element (the gap that separates the two LINES), and
+   an inline style cannot otherwise be answered from a stylesheet. It is wrong
+   by definition once they are side by side rather than stacked.
+
+   Scoped to --responsive-data: this is the tier UX_03 calls "dense tables &
+   boards that should USE width". Single-decision sheets keep their measure. */
+/* display:flex is !important because the button carries an INLINE
+   display:block (HostShellV2 ~:16477) and an inline style cannot be answered
+   from a stylesheet any other way. Verified by computed value, not by
+   assumption — the first version of this rule was silently overridden and the
+   row stayed stacked while the CSS looked correct. */
+.stagewrap--responsive-data .grow > button{
+  display:flex !important; align-items:center; gap:var(--sp-5);
+}
+/* The name gets a real column rather than all the slack — clamped so it stays
+   a readable measure at 1280 and does not run away at 1920. */
+.stagewrap--responsive-data .grow > button > span:first-child{
+  flex:0 0 clamp(200px, 24%, 320px);
+}
+.stagewrap--responsive-data .grow > button > span:nth-child(2){
+  margin-top:0 !important; flex:1 1 auto;
+}
+
+/* ── TWO RAILS IS ONE RAIL TOO MANY (host: "command screen on wider is bad") ─
+   The re-zone at :219 gave the command hero its own internal "rail main" grid,
+   reserving 240-300px for orientation — the eyebrow, the event head, and the
+   readiness progress. That was right when the canvas had no navigation beside
+   it. It is wrong now: the persistent section rail IS the orientation column,
+   so the hero was reserving a second one.
+
+   Driven at 1920 and it looks exactly like the bug it is — the eyebrow wraps
+   "JUN 20-JUN 24" onto two lines inside a narrow column, the progress bar is
+   stranded halfway down a column with nothing above or below it, and roughly
+   350x450px of the canvas is simply empty between them.
+
+   With a rail present the hero goes back to ONE column and the blocks stack in
+   reading order: eyebrow, head, the ask, then progress at the foot. Each gets
+   its own row rather than sharing the `rail` area, which is what the two-column
+   version needed a 44px margin to fake. The doctrine is unchanged — the ask is
+   still the single loud thing; it just is not competing with an empty column. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
+  grid-template-columns:minmax(0, 1fr);
+  grid-template-rows:auto auto 1fr auto;
+  grid-template-areas:
+    "eyebrow"
+    "head"
+    "main"
+    "prog";
+  column-gap:0;
+  min-height:0;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
+  grid-area:eyebrow; align-self:start;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-head{
+  grid-area:head; align-self:start; margin-top:6px;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ecenter{
+  grid-area:main;
+}
+/* Progress returns to the foot of the SCREEN, because with one column the eye
+   does end at the bottom edge again — the exact reason :242 moved it in the
+   two-column composition no longer holds. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog{
+  grid-area:prog; align-self:end; margin-top:28px;
+}
+
+/* The reference lane was indented by the width of the hero's internal rail
+   (:281, `min(300px,max(240px,23%)) + 56px`) so it would line up under the main
+   column. With that column collapsed above, the indent is the GHOST of a
+   column that no longer exists — driven at 1920, the hero starts at x=451 and
+   the lane below it at x=790, two different left edges on one page. Both go
+   back to the canvas edge, so the whole surface reads as one column beside the
+   rail, which is what the original comment was trying to achieve. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .efold,
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen ~ *{
+  margin-left:0;
+}
+/* next-bar is already re-anchored to the section rail at the stagewrap level;
+   this clears the second, now-stale offset so the two do not compound. */
+.stagewrap--responsive-command[data-rail="1"] .next-bar{
+  left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
