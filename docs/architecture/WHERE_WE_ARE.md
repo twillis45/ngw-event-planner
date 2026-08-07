@@ -10,6 +10,30 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
 ## 1. Branch state
 
+> ### ⚠ A SECOND SESSION IS LIVE IN THIS TREE - DO NOT COMMIT `hostv2/src/styles.css`
+>
+> A vite preview owned by another agent has been listening on **:5233 since 01:39 on
+> 2026-08-07**, and its scratch harness `hostv2/e2e/_railAudit.mjs` says "delete after the
+> review" - it is mid-flight, not finished.
+>
+> That session is building **the persistent section rail** (`VIEWPORT_PORT_RULING` step 3):
+> `src/lib/sectionDirectory.js`, `showsRail()` in `src/lib/responsiveSurface.js`, `.srail*`
+> in `styles.css`, and the `HostShellV2.jsx` wiring. All of it is UNCOMMITTED.
+>
+> **The tree is entangled.** `hostv2/src/styles.css` carries that session's rail CSS and this
+> session's wide-canvas fixes inside the SAME diff hunk (`@@ -3522,17 +3522,100`), so there
+> is no pathspec that commits one without the other. `git add hostv2/src/styles.css` publishes
+> a half-built rail. Committing the wide-canvas tests WITHOUT the CSS turns CI red, because
+> `wideSurfaceCss.test.js` reads the stylesheet as its fixture.
+>
+> **Do this instead:** let the rail session land its own commit first, then commit the
+> wide-canvas work on top. Do not `git checkout` or `git stash` these paths - that is the
+> exact move that swept a session's work on 2026-07-30.
+>
+> Also note the rail session has ALREADY built what the design seat filed as item #7
+> ("fill the 356x422 command-rail void"). Do not build it twice.
+
+
 **Branch:** `feat/lodging-search-offer` - **HEAD `0d273115`**, 3 ahead of `origin/main`.
 PRs #79/#80 are closed/merged; **#81 merged 2026-08-06**; **#82 is open and green on all
 five checks** (jest, e2e, backend, cra-build, hostv2-build).
