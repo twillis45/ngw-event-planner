@@ -4325,7 +4325,7 @@ button.vc-pill::after{
    mismatch between showsRail()'s width-only test and the stylesheet's
    width+height media queries is recorded for the board — it is not fixed here,
    because changing showsRail() would take the rail off this very machine. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .efold{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
   display:none;
 }
 
@@ -4346,7 +4346,7 @@ button.vc-pill::after{
 
    One line, keyed to the rail rather than to a height, and :4201's rules mean
    what they say wherever the rail is up. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on{
   display:grid;
 }
 /* The 68ch cap was a phone measure standing in for a column. Each block now has
