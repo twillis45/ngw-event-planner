@@ -6350,12 +6350,48 @@ export default function HostShellV2() {
                       carries the date STATUS — and with no date it said nothing at all,
                       leaving the countdown slot silently empty. Figma 922:121 puts
                       "NO DATE YET" here; when the host named a month, say the month. */}
-                  <span className="eb-text">{(days != null && days > 0 ? (days === 1 ? '1 DAY' : days + ' DAYS') + '  ·  ' : days === 0 ? 'TODAY  ·  ' : days != null && days < 0 ? (days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO') + '  ·  ' : (targetMonthLabel(event) ? String(targetMonthLabel(event)).toUpperCase() + '  ·  PICK A DAY  ·  ' : 'NO DATE YET  ·  ')) + String(eventTypeLabel(event) || event.type || event.name || '').toUpperCase()
-                    /* Span visibility (host report 2026-07-27 "I don't see the multi day"):
-                       the range rides the always-on eyebrow — the ONE element every
-                       elegant screen keeps — so a 3-day event reads as one at a glance.
-                       Single-day events render byte-identically (spanNights 0). */
-                    + (() => { try { if (!(spanNights(event) > 0)) return ''; const f = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); return ('  ·  ' + f(event.date) + '–' + f(event.endDate)).toUpperCase(); } catch { return ''; } })()}</span>
+                  <span className="eb-text">{(() => {
+                    /* ── ONE ORDERED LIST, NOT A CONCATENATION (2026-08-07) ───────
+                       This was a single expression that grew by append: countdown,
+                       then type, then the span, then — when the board found the
+                       screen never says WHOSE event it is — the name, which landed
+                       LAST, behind the metadata. Identity reading after the dates
+                       is the complaint half-answered.
+                       Rebuilt as an ordered list so position is a line of code
+                       rather than an accident of when a clause was added:
+                           urgency · IDENTITY · type · when
+                       The working-planner seat: "'225 DAYS · RETIREMENT + BIRTHDAY'
+                       is not an event, that is a category." And: a countdown is a
+                       feeling, a date is a calendar entry — so both, always. */
+                    const parts = [];
+                    // 1. urgency
+                    if (days != null && days > 0) parts.push(days === 1 ? '1 DAY' : days + ' DAYS');
+                    else if (days === 0) parts.push('TODAY');
+                    else if (days != null && days < 0) parts.push(days === -1 ? '1 DAY AGO' : Math.abs(days) + ' DAYS AGO');
+                    else if (targetMonthLabel(event)) { parts.push(String(targetMonthLabel(event)).toUpperCase()); parts.push('PICK A DAY'); }
+                    else parts.push('NO DATE YET');
+                    // 2. identity — the name, unless the type slot is ALREADY showing
+                    //    it (eventTypeLabel falls back to event.name, so a typeless
+                    //    event would otherwise print its name twice).
+                    const typeLabel = String(eventTypeLabel(event) || event.type || event.name || '').trim();
+                    const name = String(event.name || '').trim();
+                    if (name && name.toUpperCase() !== typeLabel.toUpperCase()) parts.push(name.toUpperCase());
+                    // 3. type
+                    if (typeLabel) parts.push(typeLabel.toUpperCase());
+                    // 4. when — the span for multi-day (host report 2026-07-27, "I
+                    //    don't see the multi day"), otherwise the absolute date,
+                    //    which the single-day case never carried at all.
+                    try {
+                      if (spanNights(event) > 0) {
+                        const f = (iso) => new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        parts.push((f(event.date) + '–' + f(event.endDate)).toUpperCase());
+                      } else if (event.date) {
+                        parts.push(new Date(event.date + 'T12:00:00')
+                          .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase());
+                      }
+                    } catch { /* a malformed date drops its cell, never the eyebrow */ }
+                    return parts.filter(Boolean).join('  ·  ');
+                  })()}</span>
                   <span className="eb-caret" aria-hidden="true">▾</span>
                 </button>
               ) : (
