@@ -81,10 +81,22 @@ export function contactState(vendor, now = new Date()) {
     };
   }
 
-  const replied = Boolean(
-    v.contractSigned || v.depositPaid || v.balancePaid ||
-    String(v.status || '').toLowerCase() === 'confirmed'
-  );
+  // A GUEST'S REPLY IS THEIR RSVP (host, 2026-08-07). Guests carry none of the
+  // vendor evidence fields, so reading only those would leave every guest
+  // "awaiting reply" forever and eventually mark all of them silent — the app
+  // confidently telling a host that people who already answered never did.
+  // Detected by SHAPE rather than by a passed-in kind: a person with an `rsvp`
+  // field is a guest, and shape is what the caller actually has.
+  const isGuest = Object.prototype.hasOwnProperty.call(v, 'rsvp');
+  const rsvp = String(v.rsvp || '').toLowerCase();
+  const replied = isGuest
+    // 'pending' / '' is not an answer. Anything else is — including "no", which
+    // is a reply: a guest who declined has come back to you.
+    ? Boolean(rsvp && rsvp !== 'pending' && rsvp !== 'no-reply' && rsvp !== 'none')
+    : Boolean(
+      v.contractSigned || v.depositPaid || v.balancePaid ||
+      String(v.status || '').toLowerCase() === 'confirmed'
+    );
   const daysSince = Math.max(0, dayDiff(at, asOf));
 
   return {

@@ -165,3 +165,33 @@ describe('the round trip: record, then read it back', () => {
     expect(contactState({ ...vendor, contractSigned: true }, NOW).silent).toBe(false);
   });
 });
+
+describe('a GUEST\'s reply is their RSVP, not a contract', () => {
+  // Guests carry none of the vendor evidence fields. Reading only those would
+  // leave every guest awaiting a reply forever and eventually mark them all
+  // silent — the app telling a host that people who already answered never did.
+  const contacted = { lastContactedAt: daysBefore(30) };
+
+  it.each([['yes'], ['no'], ['maybe'], ['Yes']])(
+    'an RSVP of "%s" counts as a reply — including a decline', (rsvp) => {
+      const s = contactState({ ...contacted, rsvp }, NOW);
+      expect(s.awaitingReply).toBe(false);
+      expect(s.silent).toBe(false);
+    });
+
+  it.each([['pending'], [''], ['none'], ['no-reply']])(
+    'an RSVP of "%s" is NOT an answer, so silence still counts', (rsvp) => {
+      expect(contactState({ ...contacted, rsvp }, NOW).silent).toBe(true);
+    });
+
+  it('a guest is detected by SHAPE, so vendor evidence never leaks in', () => {
+    // A guest with rsvp:'pending' must not be rescued by a stray status field.
+    const s = contactState({ ...contacted, rsvp: 'pending', status: 'confirmed' }, NOW);
+    expect(s.silent).toBe(true);
+  });
+
+  it('a vendor is unaffected — no rsvp field means the evidence rule applies', () => {
+    expect(contactState({ ...contacted, contractSigned: true }, NOW).awaitingReply).toBe(false);
+    expect(contactState(contacted, NOW).silent).toBe(true);
+  });
+});
