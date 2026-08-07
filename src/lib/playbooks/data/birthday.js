@@ -91,7 +91,7 @@ const birthday = {
   ],
 
   risks: [
-    { id: 'r_headcount', trigger: 'Final headcount not locked by T-3d', severity: 'high', mitigation: 'Chase RSVPs; buy fresh after the count locks; round up ~10%, not 30%.' },
+    { id: 'r_headcount', trigger: 'Final headcount still not locked 3 days out', severity: 'high', mitigation: 'Chase RSVPs; buy fresh after the count locks; round up ~10%, not 30%.' },
     { id: 'r_cake', trigger: 'Cake ordered too late', severity: 'med', mitigation: 'Order 3–5 days ahead; have a grocery-cake backup.' },
     { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'low', mitigation: 'Buy ~1.5 lb ice/guest day-of; pre-chill drinks.' },
     { id: 'r_allergy', trigger: 'Kid food allergies not collected', severity: 'high', mitigation: 'Ask allergies with the invite; label nut-free options; keep a safe snack.' },

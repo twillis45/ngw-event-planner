@@ -94,12 +94,12 @@ const elopement = {
   ],
 
   risks: [
-    { id: 'r_license', trigger: 'Marriage license waiting period, witness requirement, or validity window not satisfied', severity: 'high', mitigation: 'Research the issuing county at T-75d; appear in person at T-7d (inside the validity window, past any waiting period); confirm witness count and that your officiant type is accepted.' },
-    { id: 'r_permit', trigger: 'No permit (or denied) for a park/site that requires one', severity: 'high', mitigation: 'Apply at T-60d; many parks cap permits and need 3–4+ weeks lead. Keep a no-permit fallback location (courthouse, private property) ready.' },
-    { id: 'r_photographer', trigger: 'Photographer unavailable or books out', severity: 'high', mitigation: 'Book at T-75d — top elopement photographers fill months ahead. Hold a backup, and a tripod+timer plan as last resort.' },
-    { id: 'r_weather', trigger: 'Storm, road/trail closure, or wildfire smoke at an outdoor site', severity: 'med', mitigation: 'Build buffer days into travel; pick a flexible date; pre-scout an indoor/lower-elevation alternate; check forecast + park alerts at T-1d.' },
+    { id: 'r_license', trigger: 'Marriage license waiting period, witness requirement, or validity window not satisfied', severity: 'high', mitigation: 'Research the issuing county at 75 days out; appear in person at a week out (inside the validity window, past any waiting period); confirm witness count and that your officiant type is accepted.' },
+    { id: 'r_permit', trigger: 'No permit (or denied) for a park/site that requires one', severity: 'high', mitigation: 'Apply at 2 months out; many parks cap permits and need 3–4+ weeks lead. Keep a no-permit fallback location (courthouse, private property) ready.' },
+    { id: 'r_photographer', trigger: 'Photographer unavailable or books out', severity: 'high', mitigation: 'Book at 75 days out — top elopement photographers fill months ahead. Hold a backup, and a tripod+timer plan as last resort.' },
+    { id: 'r_weather', trigger: 'Storm, road/trail closure, or wildfire smoke at an outdoor site', severity: 'med', mitigation: 'Build buffer days into travel; pick a flexible date; pre-scout an indoor/lower-elevation alternate; check forecast + park alerts the day before.' },
     { id: 'r_witness', trigger: 'State requires witnesses and the couple is eloping alone', severity: 'med', mitigation: 'Confirm the witness rule early; arrange the officiant, photographer, guide, or a willing stranger to sign — or choose a self-solemnize state.' },
-    { id: 'r_family', trigger: 'Family hurt by being excluded or surprised', severity: 'med', mitigation: 'Decide the tell-plan intentionally at T-60d; consider a heartfelt note, a video call into the moment, or a small gathering after.' },
+    { id: 'r_family', trigger: 'Family hurt by being excluded or surprised', severity: 'med', mitigation: 'Decide the tell-plan intentionally at 2 months out; consider a heartfelt note, a video call into the moment, or a small gathering after.' },
   ],
 
   contingencies: [

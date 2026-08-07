@@ -104,7 +104,7 @@ const ethiopianCoffeeCeremony = {
     { id: 'r_smoke', trigger: 'Indoor bean-roast + incense smoke triggers detectors or overwhelms the room', severity: 'med', mitigation: 'Roast outdoors or by an open door; run a vent hood/fan; crack windows; warn guests with respiratory sensitivity; keep incense modest.' },
     { id: 'r_fasting', trigger: 'No vegan/fasting option, or niter kibbeh hidden in "vegan" dishes on a fasting day', severity: 'med', mitigation: 'Always cook a full ye-tsom spread (shiro/misir/gomen) in plain oil; label dishes; confirm whether the date is a fasting day before finalizing the menu.' },
     { id: 'r_rush', trigger: 'Ceremony rushed; guests leave before the third (Baraka) round', severity: 'med', mitigation: 'Set expectations at invite that it runs ~2–3h; do not hurry the rounds — Baraka is the blessing and staying is the point.' },
-    { id: 'r_jebena', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at T-7d; season a new clay pot before the day; keep a backup brewing vessel.' },
+    { id: 'r_jebena', trigger: 'No jebena, or a new clay pot cracks/leaks unseasoned', severity: 'high', mitigation: 'Source/borrow the jebena at a week out; season a new clay pot before the day; keep a backup brewing vessel.' },
   ],
 
   contingencies: [

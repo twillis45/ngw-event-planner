@@ -96,8 +96,8 @@ const repast = {
 
   risks: [
     { id: 'r_family_cooking', trigger: 'The grieving family is being asked to cook or coordinate the meal', severity: 'high', mitigation: 'This is the one thing to protect against. A friend or committee carries the food and the details; the family is fed, not feeding. Accept every offer of help.' },
-    { id: 'r_noplace', trigger: 'No room reserved for after the burial', severity: 'high', mitigation: 'Confirm the fellowship hall, restaurant, or home at T-5d so people have somewhere to go straight from the service.' },
-    { id: 'r_food_gap', trigger: 'Too little food, or many duplicate dishes', severity: 'med', mitigation: 'One coordinator quietly tracks who is bringing what at T-4d, filling gaps so there is plenty and nothing is missing.' },
+    { id: 'r_noplace', trigger: 'No room reserved for after the burial', severity: 'high', mitigation: 'Confirm the fellowship hall, restaurant, or home at 5 days out so people have somewhere to go straight from the service.' },
+    { id: 'r_food_gap', trigger: 'Too little food, or many duplicate dishes', severity: 'med', mitigation: 'One coordinator quietly tracks who is bringing what at 4 days out, filling gaps so there is plenty and nothing is missing.' },
     { id: 'r_elders', trigger: 'Elders or the immediate family left standing, unfed, or without a plate to take home', severity: 'med', mitigation: 'Seat the elders and family first; serve them first; make up their to-go plates before the food runs low.' },
     { id: 'r_overwhelm', trigger: 'Someone is overcome with grief and has nowhere to step away', severity: 'low', mitigation: 'Keep a quiet room or a calm corner available, with water and tissues, so anyone can take a moment.' },
   ],

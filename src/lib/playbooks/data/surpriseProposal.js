@@ -103,12 +103,12 @@ const surpriseProposal = {
 
   risks: [
     { id: 'r_leak', trigger: 'The surprise leaks (someone talks, partner gets suspicious, plans visible on a shared device/calendar)', severity: 'high', mitigation: 'Keep the circle to 2-3 people doing a job; use a private device/incognito; vague cover-story language in texts; loop people in late and only as needed.' },
-    { id: 'r_ring', trigger: 'Ring not ready / wrong size by the date', severity: 'high', mitigation: 'Confirm size early (ask the circle); order at T-42d; custom runs 4-6 wk; pick up at T-5d and verify fit; size up if unsure (easier to size down).' },
-    { id: 'r_nophoto', trigger: 'No one captures the moment (photographer cancels / no-shows / mis-positioned)', severity: 'high', mitigation: 'Book early, confirm 48h out, scout positioning together at T-7d; have a backup shooter or a pre-set hidden phone on a tripod. You cannot re-shoot a real "yes".' },
-    { id: 'r_weather', trigger: 'Rain / extreme weather or a crowded "secret" spot', severity: 'med', mitigation: 'Confirm forecast at T-1d; pre-pick a Plan B location/time you love equally; choose a low-crowd weekday window; have an indoor fallback.' },
-    { id: 'r_permit', trigger: 'Park/venue blocks the setup (props, flowers, candles, sign — or even photography — need a permit)', severity: 'med', mitigation: 'Call the office at T-25d; get the permit; use LED not open flame; bring a no-setup fallback (handheld sign + bouquet) that needs no permit.' },
+    { id: 'r_ring', trigger: 'Ring not ready / wrong size by the date', severity: 'high', mitigation: 'Confirm size early (ask the circle); order at 6 weeks out; custom runs 4-6 wk; pick up at 5 days out and verify fit; size up if unsure (easier to size down).' },
+    { id: 'r_nophoto', trigger: 'No one captures the moment (photographer cancels / no-shows / mis-positioned)', severity: 'high', mitigation: 'Book early, confirm 48h out, scout positioning together at a week out; have a backup shooter or a pre-set hidden phone on a tripod. You cannot re-shoot a real "yes".' },
+    { id: 'r_weather', trigger: 'Rain / extreme weather or a crowded "secret" spot', severity: 'med', mitigation: 'Confirm forecast the day before; pre-pick a Plan B location/time you love equally; choose a low-crowd weekday window; have an indoor fallback.' },
+    { id: 'r_permit', trigger: 'Park/venue blocks the setup (props, flowers, candles, sign — or even photography — need a permit)', severity: 'med', mitigation: 'Call the office at 25 days out; get the permit; use LED not open flame; bring a no-setup fallback (handheld sign + bouquet) that needs no permit.' },
     { id: 'r_coverstory', trigger: 'Cover story falls apart — partner won\'t come, is underdressed, or is in a bad mood', severity: 'med', mitigation: 'Keep it simple, low-pressure, slightly exciting; rehearse it; recruit the partner\'s person to nudge timing/outfit; keep the date flexible if it goes sideways.' },
-    { id: 'r_logistics', trigger: 'Gates locked, lot closed, ring-bearer misses the cue, ring falls out of pocket', severity: 'low', mitigation: 'Scout closing/parking times at T-7d; brief the helper on the exact cue + handoff; slim secure ring box; arrive early.' },
+    { id: 'r_logistics', trigger: 'Gates locked, lot closed, ring-bearer misses the cue, ring falls out of pocket', severity: 'low', mitigation: 'Scout closing/parking times at a week out; brief the helper on the exact cue + handoff; slim secure ring box; arrive early.' },
   ],
 
   contingencies: [

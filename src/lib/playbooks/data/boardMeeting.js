@@ -92,12 +92,12 @@ const boardMeeting = {
   ],
 
   risks: [
-    { id: 'r_av', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end at T-1d; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
-    { id: 'r_quorum', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at T-3d against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
-    { id: 'r_packet', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at T-10d; distribute the full packet ~1 week out (T-7d); send a reminder pre-read at T-3d.' },
+    { id: 'r_av', trigger: 'Hybrid/AV fails — remote directors cannot see, hear, or be heard', severity: 'high', mitigation: 'Dry-run end-to-end the day before; have an AV/tech-support contact on call; keep a dial-in fallback and a backup hotspot.' },
+    { id: 'r_quorum', trigger: 'Not enough directors attend to meet quorum', severity: 'high', mitigation: 'Confirm RSVPs at 3 days out against the quorum threshold; offer remote join; if short, reschedule or limit to non-binding discussion.' },
+    { id: 'r_packet', trigger: 'Board packet late or incomplete — directors arrive unprepared', severity: 'high', mitigation: 'Hard report deadlines at 10 days out; distribute the full packet ~1 week out; send a reminder pre-read at 3 days out.' },
     { id: 'r_confidential', trigger: 'Confidential materials leaked or left behind', severity: 'high', mitigation: 'Use a permissioned portal with MFA; number printed copies and collect/shred them; confirm NDAs are on file before distribution.' },
-    { id: 'r_minutes', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at T-21d, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
-    { id: 'r_access', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at T-14d; send directions + a day-of contact with the dial-in details.' },
+    { id: 'r_minutes', trigger: 'No designated minute-taker / votes and action items not captured', severity: 'med', mitigation: 'Assign the minute-taker at 3 weeks out, free of facilitation duties; use roll-call voting so remote votes are recorded by name.' },
+    { id: 'r_access', trigger: 'External directors stuck at security/parking, meeting starts late', severity: 'med', mitigation: 'Pre-clear a visitor access list, badges, and parking at 2 weeks out; send directions + a day-of contact with the dial-in details.' },
   ],
 
   contingencies: [
@@ -143,7 +143,7 @@ const boardMeeting = {
   knowledge: {
     governanceVersion: '1.0.0',
     verificationStatus: 'synthesized',
-    note: 'Timelines and practices reflect widely-published corporate governance and meetings-operations guidance: agendas drafted with the chair ~3 weeks out, board packets assembled and distributed roughly one week before the meeting (commonly 7-10 days), quorum confirmed against the bylaw threshold before any binding vote, roll-call voting for hybrid/remote participation, a designated minute-taker free of facilitation duties, confidentiality enforced via permissioned portals with MFA or numbered-and-collected printed copies, and draft minutes circulated within ~48 hours. The hybrid/AV setup is treated as the highest-severity day-of failure point and is given a mandatory T-1d end-to-end test. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
+    note: 'Timelines and practices reflect widely-published corporate governance and meetings-operations guidance: agendas drafted with the chair ~3 weeks out, board packets assembled and distributed roughly one week before the meeting (commonly 7-10 days), quorum confirmed against the bylaw threshold before any binding vote, roll-call voting for hybrid/remote participation, a designated minute-taker free of facilitation duties, confidentiality enforced via permissioned portals with MFA or numbered-and-collected printed copies, and draft minutes circulated within ~48 hours. The hybrid/AV setup is treated as the highest-severity day-of failure point and is given a mandatory the day before end-to-end test. Authored as established-consensus / trade-heuristic and labeled synthesized until a foreground verification pass attaches citations. No fabricated sources.',
     sources: [],
   },
 };

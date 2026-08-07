@@ -115,12 +115,12 @@ const kwanzaaGathering = {
   ],
 
   risks: [
-    { id: 'r_meaning_skipped', trigger: 'It runs as just a dinner and the candle-lighting / principle discussion never happens', severity: 'high', mitigation: 'Lock the program at T-18d and assign who lights the candle, reads the principle, and pours the libation; build the ceremony into the timeline right before the meal so it can\'t get lost.' },
-    { id: 'r_symbols_missing', trigger: 'No kinara or the right candles on the night — the ceremony can\'t happen as intended', severity: 'high', mitigation: 'Confirm the Seven Symbols at T-14d and buy candles by T-3d (sets sell out late December); have a borrow/backup plan for the kinara and unity cup.' },
+    { id: 'r_meaning_skipped', trigger: 'It runs as just a dinner and the candle-lighting / principle discussion never happens', severity: 'high', mitigation: 'Lock the program at 18 days out and assign who lights the candle, reads the principle, and pours the libation; build the ceremony into the timeline right before the meal so it can\'t get lost.' },
+    { id: 'r_symbols_missing', trigger: 'No kinara or the right candles on the night — the ceremony can\'t happen as intended', severity: 'high', mitigation: 'Confirm the Seven Symbols at 2 weeks out and buy candles by 3 days out (sets sell out late December); have a borrow/backup plan for the kinara and unity cup.' },
     { id: 'r_candle_safety', trigger: 'Seven open flames near children, fabric (mkeka), and a crowded table', severity: 'med', mitigation: 'Place the kinara on a stable, heat-safe surface away from edges and reach of small children; never leave lit candles unattended; extinguish before guests leave.' },
     { id: 'r_respect', trigger: 'Theming or "explaining" Kwanzaa drifts into caricature, or it\'s framed as religious', severity: 'med', mitigation: 'Keep it dignity-first: Kwanzaa is cultural, not religious, created by Dr. Maulana Karenga in 1966; center the principles, the ancestors, and heritage; keep red/black/green restrained — never costume or kitsch.' },
-    { id: 'r_commercial_gifts', trigger: 'Zawadi default to last-minute commercial gifts, against the spirit of the day', severity: 'low', mitigation: 'Decide the gift approach at T-14d; favor handmade (Kuumba), heritage/educational, or Black-owned-sourced (Ujamaa) — especially for children.' },
-    { id: 'r_food_gaps', trigger: 'Potluck overlaps or leaves gaps in the Karamu spread', severity: 'low', mitigation: 'Assign dishes by category at T-4d (a main, greens, black-eyed peas, a starch, a dessert) so the communal table is complete.' },
+    { id: 'r_commercial_gifts', trigger: 'Zawadi default to last-minute commercial gifts, against the spirit of the day', severity: 'low', mitigation: 'Decide the gift approach at 2 weeks out; favor handmade (Kuumba), heritage/educational, or Black-owned-sourced (Ujamaa) — especially for children.' },
+    { id: 'r_food_gaps', trigger: 'Potluck overlaps or leaves gaps in the Karamu spread', severity: 'low', mitigation: 'Assign dishes by category at 4 days out (a main, greens, black-eyed peas, a starch, a dessert) so the communal table is complete.' },
   ],
 
   contingencies: [

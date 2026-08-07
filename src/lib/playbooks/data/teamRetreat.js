@@ -104,11 +104,11 @@ const teamRetreat = {
 
   risks: [
     { id: 'r_overschedule', trigger: 'Agenda packed back-to-back with no downtime', severity: 'high', mitigation: 'Default to a balanced agenda: cap working sessions, build in free afternoons/breaks, never stack three sessions in a row. Downtime is where bonding actually happens.' },
-    { id: 'r_dateconflict', trigger: 'Dates clash with holidays, deadlines, or key people out', severity: 'med', mitigation: 'Check team calendars and observances at T-85d before booking anything non-refundable.' },
-    { id: 'r_dietary', trigger: 'Dietary or accessibility needs unknown or unmet', severity: 'high', mitigation: 'Run a dietary + accessibility survey at T-30d; give every name and count to the caterer and venue; confirm step-free access and a quiet space.' },
+    { id: 'r_dateconflict', trigger: 'Dates clash with holidays, deadlines, or key people out', severity: 'med', mitigation: 'Check team calendars and observances at 85 days out before booking anything non-refundable.' },
+    { id: 'r_dietary', trigger: 'Dietary or accessibility needs unknown or unmet', severity: 'high', mitigation: 'Run a dietary + accessibility survey at 30 days out; give every name and count to the caterer and venue; confirm step-free access and a quiet space.' },
     { id: 'r_inclusion', trigger: 'Activity excludes some by fitness or alcohol assumption', severity: 'med', mitigation: 'Always offer a tiered/opt-out alternative activity and equal non-alcoholic options; survey comfort levels in advance.' },
     { id: 'r_travel', trigger: 'Flight delays / transfer gaps / lost attendees on arrival', severity: 'med', mitigation: 'Build an arrivals grid, share on-site contact numbers, add buffer before day-1 sessions, and arrange clear airport transfers.' },
-    { id: 'r_budget', trigger: 'Costs overrun — lodging and travel blow the budget', severity: 'high', mitigation: 'Lock budget at T-90d; track lodging (~35%) + F&B (20-30%) + transport against it; set clear per-diem/expense rules up front.' },
+    { id: 'r_budget', trigger: 'Costs overrun — lodging and travel blow the budget', severity: 'high', mitigation: 'Lock budget at 3 months out; track lodging (~35%) + F&B (20-30%) + transport against it; set clear per-diem/expense rules up front.' },
     { id: 'r_nofollowup', trigger: 'No follow-up — insights and decisions evaporate', severity: 'med', mitigation: 'Capture decisions + owners live; send a recap and feedback survey within a week so the work sticks.' },
   ],
 

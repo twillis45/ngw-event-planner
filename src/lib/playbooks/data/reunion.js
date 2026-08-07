@@ -283,9 +283,9 @@ const reunion = {
   ],
 
   risks: [
-    { id: 'r-rain', trigger: 'Rain or storms on an outdoor date', severity: 'high', mitigation: 'Commit a rain backup by T-7d: a reserved indoor space or tents on hold; do not rely on hope.' },
+    { id: 'r-rain', trigger: 'Rain or storms on an outdoor date', severity: 'high', mitigation: 'Commit a rain backup by a week out: a reserved indoor space or tents on hold; do not rely on hope.' },
     { id: 'r-heat', trigger: 'Hot day with too little shade or water', severity: 'medium', mitigation: 'Two shade canopies, extra water, ~2 lb ice/guest, and a shaded seating zone for elders and kids.' },
-    { id: 'r-headcount', trigger: 'Soft RSVPs across households — real count unknown', severity: 'high', mitigation: 'Chase by household at T-21d; plan food/ice/seating to the high end of the confirmed range.' },
+    { id: 'r-headcount', trigger: 'Soft RSVPs across households — real count unknown', severity: 'high', mitigation: 'Chase by household at 3 weeks out; plan food/ice/seating to the high end of the confirmed range.' },
     { id: 'r-potluck-gaps', trigger: 'Duplicate dishes / no hot entree from an uncoordinated potluck', severity: 'medium', mitigation: 'Assign by category or last-name letter on a sign-up; host backstops mains and staples.' },
     { id: 'r-lost-child', trigger: 'A child wanders off in a big multi-household crowd', severity: 'high', mitigation: 'Before the day: pick a clearly visible meeting spot with the kids, teach little ones to stay put and ask a person WITH CHILDREN for help, and sticker a phone number on the small ones. If a child goes missing: any water gets checked FIRST, and the call to police is IMMEDIATE — NCMEC is explicit that there is no waiting period (then 1-800-THE-LOST).' },
     { id: 'r-rental-cancel', trigger: 'The rental house falls through before the reunion', severity: 'high', mitigation: 'Platform reality (Airbnb/Vrbo policy pages): a host CAN cancel — penalties don’t stop it — and rebooking help plus a full refund is the remedy, so book through the platform’s own checkout, never off-platform. On arrival, photograph and report anything materially wrong WITHIN 72 HOURS (Airbnb’s hard window). Storm-season bookings have NO weather safety net from the platform — that’s event insurance. Pay deposits by credit card (the dispute clock runs 60 days from the statement — CFPB).' },
@@ -293,7 +293,7 @@ const reunion = {
     { id: 'r-family-tension', trigger: 'Old family tension flares mid-gathering', severity: 'medium', mitigation: 'Michigan State Extension’s advice: expect people not to change — make distance, not arguments; move rooms or seats instead of engaging, deliberately ignore baiting remarks, and watch the alcohol. A walk beats a showdown.' },
     { id: 'r-no-photo', trigger: 'Group photo never happens — people drift off', severity: 'medium', mitigation: 'Named shooter + a fixed early-to-mid-afternoon photo time announced at arrival.' },
     { id: 'r-trash', trigger: 'Park bins overflow under a big crowd', severity: 'low', mitigation: 'Bring heavy-duty bags, stage multiple labeled stations, and assign a cleanup crew.' },
-    { id: 'r-restroom', trigger: 'No usable restrooms at a remote site', severity: 'medium', mitigation: 'Confirm park facilities at booking or order a portable unit by T-36d.' },
+    { id: 'r-restroom', trigger: 'No usable restrooms at a remote site', severity: 'medium', mitigation: 'Confirm park facilities at booking or order a portable unit by 36 days out.' },
   ],
 
   contingencies: [

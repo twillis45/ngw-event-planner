@@ -165,7 +165,7 @@ const retirementParty = {
   ],
 
   risks: [
-    { id: 'r_headcount', trigger: 'Final headcount not confirmed by T-4d', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' },
+    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, food ~10-15%, not 30%.' },
     { id: 'r_surprise_leak', trigger: 'The surprise leaks, or the honoree arrives before guests are set', severity: 'med', mitigation: 'Mark every invite SURPRISE with a guests-arrive-by time 15-30 min early; pick one co-conspirator to control the honoree\'s arrival; have a lookout text "she\'s here".' },
     { id: 'r_speeches', trigger: 'Speeches run long / no mic / open-mic rambles / audience can\'t hear', severity: 'high', mitigation: 'Pre-assign 3-5 speakers at ~2-3 min, ALWAYS have a tested mic + speaker, seat the older crowd up front, lower the music before the toast.' },
     { id: 'r_slideshow_fail', trigger: 'Slideshow/video won\'t play day-of (wrong cable, dead device, no internet)', severity: 'med', mitigation: 'Export the slideshow to a local file, test it on the actual screen at setup, charge the device, and have a phone backup of the same file.' },

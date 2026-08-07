@@ -94,8 +94,8 @@ const graduation = {
 
   risks: [
     { id: 'r_headcount', trigger: 'Drop-in crowd under-estimated', severity: 'high', mitigation: 'Estimate total-through-the-day, not peak; over-provision food/drink ~10-15%; plan a quick resupply run.' },
-    { id: 'r_signs', trigger: 'Custom prints/signs ordered too late', severity: 'med', mitigation: 'Collect photos + order at T-10d; have a printable backup.' },
-    { id: 'r_weather', trigger: 'Outdoor open house, no rain/shade plan', severity: 'med', mitigation: 'Confirm canopy/indoor fallback at T-3d.' },
+    { id: 'r_signs', trigger: 'Custom prints/signs ordered too late', severity: 'med', mitigation: 'Collect photos + order at 10 days out; have a printable backup.' },
+    { id: 'r_weather', trigger: 'Outdoor open house, no rain/shade plan', severity: 'med', mitigation: 'Confirm canopy/indoor fallback at 3 days out.' },
     { id: 'r_alcohol_minors', trigger: 'Alcohol accessible to minors', severity: 'high', mitigation: 'Adults-only beverage area, monitored; default to limited/no alcohol if the grad and friends are minors.' },
     { id: 'r_flow', trigger: 'Buffet bottleneck / cold food', severity: 'low', mitigation: 'Double-sided buffet flow; chafing dishes to hold temperature; replenish in waves.' },
   ],

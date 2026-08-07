@@ -91,7 +91,7 @@ const gameNight = {
   risks: [
     { id: 'r_greasy', trigger: 'Messy, greasy, or saucy snacks at the game table', severity: 'med', mitigation: 'Dry, one-hand finger foods only; keep dips/messy items at a separate station with napkins + hand wipes.' },
     { id: 'r_rules', trigger: 'A new game stalls the night while everyone reads the rulebook', severity: 'med', mitigation: 'Read/queue the rules of any NEW game before guests arrive; be able to teach it in ~5 min; keep a known crowd-pleaser ready.' },
-    { id: 'r_pieces', trigger: 'A game is missing cards/dice/pieces, found after guests arrive', severity: 'med', mitigation: 'Open + check every box at T-3d; have at least one backup game.' },
+    { id: 'r_pieces', trigger: 'A game is missing cards/dice/pieces, found after guests arrive', severity: 'med', mitigation: 'Open + check every box at 3 days out; have at least one backup game.' },
     { id: 'r_seats', trigger: 'More players than seats at the table', severity: 'med', mitigation: 'Confirm headcount; set a real seat per guest at setup; keep folding chairs nearby.' },
     { id: 'r_light', trigger: 'Room too dim to read cards/boards', severity: 'low', mitigation: 'Add bright, even over-table lighting before doors; test it from each seat.' },
     { id: 'r_drinks', trigger: 'Short on drinks or ice late', severity: 'low', mitigation: 'Over-stock non-alcoholic + ice; keep a backup case + a spare bag of ice.' },

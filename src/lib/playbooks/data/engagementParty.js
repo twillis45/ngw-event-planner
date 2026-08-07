@@ -126,14 +126,14 @@ const engagementParty = {
   ],
 
   risks: [
-    { id: 'r_headcount', trigger: 'Final headcount not confirmed by T-4d', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.' },
+    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh AFTER headcount locks; over-provision drinks ~10%, not 30%.' },
     { id: 'r_underfood', trigger: 'Under-counting bites — guests treat it like dinner', severity: 'high', mitigation: 'Plan ~10-12 bites/guest and a grazing station; alcohol increases food appetite — round up, never down.' },
     { id: 'r_toast_flop', trigger: 'Toast runs long / open-mic rambles / no one can hear', severity: 'med', mitigation: 'Pre-assign 1-2 speakers at ≤2 min, pre-pour champagne, lower the music, gather the room before starting.' },
     { id: 'r_bar_bottleneck', trigger: 'One bar/one host can\'t keep up → a line forms', severity: 'med', mitigation: 'Batch the signature cocktail, self-serve beer/wine on ice, and hire or assign a dedicated pourer.' },
     { id: 'r_ice', trigger: 'No ice / warm bar', severity: 'med', mitigation: 'Buy ~1.5 lb ice/guest day-of; keep chilling ice separate from drink ice; pre-chill bottles 3-4h ahead.' },
     { id: 'r_champagne_short', trigger: 'Not enough flutes or champagne for everyone to toast', severity: 'med', mitigation: 'Provision ~1 flute/guest and ~1 bottle per 6-8; a guest with an empty hand during the toast is a visible miss.' },
     { id: 'r_overserved', trigger: 'A guest gets visibly over-served', severity: 'med', mitigation: 'Keep substantial food flowing, push the zero-proof option, slow pours late, and have rideshare/numbers ready.' },
-    { id: 'r_weather', trigger: 'Outdoor party + bad weather', severity: 'med', mitigation: 'Confirm a rain plan / indoor fallback or tent at T-7d; cocktail format makes a smaller footprint easier to move inside.' },
+    { id: 'r_weather', trigger: 'Outdoor party + bad weather', severity: 'med', mitigation: 'Confirm a rain plan / indoor fallback or tent at a week out; cocktail format makes a smaller footprint easier to move inside.' },
   ],
 
   contingencies: [
