@@ -5003,4 +5003,4 @@ button.vc-pill::after{
   padding-left:16px; padding-right:16px; font-size:14px; min-height:40px; }
 /* The picked row keeps a quiet mark so the pane and its source stay tied. */
 .hero.elegant .ef-row.is-picked .t{ color:var(--ink); }
-.hero.elegant .ef-row.is-picked{ box-shadow:inset 2px 0 0 var(--steel-soft); padding-left:10px; }
+.hero.elegant .ef-row.is-picked{ box-shadow:inset 2px 0 0 var(--steel-soft); padding-left:12px; }
