@@ -4962,3 +4962,45 @@ button.vc-pill::after{
   border-left:1px solid var(--line);
   padding-left:20px;
 }
+
+/* ══ THE CONTEXT PANE — the third column's SELECTED state ════════════════════
+   :3582's standing ruling is "rail + main + on-demand detail: extra width buys
+   measure and density, NEVER a permanent third pane." The stat column violated
+   it. This is the other half: the same 309px region, two states.
+
+       resting   .bento  — where you stand: the six named plan parts, guests, budget
+       selected  .cpane  — the picked row, gathered
+
+   Same cell, so nothing reflows when it flips and the composition never gains a
+   fourth region. `.bento` steps aside rather than the pane stacking beneath it —
+   two "where you stand" columns at once would be the double-telling this screen
+   keeps killing. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .cpane{
+  grid-column:3; grid-row:1 / span 2;
+  align-self:start;
+  border-left:1px solid var(--line);
+  padding-left:20px;
+  display:flex; flex-direction:column; gap:8px;
+}
+/* The resting state yields the cell to the selected one. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .cpane ~ .bento,
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant:has(> .cpane) > .bento{
+  display:none;
+}
+.cpane-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.cpane-eyebrow{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; }
+.cpane-x{ background:none; border:none; color:var(--faint); font-size:16px; line-height:1;
+  cursor:pointer; padding:4px 8px; margin:-4px -8px 0 0; font-family:inherit; }
+.cpane-x:hover{ color:var(--ink-soft); }
+.cpane-title{ font-size:16px; font-weight:650; color:var(--ink); margin:4px 0 0; line-height:1.3; }
+.cpane-why{ font-size:12.5px; font-weight:500; color:var(--steel-soft); margin:0; line-height:1.45; }
+/* Time pressure keeps the one urgency accent the row already uses, so the same
+   fact does not change colour between the row and its own detail. */
+.cpane-why[data-reason="time"]{ color:var(--warn); }
+.cpane-line{ font-size:12.5px; font-weight:400; color:var(--muted); margin:0; line-height:1.45; }
+.cpane-dest{ color:var(--faint); }
+.cpane-cta{ margin-top:8px; align-self:start; width:auto; flex:0 0 auto; max-width:none;
+  padding-left:16px; padding-right:16px; font-size:14px; min-height:40px; }
+/* The picked row keeps a quiet mark so the pane and its source stay tied. */
+.hero.elegant .ef-row.is-picked .t{ color:var(--ink); }
+.hero.elegant .ef-row.is-picked{ box-shadow:inset 2px 0 0 var(--steel-soft); padding-left:10px; }

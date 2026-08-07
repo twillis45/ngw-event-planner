@@ -4682,6 +4682,23 @@ export default function HostShellV2() {
     );
   };
 
+  // ── THE CONTEXT COLUMN HAS TWO STATES, NOT ONE (board, 2026-08-07) ────────
+  // `styles.css:3582` carries a standing ruling: "rail + main + on-demand
+  // detail: extra width buys measure and density, NEVER a permanent third
+  // pane." The stat column I built violated it — a 288px region reserved
+  // permanently and empty below the budget block in six of six renders.
+  //
+  // The design seat's reading, twice on the record: the stats are not a stat
+  // column, they are the RESTING STATE of the context column — what it shows
+  // when nothing is selected. Select a row and the same column becomes that
+  // row's detail. One structure, two states, no leftover. That is also UX_04's
+  // Zone 4 ("updates instantly on selection change, no loading spinner for
+  // local data"), which the Event Command mapping table marked "not applicable"
+  // back when this surface had tabs. It has a rail now, and no tabs.
+  //
+  // Desktop only. On a phone a tap must still navigate — a preview pane on a
+  // 393px screen is the full screen, so there is nothing to preview INTO.
+  const [detail, setDetail] = useState(null);
   // ── THE SAME QUESTION TWICE ON ONE SCREEN (board wave 2, 2026-08-07) ──────
   // Consolidating the four venue copies made them the same control; it did not
   // stop two of them RENDERING AT ONCE. Driven at 1440 on a venue-less event:
@@ -7718,7 +7735,24 @@ export default function HostShellV2() {
                         // does appear. No model, no invented text.
                         const reason = getActionReason(a, { event, moneyRows });
                         return (
-                          <button key={String(a.id || i)} className="ef-row" onClick={() => { if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason); openThen(a, String(a.id || (i + 1))); }}>
+                          <button key={String(a.id || i)} className={'ef-row' + (detail && detail.a && String(detail.a.id) === String(a.id) ? ' is-picked' : '')}
+                            onClick={() => {
+                              if (reason) trackReason(ANALYTICS.ROW_WITH_REASON_CLICKED, a, reason);
+                              // UX_04 Zone 4: on a real canvas a click SELECTS and the
+                              // pane previews; the pane carries the CTA that navigates.
+                              // On a phone the click still navigates, because there is
+                              // no second region to preview into.
+                              if (railUp) {
+                                // `go` is captured HERE, at selection, because
+                                // openThen lives inside this row's IIFE and the
+                                // pane renders outside it. Storing the closure
+                                // keeps the pane's CTA on the row's own path
+                                // rather than re-deriving a route from the id.
+                                setDetail({ a, key: String(a.id || (i + 1)), reason, go: () => openThen(a, String(a.id || (i + 1))) });
+                                return;
+                              }
+                              openThen(a, String(a.id || (i + 1)));
+                            }}>
                             <span className="t">{t}</span>
                             {reason && <span className="ef-why" data-reason={reason.type}>{reason.text}</span>}
                             <span className="ef-r">{cnt != null && <span className="ef-cnt">{cnt}</span>}{goes && <span className="ef-g" aria-hidden="true">→</span>}</span>
@@ -8220,6 +8254,45 @@ export default function HostShellV2() {
                   </div>
                 </button>
               </div>
+
+              {/* ── THE CONTEXT PANE — the column's SELECTED state ──────────────
+                  Renders only when a row is picked and only on a real canvas.
+                  Every field below is already computed and already rendered
+                  somewhere on this surface — the title, `getActionReason`'s one
+                  reason ("no model, no invented text"), the engine's own
+                  consequence and due, and `describeRoute`'s destination. The
+                  pane INVENTS NOTHING; it gathers what the row could only hint
+                  at in a single line.
+                  The CTA is the row's original handler, so selecting never
+                  costs the host the navigation the row used to do — it defers
+                  it behind one deliberate click. */}
+              {detail && railUp && (() => {
+                const a = detail.a || {};
+                const reason = detail.reason;
+                const dest = (() => { try { return describeRoute(a.route, event); } catch { return null; } })();
+                const due = Number.isFinite(a.dueInDays) ? a.dueInDays : null;
+                return (
+                  <aside className="cpane" aria-label="Selected item">
+                    <div className="cpane-head">
+                      <span className="cpane-eyebrow">Selected</span>
+                      <button className="cpane-x" onClick={() => setDetail(null)} aria-label="Close detail">×</button>
+                    </div>
+                    <h3 className="cpane-title">{String(a.title || '').replace(/\.+$/, '')}</h3>
+                    {reason && reason.text && (
+                      <p className="cpane-why" data-reason={reason.type}>{reason.text}</p>
+                    )}
+                    {a.consequence && <p className="cpane-line">{a.consequence}</p>}
+                    {due != null && (
+                      <p className="cpane-line">{due === 0 ? 'Due today' : due < 0 ? `${Math.abs(due)} days past` : `${due} days from now`}</p>
+                    )}
+                    {a.gateHolder && <p className="cpane-line">Waiting on {a.gateHolder}</p>}
+                    {dest && <p className="cpane-line cpane-dest">Resolves in {dest}</p>}
+                    <button className="cta cpane-cta" onClick={() => { const go = detail.go; setDetail(null); if (go) go(); }}>
+                      {String(a.title || '').replace(/\.+$/, '')}
+                    </button>
+                  </aside>
+                );
+              })()}
               {/* NEXT — out of the grid, anchored to the bottom of the hero
                   viewport (margin-top:auto) so it rides just above the dock.
                   DENSITY (2026-07-16): the pinned .next-bar already names the first
