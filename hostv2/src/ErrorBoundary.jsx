@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { captureError } from '@app/lib/sentry';
 
 // The whole app had zero error boundaries: any uncaught render error anywhere
 // in the tree unmounts everything and shows nothing — "the app disappears"
@@ -18,6 +19,10 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] caught:', error, info.componentStack);
+    // A caught render crash is the single most useful thing to report: the host
+    // is looking at the fallback right now. Until 2026-08-07 this was console
+    // only, so nobody ever learned it happened. captureError never throws.
+    captureError(error, { where: 'ErrorBoundary', componentStack: info && info.componentStack });
   }
 
   render() {
