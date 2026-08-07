@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-07 (late) - viewport port session
 
 ---
 
@@ -75,7 +75,83 @@ returns an empty page (83 chars, no results). That field is a location.
 
 ---
 
-## 2. Gates -- all green locally at `0d273115` (2026-08-06)
+## 1b. The viewport port landed - 2026-08-07 late session
+
+**HEAD `b60095c4`.** Seven commits, each driven live before it was committed.
+
+| Commit | What |
+|---|---|
+| `cf0336c0` | the persistent section rail - `data-rail` was computed, written to the DOM, and consumed by NOTHING |
+| `25cb4f17` | the two-pane data grid retired - it produced up to **1344px of vertical void** |
+| `1c1eb799` | the command hero had a SECOND rail, and it was empty |
+| `bf584f86` | guest metadata laid out in aligned tracks |
+| `2e60f68b` | the column header, derived from shared track variables |
+| `0ba26511` + `56cd97f0` | the reply chip measured to the end - it is not a layout bug |
+| `b60095c4` | a full-width primary CTA is a phone affordance (1220px -> 500px) |
+
+**Measured before -> after, driven at 1024/1440/1920 plus real Chrome:**
+
+```
+dead space     1440: 4% -> 3%      1920: 33% -> 22%   (18% on data sheets)
+legacy sheet   1440: 73% -> 3%     1920: 80% -> 22%
+guest tracks   header cells sit at delta 0 over name / kids / meal / dietary
+rail           16 doors - icons - 44px rows - no truncation - no h-overflow
+```
+
+**The rail is not a new surface.** It renders the same `sectionGroups()` the Sections
+sheet renders, through the same `goToSection()`. Adding a door adds it to both, by
+construction - `src/lib/sectionDirectory.js`.
+
+**`showsRail()` no longer asks the surface.** It first withheld the rail at desktop on
+any sheet still wearing the phone silhouette; driven, that made navigation VANISH when
+you used it (open settings at 1920 -> 1500px canvas drops to a 393px phone, 80% dead, no
+rail). The fix was not to withhold the rail, it was to stop those surfaces being phones
+while a rail is up. Pinned by a test asserting every sheet in a band gives the same
+answer, so it can never start blinking again.
+
+### Three defects only DRIVING found
+
+1. **The rail was dead whenever a sheet was open.** `.sheet-scrim` is
+   `position:absolute; inset:0` and `.app` is not a positioned ancestor, so it resolved
+   against the whole grid. You could open Budget from the rail and then never reach
+   Guests. The sheet and its scrim now belong to the CONTENT column.
+2. **Rail rows measured 35px** - under the 44px floor, and tablet-land is a touch device.
+3. **The measure cap matched nothing, twice** - once as `68ch`, once as `> .app .sheet`
+   when `.sheet` is a DIRECT CHILD of `.stagewrap`.
+
+### Still open on wide - all measured, none guessed
+
+- **The command surface is still a stretched mobile column.** Host, in Chrome: "command
+  is just a version of the mobile in column 2." `UX_04` wants zones - a command header
+  carrying 3-4 stat cards from real data, then the priority lane, then the work. Instead:
+  no stat cards (24 guests / $24,000 are buried at the BOTTOM under "WHERE YOU STAND"),
+  progress stranded far-right with nothing near it, and the fold handle - a pure phone
+  affordance - mid-canvas. **This is a board call**: it would be the third re-zone of the
+  same `grid-template-areas` element.
+- **Reference rows are uncapped**, arrows ~1200px from their labels (:201 recorded this
+  same defect once already). Four selectors written for it matched NOTHING and were
+  deleted rather than left as dead CSS.
+- **The reply chip is 320px** because the inline RSVP picker lives INSIDE its trigger
+  button, so the trigger's min-content is ~320px. Chain measured end to end in
+  `56cd97f0`. The real fix moves the picker out of the trigger - a change to the RSVP
+  control on every viewport, so it is a board call, not a stylesheet tweak.
+- **No on-demand detail pane, no filter/view switcher.** The two remaining leader
+  patterns. Note the board already killed a PERMANENT third pane, so detail must be
+  on-demand only.
+
+**Honest score vs leaders on wide: ~8.5/10.** Parity on persistent rail, no vertical
+void, and aligned tracks with a header. Not parity on the three items above.
+
+---
+
+## 2. Gates
+
+**At `b60095c4` (2026-08-07): Jest 5623 passed / 1 skipped - 375 suites.** hostv2 build
++ `check-parity` green. **NOT RUN: the full Playwright matrix against this bundle** - it
+now carries `desktop` (1440x900) and `wide` (1920x1080) projects, so the largest CSS
+features in the repo are reachable by CI for the first time. Run it.
+
+Historical, at `0d273115` (2026-08-06):
 
 Jest **5430 passed / 1 skipped** - **358 suites** - `gate:cra` GREEN (242 of 245
 baselined) - `gate:hostv2` GREEN (no drift, 14 files, after `sync:hostv2`) -
@@ -156,6 +232,27 @@ Four things to hold in your head:
 
 ## 5. Next actions, in order
 
+**0. KILL THE OTHER SESSION FIRST.** Two Claude sessions shared this tree on 2026-08-07
+and it cost real time - duplicated work on the tap-target fix and vendor-silence, and one
+`git add -A` that swept the other session's in-flight files into an unrelated commit.
+Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before editing
+`HostShellV2.jsx` or `styles.css`. **Commit single-file in a shared tree.**
+
+**1. Run the full Playwright matrix** against the current bundle. It has never run with
+the new `desktop` + `wide` projects.
+
+**2. The command-surface redesign - BOARD CALL.** See 1b. UX_04 zones, stat cards from
+data already in scope, and the fold handle that should not exist on a wide canvas.
+
+**3. Two more board calls, both recorded with measurements:** move the RSVP picker out of
+its trigger; add an on-demand detail pane (permanent third pane already refused).
+
+**4. Find the reference rows** and cap their measure. Four guesses matched nothing.
+
+Then the pre-existing queue below - the grounding-coverage supply problem remains the
+binding constraint on the product, and none of the viewport work touched it.
+
+
 1. **Land #82**, then the two commits after it. All gates green locally.
 2. **The room-block half of lodging is still dark** - the biggest open item, and it is a
    RECONNECTION not a build. A review board convened 2026-08-06 (8 seats, full ruling in
@@ -191,6 +288,38 @@ Four things to hold in your head:
 ---
 
 ## 6. Traps -- do not re-derive these
+
+- **A CSS RULE THAT MATCHES NOTHING IS INDISTINGUISHABLE FROM ONE THAT WORKS.** Five
+  times in one day (2026-08-07): `68ch`, `> .app .sheet` (`.sheet` is a direct child of
+  `.stagewrap`, not inside `.app`), a `.ghead` rule with no markup, four uncapped-row
+  selectors, and the `.seclist`/`.statcard` names already recorded at :3517. **Read the
+  computed box, never the selector.** `getBoundingClientRect()` and `getComputedStyle`
+  are the only evidence.
+- **INLINE STYLES BEAT THE STYLESHEET, and this shell is full of them.** Three in one
+  row: the guest row button's `display:block`, the metadata span's `gap:6`, and the
+  reply control's flex. Each needed `!important` and each was found by measuring, not
+  reading. If a rule "should" apply and the box disagrees, suspect an inline style first.
+- **`min-width:auto` floors a flex item at its MIN-CONTENT.** The reply chip reported
+  `flex: 0 0 96px` AND `width: 320px` simultaneously, which looks impossible. It is not:
+  the trigger button contains the inline RSVP picker, so its min-content is ~320px and
+  the basis was legally overridden. Nothing was fighting the rule; the rule was never
+  allowed to win.
+- **`--responsive-command` / `--responsive-data` are SURFACE IDENTITY, NOT BREAKPOINTS.**
+  Those classes are on the stagewrap at 393px too. A rule written for the data tier and
+  left outside a media query WILL hit the phone - it gave a 353px phone row 88px/132px
+  fixed metadata tracks. Gate on `[data-rail="1"]` or a media query, always.
+- **A percentage cannot be a shared column track.** `24%` of the row button drifted the
+  metadata tracks 8px, because the button's width changes per row with the reply chip
+  beside it ("Yes" 43px vs "No reply" ~75px). Use `vw` or a fixed length.
+- **`E2E_BASE=1` is required for `vite preview`** or the asset base does not match and
+  NOTHING mounts - the page renders an empty `#root` and looks like a crashed app. The
+  playwright config sets it; a hand-started preview must too.
+- **Kill orphaned `vite preview` processes before an e2e run.** Port 5233 with
+  `strictPort` + `reuseExistingServer:false` means an orphan blocks the run, and a reused
+  one would test a STALE bundle. Two orphans were found on 2026-08-07.
+- **Never rebuild `dist` while playwright is running against it** - the preview serves
+  that directory, so the run silently tests a half-swapped bundle. One full matrix run
+  was invalidated this way and had to be killed.
 
 - **Bare `npm test` HANGS** (watch mode). Always `CI=true`. Backend is **pytest**;
   `demo/backend` has no `package.json`.
