@@ -3604,3 +3604,62 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      targets read as one slab and a thumb lands between them. */
   .lc-ctas > * + * { margin-top: 8px; }
 }
+
+/* ══ TOUCH TARGETS — Apple HIG 44pt / WCAG 2.5.5 ═══════════════════════════
+   Measured live at 390px: 8 of 23 interactive elements (35%) fell under 44px
+   in at least one dimension, 3 of them under 32px tall. Every one was a
+   FULL-WIDTH row or a pill, so width was never the problem — height was:
+     .decopt-disc  350x26     .later-row  350x35
+     .watch-row    350x37     .pill       267x27 / 247x27
+   They clear WCAG 2.5.8 AA (24px) and fail 2.5.5 AAA and the HIG minimum,
+   which is the standard that matters on a phone held one-handed.
+
+   TWO different fixes, because the two cases are not the same problem.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ROWS grow. They are already full-bleed list rows, so height is free — nothing
+   reflows, the text stays on its own baseline, and the row simply becomes as
+   tall as a thumb. align-items keeps the label optically where it already sat. */
+.app-elegant .decopt-disc,
+.hero.elegant .watch-row,
+.later-row{
+  min-height:44px;
+  display:flex; align-items:center;
+}
+/* watch-row deliberately keeps its top alignment: its rows wrap to two lines and
+   centring a wrapped row moves the first line off the rhythm of the ones above. */
+.hero.elegant .watch-row{ align-items:flex-start; padding-block:12px; }
+
+/* PILLS DO NOT GROW. A pill is a chip — inflating it to 44px would make the
+   quietest element on the surface one of the loudest, which is the opposite of
+   what Studio Matte asks for and would fail the "one loud thing per screen"
+   rule to satisfy an accessibility one. Instead the VISUAL size is untouched
+   and only the HIT AREA is expanded, with a transparent overlay centred on the
+   pill. The pill still reads as a chip and still catches a thumb.
+   Scoped to interactive pills only — a pill used as a static label must not
+   claim 44px of the surface's tap space for nothing. */
+button.pill, .pill[role="button"], a.pill{ position:relative; }
+button.pill::after, .pill[role="button"]::after, a.pill::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  height:44px; min-width:44px;
+  /* pointer-events stay on the pseudo-element so the expanded area is what the
+     thumb actually hits; it is transparent, so nothing about the look changes. */
+}
+/* A coarse pointer is the only place this matters. On a mouse the cursor is
+   precise and a 44px invisible box can swallow a neighbouring hover. */
+@media (hover:hover) and (pointer:fine){
+  button.pill::after, .pill[role="button"]::after, a.pill::after{ content:none; }
+}
+
+/* A save that failed is not a toast (2026-08-06). It stays until a write
+   succeeds, because the host is still typing when it fires and a message that
+   disappears is how a silent failure stays silent. --warn is the existing
+   urgency token; this is not an error state to panic about, it is a fact she
+   needs in front of her with the one action that preserves her work. */
+.save-failed{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin:8px 0 0; padding:10px 14px; border-radius:var(--r-row);
+  background:var(--bg-band); border:1px solid var(--warn); color:var(--ink);
+  font:600 13px/1.4 Inter,sans-serif;
+}
