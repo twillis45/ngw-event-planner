@@ -417,6 +417,13 @@ const TYPE_GROUPS = (() => {
 // (Egg/Soy allergy, Diabetic-friendly) still count toward headcount tracking
 // — same honest limit legacy has for those.
 const DIET_TAGS = ['Vegetarian', 'Vegan', 'Pescatarian', 'Gluten-free', 'Dairy-free', 'Nut allergy', 'Shellfish', 'Halal', 'Kosher', 'Alcohol-free', 'Egg allergy', 'Soy allergy', 'Diabetic-friendly'];
+// The four replies, as [stored value, visible label]. MODULE SCOPE ON PURPOSE:
+// the picker's key handler and its render both walk this list, and a const
+// declared inside the component is how this file produced a whole-component
+// render throw earlier today (a below-declaration reference inside an
+// expression, which nothing warns about). '' is a real state — "no reply" is
+// not the absence of an answer, it is the answer the roster starts with.
+const RSVP_VALUES = [['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'No reply']];
 // Guest free-text "needs" → a DIET_TAG, so a per-guest RSVP note ("gluten
 // free please") can be merged into dietCounts without retyping (parity:
 // App.js:10831, tagFor).
@@ -5063,7 +5070,7 @@ export default function HostShellV2() {
               <span className="of" style={{ color: matches ? 'var(--ok)' : 'var(--warn)', fontWeight: 600 }}>
                 {matches ? 'Matches confirmed — ' + held : 'Held at ' + held + ' · ' + yes + ' confirmed'}
               </span>
-              <button className="mini" onClick={() => setChoiceOpen('catererCount')}>change</button>
+              <button className="mini" onClick={() => setChoiceOpen('catererCount')}>Change</button>
             </div>
           </div>
         );
@@ -7030,7 +7037,7 @@ export default function HostShellV2() {
                                     <span className="of">arrives</span>
                                     <input className="field" type="time" value={conflictTime} onChange={e => setConflictTime(e.target.value)} style={{ maxWidth: 130, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} aria-label="Arrival time" />
                                     <button className="mini" disabled={!conflictTime} style={!conflictTime ? { opacity: .45 } : undefined} onClick={() => applyCustomTime(conflictTime)}>Set it</button>
-                                    <button className="mini" onClick={() => setConflictTime(null)}>never mind</button>
+                                    <button className="mini" onClick={() => setConflictTime(null)}>Never mind</button>
                                   </div>
                                 </div>
                               ))}
@@ -7481,7 +7488,7 @@ export default function HostShellV2() {
                             }}>
                             set it aside
                           </button>
-                          <button className="mini" onClick={() => setSnoozePick(null)}>never mind</button>
+                          <button className="mini" onClick={() => setSnoozePick(null)}>Never mind</button>
                         </div>
                       )}
                       {isHero && heroReceipt && (
@@ -9364,7 +9371,7 @@ export default function HostShellV2() {
                           <span style={{ flex: 1, minWidth: 0 }}>{r.segment}{r.vendorName ? ' — ' + r.vendorName : ''}{r.owner && r.owner !== r.vendorName ? <span style={{ color: 'var(--carbon-muted)' }}> · {r.owner}</span> : null}
                             {!r.time && r.rel && <span style={{ color: 'var(--carbon-muted)' }}> · {r.rel}</span>}</span>
                           {clash && <span className="tag plan" style={{ color: 'var(--warn)', background: 'var(--warn-tint)' }}>overlaps</span>}
-                          {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>done</span>}
+                          {r.done && <span className="tag plan" style={{ color: 'var(--ok)', background: 'var(--ok-tint)' }}>Done</span>}
                           {/* DRAG HANDLE (host ask 2026-07-28) — pointer-drag reorders (touch
                               included; touch-action none keeps scroll from hijacking), arrow
                               keys nudge one slot for keyboard/SR users. Real stroke SVG grip
@@ -10267,10 +10274,10 @@ export default function HostShellV2() {
                             <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of">{r.because}</span>
                               {(canChange || editorKind) && !changeOpen && (
-                                <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>change</button>
+                                <button className="mini" onClick={() => setChoiceOpen('dec-' + r.id)}>Change</button>
                               )}
                               {!why && whyOpen !== r.id && (
-                                <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>note why</button>
+                                <button className="mini" onClick={() => { setWhyOpen(r.id); setWhyText(''); }}>Note why</button>
                               )}
                             </span>
                           </div>
@@ -10291,7 +10298,7 @@ export default function HostShellV2() {
                               <input className="field" style={{ maxWidth: 'none', flex: 1, fontSize: 'var(--t-input)', padding: 'var(--sp-2) var(--sp-3)' }}
                                 placeholder="Why this call? — in your own words" value={whyText}
                                 onChange={e => setWhyText(e.target.value)} aria-label={'Why ' + r.label} />
-                              <button className="mini" onClick={() => saveWhy(r)}>save</button>
+                              <button className="mini" onClick={() => saveWhy(r)}>Save</button>
                             </div>
                           )}
                         </div>
@@ -12638,7 +12645,7 @@ export default function HostShellV2() {
                   {picked && (
                     <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>
                       Seating {picked.name} — tap a table below.{' '}
-                      <button className="mini" onClick={() => setSeatPick(null)}>never mind</button>
+                      <button className="mini" onClick={() => setSeatPick(null)}>Never mind</button>
                     </p>
                   )}
                   {sp.unassigned.length > 0 && (
@@ -12774,7 +12781,7 @@ export default function HostShellV2() {
                             <span className="tsel-title">{st.label} — {cap
                               ? st.count + ' of ' + cap + (st.count < cap ? ' · ' + (cap - st.count) + ' open' : st.count > cap ? ' · over capacity' : ' · full')
                               : st.count + ' seated'}</span>
-                            <button className="mini" onClick={() => setSeatSelTable(null)}>close</button>
+                            <button className="mini" onClick={() => setSeatSelTable(null)}>Close</button>
                           </div>
                           {st.count === 0
                             ? <p className="v-meta" style={{ margin: '4px 0 0' }}>Empty — tap a name above, then this table, or drag someone here.</p>
@@ -12782,7 +12789,7 @@ export default function HostShellV2() {
                               <div key={g.id} className="tsel-row">
                                 <span className="tsel-name">{g.name}</span>
                                 {guestSub(g) && <span className="v-meta" style={{ flex: 1 }}>{guestSub(g)}</span>}
-                                <button className="mini" onClick={() => unseatGuest(g)}>unseat</button>
+                                <button className="mini" onClick={() => unseatGuest(g)}>Unseat</button>
                               </div>
                             ))}
                         </div>
@@ -14423,7 +14430,7 @@ export default function HostShellV2() {
                     <div className={'brow' + (sheet.focus === 'diet' ? ' rowfocus' : '')} style={{ marginBottom: 'var(--sp-3)', borderRadius: 'var(--r-md)', padding: 'var(--sp-2) 6px' }}>
                       <div className="shelf-label" style={{ marginBottom: 6 }}>
                         Dietary needs {anyDiet ? '' : '— none counted yet'}
-                        <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={closeDiet}>done</button>
+                        <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={closeDiet}>Done</button>
                       </div>
                       {active.length > 0 && (
                         <>
@@ -14542,7 +14549,7 @@ export default function HostShellV2() {
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)' }}>
                       Your choices
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>done</button>
+                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setFoodSect(m => ({ ...m, choices: false })); setChoiceOpen(null); }}>Done</button>
                     </div>
                     {foodPlan.choices.map(d => {
                       // AUTO-COLLAPSE (host request): a made choice folds to its
@@ -14555,7 +14562,7 @@ export default function HostShellV2() {
                             <span>{d.label}</span>
                             <span style={{ display: 'flex', gap: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of" style={{ color: 'var(--ok)', fontWeight: 600 }}>{picked}</span>
-                              <button className="mini" onClick={() => setChoiceOpen(d.id)}>change</button>
+                              <button className="mini" onClick={() => setChoiceOpen(d.id)}>Change</button>
                             </span>
                           </div>
                         );
@@ -14608,7 +14615,7 @@ export default function HostShellV2() {
                   <>
                     <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span>How it’s sourced</span>
-                      <button className="mini" onClick={() => setFoodSect(m => ({ ...m, sourced: false }))}>done</button>
+                      <button className="mini" onClick={() => setFoodSect(m => ({ ...m, sourced: false }))}>Done</button>
                     </div>
                     {/* Figma 378:94 parity — each sourcing tier is a full-width
                         bordered CARD (name + current/switch badge + a grounded sub),
@@ -14659,7 +14666,7 @@ export default function HostShellV2() {
                 {foodSect.list && (
                   <div className="shelf-label" style={{ margin: '10px 0 var(--sp-2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span>The list</span>
-                    <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>done</button>
+                    <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>
                   </div>
                 )}
                 {/* Bulk price-lock — parity with legacy's "Use typical prices for
@@ -15376,7 +15383,7 @@ export default function HostShellV2() {
                   <div style={{ marginBottom: 'var(--sp-3)' }}>
                     <label className="shelf-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '0 0 var(--sp-1)' }} htmlFor="metro-market-pick">
                       <span>Which market are you in?</span>
-                      <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>done</button>
+                      <button className="mini" onClick={() => setSheet(s => ({ ...s, marketOpen: false }))}>Done</button>
                     </label>
                     <select id="metro-market-pick" className="field" value={event.metroMarket || ''}
                       onChange={e => {
@@ -16309,7 +16316,7 @@ export default function HostShellV2() {
                       // own "Pick a number, or set your own" header carries it, so no shelf-label
                       // to repeat "Change the number"); just a right-aligned done to collapse.
                       <div style={{ marginTop: 14 }}>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 var(--sp-2)' }}><button className="mini" onClick={() => { setBudgetFoldOpen(false); setBudgetChanging(false); }}>done</button></div>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '0 0 var(--sp-2)' }}><button className="mini" onClick={() => { setBudgetFoldOpen(false); setBudgetChanging(false); }}>Done</button></div>
                         {budgetEditorBlock(true)}
                       </div>
                     ) : (
@@ -16335,7 +16342,17 @@ export default function HostShellV2() {
                 <div style={{ marginTop: 'var(--sp-3)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>Add names — one per line</div>
                   <textarea className="field" style={{ maxWidth: 'none', minHeight: 74, resize: 'vertical', fontSize: 'var(--t-input)', fontWeight: 500 }}
-                    placeholder={'Denise & Ray\nThe Okafors\nUncle Joe'}
+                    /* ── A PLACEHOLDER MUST NOT READ AS TYPED TEXT ──────────────────
+                       Board 2026-08-07, unanimous across two panels. This held
+                       'Denise & Ray\nThe Okafors\nUncle Joe' at the field's own
+                       fontWeight:500 — and on the seeded roster TWO OF THOSE THREE
+                       NAMES ARE ALREADY IN THE LIST DIRECTLY ABOVE IT. Sitting over
+                       an "Add them" button dimmed to .45 because the field is empty,
+                       the honest read is "I typed three names and the button is
+                       broken." A placeholder that plausibly looks like content is
+                       not an example, it is a trap.
+                       A format hint cannot be mistaken for data. */
+                    placeholder={'One name per line'}
                     value={rosterText} onChange={e => setRosterText(e.target.value)} aria-label="Add guest names" />
                   {rosterCouples.length > 0 && (
                     // Suggest-and-confirm (never silent): the split is visible BEFORE
@@ -16343,9 +16360,9 @@ export default function HostShellV2() {
                     <div className="of" style={{ marginTop: 6, fontSize: 'var(--t-meta)' }}>
                       {splitCouples
                         ? <>Counting {rosterCouples.length === 1 ? 'a couple' : rosterCouples.length + ' couples'} as separate people: {rosterCouples.map(c => c.hit.names.join(' + ')).join(' · ')} — so each gets their own reply, plate, and seat.{' '}
-                          <button className="mini" onClick={() => setSplitCouples(false)}>keep as written</button></>
+                          <button className="mini" onClick={() => setSplitCouples(false)}>Keep as written</button></>
                         : <>Adding lines exactly as written.{' '}
-                          <button className="mini" onClick={() => setSplitCouples(true)}>count couples separately</button></>}
+                          <button className="mini" onClick={() => setSplitCouples(true)}>Count couples separately</button></>}
                     </div>
                   )}
                   <div className="actions-row" style={{ marginTop: 'var(--sp-2)' }}>
@@ -16380,7 +16397,7 @@ export default function HostShellV2() {
                 <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>
                     Where is the list from?
-                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>close</button>
+                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => { setCsvOpen(false); setCsvPreview(null); }}>Close</button>
                   </div>
                   <OptionList ariaLabel="Where the list is from"
                     options={Object.entries(PLATFORMS).map(([key, p]) => ({ label: p.label || key, value: key }))}
@@ -16416,7 +16433,7 @@ export default function HostShellV2() {
                 <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                   <div className="shelf-label" style={{ marginBottom: 6 }}>
                     Past imports
-                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setImportsOpen(false)}>close</button>
+                    <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setImportsOpen(false)}>Close</button>
                   </div>
                   {[...importBatches].reverse().map((b, i) => (
                     <div key={b.id || i} className="v-meta" style={{ padding: '3px 2px' }}>
@@ -16522,7 +16539,7 @@ export default function HostShellV2() {
                   <div className="brow" style={{ marginTop: 14, borderRadius: 'var(--r-md)', padding: '10px var(--sp-2)' }}>
                     <div className="shelf-label" style={{ marginBottom: 6 }}>
                       Invite rules — the RSVP page follows these
-                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>close</button>
+                      <button className="mini" style={{ marginLeft: 'var(--sp-2)' }} onClick={() => setInviteRulesOpen(false)}>Close</button>
                     </div>
                     <div className="actions-row" style={{ margin: '0 0 var(--sp-2)', alignItems: 'center' }}>
                       <span className="of">plus-ones:</span>
@@ -16612,7 +16629,7 @@ export default function HostShellV2() {
                       return parts.join(' · ');
                     })()}
                     {!isPast && (
-                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'done' : (rsvpByIsSet ? 'change' : 'set reply-by')}</button>
+                      <button className="mini" style={{ marginLeft: 6 }} onClick={() => setDeadlineOpen(o => !o)}>{deadlineOpen ? 'Done' : (rsvpByIsSet ? 'Change' : 'Set reply-by')}</button>
                     )}
                     {(() => {
                       // leading separator only when something precedes the hint
@@ -16795,10 +16812,10 @@ export default function HostShellV2() {
                                "tap no reply" missed a control whose accessible name
                                was different words. The visible text must be IN the
                                accessible name, not a paraphrase of it. */
-                            aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')) + ' — open to change it'}
+                            aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')) + ' — open to change it'}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
-                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'No reply')}</span>
                           </button>
                         </div>
                         {guestOpen === i && (
@@ -16847,12 +16864,51 @@ export default function HostShellV2() {
                                 four chips on every row, nothing expanding. */}
                             <div className="actions-row" style={{ alignItems: 'center' }}>
                               <span className="of">reply:</span>
+                              {/* ── A RADIOGROUP OWES A KEYBOARD CONTRACT ──────────────
+                                  Board 2026-08-07, Norman seat: this shipped as four
+                                  buttons wearing role="radio" with no roving tabindex
+                                  and no arrow handling. A screen reader announces
+                                  "radio button, 1 of 4", the user presses Right, and
+                                  nothing moves — while all four sit in the tab order.
+                                  HALF A RADIOGROUP IS WORSE THAN NONE, because the
+                                  role is a promise about how the thing behaves.
+                                  Two honest ways out: implement the contract, or drop
+                                  to aria-pressed toggles, which owe nothing. Kept the
+                                  role -- exactly one of these is true at a time, which
+                                  is what a radiogroup MEANS, and aria-pressed would
+                                  describe four independent toggles that happen to be
+                                  mutually exclusive by luck. So: roving tabindex (only
+                                  the checked chip is tabbable, so the group is ONE tab
+                                  stop, not four) plus Arrow/Home/End, which select and
+                                  move together the way native radios do. */}
                               <span role="radiogroup" aria-label={'Reply for ' + (g.name || 'guest')}
-                                style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                                {[['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'no reply']].map(([v, lbl]) => {
+                                style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}
+                                onKeyDown={(e) => {
+                                  const keys = ['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'];
+                                  if (!keys.includes(e.key)) return;
+                                  e.preventDefault();
+                                  const vals = RSVP_VALUES.map(([v]) => v);
+                                  const at = Math.max(0, vals.indexOf(String(g.rsvp || '')));
+                                  const next = e.key === 'Home' ? 0
+                                    : e.key === 'End' ? vals.length - 1
+                                    : (e.key === 'ArrowRight' || e.key === 'ArrowDown')
+                                      ? (at + 1) % vals.length
+                                      : (at - 1 + vals.length) % vals.length;
+                                  setRsvpValue(i, vals[next]);
+                                  // Focus follows selection, or the contract is still
+                                  // half-kept. The re-render swaps tabIndex, so the
+                                  // focus call waits a frame for the new DOM.
+                                  const group = e.currentTarget;
+                                  requestAnimationFrame(() => {
+                                    const btns = group.querySelectorAll('[role="radio"]');
+                                    if (btns[next]) btns[next].focus();
+                                  });
+                                }}>
+                                {RSVP_VALUES.map(([v, lbl]) => {
                                   const cur = String(g.rsvp || '') === v;
                                   return (
                                     <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
+                                      tabIndex={cur ? 0 : -1}
                                       style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
                                       onClick={() => setRsvpValue(i, v)}>{lbl}</button>
                                   );
@@ -16868,7 +16924,7 @@ export default function HostShellV2() {
                                 value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
                               <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="needs? (vegan, nut…)"
                                 value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
-                              <button className="mini" onClick={() => removeGuest(i)}>remove</button>
+                              <button className="mini" onClick={() => removeGuest(i)}>Remove</button>
                             </div>
                             <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                               {/* Meal edit (guests parity gap #5): writes the SAME

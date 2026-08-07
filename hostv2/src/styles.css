@@ -4503,6 +4503,47 @@ button.vc-pill::after{
   width:max-content; max-width:100%; margin-left:auto;
 }
 
+/* ── THE REPLY DISCLOSURE: A 44px THUMB ON A 23px BOX, AND A CARET ──────────
+   Board sitting 2026-08-07, and this one is EVERY viewport, not the data tier.
+
+   Norman's seat measured it at 17px tall on a 390px phone — and it is the only
+   advertised way into a guest's reply. min-height is the wrong instrument: it
+   would reflow the row, and this list's entire point tonight was that rows stop
+   moving. So the same trade the eyebrow makes at :558 — THE HIT AREA GROWS AND
+   THE BOX DOES NOT. The rule is about what a finger can hit, not how tall the
+   ink is.
+
+   The caret is the other half of the same finding, and it settles a doctrine
+   argument rather than decorating. UX_05:66 says a status chip never clicks;
+   this is a DISCLOSURE that displays status, which is a different object. Two
+   panels accepted that reading in the code and rejected it on the glass, for
+   the same reason: nothing on screen distinguished it from the inert chips the
+   rule describes, so the distinction lived only in the source. A caret is what
+   makes it true where the host actually is. It rotates on state, so it reports
+   rather than decorates — and it is a disclosure mark, not a navigation glyph,
+   which is why it does not fall under the "arrow only when it navigates" rule.
+
+   Fits the 96px track: tag 72 max + 8 gap + ~7 caret = 87.
+   (gap:8, not 6 — the spacing ratchet in spacingLadder.test.js caught 6px as
+   off-ladder and failed the build. Second time tonight it has caught me; it
+   is doing exactly the job it was written for.) */
+.grow > button[aria-expanded]{
+  position:relative; display:inline-flex; align-items:center;
+  justify-content:flex-end; gap:8px;
+}
+.grow > button[aria-expanded]::before{
+  content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px;
+}
+.grow > button[aria-expanded]::after{
+  content:'▾'; flex:0 0 auto; font-size:10px; line-height:1; color:var(--faint);
+  transition:transform var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
+}
+.grow > button[aria-expanded="true"]::after{
+  transform:rotate(180deg); color:var(--steel-soft);
+}
+.grow > button[aria-expanded]:hover::after{ color:var(--steel-soft); }
+
 
 /* ── THE COLUMN HEADER ──────────────────────────────────────────────────────
    Hidden by default: below the rail band the row is a chip run, not a table,
