@@ -269,13 +269,23 @@ Two builds, materially different, NOT chosen:
 
 ## 2. Gates
 
-### THE MATRIX IS FULLY GREEN - `20ee56e2` (2026-08-07, latest)
+### THE MATRIX IS FULLY GREEN - `453c910e` (2026-08-07, latest)
 
 ```
-Playwright   344 passed /  0 failed / 34 skipped   (16.3m)
+Playwright   355 passed /  0 failed / 34 skipped   (~16.7m)
 Jest         5643 passed / 1 skipped - 380 suites
 build        hostv2 + check-parity green
 ```
+
+The 355 includes the 12 new `guestReplyPicker.spec.mjs` cases (6 projects x 2). That
+suite's own first run WAS the only failure in the 355/1 matrix, at `[landscape]` 860x430,
+and it was the SPEC that was wrong, not the surface: it asserted absolute
+`getBoundingClientRect().top`, which shifts for every row at once the moment a short
+sheet becomes scrollable. Re-measured as heights + inter-row gaps (scroll-invariant) it
+is 12/12, and the identical heights prove nothing reflowed. **When a geometry assertion
+fails only on the SHORT viewport, suspect the scroll container before the layout.**
+
+The all-green run at `20ee56e2` was 344 / 0 / 34 (16.3m).
 
 First all-green matrix on this branch. Progression across the session:
 
