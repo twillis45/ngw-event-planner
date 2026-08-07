@@ -97,3 +97,33 @@ static pane, which it forbids. **The fix and the doctrine want the same thing.**
 6. **Row selection + bulk.** Real, but it is a feature, not a layout fix — sequence last.
 
 Items 1–3 are the ones standing between the host's 7.5 and a 9.
+
+---
+
+## Appendix — item 1 was ATTEMPTED, and what it found (2026-08-07)
+
+Built, driven, and then REVERTED rather than shipped. Recording it because the attempt
+produced the one fact the next attempt needs.
+
+**The mechanism works.** `.roster` as a two-column grid, with `display:contents` on the
+per-row (`.rrow`) and per-group (`.rgroup`) wrappers so `.grow` and `.gdetail` become grid
+items of `.roster` itself, and `.gdetail` pinned `grid-row:1 / span 9999` so it sits at the
+TOP of column 2 regardless of which guest is open. Driven at 1728: the editor rendered
+beside the list and the list did not reflow. That is a CSS change, not a JSX restructure —
+worth knowing, because it is much cheaper than it looks.
+
+**What stopped it: the roster's container is capped at roughly 820px, and nobody knows by
+what.** The sheet itself spans ~1300px at 1728, but the grid only had ~820 to divide, so a
+340px detail column left column 1 at ~460px — and the `MEAL` / `DIETARY` headers, whose
+tracks are sized from `--gt-*`, overflowed underneath the panel. The list was squeezed
+instead of the empty canvas being used, which is the exact opposite of the point.
+
+**So the blocking question is not layout, it is: what owns the roster's width?** It is NOT
+`:282` (`.escreen ~ *` at 68ch — that is the command surface) and NOT `:3521`
+(`max-width:860px`, which is gated to `data-bp` tablet / tablet-land, and widescreen is
+`desktop`). Find the real owner by measuring `offsetParent` chain widths in the live DOM
+from `.roster` upward — do not grep for it, three candidate rules were eliminated by
+reading and all three were wrong.
+
+Once that is known, item 1 is small. Until it is known, item 1 will keep squeezing the
+list, and a squeezed list is worse than the accordion it replaces.
