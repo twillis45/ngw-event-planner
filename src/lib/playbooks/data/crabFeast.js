@@ -16,7 +16,7 @@
 // (see `knowledge`), authored honestly and labeled `synthesized` until a
 // foreground verification pass attaches citations. ESM default export.
 
-import { CRAB_SERVING_GUIDE } from '../../crabServing';
+import { CRAB_SERVING_GUIDE } from '../../crabServing.js';
 
 const crabFeast = {
   type: 'Crab Feast',
