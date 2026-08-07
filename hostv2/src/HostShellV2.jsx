@@ -4070,6 +4070,18 @@ export default function HostShellV2() {
   // what unlocks RSVP intelligence, yes-counts, and the drift detector.
   const [rosterText, setRosterText] = useState('');
   const [guestOpen, setGuestOpen] = useState(null); // per-guest detail editor
+  // ── THE ROSTER HAD NO WAY TO FIND ANYONE (Mobbin tier read, 2026-08-07) ────
+  // 6 of 6 web leaders and 5 of 5 iOS leaders put search+filter above a list of
+  // people; we shipped zero controls. Luma — the closest positional competitor —
+  // carries Search + "All Guests" + Sort + "1 Going · 1 Invited" on a guest list
+  // specifically. At 40 guests SCANNING is the operation, and no amount of
+  // faster tapping substitutes for narrowing the set.
+  // Two pieces of state, deliberately not three: a query and a reply lens. Sort
+  // is NOT here — the read found leaders sort by property, and the ordering that
+  // would actually help a host (who has gone quiet longest) is a real ranking
+  // question, not a control. Recorded as open rather than guessed at.
+  const [rosterQ, setRosterQ] = useState('');
+  const [rosterLens, setRosterLens] = useState('all'); // all | yes | no | maybe | none
   const [deadlineOpen, setDeadlineOpen] = useState(false);
   // WAVE-B: invite-rules fold (guests sheet) — the policies the public RSVP
   // page enforces (InviteV2 reads plusOnePolicy/kidsPolicy/collectAddresses;
@@ -16704,6 +16716,37 @@ export default function HostShellV2() {
                       the generic band) — the standalone memory line was the 2nd/3rd competing
                       number the host flagged. Retired here on purpose. */}
                   {nudgeFor('guests')}
+                  {/* ── THE ROSTER TOOLBAR ─────────────────────────────────────────
+                      Only rendered once the list is big enough to need finding —
+                      below 8 people a search field is furniture, and the leaders
+                      that ship one are all showing sets you cannot hold in your head.
+                      The lens chips are the read's 10+ note in its cheapest honest
+                      form: they filter by REPLY STATE, which is the cut a host
+                      actually holds ("who hasn't answered"), rather than by an
+                      arbitrary property. Each chip states its own count, so the
+                      filter is also the rollup and there is no second number to keep
+                      truthful. */}
+                  {(event.guests || []).length >= 8 && (() => {
+                    const all = event.guests || [];
+                    const n = (v) => all.filter((g) => String(g && g.rsvp || '') === v).length;
+                    const LENS = [['all', 'Everyone', all.length], ['yes', 'Coming', n('Yes')], ['none', 'No reply', n('')], ['maybe', 'Maybe', n('Maybe')], ['no', 'Can’t make it', n('No')]];
+                    return (
+                      <div className="rtoolbar">
+                        <input className="field rtool-q" type="search" value={rosterQ}
+                          onChange={(e) => setRosterQ(e.target.value)}
+                          placeholder="Find someone" aria-label="Find someone on the guest list" />
+                        <span className="rtool-lens" role="group" aria-label="Show only">
+                          {LENS.map(([k, lbl, c]) => (
+                            <button key={k} className="chip" aria-pressed={rosterLens === k}
+                              onClick={() => setRosterLens(k)}
+                              style={rosterLens === k ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }}>
+                              {lbl} {c}
+                            </button>
+                          ))}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   {(() => {
                     // Grouped roster: when the host has sorted people into groups,
                     // the list reads by group; indexes stay the ORIGINAL array
@@ -16713,7 +16756,26 @@ export default function HostShellV2() {
                     // them — they were uneditable). Rows are lightweight (text + two
                     // buttons, index-keyed); a plain full render handles realistic
                     // host lists without virtualization.
-                    const withIdx = (event.guests || []).map((g, i) => ({ g, i }));
+                    // FILTER AFTER INDEXING, NEVER BEFORE. Every writer on this
+                    // surface (setRsvpValue, writeGuest, removeGuest) is INDEX-BASED
+                    // against event.guests. Filtering the array first and then
+                    // mapping would renumber everyone, so hiding one guest would
+                    // silently make every edit below it write to the wrong person.
+                    // Index first, then filter the {g,i} pairs — i stays the true
+                    // position in the original array no matter what is on screen.
+                    const allIdx = (event.guests || []).map((g, i) => ({ g, i }));
+                    const q = rosterQ.trim().toLowerCase();
+                    const withIdx = allIdx.filter(({ g }) => {
+                      if (rosterLens !== 'all') {
+                        const r = String(g.rsvp || '');
+                        const want = rosterLens === 'none' ? '' : rosterLens === 'yes' ? 'Yes' : rosterLens === 'no' ? 'No' : 'Maybe';
+                        if (r !== want) return false;
+                      }
+                      if (!q) return true;
+                      // Search what a host actually remembers: the name, who they are
+                      // with, and the group they filed them under.
+                      return [g.name, g.plusOne, g.group, g.email].some((v) => String(v || '').toLowerCase().includes(q));
+                    });
                     // Lightweight visual layer (per-screen audit: Guests scored lowest,
                     // no glanceability vs Partiful's avatars). Deterministic initials +
                     // a MUTED on-brand tint (not a rainbow — respects the colour budget);
@@ -17019,6 +17081,21 @@ export default function HostShellV2() {
                         <span className="gh-reply">Reply</span>
                       </div>
                     );
+                    // A FILTER THAT EMPTIES THE LIST MUST SAY SO. Without this the
+                    // roster just disappears and the host is left deciding whether
+                    // they typed something wrong or lost their guests. Names the
+                    // filter that did it and offers the way back.
+                    if (!withIdx.length && allIdx.length) {
+                      return (
+                        <div className="roster">
+                          <div className="v-meta" style={{ padding: 'var(--sp-5) 0', color: 'var(--ink-soft)' }}>
+                            No one on your list matches{rosterQ.trim() ? ` “${rosterQ.trim()}”` : ''}
+                            {rosterLens !== 'all' ? ' in that reply state' : ''}.{' '}
+                            <button className="mini" onClick={() => { setRosterQ(''); setRosterLens('all'); }}>Show everyone</button>
+                          </div>
+                        </div>
+                      );
+                    }
                     const names = [...new Set(withIdx.map(x => String(x.g.group || '').trim()).filter(Boolean))];
                     if (names.length <= 1) return (<div className="roster">{ghead}{withIdx.map(row)}</div>);
                     const buckets = [...names, ''].map(gr => ({ gr, items: withIdx.filter(x => String(x.g.group || '').trim() === gr) })).filter(b => b.items.length);

@@ -4573,6 +4573,40 @@ button.vc-pill::after{
        off-ladder literal.
      - a steel left rule down the full height, which is what actually carries
        "this belongs to that" — the tint alone would only say "different".  */
+/* ── THE ROSTER TOOLBAR (Mobbin tier read, 2026-08-07) ──────────────────────
+   6/6 web and 5/5 iOS leaders carry one; we carried none. Measured leader
+   strip height is 40–48px, so 44 with the search field at the phone's full
+   width and the lens chips wrapping beneath it.
+   The chips are 32px, NOT the 44 the reply picker uses. That is deliberate and
+   it is the read's finding: 44 is right for a chip that COMMITS a fact, and
+   oversized for one that only changes what you are looking at. Two sizes, two
+   meanings — and the filter rail is a scroll lane, so the finger has a whole
+   row to land in even at 32.
+   Search never collapses. It is the last control to go at any width, which is
+   what Apollo and Deel do when they drop their filter labels to an icon. */
+.rtoolbar{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  margin:0 0 var(--sp-3);
+}
+.rtool-q{
+  flex:1 1 220px; min-width:0; min-height:40px;
+  font-size:var(--t-input); padding:var(--field-compact);
+}
+.rtool-lens{
+  display:flex; align-items:center; gap:8px; flex:1 1 100%;
+  overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+}
+.rtool-lens::-webkit-scrollbar{ display:none }
+.rtool-lens > .chip{
+  flex:0 0 auto; min-height:32px; padding:4px 12px;
+  font-size:var(--t-pill); white-space:nowrap;
+}
+/* At width the whole strip is one line — the chips no longer need their own
+   row once there is room beside the field. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .rtool-lens{
+  flex:0 1 auto; overflow-x:visible;
+}
+
 .gdetail{
   border-top:none;
   margin-left:40px;
