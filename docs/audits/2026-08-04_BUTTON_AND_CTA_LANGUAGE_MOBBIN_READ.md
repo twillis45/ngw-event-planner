@@ -313,3 +313,57 @@ Two scanner traps, both hit and fixed while measuring -- keep them if this is ev
 The interpolated 196 are a real blind spot: a label composed at runtime cannot be measured this
 way, and that is where a template like `${n} guests` would hide. Section 3c's "we do it once" is
 therefore a floor, not a count.
+
+---
+
+## 9. Correction to section 4, on execution (2026-08-07)
+
+Step 1 was attempted and **stopped, because its premise does not survive reading the
+call sites** -- the very read section 4 said was required and did not do.
+
+Section 4 states: *"All 7 sit on scrolling sheets with no title naming the object, so 3b
+does not excuse them either."* That is false for 5 of 7, and arguably 6. Every one of
+these buttons is rendered INSIDE the `.shelf-label` that names its object:
+
+```
+HostShellV2.jsx:14426   Dietary needs             done
+HostShellV2.jsx:14545   Your choices              done
+HostShellV2.jsx:14611   How it's sourced          done
+HostShellV2.jsx:14662   The list                  done
+HostShellV2.jsx:15379   Which market are you in?  done
+HostShellV2.jsx:16312   (no label -- deliberate; the CHANGE drawer's own
+                         "Pick a number, or set your own" header carries it,
+                         and the code comment says so)
+HostShellV2.jsx:16615   no title -- appended to a run of RSVP facts   <- the one real case
+```
+
+That is exactly the A2 exemption this same document proposes: *a bare verb is legal when
+a title in the same frame names the object*. The titles are not merely in the frame, they
+are in the same DOM node, immediately left of the button. Executing step 1 would have
+produced `Dietary needs / Done with diets` -- the object twice in one row -- which is a
+regression sold as a fix.
+
+**The census is also short.** Section 4 lists 6 `done` + 1 `View`. There is a 7th `done`
+at `:16615`, invisible to a static grep because it is a conditional
+(`{deadlineOpen ? 'done' : ...}`). Count the dynamic labels or do not state a count.
+
+### What IS real, and was measured
+
+The case claim holds. Of **183** `.mini` labels in `HostShellV2.jsx`, about **23** are
+lowercase-leading (`done`, `change`, `save`, `remove`, `unseat`, `close`, `never mind`,
+`note why`, `keep as written`, ...) against ~87% capitalised (`Save`, `Undo`, `Discard`,
+`Show the QR`, `Clear import history`). So lowercase is a genuine outlier inside its own
+tier -- but it is a **case sweep across ~23 sites on many surfaces**, which is a taste
+call for the host, not the no-risk copy fix step 1 advertised.
+
+### Revised step 1
+
+1a. Relabel `:16615` only -- the single site with no object in frame. *(open)*
+1b. Put the ~23 lowercase `.mini` labels to the host as a case sweep. Do not ship it as
+    a defect fix; it is a convention decision. *(open, needs a ruling)*
+1c. Leave the other six alone. They already satisfy A2.
+
+Method note, since this is the second time in one session that a "verified" finding
+dissolved on contact: `file:line` next to a claim proves the LINE was found, not that the
+CLAIM about it was tested. Section 4 verified where the labels are and asserted what
+surrounds them.
