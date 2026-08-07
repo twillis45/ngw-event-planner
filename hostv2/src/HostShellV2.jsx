@@ -5530,7 +5530,8 @@ export default function HostShellV2() {
   // wander into before the one decision this screen asks for.
   if (welcome) {
     return (
-      <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
+      <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
+      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
         {/* inert while the splash covers the screen: closes the AT-path tap-
             through — a screen reader user could otherwise swipe onto and
             activate welcome/dashboard controls that are invisible to them
@@ -5567,7 +5568,8 @@ export default function HostShellV2() {
   }
 
   return (
-    <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}>
+    <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
+      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}

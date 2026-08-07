@@ -518,6 +518,11 @@ button{font-family:inherit}
 /* The eyebrow IS the menu (host "menu is not accessible yet"): a clear hamburger + caret so it
    reads unmistakably as tappable — the only nav entry now that the bar + dock are gone. */
 .ev-eyebrow{ display:inline-flex; align-items:center; gap:10px; background:none; border:none; padding:8px 0; cursor:pointer;
+  /* 44px floor (2026-08-06): measured at 32px on a 393px phone and it is a
+     real button — it opens the event switcher. Padding alone would push the
+     text down; min-height with the existing centring keeps it optically in
+     place while giving the thumb the box UX_03 requires. */
+  min-height:44px;
   font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); line-height:1.4; }
 .eb-menu{ display:inline-flex; flex-direction:column; justify-content:center; gap:3.5px; width:16px; flex:0 0 auto; }
 .eb-menu > span{ display:block; height:1.5px; border-radius:1px; background:var(--muted); transition:background .16s var(--ease-out); }
@@ -3464,12 +3469,16 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    costs nothing structurally, and it is what makes the surface look composed
    rather than stretched. Applied to the app root's own padding box so every
    surface inherits it without a per-surface fork. */
-.app[data-bp="tablet"] > .content,
-.app[data-bp="tablet"] > .sheet > .content{
+/* Scoped to .stagewrap, NOT .app. Measured in the running DOM: the real tree is
+   .stagewrap > .sheet, so `.sheet` is a SIBLING of `.app` — a data attribute on
+   .app cannot reach a sheet at all, and every sheet would have kept the phone
+   measure while the stages got the fix. The common ancestor is the stagewrap. */
+.stagewrap[data-bp="tablet"] > .app > .content,
+.stagewrap[data-bp="tablet"] > .sheet{
   max-width:720px; margin-inline:auto;
 }
-.app[data-bp="tablet-land"] > .content,
-.app[data-bp="tablet-land"] > .sheet > .content{
+.stagewrap[data-bp="tablet-land"] > .app > .content,
+.stagewrap[data-bp="tablet-land"] > .sheet{
   max-width:860px; margin-inline:auto;
 }
 
@@ -3480,12 +3489,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    a deliberate offset so it still reads as composed rather than jammed to the
    ceiling. The fold-peek guarantee is unaffected — it only ever assumed the ask
    FITS the viewport, and top-aligning can only help that. */
-.app[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
-.app[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+.stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
+.stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
   justify-content:flex-start; padding-top:clamp(24px, 6vh, 72px);
 }
-.app[data-bp="tablet"] .hero.elegant .escreen.on > .hzone,
-.app[data-bp="tablet-land"] .hero.elegant .escreen.on > .hzone{
+.stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .hzone,
+.stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .hzone{
   margin-top:clamp(20px, 5vh, 56px);
 }
 
@@ -3499,15 +3508,15 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    Written first against `.seclist`/`.statcard` — class names that do not exist
    in this shell (0 JSX uses). A rule that matches nothing looks exactly like a
    rule that works, so the names are verified against the JSX now. */
-.app[data-bp="tablet"] .navrows,
-.app[data-bp="tablet-land"] .navrows{
+.stagewrap[data-bp="tablet"] .navrows,
+.stagewrap[data-bp="tablet-land"] .navrows{
   display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 var(--sp-5);
 }
-.app[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+.stagewrap[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
 /* The row's own border-bottom becomes a grid artifact once rows sit side by side,
    so the divider is redrawn per cell rather than per row. */
-.app[data-bp="tablet"] .navrows > .navrow,
-.app[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
+.stagewrap[data-bp="tablet"] .navrows > .navrow,
+.stagewrap[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
 
 /* ── The `data` surfaces at desktop — Budget and Guests ──────────────────────
    Added 2026-08-07 with the responsiveSurface `data` mode. Before this, 43 of
@@ -3537,22 +3546,61 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      first and returns to, so it holds the left column and stays put while the
      detail list scrolls beside it — the master-detail Luma and Aboard both run,
      and what UX_03 calls ideal for desktop. */
-  .stagewrap--responsive-data .app > .sheet > .content{
+  .stagewrap--responsive-data > .sheet{
     display:grid;
     grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);
     align-items:start; gap:0 var(--sp-6);
   }
-  /* The summary block is every child up to the allocation rows; the rows carry
-     `.brow`, so the grid is told explicitly where the second column starts
-     rather than guessing from child order. */
-  .stagewrap--responsive-data .app > .sheet > .content > .shelf-label,
-  .stagewrap--responsive-data .app > .sheet > .content > .brow,
-  .stagewrap--responsive-data .app > .sheet > .content > div:has(> .brow){
+  /* The head names the surface and carries its close — it belongs to both. */
+  .stagewrap--responsive-data > .sheet > .sheet-head{ grid-column:1 / -1; }
+  /* Column 1 is the DEFAULT, and only the row list is moved out of it.
+     Written first as two enumerated lists of classes, which was wrong: the
+     sheet's headline number is rendered by SheetHero, whose root element
+     carries NO CLASS AT ALL, and `.bignum` — which I had listed — does not
+     exist anywhere in this shell. Anything unclassed would have fallen out of
+     the grid silently. Defaulting to column 1 means a child has to be named to
+     leave it, so a future unclassed block lands somewhere sensible instead of
+     disappearing. */
+  .stagewrap--responsive-data > .sheet > *{ grid-column:1; }
+  .stagewrap--responsive-data > .sheet > .shelf-label,
+  .stagewrap--responsive-data > .sheet > .brow,
+  .stagewrap--responsive-data > .sheet > div:has(> .brow){
     grid-column:2;
   }
-  .stagewrap--responsive-data .app > .sheet > .content > .sheet-head,
-  .stagewrap--responsive-data .app > .sheet > .content > .bignum,
-  .stagewrap--responsive-data .app > .sheet > .content > div:has(> .mbar){
-    grid-column:1;
+}
+
+/* ── THE 44px FLOOR, ON THE DEVICE THE RULE IS ABOUT (2026-08-06, board) ─────
+   UX_03 mobile rule 2 sets a 44px minimum tap target. A live sweep on a real
+   iPhone profile found 12+ interactive controls under it, and the primary hero
+   Save — the control that COMMITS the ask — measured 56x30. The QA scorecard's
+   own line is that the tallest tap target should be the primary action, not the
+   shortest; a 30px commit button beside a 46px .cta is that inverted.
+
+   Scoped to the phone deliberately. The 44px rule is a THUMB rule, not a design
+   rule, and the design seat scored mobile the strongest of the four viewports —
+   inflating chips on desktop would spend density to satisfy a constraint that
+   does not apply there. .cta already cleared the floor in an earlier audit
+   (audit S1); this covers the classes that did not.
+
+   `inline-flex` + `align-items:center` rather than raw padding, so the label
+   stays optically centred instead of sitting high in a taller box. */
+@media (max-width: 480px){
+  /* MEASURED, not assumed: a full sweep of every button/link/role=button on the
+     home and create screens at 393px found these classes already clearing the
+     floor. They are held here so they cannot regress, not because they were
+     found broken — the one control that WAS under it (.ev-eyebrow, 32px) is
+     fixed at its own rule above. Other screens the board flagged (nav sheet,
+     food sheet, lodging stage tabs) are not yet swept and are named as open. */
+  .chip,
+  .mini,
+  .lc-door,
+  .lens {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
+  /* Stacked pairs need real separation once they are both 44px, or the two
+     targets read as one slab and a thumb lands between them. */
+  .lc-ctas > * + * { margin-top: 8px; }
 }
