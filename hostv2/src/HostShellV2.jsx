@@ -884,6 +884,9 @@ export default function HostShellV2() {
   const [toastTone, setToastTone] = useState(null);
   const [handledOpen, setHandledOpen] = useState(false);
   const toastTimer = useRef(null);
+  // Latches once when persistence fails, so a full disk warns the host a single
+  // time instead of on every edit. Cleared by the next write that succeeds.
+  const saveFailedRef = useRef(false);
   const appRef = useRef(null);
 
   // Create — ONE smart input; the real resolvers parse it. Form fields exist
@@ -2108,8 +2111,33 @@ export default function HostShellV2() {
   }, [liveWx, wxNotify, notifGranted, event.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [wxOpen, setWxOpen] = useState(false);
 
+  // ── A FAILED SAVE MUST NOT BE SILENT (2026-08-07) ────────────────────────
+  // This was `catch {}` around the write that persists the host's edits. Most
+  // of the bare catches in this file are correct — localStorage throws in
+  // private mode, speech recognition throws on unsupported platforms, and
+  // swallowing those is right. This one is different: it is THE persistence
+  // call for the host's work, and a patch can carry photos, so quota-exceeded
+  // is a realistic failure rather than a theoretical one. Swallowed, the host
+  // keeps editing an event that is no longer being saved and finds out when
+  // they reopen it.
+  //
+  // The guard immediately below already treats "the host's only copy" as
+  // sacred for custom events. This is the same principle applied to patches.
+  // Told ONCE per session: a toast on every keystroke of a full disk would
+  // bury the surface it is warning about.
   useEffect(() => {
-    if (!isCustomEventId(eventId)) { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
+    if (isCustomEventId(eventId)) return;
+    try {
+      localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch));
+      saveFailedRef.current = false;
+    } catch {
+      if (!saveFailedRef.current) {
+        saveFailedRef.current = true;
+        // Neutral, not green — this is not a confirmation. And it names what
+        // the host can actually do about it rather than reporting an error code.
+        toast('That change didn’t save on this device — storage is full. Free some space, then edit anything to retry.');
+      }
+    }
   }, [patch, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── THE HOST'S ONLY COPY GOES THROUGH THE GUARD (2026-08-06) ─────────────
   // This was a bare setItem of the whole array. On 2026-08-06 that same shape,
