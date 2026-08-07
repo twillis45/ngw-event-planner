@@ -4742,6 +4742,40 @@ export default function HostShellV2() {
     );
   };
 
+  // ── THE SAME QUESTION TWICE ON ONE SCREEN (board wave 2, 2026-08-07) ──────
+  // Consolidating the four venue copies made them the same control; it did not
+  // stop two of them RENDERING AT ONCE. Driven at 1440 on a venue-less event:
+  // an input at y=189 (the hero's inline editor, inside .editor-slot) and
+  // another at y=734 (the below-fold "Venue" blocker card). The third card,
+  // "Where is it happening?", already stands down via `venueBlockerShown` — the
+  // pattern existed; the blocker just had no symmetric guard against the HERO.
+  //
+  // DERIVED THE WAY THE RENDER DERIVES IT, NOT GUESSED. The hero is
+  // `visible[0]`, where `visible = shown.slice(0, cap)` and
+  // `shown = queue.filter(show)` — an order-preserving filter. So the hero is
+  // `queue.filter(show)[0]` and NOT `queue[0]`. That distinction is not
+  // pedantry: this repo has already shipped a bug from reading position 0 of the
+  // wrong list and records it as a trap.
+  //
+  // PLACEMENT IS LOAD-BEARING. The first attempt put these two lines up beside
+  // saveVenue (~:987), where `queue` (:2661), `askMode` (:2741), `show` (:2990)
+  // and `wiredKind` (:4596) are all still in the temporal dead zone. That is a
+  // ReferenceError at render, and it did not fail loudly — the whole component
+  // threw and the probe came back with ZERO venue inputs, which read exactly
+  // like a layout guard that had hidden one too many. Same class of mistake as
+  // naming a below-declared const in an effect's dependency array, made in an
+  // expression instead. Declared here, after every dependency.
+  const heroFirstAction = askMode ? (queue || []).filter(show)[0] : null;
+  // The hero editor renders on `isHero && !!wired && !decHeroActions`, and
+  // `decHeroActions` is non-null only when `elegantMode && heroDecisionND`
+  // (:2805). Both conditions are mirrored here so this flag can never be true
+  // while the hero is NOT actually showing the control — otherwise the guard
+  // below would remove the last venue input on the surface and leave the host
+  // with no way to answer the one blocker the engine ranks `critical`.
+  const heroCarriesVenue = !!heroFirstAction
+    && wiredKind(heroFirstAction) === 'venue'
+    && !(elegantMode && heroDecisionND);
+
   // Inline editors, one per wired kind. Each writes the SAME fields the engine's
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
   const renderEditor = (a) => {
@@ -8501,7 +8535,12 @@ export default function HostShellV2() {
 
               {/* Decision-blockers (fieldKey + options) are now hero DESTINATIONS via the queue
                   (blockerDecisions) in elegant mode — don't also draw them here, or they'd double. */}
-              {blockers.filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
+              {blockers
+                /* The hero's inline editor IS this blocker's resolution when the
+                   venue action is first; a second copy below the fold is the
+                   duplicate surface the board ruled against. */
+                .filter(b => !(heroCarriesVenue && /venue/i.test(String(b.title || ''))))
+                .filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
                 const venueSet = !!vf.name;
                 return (
