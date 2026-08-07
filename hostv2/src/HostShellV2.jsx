@@ -12839,7 +12839,24 @@ export default function HostShellV2() {
               ];
               return (
                 <>
-                  <p className="grounding" style={{ margin: '0 0 14px' }}>Every part of your plan, in one place — tap any to open it.</p>
+                  {/* SAME HERO TREATMENT AS EVERY OTHER SHEET (host, 2026-08-07).
+                      Sections opened with a bare grounding line while money, guests,
+                      space, lodging, air and ground all open with SheetHero
+                      (Eyebrow -> BigValue -> Newsreader guide line). That made the one
+                      surface the host reaches MOST OFTEN the only one that did not
+                      look like the app — and it is the door to everything else, so it
+                      sets the expectation for whatever it opens.
+
+                      The star is the count of doors, which is a real number derived
+                      from the same `groups` the list renders — not a decorative
+                      figure. Conditional groups drop out when the event lacks them,
+                      so this number genuinely moves. */}
+                  <SheetHero
+                    eyebrow="Everything in your plan"
+                    star={String(groups.reduce((n, g) => n + g.rows.length, 0))}
+                    tone="ink"
+                    sub="Every part of your plan, in one place — tap any to open it."
+                  />
                   {groups.map(g => g.rows.length ? (
                     <div key={g.title} style={{ marginBottom: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '0 0 4px' }}>{g.title}</div>
