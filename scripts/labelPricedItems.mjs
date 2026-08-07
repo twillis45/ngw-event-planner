@@ -25,8 +25,36 @@
 // exactly (393) before anything is written, and the script refuses to run if it
 // does not.
 //
-// ─── STATUS: DOES NOT RUN YET, AND THAT IS THE POINT ───────────────────────
-// The guard has refused twice, and the second refusal is why it exists.
+// ─── STATUS: STILL BLOCKED, AND THE THIRD REASON IS THE WORST ──────────────
+// APPLIED ONCE AND REVERTED. The forward lexer below is correct — both
+// detectors agreed at 148 labelled / 393 unlabelled, it wrote all 393, and the
+// census then read 541/541 with zero unlabelled. It looked like a clean pass.
+//
+// Two jest suites failed, and they were right. THE CORPUS HAS TWO PROVENANCE
+// FORMS: the object `provenance: { tier, confidence, verificationStatus }`, and
+// a bare STRING shorthand `provenance: 'synthesized'`, used 13 times across
+// anniversary / holidayParty / engagementParty. Neither detector understood the
+// string form — the census tests `node.provenance.verificationStatus`, which is
+// undefined on a string, and this script greps for `verificationStatus:`, which
+// a string does not contain. So BOTH agreed those items were unlabelled, and
+// both were wrong.
+//
+// The write then added a SECOND `provenance:` key to those object literals. A
+// duplicate key does not error — the later one silently wins — so 13 authored
+// provenances were destroyed and the corpus still parsed, built, and censused
+// clean. Only `hostLabelsAreTruthful` ("the corpus string forms are exactly what
+// was measured": expected 21, received 0) and the fieldState suite caught it.
+//
+// AGREEMENT BETWEEN TWO DETECTORS IS NOT CORRECTNESS. They can share a blind
+// spot, and these did — both asked "is there a verificationStatus?" when the
+// question was "is there ANY provenance, in any authored form?"
+//
+// BEFORE RE-RUNNING: handle the string form by UPGRADING it in place
+// (`provenance: 'synthesized'` -> the object with the same status), never by
+// adding a key beside it; treat any existing `provenance:` as already-labelled;
+// and add a post-write assertion that no object literal carries two
+// `provenance:` keys. Then run jest, because jest is the only instrument in
+// this chain that actually caught the damage.
 //
 // This walk reports 394 unlabelled; `grounding:census` (which walks real
 // OBJECTS) reports 393. The disagreement is `p_crabs` in crabFeast.js — the
@@ -59,29 +87,55 @@ const apply = process.argv.includes('--apply');
 const EXPECT = Number(process.env.EXPECT_UNLABELLED || 393);
 const LABEL = "provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }";
 
-// Find the object literal that encloses `idx`, returning [open, close] indices.
-const enclosingObject = (s, idx) => {
-  let depth = 0, i = idx, inStr = null;
-  // walk back to the opening brace of this object
-  for (; i >= 0; i--) {
+// ─── ONE FORWARD SCAN, PROPERLY (rewritten 2026-08-07) ─────────────────────
+// The previous version walked BACKWARD from each hit, tracking string
+// delimiters by single-character lookback. That cannot work: read right-to-
+// left, the apostrophe in `"Captain White's Seafood"` is indistinguishable
+// from a closing quote, so it mis-located the enclosing brace and reported the
+// corpus's best-sourced item as unlabelled.
+//
+// Forward is the only direction a lexer can be correct in, because a string
+// begins before it ends. One pass per file: track strings (with escapes), line
+// and block comments, keep a stack of open braces, and record every hit
+// together with the brace that owned it AT THAT MOMENT. No lookback anywhere.
+const scanFile = (s) => {
+  const hits = [];              // { idx, open, close } for each unitCostRange in CODE
+  const stack = [];             // indices of currently-open braces
+  const pending = [];           // hits whose owning brace has not closed yet
+  let i = 0;
+  const KEY = 'unitCostRange';
+  while (i < s.length) {
     const c = s[i];
-    if (inStr) { if (c === inStr && s[i - 1] !== '\\') inStr = null; continue; }
-    if (c === "'" || c === '"' || c === '`') { inStr = c; continue; }
-    if (c === '}') depth++;
-    else if (c === '{') { if (depth === 0) break; depth--; }
+    // comments
+    if (c === '/' && s[i + 1] === '/') { const nl = s.indexOf('\n', i); i = nl === -1 ? s.length : nl; continue; }
+    if (c === '/' && s[i + 1] === '*') { const e = s.indexOf('*/', i + 2); i = e === -1 ? s.length : e + 2; continue; }
+    // strings — consume to the matching close, honouring backslash escapes
+    if (c === "'" || c === '"' || c === '`') {
+      const q = c; i++;
+      while (i < s.length) { if (s[i] === '\\') { i += 2; continue; } if (s[i] === q) { i++; break; } i++; }
+      continue;
+    }
+    if (c === '{') { stack.push(i); i++; continue; }
+    if (c === '}') {
+      const open = stack.pop();
+      for (let k = pending.length - 1; k >= 0; k--) {
+        if (pending[k].open === open) { hits.push({ idx: pending[k].idx, open, close: i }); pending.splice(k, 1); }
+      }
+      i++; continue;
+    }
+    // the key, in code context only, and only in a property position
+    if (c === 'u' && s.startsWith(KEY, i)) {
+      let j = i + KEY.length;
+      while (j < s.length && /\s/.test(s[j])) j++;
+      if (s[j] === ':' && stack.length) {
+        let k = j + 1; while (k < s.length && /\s/.test(s[k])) k++;
+        if (s[k] === '[') pending.push({ idx: i, open: stack[stack.length - 1] });
+      }
+      i += KEY.length; continue;
+    }
+    i++;
   }
-  if (i < 0) return null;
-  const open = i;
-  // walk forward to its matching close
-  depth = 0; inStr = null;
-  for (let j = open; j < s.length; j++) {
-    const c = s[j];
-    if (inStr) { if (c === inStr && s[j - 1] !== '\\') inStr = null; continue; }
-    if (c === "'" || c === '"' || c === '`') { inStr = c; continue; }
-    if (c === '{') depth++;
-    else if (c === '}') { depth--; if (depth === 0) return [open, j]; }
-  }
-  return null;
+  return hits;
 };
 
 const files = (await readdir(DIR)).filter((f) => f.endsWith('.js')).sort();
@@ -91,24 +145,10 @@ const edits = [];
 for (const f of files) {
   const src = await readFile(path.join(DIR, f), 'utf8');
   const hits = [];
-  const re = /unitCostRange:\s*\[/g;
-  let m;
-  while ((m = re.exec(src))) {
-    // ── THE MATCH MUST BE A PROPERTY, NOT PROSE ──────────────────────────
-    // crabFeast.js:204 carries `note: "... unitCostRange [32,188] spans
-    // Medium at Captain White's to Jumbo Males ..."` — the corpus talks
-    // ABOUT its own field names inside human copy. A bare regex counted that
-    // sentence as a priced item, which is why this walk said 394 while the
-    // object census said 393, and why applying it would have written a
-    // provenance block into the middle of a note. A property key is always
-    // preceded by `{` or `,` (ignoring whitespace); prose never is.
-    const prev = src.slice(0, m.index).replace(/\s+$/, '').slice(-1);
-    if (prev !== '{' && prev !== ',') continue;
-    const span = enclosingObject(src, m.index);
-    if (!span) continue;
-    const body = src.slice(span[0], span[1] + 1);
+  for (const h of scanFile(src)) {
+    const body = src.slice(h.open, h.close + 1);
     if (/verificationStatus:/.test(body)) { already++; continue; }
-    hits.push(span);
+    hits.push([h.open, h.close]);
     found++;
   }
   if (hits.length) edits.push({ f, hits });
