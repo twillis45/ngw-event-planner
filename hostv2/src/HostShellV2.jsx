@@ -92,6 +92,7 @@ import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
 import { analyticsEventContext, runwayBucket } from '@app/lib/analyticsContext';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
 import { dayPhases, programmeDays } from '@app/lib/dayPhases';
+import { recordContact, contactState } from '@app/lib/vendorContact';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
@@ -2281,6 +2282,24 @@ export default function HostShellV2() {
   const writeVendor = (id, patch, msg) => {
     const vs = (event.vendors || []).map(v => (v && v.id === id) ? { ...v, ...patch } : v);
     patchEvent({ vendors: vs }, msg);
+  };
+  // ── THE WRITER FOR A FIELD AN ENGINE HAS BEEN READING ALL ALONG ──────────
+  // vendorAccountability/derive.js:187 scores vendor staleness off
+  // `lastContactedAt` and NOTHING has ever written it, so that penalty could
+  // not fire for any host, ever. This is the missing half.
+  //
+  // It records what the HOST DID. It does not send, and the copy must never
+  // imply it did — CONTACT_SOURCES omits 'sent' for exactly this reason. Per
+  // the 2026-08-07 board ruling there is NO comms hub: contact is an act on
+  // the vendor row, where the host is already standing when they notice.
+  const logVendorContact = (id) => {
+    const v = (event.vendors || []).find(x => x && x.id === id);
+    const name = (v && String(v.name || '').trim()) || 'them';
+    writeVendor(id, recordContact({ source: 'host-logged' }),
+      // Names the act in the host's own words, and says what it BUYS them —
+      // otherwise "logged" reads as bookkeeping rather than as the thing that
+      // makes silence visible later.
+      `Noted — you reached out to ${name}. If they go quiet, this is what tells you.`);
   };
   // WAVE-B write path (a): booking status. The EXACT vocabulary every status
   // read expects (lib/vendorIntelligence header: 'Considering' | 'Quoted' |
@@ -15264,6 +15283,49 @@ export default function HostShellV2() {
                             </span>
                           </div>
                         )}
+                        {/* ── CONTACT, ON THE ROW — FOR EVERYONE ─────────────────────────
+                            Board ruling 2026-08-07: no comms hub. The act belongs where the
+                            host is standing when they notice, not in a destination they must
+                            learn exists. Grandmother does not think "communications", she
+                            thinks "I should call the barbecue man back".
+
+                            RENDERS FOR HELPERS TOO (host, 2026-08-07). This first shipped
+                            inside `!v.isInformal && statusPickFor === v.id`, so it reached
+                            paid vendors only, and only while the status picker happened to be
+                            open. Both were wrong. Chasing your cousin about the folding tables
+                            is the SAME act as chasing the caterer, and helpers are the people
+                            most likely to go quiet because nothing contractual binds them.
+                            Standing rule holds: helpers get contact, NOT the paid-vendor
+                            ladder — no COI, no contract, no deposit.
+
+                            It records what the HOST DID and never claims we sent anything —
+                            we cannot. This is the write half of a field derive.js has scored
+                            staleness against since it was built with nothing writing it. */}
+                        {String(v.name || '').trim() && (() => {
+                          const cs = contactState(v);
+                          return (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline',
+                              gap: 8, margin: '2px 0 10px' }}>
+                              <button className="vc-pill"
+                                onClick={ev => { ev.stopPropagation(); logVendorContact(v.id); }}
+                                aria-label={'Log that you reached out to ' + v.name}>
+                                {cs.known ? 'Reached out again' : 'I reached out'}
+                              </button>
+                              <span className="grounding" style={{ margin: 0,
+                                color: cs.silent ? 'var(--warn)' : 'var(--faint)' }}>
+                                {/* Three different sentences, never merged. "No record" is not
+                                    "they ignored you" — we simply do not know. */}
+                                {!cs.known
+                                  ? 'No record of reaching out yet.'
+                                  : !cs.awaitingReply
+                                    ? 'They came back to you.'
+                                    : cs.silent
+                                      ? `You reached out ${cs.daysSince} days ago and haven’t heard back.`
+                                      : `You reached out ${cs.daysSince === 0 ? 'today' : cs.daysSince + ' days ago'}.`}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         {(worry || coiAct || memLine || vConfirm) && (
                           <div className="vc-chips">
                             {vConfirm && <span className="vc-chip" style={vConfirm.state === 'confirmed' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{vConfirm.state === 'confirmed' ? 'Confirmed by vendor' : 'Vendor flagged an issue'}</span>}
