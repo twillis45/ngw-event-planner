@@ -16789,7 +16789,13 @@ export default function HostShellV2() {
                               first one is a full-width row instead of a 26px chip. */}
                           <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                             aria-expanded={guestOpen === i} aria-controls={'v2-guest-detail-' + i}
-                            aria-label={(g.name || 'Guest') + ' replied ' + (g.rsvp || 'nothing yet') + ' — open to change it'}
+                            /* ONE STRING, BOTH PLACES (WCAG 2.5.3, board 2026-08-07).
+                               This said "replied nothing yet" while the chip below
+                               rendered "no reply" — so a voice-control user saying
+                               "tap no reply" missed a control whose accessible name
+                               was different words. The visible text must be IN the
+                               accessible name, not a paraphrase of it. */
+                            aria-label={(g.name || 'Guest') + ': ' + (g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')) + ' — open to change it'}
                             onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
                             {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
                             <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
@@ -16824,8 +16830,21 @@ export default function HostShellV2() {
                                 UX_05:72 asks of a chip: this is a phone-first roster and
                                 UX_03's mobile floor is the binding one, so the larger of
                                 the two wins. The row they sit in is the accordion
-                                UX_05:174 names as the one place a height may change, so
-                                the extra height costs the collapsed list nothing. */}
+                                UX_05:174 names as the one place a height may change.
+
+                                CORRECTION (board, 2026-08-07): an earlier version of
+                                this comment claimed the extra height "costs the
+                                collapsed list nothing". It was measured and that is
+                                false — opening a guest injects 283px on the phone
+                                (the "Add names" label moves y=558 -> y=841), because
+                                this accordion carries kids/+1/needs/remove/meal/
+                                phone/email/group along with the picker. What is true
+                                is narrower: the TAPPED row no longer moves under the
+                                finger, and rows keep their heights and gaps. Rows
+                                BELOW it move further than the old inline picker moved
+                                them (~40px). That is a real trade, not a free win,
+                                and the open fix is a replies-only pass — name + the
+                                four chips on every row, nothing expanding. */}
                             <div className="actions-row" style={{ alignItems: 'center' }}>
                               <span className="of">reply:</span>
                               <span role="radiogroup" aria-label={'Reply for ' + (g.name || 'guest')}

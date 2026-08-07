@@ -4167,7 +4167,13 @@ button.vc-pill::after{
    x=767 on some rows and x=759 on others — 8px of drift, which is exactly the
    ragged edge a column is supposed to remove. A shared track cannot be a
    percentage of a per-row box. */
-.stagewrap--responsive-data[data-rail="1"] .grow > button > span:first-child{
+/* :first-of-type MATTERS. Unscoped, this selector also matched the REPLY
+   button's `.tag` (its own first child), handing a three-letter word the whole
+   --gt-name track: clamp(200px,18vw,320px) = 259px at 1440, 200px at 1024.
+   Measured in the board renders as a 258px slab. Three panels reported it
+   independently as "reads as a progress bar" — which is the very defect the
+   comment at :4460 believed it had already fixed. */
+.stagewrap--responsive-data[data-rail="1"] .grow > button:first-of-type > span:first-child{
   flex:0 0 var(--gt-name);
 }
 .stagewrap--responsive-data[data-rail="1"] .grow > button > span:nth-child(2){
@@ -4481,7 +4487,20 @@ button.vc-pill::after{
      THE REAL FIX is to move the picker out of the trigger button so the
      trigger's min-content is just its label — that is a row restructure, and it
      is a CHOICE about the RSVP control, not a layout tweak. Board call. */
-  flex:0 0 auto; min-width:0; text-align:center;
+
+  /* ── THE BOARD CALL LANDED, AND THE PAYMENT IS COLLECTED (2026-08-07) ─────
+     The picker moved into the guest's accordion, so this button's min-content
+     is now just its label. Both blockers named above are therefore gone:
+       - min-width:auto no longer resolves to a ~320px inline picker;
+       - so `flex:0 0 var(--gt-reply)` no longer clips the label to reach 96px.
+     --gt-reply was declared at :4157 and referenced NOWHERE — a track that was
+     designed, named, and never wired, because the retreat above landed first.
+     margin-left:auto pins the column right; the inner tag sizes to its text so
+     "Yes" is a chip and not a bar. */
+  flex:0 0 var(--gt-reply); min-width:0; margin-left:auto; text-align:right;
+}
+.stagewrap--responsive-data[data-rail="1"] .grow > button + button > .tag{
+  width:max-content; max-width:100%; margin-left:auto;
 }
 
 
