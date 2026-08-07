@@ -4716,3 +4716,35 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a > .t-label{
   order:-1;
 }
+
+/* ══ THE ASK AND ITS BUTTON WERE NOT IN BALANCE (host, 2026-08-07) ═══════════
+   Measured in a 930px column:
+
+       .ask   w=484   max-width:18ch        40px type
+       .cta   w=420   max-width:42ch/420px  17px type
+
+   The button was 87% as wide as the headline while carrying 40% of its type
+   size — so it competed with the one loud thing on width and lost on weight,
+   and the pair read as two bars rather than a statement and its answer.
+
+   It is 420 because `.ecenter` is a flex column and a flex child stretches by
+   default, so the button grows to whatever cap it is given. `b60095c4` already
+   took this from 1220px to ~500 on the grounds that a full-width primary button
+   is a phone affordance; the remaining 420 is the same affordance, smaller.
+   UX_05 specifies a primary button by PADDING (8-12px vertical, 16-24px
+   horizontal) and gives it no width at all — a button is sized by its label.
+
+   `align-self:start` stops the stretch; the min-width keeps a short label
+   ("Save", "Open it") from collapsing to a tap-hostile stub. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on > .ecenter .cta{
+  align-self:start;
+  /* `align-self` alone was not enough and the computed box said so: the button
+     is a flex ITEM inside `.actions-row`, so it kept growing to its 420px cap
+     regardless. `flex:0 0 auto` is the declaration that actually stops it —
+     width:auto loses to flex-grow every time. Found by reading the computed
+     width (420px) after the rule had already matched. */
+  flex:0 0 auto;
+  width:auto; max-width:none;
+  min-width:min(240px, 100%);
+  padding-left:var(--sp-5); padding-right:var(--sp-5);
+}
