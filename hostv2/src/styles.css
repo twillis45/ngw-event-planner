@@ -4285,6 +4285,14 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(232px,288px);
+  /* TWO rows, declared. `.efold` never renders on this canvas, so the third row
+     was a PHANTOM — an empty auto track, and a spanning item distributes its
+     size into exactly those. Measured: `grid-template-rows: 324px 93.66px 142px`
+     with 94px of height in a row holding a display:none element, which is where
+     the gap between the ask and the work was coming from after the stat column
+     started spanning. Declaring the rows means an unplaced child can never
+     invent one again. */
+  grid-template-rows:auto auto;
   align-content:start;
   column-gap:var(--sp-5);
 }
@@ -4294,18 +4302,32 @@ button.vc-pill::after{
   grid-column:1 / span 2; grid-row:1;
 }
 /* Zone 3 — the work, side by side in the width that just freed up. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:3; }
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:3; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
 /* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
    The track ceiling is 288px, under UX_03's 300px rule, and they stack down
    their own column instead of stretching. */
+/* SPANS EVERY ROW, not just the first (2026-08-07). It sat in row 1 beside the
+   ask, and a grid row is as tall as its tallest item — the stat column is 475px
+   with the plan-part chips in it, the ask is 324px, so THE WORK BAND WAS WAITING
+   FOR THE STAT COLUMN. That is where the ~150px void under the ask came from,
+   and adding a row-gap on top of it made it worse before this was found.
+   Spanning it is also what the leaders do with a properties rail: it runs
+   alongside the whole content column rather than occupying one band of it. */
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
-  grid-column:3; grid-row:1;
+  /* `1 / span 3`, NOT `1 / -1`. `-1` counts back from the last line of the
+     EXPLICIT grid, and `.hero` declares no `grid-template-rows` — so its
+     explicit row grid has one line, `-1` resolved to line 1, and the span
+     silently collapsed to a single row. Computed proof before the fix:
+     `grid-template-rows: 457.312px 0px 142px` with row 1 exactly the bento's
+     own height, i.e. the stat column was still sizing the row the ask lives in.
+     The declaration was in the file and read correctly; it did nothing. */
+  grid-column:3; grid-row:1 / span 2;
   display:flex; flex-direction:column; gap:var(--sp-2);
   align-self:start; margin-top:0;
 }
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
-  grid-column:3; grid-row:3; align-self:start;
+  grid-column:3; grid-row:2; align-self:start;
 }
 /* (The grid cell this element used to need is gone with it — it does not
    render on a desktop canvas at all. See the ruling below.) */
@@ -4867,5 +4889,50 @@ button.vc-pill::after{
   .stagewrap--responsive-food .app{
     height:min(calc(100vh - var(--sp-5) - 40px), 900px);
     min-height:0;
+  }
+}
+
+/* ══ GUTTERS CARRY HIERARCHY, OR THEY CARRY NOTHING (board, 2026-08-07) ══════
+   The sitting's sharpest structural finding: ONE value — 20px — was doing three
+   different structural jobs. The rail↔canvas seam, the padding inside the
+   canvas, and the gutter between the three work columns were all `--sp-5`. So
+   the composition had no vocabulary for RELATEDNESS, which is why columns 1 and
+   2 never read as siblings while column 3 reads as a different kind of thing:
+   nothing in the spacing said so.
+
+   Correct ordering for a three-column board whose columns have NO borders —
+   space is the only separator they get:
+
+       seam  <  padding  <  gutter  <  zone row-gap
+
+   The seam is the one boundary that already has another signal doing the work
+   (a plane change, --field -> --bg -> --card at :3980), so it stays smallest at
+   20 and does not grow.
+
+   AND row-gap. It appears THREE times in 4,900 lines, and the desktop command
+   grid declared `column-gap` only — so every vertical relationship between the
+   ask, the work band and the stat column was an accident of child margins.
+   That is the mechanism behind the unexplained ~100px void above "THEN, IN
+   ORDER": nobody set it, two `margin-top` values did. Declared now, so the
+   number is a decision.
+
+   Values are on the ratified 4px ladder. 56 is not invented — it already exists
+   at :226 for this composition. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
+  column-gap:40px;
+  row-gap:48px;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .content{
+  padding-left:28px; padding-right:28px;
+}
+/* ≥1536 — the WIDESCREEN constant that already exists (viewport.js:31). The
+   board's step, not a new threshold. */
+@media (min-width:1536px){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
+    column-gap:56px;
+    row-gap:64px;
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .content{
+    padding-left:36px; padding-right:36px;
   }
 }
