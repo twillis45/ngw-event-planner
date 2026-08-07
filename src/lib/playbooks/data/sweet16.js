@@ -240,7 +240,7 @@ const sweet16 = {
       buyAt: 'T-1d',
       note: 'Round out the mains; a fruit/veggie tray quietly covers lighter eaters and parents.',
       alternatives: ['Bag chips + store-bought dip — cheapest side option', 'Veggie tray from deli — easy and budget-friendly'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cake',
       item: 'Sweet 16 cake (+ a few backup cupcakes)',
@@ -253,7 +253,7 @@ const sweet16 = {
       buyAt: 'T-1d',
       note: 'The cake is a spotlight moment, not just dessert. Order to theme; a two-tier serves ~40-50. Add cupcakes if over 50 guests.',
       alternatives: ['Costco sheet cake with custom topper — cheapest per slice', 'Grocery bakery tiered cake — much cheaper than specialty bakery'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_soda',
       item: 'Soda / sparkling water / juice (≈3 drinks/guest over the party)',
@@ -278,7 +278,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'A signature mocktail bar (3-4 colorful zero-proof drinks) is a Sweet 16 highlight and a social-media moment. Pre-batch syrups; let teens build their own.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_water',
       item: 'Bottled / dispenser water',
@@ -290,7 +290,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Dancing teens drink a lot of water. Water should be the largest share of total pours.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_ice',
       item: 'Ice (≈1-1.5 lb/guest)',
@@ -315,7 +315,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Carries the theme and doubles as the photo backdrop. Balloon arch + backdrop is the highest-impact spend per dollar.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_lighting',
       item: 'Dance-floor lighting (LED party lights / disco / uplights)',
@@ -327,7 +327,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Lighting turns a room into a dance floor. Skip if the DJ brings a lighting rig — confirm at booking.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_tableware',
       item: 'Plates, cups, napkins, cutlery, serving utensils',
@@ -339,7 +339,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Teens cycle plates/cups fast at a buffet and bar; buy ~2.5x headcount in cups especially.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_favors',
       item: 'Party favors / goody bags',
@@ -351,7 +351,7 @@ const sweet16 = {
       essential: false,
       buyAt: 'T-3d',
       note: 'One per guest as a send-off. Photo-strip frames, custom candy, or theme-matched small gifts work well.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_photobooth_props',
       item: 'Photo-booth props + custom frame/sign',
@@ -363,7 +363,7 @@ const sweet16 = {
       essential: false,
       buyAt: 'T-3d',
       note: 'If renting a full booth this is included; for a DIY booth, props + a backdrop + good light is enough.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cleanup',
       item: 'Trash bags, bins, paper towels, cleaning supplies',
@@ -375,7 +375,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-3d',
       note: 'A spilled-soda, confetti, pizza-box party makes a mess fast. Stage bins before guests arrive.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
   ],
 
   rentalsGap: [

@@ -84,7 +84,7 @@ import path from 'node:path';
 
 const DIR = path.resolve('src/lib/playbooks/data');
 const apply = process.argv.includes('--apply');
-const EXPECT = Number(process.env.EXPECT_UNLABELLED || 393);
+const EXPECT = Number(process.env.EXPECT_UNLABELLED || 372);
 const LABEL = "provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }";
 
 // ─── ONE FORWARD SCAN, PROPERLY (rewritten 2026-08-07) ─────────────────────
@@ -102,6 +102,7 @@ const scanFile = (s) => {
   const hits = [];              // { idx, open, close } for each unitCostRange in CODE
   const stack = [];             // indices of currently-open braces
   const pending = [];           // hits whose owning brace has not closed yet
+  const provs = [];             // { idx, open } for every provenance key, by owner
   let i = 0;
   const KEY = 'unitCostRange';
   while (i < s.length) {
@@ -123,6 +124,13 @@ const scanFile = (s) => {
       }
       i++; continue;
     }
+    // provenance keys, attributed to the brace that OWNS them
+    if (c === 'p' && s.startsWith('provenance', i)) {
+      let j = i + 'provenance'.length;
+      while (j < s.length && /\s/.test(s[j])) j++;
+      if (s[j] === ':' && stack.length) provs.push({ idx: i, open: stack[stack.length - 1] });
+      i += 'provenance'.length; continue;
+    }
     // the key, in code context only, and only in a property position
     if (c === 'u' && s.startsWith(KEY, i)) {
       let j = i + KEY.length;
@@ -135,7 +143,7 @@ const scanFile = (s) => {
     }
     i++;
   }
-  return hits;
+  return { hits, provs };
 };
 
 const files = (await readdir(DIR)).filter((f) => f.endsWith('.js')).sort();
@@ -145,9 +153,17 @@ const edits = [];
 for (const f of files) {
   const src = await readFile(path.join(DIR, f), 'utf8');
   const hits = [];
-  for (const h of scanFile(src)) {
+  for (const h of scanFile(src).hits) {
     const body = src.slice(h.open, h.close + 1);
-    if (/verificationStatus:/.test(body)) { already++; continue; }
+    // ANY `provenance:` MEANS LABELLED — not just one carrying a
+    // verificationStatus. The corpus also uses a bare string shorthand
+    // (`provenance: 'synthesized'`, 13 of them), and `hostLabelsAreTruthful`
+    // locks the count of those string forms at 21. They are authored work:
+    // PRESERVE them, never upgrade them, and never write a second key beside
+    // one — duplicate keys do not error, the later silently wins, and that is
+    // how the first run destroyed 13 provenances while every other gate
+    // stayed green.
+    if (/(^|[{,]\s*)provenance:/.test(body)) { already++; continue; }
     hits.push([h.open, h.close]);
     found++;
   }
@@ -181,3 +197,18 @@ for (const { f, hits } of edits) {
   await writeFile(path.join(DIR, f), src);
 }
 console.log(`\nlabelled ${written} priced items across ${edits.length} files.`);
+
+// POST-WRITE ASSERTION. The failure mode that got through last time was a
+// literal ending up with TWO `provenance:` keys — silent, still parses, still
+// builds. Prove it did not happen rather than assume it.
+let dupes = 0;
+for (const { f } of edits) {
+  const src = await readFile(path.join(DIR, f), 'utf8');
+  for (const h of scanFile(src).hits) {
+    const body = src.slice(h.open, h.close + 1);
+    const n = (body.match(/(^|[{,]\s*)provenance:/g) || []).length;
+    if (n > 1) { console.error(`  DUPLICATE provenance in ${f} at ${h.open}`); dupes++; }
+  }
+}
+if (dupes) { console.error(`\n${dupes} literals carry two provenance keys — REVERT.`); process.exit(1); }
+console.log('verified: no object literal carries two provenance keys.');

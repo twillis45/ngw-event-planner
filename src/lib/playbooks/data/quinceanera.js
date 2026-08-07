@@ -277,7 +277,7 @@ const quinceanera = {
       buyAt: 'T-1d',
       note: 'Light bites while guests arrive and photos are taken keeps the room comfortable before the seated dinner.',
       alternatives: ['Chips + salsa + guacamole station — budget appetizer swap', 'Taquitos (frozen) baked tray — cheaper passed app option'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cake',
       item: 'Tiered quinceañera cake (to the color story; serves the headcount)',
@@ -290,7 +290,7 @@ const quinceanera = {
       buyAt: 'T-1d',
       note: 'A multi-tier cake is a centerpiece and a photo moment, often matched to the gown. Order from the baker at 6 months out; pick up or confirm delivery the day before. Some families add a smaller decorative top tier and sheet cakes to serve a large crowd.',
       alternatives: ['Grocery bakery sheet cake with custom decorations — far cheaper', 'Tres leches cake from Latin bakery — traditional, often more affordable'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_beverages',
       item: 'Aguas frescas, soda & juice (coffee; + alcohol for adults if served)',
@@ -328,7 +328,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Centerpieces on every table plus the entrance, the head table, and ceremony pieces. Booked with the florist at 3 months out to the color story; delivered the day before or the morning of.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_decor',
       item: 'Decor: backdrop, entrance arch, linens (if not venue-supplied), signage, balloons',
@@ -340,7 +340,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'The backdrop and entrance set the theme and anchor photos and the grand entrance. Confirm what linens and a dance floor the venue includes so you do not pay twice.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_doll_crown',
       item: 'Ceremonial items: last doll (última muñeca), tiara/crown, scepter, heels, toast glasses, candles/roses',
@@ -352,7 +352,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'COMMONLY FORGOTTEN under the bigger vendor decisions. The heels for the changing of the shoes, the last doll, the crown and scepter, the toast glasses, and any candles or roses are small purchases that carry the most meaningful moments — gather them in one kit at 2 weeks out and assign who hands off each.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_favors',
       item: 'Recuerdos (favors) for guests',
@@ -364,7 +364,7 @@ const quinceanera = {
       essential: false,
       buyAt: 'T-3d',
       note: 'Recuerdos are a warm quince tradition — a small keepsake per guest, often personalized with the quinceañera\'s name and date.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_tableware',
       item: 'Tableware / disposables (if the venue or caterer does not supply place settings)',
@@ -376,7 +376,7 @@ const quinceanera = {
       essential: false,
       buyAt: 'T-3d',
       note: 'Most halls and caterers include china, glassware, and linens — confirm first. Buy disposables only for a venue that supplies nothing, or for an overflow/kids table.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cleanup',
       item: 'Cleanup supplies: trash bags, bins, paper towels, gift transport boxes',
@@ -388,7 +388,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'COMMONLY FORGOTTEN: boxes to carry home the many gifts, the doll, the crown, and leftover cake at the end of a long night. Confirm whether the venue handles end-of-night trash or you do.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
   ],
 
   rentalsGap: [

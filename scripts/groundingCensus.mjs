@@ -19,7 +19,14 @@ for (const f of files) {
     if (Object.prototype.hasOwnProperty.call(node, 'unitCostRange')) {
       priced++; p++;
       if (underAlternatives) inAlt++;
-      const st = node.provenance && node.provenance.verificationStatus;
+      // ANY provenance counts. The corpus uses a bare string shorthand
+      // (`provenance: 'synthesized'`) as well as the object form, and reading
+      // only `.verificationStatus` called those unlabelled — a blind spot this
+      // file SHARED with the codemod, which is how they agreed and were both
+      // wrong. Agreement between two detectors is not correctness.
+      const prov = node.provenance;
+      const st = typeof prov === 'string' ? prov + ' (string form)'
+        : (prov && prov.verificationStatus) || (prov ? '(object, no status)' : null);
       if (st) { labeled++; byStatus[st] = (byStatus[st] || 0) + 1; }
       else { unlabeled++; u++; }
     }

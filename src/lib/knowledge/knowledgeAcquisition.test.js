@@ -109,12 +109,23 @@ describe('discovery starts from the AUTHORED corpus', () => {
 
   test('fieldState uses the HOST predicate, so backlog and host agree', () => {
     const pb = getPlaybook('Crab Feast');
-    const ice = pb.purchases.find((p) => p.id === 'p_ice');
-    // ABSENT, not null. The host ROW shows `provenance: null` because the render
-    // does `purchaseProvenance(...) || null`; the authored purchase simply has no
-    // key. Both mean unsourced, so the invariant is falsiness, not a literal null —
-    // asserting `toBeNull` here would pin a rendering detail as a data contract.
-    expect(ice.provenance).toBeFalsy();                      // authored, unsourced
+    const authored = pb.purchases.find((p) => p.id === 'p_ice');
+    // ── THE UNSOURCED FIXTURE IS BUILT, NOT BORROWED (2026-08-07) ───────────
+    // This used to assert that the real p_ice carries no provenance and use it
+    // as the unsourced case. That made the test depend on the corpus containing
+    // an UNLABELLED item — which is the exact condition task #10 exists to
+    // remove, so achieving the goal broke the test. A test that fails when you
+    // succeed is testing the wrong thing.
+    // What it actually needs is an object with no provenance, so it makes one.
+    // The subject under test is fieldState's PREDICATE, not the corpus's state.
+    // ABSENT, not null: the host ROW shows `provenance: null` because the render
+    // does `purchaseProvenance(...) || null`, while an unsourced purchase simply
+    // has no key. Both mean unsourced, so the invariant is falsiness — asserting
+    // `toBeNull` would pin a rendering detail as a data contract.
+    if (!authored) throw new Error('p_ice no longer exists in the Crab Feast corpus — pick another authored purchase for this fixture');
+    const ice = { ...authored };
+    delete ice.provenance;
+    expect(ice.provenance).toBeFalsy();                      // unsourced by construction
     expect(fieldState('Crab Feast', ice, 'qtyPerGuest', new Set())).toBe('missing-provenance');
 
     const grounded = { ...ice, provenance: { tier: 'researched', sources: ['reddy-ice-2026'] } };
