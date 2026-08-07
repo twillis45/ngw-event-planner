@@ -4271,7 +4271,7 @@ button.vc-pill::after{
    .then-fold (askMode) and .tile-d (calm / day-of) are near-mutually-exclusive,
    so row 2 is rarely more than half-used; it collapses to its content either
    way rather than reserving space. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
   display:grid;
   grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(232px,288px);
   align-content:start;
@@ -4279,21 +4279,21 @@ button.vc-pill::after{
 }
 /* Zone 1 + 2 — the eyebrow (title), the ask, and the progress foot keep one
    stage, spanning the two work columns with the stat cards beside them. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .escreen{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
   grid-column:1 / span 2; grid-row:1;
 }
 /* Zone 3 — the work, side by side in the width that just freed up. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
 /* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
    The track ceiling is 288px, under UX_03's 300px rule, and they stack down
    their own column instead of stretching. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .bento{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
   grid-column:3; grid-row:1;
   display:flex; flex-direction:column; gap:var(--sp-2);
   align-self:start; margin-top:0;
 }
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .tile-d{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
   grid-column:3; grid-row:2; align-self:start;
 }
 /* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
@@ -4301,7 +4301,14 @@ button.vc-pill::after{
    is a phone affordance that says "there is more below the bottom edge", and
    on a real canvas the next section is already in plain sight. But :287 lives
    inside `@media (min-width:1280px) and (min-height:700px)`, and `data-rail`
-   comes from showsRail(), which is WIDTH-ONLY (isWideBp, >=1280).
+   comes from showsRail(), which is WIDTH-ONLY — and wider than it looks:
+   `isWideBp` is `bp === 'desktop' || bp === 'tablet-land'` (viewport.js:42), and
+   tablet-land starts at 1024 (viewport.js:26). So data-rail is "1" from 1024,
+   NOT from 1280. The board caught this: the three-column grid above was keyed on
+   [data-rail="1"] alone and therefore ran a 1fr/1fr/288px composition inside the
+   ~700px content area left at 1024, wrapping "5 confirmed guests still need
+   seats" onto four lines. It now carries [data-bp="desktop"] as well — >=1280,
+   with no height condition — and tablet-land keeps the single-column lane.
 
    So on any canvas at least 1280 wide and UNDER 700 tall the two gates
    disagree: the rail is up, this grid is on, and the handle is still visible.
@@ -4344,7 +4351,7 @@ button.vc-pill::after{
 }
 /* The 68ch cap was a phone measure standing in for a column. Each block now has
    a real track that bounds it, so keeping the cap would only re-narrow it. */
-.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen ~ *{
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen ~ *{
   max-width:none;
 }
 
