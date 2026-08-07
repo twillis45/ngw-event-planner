@@ -311,11 +311,20 @@ for (const state of STATES) {
         // This is not the failure being silenced. Hiding the handle
         // unconditionally at desktop was the defect; it is now gated on whether
         // the scroll container actually overflows (`.app.has-more`).
-        const overflows = await page.evaluate(() => {
-          const app = document.querySelector('.app');
-          return !!app && (app.scrollHeight - app.clientHeight) > 24;
-        });
-        if (!overflows) { test.skip(true, 'nothing below the fold — a handle here would point at content in plain sight'); return; }
+        // ASK THE SHELL, DO NOT RE-MEASURE ALONGSIDE IT. The first version of
+        // this guard read `app.scrollHeight - app.clientHeight` itself and
+        // compared against the same 24px threshold the shell uses. That is two
+        // independent measurements of a MARGINAL quantity taken at different
+        // moments, and it flapped exactly as you would expect: run alone the
+        // page did not overflow and all eight skipped; run inside the full
+        // matrix it did, so the spec demanded a handle the shell had already
+        // decided against. Neither reading was wrong — they were taken a beat
+        // apart on a page whose height sits near the threshold.
+        // `.has-more` IS the product's answer. Assert against that and the race
+        // disappears; what is being guarded is the CONTRACT — that the handle
+        // is present exactly when the shell says there is more below.
+        const hasMore = await page.locator('.app.has-more').count() > 0;
+        if (!hasMore) { test.skip(true, 'shell reports nothing below the fold — a handle here would point at content in plain sight'); return; }
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
         // RETRYING, NOT A ONE-SHOT READ. `.has-more` is applied by a React effect
         // driven by a ResizeObserver, so it lands a frame or more after the

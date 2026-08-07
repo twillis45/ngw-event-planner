@@ -2208,16 +2208,32 @@ export default function HostShellV2() {
     // both produce a pixel or two of overflow on a page that visually fits.
     const read = () => setMoreBelow(app.scrollHeight - app.clientHeight > 24);
     read();
-    let ro;
+    let ro, mo;
     if (typeof ResizeObserver !== 'undefined') {
       ro = new ResizeObserver(read);
+      // OBSERVE EVERY DIRECT CHILD, NOT JUST THE FIRST. `.app` has a FIXED
+      // height (`height:min(calc(100vh - ...), 900px)`), so it never resizes
+      // and observing it alone can never fire. The first version watched
+      // `firstElementChild` only — and whichever child actually grows is not
+      // reliably the first, so on several boards this stayed false forever and
+      // the handle never appeared even though the page scrolled.
       ro.observe(app);
-      // The container's own box rarely changes; its CONTENT growing is the
-      // event that matters, so observe the child that actually reflows.
-      if (app.firstElementChild) ro.observe(app.firstElementChild);
+      for (const child of app.children) ro.observe(child);
     }
+    if (typeof MutationObserver !== 'undefined') {
+      // Children are added and removed as the board changes state; re-observe
+      // them when they do. ResizeObserver.observe is idempotent.
+      mo = new MutationObserver(() => { read(); if (ro) for (const child of app.children) ro.observe(child); });
+      mo.observe(app, { childList: true });
+    }
+    app.addEventListener('scroll', read, { passive: true });
     window.addEventListener('resize', read);
-    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', read); };
+    return () => {
+      if (ro) ro.disconnect();
+      if (mo) mo.disconnect();
+      app.removeEventListener('scroll', read);
+      window.removeEventListener('resize', read);
+    };
     // Deps are stage/eventId ONLY. `askMode` (:2681) and `sheet` (:2946) are
     // declared BELOW this effect, so naming them here is a temporal-dead-zone
     // ReferenceError, not a missing dependency — and they are not needed: the
