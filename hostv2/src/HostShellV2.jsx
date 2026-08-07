@@ -984,6 +984,45 @@ export default function HostShellV2() {
       'Venue on the plan — invites, maps, and the rain note now carry it.');
     setVenueErr(null); setVenueDraft(''); setPendingCity(''); setAddrSugs([]);
   };
+  // ── ONE VENUE CAPTURE, FOUR DOORS (board wave 2, 2026-08-07) ───────────────
+  // The identical control was hand-inlined at FOUR call sites: the hero's wired
+  // editor, the blocker card, the "Where is it happening?" card, and the Venue
+  // sheet. Same input, same venueDraft, same saveVenue, same addrSugs list, same
+  // pickAddr, same attribution line, same error line — only the surrounding
+  // framing legitimately differs. The board called it a live breach of the "no
+  // duplicate surfaces" non-negotiable: one question, four implementations, two
+  // of which can appear on a single surface.
+  //
+  // A PLAIN FUNCTION, NOT A NESTED COMPONENT. A component declared inside a
+  // render gets a fresh type on every pass, so React would unmount and remount
+  // this input on every keystroke — the field would lose focus mid-address and
+  // the autocomplete would be unusable. Returning JSX from a helper inlines it
+  // into the same element tree instead, which is what "identical render = proof"
+  // requires anyway.
+  const renderVenueCapture = ({ ctaClass = 'cta', wrapStyle = { display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }, wrapClass, autoFocus = false } = {}) => (
+    <>
+      <div className={wrapClass} style={wrapStyle}>
+        <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
+          value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus={autoFocus} />
+        <button className={ctaClass} onClick={saveVenue}>Save</button>
+      </div>
+      {addrSugs.length > 0 && (
+        <div style={{ marginTop: 6 }}>
+          {addrSugs.map((sg, si) => (
+            <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
+              onClick={() => pickAddr(sg)}>
+              <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
+            </button>
+          ))}
+          <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .65 }}>
+            {typeof window !== 'undefined' && window.google ? 'Suggestions by Google Places.' : 'Suggestions by OpenStreetMap — Google Places takes over when the API key lands.'}
+          </p>
+        </div>
+      )}
+      {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+    </>
+  );
+
   // At-home venues resolve the ORIGINAL's venue blocker via venueCity (the
   // same field weather geocoding reads) — so home events get a city ask.
   const needsCity = () => venueFor(event).needsCityForWeather; // ONE definition (venueFor) — was the third hand copy of the at-home rule
@@ -4710,26 +4749,12 @@ export default function HostShellV2() {
     if (kind === 'venue') {
       return (
         <>
-          <div className="actions-row" style={{ alignItems: 'center', marginTop: 'var(--sp-2)' }}>
-            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" autoFocus />
-            <button className="mini" onClick={saveVenue}>Save</button>
-          </div>
-          {/* The suggestions were FETCHED here but never RENDERED (host report
-              2026-07-23 "attention system not working" on Add the location.) —
-              the hero editor was the one venue field dropping addrSugs on the
-              floor. Same rows as the sheet editors; pickAddr fills name+city. */}
-          {addrSugs.length > 0 && (
-            <div style={{ marginTop: 6 }}>
-              {addrSugs.map((sg, si) => (
-                <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
-                  onClick={() => pickAddr(sg)}>
-                  <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
-                </button>
-              ))}
-            </div>
-          )}
-          {venueErr && <p className="because" style={{ color: 'var(--warn)', marginTop: 6 }}>{venueErr}</p>}
+          {/* Was the fourth hand-copy. It also carried the one thing the other
+              three lacked and the one thing they had: no source attribution on
+              the suggestions, and an error in .because/--warn where the others
+              use .grounding/--danger — two colours for one meaning. Both are
+              resolved by there being a single control. */}
+          {renderVenueCapture({ ctaClass: 'mini', wrapClass: 'actions-row', wrapStyle: { alignItems: 'center', marginTop: 'var(--sp-2)' }, autoFocus: true })}
         </>
       );
     }
@@ -8495,22 +8520,7 @@ export default function HostShellV2() {
                           field weather and maps read. */}
                       {isVenueBlock && !venueSet && (
                         <>
-                          <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
-                            <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-                              value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
-                            <button className="cta" onClick={saveVenue}>Save</button>
-                          </div>
-                          {addrSugs.length > 0 && (
-                            <div style={{ marginTop: 6 }}>
-                              {addrSugs.map((sg, si) => (
-                                <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
-                                  onClick={() => pickAddr(sg)}>
-                                  <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                          {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                          {renderVenueCapture()}
                         </>
                       )}
                       {isVenueBlock && venueSet && needsCity() && (
@@ -8635,25 +8645,7 @@ export default function HostShellV2() {
                     <p className="because">{(days != null && days <= 1)
                       ? 'It’s the day — guests, the rain note, and every map link need a place. This can’t wait.'
                       : 'Everything hangs off the venue — invites, the rain backup, seats and space.'}</p>
-                    <div style={{ display: 'flex', gap: 'var(--sp-2)', marginTop: 10 }}>
-                      <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-                        value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
-                      <button className="cta" onClick={saveVenue}>Save</button>
-                    </div>
-                    {addrSugs.length > 0 && (
-                      <div style={{ marginTop: 6 }}>
-                        {addrSugs.map((sg, si) => (
-                          <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
-                            onClick={() => pickAddr(sg)}>
-                            <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
-                          </button>
-                        ))}
-                        <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', opacity: .65 }}>
-                          {typeof window !== 'undefined' && window.google ? 'Suggestions by Google Places.' : 'Suggestions by OpenStreetMap — Google Places takes over when the API key lands.'}
-                        </p>
-                      </div>
-                    )}
-                    {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                    {renderVenueCapture()}
                   </div>
                 </article>
               )}
@@ -9790,22 +9782,7 @@ export default function HostShellV2() {
                 {vf.name && (
                   <p className="grounding" style={{ margin: '0 0 var(--sp-2)' }}>Currently: <b>{vf.name}</b>{vf.city ? ` · ${vf.city}` : ''}. Enter a new place to change it.</p>
                 )}
-                <div style={{ display: 'flex', gap: 'var(--sp-2)' }}>
-                  <input className="field" style={{ maxWidth: 'none', flex: 1 }} placeholder="Name or address"
-                    value={venueDraft} onChange={e => { setVenueDraft(e.target.value); setVenueErr(null); setPendingCity(''); fetchAddrSugs(e.target.value); }} aria-label="Venue" />
-                  <button className="cta" onClick={saveVenue}>Save</button>
-                </div>
-                {addrSugs.length > 0 && (
-                  <div style={{ marginTop: 6 }}>
-                    {addrSugs.map((sg, si) => (
-                      <button key={si} className="later-row" style={{ width: '100%', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '7px 2px' }}
-                        onClick={() => pickAddr(sg)}>
-                        <span className="t" style={{ color: 'var(--ink-soft)', fontWeight: 550 }}>{sg.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {venueErr && <p className="grounding" style={{ marginTop: 6, color: 'var(--danger)' }}>{venueErr}</p>}
+                {renderVenueCapture({ wrapStyle: { display: 'flex', gap: 'var(--sp-2)' } })}
                 {vf.name && needsCity() && (
                   <div style={{ marginTop: 'var(--sp-3)' }}>
                     <p className="grounding" style={{ marginBottom: 'var(--sp-2)' }}>Add the town and state (or ZIP) so weather and maps find the right place.</p>
