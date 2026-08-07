@@ -42,6 +42,22 @@ export function applyStudioMatte() {
   const c = carbonNeutral.mid; // the production default level
   set('--bg', c.bg);
   set('--bg-band', c.surface2);
+  // ── --field: the ground BEHIND the stage at >=1024 (host, 2026-08-07) ──────
+  // "need more of my carbon in the tablet, desktop, widescreens."
+  //
+  // It is the DEEPEST step of the same de-blued carbonNeutral ramp the shell
+  // already runs — NOT the --carbon* family. Those are two different ramps:
+  // carbonBody is blue-tinted (#070809/#121518) and carbonNeutral is de-blued
+  // (#141518/#1E1F22), and styles.css:793 already records what mixing them
+  // looks like ("a visible shift on a blue-grey pill"). A rail painted from the
+  // blue ramp against a de-blued content ground is that same clash at the scale
+  // of a whole screen, which is why this token exists rather than reusing
+  // --carbon.
+  //
+  // Declared here AND bundled, deliberately: --danger-solid was declared in
+  // TOKENS and never added to bundleForMode(), so it reached the DOM as the
+  // literal string "undefined" and no layer treated that as an error.
+  set('--field', carbonNeutral.deep.bg);
   set('--card', c.panel);
   set('--ink', dark.textPrimary);
   set('--ink-soft', dark.textSecondary);

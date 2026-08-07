@@ -1,3 +1,4 @@
+import { isWideBp } from './viewport';
 // ─── responsiveSurface — which shell composition a surface gets ──────────────
 //
 // Phase 5G-C1. The C1 acceptance path spans TWO host experiences — "where the
@@ -118,6 +119,45 @@ export function responsiveSurfaceMode(state) {
 /** The className to put on .stagewrap for this surface. '' for legacy. */
 export function stagewrapClass(state) {
   return SURFACE_CLASS[responsiveSurfaceMode(state)] || '';
+}
+
+/**
+ * showsRail({ bp, stage, sheet }) -> boolean — is the persistent section rail up?
+ *
+ * VIEWPORT_PORT_RULING step 3. UX_03 hangs the whole rail/hamburger decision on
+ * one flag: `isWide` means the sidebar is visible, below it navigation collapses
+ * to the hamburger (which this shell already has — the eyebrow IS the menu).
+ *
+ * THE TRAP THIS FUNCTION EXISTS TO AVOID, and it has already been paid for once:
+ * the breakpoint is NOT a width test. At >=1280 the stage is a fixed 393x852
+ * phone silhouette for every surface EXCEPT command / food / data. Rules keyed on
+ * `data-bp="desktop"` alone shipped 3- and 4-column grids INSIDE that phone —
+ * measured at 104.3px tracks at 1440 and 73.25px at 1920, with the event name
+ * truncated to two letters. A rail hung off the breakpoint would reproduce that
+ * exactly: 200px of navigation nailed to the side of a 393px phone.
+ *
+ * FIRST VERSION GATED DESKTOP ON optsOutOfFit() AND THE HOST REJECTED IT, for
+ * a reason worth keeping: it made the rail appear and vanish as you navigated.
+ * Opening "You & your account" at 1920 dropped a 1500px canvas to a 393px phone
+ * with 80% dead space and no navigation — measured. A rail that leaves when you
+ * use it is not persistent navigation, it is a surprise.
+ *
+ * So the answer was never to withhold the rail on those surfaces; it was to
+ * stop those surfaces being phones while a rail is up. The stylesheet takes
+ * [data-rail="1"] as "this is a real canvas" and drops the silhouette for it —
+ * the content keeps its measure inside that canvas rather than being stretched,
+ * which is the distinction responsiveSurface was written to protect.
+ *
+ * The breakpoint trap this function documents is unchanged and still live: the
+ * .navrows density rules must stay gated on the SURFACE classes, because they
+ * ask "how much width does this content have", which is a different question
+ * from "is navigation up".
+ */
+export function showsRail(state) {
+  const { bp } = (state || {});
+  // The forced phone stage is a phone in every respect, including its navigation.
+  if (phoneStageForced()) return false;
+  return isWideBp(bp);   // the ONE definition, from viewport.js
 }
 
 /**

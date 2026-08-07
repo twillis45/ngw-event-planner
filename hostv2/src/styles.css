@@ -3522,16 +3522,138 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 var(--sp-5);
 }
 .stagewrap[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
-/* Desktop keeps 3; widescreen earns a 4th. The directory is unordered short
-   rows, which is the one list where more columns cost the reader nothing. */
-.stagewrap[data-bp="desktop"] .navrows{
+/* Desktop keeps 3; widescreen earns a 4th — BUT ONLY WHERE THE SURFACE IS
+   ACTUALLY WIDE (2026-08-06, board, design seat).
+   The tablet rules above are safe because tablets render full-bleed. Desktop
+   does not: at >=1280 the shell is a fixed 393px phone silhouette EXCEPT the
+   command / food / data surfaces, and the nav sheet is not one of them. So
+   these two rules were laying 3 and 4 columns inside a 393px phone. Measured:
+   grid tracks of 104.3px at 1440 and 73.25px at 1920 — the event name truncated
+   to two letters, "Jump to a section" wrapped over three lines with its
+   sub-label gone, chevrons sitting on top of labels. The widescreen rule made
+   the PRIMARY NAVIGATION worse than desktop, which is the opposite of what a
+   density ladder is for.
+   The breakpoint was standing in for a width test, the same mistake the
+   tablet-landscape split made with orientation. Gated on the surface classes
+   that mean "this really is a wide canvas". */
+.stagewrap--responsive-command[data-bp="desktop"] .navrows,
+.stagewrap--responsive-data[data-bp="desktop"] .navrows,
+.stagewrap--responsive-food[data-bp="desktop"] .navrows{
   display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0 var(--sp-5);
 }
-.stagewrap[data-bp="desktop"][data-wide="1"] .navrows{ grid-template-columns:repeat(4, minmax(0,1fr)); }
+.stagewrap--responsive-command[data-bp="desktop"][data-wide="1"] .navrows,
+.stagewrap--responsive-data[data-bp="desktop"][data-wide="1"] .navrows,
+.stagewrap--responsive-food[data-bp="desktop"][data-wide="1"] .navrows{ grid-template-columns:repeat(4, minmax(0,1fr)); }
 /* The row's own border-bottom becomes a grid artifact once rows sit side by side,
    so the divider is redrawn per cell rather than per row. */
 .stagewrap[data-bp="tablet"] .navrows > .navrow,
 .stagewrap[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
+
+/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ───────────────
+   The ruling's finding: hostv2 was built as a phone shell and never given a
+   persistent navigation structure. `data-rail` was already being written to the
+   DOM — and NOTHING consumed it. Zero stylesheet rules, zero elements. The wire
+   was in and the thing was never built.
+
+   Six of six leaders converge on rail + main (Motion, Height, Wrike, Bonsai,
+   Asana, Plane), never a hamburger at desktop. The board's ceiling is
+   rail + main + on-demand detail: extra width buys measure and density, NEVER a
+   permanent third pane ("the overwhelm we just escaped, repainted").
+
+   WHEN IT IS UP is decided in JS by showsRail(), not here, because the
+   breakpoint is not a width test — at >=1280 every surface except command /
+   food / data is still a 393x852 phone, and the .navrows rules above already
+   paid for that mistake once by laying 4 columns inside one. This stylesheet
+   trusts [data-rail="1"] and nothing else. */
+.srail{ display:none; }
+
+.stagewrap[data-rail="1"]{
+  --rail-w:200px;                       /* leaders run 180-220 */
+  display:grid;
+  grid-template-columns:var(--rail-w) minmax(0, 1fr);
+  gap:0 var(--sp-5);
+}
+/* Both children are PINNED rather than auto-placed. .splash is absolute/inset:0
+   so it leaves the flow and still covers the whole stage, which is right — but
+   any future in-flow child would otherwise land in a phantom third cell and
+   silently reshape the grid. */
+.stagewrap[data-rail="1"] > .srail{ grid-column:1; grid-row:1; }
+.stagewrap[data-rail="1"] > .app  { grid-column:2; grid-row:1; }
+
+.stagewrap[data-rail="1"] > .srail{
+  display:block; min-width:0; align-self:stretch;
+  overflow-y:auto; scrollbar-width:none;
+  padding:var(--sp-6) 10px 40px;
+  /* ── MORE CARBON AT THE BIG VIEWPORTS (host, 2026-08-07) ──────────────────
+     "More carbon" is not a new colour — it is more of the ramp the app already
+     runs. The rail is simply A PANEL, the same --card every card uses, which is
+     what makes it cohesive rather than an applied skin: content ground (--bg
+     #141518) -> panel (--card #1E1F22) -> deep field (--field #0D0E10), three
+     steps of ONE de-blued ramp.
+
+     THE FIRST VERSION OF THIS PAINTED THE RAIL FROM --carbon-panel AND WAS
+     WRONG. --carbon* is the blue-tinted carbonBody ramp (#121518); the shell's
+     surfaces are the de-blued carbonNeutral ramp (#1E1F22). styles.css:793
+     already records what mixing them costs ("a visible shift on a blue-grey
+     pill") — that was one pill, this would have been a whole rail.
+
+     COPY CHECKED, NOT ASSUMED (host: "make sure the copy doesn't then
+     conflict"). Measured on --card: --ink 14.44:1, --steel-soft 6.24:1,
+     --muted 5.29:1. Worst case anywhere in the new composition is --muted on
+     --bg-band at 4.85:1. Every token clears 4.5. */
+  background:var(--card);
+  border-right:1px solid var(--line-soft);
+}
+.stagewrap[data-rail="1"] > .srail::-webkit-scrollbar{ display:none }
+.srail-g{ margin-bottom:var(--sp-5); }
+.srail-t{ margin:0 0 6px; padding-left:10px; color:var(--faint); }
+/* A rail row is a NAV LABEL, not a list row: no sub, no chevron, no count. The
+   sheet's own rows keep those. The rail answers "where can I go" in one glance,
+   and a second line per row would make 16 doors a wall of prose. */
+.srail-row{
+  display:flex; align-items:center; gap:10px;
+  width:100%; text-align:left; cursor:pointer;
+  background:none; border:none; border-radius:var(--r-sm);
+  padding:6px 10px; margin:0;
+  /* 44px FLOOR. Driven at 1024x768 and measured at 35px — under the UX_03
+     minimum, and tablet-land is a touch device (iPad landscape), so this is a
+     real thumb target and not a desktop-only pointer affordance. Their own
+     tapTargets spec runs at 1024 and would have failed it. Raised on the BOX
+     here rather than with an ::after overlay because a rail row has room: it
+     costs nothing but rail scroll, which the rail already handles. */
+  min-height:44px;
+  font-family:inherit; font-size:13.5px; font-weight:500; line-height:1.25;
+  color:var(--muted);
+  transition:color .14s var(--ease-out), background-color .14s var(--ease-out);
+}
+/* The icon inherits the row's colour, so state is expressed once (UX_02: the
+   colour budget is spent on state, never on ornament). flex:0 0 auto keeps the
+   mark on its grid when a label wraps — and is what makes a collapsed,
+   icons-only rail a layout change rather than a redraw. */
+.srail-i{ flex:0 0 auto; opacity:.85; }
+/* The LABEL is its own element, not a bare text node, because it is exactly the
+   part a collapsed icons-only rail hides — the collapse becomes `display:none`
+   on this one selector rather than a re-render. min-width:0 lets a long door
+   name ("Travel & where everyone stays") wrap inside the flex row instead of
+   forcing the rail wider than its track. */
+.srail-l{ min-width:0; }
+.srail-row:hover{ color:var(--ink); background:var(--steel-tint); }
+.srail-row:hover .srail-i{ opacity:1; }
+.srail-row:focus-visible{ outline:2px solid var(--steel); outline-offset:-2px; }
+/* WHERE AM I, not just where can I go — the thing the eyebrow menu could never
+   answer, because it only exists while it is open. One weight change and one
+   tint; no accent colour is spent here. */
+.srail-row.on{ color:var(--ink); font-weight:650; background:var(--steel-tint); }
+.srail-row.on .srail-i{ opacity:1; }
+
+/* The docked action belongs to the MAIN column. .next-bar is absolute against
+   .stagewrap, which is now the full grid — without this it would start under
+   the rail. The command surface already re-anchors it for its own two-column
+   composition (:291); this is the same correction one level up. */
+.stagewrap[data-rail="1"] .next-bar{
+  left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
+
 
 /* ── The `data` surfaces at desktop — Budget and Guests ──────────────────────
    Added 2026-08-07 with the responsiveSurface `data` mode. Before this, 43 of
@@ -3552,7 +3674,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
     height:auto; margin:var(--sp-5) auto 40px;
   }
   .stagewrap--responsive-data .app{
-    border-radius:var(--r-xl); box-shadow:none; height:auto; min-height:60vh;
+    border-radius:var(--r-xl); box-shadow:none;
+    /* ── THE PANEL WAS REFUSING THE WINDOW (2026-08-06, board, design seat) ──
+       `height:auto; min-height:60vh` made a data sheet 540px tall in a 900px
+       window and 648px in a 1080px one — while its own content scrolled
+       INTERNALLY by 80px with 340px of window sitting empty below it. The
+       command tier already solved this at :193; the data tier never got the
+       rule, which is why the two tiers disagree about what "use the width"
+       means vertically.
+       Same expression, so they cannot drift again. */
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    min-height:min(calc(100vh - var(--sp-5) - 40px), 900px);
   }
 
   /* TWO COLUMNS, NOT THREE. The pros killed a 3-pane cockpit as "the overwhelm
@@ -3583,8 +3715,29 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
   .stagewrap--responsive-data > .sheet > .frow,
   .stagewrap--responsive-data > .sheet > div:has(> .brow),
   .stagewrap--responsive-data > .sheet > div:has(> .later-row),
-  .stagewrap--responsive-data > .sheet > div:has(> .frow){
+  .stagewrap--responsive-data > .sheet > div:has(> .frow),
+  /* ── THE TWO SHEETS THE MODE WAS BUILT FOR WERE THE TWO IT MISSED ─────────
+     (2026-08-06, board, design seat.) Measured direct children per sheet at
+     1440: tasks 3/8, risks 2/5, decisions 5/7, seating 4/3, budget 6/5 — all
+     working. guests 34/2 and vendors 17/1 — broken. A guest row carries NO
+     class (its first child is div.grow) and a vendor card is `.vcard`, and
+     neither was named, so 24 guest rows and 8 vendor cards stayed in the 420px
+     column while the 876px column sat empty. Vendors was worse than empty: the
+     summary strip rendered ON TOP of the category chips and the scroll lane was
+     sliced mid-word at the column boundary.
+     The comment above already warned that an unclassed child "would have fallen
+     out of the grid silently" — it was right, and the guest roster is the case
+     it was describing. */
+  .stagewrap--responsive-data > .sheet > .vcard,
+  .stagewrap--responsive-data > .sheet > div:has(> .grow){
     grid-column:2;
+  }
+  /* Summary strips are about the WHOLE sheet, so they span both columns rather
+     than being crushed into one — this is what was colliding on vendors. */
+  .stagewrap--responsive-data > .sheet > .fstat-list,
+  .stagewrap--responsive-data > .sheet > .wstrip,
+  .stagewrap--responsive-data > .sheet > .conflictbar{
+    grid-column:1 / -1;
   }
 
   /* ── WIDESCREEN (>=1536) — the board's ruling, 2026-08-07 ─────────────────
@@ -3711,3 +3864,159 @@ button.vc-pill::after{
   top:50%; transform:translateY(-50%); height:44px;
 }
 @media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
+
+/* ── THE RAIL EARNS ITS WIDTH, IT DOES NOT TAKE IT ──────────────────────────
+   VIEWPORT_PORT_RULING step 4 asks for the 1280 stage cap to be raised. Doing
+   that by stretching the content would be the "stretched single column" the
+   whole port exists to kill, so the cap rises by exactly the rail plus its gap:
+   the main column keeps the measure UX_03 assigned it (command/food 1280, data
+   1360) and the reclaimed pixels go to navigation, which is new information
+   rather than longer lines.
+
+   Measured dead space before (responsiveBaseline, 2026-08-07): 4% at 1280,
+   15% at 1512, 33% at 1920 — a third of a large monitor was gutter. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-command[data-rail="1"],
+  .stagewrap--responsive-food[data-rail="1"]{
+    width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1280px + var(--rail-w) + var(--sp-5));
+  }
+  .stagewrap--responsive-data[data-rail="1"]{
+    width:min(100% - 48px, calc(1360px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1360px + var(--rail-w) + var(--sp-5));
+  }
+}
+
+/* ── THE FIELD BEHIND THE STAGE, AT THE BIG VIEWPORTS ONLY ──────────────────
+   Host, 2026-08-07: "need more of my carbon in the tablet, desktop,
+   widescreens."
+
+   Measured dead space at 1920 is 22% even after the rail earned its width back
+   (was 33%). That gutter is not going away — capping the measure is the whole
+   point of UX_03's width system, and stretching content to fill a monitor is
+   the defect the viewport port exists to remove. So the gutter has to read as
+   DELIBERATE FIELD rather than as leftover page.
+
+   The body ground drops to --carbon, the deepest step of the ramp the app
+   already runs, and the stage sits on it as a lighter panel. Three planes,
+   all from the existing ramp, no new colour: deep field -> content ground ->
+   carbon rail panel.
+
+   Gated at 1024 because below it the stage is full-bleed and there IS no
+   gutter — painting a field nobody can see would be a rule that does nothing,
+   and this stylesheet has already been bitten once by rules that matched
+   nothing. */
+@media (min-width:1024px){
+  body{ background:var(--field); }
+  /* The stage reads as a panel on that field: its own edge, and the same
+     radius the app already uses, so the composition has a boundary instead of
+     bleeding into the dark. */
+  .stagewrap[data-rail="1"]{
+    border:1px solid var(--line-soft);
+    border-radius:var(--r-xl);
+    overflow:hidden;
+  }
+}
+
+/* ── THE SHEET IS THE SCREEN — BUT "THE SCREEN" STOPS AT THE RAIL ───────────
+   Found by driving it, not by reading it (2026-08-07): with a sheet open,
+   Playwright reported `<div class="sheet-scrim"> intercepts pointer events` on
+   every rail row. .sheet-scrim and .sheet are `position:absolute; inset:0`, and
+   .app is not a positioned ancestor, so both resolve against .stagewrap — which
+   is now the WHOLE grid, rail included. The rail was rendered, visible, enabled
+   and completely dead: you could open Budget from it and then never reach
+   Guests. A persistent nav that stops working as soon as you use it is worse
+   than no nav, because it looks available.
+
+   The fix is not a z-index race. A sheet still owns the whole screen — the
+   2026-08-03 ruling ("a section IS the screen while it is open") stands — but
+   once a rail exists, the screen it owns is the CONTENT column. That is
+   master-detail, which UX_03 names as the ideal desktop pattern, and it is what
+   every leader in the viewport ruling does with a persistent rail.
+
+   Offset = rail + the grid gap, so both edges land exactly on .app's left. */
+.stagewrap[data-rail="1"] .sheet-scrim,
+.stagewrap[data-rail="1"] .sheet{
+  left:calc(var(--rail-w) + var(--sp-5));
+}
+/* Belt and braces: even if a future overlay forgets the offset, navigation
+   stays reachable rather than silently dying behind it. */
+.stagewrap[data-rail="1"] > .srail{ position:relative; z-index:60; }
+
+/* ── THE SECTION MARK ON THE PHONE (host, 2026-08-07) ───────────────────────
+   The Sections sheet is the mobile equivalent of the rail — the same
+   sectionGroups(), the same doors — so it carries the same glyph. One mark per
+   door across every viewport means the icon a host learns on the phone is the
+   one they scan in the rail on a laptop, which is the whole reason a collapsed
+   icons-only rail can work at all.
+
+   Muted, not inked: the row's NAME is the loud thing (UX_02 — one loud thing
+   per row). The glyph is an anchor for the eye, not a second voice, so it takes
+   --faint and steps up only with the row itself. */
+.sec-row > .srail-i{ flex:0 0 auto; color:var(--faint); opacity:1; }
+.sec-row:hover > .srail-i,
+.sec-row:active > .srail-i{ color:var(--steel-soft); }
+.sec-row > .f-main{ flex:1; min-width:0; }
+
+/* ── A RAIL MEANS THIS IS A CANVAS, NOT A PHONE ─────────────────────────────
+   Host, 2026-08-07: the menu must "exist on all screens/sheets where they go."
+
+   Measured before this rule: at 1920, opening a legacy sheet (settings, qr,
+   pass, meaning, ask...) collapsed the stage from 1500px to 393px, dead space
+   went 22% -> 80%, and the rail disappeared. That is 35 of 45 surfaces. The
+   silhouette was correct when nothing else was on screen; it is wrong the
+   moment persistent navigation exists beside it, because the rail then has a
+   phone bolted to it and the composition reads as broken rather than deliberate.
+
+   THIS IS NOT "STRETCH EVERY SHEET". responsiveSurface.js exists to prevent
+   exactly that, and the distinction it protects is kept here: the CANVAS gets
+   the width, the CONTENT keeps its measure. A single-decision sheet is capped
+   at 68ch — close to the reading measure it already had on the phone — and sits
+   at the top-left of the canvas rather than being blown out to 1280px of prose.
+   The `data` and `command` tiers keep their own compositions untouched; they
+   are named exceptions below.
+
+   Height matches the data tier's expression exactly (see :3580) so the two
+   cannot drift into disagreeing about what "use the window" means. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap[data-rail="1"]{
+    transform:none; transform-origin:initial;
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    margin:var(--sp-5) auto 40px;
+  }
+  /* The bezel is a silhouette affordance and has no meaning on a real canvas. */
+  .stagewrap[data-rail="1"] > .app{
+    border-radius:0; box-shadow:none; height:100%;
+  }
+  /* Legacy surfaces only — the named tiers own their own width above. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data){
+    width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1280px + var(--rail-w) + var(--sp-5));
+  }
+  /* MEASURE, not width. A single-decision sheet reads at its own measure
+     wherever it is; the rest of the canvas stays quiet ground rather than being
+     filled for the sake of it (UX_01: the void is part of the design).
+
+     FIRST VERSION USED 68ch AND DID NOT BITE — driven at 1920, the settings
+     inputs still spanned 1240px. `ch` resolves against EACH element's own
+     font-size, so on a block whose children set their own type it computed far
+     wider than the reading measure it was standing in for. A measure cap has to
+     be a length, not a unit that changes meaning per element. 720px is the
+     donor shell's `standard` content tier, so this matches what App.js already
+     does at this width rather than inventing a number.
+
+     THE SELECTOR WAS ALSO WRONG AND THAT IS THE REAL LESSON. It read
+     `> .app .sheet > *`, and `.sheet` is a DIRECT CHILD OF .stagewrap — it is
+     not inside .app at all (probed live: chain = div.sheet -> div.stagewrap).
+     So the rule matched nothing, twice, while looking correct both times. Same
+     class as the `.seclist`/`.statcard` names recorded at :3517 that matched no
+     JSX. A rule that matches nothing is indistinguishable from a rule that
+     works until you measure the box. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > *{
+    max-width:720px;
+  }
+  /* The head spans — it carries the sheet's name and its close. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-head{
+    max-width:none;
+  }
+}

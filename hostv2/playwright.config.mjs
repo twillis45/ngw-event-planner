@@ -43,6 +43,18 @@ export default defineConfig({
     // 2026-07-22) — every probe now guards the full-bleed tablet layouts.
     { name: 'tablet',      use: { viewport: { width: 768,  height: 1024 } } },
     { name: 'tablet-land', use: { viewport: { width: 1024, height: 768 } } },
+    // ── THE MATRIX STOPPED BELOW THE FEATURE IT SHOULD GUARD (2026-08-06) ───
+    // Every project above is under 1280, and 1280 is exactly where the shell
+    // stops being a phone silhouette and the responsive command / food / data
+    // canvases switch on. So the largest CSS feature in the repo — the two-column
+    // command grid, the data-tier reflow, the widescreen step — was structurally
+    // unreachable by CI, and a design audit found real breakage there that no
+    // test could have caught: 3- and 4-column nav rules laying out inside a
+    // 393px phone, guests and vendors collapsing into one column with text
+    // overlapping, panels refusing 340px of window height.
+    // Adding the two geometries the rules are actually written for.
+    { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
+    { name: 'wide',    use: { viewport: { width: 1920, height: 1080 } } },
   ],
   webServer: {
     // Serves the EXISTING dist — run `npm run build` first (the deploy dance

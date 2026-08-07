@@ -146,7 +146,7 @@ import { confidencePersona, confidenceFor } from '@app/lib/confidenceGrammar';
 import { classifyClaim } from '@app/lib/knowledge/claimBasis';
 import { iceRecommendation, ICE_CHANGE_FACTORS } from '@app/lib/knowledge/claimFamilies';
 import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@app/lib/eventOrientation';
-import { stagewrapClass } from '@app/lib/responsiveSurface';
+import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
 import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
@@ -168,7 +168,9 @@ import { parseMin } from '@app/lib/dayAlerts';
 // tablet, desktop and widescreen were the phone layout stretched. The bp lands
 // on the root as a data attribute rather than forking JSX at every call site:
 // layout is the stylesheet's job, and one attribute lets it do that job.
-import { useBreakpoint, useWideScreen, isWideBp } from '@app/lib/viewport';
+import { useBreakpoint, useWideScreen } from '@app/lib/viewport';
+import { sectionGroups } from '@app/lib/sectionDirectory';
+import { sectionIcon } from './sectionIcons';
 
 // Which engine tiers are NOT actually asks. The calm check used to fingerprint the
 // engine's PROSE — /on track|nothing urgent|good shape/ against actions[0].title —
@@ -727,7 +729,6 @@ export default function HostShellV2() {
   // every pixel of a drag.
   const bp = useBreakpoint();
   const isWideScreen = useWideScreen();
-  const railVisible = isWideBp(bp);
   const splashTimer = useRef(null);
   const endSplash = () => setSplash(s => {
     if (s !== 'up') return s;
@@ -2911,6 +2912,8 @@ export default function HostShellV2() {
   // happens to be present. The mapping is pinned in responsiveSurface.test.js so a
   // sheet cannot start widening silently.
   const stageMode = stagewrapClass({ stage, sheet: sheet && sheet.kind });
+  // Same surface identity, one band wider: is the persistent section rail up?
+  const railUp = showsRail({ bp, stage, sheet: sheet && sheet.kind });
   // Row-level landing (audit 2026-07-22): a route resolved to {kind:'space',
   // focus:'parking'|…} opens THAT row's inline note editor — the last leg of the
   // parking/load-in deep links (resolver branch in lib/routeResolver.js).
@@ -3269,6 +3272,19 @@ export default function HostShellV2() {
       u.searchParams.set('demo', 'lodging');
       window.location.href = u.toString();
     } catch { window.location.href = window.location.pathname + '?demo=lodging'; }
+  };
+
+  // ── ONE ROUTER FOR THE SECTION DIRECTORY (2026-08-07) ──────────────────────
+  // Hoisted out of the `sections` sheet so the persistent rail and the sheet
+  // route through the SAME code path. Two copies would drift the moment a kind
+  // needs special handling — `lodging` already does (it leaves for the cockpit)
+  // and so does `ask` (it clears the previous question, or the host opens it and
+  // reads a stale answer as a fresh one). Those two exceptions are exactly the
+  // kind of thing a second hand-written copy forgets.
+  const goToSection = (kind) => {
+    if (kind === 'lodging') { goToLodgingCockpit(); return; }
+    if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
+    setSheet({ kind });
   };
   // Rental shortlist add-form (host directive 2026-07-28) — host-typed listing facts only.
   const [rentalForm, setRentalForm] = useState({ url: '', label: '', sleeps: '', total: '', fees: '', photo: '', notes: '', cancel: '' });
@@ -5610,16 +5626,20 @@ export default function HostShellV2() {
   // sample event exactly as it behaves today). No appbar, no dock: nothing to
   // wander into before the one decision this screen asks for.
   if (welcome) {
+    // data-rail is "0" throughout this gate. The attribute means "a rail is up",
+    // and welcome deliberately has no appbar and no dock — nothing to wander
+    // into before the one decision it asks for. Reporting 1 with no rail
+    // rendered would be the same dead wire the rail exists to close.
     return (
       <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
-      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
+      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail="0">
         {/* inert while the splash covers the screen: closes the AT-path tap-
             through — a screen reader user could otherwise swipe onto and
             activate welcome/dashboard controls that are invisible to them
             under an opaque splash. Lifted the instant it starts fading, same
             moment sighted users get their first real look. */}
         <div className="app" id="app" inert={splash !== 'gone'}
-          data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
+          data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail="0">
           {/* splash-hold: the welcome stagger stays paused at frame one while
               the boot splash is up; the class drops the instant the splash
               starts fading, so the lines begin as it dissolves — one sequence. */}
@@ -5650,7 +5670,43 @@ export default function HostShellV2() {
 
   return (
     <div className={['stagewrap', stageMode].filter(Boolean).join(' ')}
-      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
+      data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
+      {/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ─────────
+          Six of six leaders (Motion, Height, Wrike, Bonsai, Asana, Plane) put
+          global nav in a persistent left rail and never behind a hamburger at
+          desktop. Event Boss had none: `data-rail` was computed and written to
+          the DOM but no stylesheet rule and no element ever consumed it — the
+          wire was in and the thing was never built.
+
+          It is NOT a new surface. It renders the SAME sectionGroups() the
+          Sections sheet renders and routes through the SAME goToSection(), so
+          the app cannot end up with two answers to "what is in my plan"
+          (Duplicate Surface Rule). Adding a door adds it to both, by
+          construction.
+
+          `aria-current` marks the open sheet, so the rail answers "where am I"
+          as well as "where can I go" — the thing the eyebrow menu could never
+          do, because it is only visible while it is open. */}
+      {railUp && (
+        <nav className="srail" aria-label="Sections">
+          {sectionGroups({ event, travel, crab, outdoor }).map((g) => (
+            <div className="srail-g" key={g.title}>
+              <div className="shelf-label srail-t">{g.title}</div>
+              {g.rows.map((r) => {
+                const here = sheet && sheet.kind === r.k;
+                return (
+                  <button key={r.k} className={'srail-row' + (here ? ' on' : '')}
+                    aria-current={here ? 'page' : undefined}
+                    onClick={() => goToSection(r.k)}>
+                    {sectionIcon(r.k)}
+                    <span className="srail-l">{r.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </nav>
+      )}
       {/* has-wxpill: the scroll-end spacer must also clear the weather pill's band
           when it's pinned (Layer-2 harness: "Add a rain backup" sat 35px under the
           pill at true scroll-end, 2026-07-22). */}
@@ -5658,7 +5714,7 @@ export default function HostShellV2() {
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
       <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
-        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railVisible ? '1' : '0'}>
+        data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at
             frame one while the splash is up and releases the instant it
@@ -12760,83 +12816,16 @@ export default function HostShellV2() {
               // them, but the CORE eight always have a door, on-track or not — the
               // whole point (before this, checklist/decisions/vendors/etc. had no
               // visible entry when the event was calm).
-              const go = (kind) => {
-                if (kind === 'lodging') { goToLodgingCockpit(); return; }
-                if (kind === 'ask') { setAskQ(''); setAskResult(null); setAskLLM(null); }
-                setSheet({ kind });
-              };
-              const groups = [
-                { title: 'Your plan', rows: [
-                  { k: 'guests', label: 'Guests', sub: 'Who’s coming, and what they need' },
-                  { k: 'food', label: 'The spread & shopping', sub: 'The menu and the store run' },
-                  { k: 'budget', label: 'Your money', sub: 'Planned, spoken for, and spent' },
-                  { k: 'vendors', label: 'People you’re hiring', sub: 'Bookings, deposits, day-of arrival' },
-                  { k: 'space', label: 'Space, seats & helpers', sub: 'Tables, chairs, rentals, who’s helping' },
-                  { k: 'seating', label: 'Who sits where', sub: 'The floor plan' },
-                  { k: 'tasks', label: 'Your checklist', sub: 'Every step, in the order it matters' },
-                  { k: 'decisions', label: 'Calls to make', sub: 'Open choices the plan is waiting on' },
-                ] },
-                { title: 'Keep it on track', rows: [
-                  { k: 'risks', label: 'What could go wrong', sub: 'The risks the plan is watching' },
-                  ...(outdoor ? [{ k: 'rain', label: 'If it rains', sub: 'Your weather backup' }] : []),
-                  // Money-Safe Date Chain: in elegant mode this Sections row is the
-                  // travel wayfinding, so a closing money deadline surfaces HERE —
-                  // the one fact that can cost real dollars this week leads the sub.
-                  // ── A SHORTLIST MUST HAVE A DOOR (click-through audit 2026-07-28) ──
-                  // This row was gated on travel.relevant ALONE. But a host can build a
-                  // rental shortlist — or pick a house — on an event the travel engine
-                  // doesn't consider a travel event, and then the only way back to those
-                  // houses is the one row on the ask board that raised them. Given the
-                  // pick now moves real money into `committed` (see the outlet wire), a
-                  // surface holding thousands of dollars cannot be reachable by one
-                  // transient row. Her own saved houses always get a door.
-                  ...((travel && travel.relevant) || (event.lodgingOptions || []).length > 0 || event.lodging ? [(() => {
-                    const md = moneyDatesFor(event);
-                    const due = md.relevant ? md.rows.filter((r) => !r.passed && r.daysLeft <= 14) : [];
-                    const shortlist = (event.lodgingOptions || []).length;
-                    return { k: 'lodging', label: 'Travel & where everyone stays',
-                      sub: due.length ? due[0].label.toLowerCase() + ' in ' + due[0].daysLeft + (due[0].daysLeft === 1 ? ' day' : ' days')
-                        : shortlist ? shortlist + (shortlist === 1 ? ' place on your shortlist' : ' places on your shortlist')
-                        : 'Lodging, rides, arrivals' };
-                  })()] : []),
-                  // ── TWO SURFACES THAT HAD NO DOOR (competitive-read audit, 2026-07-30) ──
-                  // This directory's own comment above calls it "a door to EVERY surface",
-                  // but it carried exactly one travel row — routing to `lodging` — while
-                  // its sub advertised "Lodging, rides, arrivals". The `air` ("Getting
-                  // here") and `ground` ("Getting around") sheets both exist, both are
-                  // titled, and both RAISE through surfaceRegistry (travel-air,
-                  // travel-ground) — so on a calm event, where nothing is raised, neither
-                  // could be reached at all. Same class as the shortlist-without-a-door
-                  // finding: a surface reachable only from a transient worry row is not
-                  // reachable. Gated on the plan actually having that leg, the way the
-                  // rain row is gated on the event being outdoors — a door to an empty
-                  // surface would be its own kind of lie.
-                  ...(travel && travel.relevant && travel.air ? [(() => {
-                    const unset = (travel.air.roster || []).filter(r => r && !r.arriveDate).length;
-                    const conflicts = (travel.air.conflicts || []).length;
-                    return { k: 'air', label: 'Getting here',
-                      sub: conflicts ? conflicts + (conflicts === 1 ? ' arrival clashes' : ' arrivals clash')
-                        : unset ? unset + (unset === 1 ? ' hasn’t said when' : ' haven’t said when')
-                        : 'Flights and arrival times' };
-                  })()] : []),
-                  ...(travel && travel.relevant && travel.ground ? [(() => {
-                    const need = (travel.ground.needRide || []).length;
-                    const unmatched = (travel.ground.unmatched || []).length;
-                    return { k: 'ground', label: 'Getting around',
-                      sub: unmatched ? unmatched + (unmatched === 1 ? ' still needs a ride' : ' still need rides')
-                        : need ? need + (need === 1 ? ' asked for a ride' : ' asked for rides')
-                        : 'Rides, pickups, who drives' };
-                  })()] : []),
-                  ...(crab && crab.relevant ? [{ k: 'crabs', label: 'The crab order', sub: 'Bushels, pickers, the crab house' }] : []),
-                  ...(event.costSharing ? [{ k: 'costshare', label: 'Who pays for what', sub: 'Splitting the cost' }] : []),
-                ] },
-                { title: 'More', rows: [
-                  { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
-                  { k: 'ask', label: 'Ask the Boss', sub: 'A question, answered from your numbers' },
-                  { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
-                  { k: 'settings', label: 'You & your account', sub: 'Your name, area, what it remembers' },
-                ] },
-              ];
+              const go = goToSection;   // hoisted — the rail routes through this too
+              // THE LIST NOW LIVES IN lib/sectionDirectory.js (2026-08-07).
+              // VIEWPORT_PORT_RULING step 3 puts a persistent section rail at
+              // tablet-land and above, and a rail needs these same rows. Building
+              // the list twice gives the app two answers to “what is in my plan”
+              // the first time someone adds a door to one and not the other — the
+              // Duplicate Surface Rule, and a claim (“a door to EVERY surface”)
+              // only one list can keep. The sheet renders it below tablet-land,
+              // the rail at and above; both call the same function.
+              const groups = sectionGroups({ event, travel, crab, outdoor });
               return (
                 <>
                   {/* SAME HERO TREATMENT AS EVERY OTHER SHEET (host, 2026-08-07).
@@ -12867,7 +12856,14 @@ export default function HostShellV2() {
                     <div key={g.title} style={{ marginBottom: 'var(--sp-3)' }}>
                       <div className="shelf-label" style={{ margin: '0 0 4px' }}>{g.title}</div>
                       {g.rows.map(r => (
-                        <button key={r.k} className="later-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => go(r.k)}>
+                        <button key={r.k} className="later-row sec-row" style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }} onClick={() => go(r.k)}>
+                          {/* THE SAME MARK THE RAIL USES (host, 2026-08-07:
+                              "bring the icons to mobile as well"). One glyph per
+                              door across every viewport — so the icon a host
+                              learns on the phone is the icon they scan in the
+                              rail on a laptop. Same sectionIcon(), same kinds,
+                              no second set to drift. */}
+                          {sectionIcon(r.k)}
                           <span className="f-main">
                             <span className="f-name">{r.label}</span>
                             <span className="v-meta">{r.sub}</span>

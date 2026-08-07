@@ -165,3 +165,72 @@ describe('?stage=phone forces the silhouette, and only on localhost', () => {
     expect(optsOutOfFit({ stage: 'plan', sheet: null })).toBe(true);
   });
 });
+
+// ── showsRail — VIEWPORT_PORT_RULING step 3 ─────────────────────────────────
+// The point of these is the DESKTOP asymmetry. tablet-land is full-bleed so the
+// rail is safe everywhere; desktop is a 393px phone except on the responsive
+// surfaces, and a rail keyed on the breakpoint alone would nail 200px of
+// navigation to the side of that phone — the exact defect the .navrows density
+// rules already shipped and had to be regated for.
+describe('showsRail', () => {
+  const { showsRail } = require('../responsiveSurface');
+
+  test('never up below tablet-land — that band is the hamburger, per UX_03', () => {
+    expect(showsRail({ bp: 'mobile', stage: 'plan' })).toBe(false);
+    expect(showsRail({ bp: 'tablet', stage: 'plan' })).toBe(false);
+    expect(showsRail({ bp: 'tablet', stage: 'plan', sheet: 'budget' })).toBe(false);
+  });
+
+  test('tablet-land is full-bleed, so the rail is up on EVERY surface', () => {
+    expect(showsRail({ bp: 'tablet-land', stage: 'plan' })).toBe(true);
+    expect(showsRail({ bp: 'tablet-land', stage: 'plan', sheet: 'budget' })).toBe(true);
+    // a legacy single-decision sheet too — nothing is a silhouette in this band
+    expect(showsRail({ bp: 'tablet-land', stage: 'plan', sheet: 'settings' })).toBe(true);
+  });
+
+  // CHANGED 2026-08-07 BY HOST RULING. This block used to assert the opposite —
+  // that desktop withheld the rail on any surface still wearing the phone
+  // silhouette. Driven at 1920, that made the rail VANISH when you opened
+  // settings from it: 1500px canvas -> 393px phone, dead space 22% -> 80%, no
+  // navigation. "The menu must exist on all screens/sheets where they go."
+  //
+  // The rail no longer asks the surface. The SURFACE stops being a phone while
+  // a rail is up (styles.css, [data-rail="1"]), which is the honest fix — the
+  // canvas widens and the CONTENT keeps its measure, rather than the navigation
+  // disappearing to preserve a silhouette.
+  test('desktop keeps the rail on EVERY surface, silhouette or not', () => {
+    expect(showsRail({ bp: 'desktop', stage: 'plan' })).toBe(true);                    // command
+    expect(showsRail({ bp: 'desktop', stage: 'plan', sheet: 'food' })).toBe(true);     // food
+    expect(showsRail({ bp: 'desktop', stage: 'plan', sheet: 'budget' })).toBe(true);   // data
+    expect(showsRail({ bp: 'desktop', stage: 'plan', sheet: 'settings' })).toBe(true); // legacy
+    expect(showsRail({ bp: 'desktop', stage: 'plan', sheet: 'qr' })).toBe(true);       // legacy
+  });
+
+  test('the rail NEVER blinks as you navigate — every sheet agrees within a band', () => {
+    const sheets = [null, 'budget', 'guests', 'vendors', 'tasks', 'risks', 'decisions',
+      'seating', 'supplies', 'food', 'settings', 'qr', 'pass', 'ask', 'meaning', 'thanks'];
+    ['desktop', 'tablet-land'].forEach((bp) => {
+      const seen = new Set(sheets.map((sheet) => showsRail({ bp, stage: 'plan', sheet })));
+      expect({ bp, distinctAnswers: [...seen] }).toEqual({ bp, distinctAnswers: [true] });
+    });
+    // and below the band, never — that is the hamburger's territory
+    ['mobile', 'tablet'].forEach((bp) => {
+      const seen = new Set(sheets.map((sheet) => showsRail({ bp, stage: 'plan', sheet })));
+      expect({ bp, distinctAnswers: [...seen] }).toEqual({ bp, distinctAnswers: [false] });
+    });
+  });
+
+  // The silhouette test still matters — it just is not the RAIL's question.
+  // optsOutOfFit still drives the .navrows density ladder, which asks "how much
+  // width does this content have", and that is genuinely per-surface.
+  test('optsOutOfFit stays per-surface at desktop, independent of the rail', () => {
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'budget' })).toBe(true);
+    expect(optsOutOfFit({ stage: 'plan', sheet: 'settings' })).toBe(false);
+  });
+
+  test('a null or unknown state never throws and never raises a rail', () => {
+    expect(showsRail(null)).toBe(false);
+    expect(showsRail()).toBe(false);
+    expect(showsRail({})).toBe(false);
+  });
+});
