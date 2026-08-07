@@ -6,10 +6,14 @@ user's browser was never driven and the other session's preview on :5233 was
 never touched. Entered the app through "Explore a sample first" with a real
 pointer click, then navigated by the eyebrow.
 
-**Status of the two findings: FOUND, NOT FIXED.** Both fixes land in
-`hostv2/src/styles.css` and `hostv2/src/HostShellV2.jsx`, which a second session
-had open and dirty at the time of the sweep. Deliberately not edited. See
-`docs/architecture/WHERE_WE_ARE.md` §1.
+**Status: BOTH FIXED and gated later the same day**, once the second session
+released `styles.css` and `HostShellV2.jsx`. Verified live on a 393x852 phone:
+`.navseg-b` 37 -> 44px, `.sheet-back` keeps its 16px box with a 44px hit area,
+and the fold peek is intact (eyebrow bottom 48 in an 852 viewport). Gated by
+`hostv2/e2e/mobileTapFloor.spec.mjs`, which sweeps EVERY control rather than a
+named class list — mutation-checked, both reverts fail it.
+
+A third offender surfaced from that sweep and is **open**: see "The pill" below.
 
 ---
 
@@ -94,6 +98,21 @@ stylesheet scan flags as an overflow risk. It also carries `max-width: 96vw`, so
 it never overflows. Measured scrollWidth - clientWidth = 0 on every surface.
 
 ---
+
+## FOUND, NOT FIXED — the status pill, and why an expander is wrong for it
+
+`.pill` chips (`p-warn`, `p-steel`, `p-risk`) are real routing buttons and
+measure **267 x 28**. The `::after` expander that fixed `.sheet-back` is the
+wrong tool here, and the reason is measured rather than assumed: consecutive
+pills in a stacked list sit **7px apart**, so a 44px hit area on each would
+overlap its neighbour by 8px and let one row steal the next row's taps.
+
+Closing it means raising the pill's real height and the list rhythm together
+(28+7 -> roughly 36+8), which changes a core Studio Matte atom used across many
+surfaces. That is a design ruling, not a test fix, so it is named in
+`mobileTapFloor.spec.mjs`'s `KNOWN_OPEN` with this reason — and that spec
+carries a premise test which FAILS the day the pill is fixed, so the exception
+cannot outlive the defect.
 
 ## Reproducing
 
