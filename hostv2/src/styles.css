@@ -4559,3 +4559,25 @@ button.vc-pill::after{
 @media (min-width:1280px){
   .stagewrap--responsive-command .hero{ min-height:auto; }
 }
+
+/* ── PHONE DISCLOSURE AT A DESK (board anti-pattern 8, 2026-08-07) ───────────
+   :746 gives `.ef-why` `white-space:nowrap; overflow:hidden; text-overflow:
+   ellipsis`, and :758 already recognises the phone case explicitly — below
+   430px a reason that would squeeze the title is DROPPED rather than truncated
+   to noise. Both are right on a phone.
+
+   Neither was given a desktop clause, so on a real canvas the board read
+   "0 of 5 confirmed gue…" — a sentence cut mid-word — sitting beside several
+   hundred pixels of empty column. Their ruling: truncation and folding are
+   density tools, and using them next to empty canvas is a phone habit, not
+   restraint. At desktop, disclosures whose content fits open by default.
+
+   The row moves to top alignment for the same reason `.watch-row` already does
+   at :3877 — once a cell can wrap, centring it against a taller sibling is what
+   makes wrapped text look like a mistake. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row{
+  align-items:flex-start;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row .ef-why{
+  white-space:normal; overflow:visible; text-overflow:clip;
+}
