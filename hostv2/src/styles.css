@@ -3438,3 +3438,73 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    it is a secondary act on a row whose primary act is opening the event, so it must
    not compete with the row above it. Indented to read as belonging to that row. */
 .runagain{ margin:2px 0 10px 12px; color:var(--steel-soft); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PER-VIEWPORT LAYOUT — driven by [data-bp] on the app root
+   ──────────────────────────────────────────────────────────────────────────
+   Ported 2026-08-07 with src/lib/viewport.js. hostv2 had NO breakpoint system:
+   0 uses of useBreakpoint/innerWidth against 117 in the donor shell, and of
+   1299 stylesheet rules only 39 (3%) responded to width — NOT ONE of them
+   targeting 640-1023. Tablet had never had a layout; it had width and nothing
+   else, which is not the same thing.
+
+   The bands come from the board-ratified system already in App.js:
+     mobile <640 · tablet 640-1023 · tablet-land 1024-1279 · desktop >=1280
+   and the purpose is quoted from its own comment, because it names the defect:
+     "turn extra real-estate into the WORK laid out in columns,
+      not a stretched single column."
+
+   GUARDRAIL: the pros previously killed a 3-pane cockpit and a 9-cell grid as
+   "the overwhelm we just escaped, repainted." So width buys MEASURE CONTROL and
+   DENSITY, never more simultaneous panes. Nothing below adds a pane.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Measure. The single biggest tablet defect is a line of prose running the
+   full 768px. Text set to a readable measure is the whole of the tablet fix that
+   costs nothing structurally, and it is what makes the surface look composed
+   rather than stretched. Applied to the app root's own padding box so every
+   surface inherits it without a per-surface fork. */
+.app[data-bp="tablet"] > .content,
+.app[data-bp="tablet"] > .sheet > .content{
+  max-width:720px; margin-inline:auto;
+}
+.app[data-bp="tablet-land"] > .content,
+.app[data-bp="tablet-land"] > .sheet > .content{
+  max-width:860px; margin-inline:auto;
+}
+
+/* ── The void. The elegant hero centres itself vertically, which is right on a
+   phone (the ask should sit in the thumb's reading line) and wrong the moment
+   the viewport is 1024px tall: it strands ~230px of dead space above the
+   headline, measured at 768x1024. Above mobile the ask top-aligns instead, with
+   a deliberate offset so it still reads as composed rather than jammed to the
+   ceiling. The fold-peek guarantee is unaffected — it only ever assumed the ask
+   FITS the viewport, and top-aligning can only help that. */
+.app[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
+.app[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  justify-content:flex-start; padding-top:clamp(24px, 6vh, 72px);
+}
+.app[data-bp="tablet"] .hero.elegant .escreen.on > .hzone,
+.app[data-bp="tablet-land"] .hero.elegant .escreen.on > .hzone{
+  margin-top:clamp(20px, 5vh, 56px);
+}
+
+/* ── Density. UX_03's ladder is mobile 1-col → tablet 2-col → tablet-land 3-col.
+   Applied ONLY to `.navrows`, the menu directory — rows that are short, self-
+   contained and unordered, which is the same content Motion, Asana and Plane lay
+   out in columns. Deliberately NOT applied to decision options or any list where
+   ORDER CARRIES MEANING: two columns turn a ranked sequence into a grid and
+   destroy the ranking, which is a correctness bug wearing a layout costume.
+
+   Written first against `.seclist`/`.statcard` — class names that do not exist
+   in this shell (0 JSX uses). A rule that matches nothing looks exactly like a
+   rule that works, so the names are verified against the JSX now. */
+.app[data-bp="tablet"] .navrows,
+.app[data-bp="tablet-land"] .navrows{
+  display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 var(--sp-5);
+}
+.app[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+/* The row's own border-bottom becomes a grid artifact once rows sit side by side,
+   so the divider is redrawn per cell rather than per row. */
+.app[data-bp="tablet"] .navrows > .navrow,
+.app[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
