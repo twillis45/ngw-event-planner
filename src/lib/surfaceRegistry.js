@@ -69,6 +69,7 @@ import { moneyDatesFor } from './moneyDates';
 import { deriveHelperResponsibilities, helperStatusLine } from './helperResponsibility';
 import { DAY_BEFORE_WINDOW } from './dayBefore';
 import { getVendorCOIState, coiNextAction } from './vendorIntelligence';
+import { silentVendors } from './vendorContact';
 
 const notDismissed = (event, map, id) => {
   const st = (event && event[map] && typeof event[map] === 'object') ? event[map] : {};
@@ -707,6 +708,53 @@ export const SURFACES = [
       return out;
     },
   },
+
+  // ── Vendor silence ─────────────────────────────────────────────────────────
+  // "What am I waiting on?" — the question the 2026-08-07 board ruling refused a
+  // Communication hub over. Saarinen's dissent was upheld as a BINDING condition:
+  // no hub, but the question must stay answerable. This raise is that promise.
+  //
+  // WHY IT LIVES HERE and not in a render array: my first attempt injected a row
+  // into the `.qidx` list in the shell. It built, the suite passed, and it
+  // rendered nothing — that block opens with `if (elegantMode) return null;` and
+  // elegant is the production default. A raise reaches the surface the host
+  // actually gets, and it declares reads/feeds + provenance instead of being a
+  // standalone pick.
+  //
+  // It reads ONLY what the host recorded. silentVendors() returns people the host
+  // logged reaching out to who have not replied, past the same 21-day line
+  // vendorAccountability already scores against. Someone never logged is UNKNOWN,
+  // not silent, and is deliberately absent — accusing a vendor of ignoring a
+  // message that was never sent is the exact dishonesty this whole thread exists
+  // to avoid.
+  {
+    id: 'vendor_silence',
+    label: 'People who haven’t come back to you',
+    domain: 'vendors',
+    route: { tab: 'Vendors' },
+    bundleTitle: (n) => `Chase ${n} people who haven’t come back to you`,
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let quiet = [];
+      try { quiet = silentVendors(event) || []; } catch (_e) { return []; }
+      return quiet
+        .filter((q) => q && q.vendor && q.vendor.id && String(q.vendor.name || '').trim())
+        .map((q) => ({
+          // 'attention', not 'critical'. Critical is reserved for reactive raises
+          // — a payment overdue, a vendor who hasn't SHOWN. Someone slow to reply
+          // three weeks out is worth a look, not an emergency, and inflating it is
+          // how the list stops being read.
+          severity: 'attention',
+          title: `${q.vendor.name} hasn’t come back to you`,
+          // The why carries the fact the host needs to act: how long, in their own
+          // terms. It never says the vendor ignored them — only what is known.
+          why: `You reached out ${q.state.daysSince} days ago and haven’t heard back.`,
+          route: { tab: 'Vendors', vendorId: q.vendor.id },
+          key: q.vendor.id,
+        }));
+    },
+  },
+
 ];
 
 /**
