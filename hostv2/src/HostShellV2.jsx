@@ -16819,7 +16819,7 @@ export default function HostShellV2() {
                           </button>
                         </div>
                         {guestOpen === i && (
-                          <div className="brow" id={'v2-guest-detail-' + i} style={{ margin: '2px 0 var(--sp-2)', padding: 'var(--sp-2) 6px' }}>
+                          <div className="brow gdetail" id={'v2-guest-detail-' + i} style={{ margin: '0 0 var(--sp-2)' }}>
                             {(() => {
                               // Single source of truth: reads the SAME aggregation the
                               // Helpers panel (space sheet) uses — a food/task/setup/supply
@@ -16922,7 +16922,7 @@ export default function HostShellV2() {
                               <button className="mini" onClick={() => writeGuest(i, { kids: (Number(g.kids) || 0) + 1 }, (Number(g.kids) || 0) + 1 + ' kids with ' + (g.name || 'this guest') + ' — the food plan sizes them lighter.')}>+</button>
                               <input className="field" style={{ maxWidth: 125, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="+1 name"
                                 value={g.plusOne || ''} onChange={e => writeGuest(i, { plusOne: e.target.value }, null)} aria-label="Plus one name" />
-                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="needs? (vegan, nut…)"
+                              <input className="field" style={{ maxWidth: 150, fontSize: 'var(--t-input)', padding: 'var(--field-compact)' }} placeholder="Dietary needs"
                                 value={g.needs || ''} onChange={e => writeGuest(i, { needs: e.target.value }, null)} aria-label="Dietary needs" />
                               <button className="mini" onClick={() => removeGuest(i)}>Remove</button>
                             </div>

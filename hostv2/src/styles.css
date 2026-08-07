@@ -4544,6 +4544,32 @@ button.vc-pill::after{
 }
 .grow > button[aria-expanded]:hover::after{ color:var(--steel-soft); }
 
+/* ── THE PANEL BELONGS TO THE GUEST ABOVE IT ────────────────────────────────
+   Board 2026-08-07, reported by two panels off the same pixels: on the phone
+   the picker began at x=22 — THE SAME LEFT EDGE AS THE ROSTER ROWS — and
+   .brow's own `border-top` ruled a line between the open guest and that
+   guest's own editor. So it read as the next section of the sheet rather than
+   as this guest's panel. That is the same cause-and-effect severance the whole
+   change set out to end, reintroduced one level down: the picker stopped
+   replacing its trigger and then stopped looking related to it.
+
+   Three cheap moves, no new colour:
+     - kill the divider. The row above is not a sibling, it is the parent.
+     - indent to where the NAME starts, so the panel hangs off the name rather
+       than off the avatar. Geometry is 28px avatar + two --sp-2 gutters = 44;
+       40 is the ladder step (spacingLadder.test.js), and 4px is not worth an
+       off-ladder literal.
+     - a steel left rule down the full height, which is what actually carries
+       "this belongs to that" — the tint alone would only say "different".  */
+.gdetail{
+  border-top:none;
+  margin-left:40px;
+  padding-left:var(--sp-3);
+  border-left:2px solid var(--steel);
+  background:var(--steel-tint);
+  border-radius:0 var(--r-md) var(--r-md) 0;
+}
+
 
 /* ── THE COLUMN HEADER ──────────────────────────────────────────────────────
    Hidden by default: below the rail band the row is a chip run, not a table,
