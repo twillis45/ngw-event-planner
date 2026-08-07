@@ -3693,11 +3693,51 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      first and returns to, so it holds the left column and stays put while the
      detail list scrolls beside it — the master-detail Luma and Aboard both run,
      and what UX_03 calls ideal for desktop. */
+  /* ── THE TWO-PANE GRID WAS RETIRED 2026-08-07 — MEASURED, NOT PREFERRED ────
+     The composition below stacked two panes over FLAT SIBLINGS, so CSS grid
+     auto-placement put column-1 item k and column-2 item k in the same row.
+     Whichever side was taller stretched the other side's row into air. Driven
+     at 1920 and measured, total vertical void per sheet:
+
+         Guests 1344px (10 items left, 26 right) · Vendors 1032px
+         Your checklist 665px · Your money 720px
+
+     That is not a tuning problem. Interleaving is inherent to auto-placement
+     over flat children, and the only CSS fixes are structural (wrap each side
+     in its own element) — which would mean teaching 8 sheets which of their
+     children belong to which pane, exactly the "layout policy scattered through
+     JSX" this module exists to prevent.
+
+     WHAT THE LEADERS ACTUALLY DO. Asana, Wrike and Plane do not stack two panes
+     beside a rail. They run RAIL + ONE DENSE MAIN AREA and spend the width on
+     columns INSIDE each row. The board's own guardrail says the same thing from
+     the other side: extra width buys density and measure, never another pane.
+     With a persistent rail now carrying navigation, a second pane was buying a
+     third region on screen and paying for it in 1344px of air.
+
+     So the main area is ONE column again. Prose and summary blocks keep a
+     reading measure; row lists take the width, which is where density belongs.
+     Kept as a block rather than deleted so the reasoning survives the change. */
   .stagewrap--responsive-data > .sheet{
-    display:grid;
-    grid-template-columns:minmax(320px, 420px) minmax(0, 1fr);
-    align-items:start; gap:0 var(--sp-6);
+    display:block;
   }
+  /* Reading measure for anything that is prose or a summary — the row lists
+     below opt back out. Without this the guide line and the grounding
+     paragraph run to 1358px, which is the "stretched single column" the whole
+     viewport port exists to remove. */
+  .stagewrap--responsive-data > .sheet > *{ max-width:820px; }
+  /* The work itself takes the width. These are the same selectors the retired
+     grid used to move into column 2, so the list of "what is a dense row" is
+     unchanged and verified — only what happens to it is different. */
+  .stagewrap--responsive-data > .sheet > .sheet-head,
+  .stagewrap--responsive-data > .sheet > .brow,
+  .stagewrap--responsive-data > .sheet > .later-row,
+  .stagewrap--responsive-data > .sheet > .frow,
+  .stagewrap--responsive-data > .sheet > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > div:has(> .frow),
+  .stagewrap--responsive-data > .sheet > div:has(> .vcard),
+  .stagewrap--responsive-data > .sheet > div:has(> .grow){ max-width:none; }
   /* The head names the surface and carries its close — it belongs to both. */
   .stagewrap--responsive-data > .sheet > .sheet-head{ grid-column:1 / -1; }
   /* Column 1 is the DEFAULT, and only the row list is moved out of it.
