@@ -378,7 +378,7 @@ export function kitchenConsequence(event) {
   // NOT TOLD. Never assume a hotel — say it is open, and offer the answer.
   return {
     state: 'untold', answered: false, from: 'none', basis: '',
-    headline: 'Nobody has told us yet.',
+    headline: 'Nobody has told you yet.',
     detail: 'Where everyone sleeps decides whether the food plan is a grocery run or a set of reservations. Until it is answered the plan sizes one gathering.',
     answers: KITCHEN_ANSWERS,
   };

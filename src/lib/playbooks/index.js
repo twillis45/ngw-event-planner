@@ -2855,8 +2855,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
         // ask-mode) -- the hero then prints nothing rather than a generic reassurance.
         assurance = d.default
           ? (d.reversibility === 'costly'
-            ? 'The plan’s been running on our pick — swapping it now costs more than it did.'
-            : 'Nothing’s stalled — the plan’s been running on our pick.')
+            ? 'The plan’s been running on my pick — swapping it now costs more than it did.'
+            : 'Nothing’s stalled — the plan’s been running on my pick.')
           : null;
       } else {
         // never in the easy window — surface as an open, do-this-first item,
