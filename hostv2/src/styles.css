@@ -3697,3 +3697,17 @@ button.pill::after, .pill[role="button"]::after, a.pill::after{
   background:var(--bg-band); border:1px solid var(--warn); color:var(--ink);
   font:600 13px/1.4 Inter,sans-serif;
 }
+
+/* `.vc-pill` is a WRITE control (status ladder, and the contact log) rendered at
+   21px tall — measured live 2026-08-07, right after the 44px sweep, which means
+   the sweep and I both missed it. Same treatment the other pills got and for the
+   same reason: a chip must not inflate to 44px or it becomes the loudest thing
+   on a vendor row, so the VISUAL size is untouched and only the hit area grows.
+   Coarse pointers only — on a mouse the cursor is precise and a 44px invisible
+   box would swallow the neighbouring pill in a ladder of them. */
+button.vc-pill{ position:relative; }
+button.vc-pill::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%); height:44px;
+}
+@media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
