@@ -130,8 +130,29 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   // rendering, but `event.foodChoices[id]` is what the host actually chose). Food is
   // handled when the menu decisions are made AND the dietary question is answered.
   const foodPicks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
-  const openChoices = plan ? (plan.choices || []).filter(c => c && foodPicks[c.id] == null) : [];
   const dietaryDone = !!(plan && plan.dietaryResolved);
+  // THE DIETARY QUESTION IS ANSWERED SOMEWHERE ELSE (2026-08-07).
+  // Found by sweeping 12 event types x 12 horizons and comparing the hero's cue
+  // against the decision board: on babyShower, bridalShower and dinnerParty, at
+  // EVERY horizon, the cue named `dietary` as an open choice while the board had
+  // that exact row LOCKED, because: "Collected".
+  //
+  // Both were reading the truth; the cue was reading the wrong field. Whether
+  // dietary is settled is `plan.dietaryResolved` — the host noted allergies, or
+  // a guest recorded a need, or there is no list to collect from. It is NOT
+  // `foodChoices.dietary`, which nothing in that workflow ever writes. So for
+  // the three playbooks that carry `dietary` as a food choice, the axis could not
+  // complete: answer every real menu question and the hero still said "1 open"
+  // forever, pointing at a question the rest of the app considered closed.
+  //
+  // This suppresses the ask ONLY when it is genuinely settled. dietaryResolved
+  // is false for guestMode 'count' with nothing noted, and for a guest list
+  // where nobody has recorded a need — both verified — so a host who really
+  // does owe this answer is still asked for it.
+  const dietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
+  const openChoices = plan
+    ? (plan.choices || []).filter(c => c && !(dietaryDone && dietaryChoice(c)) && foodPicks[c.id] == null)
+    : [];
   // THE HERO NAGGED FOR DECISIONS THE BOARD HAD PARKED (2026-08-07).
   // Reproduced on a birthday 90 days out: playbookDecisionBoard put `food_style`
   // and `alcohol` in its `deferred` bucket — "comes up closer to the date" — and
