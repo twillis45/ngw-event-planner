@@ -4062,6 +4062,13 @@ button.vc-pill::after{
 }
 
 /* ── THE ROW'S TWO LINES BECOME TWO COLUMNS AT THE DATA TIER ────────────────
+   SCOPED TO [data-rail="1"], AND THAT GUARD IS LOAD-BEARING. The
+   --responsive-data class is SURFACE IDENTITY, not a breakpoint — it is on the
+   stagewrap at 393px too. The first version of these rules sat outside any
+   media query, so the phone got 88px/132px fixed metadata tracks inside a 353px
+   row. Caught by driving the phone, not by reading the selector. [data-rail=1]
+   is the honest guard here: it means "wide enough that navigation is up", which
+   is exactly when a row has the width to be a table.
    Host: the wide layouts "are just squished phone layouts."
 
    Measured at 1920 after the main area went single-column: a guest row is
@@ -4089,17 +4096,62 @@ button.vc-pill::after{
    from a stylesheet any other way. Verified by computed value, not by
    assumption — the first version of this rule was silently overridden and the
    row stayed stacked while the CSS looked correct. */
-.stagewrap--responsive-data .grow > button{
+.stagewrap--responsive-data[data-rail="1"] .grow > button{
   display:flex !important; align-items:center; gap:var(--sp-5);
 }
 /* The name gets a real column rather than all the slack — clamped so it stays
    a readable measure at 1280 and does not run away at 1920. */
-.stagewrap--responsive-data .grow > button > span:first-child{
-  flex:0 0 clamp(200px, 24%, 320px);
+/* VIEWPORT-RELATIVE, NOT PERCENT. 24% resolved against the BUTTON, and the
+   button's width changes row to row because the RSVP chip beside it does
+   ("Yes" is 43px, "No reply" ~75px). Measured: the metadata tracks landed at
+   x=767 on some rows and x=759 on others — 8px of drift, which is exactly the
+   ragged edge a column is supposed to remove. A shared track cannot be a
+   percentage of a per-row box. */
+.stagewrap--responsive-data[data-rail="1"] .grow > button > span:first-child{
+  flex:0 0 clamp(200px, 18vw, 320px);
 }
-.stagewrap--responsive-data .grow > button > span:nth-child(2){
+.stagewrap--responsive-data[data-rail="1"] .grow > button > span:nth-child(2){
   margin-top:0 !important; flex:1 1 auto;
 }
+/* ── REAL COLUMNS, NOT A ROW OF CHIPS (2026-08-07) ──────────────────────────
+   Asana and Wrike do not put a row's metadata in a wrapping chip run — they put
+   it in TRACKS, so the eye can read down a column instead of re-scanning each
+   row. That is the density UX_03's `data` tier is asking for, and it is the
+   thing "wide" was still missing after the row stopped being a squished phone.
+
+   Fixed tracks, not auto: auto would size each track to its own row's content
+   and nothing would line up vertically, which is the whole point. The slots are
+   rendered unconditionally in the JSX for the same reason — a guest with no
+   meal must not shift the next guest's dietary tags a track left. `flex-wrap:
+   nowrap` because these are columns now, not a chip run that may wrap. */
+.stagewrap--responsive-data[data-rail="1"] .grow .gmeta{
+  display:grid !important;
+  grid-template-columns:88px 132px minmax(0, 1fr);
+  align-items:center; gap:0 var(--sp-4);
+  flex-wrap:nowrap !important;
+}
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-diet{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0;
+}
+/* The kids and meal slots are TRACK HOLDERS. They exist so every row offers the
+   same three cells (see the JSX note) and they carry min-width:0 so a long
+   value truncates inside its own column instead of pushing the next one right —
+   the drift a shared track exists to prevent. On the phone they are inert
+   wrappers in a chip run and add nothing. */
+.gm-kids, .gm-meal{ min-width:0; }
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-kids,
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-meal{
+  display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* NO HEADER ROW YET, deliberately. The tracks below line up across rows
+   because the name slot has a fixed basis, so .gmeta starts at the same x in
+   every row. A header would have to re-declare the avatar + name + rsvp tracks
+   too, and .grow is a flex row whose name and meta live INSIDE the row button —
+   a header cannot subgrid onto that without either display:contents on a button
+   (which destroys its hit target) or restructuring the row. Left undone and
+   said so, rather than shipping a header that drifts a few pixels off its
+   columns. */
 
 /* ── TWO RAILS IS ONE RAIL TOO MANY (host: "command screen on wider is bad") ─
    The re-zone at :219 gave the command hero its own internal "rail main" grid,
@@ -4160,4 +4212,13 @@ button.vc-pill::after{
    this clears the second, now-stale offset so the two do not compound. */
 .stagewrap--responsive-command[data-rail="1"] .next-bar{
   left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
+
+/* The reply is a CHIP, not a bar. On the phone it sits at the end of a flex row
+   and sizes to its text; in the table it was taking every remaining pixel and
+   rendering "Yes" inside a ~320px pill, which reads as a progress bar rather
+   than a tag. Give it its own track width so it stays a chip and the column of
+   replies lines up down the list. */
+.stagewrap--responsive-data[data-rail="1"] .grow > button + button{
+  flex:0 0 96px; text-align:center;
 }

@@ -16491,22 +16491,40 @@ export default function HostShellV2() {
                             </span>
                             {/* Audit #8: meal shown on the collapsed row (short form) so
                                 the whole roster's meals read at a glance, not one-by-one. */}
-                            {(Number(g.kids) > 0 || (String(g.meal || '').trim() && g.meal !== '—') || String(g.needs || '').trim() || (Array.isArray(g.allergens) && g.allergens.length) || (Array.isArray(g.diets) && g.diets.length)) ? (
-                              <span style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            {/* ── ALWAYS THREE SLOTS, EVEN WHEN EMPTY (2026-08-07) ────
+                                On the phone this is one wrapping line of chips and a
+                                missing chip should collapse — which is why it was
+                                written conditionally. At the data tier the same
+                                markup is laid out as COLUMNS, and columns only line
+                                up if every row renders the same slots: one guest
+                                without a meal must not slide the next guest's
+                                dietary tags a track to the left.
+
+                                So the slots are unconditional and each carries its
+                                own class; what stays conditional is their CONTENT.
+                                Empty slots render nothing visible and cost nothing
+                                on the phone (the flex row ignores zero-width
+                                children), and they give the grid a track to hold. */}
+                            <span className="gmeta" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                              <span className="gm-kids">
                                 {Number(g.kids) > 0 ? <span className="of">{g.kids} kid{Number(g.kids) === 1 ? '' : 's'}</span> : null}
+                              </span>
+                              <span className="gm-meal">
                                 {String(g.meal || '').trim() && g.meal !== '—' ? <span className="of">{MEAL_SHORT[g.meal] || g.meal}</span> : null}
-                                {/* WAVE-5 (UX_02 amber budget): a guest's needs note identifies
-                                    the guest, it doesn't warn about a gap — neutral .tag.plan,
-                                    same treatment as the RSVP tag on this row. */}
+                              </span>
+                              {/* WAVE-5 (UX_02 amber budget): a guest's needs note identifies
+                                  the guest, it doesn't warn about a gap — neutral .tag.plan,
+                                  same treatment as the RSVP tag on this row.
+                                  Structured dietary from the invite (allergens/diets arrays)
+                                  reach the LIST itself (host ask 2026-07-27) — deduped
+                                  against the free-text needs tag so nothing double-chips. */}
+                              <span className="gm-diet">
                                 {String(g.needs || '').trim() ? <span className="tag plan">{g.needs}</span> : null}
-                                {/* Structured dietary from the invite (allergens/diets arrays)
-                                    now reach the LIST itself (host ask 2026-07-27) — deduped
-                                    against the free-text needs tag so nothing double-chips. */}
                                 {[...(Array.isArray(g.allergens) ? g.allergens : []), ...(Array.isArray(g.diets) ? g.diets : [])]
                                   .filter((x) => x && !String(g.needs || '').toLowerCase().includes(String(x).toLowerCase()))
                                   .map((x) => <span key={x} className="tag plan">{x}</span>)}
                               </span>
-                            ) : null}
+                            </span>
                           </button>
                           {/* Inline RSVP picker (audit 2026-07-22) — was a blind tap-to-cycle
                               ('' → Yes → No → Maybe); now tap the reply to open a picker and
