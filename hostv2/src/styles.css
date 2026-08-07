@@ -4307,17 +4307,8 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
   grid-column:3; grid-row:3; align-self:start;
 }
-/* THE FOLD HANDLE NEEDS A CELL NOW THAT IT CAN BE VISIBLE HERE.
-   It was display:none on this canvas when the grid was written, so it was
-   never placed — and an unplaced grid child goes wherever auto-flow puts it.
-   Driven the moment `.has-more` first let it render: it landed at x=1056 in
-   COLUMN 3, under the stat cards, which is precisely the orphan this grid was
-   written to avoid and the second time the same element has found it.
-   It is a full-width "there is more below" cue, so it spans the work columns
-   under Zone 3 where the eye already ends. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
-  grid-column:1 / -1; grid-row:2; justify-self:center; margin-top:var(--sp-3);
-}
+/* (The grid cell this element used to need is gone with it — it does not
+   render on a desktop canvas at all. See the ruling below.) */
 /* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
    :287 already hides this handle on a wide canvas, for the right reason — it
    is a phone affordance that says "there is more below the bottom edge", and
@@ -4366,7 +4357,7 @@ button.vc-pill::after{
    Gone at desktop and wider. The fold model belongs to the phone, where
    `.escreen.on` really is a viewport-height column and the handle really does
    sit at the bottom edge. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
+.stagewrap--responsive-command[data-bp="desktop"] .hero.elegant > .efold{
   display:none;
 }
 
@@ -4616,4 +4607,112 @@ button.vc-pill::after{
 }
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row .ef-why{
   white-space:normal; overflow:visible; text-overflow:clip;
+}
+
+/* ══ THE RICHEST BLOCK ON THE SURFACE WAS `display:none !important` ══════════
+   Board ruling 2026-08-07, named their single highest-leverage change.
+
+   `:902` suppresses `.tile-a` in elegant mode. What it suppresses is not a
+   decoration: the lifecycle line ("Active planning · 3 of 6 handled — ..."),
+   the "what's counted" disclosure, and the SIX NAMED PLAN-PART CHIPS — Date,
+   Venue, Guests, Food, Budget, The moment — each with a handled/open dot and
+   each a working route (HostShellV2.jsx ~:8060).
+
+   So the stat column that everyone kept calling a void budget problem was
+   288x370 of nothing sitting directly beneath a hidden block built to fill it.
+   Tufte's objection lands in the same place from the other side: the progress
+   rule is six unlabeled segments, and these ARE the labels. The chart was
+   built and the axis hidden.
+
+   It also makes the column legal under the clause adopted this morning —
+   UX_04 Zone 1 allows a vertical stat column only when it carries at least
+   three blocks, one of them a list or a named set. This is the named set, so
+   the column stops needing a fourth re-zone to justify itself.
+
+   Scoped to the rail composition ONLY. `:648` and `:902` stand for the phone,
+   where the bento is a 2x2 grid and this tile really is a card. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a{
+  display:flex !important;
+  flex-direction:column; align-items:stretch; gap:6px;
+  /* The elegant bento is a column of hairline rows, not cards — :1004's card
+     background/border/grid-area belong to the phone bento and would put a
+     boxed card on top of two bare rows. */
+  grid-area:auto; background:none; border:none; box-shadow:none; border-radius:0;
+  padding:0 0 14px; text-align:left; min-height:0;
+}
+/* :1005 sets a 48px jumbo numeral for the phone countdown tile. Beside two
+   18px hairline figures that reads as a different component. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num{
+  font-size:18px; font-weight:700; line-height:1.05;
+}
+/* ONE HEADER, NOT TWO. `.bento-head` was added (89063812) because tile-a was
+   hidden and the section had no DOM heading at all. tile-a carries its own
+   "Where you stand" label — and that label also holds the "what's counted"
+   caret, so it is the one that must survive. Rendering both is anti-pattern 5,
+   the double header. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento-head{
+  display:none;
+}
+
+/* ══ THE ORDER, NOT THE COLUMNS (host ruling 2026-08-07) ═════════════════════
+   "columns are fine but order of elements with wider screens needs to be
+   reorganized."
+
+   Measured on the host's canvas before this rule:
+
+       eyebrow    y=37    317 DAYS · BIRTHDAY · JUN 20–24
+       ask        y=55    "Sort where everyone stays."     <- the one loud thing
+       CTA        y=246
+       progress   y=330   3 of 6 plan parts handled        <- 34% down
+       work       y=430   THEN, IN ORDER | WORTH KEEPING AN EYE ON
+
+   The progress rule is a Zone 1 sentence — "what is the shape of my world" —
+   and it was sitting in the middle of the page because it is pinned to the foot
+   of `.escreen`, which is a phone's first screen and is content-sized here. So
+   the reading order was: urgent thing, then a summary, then everything. UX_04's
+   triage order is the other way round and is explicit that it is
+   non-negotiable: shape -> urgent -> everything.
+
+   `.escreen.on` is already a named-area grid in rail mode (:4212). Reordering
+   is a row swap, not a fourth re-zone of the composition: prog moves to row 2,
+   directly under the eyebrow, and joins the command header. The ask keeps every
+   pixel of its dominance — it is still the only display type on the canvas —
+   it simply stops being the first thing the eye meets before it knows where it
+   stands. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on{
+  grid-template-rows:auto auto auto 1fr;
+  grid-template-areas:
+    "eyebrow"
+    "prog"
+    "head"
+    "main";
+}
+/* It was `align-self:end; margin-top:28px` — a foot-pin. In the header it sits
+   directly under the eyebrow and needs neither. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on > .eprog{
+  align-self:start; margin-top:12px; margin-bottom:var(--sp-4);
+}
+
+/* ONE FRACTION, NOT TWO. Un-hiding `.tile-a` brought its own big "3 of 6" and
+   "parts of your plan handled" into the column — while the progress rule, now
+   moved into the same command header, says "3 of 6 plan parts handled" a few
+   hundred pixels to its left. Both visible at once, which is precisely what the
+   Zone 1 clause adopted this morning forbids: a Zone 1 figure may not restate a
+   fact already stated elsewhere in the visible viewport.
+   The rule keeps the number (it owns the six segments that ARE the fraction);
+   the tile keeps what only it has — the lifecycle sentence and the six NAMED,
+   routed, dot-marked parts, which is the reason it was worth un-hiding. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num,
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-sub{
+  display:none;
+}
+
+/* THE HEADING GOES FIRST. In the tile's DOM the lifecycle sentence ("Active
+   planning · 3 of 6 handled — ...") precedes `.t-label`, which is the section
+   heading "Where you stand". On the phone that tile is a card and the order
+   reads fine; in this column the heading arrived SECOND, under a paragraph it
+   is supposed to introduce. `.tile-a` is a flex column here, so one `order`
+   puts the heading back on top without touching the markup. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a > .t-label{
+  order:-1;
 }
