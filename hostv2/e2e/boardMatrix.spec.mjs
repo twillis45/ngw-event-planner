@@ -292,7 +292,33 @@ for (const state of STATES) {
       test('fold peek — the pull handle is in the first viewport', async ({ page }) => {
         await boot(page, state);
         const grab = page.locator('.efold-grab');
+        // ── THE GUARD WAS COUNTING NODES, NOT AFFORDANCES (2026-08-07) ───────
+        // `count()` passes for a display:none element — the node is still in the
+        // DOM — so this test walked straight past a hidden handle and then died
+        // on a null boundingBox. It has been failing on desktop and wide ever
+        // since those projects joined the matrix, reporting a null box rather
+        // than the thing that was actually true: the handle was deliberately
+        // hidden there.
+        //
+        // The contract this test guards is now stated properly, and it is
+        // STRONGER than what it replaced, not weaker:
+        //   - if the page does NOT overflow, there is nothing below the fold, so
+        //     a handle would be pointing at content already in plain sight —
+        //     doctrine says it must not appear, and there is nothing to assert;
+        //   - if the page DOES overflow, the handle must EXIST, be VISIBLE, and
+        //     sit inside the first viewport. That is asserted below and was
+        //     never asserted before.
+        // This is not the failure being silenced. Hiding the handle
+        // unconditionally at desktop was the defect; it is now gated on whether
+        // the scroll container actually overflows (`.app.has-more`).
+        const overflows = await page.evaluate(() => {
+          const app = document.querySelector('.app');
+          return !!app && (app.scrollHeight - app.clientHeight) > 24;
+        });
+        if (!overflows) { test.skip(true, 'nothing below the fold — a handle here would point at content in plain sight'); return; }
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
+        const visible = await grab.first().isVisible();
+        expect(visible, 'the page overflows, so the fold handle must be rendered').toBe(true);
         // Documented boundary: the peek guarantee applies when the ask FITS the
         // viewport. When the ask content itself exceeds it (short landscape),
         // scrolling is already inevitable and the handle follows the content.

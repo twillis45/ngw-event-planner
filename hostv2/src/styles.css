@@ -4301,6 +4301,17 @@ button.vc-pill::after{
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
   grid-column:3; grid-row:2; align-self:start;
 }
+/* THE FOLD HANDLE NEEDS A CELL NOW THAT IT CAN BE VISIBLE HERE.
+   It was display:none on this canvas when the grid was written, so it was
+   never placed — and an unplaced grid child goes wherever auto-flow puts it.
+   Driven the moment `.has-more` first let it render: it landed at x=1056 in
+   COLUMN 3, under the stat cards, which is precisely the orphan this grid was
+   written to avoid and the second time the same element has found it.
+   It is a full-width "there is more below" cue, so it spans the work columns
+   under Zone 3 where the eye already ends. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
+  grid-column:1 / -1; grid-row:3; justify-self:center; margin-top:var(--sp-3);
+}
 /* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
    :287 already hides this handle on a wide canvas, for the right reason — it
    is a phone affordance that says "there is more below the bottom edge", and
@@ -4330,7 +4341,13 @@ button.vc-pill::after{
    mismatch between showsRail()'s width-only test and the stylesheet's
    width+height media queries is recorded for the board — it is not fixed here,
    because changing showsRail() would take the rail off this very machine. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
+/* GATED ON THE FACT, NOT THE WIDTH (board, 2026-08-07). `.has-more` is set by
+   HostShellV2.jsx when the scroll container ACTUALLY overflows. Where the page
+   fits, the handle is a phone affordance pointing at content already in plain
+   sight and stays hidden — the original argument, unchanged. Where it does not
+   fit, the handle is telling the truth: on the host's 1280x654 laptop the page
+   scrolls 301px and the Venue capture's Save sits 16px below the fold. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .app:not(.has-more) .hero.elegant > .efold{
   display:none;
 }
 
