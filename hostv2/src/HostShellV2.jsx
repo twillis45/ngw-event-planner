@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
-import { saveCustomEvents } from '@app/lib/customEventStore';
+import { saveCustomEvents, exportCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
@@ -91,7 +91,7 @@ import { getActionReason } from '@app/lib/actionReason';
 import { timeStatusLabel, PAST_WINDOW } from '@app/lib/timeStatusLabel';
 import { analyticsEventContext, runwayBucket } from '@app/lib/analyticsContext';
 import { cvbIntelFor } from '@app/lib/cvbIntel';
-import { dayPhases } from '@app/lib/dayPhases';
+import { dayPhases, programmeDays } from '@app/lib/dayPhases';
 import { TABLE_TYPES, withTableType, withTableSeats } from '@app/lib/tableTypes';
 import { AIRPORTS, nearestAirports, airportByCodeOrName, airportTradeoff } from '@app/lib/airports';
 import { militaryRetirementContext } from '@app/lib/knowledge/militaryRetirement';
@@ -2126,8 +2126,22 @@ export default function HostShellV2() {
   // which is exactly the case worth refusing. If a real "delete this event"
   // action is ever built, it passes the flag — and it should be the only caller
   // that does.
+  // ── A FAILED SAVE MUST NOT LOOK LIKE A SAVE (2026-08-06, board) ───────────
+  // saveCustomEvents returns {ok:false, reason} for quota-exceeded, private
+  // mode, and a refused write — and every call site discarded it. `customs` is
+  // React state, so the host saw a fully updated screen over a store that had
+  // stopped accepting writes, and the error boundary would then tell her
+  // "Reloading picks up where your data was last saved."
+  //
+  // This is the failure mode that cost a real event this morning, in a quieter
+  // form: the app being confident about data it does not have. A toast is the
+  // wrong instrument — it disappears and she is still typing. The banner stays
+  // until a write succeeds.
+  const [saveFailed, setSaveFailed] = useState(null);
   useEffect(() => {
-    saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
+    const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
+    if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
+    else setSaveFailed(null);
   }, [customs]);
   // Reload lands back where the host was — creation and switching both flow
   // through eventId, so ONE writer covers them.
@@ -3773,7 +3787,27 @@ export default function HostShellV2() {
     if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       try { await navigator.share({ title: 'You’re invited — ' + (event.name || 'our event'), text: 'You’re invited to ' + (event.name || 'our event') + '. RSVP here: ' + url, url }); return; } catch { /* declined — fall through to copy */ }
     }
-    try { await navigator.clipboard.writeText(url); toast('Invite link copied — anyone who opens it can RSVP themselves, no app needed.'); feedback('act'); }
+    // ── DO NOT PROMISE A LINK THAT ONLY WORKS HERE (2026-08-06, board) ──────
+    // "anyone who opens it can RSVP themselves, no app needed" is true only when
+    // the RSVP API is configured. On the deployed demo profile it is forced
+    // empty, so InviteV2 resolves {event: null} for anyone whose browser does
+    // not already hold the event — every guest gets a dead link.
+    //
+    // The production seat named this the single thing most likely to hurt a real
+    // host, and the reasoning is right: it is on the happy path, it fires a
+    // confident and specific confirmation, and the damage is social and
+    // irreversible. She sends it to forty people and finds out by phone.
+    //
+    // UX_07: a CTA may not claim a capability the build does not have. The link
+    // still copies — what changes is that the sentence stops overselling it.
+    const rsvpLive = (() => { try { return isRsvpApiConfigured(); } catch { return false; } })();
+    try {
+      await navigator.clipboard.writeText(url);
+      toast(rsvpLive
+        ? 'Invite link copied — anyone who opens it can RSVP themselves, no app needed.'
+        : 'Invite link copied — it opens on this device. Replies are not collected yet.');
+      feedback('act');
+    }
     catch { toast('Couldn’t copy on this browser — the link ends in ?rsvp=' + (event.rsvpCode || event.id)); }
   };
 
@@ -5583,6 +5617,30 @@ export default function HostShellV2() {
             frame one while the splash is up and releases the instant it
             starts fading, instead of completing invisibly underneath it. */}
         <div className={'content' + (splash === 'up' ? ' dash-hold' : '')}>
+          {/* Persistent, not a toast: she is still typing when it fails, and a
+              message that disappears is how a silent save failure stays silent.
+              Offers the one action that actually preserves her work. */}
+          {saveFailed && (
+            <div className="save-failed" role="alert">
+              <span>
+                {saveFailed === 'no-storage'
+                  ? 'Your changes aren’t being saved — this browser is blocking storage.'
+                  : saveFailed === 'would-drop-user-events'
+                    ? 'Your last change wasn’t saved — another tab may have this event open.'
+                    : 'Your last change wasn’t saved — this device is out of storage.'}
+              </span>
+              <button className="cta soft" onClick={() => {
+                try {
+                  const data = JSON.stringify(exportCustomEvents(), null, 1);
+                  const a = document.createElement('a');
+                  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+                  a.download = 'my-events.json';
+                  a.click();
+                  URL.revokeObjectURL(a.href);
+                } catch { /* nothing more we can offer */ }
+              }}>Download a copy</button>
+            </div>
+          )}
           <header className={'appbar' + (elegantMode ? ' appbar-elegant' : '')}>
             <div>
               <div className="wordmark">Event Boss<span className="wm-dot" aria-hidden="true" /></div>
@@ -5825,7 +5883,21 @@ export default function HostShellV2() {
                         {(effIsDestination || effOvernight !== null || !!effEndDate) ? (
                           <button className="chip" aria-pressed={effOvernight === true}
                             onClick={() => setFOvernight(effOvernight === true ? false : effOvernight === false ? null : true)}>
-                            {effOvernight === true ? 'Staying overnight' + (fOvernight == null ? ' · heard' : '')
+                            {/* ── "HEARD" MEANS SHE SAID IT (2026-08-06, board, copy seat) ──
+                                This said "· heard" whenever the host had not
+                                overridden the chip — including when overnight was
+                                DERIVED from a multi-day span. Driven live: a host
+                                who typed a date range and never used the word was
+                                told "Staying overnight · heard". That is the app
+                                claiming she said something she did not.
+                                smartParseEvent has carried `overnightBasis`
+                                ('said-so' vs 'multi-day-span') the whole time,
+                                with a comment saying it was built FOR this chip,
+                                and the shell read it zero times. */}
+                            {effOvernight === true
+                              ? 'Staying overnight' + (fOvernight != null ? ''
+                                : parsed.overnightBasis === 'said-so' ? ' · heard'
+                                  : parsed.overnightBasis === 'multi-day-span' ? ' · from your dates' : '')
                               : effOvernight === false ? 'Same day, no stay' : 'Staying over?'}
                           </button>
                         ) : null}
@@ -9168,7 +9240,56 @@ export default function HostShellV2() {
                       return m == null ? null : first._min - 0;
                     })();
                     const phases = (() => { try { return dayPhases(ros, anchorMin, event.rosDone || {}); } catch { return []; } })();
-                    if (phases.length < 2) return null;   // one phase is not a spine
+                    // THE DAY DIMENSION REACHES THE SURFACE (2026-08-07). The spine
+                    // used to be drawn once for the whole event, because dayPhases
+                    // bucketed every row against ONE anchor — so on a multi-day span
+                    // a day-2 row sat 1440+ minutes out and Setup/Doors could not
+                    // exist after day 1. programmeDays phases each day on its own
+                    // clock, so the host gets a spine PER DAY. Single-day events take
+                    // the identical path they always did: programmeDays returns one
+                    // day whose phases are byte-identical to the flat call (pinned in
+                    // programmeDays.test.js), so nothing below changes for them.
+                    const programme = (() => {
+                      try { return programmeDays(ros, anchorMin, event.rosDone || {}); } catch { return []; }
+                    })();
+                    const manyDays = programme.length > 1;
+                    if (!manyDays && phases.length < 2) return null;   // one phase is not a spine
+                    if (manyDays) {
+                      return (
+                        <div style={{ marginTop: 34, display: 'grid', gap: 14 }}>
+                          {programme.map(d => (
+                            <div key={d.day}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between',
+                                alignItems: 'baseline', gap: 12, marginBottom: 6 }}>
+                                {/* The day names itself. Without this the host cannot tell
+                                    which spine is which, and a stack of identical bars is
+                                    worse than one bar. */}
+                                <span style={{ fontSize: 'var(--t-caption)', fontWeight: 650,
+                                  color: d.state === 'now' ? 'var(--progress)'
+                                    : d.state === 'done' ? 'var(--ok)' : 'var(--carbon-muted)' }}>
+                                  {d.label}
+                                </span>
+                                <span style={{ fontSize: 'var(--t-caption)', color: 'var(--carbon-muted)' }}>
+                                  {d.done} of {d.total}
+                                </span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                {d.phases.map(ph => (
+                                  <div key={ph.id} style={{ flex: 1, height: 3, borderRadius: 2,
+                                    overflow: 'hidden', background: 'var(--carbon-line)' }}>
+                                    <div style={{ height: '100%',
+                                      width: `${ph.total ? Math.round((ph.done / ph.total) * 100) : 0}%`,
+                                      background: ph.state === 'done' ? 'var(--ok)'
+                                        : ph.state === 'now' ? 'var(--progress)' : 'var(--steel-soft)',
+                                      transition: 'width 260ms var(--ease-out)' }} />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
                     return (
                       <div style={{ marginTop: 34 }}>
                         <div style={{ display: 'flex', gap: 6 }}>
