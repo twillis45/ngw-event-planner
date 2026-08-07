@@ -8442,12 +8442,31 @@ export default function HostShellV2() {
                           </div>
                         </>
                       )}
-                      {!isVenueBlock && b.nextDecision && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
+                      {/* The nextDecision line renders only when NO button carries
+                          it — below, the button IS the sentence. Showing both put
+                          "Confirm the headcount." directly above a button meaning
+                          the same thing, which is the double-telling this screen
+                          keeps killing. */}
+                      {!isVenueBlock && b.nextDecision && !b.route && <p className="grounding" style={{ marginTop: 6 }}>{b.nextDecision}</p>}
                       {/* POP-1 continuity: the engine authored WHERE this blocker
                           resolves (b.route) — land there, never a passive note. */}
                       {!isVenueBlock && b.route && (
                         <div className="actions-row">
-                          <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route, event) || 'the right spot')); }}>Sort it out</button>
+                          {/* THE LABEL WAS "Sort it out" (board wave 2, 2026-08-07).
+                              That names no act — it is the same family as "Handle
+                              this", which ctaNamesTheAct.test.js exists to keep out.
+                              It slipped in because that gate sweeps the VOICE table,
+                              the playbook CTAs and the checklist routes, and NOT the
+                              shell's own literals.
+                              The fix the gate's own header prescribes: omit the
+                              override and let the engine's concrete label through.
+                              assembleRevealEngines.js:150 already authors an
+                              imperative per blocker — "Confirm the headcount.",
+                              "Choose or confirm the venue." — so the button says
+                              what the engine already decided this act is. */}
+                          <button className="cta" onClick={() => { if (!routeSheet(b.route)) toast('In the app this opens: ' + (describeRoute(b.route, event) || 'the right spot')); }}>
+                            {String(b.nextDecision || '').replace(/\.$/, '') || ('Open ' + b.title)}
+                          </button>
                         </div>
                       )}
                       {/* No tab/field to route to, but a real fixed set of

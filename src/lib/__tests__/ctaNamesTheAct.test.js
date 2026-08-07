@@ -19,6 +19,18 @@ const { ALL_PLAYBOOKS, playbookChecklist } = require('../playbooks');
 const BANNED = [
   /^do (this|it)\b/i,
   /^handle (this|it)\b/i,
+  // ── THE SAME FAMILY, FOUND BY THE REVIEW BOARD 2026-08-07 ────────────────
+  // "Sort it out" shipped live on the blocker cards (HostShellV2.jsx:8450) and
+  // this gate did NOT catch it. Worth being precise about why, because the
+  // instrument was fine: the JSX-button-text scan below already reads
+  // HostShellV2.jsx, so the selector was right and the LIST was short. A gate
+  // closes a class only if it enumerates the whole class.
+  // These are the remaining ways to tell a host to go and be vague about it.
+  /^sort it\b/i,
+  /^fix (this|it)\b/i,
+  /^deal with (this|it)\b/i,
+  /^take care of (this|it)\b/i,
+  /^sort (this|that) out\b/i,
   // "take me to it" AND "take me there" — the second slipped past a /^take me to/
   // pattern and shipped live on Ask the Boss (found by clicking, 2026-07-28).
   /^take me\b/i,
@@ -146,10 +158,24 @@ describe('no CTA describes a trip instead of the work', () => {
       // `(?:=>|[^>])` — the arrow alternative must come FIRST, or the lazy
       // quantifier stops at the `>` of an onClick arrow function and the "tag"
       // ends mid-attribute.
-      const BTN = /<button\b(?:=>|[^>])*?>([^<{]{2,60})</g;
+      // ── THE WINDOW WAS COUNTING INDENTATION (found 2026-08-07) ────────────
+      // This was `{2,60}`, and that is why "Sort it out" shipped live on the
+      // blocker cards and this gate stayed green over it. The label is ELEVEN
+      // characters. The captured run is not:
+      //
+      //   >\n                            Sort it out\n                          <
+      //
+      // 67 characters, because a button nested six levels deep in JSX carries
+      // its indentation between the tags. The cap was measuring whitespace, so
+      // every deeply-nested button in the file was structurally invisible —
+      // which is most of them. Widened to 400 to clear any real indent, with
+      // the LENGTH CHECK MOVED AFTER trim() where it was always meant to be:
+      // the 60 is a bound on the label, not on the source text around it.
+      const BTN = /<button\b(?:=>|[^>])*?>([^<{]{2,400})</g;
       let m;
       while ((m = BTN.exec(src))) {
         const label = m[1].trim();
+        if (label.length > 60) continue;   // prose, not a button label
         if (label && isBanned(label) && !ALLOWED_FEATURE_NAMES.has(label)) bad.push(`${f} → "${label}"`);
       }
       // Ternary/expression labels — isBannedRaw, see above.
