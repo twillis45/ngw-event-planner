@@ -50,15 +50,28 @@ test.describe('the guest reply picker', () => {
     expect(await page.locator('[role="radiogroup"]').count(),
       'the collapsed roster must not contain a reply picker').toBe(0);
 
-    const tops = async () => page.locator('.grow').evaluateAll(
-      (els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
-    const before = await tops();
+    // MEASURE SHAPE, NOT POSITION. The first cut of this asserted on absolute
+    // getBoundingClientRect().top and failed at 860x430 — where the detail row
+    // makes a short sheet scrollable, so every row's viewport top shifts by the
+    // same amount. That is the CONTAINER SCROLLING, which is fine and often
+    // wanted (it brings the picker into view); it is not the row reflow
+    // UX_05:174 forbids. Heights and the gaps between consecutive rows are
+    // scroll-invariant, so they isolate the thing actually under test — and a
+    // uniform shift passes while a real reflow still fails.
+    const shape = async () => page.locator('.grow').evaluateAll((els) => {
+      const r = els.map((e) => e.getBoundingClientRect());
+      return {
+        heights: r.map((b) => Math.round(b.height)),
+        gaps: r.slice(1).map((b, k) => Math.round(b.top - r[k].top)),
+      };
+    });
+    const before = await shape();
 
     await triggers.last().click({ timeout: 5000 });
     await page.waitForTimeout(250);
 
-    // 2. every collapsed row is exactly where it was
-    expect(await tops(), 'opening a guest must not move the rows above it').toEqual(before);
+    // 2. every collapsed row keeps its height and its spacing
+    expect(await shape(), 'opening a guest must not reflow the collapsed rows').toEqual(before);
 
     const groups = page.locator('[role="radiogroup"]');
     expect(await groups.count(), 'exactly one picker, and only for the open guest').toBe(1);
