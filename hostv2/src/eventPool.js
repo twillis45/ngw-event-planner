@@ -30,6 +30,7 @@ try { APP_EVENTS = JSON.parse(localStorage.getItem('ngw-events')) || []; } catch
 // there is still exactly ONE definition of each. They moved because the INVITE
 // needs them and must NOT drag this module (and the 40 playbooks it imports) into
 // a guest's download — see inviteShared.js.
+import { saveCustomEvents } from '@app/lib/customEventStore';
 export { LS_PATCH, LS_CUSTOM, eventArtworkFile, AVA_TINTS } from './inviteShared.js';
 // The multi-event store: EVERY event created in this shell, as an array.
 // Each stores itself whole (no LS_PATCH layer — that's for sample/app bases).
@@ -77,7 +78,9 @@ export function loadCustomEvents() {
           } catch { /* private mode */ }
         }
         list = [...list, { ...legacy, id: LEGACY_CUSTOM_ID }];
-        localStorage.setItem(LS_CUSTOMS, JSON.stringify(list));
+        // Append-only, so never refused — routed through the guard so the
+        // snapshot is taken and this write is in the log like every other.
+        saveCustomEvents(list, { reason: 'eventPool:legacy-fold' });
         // The old build never wrote a last-event pointer, so a reload dropped
         // the host onto the first sample. Their own event is the right landing.
         if (localStorage.getItem(LS_LAST_EVENT) === null) localStorage.setItem(LS_LAST_EVENT, LEGACY_CUSTOM_ID);

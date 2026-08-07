@@ -31,6 +31,7 @@ import {
 import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
 import { normalizeCvbContact } from '@app/lib/cvbIntel';
 import { draftLodgingNote } from '@app/lib/doItForMe';
+import { saveCustomEvents } from '@app/lib/customEventStore';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -70,7 +71,10 @@ function seedExample() {
   try {
     const all = loadCustomEvents() || [];
     const without = all.filter((e) => e && e.id !== SANTA_FE_EXAMPLE.id);
-    localStorage.setItem(LS_CUSTOMS, JSON.stringify([...without, { ...SANTA_FE_EXAMPLE }]));
+    // Through the guard: this rebuilds the array, and a bare setItem of a
+    // rebuilt array is exactly how a real event was lost on 2026-08-06. It
+    // keeps `without`, so it drops nothing and is never refused.
+    saveCustomEvents([...without, { ...SANTA_FE_EXAMPLE }], { reason: 'lodging:seed-example' });
     localStorage.setItem(LS_LAST_EVENT, SANTA_FE_EXAMPLE.id);
     window.location.reload();
   } catch { /* private mode — the planner link is still there */ }
@@ -95,7 +99,9 @@ export default function LodgingCockpit() {
     try {
       const all = loadCustomEvents() || [];
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
-      localStorage.setItem(LS_CUSTOMS, JSON.stringify(next));
+      // A map preserves every id, so this can never be refused — the guard is
+      // here so no future edit to this line can quietly become a replacement.
+      saveCustomEvents(next, { reason: 'lodging:patch' });
       setTick((t) => t + 1);
       // FINISHING A STEP LANDS YOU ON THE NEXT ONE (host, 2026-08-04). The
       // stage is derived, so the data moving forward already moves the host —

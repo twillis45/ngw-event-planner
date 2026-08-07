@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import PhotoStrip from './PhotoStrip.jsx';
 import { AskColumn, Eyebrow, BigValue, BigValueInput, GuideLine, Grounding, CtaRow, TierRow, SettledRow, SettledCard, OptionList, ASK_RHYTHM, ASK_COMPACT } from './parity/askKit';
 import { eventPlan, applicableReadinessAxes } from '@app/CommandCenter';
+import { saveCustomEvents } from '@app/lib/customEventStore';
 import { buildCrabProcurement } from '@app/lib/procurement';
 import { buildAssembleRevealStages, unresolvedBlockerStages } from '@app/lib/assembleRevealEngines';
 import { buildExperienceContext } from '@app/lib/experienceContext';
@@ -2097,8 +2098,23 @@ export default function HostShellV2() {
   useEffect(() => {
     if (!isCustomEventId(eventId)) { try { localStorage.setItem(LS_PATCH(eventId), JSON.stringify(patch)); } catch {} }
   }, [patch, eventId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ── THE HOST'S ONLY COPY GOES THROUGH THE GUARD (2026-08-06) ─────────────
+  // This was a bare setItem of the whole array. On 2026-08-06 that same shape,
+  // called from a browser-driving agent, replaced a real user event with a test
+  // one — recovered only because a second copy happened to exist on another
+  // origin. saveCustomEvents refuses any write that would drop a user-created
+  // event without `allowRemovingUserEvents`, and snapshots the previous state
+  // first.
+  //
+  // Safe here without `allowRemovingUserEvents` because this shell has NO
+  // delete path: every `setCustoms` call is an add or an update
+  // (`[...list, copy]` at :2145, `list.map` at :4242, add-or-update at :5169).
+  // So a refusal can only mean something dropped an event that should not have,
+  // which is exactly the case worth refusing. If a real "delete this event"
+  // action is ever built, it passes the flag — and it should be the only caller
+  // that does.
   useEffect(() => {
-    try { localStorage.setItem(LS_CUSTOMS, JSON.stringify(customs)); } catch {}
+    saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
   }, [customs]);
   // Reload lands back where the host was — creation and switching both flow
   // through eventId, so ONE writer covers them.
