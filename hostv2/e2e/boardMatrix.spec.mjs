@@ -317,8 +317,13 @@ for (const state of STATES) {
         });
         if (!overflows) { test.skip(true, 'nothing below the fold — a handle here would point at content in plain sight'); return; }
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
-        const visible = await grab.first().isVisible();
-        expect(visible, 'the page overflows, so the fold handle must be rendered').toBe(true);
+        // RETRYING, NOT A ONE-SHOT READ. `.has-more` is applied by a React effect
+        // driven by a ResizeObserver, so it lands a frame or more after the
+        // overflow itself is measurable from the DOM. A bare isVisible() read
+        // races that and fails under `workers: 2` while passing in isolation —
+        // which is exactly what it did: 0 failures run alone, 8 in the full
+        // matrix. Playwright's retrying form waits for the state instead.
+        await expect(grab.first(), 'the page overflows, so the fold handle must be rendered').toBeVisible({ timeout: 5000 });
         // Documented boundary: the peek guarantee applies when the ask FITS the
         // viewport. When the ask content itself exceeds it (short landscape),
         // scrolling is already inevitable and the handle follows the content.
