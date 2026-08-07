@@ -4008,6 +4008,26 @@ button.vc-pill::after{
    stays reachable rather than silently dying behind it. */
 .stagewrap[data-rail="1"] > .srail{ position:relative; z-index:60; }
 
+/* ── ...AND THE CENTRED PANEL CENTRES IN THE COLUMN, NOT AT ITS EDGE ────────
+   Measured at 1024x768, not reasoned (2026-08-07). Between 640 and 1279 at
+   >=700 tall the sheet is not edge-to-edge at all — it is the centred floating
+   panel (:3174), where `left` is the CENTRE anchor and translate(-50%,-50%)
+   does the placing. The rule above is source-ordered after that block, so it
+   replaced `left:50%` with a 220px CENTRE: the panel's left edge landed at
+   -119px, half of it off-screen and the rest under the rail, which then ate
+   every click aimed at it.
+   Playwright had been reporting exactly that — "srail-t intercepts pointer
+   events" across ten tablet-land tests — and I had been calling it
+   pre-existing on the strength of a revert that did not go back far enough to
+   exclude the very commit that caused it.
+   Shifting the CENTRE by half the offset is the same intent the edge rule
+   expresses, said in the idiom this breakpoint actually uses. */
+@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+  .stagewrap[data-rail="1"] .sheet{
+    left:calc(50% + (var(--rail-w) + var(--sp-5)) / 2);
+  }
+}
+
 /* ── THE SECTION MARK ON THE PHONE (host, 2026-08-07) ───────────────────────
    The Sections sheet is the mobile equivalent of the rail — the same
    sectionGroups(), the same doors — so it carries the same glyph. One mark per
