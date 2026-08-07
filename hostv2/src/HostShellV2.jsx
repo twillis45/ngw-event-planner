@@ -2383,7 +2383,8 @@ export default function HostShellV2() {
   // the whole ladder; the pill toggles it, a chip sets the status directly.
   const [statusPickFor, setStatusPickFor] = useState(null); // vendor id whose picker is open
   const [mealPickFor, setMealPickFor] = useState(null); // guest index whose meal picker is open (#6)
-  const [rsvpPickFor, setRsvpPickFor] = useState(null); // guest index whose RSVP picker is open (audit 2026-07-22)
+  // (rsvpPickFor retired 2026-08-07: the reply picker lives in the guest's own
+  // disclosure now, so `guestOpen` is the only open/closed state for that row.)
   const setVendorStatus = (v, status) => {
     writeVendor(v.id, { status },
       (v.name || v.category || 'This vendor') + ' → ' + vendorStatusLabel(status) + ' — ' + VENDOR_STATUS_MEANING[status] + '.');
@@ -4226,22 +4227,17 @@ export default function HostShellV2() {
     setRosterText('');
   };
 
-  // Flip one RSVP — writes the same guests array the engine's confirmed-count
-  // (and the catering-drift detector) read.
-  const toggleRsvp = (i) => {
-    const CYCLE = { '': 'Yes', 'Yes': 'No', 'No': 'Maybe', 'Maybe': '' };
-    const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: CYCLE[String(g.rsvp || '')] ?? 'Yes' } : g);
-    const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
-    const now = gs[i].rsvp || 'no reply yet';
-    patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + now + ' — ' + yes + ' confirmed. Maybes stay pending until they land.');
-  };
-  // Direct RSVP set (audit 2026-07-22) — replaces the blind tap-to-cycle with an inline
-  // picker (mirrors the meal picker): tap a name's reply → pick Yes/No/Maybe/no reply.
+  // Direct RSVP set (audit 2026-07-22) — replaced a blind tap-to-cycle
+  // ('' → Yes → No → Maybe → '') that could neither jump to a value nor show
+  // which one was set. That cycler (`toggleRsvp`) survived the audit as dead
+  // code for a fortnight — one definition, zero callers repo-wide — and is
+  // deleted here with the state the picker no longer needs.
+  // Writes the same guests array the engine's confirmed-count and the
+  // catering-drift detector read.
   const setRsvpValue = (i, value) => {
     const gs = (event.guests || []).map((g, ix) => ix === i ? { ...g, rsvp: value } : g);
     const yes = gs.filter(g => g && g.rsvp === 'Yes').length;
     patchEvent({ guests: gs }, (gs[i].name || 'Guest') + ' → ' + (value || 'no reply') + ' — ' + yes + ' confirmed.' + (value === 'Maybe' ? ' Maybes stay pending until they land.' : ''));
-    setRsvpPickFor(null);
   };
 
   // ── Feedback layer: haptic tick on real state changes, the original app's
@@ -16623,7 +16619,13 @@ export default function HostShellV2() {
                       const yes = (event.guests || []).filter(g => g && g.rsvp === 'Yes');
                       const heads = yes.length + yes.filter(g => String(g.plusOne || '').trim()).length;
                       const hasPre = (heads !== yes.length) || (rsvpBy && rsvpBy.iso && !isPast) || !isPast;
-                      return hasPre ? ' — tap a tag to change an RSVP, a name to edit.' : 'Tap a tag to change an RSVP, a name to edit.';
+                      // Was "tap a tag to change an RSVP, a name to edit" — two doors
+                      // described as doing different things. Since the reply picker moved
+                      // into the guest's own row (2026-08-07) BOTH open the same one, so
+                      // the sentence promised a distinction the surface no longer makes.
+                      // Found by driving it, not by reading the diff.
+                      const hint = 'tap anyone to change their reply or edit them.';
+                      return hasPre ? ' — ' + hint : hint[0].toUpperCase() + hint.slice(1);
                     })()}
                   </div>
                   {deadlineOpen && (() => {
@@ -16758,31 +16760,43 @@ export default function HostShellV2() {
                               </span>
                             </span>
                           </button>
-                          {/* Inline RSVP picker (audit 2026-07-22) — was a blind tap-to-cycle
-                              ('' → Yes → No → Maybe); now tap the reply to open a picker and
-                              set it directly, the same pattern as the meal chip below. */}
-                          {rsvpPickFor === i ? (
-                            <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', justifyContent: 'flex-end' }} role="group" aria-label={'RSVP for ' + (g.name || 'guest')}>
-                              {[['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'no reply']].map(([v, lbl]) => {
-                                const cur = String(g.rsvp || '') === v;
-                                return (
-                                  <button key={v || 'none'} className="chip" aria-pressed={cur}
-                                    style={{ padding: '4px 9px', fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
-                                    onClick={() => setRsvpValue(i, v)}>{lbl}</button>
-                                );
-                              })}
-                            </span>
-                          ) : (
-                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                              aria-haspopup="true" aria-label={'RSVP for ' + (g.name || 'guest') + ': ' + (g.rsvp || 'no reply') + ' — tap to change'}
-                              onClick={() => setRsvpPickFor(i)}>
-                              {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
-                              <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
-                            </button>
-                          )}
+                          {/* ── THE PICKER LEFT ITS OWN TRIGGER (board call, 2026-08-07) ──
+                              This slot was `rsvpPickFor === i ? <picker> : <trigger>` — the
+                              picker REPLACED the control that opened it. Three costs, all
+                              paid by the host:
+
+                                · the value you came to change vanished the instant you
+                                  went to change it, so "is this a Yes already?" could
+                                  only be answered by dismissing the thing you opened;
+                                · focus died with the unmounted trigger — keyboard and
+                                  screen-reader users were dropped to the body mid-task;
+                                · a ~26px tag became four chips, so THIS row and every row
+                                  under it reflowed under the finger. UX_05:174 allows a
+                                  row to change height only in an accordion, and this list
+                                  already HAS one (guestOpen) — the picker was just not
+                                  using it.
+
+                              UX_05:66 ("a status chip is display-only, clicking it does
+                              nothing") pulls the other way, since a dead `no reply` is the
+                              exact looks-available-but-isn't failure the rail rule at
+                              styles.css:3986 was written to kill. Both are satisfied by
+                              changing the SHAPE rather than picking a side: this is a
+                              DISCLOSURE control that displays status, not a status chip
+                              that acts. It answers "expand this guest", the picker lives
+                              in what it expands, and the chip inside it stays display-only.
+
+                              Cost is unchanged — two taps then, two taps now — but the
+                              first one is a full-width row instead of a 26px chip. */}
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            aria-expanded={guestOpen === i} aria-controls={'v2-guest-detail-' + i}
+                            aria-label={(g.name || 'Guest') + ' replied ' + (g.rsvp || 'nothing yet') + ' — open to change it'}
+                            onClick={() => setGuestOpen(guestOpen === i ? null : i)}>
+                            {/* UX_02: a Maybe is UNKNOWN → steel; amber is needs-attention only. */}
+                            <span className={'tag plan'} style={g.rsvp === 'Yes' ? { color: 'var(--ok)', background: 'var(--ok-tint)' } : g.rsvp === 'Maybe' ? { color: 'var(--steel-soft)', background: 'var(--steel-tint)' } : g.rsvp === 'No' ? { color: 'var(--danger)', background: 'var(--danger-tint)', textDecoration: 'line-through' } : { color: 'var(--muted)' }}>{g.rsvp === 'No' ? 'No' : (g.rsvp || 'no reply')}</span>
+                          </button>
                         </div>
                         {guestOpen === i && (
-                          <div className="brow" style={{ margin: '2px 0 var(--sp-2)', padding: 'var(--sp-2) 6px' }}>
+                          <div className="brow" id={'v2-guest-detail-' + i} style={{ margin: '2px 0 var(--sp-2)', padding: 'var(--sp-2) 6px' }}>
                             {(() => {
                               // Single source of truth: reads the SAME aggregation the
                               // Helpers panel (space sheet) uses — a food/task/setup/supply
@@ -16795,7 +16809,38 @@ export default function HostShellV2() {
                                 </div>
                               );
                             })()}
+                            {/* ── WHERE THE REPLY IS ACTUALLY SET ────────────────────────
+                                The picker that used to swap itself into the collapsed row
+                                lives here now, beside every other field of this guest —
+                                meal, kids, +1, needs, phone, email, group. It is always
+                                present while the row is open, so there is no second piece
+                                of open/closed state to keep honest (`rsvpPickFor` is gone,
+                                and `toggleRsvp` — the blind '' -> Yes -> No -> Maybe cycle
+                                this replaced on 2026-07-22 — went with it: defined, never
+                                called, repo-wide).
+                                A radiogroup rather than four `aria-pressed` buttons,
+                                because exactly one of these is true at a time and that is
+                                what a radiogroup means. Targets are 44px, not the 32px
+                                UX_05:72 asks of a chip: this is a phone-first roster and
+                                UX_03's mobile floor is the binding one, so the larger of
+                                the two wins. The row they sit in is the accordion
+                                UX_05:174 names as the one place a height may change, so
+                                the extra height costs the collapsed list nothing. */}
                             <div className="actions-row" style={{ alignItems: 'center' }}>
+                              <span className="of">reply:</span>
+                              <span role="radiogroup" aria-label={'Reply for ' + (g.name || 'guest')}
+                                style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                                {[['Yes', 'Yes'], ['No', 'No'], ['Maybe', 'Maybe'], ['', 'no reply']].map(([v, lbl]) => {
+                                  const cur = String(g.rsvp || '') === v;
+                                  return (
+                                    <button key={v || 'none'} className="chip" role="radio" aria-checked={cur}
+                                      style={{ padding: '7px 12px', minHeight: 44, fontSize: 'var(--t-pill)', ...(cur ? { background: 'var(--steel-tint)', color: 'var(--steel-soft)', fontWeight: 700 } : { opacity: .82 }) }}
+                                      onClick={() => setRsvpValue(i, v)}>{lbl}</button>
+                                  );
+                                })}
+                              </span>
+                            </div>
+                            <div className="actions-row" style={{ marginTop: 'var(--sp-2)', alignItems: 'center' }}>
                               <span className="of">kids:</span>
                               <button className="mini" onClick={() => writeGuest(i, { kids: Math.max(0, (Number(g.kids) || 0) - 1) }, null)}>−</button>
                               <span className="of" style={{ fontWeight: 700, color: 'var(--ink-soft)' }}>{Number(g.kids) || 0}</span>
