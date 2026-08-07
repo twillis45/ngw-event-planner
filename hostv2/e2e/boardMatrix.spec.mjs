@@ -292,47 +292,32 @@ for (const state of STATES) {
       test('fold peek — the pull handle is in the first viewport', async ({ page }) => {
         await boot(page, state);
         const grab = page.locator('.efold-grab');
-        // ── THE GUARD WAS COUNTING NODES, NOT AFFORDANCES (2026-08-07) ───────
-        // `count()` passes for a display:none element — the node is still in the
-        // DOM — so this test walked straight past a hidden handle and then died
-        // on a null boundingBox. It has been failing on desktop and wide ever
-        // since those projects joined the matrix, reporting a null box rather
-        // than the thing that was actually true: the handle was deliberately
-        // hidden there.
+        // ── THE FOLD MODEL IS A PHONE MODEL (host ruling 2026-08-07) ────────
+        // "progress yes, fold no." A pull handle means "there is more below the
+        // bottom edge", and a desktop canvas has no bottom edge in that sense:
+        // `.escreen` is content-sized there, so the handle marked the foot of a
+        // 324px block a third of the way down a 900px canvas.
         //
-        // The contract this test guards is now stated properly, and it is
-        // STRONGER than what it replaced, not weaker:
-        //   - if the page does NOT overflow, there is nothing below the fold, so
-        //     a handle would be pointing at content already in plain sight —
-        //     doctrine says it must not appear, and there is nothing to assert;
-        //   - if the page DOES overflow, the handle must EXIST, be VISIBLE, and
-        //     sit inside the first viewport. That is asserted below and was
-        //     never asserted before.
-        // This is not the failure being silenced. Hiding the handle
-        // unconditionally at desktop was the defect; it is now gated on whether
-        // the scroll container actually overflows (`.app.has-more`).
-        // ASK THE SHELL, DO NOT RE-MEASURE ALONGSIDE IT. The first version of
-        // this guard read `app.scrollHeight - app.clientHeight` itself and
-        // compared against the same 24px threshold the shell uses. That is two
-        // independent measurements of a MARGINAL quantity taken at different
-        // moments, and it flapped exactly as you would expect: run alone the
-        // page did not overflow and all eight skipped; run inside the full
-        // matrix it did, so the spec demanded a handle the shell had already
-        // decided against. Neither reading was wrong — they were taken a beat
-        // apart on a page whose height sits near the threshold.
-        // `.has-more` IS the product's answer. Assert against that and the race
-        // disappears; what is being guarded is the CONTRACT — that the handle
-        // is present exactly when the shell says there is more below.
-        const hasMore = await page.locator('.app.has-more').count() > 0;
-        if (!hasMore) { test.skip(true, 'shell reports nothing below the fold — a handle here would point at content in plain sight'); return; }
+        // So this test now asserts the contract in BOTH directions rather than
+        // skipping half of it — which matters, because two earlier versions of
+        // this guard each silently disabled themselves. `count()` passes for a
+        // display:none node, and a later `.app.has-more` guard would skip
+        // everywhere the moment that class stopped existing.
+        const isDesktopCanvas = await page
+          .locator('.stagewrap--responsive-command[data-bp="desktop"]').count() > 0;
+        if (isDesktopCanvas) {
+          // The handle must be ABSENT here. Asserting the absence is what stops
+          // it creeping back — it has done so twice already, once by escaping a
+          // height-gated media query and once by auto-placing into a grid.
+          const visibleGrabs = await grab.evaluateAll(
+            (els) => els.filter((el) => el.getBoundingClientRect().height > 0).length);
+          expect(visibleGrabs, 'a desktop canvas has no fold, so it must show no fold handle').toBe(0);
+          return;
+        }
+        // Phone / tablet / tablet-land: the fold model applies and the peek
+        // guarantee holds — the handle must exist and sit in the first viewport.
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
-        // RETRYING, NOT A ONE-SHOT READ. `.has-more` is applied by a React effect
-        // driven by a ResizeObserver, so it lands a frame or more after the
-        // overflow itself is measurable from the DOM. A bare isVisible() read
-        // races that and fails under `workers: 2` while passing in isolation —
-        // which is exactly what it did: 0 failures run alone, 8 in the full
-        // matrix. Playwright's retrying form waits for the state instead.
-        await expect(grab.first(), 'the page overflows, so the fold handle must be rendered').toBeVisible({ timeout: 5000 });
+        await expect(grab.first(), 'the fold model applies here, so the handle must render').toBeVisible({ timeout: 5000 });
         // Documented boundary: the peek guarantee applies when the ask FITS the
         // viewport. When the ask content itself exceeds it (short landscape),
         // scrolling is already inevitable and the handle follows the content.

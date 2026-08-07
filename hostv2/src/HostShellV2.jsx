@@ -2219,66 +2219,6 @@ export default function HostShellV2() {
   }, [eventId]);
   useEffect(() => { appRef.current?.scrollTo({ top: 0 }); }, [stage, eventId]);
 
-  // ── THE FOLD HANDLE MUST TELL THE TRUTH, NOT A BREAKPOINT (board, 2026-08-07)
-  // styles.css hid `.efold` on any wide canvas, on the reasoning that a fold
-  // handle says "there is more below the bottom edge" and on a real canvas the
-  // next section is already in plain sight. That reasoning is right and the
-  // rule was too broad: on the host's 1280x654 laptop the page still scrolls
-  // 301px, the Venue capture's Save button sits 16px BELOW the fold, and with
-  // the handle suppressed there is no fold handle, no scroll cue, and no
-  // indication of any kind that anything exists below it. The canary seat put
-  // it plainly — she does not scroll past a screen that gives her no reason to,
-  // and would have finished the menu believing she was done.
-  //
-  // So the handle is gated on the FACT rather than on the width: `.has-more`
-  // means this scroll container actually overflows. Where the content fits, the
-  // handle stays hidden and the original argument holds; where it does not, the
-  // handle is telling the truth and earns its place.
-  //
-  // This is also what boardMatrix.spec:292 has been asserting all along — that
-  // `.efold-grab` sits inside the first viewport. It fails on desktop and wide
-  // today because a display:none node still passes the spec's own `count()`
-  // guard and then returns a null boundingBox.
-  const [moreBelow, setMoreBelow] = useState(false);
-  useEffect(() => {
-    const app = appRef.current;
-    if (!app) return undefined;
-    // 24px of slack: sub-pixel layout and the ::after scroll-clearance spacer
-    // both produce a pixel or two of overflow on a page that visually fits.
-    const read = () => setMoreBelow(app.scrollHeight - app.clientHeight > 24);
-    read();
-    let ro, mo;
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(read);
-      // OBSERVE EVERY DIRECT CHILD, NOT JUST THE FIRST. `.app` has a FIXED
-      // height (`height:min(calc(100vh - ...), 900px)`), so it never resizes
-      // and observing it alone can never fire. The first version watched
-      // `firstElementChild` only — and whichever child actually grows is not
-      // reliably the first, so on several boards this stayed false forever and
-      // the handle never appeared even though the page scrolled.
-      ro.observe(app);
-      for (const child of app.children) ro.observe(child);
-    }
-    if (typeof MutationObserver !== 'undefined') {
-      // Children are added and removed as the board changes state; re-observe
-      // them when they do. ResizeObserver.observe is idempotent.
-      mo = new MutationObserver(() => { read(); if (ro) for (const child of app.children) ro.observe(child); });
-      mo.observe(app, { childList: true });
-    }
-    app.addEventListener('scroll', read, { passive: true });
-    window.addEventListener('resize', read);
-    return () => {
-      if (ro) ro.disconnect();
-      if (mo) mo.disconnect();
-      app.removeEventListener('scroll', read);
-      window.removeEventListener('resize', read);
-    };
-    // Deps are stage/eventId ONLY. `askMode` (:2681) and `sheet` (:2946) are
-    // declared BELOW this effect, so naming them here is a temporal-dead-zone
-    // ReferenceError, not a missing dependency — and they are not needed: the
-    // ResizeObserver on the content child is what actually catches a reflow,
-    // which is every case those two would have covered.
-  }, [stage, eventId]);
 
   const switchEvent = (id) => {
     redoEventId.current = null; // moving to another event abandons any pending create correction
@@ -5833,7 +5773,7 @@ export default function HostShellV2() {
       {/* has-nextbar: the .next-bar is absolutely positioned over the scroll area,
           so the container reserves room for it exactly while it shows — same
           condition as its render below. See the note at .next-bar in styles.css. */}
-      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '') + (moreBelow ? ' has-more' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
+      <div className={'app' + (stage === 'day' ? ' dark-stage' : '') + (elegantMode ? ' app-elegant' : '') + (wxImpact && stage === 'plan' ? ' has-wxpill' : '') + (stage === 'plan' && !heroInView ? ' has-nextbar' : '')} id="app" ref={appRef} inert={splash !== 'gone'}
         data-bp={bp} data-wide={isWideScreen ? '1' : '0'} data-rail={railUp ? '1' : '0'}>
         {/* dash-hold: same mechanism as .welcome.splash-hold — any one-shot
             entrance animation in here (sweepcard's cardin, etc.) pauses at

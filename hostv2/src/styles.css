@@ -286,8 +286,8 @@ button{font-family:inherit}
      below the bottom edge" and on a wide canvas the next section is usually in
      plain sight — but "usually" is not "always", and this rule sits inside a
      `min-height:700px` media query while the fact it is guessing at does not.
-     It now lives ONCE, gated on `.app:not(.has-more)` (whether the scroll
-     container actually overflows) and outside any height condition. Leaving a
+     It now lives ONCE, at :4359, hidden outright on a desktop canvas by host
+     ruling 2026-08-07 ("progress yes, fold no"). Leaving a
      copy here would have re-hidden the handle at 1440 and 1920 while the short
      laptop obeyed the other rule — which is exactly what it did do for two full
      matrix runs before this was found. */
@@ -4294,8 +4294,8 @@ button.vc-pill::after{
   grid-column:1 / span 2; grid-row:1;
 }
 /* Zone 3 — the work, side by side in the width that just freed up. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:3; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:3; }
 /* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
    The track ceiling is 288px, under UX_03's 300px rule, and they stack down
    their own column instead of stretching. */
@@ -4305,7 +4305,7 @@ button.vc-pill::after{
   align-self:start; margin-top:0;
 }
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
-  grid-column:3; grid-row:2; align-self:start;
+  grid-column:3; grid-row:3; align-self:start;
 }
 /* THE FOLD HANDLE NEEDS A CELL NOW THAT IT CAN BE VISIBLE HERE.
    It was display:none on this canvas when the grid was written, so it was
@@ -4316,7 +4316,7 @@ button.vc-pill::after{
    It is a full-width "there is more below" cue, so it spans the work columns
    under Zone 3 where the eye already ends. */
 .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
-  grid-column:1 / -1; grid-row:3; justify-self:center; margin-top:var(--sp-3);
+  grid-column:1 / -1; grid-row:2; justify-self:center; margin-top:var(--sp-3);
 }
 /* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
    :287 already hides this handle on a wide canvas, for the right reason — it
@@ -4347,13 +4347,26 @@ button.vc-pill::after{
    mismatch between showsRail()'s width-only test and the stylesheet's
    width+height media queries is recorded for the board — it is not fixed here,
    because changing showsRail() would take the rail off this very machine. */
-/* GATED ON THE FACT, NOT THE WIDTH (board, 2026-08-07). `.has-more` is set by
-   HostShellV2.jsx when the scroll container ACTUALLY overflows. Where the page
-   fits, the handle is a phone affordance pointing at content already in plain
-   sight and stays hidden — the original argument, unchanged. Where it does not
-   fit, the handle is telling the truth: on the host's 1280x654 laptop the page
-   scrolls 301px and the Venue capture's Save sits 16px below the fold. */
-.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .app:not(.has-more) .hero.elegant > .efold{
+/* ── NO FOLD HANDLE ON A CANVAS WITH NO FOLD (host ruling 2026-08-07) ───────
+   "progress yes, fold no."
+
+   The handle means "there is more below the bottom edge". That sentence needs a
+   bottom edge, and a desktop canvas does not have one in the sense the phone
+   does: `.escreen` is content-sized here (min-height:0), so the handle was
+   marking the foot of a 324px block a third of the way down a 900px canvas and
+   announcing content that was already fully on screen.
+
+   An earlier attempt gated it on `.app.has-more` — real scroll overflow — which
+   sounded principled and was wrong twice over. It fired on pages that FIT,
+   because `.app::after` is a 104px invisible scroll-clearance spacer for
+   frame-pinned overlays and the threshold sat below it; and even when overflow
+   was genuine the handle still sat mid-canvas, pointing down the page from the
+   middle of it. Measured: 189px overflow of which 104 was the spacer.
+
+   Gone at desktop and wider. The fold model belongs to the phone, where
+   `.escreen.on` really is a viewport-height column and the handle really does
+   sit at the bottom edge. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .efold{
   display:none;
 }
 
