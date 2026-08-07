@@ -42,13 +42,32 @@ for (const f of files) {
 
 const labeledTotal = totals.cited + totals.synthesized + totals.consensus;
 const groundedPct = labeledTotal ? Math.round((totals.cited / labeledTotal) * 100) : 0;
-const summary = { groundedPct, ...totals, playbooks: files.length, generatedNote: 'stamp the run date from the caller — Date.now() is intentionally not used here' };
+// ── THE HEADLINE WAS FLATTERING ITSELF (2026-08-07) ────────────────────────
+// groundedPct divides by LABELED items only. Measured: 8 cited + 40 consensus
+// + 132 synthesized = 180 labeled, against 541 priced items — so 361 priced
+// items carry no verificationStatus at all and were invisible to the number.
+// 8/180 reads 4%; 8/541 is 1.5%. An instrument that silently drops two thirds
+// of its population is the same class of defect the product's own honesty
+// doctrine exists to prevent, and this one grades that doctrine.
+// Both numbers are reported now. The unlabeled count is the FIRST thing to
+// drive down, and doing so will make groundedPct FALL before research lifts
+// it — that is the metric becoming honest, not a regression.
+const unlabeled = Math.max(0, totals.priced - labeledTotal);
+const truePct = totals.priced ? Math.round((totals.cited / totals.priced) * 1000) / 10 : 0;
+const summary = { groundedPct, truePct, labeledTotal, unlabeled, ...totals, playbooks: files.length, generatedNote: 'stamp the run date from the caller — Date.now() is intentionally not used here' };
 
 if (asJson) {
   console.log(JSON.stringify({ summary, rows: rows.sort((a, b) => a.grounded - b.grounded) }, null, 2));
 } else {
-  console.log(`\n  GROUNDING COVERAGE — ${groundedPct}% cited  (${totals.cited} cited · ${totals.consensus} consensus · ${totals.synthesized} synthesized · ${totals.priced} priced items · ${files.length} playbooks)\n`);
-  console.log('  Lowest-grounded playbooks (research these first):');
+  console.log(`\n  GROUNDING COVERAGE — ${groundedPct}% of LABELED items cited  (${totals.cited} cited · ${totals.consensus} consensus · ${totals.synthesized} synthesized = ${labeledTotal} labeled)`);
+  console.log(`  ACROSS ALL PRICED ITEMS  — ${truePct}% cited  (${totals.cited} of ${totals.priced}, in ${files.length} playbooks)`);
+  if (unlabeled > 0) {
+    console.log(`\n  ${unlabeled} PRICED ITEMS CARRY NO verificationStatus AT ALL — ${Math.round((unlabeled / totals.priced) * 100)}% of the priced set,`);
+    console.log('  invisible to the headline above. Label these FIRST: the honest default is');
+    console.log("  'synthesized', and labelling them will make the headline FALL toward the");
+    console.log('  across-all number. That is the metric telling the truth, not a regression.');
+  }
+  console.log('\n  Lowest-grounded playbooks (research these first):');
   rows.filter((r) => r.priced > 0).sort((a, b) => a.grounded - b.grounded).slice(0, 12)
     .forEach((r) => console.log(`    ${String(r.grounded + '%').padStart(4)}  ${r.file.padEnd(24)} ${r.cited} cited / ${r.priced} priced`));
   if (staleDays != null) {
