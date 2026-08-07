@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-07 (late) - viewport port session
+**Last updated:** 2026-08-07 (latest) - command-surface board sitting + the gate split
 
 ---
 
@@ -144,12 +144,79 @@ void, and aligned tracks with a header. Not parity on the three items above.
 
 ---
 
+## 1c. The board sat on the command surface - 2026-08-07 (latest)
+
+**ONE ROOT CAUSE UNDER FOUR SESSIONS OF SYMPTOMS.** `showsRail()` is width-only, and
+wider than its own comment claimed: `isWideBp` is `bp === 'desktop' || bp === 'tablet-land'`
+(`viewport.js:42`), and tablet-land starts at **1024** (`viewport.js:26`). Every desktop
+rule in `styles.css` is `@media (min-width:1280px) and (min-height:700px)`.
+
+So on any canvas >=1280 wide and **under 700 tall** the rail is up and NOT ONE desktop
+rule applies. That is not an edge case - **the host's own machine is 1280x800, which is a
+1280x654 inner viewport in Chrome.** The headless matrix runs 1440x900 and 1920x1080,
+where the height condition passes, so it was structurally blind to the whole class. The
+host and the review board were not looking at the same product.
+
+| Commit | What |
+|---|---|
+| `f8ae0a50` | the other session's tap-target fix, recovered from the tree and committed intact |
+| `8a4d4556` | stretched column -> 3-col grid; reference rows found; orphan fold; stranded progress |
+| `8d36f6f0` | the four doctrine gaps, written up |
+| `60ec507a` | **P0 I shipped** - the 3-col grid was running at 1024 and wrecking tablet-land |
+| `7c482d0b` | tablet-land restored to byte-identical; the matrix baselined |
+| `32a34b6a` | height stripped off composition/measure rules - the host's laptop finally has a canvas |
+| `377515b9` | **the void was a reserved iPhone** |
+| `993c46db` | "Sort it out" named no act, and the gate was measuring indentation |
+| `89063812` | the Zone 1 header was a pseudo-element, not text |
+| `bc0429fd` | the canvas was not empty - the sentences were being swallowed |
+
+**The finding that retired the argument.** `styles.css:931` was
+`.hero{ min-height:calc(852px - 64px - 88px) }` = **700px. 852 is an iPhone.** A phone
+viewport minus its chrome, hard-reserved in the hero at every width, released only under
+`@media (max-height:699px)` - whose own comment already called it "a phantom 700px".
+Nobody ever chose a void budget. Released for the responsive command canvas: hero
+700 -> 565px at 1440, and the Venue capture - which `assembleRevealEngines.js:127` pushes
+as `urgency:'critical'` - moved from y=760 clipped to fully inside the first viewport with
+its input and Save. **The engine ranked it critical and the layout was overriding the
+engine with a phone.**
+
+Board verdict before this session's fixes: **4/10 at 1280x654, 3/10 at 1728** - and the
+direction mattered more than the number: *the surface degraded as the canvas grew.*
+
+**Board rulings still unbuilt** (`2026-08-07_COMMAND_DOCTRINE_GAPS.md` + the sitting):
+
+- Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
+- Four duplicate venue-capture cards (`:8396`, `:8526`, `:4653`, `:9692`) collapse to one -
+  two of them are mutually exclusive on the same surface. Violates "no duplicate surfaces".
+- `.tile-a` is `display:none !important` (`styles.css:891`) and carries the lifecycle line
+  plus **six named, routed, dot-marked plan-part chips**. The richest computed block on the
+  surface is suppressed. "Only two honest stats exist" was FALSE.
+- Doctrine amendments 1-4, with the board's amended wordings (use the existing
+  `WIDESCREEN = 1536`, **not** a new 1600 threshold - that would overrule a prior ruling
+  by arithmetic accident).
+
+---
+
 ## 2. Gates
 
-**At `b60095c4` (2026-08-07): Jest 5623 passed / 1 skipped - 375 suites.** hostv2 build
-+ `check-parity` green. **NOT RUN: the full Playwright matrix against this bundle** - it
-now carries `desktop` (1440x900) and `wide` (1920x1080) projects, so the largest CSS
-features in the repo are reachable by CI for the first time. Run it.
+**At `bc0429fd` (2026-08-07): Jest 5640 passed / 1 skipped - 379 suites.** hostv2 build
++ `check-parity` green.
+
+**Playwright matrix, first trustworthy run with `desktop` + `wide`: 321 passed / 21 failed
+/ 36 skipped (16.5m).** An earlier attempt is not a result - its preview server died
+mid-run under concurrent load and returned **exit 0 having run nothing**.
+
+**All 21 failures are PRE-EXISTING - reproduced, not inferred.** Method: revert
+`styles.css` to `f8ae0a50` (before any of this session's work), rebuild, re-run both
+clusters. Same 10 and same 8.
+
+- `tablet-land` decisions-sheet + checklist-CTA: 10, unchanged at `f8ae0a50`.
+- `desktop` + `wide` **fold peek**: 8, unchanged at `f8ae0a50`. `boardMatrix.spec:292`
+  asserts `.efold-grab` sits in the first viewport; `:287` deliberately hides that handle.
+  A `display:none` node keeps its DOM node, so `count()` passes the spec's own skip guard
+  and `boundingBox()` then returns null. **The spec and shipped doctrine have contradicted
+  each other for some time and nobody saw it, because the matrix had no project above 1280
+  until 2026-08-06.** NOT silenced - which one is right is a board call.
 
 Historical, at `0d273115` (2026-08-06):
 
@@ -238,16 +305,31 @@ and it cost real time - duplicated work on the tap-target fix and vendor-silence
 Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before editing
 `HostShellV2.jsx` or `styles.css`. **Commit single-file in a shared tree.**
 
-**1. Run the full Playwright matrix** against the current bundle. It has never run with
-the new `desktop` + `wide` projects.
+**1. DONE 2026-08-07.** The matrix has now run clean; result and baseline in section 2.
 
-**2. The command-surface redesign - BOARD CALL.** See 1b. UX_04 zones, stat cards from
-data already in scope, and the fold handle that should not exist on a wide canvas.
+**2. Build the board's unbuilt rulings, in this order** (all from section 1c):
+   a. **Un-hide `.tile-a`** for the rail composition only - scope the exception, leave
+      `styles.css:891` alone for phone. It brings the lifecycle line and six named,
+      routed plan-part chips into the column that is still mostly empty. This is the
+      single highest-density win left and it invents nothing.
+   b. **Critical blockers render IN the hero.** The engine already ranks venue
+      `urgency:'critical'`; the layout puts it after the hero. Let the engine win.
+   c. **Collapse the four venue-capture cards to one.**
 
-**3. Two more board calls, both recorded with measurements:** move the RSVP picker out of
-its trigger; add an on-demand detail pane (permanent third pane already refused).
+**3. Settle the fold-peek contradiction** (section 2). Either `boardMatrix.spec:292` gains
+a desktop clause or `:287` is wrong. 8 failures ride on it. Note the spec's skip guard
+uses `count()`, which a `display:none` node passes - fix that either way.
 
-**4. Find the reference rows** and cap their measure. Four guesses matched nothing.
+**4. Write the four doctrine amendments** into the UX_0* files, using the board's AMENDED
+wordings, not the originals in the gaps doc. Watch two traps the board caught: the void
+budget must bound BOTH axes (the worst void was 418px WIDE), and the wide tier is
+`WIDESCREEN = 1536`, already defined - introducing 1600 would re-strand the 1440/1536
+laptops a previous board ruling rescued.
+
+**5. Two board calls still untouched:** move the RSVP picker out of its trigger; add an
+on-demand detail pane (permanent third pane already refused). Note Ive's dissent: the
+detail pane and the stat column are the SAME region, so building the pane collapses two
+calls into one.
 
 Then the pre-existing queue below - the grounding-coverage supply problem remains the
 binding constraint on the product, and none of the viewport work touched it.
@@ -289,6 +371,34 @@ binding constraint on the product, and none of the viewport work touched it.
 
 ## 6. Traps -- do not re-derive these
 
+- **TWO GATES FOR ONE CONCEPT IS THE BUG.** `showsRail()` is width-only and starts at
+  **1024**, not 1280 (`isWideBp` includes tablet-land). Every desktop rule in `styles.css`
+  is `min-width:1280px AND min-height:700px`. A rule keyed on `[data-rail="1"]` therefore
+  reaches 1024, and a rule inside that media query never reaches a 654px-tall laptop.
+  **Before writing any composition rule, decide which gate it belongs to and say so.**
+  Four separate defects came out of this one split.
+- **THE HOST'S MACHINE IS 1280x654, AND THE MATRIX CANNOT SEE IT.** 1280x800 display,
+  Chrome inner viewport 654. The matrix runs 1440x900 and 1920x1080 - both pass
+  `min-height:700px`. Every desktop defect found this session came from driving the host's
+  browser, not from CI. **Add 1280x654 and 1024x768 to the matrix.**
+- **852 IS AN IPHONE.** `calc(852px - 64px - 88px)` = 700px, and it was hard-reserved in
+  `.hero` at every width. Before theorising about "void", grep the literal numbers in the
+  min-heights: a phone frame nailed into a desktop composition looks exactly like a design
+  choice and is not one.
+- **A COMMENT CAN DESTROY THE RULE IT DOCUMENTS.** CSS HAS NO NESTED COMMENTS. An inner
+  `slash-star ... star-slash` inside an explanatory block closes it early, the remaining
+  prose is parsed as declarations, and the rule below is silently swallowed. Cost one
+  full build cycle on 2026-08-07 - the selector was in the file, grep found it, and it was
+  inert. Caught only by the computed box.
+- **A LENGTH BOUND MUST BE APPLIED AFTER `trim()`.** `ctaNamesTheAct.test.js` scanned JSX
+  button text with `([^<{]{2,60})` and so was **measuring indentation**: an 11-character
+  label six levels deep captures 67 characters. Every deeply-nested button in the file was
+  invisible to the gate, which is why "Sort it out" shipped green. A gate closes a class
+  only if it spans it, and a bound written against clean source does not span real files.
+- **PROVE A FAILURE IS PRE-EXISTING BY REPRODUCING IT.** When the matrix comes back red
+  after your change, revert the file to the last known commit, rebuild, re-run the failing
+  cluster. On 2026-08-07 that turned "21 failures" into "13 mine, 8 not" and then into
+  "all 21 pre-existing" after the 13 were fixed. Never argue it from reading.
 - **A CSS RULE THAT MATCHES NOTHING IS INDISTINGUISHABLE FROM ONE THAT WORKS.** Five
   times in one day (2026-08-07): `68ch`, `> .app .sheet` (`.sheet` is a direct child of
   `.stagewrap`, not inside `.app`), a `.ghead` rule with no markup, four uncapped-row
