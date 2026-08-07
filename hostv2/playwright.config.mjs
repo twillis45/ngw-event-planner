@@ -8,8 +8,27 @@ import { defineConfig } from '@playwright/test';
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  retries: 0,
-  workers: 4,
+  // ── THE GATE WAS A COIN FLIP (2026-08-06, board, production seat) ─────────
+  // Two full runs at the same SHA on the same machine produced DISJOINT failure
+  // sets — five failures then three, with not one individual case repeating.
+  // tabletLandscapeSplit and decisionIdentity each failed once and passed once.
+  // That is flake, not a broken build, and it matters more than it sounds:
+  // pages-from-source.yml auto-publishes every push to main, so a green run was
+  // proving the dice landed rather than that the UI was intact. It also means
+  // every "e2e green" claimed today carried an unknown amount of luck.
+  //
+  // Two changes, both narrow. `retries: 1` distinguishes a flake from a real
+  // failure instead of hiding it — a test that passes on retry is still
+  // REPORTED as flaky, so the signal survives. `workers: 2` cuts the contention
+  // between four browsers driving geometry-sensitive layout assertions on one
+  // machine; the specs measure rendered boxes, which is exactly what starves
+  // under parallel load. Slower, and honest.
+  //
+  // The real fix is upstream: several specs wait on page.waitForTimeout(2200)
+  // rather than on a state. That is the actual flake source and it is named in
+  // the path-to-9, not fixed here.
+  retries: 1,
+  workers: 2,
   reporter: [['list']],
   use: {
     // vite preview serves dist under the build base.

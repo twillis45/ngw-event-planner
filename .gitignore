@@ -64,3 +64,4 @@ hostv2/review-shots/drift/
 # Throwaway self-signed certs for LAN phone testing (HTTPS=1 npx vite --host).
 # A private key is never committed, even a disposable one.
 hostv2/.certs/
+hostv2/test-results/
