@@ -7957,6 +7957,15 @@ export default function HostShellV2() {
                   if (railUp) return full;
                   return parts.length > 1 ? parts[0] + ' — and more…' : full;
                 };
+                // Does the destination actually vary across this lane? If every
+                // row resolves to the same place, the destination is a property of
+                // the LANE and repeating it per row is noise.
+                const destsVary = (() => {
+                  try {
+                    const seen = new Set(rows.map(x => String(describeRoute(x && x.route, event) || '')));
+                    return seen.size > 1;
+                  } catch { return false; }
+                })();
                 const goWorry = (w) => { if (w && w.route && routeSheet(w.route)) return; setSheet({ kind: 'risks' }); };
                 // WATCH zone (Figma parity 2026-07-18): distinct from actions — steel dots,
                 // muted, no arrows (a heads-up, not a thing to go do). Non-elegant unchanged.
@@ -7984,12 +7993,38 @@ export default function HostShellV2() {
                             The glyph is bound to the SAME condition as the
                             destination, so a row that does not navigate never
                             grows an arrow. */}
-                        {railUp && w && w.route && describeRoute(w.route, event) && (
-                          <>
-                            <span className="ef-why">{describeRoute(w.route, event)}</span>
-                            <span className="ef-g" aria-hidden="true">→</span>
-                          </>
-                        )}
+                        {railUp && (() => {
+                          // ── AN IDENTICAL CELL ON EVERY ROW IS NOT METADATA ──
+                          // The first pass put `describeRoute` here, and the board's
+                          // craft seat caught what that produced: "Risks →" four times
+                          // in a column. A cell that reads the same on every row in a
+                          // lane carries no information per row — it belongs in the
+                          // lane header, which already says "Worth keeping an eye on".
+                          //
+                          // A worry is the same action object the queue carries, so it
+                          // goes through the SAME reason ladder the Then rows use —
+                          // blocking, then money, then time — which returns ONE reason
+                          // and refuses to restate the title. That is a cell that
+                          // differs per row because the underlying fact differs.
+                          const wr = (() => { try { return getActionReason(w, { event, moneyRows }); } catch { return null; } })();
+                          const d = (() => { try { return describeRoute(w.route, event); } catch { return null; } })();
+                          // TEXT and GLYPH answer different questions, so they are
+                          // decided separately. The text cell is DATA — it earns its
+                          // place only by differing per row. The arrow is an
+                          // AFFORDANCE — it says "this row goes somewhere", which is
+                          // equally true of every row here and must still be shown on
+                          // each, or a navigable row looks inert. The standing rule is
+                          // that a glyph is earned by ROUTING; it does not require the
+                          // destination to be interesting.
+                          const cell = (wr && wr.text) ? wr.text : (d && destsVary ? d : null);
+                          if (!cell && !d) return null;
+                          return (
+                            <>
+                              {cell && <span className="ef-why" data-reason={wr && wr.text ? wr.type : undefined}>{cell}</span>}
+                              {d && <span className="ef-g" aria-hidden="true">→</span>}
+                            </>
+                          );
+                        })()}
                       </button>
                     ))}
                   </div>
