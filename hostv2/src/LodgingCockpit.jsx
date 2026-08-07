@@ -2086,7 +2086,7 @@ const CSS = `
 // below that gate this is simply a full-bleed phone surface, which is the case
 // being judged.
 const Frame = ({ children }) => (
-  <div className="stagewrap">
+  <div className="stagewrap stagewrap--responsive-lodging">
     <div className="app app-elegant">
       <style>{CSS}</style>
       <div className="lc-wrap">{children}</div>

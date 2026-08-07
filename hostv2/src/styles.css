@@ -4540,13 +4540,15 @@ button.vc-pill::after{
      responsive surfaces rather than all of .app, so no legacy phone-silhouette
      sheet changes shape at a short height. */
   .stagewrap--responsive-command,
-  .stagewrap--responsive-food{
+  .stagewrap--responsive-food,
+  .stagewrap--responsive-lodging{
     transform:none; transform-origin:initial;
     width:min(100% - 48px, 1280px); max-width:1280px;
     height:auto; margin:var(--sp-5) auto 40px;
   }
   .stagewrap--responsive-command .app,
-  .stagewrap--responsive-food .app{
+  .stagewrap--responsive-food .app,
+  .stagewrap--responsive-lodging .app{
     border-radius:48px;
     box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line),
                0 42px 90px -28px rgba(0,0,0,.5);
@@ -4890,7 +4892,8 @@ button.vc-pill::after{
    no-op where there is room (a 900px laptop still resolves to ~840). */
 @media (min-width:1280px){
   .stagewrap--responsive-command .app,
-  .stagewrap--responsive-food .app{
+  .stagewrap--responsive-food .app,
+  .stagewrap--responsive-lodging .app{
     height:min(calc(100vh - var(--sp-5) - 40px), 900px);
     min-height:0;
   }
@@ -5004,3 +5007,25 @@ button.vc-pill::after{
 /* The picked row keeps a quiet mark so the pane and its source stay tied. */
 .hero.elegant .ef-row.is-picked .t{ color:var(--ink); }
 .hero.elegant .ef-row.is-picked{ box-shadow:inset 2px 0 0 var(--steel-soft); padding-left:12px; }
+
+
+/* ── THE LODGING COCKPIT ALREADY HAD A DESKTOP COMPOSITION (2026-08-07) ──────
+   Found by real-clicking the command surface's own primary CTA: it routes to
+   `?demo=lodging` and landed on a 393px phone silhouette letterboxed in a
+   1568px window. So the surface this whole sprint has been fixing delivered the
+   host straight into the defect it was fixing.
+
+   And the surface was NOT missing a desktop layout. LodgingCockpit.jsx:2071
+   carries `@container (min-width:900px){ .lc-grid{grid-template-columns:190px
+   minmax(0,1fr)} }` — a rail + main, with `.lc-grid` already
+   `width:min(100%,1180px)`. It is a CONTAINER query, so it measures the
+   container, and the container was a 393px phone stage. The composition existed
+   and could never fire.
+
+   Its Frame renders `.stagewrap > .app.app-elegant` deliberately — "same frame
+   as the app" — so it inherits everything, including the silhouette. Adding the
+   surface class is the whole fix: real width reaches the container, the
+   container query fires, and the surface lays itself out using the composition
+   its own author wrote. Nothing here designs a layout for it — that would be
+   freestyling on a surface no board has judged at this width, and the day-of and
+   vendor canvases are already booked for their own sitting. */
