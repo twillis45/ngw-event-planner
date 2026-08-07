@@ -107,7 +107,19 @@ export function applyStudioMatte() {
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
   set('--sheen', tint(dark.steelBlueMuted, 0.10));
-  set('--cta-grad', `linear-gradient(180deg, ${dark.steelBlueGradientTop} 0%, ${dark.steelBlueGradientBottom} 100%)`);
+  // ── THE PRIMARY IS FLAT (Mobbin read, 2026-08-04 §1) ───────────────────────
+  // Was linear-gradient(180deg, #4E6877 -> #3F5B6A) on every .cta and .tile-d.
+  // 27 leader screens were read and the finding is narrower than "no gradients":
+  // Airbnb's `Confirm and pay` IS a gradient, but a LATERAL hue sweep inside one
+  // brand colour. Not one leader runs a VERTICAL light-to-dark ramp, because
+  // 180deg is not colour — it is a simulated bevel, light falling from above
+  // onto a raised object, and that is what dates the button. Airbnb reads as
+  // brand; a 180deg ramp reads as plastic.
+  // So the kill is aimed at the ANGLE, not the idea: #4E6877 stays (it is the
+  // top stop, unchanged), and the --sheen top hairline stays as the material
+  // response, which is the same 1px the card family already carries. A lateral
+  // steel sweep is now a legitimate option here rather than a banned one.
+  set('--cta-grad', dark.steelBlueGradientTop);
 
   // ── Status anchors (Dark calibrations) ──
   set('--ok', dark.successGreen);

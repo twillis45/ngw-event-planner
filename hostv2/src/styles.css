@@ -1110,6 +1110,11 @@ button{font-family:inherit}
      shortest. inline-flex centers the label in a >=46px box (a leader-grade
      chunky primary), and a real min-height works where the ::after trick can't. */
   display:inline-flex; align-items:center; justify-content:center; min-height:46px;
+  /* The material response that replaces the 180deg bevel (Mobbin read 2026-08-04
+     §1; token flattened in theme.js). One 1px top hairline is the SAME detail
+     .card, .tile-a and .tile-c already carry, so the primary now belongs to the
+     surface family instead of simulating a raised plastic object of its own. */
+  box-shadow:inset 0 1px 0 var(--sheen);
   transition:filter var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .cta:hover:not(:disabled){filter:brightness(1.07); transform:translateY(-1px)}
