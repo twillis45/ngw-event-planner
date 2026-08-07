@@ -6,7 +6,7 @@ security-sensitive of them each carried a live hole.
 
 | Router | LOC | Test file before | Now |
 |---|---|---|---|
-| `communication` | 584 | none | auth gated + covered by `test_route_auth_coverage.py`; no behavioural tests yet |
+| `communication` | 584 | none | auth gated + **`test_communication_contract.py`** (12) |
 | `kroger` | 231 | none | auth coverage only |
 | `stripe_payments` | 181 | none | **`test_stripe_webhook_signature.py`** |
 | `food_prices` | 130 | none | **`test_food_price_factor.py`** (14) |
@@ -120,7 +120,8 @@ edit rather than an omission.
 
 ## Still unswept
 
-Nothing structural. `communication` (584 LOC) and the two thin HTTP wrappers
-`kroger` / `instacart` still have no behavioural tests — they are mostly request
-shaping around an upstream API, so the value there is lower than what has been
-covered, but it is not zero.
+Only `kroger` and `instacart` — two thin HTTP wrappers that shape a request
+around an upstream API and whose URLs are already proven to come from env
+constants. Lower value than anything covered above, but not zero.
+
+Backend suite across the whole sweep: **238 -> 320 tests.**
