@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard } from './playbooks';
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
@@ -49,11 +49,11 @@ export function deriveEventPhaseProgress(event, now = new Date()) {
 
   if (phase === 'live_event') return liveProgress(ev, now);
   if (phase === 'post_event') return postProgress(ev);
-  return preProgress(ev, phase, d);
+  return preProgress(ev, phase, d, now);
 }
 
 // ── Pre-event (and unknown-date) — applicable essentials only ─────────────────
-function preProgress(ev, phase, daysOut) {
+function preProgress(ev, phase, daysOut, now = new Date()) {
   const noDate = phase === 'unknown';
   const items = [];
   // WAVE-6 (2026-07-15): `extra` lets an item name the RECORDS it summarizes
@@ -132,19 +132,54 @@ function preProgress(ev, phase, daysOut) {
   const foodPicks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
   const openChoices = plan ? (plan.choices || []).filter(c => c && foodPicks[c.id] == null) : [];
   const dietaryDone = !!(plan && plan.dietaryResolved);
+  // THE HERO NAGGED FOR DECISIONS THE BOARD HAD PARKED (2026-08-07).
+  // Reproduced on a birthday 90 days out: playbookDecisionBoard put `food_style`
+  // and `alcohol` in its `deferred` bucket — "comes up closer to the date" — and
+  // this cue was simultaneously the app's TOP instruction, reading "Decide what
+  // you're serving · 2 open". Two surfaces, one event, opposite advice. Same
+  // class as the dest_lodging weight bug: intelligence that exists on one
+  // surface and is contradicted on another.
+  //
+  // The deferral rule is NOT re-derived here. Re-implementing a horizon test is
+  // exactly the "second copy" trap this codebase already names (see the
+  // choicePickFor comment in playbooks/index.js) — the board owns the rule and
+  // is asked for its answer. Wrapped because a board throw must never take the
+  // progress header down with it; an empty set just restores the old behaviour.
+  let deferredIds = new Set();
+  try {
+    const board = playbookDecisionBoard(ev, now) || {};
+    deferredIds = new Set((board.deferred || []).map((r) => r && r.id).filter(Boolean));
+  } catch (e) { /* board unavailable — fall back to counting every open choice */ }
+  const activeChoices = openChoices.filter((c) => !deferredIds.has(c.id));
+  // `handled` deliberately still counts EVERY open choice. A parked decision is
+  // not a made decision, and flipping food to ✓ at 90 days out because nothing
+  // is due yet would be the opposite dishonesty — a green dot over an undecided
+  // menu. Deferral changes what we ASK FOR NOW, never what we claim is settled.
   const foodHandled = openChoices.length === 0 && dietaryDone;
+  // Cue precedence: active menu decisions first, then the dietary question
+  // (always active — allergies do not wait for a window), then nothing. A null
+  // cueLabel is how pickCue is told this axis has no ask right now; the item
+  // stays in the denominator as unhandled, so the count remains honest.
+  const foodCue =
+    activeChoices.length > 0
+      ? {
+        label: `Decide what you're serving · ${activeChoices.length} open`,
+        route: { tab: 'Planning', focusField: 'food-plan' },
+        // WAVE-6: the exact choice records the "N open" count claims — the same
+        // ids playbookDecisionBoard rows carry, so record-level dedup can
+        // subtract the ones the decisions surface raises individually instead
+        // of double-counting. Only the ACTIVE ids, matching the number shown.
+        extra: { records: activeChoices.map((c) => c.id) },
+      }
+      : !dietaryDone
+        ? {
+          label: 'Note dietary needs on the food plan',
+          route: { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
+          extra: null,
+        }
+        : { label: null, route: null, extra: null };
   add('food', usesFood && hasCount, foodHandled,
-    openChoices.length > 0
-      ? `Decide what you're serving · ${openChoices.length} open`
-      : 'Note dietary needs on the food plan',
-    openChoices.length > 0
-      ? { tab: 'Planning', focusField: 'food-plan' }
-      : { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
-    6,
-    // WAVE-6: the exact choice records the "N open" count claims — the same ids
-    // playbookDecisionBoard rows carry, so record-level dedup can subtract the
-    // ones the decisions surface raises individually instead of double-counting.
-    openChoices.length > 0 ? { records: openChoices.map((c) => c.id) } : null);
+    foodCue.label, foodCue.route, 6, foodCue.extra);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.

@@ -95,28 +95,36 @@ describe('the hero never leads with something the board has shelved', () => {
 // (`food_style`, `alcohol`) are on the board's horizon shelf, rendered to the
 // host as "Comes up closer to the date."
 //
-// It is NOT the same root cause as the lodging one. Neither row declares
-// `blocks[]`, so the gate-holder rule above is satisfied and deferring them is
-// legitimate. The wrong thing is the COUNT: "2 open" is a claim about decisions
-// the app has itself decided are not yet due. Same defect class as every other
-// one found today — a number that means something other than what it says.
-//
-// THE FIX, when it is ruled: `openChoices` (phaseProgress.js:133) filters only
-// on "unanswered". It should also exclude rows the board has deferred, so the
-// cue counts what is actually askable now. That needs the food cue to read the
-// board, which is a real cross-module change and a product call about whether
-// the hero may summarise not-yet-due work at all.
-//
-// This test FAILS the day someone fixes it — which is the point. Flip it then.
-describe('KNOWN OPEN — the food cue counts decisions the board defers', () => {
-  test('local event: the hero says "2 open" about two deferred rows', () => {
+// CLOSED 2026-08-07. The block below used to document the live defect and was
+// written to fail the day it was fixed. It has been flipped, as its own note
+// instructed. The fix reads the board's `deferred` bucket in phaseProgress
+// rather than re-deriving the horizon rule, and it deliberately did NOT flip
+// food to handled — a parked decision is not a made decision, so the axis stays
+// open in the denominator while the ASK goes quiet. Full coverage of the fix,
+// including the mutation that proves it bites, lives in
+// heroRespectsBoardDeferral.test.js; what is kept here is the original reported
+// case, so the specific event that exposed it can never regress unnoticed.
+describe('the food cue does not count decisions the board defers', () => {
+  test('THE REPORTED CASE: local event at 318 days claims none of the shelved rows', () => {
     const local = evAt(318, { isDestination: false });
     const cue = cueOf(local);
-    expect(cue.id).toBe('food');
     const deferred = new Set((boardOf(local).deferred || []).map((d) => d.id));
-    const counted = (cue.records || []).filter((id) => deferred.has(id));
-    // Documenting the defect, not endorsing it.
-    expect(counted.sort()).toEqual(['alcohol', 'food_style']);
+    // Premise: this event must actually HAVE shelved rows, or the assertion
+    // below is vacuous — the exact failure mode that produced ten dead tests
+    // earlier in this sprint.
+    expect(deferred.has('food_style')).toBe(true);
+    expect(deferred.has('alcohol')).toBe(true);
+    const counted = (cue && cue.records ? cue.records : []).filter((id) => deferred.has(id));
+    expect({ cue: cue && cue.id, claimsShelvedRows: counted }).toEqual(
+      { cue: cue && cue.id, claimsShelvedRows: [] },
+    );
+  });
+
+  test('the food axis is still open — deferral quiets the ask, it does not grant a tick', () => {
+    const local = evAt(318, { isDestination: false });
+    const food = ((deriveEventPhaseProgress(local, NOW) || {}).items || []).find((i) => i.id === 'food');
+    expect(food).toBeTruthy();
+    expect(food.handled).toBe(false);
   });
 });
 
