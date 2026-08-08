@@ -3497,7 +3497,12 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    list of problems, and UX_02 spends --danger on "critical issue", not on the
    permanent availability of an option. Red arrives only once the question has
    been asked and the answer is one tap away. */
-.frow-confirm{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 10px 12px; }
+/* 8px bottom, NOT the 10px `.runagain` uses directly above. Copying that line
+   verbatim is what I did first, and spacingLadder.test.js caught it: 10 is off
+   the ratified ladder, grandfathered under the baseline count, and a ratchet
+   gate counts copies. 8 is the ladder value nearest it and the rhythm is
+   indistinguishable at this size. */
+.frow-confirm{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 8px 12px; }
 .frow-confirm .v-meta{ margin-right:2px; }
 .mini.danger{ color:var(--danger); border-color:var(--danger); }
 
