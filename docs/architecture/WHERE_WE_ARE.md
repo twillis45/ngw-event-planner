@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-08 (latest) - the lodging deep link lands, and the goals audit that chose it
+**Last updated:** 2026-08-08 (latest) - live-mode census, sign-in upload, and a delete that crashed the shell
 
 ---
 
@@ -634,6 +634,61 @@ unblocked whenever it is wanted.
 
 `.claude/launch.json` gained a `hostv2` entry (port 5199); it previously offered only the
 frozen CRA shell on :3000.
+
+---
+
+## 1f. Live mode - the checklist was stale, and two data gaps are now closed (2026-08-08)
+
+Chosen by a goals audit that separated OWNER-STATED goals from derived ones. The finding
+that drove the day: the review board's rulings have become the de-facto roadmap, while two
+things the host actually said are unserved - the attention system (*"my biggest truth
+function"*) and the **5-10 paying studios in 60 days** target. Section 5 has no auth, cloud
+save, onboarding or upload item anywhere.
+
+**`LIVE_MODE_READINESS.md` opens "Nothing on this list is implemented." That is false, and
+was partly false when written.** Full census in `docs/release/2026-08-08_LIVE_MODE_CENSUS.md`
+(commit `76046673`). Seven of twelve sections are substantially built. Nothing is missing so
+much as SWITCHED OFF - auth keys only populate when `pages-from-source.yml` is dispatched
+with `release_profile=live` (`:85`), billing behind `REACT_APP_BILLING_LIVE`.
+
+Four findings the checklist does not name:
+
+- **S1 cites an instrument that cannot answer it.** `npm run check:migrations` makes no
+  network call - it is a static guard on which folder may create which table. It passes and
+  proves nothing about production migrations. No tool in this repo can answer S1.
+- **S6 is the opposite of its reputation.** The checklist calls cloud-save honesty *"most
+  likely to be wrong today"*; it is a five-state machine (`syncState.js:53`) with 31 tests.
+- **`migrateLocalToCloud` was wired only to the FROZEN shell** - sole caller `App.js:45470`.
+- **hostv2 could not delete an event**, per the store guard's own words.
+
+**Both data gaps are now closed** (`9d80953b`, `af196c83`):
+
+| Gap | Fixed by |
+|---|---|
+| Sign-in pulled cloud->local and never pushed local->cloud | Per-event upload via `saveEvent` (NOT `migrateLocalToCloud`, which returns counts only and leaves no honest way to stamp sync state). Idempotent, filtered by `isRealHostEvent`, toast counts what UPLOADED. **NOT DRIVEN LIVE** - needs a real session; stays OPEN. |
+| No delete, anywhere | `deleteThisEvent` + tombstone + two-step confirm that names the event. Driven live twice. |
+
+> ### ⚠ THE DELETE CRASHED THE SHELL, AND THE BUG WAS MONTHS OLD
+>
+> `base` reads `hydratedEvents` as its THIRD operand while the declaration sat AFTER it - a
+> temporal dead zone that never fired because operands one and two always answered: `eventId`
+> named a custom event or a sample. **Deleting the current event is the first act in this
+> shell that can leave `eventId` naming NEITHER**, and the whole screen went to the error
+> boundary with *"Cannot access 'hydratedEvents' before initialization"*.
+>
+> Invisible in source - the throwing operand is unreachable until the state that reaches it
+> can exist. Only driving it found it. Declaration now sits above `base`, held by a one-line
+> source-order assertion in `deleteEventLandsSomewhere.test.js`. **If you tidy the session
+> state declarations back together, you reintroduce the crash.**
+
+**The tombstone is the point, not the `filter()`.** `cloudDeleteEvent` queues when offline or
+signed out, and a queued delete means the row is still in the cloud - so the next `hydrate()`
+would pull the deleted event back. Ids release only once the cloud confirms.
+
+**Deploy status: NOTHING IS DEPLOYED.** As of this writing the branch is
+`feat/hotel-entity-url` with **7 unpushed commits**; `origin/main` has not moved and no Pages
+run has been dispatched. The risk-severity work (`c9193772`) is committed and driven but
+lives only on this branch.
 
 ---
 
