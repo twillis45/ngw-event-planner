@@ -117,6 +117,7 @@ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveRet
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { raiseCounts } from '@app/lib/surfaceRegistry';
+import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
 import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -3407,6 +3408,49 @@ export default function HostShellV2() {
       `${name} has it — ${job.charAt(0).toLowerCase() + job.slice(1)}. It’s on the day plan and their message now.`);
     setHelperForm({ name: '', job: '' });
   };
+  // ── A RISK THE HOST CAN ACT ON, NOT JUST ERASE (board, 2026-08-08) ─────────
+  // Four seats scored this surface 3/3/4/5 and all four landed on the same
+  // sentence: on three of five birthday rows the ONLY act offered was "Handled
+  // — stop showing this". `riskRouteFor` is a keyword regex over the risk's own
+  // prose (:1463) and returns null on a miss, and the render gated the
+  // constructive button on that null — so the regex missing a word silently
+  // deleted the only forward move and kept the only backward one. Measured over
+  // all 246 authored risks: 130 had a route, 116 did not.
+  //
+  // THIS DOES NOT ADD A THIRD REGEX. The mitigation is already authored and
+  // already rendered on the row ("Chase RSVPs; buy fresh after the count
+  // locks..."), and `event.timeline` is a real store that eight engines read —
+  // workflowCompression, dayAlerts, dayBefore, disclosure, helperResponsibility,
+  // decisionMemory, duplicateEvent, vendorQuestions. Writing the mitigation
+  // there turns displayed advice into tracked work, and the checklist's OWN
+  // router (`checklistActionFor` → lib/taskRoute) then gives the new step a
+  // destination — an engine that already exists and reads these strings better
+  // than the risk regex does. Measured on the same 246: `checklistRouteFor`
+  // resolves 209 of them, including every dead birthday row and
+  // `r_saferides` → "Open rides".
+  //
+  // Same row shape and same one-write-reaches-everything argument as addHelper
+  // above. `week:''`/`leadDays:null` is an honest unscheduled step, not an
+  // invented date — risks carry no lead time (the board's #1 finding, still
+  // open), and guessing one from the trigger's prose would be the very
+  // parse-the-English mistake this replaces.
+  const addRiskToChecklist = (r, key) => {
+    const task = String((r && r.mitigation) || '').trim();
+    if (!task) { toast('Nothing written down for this one yet.'); return; }
+    const id = 'risk-' + String(key || '');
+    const existing = Array.isArray(event.timeline) ? event.timeline : [];
+    if (existing.some((t) => t && t.id === id)) {
+      // Already there: say so and GO to it, rather than silently no-op or add a
+      // duplicate. The row-level CTA rule — land on the row, never the top.
+      setSheet({ kind: 'tasks', focus: id });
+      return;
+    }
+    patchEvent(
+      { timeline: [...existing, { id, task, owner: '', done: false, week: '', leadDays: null, category: 'planning' }] },
+      'On your checklist now — it carries its own next step.',
+    );
+  };
+
   // Visitors-bureau contact capture (host directive 2026-07-28): the number the
   // host brings back from the call lives on the event; the row renders it as
   // real tel:/site links. Host-entered only — never scraped.
@@ -7986,7 +8030,29 @@ export default function HostShellV2() {
                 // muted, no arrows (a heads-up, not a thing to go do). Non-elegant unchanged.
                 if (elegantMode) return (
                   <div className="ef-watch">
-                    <div className="ef-sect">Worth keeping an eye on</div>
+                    {/* ── THE LANE LABEL CARRIES THE ASK. IT STOPPED, AND wlabel
+                        DID NOT (fixed 2026-08-08, found by driving Santa Fe) ──
+                        `wlabel` strips "Have a plan for: " off every row, and
+                        that was RIGHT under the contract it was written to:
+                        wave 6 shipped this lane headed "Heads-up — have a plan
+                        for these", and its own comment says "the lane label
+                        carries the ask once, so each row reads as the risk
+                        itself". `c02c0dad` then replaced that header with
+                        "Worth keeping an eye on" and carried the strip forward
+                        unchanged — so the four words moved out of the header
+                        and were still being deleted from the rows.
+                        What shipped was a bare TRIGGER stated as fact:
+                        "Final headcount still not locked 3 days out" on an
+                        event 680 days out. A trigger is the CONDITION a risk
+                        fires under, never a claim about now.
+                        Fixed at the HEADER, not per row — restoring the prefix
+                        to each row would repeat one ask N times (the exact
+                        anti-pattern the neighbouring destination-cell comment
+                        settles) and push three-clause risks off the fold.
+                        Wording is the risks sheet's own ("they're the ones
+                        worth a plan", :12908) so the two surfaces about the
+                        same data no longer say opposite things. */}
+                    <div className="ef-sect">Worth having a plan for</div>
                     {rows.map((w, i) => (
                       <button key={String((w && w.id) || 'worry-' + i)} className="watch-row" onClick={() => goWorry(w)}>
                         <span className="watch-dot" aria-hidden="true" />
@@ -8014,7 +8080,7 @@ export default function HostShellV2() {
                           // craft seat caught what that produced: "Risks →" four times
                           // in a column. A cell that reads the same on every row in a
                           // lane carries no information per row — it belongs in the
-                          // lane header, which already says "Worth keeping an eye on".
+                          // lane header, which already says "Worth having a plan for".
                           //
                           // A worry is the same action object the queue carries, so it
                           // goes through the SAME reason ladder the Then rows use —
@@ -8046,7 +8112,9 @@ export default function HostShellV2() {
                 );
                 return (
                   <div style={{ marginTop: 'var(--sp-5)' }}>
-                    <div className="horizon" style={{ borderTop: 'none', paddingTop: 0, marginTop: 18 }}>Worth keeping an eye on</div>
+                    {/* Same fix as the elegant lane above: this header must carry
+                        the ask, because wlabel deletes it from every row. */}
+                    <div className="horizon" style={{ borderTop: 'none', paddingTop: 0, marginTop: 18 }}>Worth having a plan for</div>
                     {rows.map((w, i) => (
                       <button key={String((w && w.id) || 'worry-' + i)} className="path-row" onClick={() => goWorry(w)}>
                         <span className="then" style={{ color: 'var(--steel-soft)' }}>mind</span>
@@ -12925,12 +12993,25 @@ export default function HostShellV2() {
                     style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
+                      {/* Same one table as the playbook rows below — these are
+                          DERIVED risks (assembleRevealEngines) and they were
+                          reading a second, identical copy of the broken lookup. */}
+                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
+                    {/* EXACTLY TWO BUTTONS, ALWAYS ONE OF THEM CONSTRUCTIVE.
+                        Where the route resolves, "Plan for this" is the act;
+                        where it does not, the authored mitigation becomes a real
+                        checklist step. The dismiss NEVER renders alone. This also
+                        settles the board's affordance finding — buttons used to
+                        appear on some rows and not others down a uniform list,
+                        teaching the host that a missing button meant "nothing to
+                        do here", which was false on three of five rows. */}
                     <div className="actions-row" style={{ marginTop: 6 }}>
-                      {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
+                      {route
+                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
+                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.type)}>Add to my checklist</button>}
                       <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
                     </div>
                   </div>
@@ -12948,16 +13029,28 @@ export default function HostShellV2() {
                     style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
+                      {/* ONE table, in lib/riskSeverity.js. This inline lookup was
+                          duplicated verbatim at both risk render sites and keyed on
+                          `medium` while 261 authored records say `med` — so the
+                          largest severity class fell to a fallback string, and the
+                          4 `critical` records fell there too and were painted AMBER,
+                          quieter than `high`. See the module header for the census. */}
+                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
-                    {(route || r.id) && (
-                      <div className="actions-row" style={{ marginTop: 6 }}>
-                        {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
-                        {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
-                      </div>
-                    )}
+                    {/* Same two-button contract as the derived rows above. The old
+                        gate was `(route || r.id)` with each button separately
+                        conditional — and `r.id` is always present on a playbook
+                        risk, so dismissal was unconditional while planning was
+                        conditional: the destructive act always, the constructive
+                        act sometimes. */}
+                    <div className="actions-row" style={{ marginTop: 6 }}>
+                      {route
+                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
+                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.id)}>Add to my checklist</button>}
+                      {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
+                    </div>
                   </div>
                   );
                 })}

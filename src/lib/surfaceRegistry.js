@@ -61,6 +61,7 @@ import { deriveVendorPromiseConflicts } from './vendorAccountability/conflicts';
 import { inferPromisesFromVendor } from './vendorAccountability/derive';
 import { openArrivalAsks } from './vendorAsks';
 import { playbookRisks, playbookDecisionBoard } from './playbooks';
+import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd } from './dates';
 import { buildSeatingPlan } from './seatingPlan';
@@ -106,7 +107,16 @@ export const SURFACES = [
       try { items = (playbookRisks(event) || {}).items || []; } catch (_e) { return []; }
       return items
         .filter((r) => r && r.id && notDismissed(event, 'riskStatus', r.id))
-        .filter((r) => String(r.severity || '').toLowerCase() === 'high')
+        // RANK, not string equality (2026-08-08, review board). This read
+        // `=== 'high'` while the comment above it said "only high severity
+        // raises" — meaning high AND ABOVE. `critical` is above `high` and
+        // silently failed the test, so the four most serious risks the product
+        // has ever authored were the four guaranteed never to reach the board:
+        // holidayParty `r_saferides` ("An impaired guest is about to drive
+        // home"), `r_overserve`, and dinnerParty `r_dietary`. The 2026-07-14
+        // ruling below is untouched — `medium`/`low` still never raise, and the
+        // raised action still carries `severity:'attention'`.
+        .filter((r) => raisesToCommandBoard(r.severity))
         // A risk record is { id, trigger, severity, mitigation } — it has no `title` and no
         // `description`, and my first pass guessed at both, so every risk rendered as the
         // generic fallback "A risk needs a plan". The TRIGGER is the risk in the host's own
