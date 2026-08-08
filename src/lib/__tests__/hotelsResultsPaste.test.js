@@ -139,3 +139,44 @@ describe('the board’s findings, held down', () => {
     for (const c of priced) expect(c.priceBasis).toBe('night');
   });
 });
+
+// ─── THE SAME DEFECT IN URL FORM (2026-08-07) ──────────────────────────────
+// The 2026-08-06 guard fires on the tab strip, which is visible TEXT. A pasted
+// LINK carries none, so a single-property URL slipped straight past it. Driven
+// through the predicates before the fix: looksLikeHotelsResultsPage true,
+// looksLikeHotelDetailPage false, zero candidates — so LodgingCockpit fell to
+// its hotelsPage branch and told the host "copy the whole list (⌘A then ⌘C)"
+// while she was on ONE hotel's page. That instruction cannot succeed there.
+describe('pasting ONE hotel’s Google URL', () => {
+  const ENTITY_URL = 'https://www.google.com/travel/hotels/entity/CgsIx4van-nQ0d6UARAB';
+  const ENTITY_URL_Q = `${ENTITY_URL}?q=Ojo%20Santa%20Fe&g2lb=1`;
+
+  test('a bare entity URL is one hotel’s page, with or without a query', () => {
+    expect(looksLikeHotelDetailPage(ENTITY_URL)).toBe(true);
+    expect(looksLikeHotelDetailPage(ENTITY_URL_Q)).toBe(true);
+    // Surrounding whitespace is what a real copy carries.
+    expect(looksLikeHotelDetailPage(`\n  ${ENTITY_URL_Q}  \n`)).toBe(true);
+  });
+
+  test('it names itself HotelsDetail rather than yielding a nameless row', () => {
+    const { candidates, source } = extractListingCandidates(ENTITY_URL_Q);
+    expect(candidates).toEqual([]);
+    expect(source).toBe('HotelsDetail');
+  });
+
+  test('the RESULTS url is still a search link, not one hotel’s page', () => {
+    // /travel/search is the door lodgingSearchLinks() hands the host. If the
+    // new clause caught it, the search-link copy would be replaced by "that's
+    // one hotel's page" — wrong, and it would break the offer-to-read path.
+    expect(looksLikeHotelDetailPage('https://www.google.com/travel/search?q=resort%20santa%20fe')).toBe(false);
+  });
+
+  test('the entity clause is anchored — a page that MENTIONS one is not one', () => {
+    // Anchored ^…$, so the whole payload must BE the link. Without that, a
+    // results page carrying a single entity href would be refused outright and
+    // every hotel on it thrown away.
+    const mentions = `${GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML}<a href="${ENTITY_URL}">More</a>`;
+    expect(looksLikeHotelDetailPage(mentions)).toBe(false);
+    expect(extractListingCandidates(mentions).candidates.length).toBeGreaterThan(1);
+  });
+});
