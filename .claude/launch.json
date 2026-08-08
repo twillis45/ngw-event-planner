@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["start"],
       "port": 3000
+    },
+    {
+      "name": "hostv2",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "hostv2", "run", "dev"],
+      "port": 5199
     }
   ]
 }

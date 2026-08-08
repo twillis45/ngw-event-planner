@@ -1853,8 +1853,31 @@ export function looksLikeHotelsResultsPage(text) {
 // markers are required so an ordinary listing that happens to say "Overview"
 // cannot trip it.
 const DETAIL_TABS = ['overview', 'prices', 'reviews', 'location', 'about', 'photos'];
+
+// ─── THE SAME DEFECT, IN URL FORM (2026-08-07) ─────────────────────────────
+// The tab strip above is VISIBLE TEXT, and a pasted URL has none — so the
+// 2026-08-06 guard covered the pasted PAGE and left the pasted LINK uncovered.
+// Driven through the predicates: a bare `/travel/hotels/entity/<id>` URL
+// scored looksLikeHotelsResultsPage true, looksLikeHotelDetailPage false, and
+// extracted zero candidates — so the surface told the host "I couldn't find
+// any hotels on that page — copy the whole list", while the host was standing
+// on ONE hotel's page. That instruction can never succeed there; it is a loop.
+//
+// It does NOT manufacture a "Visit site" row the way the pasted page did —
+// extractHotelCandidates groups on the <a> boundary and a bare URL has no
+// anchors, so it returns empty. The damage is the wrong instruction, not
+// fabricated provenance.
+//
+// Anchored ^…$ so the whole payload must BE the link. A results page that
+// happens to link one entity cannot trip it — the captured Santa Fe results
+// page carries zero entity hrefs and the detail view carries 37 (measured
+// 2026-08-06), but hrefs are the part of a paste least likely to survive, so
+// this is deliberately not a count over page text.
+const HOTEL_ENTITY_URL = /^https?:\/\/[^\s]*\/travel\/hotels\/entity\/[^\s]*$/i;
+
 export function looksLikeHotelDetailPage(text) {
   const t = String(text || '');
+  if (HOTEL_ENTITY_URL.test(t.trim())) return true;
   if (!looksLikeHotelsResultsPage(t)) return false;
   const low = t.toLowerCase();
   const tabs = DETAIL_TABS.filter((w) => new RegExp(`(^|[>\\s])${w}([<\\s]|$)`, 'i').test(low)).length;

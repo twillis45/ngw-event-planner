@@ -292,4 +292,50 @@ test.describe('a place with no photo can still be picked', () => {
     await expect(card).not.toContainText(/\$848/);
     await expect(card).not.toContainText(/a person/);
   });
+
+  // ── THE DEEP LINK THAT ARRIVES (2026-08-08) ─────────────────────────────
+  // The cockpit is a PAGE LOAD, not a sheet, so `focus` cannot ride in state
+  // the way it does for every other sheet kind — it has to cross in the URL.
+  // It did not: the shared dispatcher called goToLodgingCockpit() with no
+  // argument, one line above the generic path that preserves focus for
+  // everything else. The group-rate obligation ("Group rate ends — N of M have
+  // no room yet") therefore landed on whatever stage the cockpit derived, with
+  // no anchor. The unit gate holds the seam; this holds the LANDING, which is
+  // the only thing the host actually experiences.
+  test('a deadline deep link lands on the rate field, not just the surface', async ({ page }) => {
+    await mockUnfurl(page);
+    await seed(page);
+    await paste(page, LISTING);
+    await expect(page.locator('.lc-h1')).toHaveText(/One place so far/i, { timeout: 20_000 });
+    await page.getByRole('button', { name: /Make .* the pick/i }).first().click();
+    await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
+
+    // A SHORT VIEWPORT, DELIBERATELY. The first cut of this test asserted
+    // toBeInViewport() at the desktop size and PASSED WITH THE LANDING
+    // DISABLED — the rate field sits above the fold on a tall window, so the
+    // assertion was free and the test proved nothing. Mutation-checked, not
+    // assumed. The field has to start below the fold for "it scrolled to it"
+    // to mean anything.
+    await page.setViewportSize({ width: 420, height: 520 });
+    // Arrive the way the raise sends them.
+    await page.goto('./?demo=lodging&focus=deadline');
+    const rate = page.locator('#lc-rate-ends');
+    await expect(rate).toBeVisible();
+    // IN VIEW, not merely present. `toBeVisible` passes on a field sitting
+    // below the fold, which is exactly the failure being fixed — the host
+    // arrived at the right screen and still could not see the thing.
+    await expect(rate).toBeInViewport();
+  });
+
+  // The other half of the contract, and the easier one to get wrong: a link
+  // may point at a row, but it may not claim the host is further along than
+  // they are. On a seeded example with nothing weighed, `picked` is a screen
+  // that says "Nothing picked yet" — landing a deadline link there would
+  // invent a stage.
+  test('a deadline deep link does not invent a stage the host has not reached', async ({ page }) => {
+    await seed(page);
+    await page.goto('./?demo=lodging&focus=deadline');
+    await expect(page.locator('#lc-rate-ends')).toHaveCount(0);
+    await expect(page.locator('.lc-step.is-on')).not.toHaveText(/The pick/i);
+  });
 });

@@ -117,6 +117,7 @@ import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveRet
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
 import { computeDayAlerts } from '@app/lib/dayAlerts';
 import { raiseCounts } from '@app/lib/surfaceRegistry';
+import { riskSeverityLabel, riskSeverityTone } from '@app/lib/riskSeverity';
 import { getVendorCOIState, coiNextAction } from '@app/lib/vendorIntelligence';
 import { isVendorBooked, isVendorConfirmed } from '@app/lib/workstreams';
 import { EVENT_TAXONOMY, resolveCanonicalType } from '@app/lib/eventTaxonomy.mjs';
@@ -149,7 +150,7 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
@@ -180,6 +181,17 @@ import { sectionIcon } from './sectionIcons';
 // 'heart' ("Nothing's urgent right now — so use the calm"). All three were being
 // counted as "1 thing needs you" while their own body text said the opposite.
 const CALM_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
+
+// Ids the host has deleted whose cloud row may not be gone yet. A delete queues
+// itself when offline or signed out (api/events.js:142,155), and a queued delete
+// means the row is still up there — so without this, the next hydrate() pulls a
+// deleted event straight back onto the host's screen. Entries are released the
+// moment the cloud confirms the delete. See deleteThisEvent.
+const LS_DELETED = 'ngw-hostv2-deleted-events';
+const readDeletedIds = () => {
+  try { const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]'); return new Set(Array.isArray(t) ? t : []); }
+  catch { return new Set(); }
+};
 
 // Event data pool + artwork resolver moved to ./eventPool.js so main.jsx can
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
@@ -1181,6 +1193,21 @@ export default function HostShellV2() {
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
+  // Real events pulled from the cloud that were not on this device at load.
+  //
+  // DECLARED HERE, NOT 60 LINES DOWN WITH THE REST OF THE SESSION STATE, and the
+  // move is a bug fix (2026-08-08). `base` below reads hydratedEvents as its
+  // THIRD operand, and the declaration used to sit after it — a temporal dead
+  // zone that never fired because the first two operands always answered:
+  // eventId named either a custom event or a sample. Deleting the current event
+  // is the first act in this shell that can leave eventId naming NEITHER, and
+  // the moment it did, `base` threw "Cannot access 'hydratedEvents' before
+  // initialization" and the whole shell fell to the error boundary. Found by
+  // driving the delete, not by reading it — the crash is invisible in source
+  // because the throwing operand is unreachable until the state that reaches it
+  // exists. Keep this above `base`.
+  const [hydratedEvents, setHydratedEvents] = useState([]);
+
   // Created events resolve from LIVE state first (the ALL_SAMPLES copy is a
   // load-time snapshot); they store themselves whole, so no patch overlay.
   const base = activeCustom || ALL_SAMPLES.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId) || FALLBACK;
@@ -1243,7 +1270,6 @@ export default function HostShellV2() {
   // ── Session (the SAME Supabase client + storage the original app uses —
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
-  const [hydratedEvents, setHydratedEvents] = useState([]); // real events pulled from cloud that weren't on this device at load
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
@@ -1296,7 +1322,13 @@ export default function HostShellV2() {
         // cloud copies must not come back as a second "synced" row. Read the
         // store fresh: sign-in can happen after a creation this session.
         try { (JSON.parse(localStorage.getItem(LS_CUSTOMS)) || []).forEach(e => { if (e && e.id) known.add(e.id); }); } catch { /* unreadable — worst case a duplicate row, never data loss */ }
-        const fresh = evs.filter(e => e && e.id && !known.has(e.id)
+        // A DELETED EVENT MUST NOT COME BACK. If the host deleted it while
+        // offline or signed out, the cloud row is still there and this pull
+        // would re-adopt it — the delete quietly undoing itself on the next
+        // sign-in, after the host had stopped thinking about it. The tombstone
+        // outranks the cloud until the cloud confirms the row is gone.
+        const tombstoned = readDeletedIds();
+        const fresh = evs.filter(e => e && e.id && !known.has(e.id) && !tombstoned.has(e.id)
           && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)) && String(e.name || '').trim());
         if (fresh.length) setHydratedEvents(fresh);
         // Welcome-gate re-eval (engine-gap NEW-5): shouldShowWelcome was
@@ -1308,6 +1340,55 @@ export default function HostShellV2() {
         // the welcome here — and loadEvents already persisted them locally,
         // so the load-time gate agrees on the next visit.
         if (evs.some(isRealHostEvent)) setWelcome(false);
+
+        // ── AND THE OTHER DIRECTION (2026-08-08) ────────────────────────────
+        // hydrate() pulled cloud -> local and NOTHING ever pushed local ->
+        // cloud on sign-in. So a host who used the open demo, built a real
+        // event, then signed in kept that event on the device and only on the
+        // device: it sat at LOCAL_ONLY until they happened to edit it, because
+        // an edit is the only thing that had ever called saveEvent.
+        //
+        // `migrateLocalToCloud` (api/events.js:204) was written for exactly
+        // this and its ONLY caller is src/App.js:45470 — the CRA shell CLAUDE.md
+        // freezes as donor-only. The capability was built for the surface
+        // nobody is meant to use. This is the missing call, not a new feature.
+        //
+        // NOT migrateLocalToCloud, though: it returns {migrated, failed} counts
+        // with no per-id detail, so a partial run leaves no honest way to stamp
+        // sync state — marking all of them synced would claim a cloud copy that
+        // does not exist, which is the exact lie SYNC-HONESTY-1 exists to stop.
+        // saveEvent answers per event, queues its own retry on failure, and
+        // recordSaveResult already digests that result into the status the
+        // badge reads. Same store, same queue, one truth.
+        //
+        // hostv2's events live in LS_CUSTOMS; api/events.js keeps its own copy
+        // under `ngw-events`. Two stores, so the list to upload has to come
+        // from OURS explicitly — readLocal() there would upload the wrong set.
+        let mine = [];
+        try { mine = JSON.parse(localStorage.getItem(LS_CUSTOMS)) || []; } catch { mine = []; }
+        const inCloud = new Set(evs.map(e => e && e.id).filter(Boolean));
+        // isRealHostEvent is the same predicate the welcome gate and the `fresh`
+        // filter above use — demo- ids, non-host records and unnamed stubs are
+        // not the host's work and must never be uploaded to their account.
+        const toUpload = mine.filter(e => isRealHostEvent(e) && !inCloud.has(e.id));
+        if (toUpload.length) {
+          Promise.all(toUpload.map(ev =>
+            cloudSaveEvent(ev)
+              .then(res => { try { recordSaveResult(ev, res); } catch { /* stamping is best-effort */ } return !!(res && res.ok); })
+              .catch(() => false)))
+            .then(oks => {
+              if (dead) return;
+              const up = oks.filter(Boolean).length;
+              if (!up) return; // silence beats a false claim; the badge still says LOCAL_ONLY
+              // Host language, and it names what actually happened. The count
+              // is the UPLOADED count, never toUpload.length — a partial run
+              // that reported the total would be the same lie in prose.
+              toast(up === toUpload.length
+                ? (up === 1 ? 'Your event is on your account now.' : `Your ${up} events are on your account now.`)
+                : `${up} of ${toUpload.length} events saved to your account — the rest will retry.`);
+            })
+            .catch(() => {});
+        }
       }).catch(() => {});
     };
     supabase.auth.getSession().then(({ data }) => {
@@ -2195,13 +2276,20 @@ export default function HostShellV2() {
   // event without `allowRemovingUserEvents`, and snapshots the previous state
   // first.
   //
-  // Safe here without `allowRemovingUserEvents` because this shell has NO
-  // delete path: every `setCustoms` call is an add or an update
-  // (`[...list, copy]` at :2145, `list.map` at :4242, add-or-update at :5169).
-  // So a refusal can only mean something dropped an event that should not have,
-  // which is exactly the case worth refusing. If a real "delete this event"
-  // action is ever built, it passes the flag — and it should be the only caller
-  // that does.
+  // Safe here without `allowRemovingUserEvents` because THIS effect only ever
+  // sees adds and updates: every other `setCustoms` call is `[...list, copy]`,
+  // a `list.map`, or an add-or-update. So a refusal reaching this path can only
+  // mean something dropped an event that should not have, which is exactly the
+  // case worth refusing.
+  //
+  // UPDATED 2026-08-08: this comment used to say "this shell has NO delete
+  // path" and predicted that a real delete "passes the flag — and it should be
+  // the only caller that does." That delete now exists (`deleteThisEvent`), and
+  // it is still the only caller that lifts the guard — asserted by
+  // deleteEventLandsSomewhere.test.js, which counts the option in this file and
+  // requires exactly one. It writes the store DIRECTLY with the flag and then
+  // sets state from the same list, so by the time this effect runs the store
+  // already matches and there is no shrink left for it to be refused over.
   // ── A FAILED SAVE MUST NOT LOOK LIKE A SAVE (2026-08-06, board) ───────────
   // saveCustomEvents returns {ok:false, reason} for quota-exceeded, private
   // mode, and a refused write — and every call site discarded it. `customs` is
@@ -2214,6 +2302,10 @@ export default function HostShellV2() {
   // wrong instrument — it disappears and she is still typing. The banner stays
   // until a write succeeds.
   const [saveFailed, setSaveFailed] = useState(null);
+  // Which event row is asking "are you sure" — an id, never a boolean, so two
+  // rows can never both be armed. Deleting a plan is the one act in this shell
+  // that cannot be undone, and it is the only one that asks twice.
+  const [confirmDelete, setConfirmDelete] = useState(null);
   useEffect(() => {
     const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
@@ -2238,6 +2330,68 @@ export default function HostShellV2() {
     didResume.current = true;
     if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
   };
+  // ── DELETING AN EVENT, AND WHY IT NEEDS A TOMBSTONE (2026-08-08) ────────────
+  // LIVE_MODE_READINESS section 5 asks for delete "verified end to end" and
+  // section 8 for an account-deletion path. This shell had NO delete at all —
+  // stated by the store guard itself: "this shell has NO delete path: every
+  // setCustoms call is an add or an update ... If a real 'delete this event'
+  // action is ever built, it passes the flag — and it should be the only caller
+  // that does." This is that caller, and it is the only one.
+  //
+  // THE TRAP, which is why this is more than a filter() call. cloudDeleteEvent
+  // QUEUES the delete when offline or signed out (events.js:142,155). A queued
+  // delete means the row is still in the cloud — so the next hydrate() would
+  // pull it straight back and the host would watch a deleted event return.
+  // Deletion that silently undoes itself is worse than no deletion, because the
+  // host has already stopped thinking about it. The tombstone is what closes
+  // that window: hydrate skips any id in it, and the id is only released once
+  // the cloud has actually confirmed the row is gone.
+  //
+  // ORDER MATTERS. The store write goes FIRST, carrying the flag; then state is
+  // set from the same list. Doing it the other way round would fire the generic
+  // `customs` effect (which cannot pass the flag) against a store that still
+  // holds the event, the guard would correctly refuse the shrink, and the host
+  // would get the red "save failed" banner for a delete that was working.
+  const deleteThisEvent = (ev) => {
+    const id = ev && ev.id;
+    if (!id) return;
+    const next = (customs || []).filter(e => e && e.id !== id);
+    const res = saveCustomEvents(next, { reason: 'hostshell:delete-event', allowRemovingUserEvents: true });
+    if (!res || res.ok === false) { toast('Couldn’t delete that — your event is still here.'); return; }
+    try {
+      const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+      if (!t.includes(id)) localStorage.setItem(LS_DELETED, JSON.stringify([...t, id]));
+    } catch { /* private mode — the cloud delete below is still attempted */ }
+    setCustoms(next);
+    setConfirmDelete(null);
+    // LEAVING THE EVENT YOU JUST DELETED IS NOT OPTIONAL, and "leave" has to
+    // mean landing somewhere REAL. The first cut fell back to setSheet(null)
+    // when no custom events remained, which left eventId pointing at a row the
+    // store no longer had — and the shell crashed to the error boundary on the
+    // next render (see the hydratedEvents note above). Driving it is the only
+    // reason that was caught. The ladder ends at BOOT_EVENT_ID, which always
+    // resolves, so there is no branch here that leaves eventId dangling.
+    if (eventId === id) {
+      const to = (next[0] && next[0].id)
+        || (REAL_EVENTS[0] && REAL_EVENTS[0].id)
+        || (ROSTER[0] && ROSTER[0].id)
+        || BOOT_EVENT_ID;
+      switchEvent(to);
+    }
+    if (isSupabaseConfigured() && session) {
+      cloudDeleteEvent(id)
+        .then(() => {
+          // Confirmed gone from the cloud, so the tombstone has no more work.
+          try {
+            const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+            localStorage.setItem(LS_DELETED, JSON.stringify(t.filter(x => x !== id)));
+          } catch { /* the tombstone simply persists — it costs one id, never a wrong row */ }
+        })
+        .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
+    }
+    toast(`“${ev.name || 'That event'}” is gone.`);
+  };
+
   // ── RUN IT AGAIN (competitive read, 2026-07-30) ──────────────────────────────
   // Partiful, Linear and Blink all ship this and we shipped none of it, so the
   // repeat host — the annual crab feast, the reunion that rotates hosts — began
@@ -3314,12 +3468,28 @@ export default function HostShellV2() {
   // route, since the cockpit is its own top-level mount (main.jsx). The sheet
   // render path stays for now (removal is its own careful pass, not bundled
   // into a navigation change); this makes it unreachable.
-  const goToLodgingCockpit = () => {
+  // A DEEP LINK MUST SURVIVE THE HAND-OFF (2026-08-08). The cockpit is a page
+  // load, not a sheet, so `focus` cannot ride in component state the way it
+  // does for every other kind — it has to become a query param or it is gone.
+  // It was gone: the dispatcher below called this with no argument, one line
+  // above the generic path that preserves focus for every other sheet kind.
+  // So `{tab:'Travel', focusField:'lodging-deadline'}` — the route the group-
+  // rate raise emits (surfaceRegistry.js:436) — resolved to
+  // {kind:'lodging', focus:'deadline'} and then landed on whatever stage the
+  // cockpit happened to derive, with no anchor. The host tapped a dated
+  // obligation about a deadline and arrived at a screen that never mentioned
+  // one.
+  const goToLodgingCockpit = (focus) => {
+    const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
       u.searchParams.set('demo', 'lodging');
+      if (f) u.searchParams.set('focus', f); else u.searchParams.delete('focus');
       window.location.href = u.toString();
-    } catch { window.location.href = window.location.pathname + '?demo=lodging'; }
+    } catch {
+      window.location.href = window.location.pathname + '?demo=lodging'
+        + (f ? '&focus=' + encodeURIComponent(f) : '');
+    }
   };
 
   // ── ONE ROUTER FOR THE SECTION DIRECTORY (2026-08-07) ──────────────────────
@@ -3407,6 +3577,49 @@ export default function HostShellV2() {
       `${name} has it — ${job.charAt(0).toLowerCase() + job.slice(1)}. It’s on the day plan and their message now.`);
     setHelperForm({ name: '', job: '' });
   };
+  // ── A RISK THE HOST CAN ACT ON, NOT JUST ERASE (board, 2026-08-08) ─────────
+  // Four seats scored this surface 3/3/4/5 and all four landed on the same
+  // sentence: on three of five birthday rows the ONLY act offered was "Handled
+  // — stop showing this". `riskRouteFor` is a keyword regex over the risk's own
+  // prose (:1463) and returns null on a miss, and the render gated the
+  // constructive button on that null — so the regex missing a word silently
+  // deleted the only forward move and kept the only backward one. Measured over
+  // all 246 authored risks: 130 had a route, 116 did not.
+  //
+  // THIS DOES NOT ADD A THIRD REGEX. The mitigation is already authored and
+  // already rendered on the row ("Chase RSVPs; buy fresh after the count
+  // locks..."), and `event.timeline` is a real store that eight engines read —
+  // workflowCompression, dayAlerts, dayBefore, disclosure, helperResponsibility,
+  // decisionMemory, duplicateEvent, vendorQuestions. Writing the mitigation
+  // there turns displayed advice into tracked work, and the checklist's OWN
+  // router (`checklistActionFor` → lib/taskRoute) then gives the new step a
+  // destination — an engine that already exists and reads these strings better
+  // than the risk regex does. Measured on the same 246: `checklistRouteFor`
+  // resolves 209 of them, including every dead birthday row and
+  // `r_saferides` → "Open rides".
+  //
+  // Same row shape and same one-write-reaches-everything argument as addHelper
+  // above. `week:''`/`leadDays:null` is an honest unscheduled step, not an
+  // invented date — risks carry no lead time (the board's #1 finding, still
+  // open), and guessing one from the trigger's prose would be the very
+  // parse-the-English mistake this replaces.
+  const addRiskToChecklist = (r, key) => {
+    const task = String((r && r.mitigation) || '').trim();
+    if (!task) { toast('Nothing written down for this one yet.'); return; }
+    const id = 'risk-' + String(key || '');
+    const existing = Array.isArray(event.timeline) ? event.timeline : [];
+    if (existing.some((t) => t && t.id === id)) {
+      // Already there: say so and GO to it, rather than silently no-op or add a
+      // duplicate. The row-level CTA rule — land on the row, never the top.
+      setSheet({ kind: 'tasks', focus: id });
+      return;
+    }
+    patchEvent(
+      { timeline: [...existing, { id, task, owner: '', done: false, week: '', leadDays: null, category: 'planning' }] },
+      'On your checklist now — it carries its own next step.',
+    );
+  };
+
   // Visitors-bureau contact capture (host directive 2026-07-28): the number the
   // host brings back from the call lives on the event; the row renders it as
   // real tel:/site links. Host-entered only — never scraped.
@@ -3782,7 +3995,7 @@ export default function HostShellV2() {
     // sheet kind. Patching the 4 direct call sites missed this ONE shared
     // dispatcher underneath all of them, which is why "Open where everyone
     // stays" kept opening the old sheet through every rebuild.
-    if (r.kind === 'lodging') { goToLodgingCockpit(); return true; }
+    if (r.kind === 'lodging') { goToLodgingCockpit(r.focus); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };
@@ -7986,7 +8199,29 @@ export default function HostShellV2() {
                 // muted, no arrows (a heads-up, not a thing to go do). Non-elegant unchanged.
                 if (elegantMode) return (
                   <div className="ef-watch">
-                    <div className="ef-sect">Worth keeping an eye on</div>
+                    {/* ── THE LANE LABEL CARRIES THE ASK. IT STOPPED, AND wlabel
+                        DID NOT (fixed 2026-08-08, found by driving Santa Fe) ──
+                        `wlabel` strips "Have a plan for: " off every row, and
+                        that was RIGHT under the contract it was written to:
+                        wave 6 shipped this lane headed "Heads-up — have a plan
+                        for these", and its own comment says "the lane label
+                        carries the ask once, so each row reads as the risk
+                        itself". `c02c0dad` then replaced that header with
+                        "Worth keeping an eye on" and carried the strip forward
+                        unchanged — so the four words moved out of the header
+                        and were still being deleted from the rows.
+                        What shipped was a bare TRIGGER stated as fact:
+                        "Final headcount still not locked 3 days out" on an
+                        event 680 days out. A trigger is the CONDITION a risk
+                        fires under, never a claim about now.
+                        Fixed at the HEADER, not per row — restoring the prefix
+                        to each row would repeat one ask N times (the exact
+                        anti-pattern the neighbouring destination-cell comment
+                        settles) and push three-clause risks off the fold.
+                        Wording is the risks sheet's own ("they're the ones
+                        worth a plan", :12908) so the two surfaces about the
+                        same data no longer say opposite things. */}
+                    <div className="ef-sect">Worth having a plan for</div>
                     {rows.map((w, i) => (
                       <button key={String((w && w.id) || 'worry-' + i)} className="watch-row" onClick={() => goWorry(w)}>
                         <span className="watch-dot" aria-hidden="true" />
@@ -8014,7 +8249,7 @@ export default function HostShellV2() {
                           // craft seat caught what that produced: "Risks →" four times
                           // in a column. A cell that reads the same on every row in a
                           // lane carries no information per row — it belongs in the
-                          // lane header, which already says "Worth keeping an eye on".
+                          // lane header, which already says "Worth having a plan for".
                           //
                           // A worry is the same action object the queue carries, so it
                           // goes through the SAME reason ladder the Then rows use —
@@ -8046,7 +8281,9 @@ export default function HostShellV2() {
                 );
                 return (
                   <div style={{ marginTop: 'var(--sp-5)' }}>
-                    <div className="horizon" style={{ borderTop: 'none', paddingTop: 0, marginTop: 18 }}>Worth keeping an eye on</div>
+                    {/* Same fix as the elegant lane above: this header must carry
+                        the ask, because wlabel deletes it from every row. */}
+                    <div className="horizon" style={{ borderTop: 'none', paddingTop: 0, marginTop: 18 }}>Worth having a plan for</div>
                     {rows.map((w, i) => (
                       <button key={String((w && w.id) || 'worry-' + i)} className="path-row" onClick={() => goWorry(w)}>
                         <span className="then" style={{ color: 'var(--steel-soft)' }}>mind</span>
@@ -12925,12 +13162,25 @@ export default function HostShellV2() {
                     style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.description}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
+                      {/* Same one table as the playbook rows below — these are
+                          DERIVED risks (assembleRevealEngines) and they were
+                          reading a second, identical copy of the broken lookup. */}
+                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
+                    {/* EXACTLY TWO BUTTONS, ALWAYS ONE OF THEM CONSTRUCTIVE.
+                        Where the route resolves, "Plan for this" is the act;
+                        where it does not, the authored mitigation becomes a real
+                        checklist step. The dismiss NEVER renders alone. This also
+                        settles the board's affordance finding — buttons used to
+                        appear on some rows and not others down a uniform list,
+                        teaching the host that a missing button meant "nothing to
+                        do here", which was false on three of five rows. */}
                     <div className="actions-row" style={{ marginTop: 6 }}>
-                      {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
+                      {route
+                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
+                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.type)}>Add to my checklist</button>}
                       <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.type]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>
                     </div>
                   </div>
@@ -12948,16 +13198,28 @@ export default function HostShellV2() {
                     style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}>
                     <div className="f-name" style={{ marginBottom: 3 }}>
                       {r.trigger}
-                      <span className="tag plan" style={r.severity === 'high' ? { color: 'var(--danger)', background: 'var(--danger-tint)' } : r.severity === 'low' ? { color: 'var(--muted)', background: 'var(--line-soft)' } : { color: 'var(--warn)', background: 'var(--warn-tint)' }}>{({ high: 'Worth planning now', medium: 'Keep an eye on it', low: 'Minor' })[r.severity] || 'Worth a look'}</span>
+                      {/* ONE table, in lib/riskSeverity.js. This inline lookup was
+                          duplicated verbatim at both risk render sites and keyed on
+                          `medium` while 261 authored records say `med` — so the
+                          largest severity class fell to a fallback string, and the
+                          4 `critical` records fell there too and were painted AMBER,
+                          quieter than `high`. See the module header for the census. */}
+                      <span className="tag plan" style={riskSeverityTone(r.severity)}>{riskSeverityLabel(r.severity)}</span>
                     </div>
                     <p className="grounding" style={{ margin: 0 }}>{r.mitigation}</p>
                     {why && <p className="grounding" style={{ margin: 'var(--sp-1) 0 0', color: 'var(--faint)' }}>{why}</p>}
-                    {(route || r.id) && (
-                      <div className="actions-row" style={{ marginTop: 6 }}>
-                        {route && <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>}
-                        {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
-                      </div>
-                    )}
+                    {/* Same two-button contract as the derived rows above. The old
+                        gate was `(route || r.id)` with each button separately
+                        conditional — and `r.id` is always present on a playbook
+                        risk, so dismissal was unconditional while planning was
+                        conditional: the destructive act always, the constructive
+                        act sometimes. */}
+                    <div className="actions-row" style={{ marginTop: 6 }}>
+                      {route
+                        ? <button className="mini" onClick={() => { if (!routeSheet(route)) setSheet({ kind: 'risks' }); }}>Plan for this</button>
+                        : <button className="mini" onClick={() => addRiskToChecklist(r, r.id)}>Add to my checklist</button>}
+                      {r.id && <button className="mini" onClick={() => patchEvent({ riskStatus: { ...(event.riskStatus || {}), [r.id]: 'dismissed' } }, 'Noted — that one stops surfacing.')}>Handled — stop showing this</button>}
+                    </div>
                   </div>
                   );
                 })}
@@ -13470,6 +13732,28 @@ export default function HostShellV2() {
                         Run it again
                       </button>
                     )}
+                    {/* DELETE — the host's OWN events only. A sample is not theirs
+                        to lose and a row that offers to delete one is offering a
+                        meaningless act. SIBLING of the row, never nested, for the
+                        same reason "Run it again" is: a button inside a button is
+                        invalid and reads unpredictably to a screen reader.
+
+                        Two steps, and the second one NAMES THE EVENT. "Delete?"
+                        with a bare Yes is how the wrong plan gets deleted from a
+                        list where four rows look alike. No modal: this shell has
+                        no white surfaces, and a sheet over a sheet to ask one
+                        question is heavier than the question. */}
+                    {e._custom && (confirmDelete === src.id ? (
+                      <span className="frow-confirm">
+                        <span className="v-meta">Delete “{src.name || label}” for good?</span>
+                        <button className="mini danger" onClick={() => deleteThisEvent(src)}
+                          aria-label={'Delete ' + (src.name || label) + ' for good'}>Delete it</button>
+                        <button className="mini" onClick={() => setConfirmDelete(null)}>Keep it</button>
+                      </span>
+                    ) : (
+                      <button className="mini" onClick={() => setConfirmDelete(src.id)}
+                        aria-label={'Delete ' + (src.name || label)}>Delete this event</button>
+                    ))}
                     </Fragment>
                   );
                 })}
