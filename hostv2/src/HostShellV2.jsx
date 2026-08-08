@@ -1309,6 +1309,55 @@ export default function HostShellV2() {
         // the welcome here — and loadEvents already persisted them locally,
         // so the load-time gate agrees on the next visit.
         if (evs.some(isRealHostEvent)) setWelcome(false);
+
+        // ── AND THE OTHER DIRECTION (2026-08-08) ────────────────────────────
+        // hydrate() pulled cloud -> local and NOTHING ever pushed local ->
+        // cloud on sign-in. So a host who used the open demo, built a real
+        // event, then signed in kept that event on the device and only on the
+        // device: it sat at LOCAL_ONLY until they happened to edit it, because
+        // an edit is the only thing that had ever called saveEvent.
+        //
+        // `migrateLocalToCloud` (api/events.js:204) was written for exactly
+        // this and its ONLY caller is src/App.js:45470 — the CRA shell CLAUDE.md
+        // freezes as donor-only. The capability was built for the surface
+        // nobody is meant to use. This is the missing call, not a new feature.
+        //
+        // NOT migrateLocalToCloud, though: it returns {migrated, failed} counts
+        // with no per-id detail, so a partial run leaves no honest way to stamp
+        // sync state — marking all of them synced would claim a cloud copy that
+        // does not exist, which is the exact lie SYNC-HONESTY-1 exists to stop.
+        // saveEvent answers per event, queues its own retry on failure, and
+        // recordSaveResult already digests that result into the status the
+        // badge reads. Same store, same queue, one truth.
+        //
+        // hostv2's events live in LS_CUSTOMS; api/events.js keeps its own copy
+        // under `ngw-events`. Two stores, so the list to upload has to come
+        // from OURS explicitly — readLocal() there would upload the wrong set.
+        let mine = [];
+        try { mine = JSON.parse(localStorage.getItem(LS_CUSTOMS)) || []; } catch { mine = []; }
+        const inCloud = new Set(evs.map(e => e && e.id).filter(Boolean));
+        // isRealHostEvent is the same predicate the welcome gate and the `fresh`
+        // filter above use — demo- ids, non-host records and unnamed stubs are
+        // not the host's work and must never be uploaded to their account.
+        const toUpload = mine.filter(e => isRealHostEvent(e) && !inCloud.has(e.id));
+        if (toUpload.length) {
+          Promise.all(toUpload.map(ev =>
+            cloudSaveEvent(ev)
+              .then(res => { try { recordSaveResult(ev, res); } catch { /* stamping is best-effort */ } return !!(res && res.ok); })
+              .catch(() => false)))
+            .then(oks => {
+              if (dead) return;
+              const up = oks.filter(Boolean).length;
+              if (!up) return; // silence beats a false claim; the badge still says LOCAL_ONLY
+              // Host language, and it names what actually happened. The count
+              // is the UPLOADED count, never toUpload.length — a partial run
+              // that reported the total would be the same lie in prose.
+              toast(up === toUpload.length
+                ? (up === 1 ? 'Your event is on your account now.' : `Your ${up} events are on your account now.`)
+                : `${up} of ${toUpload.length} events saved to your account — the rest will retry.`);
+            })
+            .catch(() => {});
+        }
       }).catch(() => {});
     };
     supabase.auth.getSession().then(({ data }) => {
