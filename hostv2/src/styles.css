@@ -3490,6 +3490,17 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    not compete with the row above it. Indented to read as belonging to that row. */
 .runagain{ margin:2px 0 10px 12px; color:var(--steel-soft); }
 
+/* DELETE — sibling of an event row, same indent and quietness as "Run it again"
+   above, because it is the same kind of thing: a secondary act on a row whose
+   primary act is opening the event. It is NOT painted red in its resting state.
+   A list of the host's own plans with a red control on every row reads as a
+   list of problems, and UX_02 spends --danger on "critical issue", not on the
+   permanent availability of an option. Red arrives only once the question has
+   been asked and the answer is one tap away. */
+.frow-confirm{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:2px 0 10px 12px; }
+.frow-confirm .v-meta{ margin-right:2px; }
+.mini.danger{ color:var(--danger); border-color:var(--danger); }
+
 /* ══════════════════════════════════════════════════════════════════════════
    PER-VIEWPORT LAYOUT — driven by [data-bp] on the app root
    ──────────────────────────────────────────────────────────────────────────

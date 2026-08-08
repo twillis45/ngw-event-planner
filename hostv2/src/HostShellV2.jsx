@@ -150,7 +150,7 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent } from '@app/lib/api/events';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
@@ -181,6 +181,17 @@ import { sectionIcon } from './sectionIcons';
 // 'heart' ("Nothing's urgent right now — so use the calm"). All three were being
 // counted as "1 thing needs you" while their own body text said the opposite.
 const CALM_CATEGORIES = new Set(['neutral', 'calendar', 'heart']);
+
+// Ids the host has deleted whose cloud row may not be gone yet. A delete queues
+// itself when offline or signed out (api/events.js:142,155), and a queued delete
+// means the row is still up there — so without this, the next hydrate() pulls a
+// deleted event straight back onto the host's screen. Entries are released the
+// moment the cloud confirms the delete. See deleteThisEvent.
+const LS_DELETED = 'ngw-hostv2-deleted-events';
+const readDeletedIds = () => {
+  try { const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]'); return new Set(Array.isArray(t) ? t : []); }
+  catch { return new Set(); }
+};
 
 // Event data pool + artwork resolver moved to ./eventPool.js so main.jsx can
 // lazy-load this host shell while the public invite (InviteV2) pulls only the
@@ -1182,6 +1193,21 @@ export default function HostShellV2() {
   const dstatC = eventDateStatus(effDate || null);
   const expectC = expectedFromPlanned(effGuests, effType, (() => { try { return effType ? getPlaybook(effType) : null; } catch { return null; } })());
 
+  // Real events pulled from the cloud that were not on this device at load.
+  //
+  // DECLARED HERE, NOT 60 LINES DOWN WITH THE REST OF THE SESSION STATE, and the
+  // move is a bug fix (2026-08-08). `base` below reads hydratedEvents as its
+  // THIRD operand, and the declaration used to sit after it — a temporal dead
+  // zone that never fired because the first two operands always answered:
+  // eventId named either a custom event or a sample. Deleting the current event
+  // is the first act in this shell that can leave eventId naming NEITHER, and
+  // the moment it did, `base` threw "Cannot access 'hydratedEvents' before
+  // initialization" and the whole shell fell to the error boundary. Found by
+  // driving the delete, not by reading it — the crash is invisible in source
+  // because the throwing operand is unreachable until the state that reaches it
+  // exists. Keep this above `base`.
+  const [hydratedEvents, setHydratedEvents] = useState([]);
+
   // Created events resolve from LIVE state first (the ALL_SAMPLES copy is a
   // load-time snapshot); they store themselves whole, so no patch overlay.
   const base = activeCustom || ALL_SAMPLES.find(e => e.id === eventId) || hydratedEvents.find(e => e.id === eventId) || FALLBACK;
@@ -1244,7 +1270,6 @@ export default function HostShellV2() {
   // ── Session (the SAME Supabase client + storage the original app uses —
   // signing in anywhere on this origin signs in everywhere on it).
   const [session, setSession] = useState(null);
-  const [hydratedEvents, setHydratedEvents] = useState([]); // real events pulled from cloud that weren't on this device at load
   const [authBusy, setAuthBusy] = useState(false);
   const [authEmail, setAuthEmail] = useState('');
   const [authSent, setAuthSent] = useState(false);
@@ -1297,7 +1322,13 @@ export default function HostShellV2() {
         // cloud copies must not come back as a second "synced" row. Read the
         // store fresh: sign-in can happen after a creation this session.
         try { (JSON.parse(localStorage.getItem(LS_CUSTOMS)) || []).forEach(e => { if (e && e.id) known.add(e.id); }); } catch { /* unreadable — worst case a duplicate row, never data loss */ }
-        const fresh = evs.filter(e => e && e.id && !known.has(e.id)
+        // A DELETED EVENT MUST NOT COME BACK. If the host deleted it while
+        // offline or signed out, the cloud row is still there and this pull
+        // would re-adopt it — the delete quietly undoing itself on the next
+        // sign-in, after the host had stopped thinking about it. The tombstone
+        // outranks the cloud until the cloud confirms the row is gone.
+        const tombstoned = readDeletedIds();
+        const fresh = evs.filter(e => e && e.id && !known.has(e.id) && !tombstoned.has(e.id)
           && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)) && String(e.name || '').trim());
         if (fresh.length) setHydratedEvents(fresh);
         // Welcome-gate re-eval (engine-gap NEW-5): shouldShowWelcome was
@@ -2245,13 +2276,20 @@ export default function HostShellV2() {
   // event without `allowRemovingUserEvents`, and snapshots the previous state
   // first.
   //
-  // Safe here without `allowRemovingUserEvents` because this shell has NO
-  // delete path: every `setCustoms` call is an add or an update
-  // (`[...list, copy]` at :2145, `list.map` at :4242, add-or-update at :5169).
-  // So a refusal can only mean something dropped an event that should not have,
-  // which is exactly the case worth refusing. If a real "delete this event"
-  // action is ever built, it passes the flag — and it should be the only caller
-  // that does.
+  // Safe here without `allowRemovingUserEvents` because THIS effect only ever
+  // sees adds and updates: every other `setCustoms` call is `[...list, copy]`,
+  // a `list.map`, or an add-or-update. So a refusal reaching this path can only
+  // mean something dropped an event that should not have, which is exactly the
+  // case worth refusing.
+  //
+  // UPDATED 2026-08-08: this comment used to say "this shell has NO delete
+  // path" and predicted that a real delete "passes the flag — and it should be
+  // the only caller that does." That delete now exists (`deleteThisEvent`), and
+  // it is still the only caller that lifts the guard — asserted by
+  // deleteEventLandsSomewhere.test.js, which counts the option in this file and
+  // requires exactly one. It writes the store DIRECTLY with the flag and then
+  // sets state from the same list, so by the time this effect runs the store
+  // already matches and there is no shrink left for it to be refused over.
   // ── A FAILED SAVE MUST NOT LOOK LIKE A SAVE (2026-08-06, board) ───────────
   // saveCustomEvents returns {ok:false, reason} for quota-exceeded, private
   // mode, and a refused write — and every call site discarded it. `customs` is
@@ -2264,6 +2302,10 @@ export default function HostShellV2() {
   // wrong instrument — it disappears and she is still typing. The banner stays
   // until a write succeeds.
   const [saveFailed, setSaveFailed] = useState(null);
+  // Which event row is asking "are you sure" — an id, never a boolean, so two
+  // rows can never both be armed. Deleting a plan is the one act in this shell
+  // that cannot be undone, and it is the only one that asks twice.
+  const [confirmDelete, setConfirmDelete] = useState(null);
   useEffect(() => {
     const res = saveCustomEvents(customs, { reason: 'hostshell:customs-state' });
     if (res && res.ok === false) setSaveFailed(res.reason || 'unknown');
@@ -2288,6 +2330,68 @@ export default function HostShellV2() {
     didResume.current = true;
     if (session && id) { try { patchProfile({ lastEventId: id }); } catch { /* offline — localStorage profile holds it */ } }
   };
+  // ── DELETING AN EVENT, AND WHY IT NEEDS A TOMBSTONE (2026-08-08) ────────────
+  // LIVE_MODE_READINESS section 5 asks for delete "verified end to end" and
+  // section 8 for an account-deletion path. This shell had NO delete at all —
+  // stated by the store guard itself: "this shell has NO delete path: every
+  // setCustoms call is an add or an update ... If a real 'delete this event'
+  // action is ever built, it passes the flag — and it should be the only caller
+  // that does." This is that caller, and it is the only one.
+  //
+  // THE TRAP, which is why this is more than a filter() call. cloudDeleteEvent
+  // QUEUES the delete when offline or signed out (events.js:142,155). A queued
+  // delete means the row is still in the cloud — so the next hydrate() would
+  // pull it straight back and the host would watch a deleted event return.
+  // Deletion that silently undoes itself is worse than no deletion, because the
+  // host has already stopped thinking about it. The tombstone is what closes
+  // that window: hydrate skips any id in it, and the id is only released once
+  // the cloud has actually confirmed the row is gone.
+  //
+  // ORDER MATTERS. The store write goes FIRST, carrying the flag; then state is
+  // set from the same list. Doing it the other way round would fire the generic
+  // `customs` effect (which cannot pass the flag) against a store that still
+  // holds the event, the guard would correctly refuse the shrink, and the host
+  // would get the red "save failed" banner for a delete that was working.
+  const deleteThisEvent = (ev) => {
+    const id = ev && ev.id;
+    if (!id) return;
+    const next = (customs || []).filter(e => e && e.id !== id);
+    const res = saveCustomEvents(next, { reason: 'hostshell:delete-event', allowRemovingUserEvents: true });
+    if (!res || res.ok === false) { toast('Couldn’t delete that — your event is still here.'); return; }
+    try {
+      const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+      if (!t.includes(id)) localStorage.setItem(LS_DELETED, JSON.stringify([...t, id]));
+    } catch { /* private mode — the cloud delete below is still attempted */ }
+    setCustoms(next);
+    setConfirmDelete(null);
+    // LEAVING THE EVENT YOU JUST DELETED IS NOT OPTIONAL, and "leave" has to
+    // mean landing somewhere REAL. The first cut fell back to setSheet(null)
+    // when no custom events remained, which left eventId pointing at a row the
+    // store no longer had — and the shell crashed to the error boundary on the
+    // next render (see the hydratedEvents note above). Driving it is the only
+    // reason that was caught. The ladder ends at BOOT_EVENT_ID, which always
+    // resolves, so there is no branch here that leaves eventId dangling.
+    if (eventId === id) {
+      const to = (next[0] && next[0].id)
+        || (REAL_EVENTS[0] && REAL_EVENTS[0].id)
+        || (ROSTER[0] && ROSTER[0].id)
+        || BOOT_EVENT_ID;
+      switchEvent(to);
+    }
+    if (isSupabaseConfigured() && session) {
+      cloudDeleteEvent(id)
+        .then(() => {
+          // Confirmed gone from the cloud, so the tombstone has no more work.
+          try {
+            const t = JSON.parse(localStorage.getItem(LS_DELETED) || '[]');
+            localStorage.setItem(LS_DELETED, JSON.stringify(t.filter(x => x !== id)));
+          } catch { /* the tombstone simply persists — it costs one id, never a wrong row */ }
+        })
+        .catch(() => { /* queued by events.js; the tombstone holds until it flushes */ });
+    }
+    toast(`“${ev.name || 'That event'}” is gone.`);
+  };
+
   // ── RUN IT AGAIN (competitive read, 2026-07-30) ──────────────────────────────
   // Partiful, Linear and Blink all ship this and we shipped none of it, so the
   // repeat host — the annual crab feast, the reunion that rotates hosts — began
@@ -13628,6 +13732,28 @@ export default function HostShellV2() {
                         Run it again
                       </button>
                     )}
+                    {/* DELETE — the host's OWN events only. A sample is not theirs
+                        to lose and a row that offers to delete one is offering a
+                        meaningless act. SIBLING of the row, never nested, for the
+                        same reason "Run it again" is: a button inside a button is
+                        invalid and reads unpredictably to a screen reader.
+
+                        Two steps, and the second one NAMES THE EVENT. "Delete?"
+                        with a bare Yes is how the wrong plan gets deleted from a
+                        list where four rows look alike. No modal: this shell has
+                        no white surfaces, and a sheet over a sheet to ask one
+                        question is heavier than the question. */}
+                    {e._custom && (confirmDelete === src.id ? (
+                      <span className="frow-confirm">
+                        <span className="v-meta">Delete “{src.name || label}” for good?</span>
+                        <button className="mini danger" onClick={() => deleteThisEvent(src)}
+                          aria-label={'Delete ' + (src.name || label) + ' for good'}>Delete it</button>
+                        <button className="mini" onClick={() => setConfirmDelete(null)}>Keep it</button>
+                      </span>
+                    ) : (
+                      <button className="mini" onClick={() => setConfirmDelete(src.id)}
+                        aria-label={'Delete ' + (src.name || label)}>Delete this event</button>
+                    ))}
                     </Fragment>
                   );
                 })}
