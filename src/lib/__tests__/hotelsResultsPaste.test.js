@@ -11,7 +11,7 @@
 // BOUNDARY, never the href, and never stores it as `url` — real name/price/
 // rating/amenities come back, "Open the listing" simply has nothing to
 // point at.
-const { extractListingCandidates, looksLikeHotelsResultsPage } = require('../lodgingIntel');
+const { extractListingCandidates, looksLikeHotelsResultsPage, looksLikeHotelDetailPage } = require('../lodgingIntel');
 const { GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML } = require('../__fixtures__/googleHotelsSantaFeResults');
 
 describe('pasting a real Google Hotels results page', () => {
@@ -54,10 +54,22 @@ describe('pasting a real Google Hotels results page', () => {
     expect(hilton.priceShown).toBe(186);
   });
 
-  test('a real photo rides along — the first image in the card, not the OTA branding icon', () => {
+  // ── REVERSED 2026-08-06 BY THE REVIEW BOARD ──────────────────────────────
+  // This used to assert `ojo.photo` matched `https://lh3.googleusercontent.com/`
+  // — it locked IN a bypass. The rental path runs every card image through
+  // isAllowedMedia; this path stored it raw, and Google's CDN is not on
+  // MEDIA_HOSTS. The Liability seat found the consequence: `lodgingOptions` is
+  // guest-published (backend/app/routers/rsvp.py:105) and InviteV2 renders the
+  // photos, so an unallowlisted host fires from EVERY GUEST'S BROWSER on a
+  // public invite — telling that host who is reading a private guest list.
+  //
+  // Widening MEDIA_HOSTS to admit Google was the obvious fix and is the wrong
+  // one, for precisely that reason. The row arrives without a photo instead,
+  // and the card says so in words it already had.
+  test('a Google-hosted card image is REFUSED — it never cleared the media allowlist', () => {
     const { candidates } = extractListingCandidates(GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML);
     const ojo = candidates.find((c) => c.name === 'Ojo Santa Fe Spa Resort');
-    expect(ojo.photo).toMatch(/^https:\/\/lh3\.googleusercontent\.com\//);
+    expect(ojo.photo).toBe('');
   });
 
   test('amenities separated by a middle-dot come back as two, not one run-on string', () => {
@@ -72,5 +84,58 @@ describe('pasting a real Google Hotels results page', () => {
     const { candidates, source } = extractListingCandidates(airbnbLike);
     expect(source).not.toBe('Hotels');
     expect(candidates[0].url).toBe('https://www.airbnb.com/rooms/123');
+  });
+});
+
+// ─── WHAT THE REVIEW BOARD FOUND, LOCKED (2026-08-06) ───────────────────────
+// Eight seats sat on a proposal to capture a booking URL off a pasted property
+// DETAIL view. The board KILLED it — the one real link on that page is a bare
+// homepage carrying no dates and no party (measured live), and both override
+// seats ruled the per-property paste costs the host more than it returns.
+//
+// What the board found on the way is what these lock: defects already shipped,
+// on a surface the host is using now.
+describe('the board’s findings, held down', () => {
+  test('one hotel’s page is refused outright — it used to become a row called "Visit site"', () => {
+    // The detail view satisfies looksLikeHotelsResultsPage (it carries both
+    // `travel/hotels` and lh3.googleusercontent.com), so it fell into the card
+    // parser, which groups on the <a> BOUNDARY and discards everything before
+    // the first anchor — the name, the price and the rating all sit above the
+    // Visit-site button. The first text AFTER that anchor became the name, and
+    // the row committed with sources:{label:'read'}: fabricated provenance,
+    // which UX_08 forbids outright.
+    const detail = `
+      <div>google.com/travel/hotels/entity/ChgI29</div>
+      <div>Overview</div><div>Prices</div><div>Reviews</div>
+      <div>Location</div><div>About</div><div>Photos</div>
+      <div>Eldorado Hotel and Spa</div><div>4-star hotel</div>
+      <a href="https://www.eldoradohotel.com/"><span><button>Visit site</button></span></a>
+      <div>Hot tub</div><div>Spa</div>
+      <img src="https://lh3.googleusercontent.com/x" />
+    `;
+    expect(looksLikeHotelDetailPage(detail)).toBe(true);
+    const { candidates, source } = extractListingCandidates(detail);
+    expect(candidates).toEqual([]);
+    expect(source).toBe('HotelsDetail');
+    expect(candidates.some((c) => /visit site/i.test(c.name || ''))).toBe(false);
+  });
+
+  test('a real results page is still read, and is NOT mistaken for one hotel’s page', () => {
+    expect(looksLikeHotelDetailPage(GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML)).toBe(false);
+    const { candidates, source } = extractListingCandidates(GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML);
+    expect(source).toBe('Hotels');
+    expect(candidates.length).toBeGreaterThan(1);
+  });
+
+  test('a hotel price is marked as a NIGHTLY rate, never a stay total', () => {
+    // Google's own control reads "Nightly price with fees"; a live 4-night
+    // Santa Fe search returned $125–$258 where a stay total would be ~4x that.
+    // The Airbnb/Vrbo card sharing this field quotes a stay TOTAL, so without
+    // a basis the caller stored one room-night as the whole stay and the
+    // per-person split divided it across the entire party.
+    const { candidates } = extractListingCandidates(GOOGLE_HOTELS_SANTA_FE_RESULTS_HTML);
+    const priced = candidates.filter((c) => c.priceShown != null);
+    expect(priced.length).toBeGreaterThan(0);
+    for (const c of priced) expect(c.priceBasis).toBe('night');
   });
 });

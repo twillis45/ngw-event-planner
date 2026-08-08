@@ -34,7 +34,8 @@
     "grounding:proteins": "node scripts/proteinCoverage.mjs",
     "knowledge:impact": "node scripts/knowledgeImpactIndex.mjs",
     "bake:knowledge": "node scripts/bake-published-knowledge.mjs",
-    "gate:knowledge": "node scripts/bake-published-knowledge.mjs --check"
+    "gate:knowledge": "node scripts/bake-published-knowledge.mjs --check",
+    "grounding:census": "node scripts/groundingCensus.mjs src/lib/playbooks/data"
   },
   "eslintConfig": {
     "extends": "react-app"

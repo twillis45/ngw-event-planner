@@ -221,7 +221,7 @@ const sundayDinner = {
       buyAt: 'T-3d',
       note: 'Greens cook down to roughly a quarter of their raw weight — buy generously. Better cooked a day ahead.',
       alternatives: ['Mustard or turnip greens — milder flavor, same cook method, often cheaper', 'Frozen collard greens — if fresh unavailable, same slow-cook result'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_smoked-meat',
       item: 'Smoked turkey, ham hocks, or neck bones (to cook the greens)',
@@ -234,7 +234,7 @@ const sundayDinner = {
       buyAt: 'T-3d',
       note: 'The seasoning meat that gives the greens their depth. Skip or swap smoked turkey for a lighter pot.',
       alternatives: ['Smoked turkey wings — widely available, cheaper than ham hocks', 'Skip entirely for a vegan pot — add extra onion, garlic, and red pepper'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_mac',
       item: 'Elbow macaroni and block cheeses (sharp cheddar, plus a melting cheese)',
@@ -248,7 +248,7 @@ const sundayDinner = {
       buyAt: 'T-2d',
       note: 'Baked mac and cheese is non-negotiable at most Sunday tables. Shred from blocks for a smoother bake.',
       alternatives: ['Store-bought baked mac pan (Walmart/Costco) — if time is short', 'Stovetop mac with good cheese — faster, not the baked version; last resort'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_yams',
       item: 'Sweet potatoes for candied yams',
@@ -261,7 +261,7 @@ const sundayDinner = {
       buyAt: 'T-2d',
       note: 'Candied with brown sugar, butter, and warm spice.',
       alternatives: ['Canned yams + butter + brown sugar — faster, similar result', 'Butternut squash — budget substitute, similar sweetness and color'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_peas-rice',
       item: 'Black-eyed peas (or rice for a side)',
@@ -273,7 +273,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-3d',
       note: 'Peas simmered with onion and a little smoked meat, or a pot of rice — one starch beyond the mac.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cornbread',
       item: 'Cornmeal and buttermilk for cornbread (or biscuit mix)',
@@ -286,7 +286,7 @@ const sundayDinner = {
       buyAt: 'T-2d',
       note: 'Cornbread or biscuits to sop up the pot liquor. Bake fresh Sunday or the night before.',
       alternatives: ['Jiffy cornbread mix — quick bake, same crowd appeal', 'Canned biscuits (Pillsbury) — fastest option if oven time is taken'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_dessert',
       item: 'Peach cobbler, sweet potato pie & pound cake (or banana pudding)',
@@ -299,7 +299,7 @@ const sundayDinner = {
       buyAt: 'T-2d',
       note: 'One homemade dessert serves a family of this size with room for seconds and to-go slices.',
       alternatives: ['Grocery bakery sweet potato pie — if baking time is short', 'Store-bought banana pudding cups — if no oven capacity available'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_sweet-tea',
       item: 'Sweet tea and lemonade (and water on the table)',
@@ -311,7 +311,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'Sweet tea, lemonade, and water carry a family meal. It often follows church and includes kids — keep alcohol minimal.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_wine',
       item: 'Wine for the grown folks (optional)',
@@ -323,7 +323,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-2d',
       note: 'A bottle or two for the adults if your family takes a glass — never the centerpiece.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_foil-oil',
       item: 'Frying oil, foil, parchment, and paper towels',
@@ -335,7 +335,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'A fresh jug of oil if you are frying, plus the foil and towels every soul-food kitchen runs through.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_togo',
       item: 'To-go containers and foil plates (love language)',
@@ -347,7 +347,7 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'Fixing a plate to send home is part of the meal, not an afterthought. Buy one per guest plus a few extra.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_napkins',
       item: 'Napkins and serving spoons',
@@ -359,7 +359,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-2d',
       note: 'Cloth or sturdy paper napkins and enough serving spoons so each dish has its own.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
   ],
 
   rentalsGap: [

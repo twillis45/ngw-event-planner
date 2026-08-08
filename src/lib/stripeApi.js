@@ -7,7 +7,15 @@
 //   verifySession         → DONE   (actual payment_status from Stripe API)
 //   Sharing the URL       → LIGHT HANDOFF (copy to clipboard or share externally)
 
+import { plannerAuthHeaders } from './commApi';
+
 const BASE = process.env.REACT_APP_API_BASE_URL;
+
+// EVERY call here carries planner auth as of 2026-08-07. create-checkout-session
+// became signed-in-only when its anonymous charge-minting was closed, so without
+// this the fee flow would ship as a 401. verify-session and the subscription call
+// get the same treatment now rather than as a second decision later — one line
+// each, and it means nobody has to re-reason about which of the three is gated.
 
 export const isStripeApiConfigured = () => Boolean(BASE);
 
@@ -30,7 +38,7 @@ export const createCheckoutSession = async ({ amountCents, label, feeId, eventId
 
   const res = await fetch(`${BASE}/api/stripe/create-checkout-session`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
     body: JSON.stringify({
       amount_cents: amountCents,
       label,
@@ -62,7 +70,7 @@ export const createSubscriptionSession = async ({ plan, email, studioId }) => {
   const pathname = window.location.pathname;
   const res = await fetch(`${BASE}/api/stripe/create-subscription-session`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await plannerAuthHeaders()) },
     body: JSON.stringify({
       plan,
       email:     email    || '',
@@ -87,6 +95,7 @@ export const verifySession = async (sessionId) => {
   if (!BASE) throw new Error('No API backend configured.');
   const res = await fetch(
     `${BASE}/api/stripe/verify-session?session_id=${encodeURIComponent(sessionId)}`,
+    { headers: { ...(await plannerAuthHeaders()) } },
   );
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

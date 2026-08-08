@@ -54,6 +54,14 @@ const CONTRACT_IDS = [
   // booking deadlines (refund window / installment / headcount) raised inside
   // the 14-day action window, exposure-led when money is fronted.
   'money-dates',
+  // Vendor silence (2026-08-07). A CONSCIOUS addition, which is what this gate
+  // exists to force. It is the binding condition attached to the board's refusal
+  // of a Communication hub: no hub, but "what am I waiting on?" must stay
+  // answerable — so silence is a raise, not a destination.
+  // Reads only what the host recorded: someone logged as contacted, past the same
+  // 21-day line vendorAccountability already scores, with no reply evidence. A
+  // person never logged is UNKNOWN, not silent, and never appears here.
+  'vendor_silence',
   'helpers', 'decisions', 'vendor-payments', 'vendor-coi',
 ];
 

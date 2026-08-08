@@ -87,7 +87,7 @@ export function decisionConfidence(event, readiness) {
     let state, reason, action, blockers = [];
     if (!gc.resolved) {
       state = 'blocked'; reason = 'Seating depends on the final guest count.';
-      blockers = ['guestCount']; action = 'Lock guest count first';
+      blockers = ['guestCount']; action = 'Set the guest count first';
     } else if (conf.length === 0) {
       state = 'gathering'; reason = 'No confirmed guests to seat yet.'; action = 'Collect RSVPs';
     } else if (unseated === 0) {

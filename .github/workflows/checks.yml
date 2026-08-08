@@ -137,10 +137,22 @@ jobs:
       # its own gate; this job answers only "does main still build?".
       #
       # The Jest job above deliberately keeps CI=true.
-      - name: CRA production build
-        env:
-          CI: ''
-        run: npm run build
+      # ── UPGRADED TO THE WARNING-BASELINE GATE (2026-08-07) ────────────────
+      # This step used to be a bare `npm run build`, which only answered "does
+      # main still compile?". `gate:cra` runs that same real build — a syntax
+      # error, missing module, or failed transform still exits 1 — and then
+      # additionally fails on ANY new ESLint warning, any increase in an
+      # existing one's count, or any warning in a file not already baselined.
+      #
+      # It is STRICTER than the plain build, never weaker: the baseline can
+      # only excuse the 245 warnings that were already reviewed, and warnings
+      # that DISAPPEAR are reported, never punished. See
+      # scripts/cra-build-gate.mjs and docs/release/RELEASE_INTEGRITY.md.
+      #
+      # The gate manages warnings-as-errors itself, so the CI:'' override that
+      # used to be needed here is gone.
+      - name: CRA production build + warning baseline
+        run: npm run gate:cra
 
   # ── hostv2 builds, and its markup matches its stylesheet ───────────────────
   # WAS `hostv2-drift`: public/hostv2 used to be a TRACKED build output, gated by

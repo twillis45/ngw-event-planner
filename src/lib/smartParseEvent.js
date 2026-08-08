@@ -482,7 +482,12 @@ export function parseSmartEventText(text, opts = {}) {
   // single boolean could not express.
   const saidOvernight = /\bovernight\b|\bnights?\b|\bstaycation\b|\bstay(?:ing|cation)?\s+over\b|\bhotels?\b|\bairbnb\b|\bvrbo\b|\brentals?\b|\blodging\b|\broom\s+block\b|\bcabins?\b/i.test(t);
   const overnight = (endDate || saidOvernight) ? true : null;
-  const overnightBasis = !overnight ? null : (endDate ? 'multi-day-span' : 'said-so');
+  // SAID beats DERIVED when both are true (2026-08-06). This read `endDate ?
+  // 'multi-day-span' : 'said-so'`, so a host who wrote the word "overnight" AND
+  // gave a span was recorded as having it inferred from her dates — the app
+  // forgetting something she actually told it. The basis names where the fact
+  // CAME from, and the strongest source wins.
+  const overnightBasis = !overnight ? null : (saidOvernight ? 'said-so' : 'multi-day-span');
 
   // TIME OF DAY — the coarse word the host actually said. This used to be dropped entirely,
   // so "cookout in the afternoon" created an event with NO time signal at all, and the

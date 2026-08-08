@@ -281,10 +281,16 @@ button{font-family:inherit}
     margin-left:calc(min(300px, max(240px, 23%)) + 56px);
     max-width:68ch;
   }
-  /* The grab handle is a PHONE affordance — it says "there is more below the
-     bottom edge". On a wide canvas the next section is already visible, so the
-     handle would be pointing at something in plain sight. */
-  .stagewrap--responsive-command .hero.elegant > .efold{ display:none; }
+  /* The grab handle WAS hidden here unconditionally, and that declaration has
+     moved (2026-08-07). Its reasoning was right — the handle says "there is more
+     below the bottom edge" and on a wide canvas the next section is usually in
+     plain sight — but "usually" is not "always", and this rule sits inside a
+     `min-height:700px` media query while the fact it is guessing at does not.
+     It now lives ONCE, at :4359, hidden outright on a desktop canvas by host
+     ruling 2026-08-07 ("progress yes, fold no"). Leaving a
+     copy here would have re-hidden the handle at 1440 and 1920 while the short
+     laptop obeyed the other rule — which is exactly what it did do for two full
+     matrix runs before this was found. */
 
   /* The docked action follows the main column too — a 755px pill spanning the
      whole canvas belongs to no column at all. */
@@ -323,8 +329,22 @@ button{font-family:inherit}
 /* Figma Nav B parity: a recessed dark-inset track with the current phase raised + lit. */
 .navseg{ display:flex; gap:2px; background:#17181b; border-radius:12px; padding:4px;
   box-shadow:inset 0 1px 2px rgba(0,0,0,.4); }
+/* min-height, not padding: the segment is inside the Sections sheet rather than
+   the home fold, so growing it cannot push the fold peek off-screen the way a
+   min-height on .ev-eyebrow did on 2026-08-06. Measured at 85x37 on a phone
+   (2026-08-07 mobile sweep) — under UX_03's 44px floor, on the surface that IS
+   the mobile navigation. */
 .navseg-b{ flex:1; border:none; background:none; cursor:pointer; font:inherit; font-size:12.5px; font-weight:600;
-  color:var(--faint); padding:11px 0; border-radius:9px; transition:background var(--ms-fast) var(--ease-out), color var(--ms-fast) var(--ease-out); }
+  color:var(--faint); padding:11px 0; min-height:44px; border-radius:9px; transition:background var(--ms-fast) var(--ease-out), color var(--ms-fast) var(--ease-out); }
+
+/* THE BACK CONTROL ON EVERY SHEET WAS 16px TALL (2026-08-07 mobile sweep).
+   The button keeps padding:0 so the sheet header layout is untouched; the hit
+   area is an absolutely-positioned ::after centred on it. Same technique as
+   .ev-eyebrow, and for the same reason: it costs zero layout. The element below
+   it is a non-interactive heading, so the overlap steals no taps. */
+.sheet-back{ position:relative; }
+.sheet-back::after{ content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px; }
 .navseg-b.on{ background:#33363b; color:var(--ink); font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
 .navrows{ margin-top:14px; }
 .navrow{ display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; text-align:left;
@@ -355,8 +375,15 @@ button{font-family:inherit}
 .chips{display:flex; gap:var(--gap-chip); flex-wrap:wrap}
 /* Guest avatar — deterministic initials on a muted on-brand tint (glanceability
    layer, per-screen audit). Fixed light ink on the tints for legibility. */
-.gav{display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px;
-  border-radius:50%; font-size:11px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
+/* 32px, not 28 (Mobbin tier read, 2026-08-07). Leaders run 32–40 — Discord 32,
+   Riot ~36, Telegram 40 — and 28 was the smallest avatar in 30 iOS screens.
+   The same read killed the opposite instinct: an earlier audit of mine said
+   this row was "1.5x to 3x taller than every leader" and it was WRONG, because
+   it compared our two-line row to leaders' SINGLE-line rows. Two-line rows run
+   56–73pt on iOS. We are UNDER that band at 55, so the row can afford the 4px
+   this costs and should not be shrunk. Initials go 11 -> 12px to match. */
+.gav{display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px;
+  border-radius:50%; font-size:12px; font-weight:700; letter-spacing:.02em; flex-shrink:0;
   color:#e8edf2; box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 /* Seating floor plan — a responsive canvas with draggable table pucks (MVP).
    touch-action:none so a drag doesn't scroll the sheet underneath. */
@@ -518,11 +545,25 @@ button{font-family:inherit}
 /* The eyebrow IS the menu (host "menu is not accessible yet"): a clear hamburger + caret so it
    reads unmistakably as tappable — the only nav entry now that the bar + dock are gone. */
 .ev-eyebrow{ display:inline-flex; align-items:center; gap:10px; background:none; border:none; padding:8px 0; cursor:pointer;
+  /* 44px THUMB TARGET, ZERO LAYOUT COST (2026-08-06). Measured at 32px on a
+     393px phone and it is a real button — it opens the event switcher.
+     min-height:44px was the first fix and it REGRESSED the fold peek: on the
+     860x430 landscape geometry the extra 12px pushed .efold-grab to y=440.6 in
+     a 430px viewport, 10.6px below the fold, and boardMatrix caught it. The
+     e2e retry config added the same day is what proved it was a real failure
+     rather than the flake it would otherwise have looked like.
+     So the HIT AREA grows and the BOX does not: a ::after overlay centred on
+     the control gives the thumb its 44px while the eyebrow still occupies 32px
+     of layout. The rule is about what a finger can hit, not how tall the ink
+     is. */
+  position:relative;
   font-size:11.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); line-height:1.4; }
 .eb-menu{ display:inline-flex; flex-direction:column; justify-content:center; gap:3.5px; width:16px; flex:0 0 auto; }
 .eb-menu > span{ display:block; height:1.5px; border-radius:1px; background:var(--muted); transition:background .16s var(--ease-out); }
 .eb-menu > span:nth-child(2){ width:11px; }
 .eb-caret{ font-size:9px; color:var(--faint); margin-left:-2px; }
+.ev-eyebrow::after{ content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px; }
 .ev-eyebrow:hover{ color:var(--steel-soft); }
 .ev-eyebrow:hover .eb-menu > span{ background:var(--steel-soft); }
 .ev-eyebrow:active{ opacity:.7; }
@@ -608,7 +649,9 @@ button{font-family:inherit}
    carries "N of M settled" — kills the duplication); flatten Guests/Budget from filled tiles
    into quiet hairline rows (label left · value right). The MIND lane, "Coming up", and the
    set-aside pile are already rows, so the whole see-all now reads as one calm list. */
-.hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:22px; }
+/* (A second `.hero.elegant .bento{display:flex;...;margin-top:22px}` stood here
+   and was dead — :888 redeclares the identical rule with margin-top:24px and
+   wins on order. Removed; the surviving declaration is the one below.) */
 .hero.elegant .bento .tile-a{ display:none; }
 .hero.elegant .bento .tile-b,
 .hero.elegant .bento .tile-c{ min-height:0; padding:16px 0; background:none; border:none; border-radius:0; border-top:1px solid rgba(255,255,255,.08); flex-direction:row; align-items:center; justify-content:space-between; gap:18px; }
@@ -858,7 +901,10 @@ button{font-family:inherit}
    "Where you stand" tile + the NEXT tile aren't part of this zone — the foot progress bar
    already carries phase. Elegant-only override; non-elegant bento is untouched. */
 .hero.elegant .bento{ display:flex; flex-direction:column; gap:0; margin-top:24px; }
-.hero.elegant .bento::before{ content:"Where you stand"; font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin-bottom:2px; }
+/* Was `.bento::before{content:"Where you stand"}` — a section header that was
+   not text. Now a real <h2 class="bento-head"> in the DOM (HostShellV2.jsx
+   :7893), styled identically. Same pixels, and a screen reader can read it. */
+.hero.elegant .bento-head{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; margin:0 0 2px; }
 .hero.elegant .bento .tile{ display:flex; flex-direction:row; align-items:center; justify-content:space-between; gap:12px; width:100%; background:none; border:none; border-top:1px solid rgba(255,255,255,.07); border-radius:0; padding:14px 0; text-align:left; box-shadow:none; min-height:0; }
 .hero.elegant .bento .tile-a, .hero.elegant .bento .tile-d{ display:none !important; }
 .hero.elegant .bento .tile-b{ border-top:none; }
@@ -1071,6 +1117,11 @@ button{font-family:inherit}
      shortest. inline-flex centers the label in a >=46px box (a leader-grade
      chunky primary), and a real min-height works where the ::after trick can't. */
   display:inline-flex; align-items:center; justify-content:center; min-height:46px;
+  /* The material response that replaces the 180deg bevel (Mobbin read 2026-08-04
+     §1; token flattened in theme.js). One 1px top hairline is the SAME detail
+     .card, .tile-a and .tile-c already carry, so the primary now belongs to the
+     surface family instead of simulating a raised plastic object of its own. */
+  box-shadow:inset 0 1px 0 var(--sheen);
   transition:filter var(--ms-press) var(--ease-out), transform var(--ms-press) var(--ease-out);
 }
 .cta:hover:not(:disabled){filter:brightness(1.07); transform:translateY(-1px)}
@@ -3097,7 +3148,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    the full-width single column the portrait ruling above explicitly preserves.
    The width test was standing in for a shape test; this states the shape.
    iPad 11" landscape (1194x834) still matches and keeps variant B. */
-@media (min-width:1024px) and (max-width:1279px) and (min-height:700px) and (orientation:landscape){
+/* ── THE SPLIT ALSO HAS TO FIT (2026-08-06, board — P0) ───────────────────────
+   The shape test above was right and still not sufficient. At 1024x768 landscape
+   the content column is ~680px, while this block asks for a FIXED 440px answer
+   column plus an 88px gap — leaving ~152px for the ask. A 64px headline in 152px
+   breaks one word per line and physically overprints the "Open where everyone
+   stays" card. Measured: .ask = 152x261 at 64px.
+   Two changes, because either alone is a half-fix:
+     · the gate now also requires enough WIDTH for the split to exist (a shape
+       test AND a size test — 1024 landscape keeps the single 648px column, which
+       is the composition that already works there);
+     · and the columns are made resilient rather than rigid, so the next viewport
+       nobody anticipated degrades by shrinking instead of colliding.
+   1024x768 was item 5 in UX_03's own testing protocol; the portrait fix above
+   was verified and landscape was not re-driven after it. */
+@media (min-width:1200px) and (max-width:1279px) and (min-height:700px) and (orientation:landscape){
   /* Tablet-land ruling: variant B "question | answer" — the hzone (ask headline +
      guide voice) owns the left half; the settle mechanics (status, option card,
      other-ways) stack in a 440px right column, both vertically centered. The
@@ -3110,8 +3175,11 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
      without the gate they squeezed into the left half over a dead right zone. */
   .hero.elegant:has(.escreen.on > .ecenter > .eanswer .card){ max-width:1008px; }
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card){ flex-direction:row; align-items:center; column-gap:88px; }
-  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{ flex:1 1 0; min-width:0; margin-top:0; }
-  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 0 440px; min-width:0; }
+  /* A floor on the ask, and an answer column that SHRINKS rather than pushing.
+     The collision came from `flex:0 0 440px` — an unshrinkable column beside a
+     `min-width:0` one, which is a layout that can only fail by overlap. */
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .hzone{ flex:1 1 0; min-width:360px; margin-top:0; }
+  .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) > .eanswer{ display:flex; flex-direction:column; flex:0 1 440px; min-width:300px; }
   .hero.elegant .escreen.on > .ecenter:has(> .eanswer .card) .ask{ font-size:64px; }
 }
 
@@ -3421,3 +3489,1731 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    it is a secondary act on a row whose primary act is opening the event, so it must
    not compete with the row above it. Indented to read as belonging to that row. */
 .runagain{ margin:2px 0 10px 12px; color:var(--steel-soft); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   PER-VIEWPORT LAYOUT — driven by [data-bp] on the app root
+   ──────────────────────────────────────────────────────────────────────────
+   Ported 2026-08-07 with src/lib/viewport.js. hostv2 had NO breakpoint system:
+   0 uses of useBreakpoint/innerWidth against 117 in the donor shell, and of
+   1299 stylesheet rules only 39 (3%) responded to width — NOT ONE of them
+   targeting 640-1023. Tablet had never had a layout; it had width and nothing
+   else, which is not the same thing.
+
+   The bands come from the board-ratified system already in App.js:
+     mobile <640 · tablet 640-1023 · tablet-land 1024-1279 · desktop >=1280
+   and the purpose is quoted from its own comment, because it names the defect:
+     "turn extra real-estate into the WORK laid out in columns,
+      not a stretched single column."
+
+   GUARDRAIL: the pros previously killed a 3-pane cockpit and a 9-cell grid as
+   "the overwhelm we just escaped, repainted." So width buys MEASURE CONTROL and
+   DENSITY, never more simultaneous panes. Nothing below adds a pane.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Measure. The single biggest tablet defect is a line of prose running the
+   full 768px. Text set to a readable measure is the whole of the tablet fix that
+   costs nothing structurally, and it is what makes the surface look composed
+   rather than stretched. Applied to the app root's own padding box so every
+   surface inherits it without a per-surface fork. */
+/* Scoped to .stagewrap, NOT .app. Measured in the running DOM: the real tree is
+   .stagewrap > .sheet, so `.sheet` is a SIBLING of `.app` — a data attribute on
+   .app cannot reach a sheet at all, and every sheet would have kept the phone
+   measure while the stages got the fix. The common ancestor is the stagewrap. */
+.stagewrap[data-bp="tablet"] > .app > .content,
+.stagewrap[data-bp="tablet"] > .sheet{
+  max-width:720px; margin-inline:auto;
+}
+.stagewrap[data-bp="tablet-land"] > .app > .content,
+.stagewrap[data-bp="tablet-land"] > .sheet{
+  max-width:860px; margin-inline:auto;
+}
+
+/* ── The void. The elegant hero centres itself vertically, which is right on a
+   phone (the ask should sit in the thumb's reading line) and wrong the moment
+   the viewport is 1024px tall: it strands ~230px of dead space above the
+   headline, measured at 768x1024. Above mobile the ask top-aligns instead, with
+   a deliberate offset so it still reads as composed rather than jammed to the
+   ceiling. The fold-peek guarantee is unaffected — it only ever assumed the ask
+   FITS the viewport, and top-aligning can only help that. */
+.stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
+.stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+  justify-content:flex-start; padding-top:clamp(24px, 6vh, 72px);
+}
+.stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .hzone,
+.stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .hzone{
+  margin-top:clamp(20px, 5vh, 56px);
+}
+
+/* ── Density. UX_03's ladder is mobile 1-col → tablet 2-col → tablet-land 3-col.
+   Applied ONLY to `.navrows`, the menu directory — rows that are short, self-
+   contained and unordered, which is the same content Motion, Asana and Plane lay
+   out in columns. Deliberately NOT applied to decision options or any list where
+   ORDER CARRIES MEANING: two columns turn a ranked sequence into a grid and
+   destroy the ranking, which is a correctness bug wearing a layout costume.
+
+   Written first against `.seclist`/`.statcard` — class names that do not exist
+   in this shell (0 JSX uses). A rule that matches nothing looks exactly like a
+   rule that works, so the names are verified against the JSX now. */
+.stagewrap[data-bp="tablet"] .navrows,
+.stagewrap[data-bp="tablet-land"] .navrows{
+  display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:0 var(--sp-5);
+}
+.stagewrap[data-bp="tablet-land"] .navrows{ grid-template-columns:repeat(3, minmax(0,1fr)); }
+/* Desktop keeps 3; widescreen earns a 4th — BUT ONLY WHERE THE SURFACE IS
+   ACTUALLY WIDE (2026-08-06, board, design seat).
+   The tablet rules above are safe because tablets render full-bleed. Desktop
+   does not: at >=1280 the shell is a fixed 393px phone silhouette EXCEPT the
+   command / food / data surfaces, and the nav sheet is not one of them. So
+   these two rules were laying 3 and 4 columns inside a 393px phone. Measured:
+   grid tracks of 104.3px at 1440 and 73.25px at 1920 — the event name truncated
+   to two letters, "Jump to a section" wrapped over three lines with its
+   sub-label gone, chevrons sitting on top of labels. The widescreen rule made
+   the PRIMARY NAVIGATION worse than desktop, which is the opposite of what a
+   density ladder is for.
+   The breakpoint was standing in for a width test, the same mistake the
+   tablet-landscape split made with orientation. Gated on the surface classes
+   that mean "this really is a wide canvas". */
+.stagewrap--responsive-command[data-bp="desktop"] .navrows,
+.stagewrap--responsive-data[data-bp="desktop"] .navrows,
+.stagewrap--responsive-food[data-bp="desktop"] .navrows{
+  display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:0 var(--sp-5);
+}
+.stagewrap--responsive-command[data-bp="desktop"][data-wide="1"] .navrows,
+.stagewrap--responsive-data[data-bp="desktop"][data-wide="1"] .navrows,
+.stagewrap--responsive-food[data-bp="desktop"][data-wide="1"] .navrows{ grid-template-columns:repeat(4, minmax(0,1fr)); }
+/* The row's own border-bottom becomes a grid artifact once rows sit side by side,
+   so the divider is redrawn per cell rather than per row. */
+.stagewrap[data-bp="tablet"] .navrows > .navrow,
+.stagewrap[data-bp="tablet-land"] .navrows > .navrow{ min-width:0; }
+
+/* ── THE PERSISTENT SECTION RAIL (VIEWPORT_PORT_RULING step 3) ───────────────
+   The ruling's finding: hostv2 was built as a phone shell and never given a
+   persistent navigation structure. `data-rail` was already being written to the
+   DOM — and NOTHING consumed it. Zero stylesheet rules, zero elements. The wire
+   was in and the thing was never built.
+
+   Six of six leaders converge on rail + main (Motion, Height, Wrike, Bonsai,
+   Asana, Plane), never a hamburger at desktop. The board's ceiling is
+   rail + main + on-demand detail: extra width buys measure and density, NEVER a
+   permanent third pane ("the overwhelm we just escaped, repainted").
+
+   WHEN IT IS UP is decided in JS by showsRail(), not here, because the
+   breakpoint is not a width test — at >=1280 every surface except command /
+   food / data is still a 393x852 phone, and the .navrows rules above already
+   paid for that mistake once by laying 4 columns inside one. This stylesheet
+   trusts [data-rail="1"] and nothing else. */
+.srail{ display:none; }
+
+.stagewrap[data-rail="1"]{
+  --rail-w:200px;                       /* leaders run 180-220 */
+  display:grid;
+  grid-template-columns:var(--rail-w) minmax(0, 1fr);
+  gap:0 var(--sp-5);
+}
+/* Both children are PINNED rather than auto-placed. .splash is absolute/inset:0
+   so it leaves the flow and still covers the whole stage, which is right — but
+   any future in-flow child would otherwise land in a phantom third cell and
+   silently reshape the grid. */
+.stagewrap[data-rail="1"] > .srail{ grid-column:1; grid-row:1; }
+.stagewrap[data-rail="1"] > .app  { grid-column:2; grid-row:1; }
+
+.stagewrap[data-rail="1"] > .srail{
+  display:block; min-width:0; align-self:stretch;
+  overflow-y:auto; scrollbar-width:none;
+  padding:var(--sp-6) 10px 40px;
+  /* ── MORE CARBON AT THE BIG VIEWPORTS (host, 2026-08-07) ──────────────────
+     "More carbon" is not a new colour — it is more of the ramp the app already
+     runs. The rail is simply A PANEL, the same --card every card uses, which is
+     what makes it cohesive rather than an applied skin: content ground (--bg
+     #141518) -> panel (--card #1E1F22) -> deep field (--field #0D0E10), three
+     steps of ONE de-blued ramp.
+
+     THE FIRST VERSION OF THIS PAINTED THE RAIL FROM --carbon-panel AND WAS
+     WRONG. --carbon* is the blue-tinted carbonBody ramp (#121518); the shell's
+     surfaces are the de-blued carbonNeutral ramp (#1E1F22). styles.css:793
+     already records what mixing them costs ("a visible shift on a blue-grey
+     pill") — that was one pill, this would have been a whole rail.
+
+     COPY CHECKED, NOT ASSUMED (host: "make sure the copy doesn't then
+     conflict"). Measured on --card: --ink 14.44:1, --steel-soft 6.24:1,
+     --muted 5.29:1. Worst case anywhere in the new composition is --muted on
+     --bg-band at 4.85:1. Every token clears 4.5. */
+  background:var(--card);
+  border-right:1px solid var(--line-soft);
+}
+.stagewrap[data-rail="1"] > .srail::-webkit-scrollbar{ display:none }
+.srail-g{ margin-bottom:var(--sp-5); }
+.srail-t{ margin:0 0 6px; padding-left:10px; color:var(--faint); }
+/* A rail row is a NAV LABEL, not a list row: no sub, no chevron, no count. The
+   sheet's own rows keep those. The rail answers "where can I go" in one glance,
+   and a second line per row would make 16 doors a wall of prose. */
+.srail-row{
+  display:flex; align-items:center; gap:10px;
+  width:100%; text-align:left; cursor:pointer;
+  background:none; border:none; border-radius:var(--r-sm);
+  padding:6px 10px; margin:0;
+  /* 44px FLOOR. Driven at 1024x768 and measured at 35px — under the UX_03
+     minimum, and tablet-land is a touch device (iPad landscape), so this is a
+     real thumb target and not a desktop-only pointer affordance. Their own
+     tapTargets spec runs at 1024 and would have failed it. Raised on the BOX
+     here rather than with an ::after overlay because a rail row has room: it
+     costs nothing but rail scroll, which the rail already handles. */
+  min-height:44px;
+  font-family:inherit; font-size:13.5px; font-weight:500; line-height:1.25;
+  color:var(--muted);
+  transition:color .14s var(--ease-out), background-color .14s var(--ease-out);
+}
+/* The icon inherits the row's colour, so state is expressed once (UX_02: the
+   colour budget is spent on state, never on ornament). flex:0 0 auto keeps the
+   mark on its grid when a label wraps — and is what makes a collapsed,
+   icons-only rail a layout change rather than a redraw. */
+.srail-i{ flex:0 0 auto; opacity:.85; }
+/* The LABEL is its own element, not a bare text node, because it is exactly the
+   part a collapsed icons-only rail hides — the collapse becomes `display:none`
+   on this one selector rather than a re-render. min-width:0 lets a long door
+   name ("Travel & where everyone stays") wrap inside the flex row instead of
+   forcing the rail wider than its track. */
+.srail-l{ min-width:0; }
+.srail-row:hover{ color:var(--ink); background:var(--steel-tint); }
+.srail-row:hover .srail-i{ opacity:1; }
+.srail-row:focus-visible{ outline:2px solid var(--steel); outline-offset:-2px; }
+/* WHERE AM I, not just where can I go — the thing the eyebrow menu could never
+   answer, because it only exists while it is open. One weight change and one
+   tint; no accent colour is spent here. */
+.srail-row.on{ color:var(--ink); font-weight:650; background:var(--steel-tint); }
+.srail-row.on .srail-i{ opacity:1; }
+
+/* The docked action belongs to the MAIN column. .next-bar is absolute against
+   .stagewrap, which is now the full grid — without this it would start under
+   the rail. The command surface already re-anchors it for its own two-column
+   composition (:291); this is the same correction one level up. */
+.stagewrap[data-rail="1"] .next-bar{
+  left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
+
+
+/* ── The `data` surfaces at desktop — Budget and Guests ──────────────────────
+   Added 2026-08-07 with the responsiveSurface `data` mode. Before this, 43 of
+   45 surfaces (38 sheet kinds + 7 stages) rendered as a 393x852 phone
+   silhouette on a 1440px screen. These two are UX_03's `data` tier — "dense
+   tables & boards that should USE width" — so they are the ones where width
+   buys density rather than longer lines.
+
+   Same construction as --responsive-command: replace the silhouette with real
+   width and drop the bezel, because a phone bezel is a silhouette affordance
+   with no meaning once the surface is a real canvas. NOT scaled — --fit is
+   height-driven, and scaling a reflowed layout gives fuzzy text and wrong hit
+   areas. Scaling and reflow solve different problems. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-data{
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1360px); max-width:1360px;   /* UX_03 `data` measure */
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  .stagewrap--responsive-data .app{
+    border-radius:var(--r-xl); box-shadow:none;
+    /* ── THE PANEL WAS REFUSING THE WINDOW (2026-08-06, board, design seat) ──
+       `height:auto; min-height:60vh` made a data sheet 540px tall in a 900px
+       window and 648px in a 1080px one — while its own content scrolled
+       INTERNALLY by 80px with 340px of window sitting empty below it. The
+       command tier already solved this at :193; the data tier never got the
+       rule, which is why the two tiers disagree about what "use the width"
+       means vertically.
+       Same expression, so they cannot drift again. */
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    min-height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+  }
+
+  /* TWO COLUMNS, NOT THREE. The pros killed a 3-pane cockpit as "the overwhelm
+     we just escaped, repainted", so width buys one companion column and stops.
+     The summary (the headline number and its chart) is the thing a host reads
+     first and returns to, so it holds the left column and stays put while the
+     detail list scrolls beside it — the master-detail Luma and Aboard both run,
+     and what UX_03 calls ideal for desktop. */
+  /* ── THE TWO-PANE GRID WAS RETIRED 2026-08-07 — MEASURED, NOT PREFERRED ────
+     The composition below stacked two panes over FLAT SIBLINGS, so CSS grid
+     auto-placement put column-1 item k and column-2 item k in the same row.
+     Whichever side was taller stretched the other side's row into air. Driven
+     at 1920 and measured, total vertical void per sheet:
+
+         Guests 1344px (10 items left, 26 right) · Vendors 1032px
+         Your checklist 665px · Your money 720px
+
+     That is not a tuning problem. Interleaving is inherent to auto-placement
+     over flat children, and the only CSS fixes are structural (wrap each side
+     in its own element) — which would mean teaching 8 sheets which of their
+     children belong to which pane, exactly the "layout policy scattered through
+     JSX" this module exists to prevent.
+
+     WHAT THE LEADERS ACTUALLY DO. Asana, Wrike and Plane do not stack two panes
+     beside a rail. They run RAIL + ONE DENSE MAIN AREA and spend the width on
+     columns INSIDE each row. The board's own guardrail says the same thing from
+     the other side: extra width buys density and measure, never another pane.
+     With a persistent rail now carrying navigation, a second pane was buying a
+     third region on screen and paying for it in 1344px of air.
+
+     So the main area is ONE column again. Prose and summary blocks keep a
+     reading measure; row lists take the width, which is where density belongs.
+     Kept as a block rather than deleted so the reasoning survives the change. */
+  .stagewrap--responsive-data > .sheet{
+    display:block;
+  }
+  /* Reading measure for anything that is prose or a summary — the row lists
+     below opt back out. Without this the guide line and the grounding
+     paragraph run to 1358px, which is the "stretched single column" the whole
+     viewport port exists to remove. */
+  .stagewrap--responsive-data > .sheet > *{ max-width:820px; }
+  /* The work itself takes the width. These are the same selectors the retired
+     grid used to move into column 2, so the list of "what is a dense row" is
+     unchanged and verified — only what happens to it is different. */
+  .stagewrap--responsive-data > .sheet > .sheet-head,
+  .stagewrap--responsive-data > .sheet > .brow,
+  .stagewrap--responsive-data > .sheet > .later-row,
+  .stagewrap--responsive-data > .sheet > .frow,
+  .stagewrap--responsive-data > .sheet > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > div:has(> .frow),
+  .stagewrap--responsive-data > .sheet > div:has(> .vcard),
+  .stagewrap--responsive-data > .sheet > div:has(> .grow),
+  /* ── AND THE ROSTER, WHICH IS ONE LEVEL DEEPER (2026-08-07) ──────────────
+     Every exemption above matches `:has(> X)` — a DIRECT child. The roster
+     now wraps its rows in .roster, so .grow became a GRANDchild and the
+     exemption silently stopped applying: the table inherited the 820px prose
+     measure while its own .sheet offered 1358, and a 340px detail column then
+     squeezed the list to 460 instead of using the empty canvas.
+     Cost an hour, because the symptom (a squeezed table) looks exactly like a
+     grid sizing bug and nothing points at a max-width two rules away. Found
+     by walking the ancestor chain in the live DOM and reading `maxWidth` off
+     each one — after eliminating three candidate rules by reading, all wrong.
+     A structural cap must be matched by structure, not by depth. */
+  .stagewrap--responsive-data > .sheet > .roster{ max-width:none; }
+  /* The head names the surface and carries its close — it belongs to both. */
+  .stagewrap--responsive-data > .sheet > .sheet-head{ grid-column:1 / -1; }
+  /* Column 1 is the DEFAULT, and only the row list is moved out of it.
+     Written first as two enumerated lists of classes, which was wrong: the
+     sheet's headline number is rendered by SheetHero, whose root element
+     carries NO CLASS AT ALL, and `.bignum` — which I had listed — does not
+     exist anywhere in this shell. Anything unclassed would have fallen out of
+     the grid silently. Defaulting to column 1 means a child has to be named to
+     leave it, so a future unclassed block lands somewhere sensible instead of
+     disappearing. */
+  .stagewrap--responsive-data > .sheet > *{ grid-column:1; }
+  .stagewrap--responsive-data > .sheet > .shelf-label,
+  .stagewrap--responsive-data > .sheet > .brow,
+  .stagewrap--responsive-data > .sheet > .later-row,
+  .stagewrap--responsive-data > .sheet > .frow,
+  .stagewrap--responsive-data > .sheet > div:has(> .brow),
+  .stagewrap--responsive-data > .sheet > div:has(> .later-row),
+  .stagewrap--responsive-data > .sheet > div:has(> .frow),
+  /* ── THE TWO SHEETS THE MODE WAS BUILT FOR WERE THE TWO IT MISSED ─────────
+     (2026-08-06, board, design seat.) Measured direct children per sheet at
+     1440: tasks 3/8, risks 2/5, decisions 5/7, seating 4/3, budget 6/5 — all
+     working. guests 34/2 and vendors 17/1 — broken. A guest row carries NO
+     class (its first child is div.grow) and a vendor card is `.vcard`, and
+     neither was named, so 24 guest rows and 8 vendor cards stayed in the 420px
+     column while the 876px column sat empty. Vendors was worse than empty: the
+     summary strip rendered ON TOP of the category chips and the scroll lane was
+     sliced mid-word at the column boundary.
+     The comment above already warned that an unclassed child "would have fallen
+     out of the grid silently" — it was right, and the guest roster is the case
+     it was describing. */
+  .stagewrap--responsive-data > .sheet > .vcard,
+  .stagewrap--responsive-data > .sheet > div:has(> .grow){
+    grid-column:2;
+  }
+  /* Summary strips are about the WHOLE sheet, so they span both columns rather
+     than being crushed into one — this is what was colliding on vendors. */
+  .stagewrap--responsive-data > .sheet > .fstat-list,
+  .stagewrap--responsive-data > .sheet > .wstrip,
+  .stagewrap--responsive-data > .sheet > .conflictbar{
+    grid-column:1 / -1;
+  }
+
+  /* ── WIDESCREEN (>=1536) — the board's ruling, 2026-08-07 ─────────────────
+     Tufte holds the widescreen-real-estate seat and the answer is his: extra
+     width shows MORE DATA, never larger type. Rams and Ive rule out chrome
+     added for its own sake, and the pros' standing precedent kills a third
+     pane outright ("the overwhelm we just escaped, repainted"). So widescreen
+     buys exactly two things and stops: the `data` tier reaches its own
+     measure, and the directory gains one column.
+
+     1480 is not a new number — it is measureFor('data', wide) from the
+     board-ratified table. The tiers deliberately sit ~80-200px apart so the
+     app reads as one app rather than five widths. */
+  @media (min-width:1536px){
+    .stagewrap--responsive-data{ width:min(100% - 48px, 1480px); max-width:1480px; }
+  }
+}
+
+/* ── THE 44px FLOOR, ON THE DEVICE THE RULE IS ABOUT (2026-08-06, board) ─────
+   UX_03 mobile rule 2 sets a 44px minimum tap target. A live sweep on a real
+   iPhone profile found 12+ interactive controls under it, and the primary hero
+   Save — the control that COMMITS the ask — measured 56x30. The QA scorecard's
+   own line is that the tallest tap target should be the primary action, not the
+   shortest; a 30px commit button beside a 46px .cta is that inverted.
+
+   Scoped to the phone deliberately. The 44px rule is a THUMB rule, not a design
+   rule, and the design seat scored mobile the strongest of the four viewports —
+   inflating chips on desktop would spend density to satisfy a constraint that
+   does not apply there. .cta already cleared the floor in an earlier audit
+   (audit S1); this covers the classes that did not.
+
+   `inline-flex` + `align-items:center` rather than raw padding, so the label
+   stays optically centred instead of sitting high in a taller box. */
+@media (max-width: 480px){
+  /* MEASURED, not assumed: a full sweep of every button/link/role=button on the
+     home and create screens at 393px found these classes already clearing the
+     floor. They are held here so they cannot regress, not because they were
+     found broken — the one control that WAS under it (.ev-eyebrow, 32px) is
+     fixed at its own rule above. Other screens the board flagged (nav sheet,
+     food sheet, lodging stage tabs) are not yet swept and are named as open. */
+  .chip,
+  .mini,
+  .lc-door,
+  .lens {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  /* Stacked pairs need real separation once they are both 44px, or the two
+     targets read as one slab and a thumb lands between them. */
+  .lc-ctas > * + * { margin-top: 8px; }
+}
+
+/* ══ TOUCH TARGETS — Apple HIG 44pt / WCAG 2.5.5 ═══════════════════════════
+   Measured live at 390px: 8 of 23 interactive elements (35%) fell under 44px
+   in at least one dimension, 3 of them under 32px tall. Every one was a
+   FULL-WIDTH row or a pill, so width was never the problem — height was:
+     .decopt-disc  350x26     .later-row  350x35
+     .watch-row    350x37     .pill       267x27 / 247x27
+   They clear WCAG 2.5.8 AA (24px) and fail 2.5.5 AAA and the HIG minimum,
+   which is the standard that matters on a phone held one-handed.
+
+   TWO different fixes, because the two cases are not the same problem.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* ROWS grow. They are already full-bleed list rows, so height is free — nothing
+   reflows, the text stays on its own baseline, and the row simply becomes as
+   tall as a thumb. align-items keeps the label optically where it already sat. */
+.app-elegant .decopt-disc,
+.hero.elegant .watch-row,
+.later-row{
+  min-height:44px;
+  display:flex; align-items:center;
+}
+/* watch-row deliberately keeps its top alignment: its rows wrap to two lines and
+   centring a wrapped row moves the first line off the rhythm of the ones above. */
+.hero.elegant .watch-row{ align-items:flex-start; padding-block:12px; }
+
+/* PILLS DO NOT GROW. A pill is a chip — inflating it to 44px would make the
+   quietest element on the surface one of the loudest, which is the opposite of
+   what Studio Matte asks for and would fail the "one loud thing per screen"
+   rule to satisfy an accessibility one. Instead the VISUAL size is untouched
+   and only the HIT AREA is expanded, with a transparent overlay centred on the
+   pill. The pill still reads as a chip and still catches a thumb.
+   Scoped to interactive pills only — a pill used as a static label must not
+   claim 44px of the surface's tap space for nothing. */
+button.pill, .pill[role="button"], a.pill{ position:relative; }
+button.pill::after, .pill[role="button"]::after, a.pill::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%);
+  height:44px; min-width:44px;
+  /* pointer-events stay on the pseudo-element so the expanded area is what the
+     thumb actually hits; it is transparent, so nothing about the look changes. */
+}
+/* A coarse pointer is the only place this matters. On a mouse the cursor is
+   precise and a 44px invisible box can swallow a neighbouring hover. */
+@media (hover:hover) and (pointer:fine){
+  button.pill::after, .pill[role="button"]::after, a.pill::after{ content:none; }
+}
+
+/* A save that failed is not a toast (2026-08-06). It stays until a write
+   succeeds, because the host is still typing when it fires and a message that
+   disappears is how a silent failure stays silent. --warn is the existing
+   urgency token; this is not an error state to panic about, it is a fact she
+   needs in front of her with the one action that preserves her work. */
+.save-failed{
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin:8px 0 0; padding:10px 14px; border-radius:var(--r-row);
+  background:var(--bg-band); border:1px solid var(--warn); color:var(--ink);
+  font:600 13px/1.4 Inter,sans-serif;
+}
+
+/* `.vc-pill` is a WRITE control (status ladder, and the contact log) rendered at
+   21px tall — measured live 2026-08-07, right after the 44px sweep, which means
+   the sweep and I both missed it. Same treatment the other pills got and for the
+   same reason: a chip must not inflate to 44px or it becomes the loudest thing
+   on a vendor row, so the VISUAL size is untouched and only the hit area grows.
+   Coarse pointers only — on a mouse the cursor is precise and a 44px invisible
+   box would swallow the neighbouring pill in a ladder of them. */
+button.vc-pill{ position:relative; }
+button.vc-pill::after{
+  content:''; position:absolute; left:0; right:0;
+  top:50%; transform:translateY(-50%); height:44px;
+}
+@media (hover:hover) and (pointer:fine){ button.vc-pill::after{ content:none; } }
+
+/* ── THE RAIL EARNS ITS WIDTH, IT DOES NOT TAKE IT ──────────────────────────
+   VIEWPORT_PORT_RULING step 4 asks for the 1280 stage cap to be raised. Doing
+   that by stretching the content would be the "stretched single column" the
+   whole port exists to kill, so the cap rises by exactly the rail plus its gap:
+   the main column keeps the measure UX_03 assigned it (command/food 1280, data
+   1360) and the reclaimed pixels go to navigation, which is new information
+   rather than longer lines.
+
+   Measured dead space before (responsiveBaseline, 2026-08-07): 4% at 1280,
+   15% at 1512, 33% at 1920 — a third of a large monitor was gutter. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap--responsive-command[data-rail="1"],
+  .stagewrap--responsive-food[data-rail="1"]{
+    width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1280px + var(--rail-w) + var(--sp-5));
+  }
+  .stagewrap--responsive-data[data-rail="1"]{
+    width:min(100% - 48px, calc(1360px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1360px + var(--rail-w) + var(--sp-5));
+  }
+}
+
+/* ── THE FIELD BEHIND THE STAGE, AT THE BIG VIEWPORTS ONLY ──────────────────
+   Host, 2026-08-07: "need more of my carbon in the tablet, desktop,
+   widescreens."
+
+   Measured dead space at 1920 is 22% even after the rail earned its width back
+   (was 33%). That gutter is not going away — capping the measure is the whole
+   point of UX_03's width system, and stretching content to fill a monitor is
+   the defect the viewport port exists to remove. So the gutter has to read as
+   DELIBERATE FIELD rather than as leftover page.
+
+   The body ground drops to --carbon, the deepest step of the ramp the app
+   already runs, and the stage sits on it as a lighter panel. Three planes,
+   all from the existing ramp, no new colour: deep field -> content ground ->
+   carbon rail panel.
+
+   Gated at 1024 because below it the stage is full-bleed and there IS no
+   gutter — painting a field nobody can see would be a rule that does nothing,
+   and this stylesheet has already been bitten once by rules that matched
+   nothing. */
+@media (min-width:1024px){
+  body{ background:var(--field); }
+  /* The stage reads as a panel on that field: its own edge, and the same
+     radius the app already uses, so the composition has a boundary instead of
+     bleeding into the dark. */
+  .stagewrap[data-rail="1"]{
+    border:1px solid var(--line-soft);
+    border-radius:var(--r-xl);
+    overflow:hidden;
+  }
+}
+
+/* ── THE SHEET IS THE SCREEN — BUT "THE SCREEN" STOPS AT THE RAIL ───────────
+   Found by driving it, not by reading it (2026-08-07): with a sheet open,
+   Playwright reported `<div class="sheet-scrim"> intercepts pointer events` on
+   every rail row. .sheet-scrim and .sheet are `position:absolute; inset:0`, and
+   .app is not a positioned ancestor, so both resolve against .stagewrap — which
+   is now the WHOLE grid, rail included. The rail was rendered, visible, enabled
+   and completely dead: you could open Budget from it and then never reach
+   Guests. A persistent nav that stops working as soon as you use it is worse
+   than no nav, because it looks available.
+
+   The fix is not a z-index race. A sheet still owns the whole screen — the
+   2026-08-03 ruling ("a section IS the screen while it is open") stands — but
+   once a rail exists, the screen it owns is the CONTENT column. That is
+   master-detail, which UX_03 names as the ideal desktop pattern, and it is what
+   every leader in the viewport ruling does with a persistent rail.
+
+   Offset = rail + the grid gap, so both edges land exactly on .app's left. */
+.stagewrap[data-rail="1"] .sheet-scrim,
+.stagewrap[data-rail="1"] .sheet{
+  left:calc(var(--rail-w) + var(--sp-5));
+}
+/* Belt and braces: even if a future overlay forgets the offset, navigation
+   stays reachable rather than silently dying behind it. */
+.stagewrap[data-rail="1"] > .srail{ position:relative; z-index:60; }
+
+/* ── ...AND THE CENTRED PANEL CENTRES IN THE COLUMN, NOT AT ITS EDGE ────────
+   Measured at 1024x768, not reasoned (2026-08-07). Between 640 and 1279 at
+   >=700 tall the sheet is not edge-to-edge at all — it is the centred floating
+   panel (:3174), where `left` is the CENTRE anchor and translate(-50%,-50%)
+   does the placing. The rule above is source-ordered after that block, so it
+   replaced `left:50%` with a 220px CENTRE: the panel's left edge landed at
+   -119px, half of it off-screen and the rest under the rail, which then ate
+   every click aimed at it.
+   Playwright had been reporting exactly that — "srail-t intercepts pointer
+   events" across ten tablet-land tests — and I had been calling it
+   pre-existing on the strength of a revert that did not go back far enough to
+   exclude the very commit that caused it.
+   Shifting the CENTRE by half the offset is the same intent the edge rule
+   expresses, said in the idiom this breakpoint actually uses. */
+@media (min-width:640px) and (max-width:1279px) and (min-height:700px){
+  .stagewrap[data-rail="1"] .sheet{
+    left:calc(50% + (var(--rail-w) + var(--sp-5)) / 2);
+  }
+}
+
+/* ── THE SECTION MARK ON THE PHONE (host, 2026-08-07) ───────────────────────
+   The Sections sheet is the mobile equivalent of the rail — the same
+   sectionGroups(), the same doors — so it carries the same glyph. One mark per
+   door across every viewport means the icon a host learns on the phone is the
+   one they scan in the rail on a laptop, which is the whole reason a collapsed
+   icons-only rail can work at all.
+
+   Muted, not inked: the row's NAME is the loud thing (UX_02 — one loud thing
+   per row). The glyph is an anchor for the eye, not a second voice, so it takes
+   --faint and steps up only with the row itself. */
+.sec-row > .srail-i{ flex:0 0 auto; color:var(--faint); opacity:1; }
+.sec-row:hover > .srail-i,
+.sec-row:active > .srail-i{ color:var(--steel-soft); }
+.sec-row > .f-main{ flex:1; min-width:0; }
+
+/* ── A RAIL MEANS THIS IS A CANVAS, NOT A PHONE ─────────────────────────────
+   Host, 2026-08-07: the menu must "exist on all screens/sheets where they go."
+
+   Measured before this rule: at 1920, opening a legacy sheet (settings, qr,
+   pass, meaning, ask...) collapsed the stage from 1500px to 393px, dead space
+   went 22% -> 80%, and the rail disappeared. That is 35 of 45 surfaces. The
+   silhouette was correct when nothing else was on screen; it is wrong the
+   moment persistent navigation exists beside it, because the rail then has a
+   phone bolted to it and the composition reads as broken rather than deliberate.
+
+   THIS IS NOT "STRETCH EVERY SHEET". responsiveSurface.js exists to prevent
+   exactly that, and the distinction it protects is kept here: the CANVAS gets
+   the width, the CONTENT keeps its measure. A single-decision sheet is capped
+   at 68ch — close to the reading measure it already had on the phone — and sits
+   at the top-left of the canvas rather than being blown out to 1280px of prose.
+   The `data` and `command` tiers keep their own compositions untouched; they
+   are named exceptions below.
+
+   Height matches the data tier's expression exactly (see :3580) so the two
+   cannot drift into disagreeing about what "use the window" means. */
+@media (min-width:1280px) and (min-height:700px){
+  .stagewrap[data-rail="1"]{
+    transform:none; transform-origin:initial;
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    margin:var(--sp-5) auto 40px;
+  }
+  /* The bezel is a silhouette affordance and has no meaning on a real canvas. */
+  .stagewrap[data-rail="1"] > .app{
+    border-radius:0; box-shadow:none; height:100%;
+  }
+  /* Legacy surfaces only — the named tiers own their own width above. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data){
+    width:min(100% - 48px, calc(1280px + var(--rail-w) + var(--sp-5)));
+    max-width:calc(1280px + var(--rail-w) + var(--sp-5));
+  }
+  /* MEASURE, not width. A single-decision sheet reads at its own measure
+     wherever it is; the rest of the canvas stays quiet ground rather than being
+     filled for the sake of it (UX_01: the void is part of the design).
+
+     FIRST VERSION USED 68ch AND DID NOT BITE — driven at 1920, the settings
+     inputs still spanned 1240px. `ch` resolves against EACH element's own
+     font-size, so on a block whose children set their own type it computed far
+     wider than the reading measure it was standing in for. A measure cap has to
+     be a length, not a unit that changes meaning per element. 720px is the
+     donor shell's `standard` content tier, so this matches what App.js already
+     does at this width rather than inventing a number.
+
+     THE SELECTOR WAS ALSO WRONG AND THAT IS THE REAL LESSON. It read
+     `> .app .sheet > *`, and `.sheet` is a DIRECT CHILD OF .stagewrap — it is
+     not inside .app at all (probed live: chain = div.sheet -> div.stagewrap).
+     So the rule matched nothing, twice, while looking correct both times. Same
+     class as the `.seclist`/`.statcard` names recorded at :3517 that matched no
+     JSX. A rule that matches nothing is indistinguishable from a rule that
+     works until you measure the box. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > *{
+    max-width:720px;
+  }
+  /* The head spans — it carries the sheet's name and its close. */
+  .stagewrap[data-rail="1"]:not(.stagewrap--responsive-command):not(.stagewrap--responsive-food):not(.stagewrap--responsive-data) > .sheet > .sheet-head{
+    max-width:none;
+  }
+}
+
+/* ── THE ROW'S TWO LINES BECOME TWO COLUMNS AT THE DATA TIER ────────────────
+   SCOPED TO [data-rail="1"], AND THAT GUARD IS LOAD-BEARING. The
+   --responsive-data class is SURFACE IDENTITY, not a breakpoint — it is on the
+   stagewrap at 393px too. The first version of these rules sat outside any
+   media query, so the phone got 88px/132px fixed metadata tracks inside a 353px
+   row. Caught by driving the phone, not by reading the selector. [data-rail=1]
+   is the honest guard here: it means "wide enough that navigation is up", which
+   is exactly when a row has the width to be a table.
+   Host: the wide layouts "are just squished phone layouts."
+
+   Measured at 1920 after the main area went single-column: a guest row is
+   1318px wide and its NAME BUTTON ALONE is 1215px of it. The row was not
+   missing information — it already renders kids, meal, the needs tag and the
+   structured allergens/diets. It was rendering them the PHONE way: name on
+   line 1, meta wrapped onto line 2, because at 393px there is no other choice.
+   Widening that composition does not make it dense, it makes it sparse — a
+   name, then 900px of nothing, then a chip.
+
+   Leaders (Asana, Wrike, Plane) spend width on columns INSIDE the row. So do
+   we, using the elements already there: the two stacked lines become two
+   tracks. No new data, no new markup — the same row, laid out for the space it
+   actually has.
+
+   `!important` on the meta's margin-top is deliberate and narrow: that 2px is
+   an inline style on the element (the gap that separates the two LINES), and
+   an inline style cannot otherwise be answered from a stylesheet. It is wrong
+   by definition once they are side by side rather than stacked.
+
+   Scoped to --responsive-data: this is the tier UX_03 calls "dense tables &
+   boards that should USE width". Single-decision sheets keep their measure. */
+/* display:flex is !important because the button carries an INLINE
+   display:block (HostShellV2 ~:16477) and an inline style cannot be answered
+   from a stylesheet any other way. Verified by computed value, not by
+   assumption — the first version of this rule was silently overridden and the
+   row stayed stacked while the CSS looked correct. */
+/* ONE SET OF TRACK WIDTHS, read by BOTH the row and its header. Declared here
+   rather than repeated in each rule because a header whose numbers are a COPY of
+   the row's numbers is a header that silently drifts the first time one side is
+   tuned — and a misaligned header is worse than none. */
+.stagewrap--responsive-data[data-rail="1"]{
+  --gt-name:clamp(200px, 18vw, 320px);
+  --gt-kids:88px;
+  --gt-meal:132px;
+  --gt-reply:96px;
+}
+.stagewrap--responsive-data[data-rail="1"] .grow > button{
+  display:flex !important; align-items:center; gap:var(--sp-5);
+}
+/* The name gets a real column rather than all the slack — clamped so it stays
+   a readable measure at 1280 and does not run away at 1920. */
+/* VIEWPORT-RELATIVE, NOT PERCENT. 24% resolved against the BUTTON, and the
+   button's width changes row to row because the RSVP chip beside it does
+   ("Yes" is 43px, "No reply" ~75px). Measured: the metadata tracks landed at
+   x=767 on some rows and x=759 on others — 8px of drift, which is exactly the
+   ragged edge a column is supposed to remove. A shared track cannot be a
+   percentage of a per-row box. */
+/* :first-of-type MATTERS. Unscoped, this selector also matched the REPLY
+   button's `.tag` (its own first child), handing a three-letter word the whole
+   --gt-name track: clamp(200px,18vw,320px) = 259px at 1440, 200px at 1024.
+   Measured in the board renders as a 258px slab. Three panels reported it
+   independently as "reads as a progress bar" — which is the very defect the
+   comment at :4460 believed it had already fixed. */
+.stagewrap--responsive-data[data-rail="1"] .grow > button:first-of-type > span:first-child{
+  flex:0 0 var(--gt-name);
+}
+.stagewrap--responsive-data[data-rail="1"] .grow > button > span:nth-child(2){
+  margin-top:0 !important; flex:1 1 auto;
+}
+/* ── REAL COLUMNS, NOT A ROW OF CHIPS (2026-08-07) ──────────────────────────
+   Asana and Wrike do not put a row's metadata in a wrapping chip run — they put
+   it in TRACKS, so the eye can read down a column instead of re-scanning each
+   row. That is the density UX_03's `data` tier is asking for, and it is the
+   thing "wide" was still missing after the row stopped being a squished phone.
+
+   Fixed tracks, not auto: auto would size each track to its own row's content
+   and nothing would line up vertically, which is the whole point. The slots are
+   rendered unconditionally in the JSX for the same reason — a guest with no
+   meal must not shift the next guest's dietary tags a track left. `flex-wrap:
+   nowrap` because these are columns now, not a chip run that may wrap. */
+.stagewrap--responsive-data[data-rail="1"] .grow .gmeta{
+  display:grid !important;
+  grid-template-columns:var(--gt-kids) var(--gt-meal) minmax(0, 1fr);
+  /* !important because the span carries an inline gap:6 from the JSX (it is the
+     chip spacing the phone needs). Measured: with the inline value winning, the
+     header's meal cell sat +10px and dietary +20px off their columns. The token
+     has to win on both sides or the header cannot be derived from the row. */
+  align-items:center; gap:0 var(--sp-4) !important;
+  flex-wrap:nowrap !important;
+}
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-diet{
+  display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-width:0;
+}
+/* The kids and meal slots are TRACK HOLDERS. They exist so every row offers the
+   same three cells (see the JSX note) and they carry min-width:0 so a long
+   value truncates inside its own column instead of pushing the next one right —
+   the drift a shared track exists to prevent. On the phone they are inert
+   wrappers in a chip run and add nothing. */
+.gm-kids, .gm-meal{ min-width:0; }
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-kids,
+.stagewrap--responsive-data[data-rail="1"] .grow .gm-meal{
+  display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+
+/* NO HEADER ROW YET, deliberately. The tracks below line up across rows
+   because the name slot has a fixed basis, so .gmeta starts at the same x in
+   every row. A header would have to re-declare the avatar + name + rsvp tracks
+   too, and .grow is a flex row whose name and meta live INSIDE the row button —
+   a header cannot subgrid onto that without either display:contents on a button
+   (which destroys its hit target) or restructuring the row. Left undone and
+   said so, rather than shipping a header that drifts a few pixels off its
+   columns. */
+
+/* ── TWO RAILS IS ONE RAIL TOO MANY (host: "command screen on wider is bad") ─
+   The re-zone at :219 gave the command hero its own internal "rail main" grid,
+   reserving 240-300px for orientation — the eyebrow, the event head, and the
+   readiness progress. That was right when the canvas had no navigation beside
+   it. It is wrong now: the persistent section rail IS the orientation column,
+   so the hero was reserving a second one.
+
+   Driven at 1920 and it looks exactly like the bug it is — the eyebrow wraps
+   "JUN 20-JUN 24" onto two lines inside a narrow column, the progress bar is
+   stranded halfway down a column with nothing above or below it, and roughly
+   350x450px of the canvas is simply empty between them.
+
+   With a rail present the hero goes back to ONE column and the blocks stack in
+   reading order: eyebrow, head, the ask, then progress at the foot. Each gets
+   its own row rather than sharing the `rail` area, which is what the two-column
+   version needed a 44px margin to fake. The doctrine is unchanged — the ask is
+   still the single loud thing; it just is not competing with an empty column. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
+  grid-template-columns:minmax(0, 1fr);
+  grid-template-rows:auto auto 1fr auto;
+  grid-template-areas:
+    "eyebrow"
+    "head"
+    "main"
+    "prog";
+  column-gap:0;
+  min-height:0;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
+  grid-area:eyebrow; align-self:start;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-head{
+  grid-area:head; align-self:start; margin-top:6px;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ecenter{
+  grid-area:main;
+}
+/* Progress returns to the foot of the SCREEN, because with one column the eye
+   does end at the bottom edge again — the exact reason :242 moved it in the
+   two-column composition no longer holds. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog{
+  grid-area:prog; align-self:end; margin-top:28px;
+}
+
+/* The reference lane was indented by the width of the hero's internal rail
+   (:281, `min(300px,max(240px,23%)) + 56px`) so it would line up under the main
+   column. With that column collapsed above, the indent is the GHOST of a
+   column that no longer exists — driven at 1920, the hero starts at x=451 and
+   the lane below it at x=790, two different left edges on one page. Both go
+   back to the canvas edge, so the whole surface reads as one column beside the
+   rail, which is what the original comment was trying to achieve. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant > .efold,
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen ~ *{
+  margin-left:0;
+}
+/* next-bar is already re-anchored to the section rail at the stagewrap level;
+   this clears the second, now-stale offset so the two do not compound. */
+.stagewrap--responsive-command[data-rail="1"] .next-bar{
+  left:calc(var(--rail-w) + var(--sp-5) + var(--sp-4));
+}
+
+/* ── THE COMMAND SURFACE BECOMES ZONES, NOT A STRETCHED COLUMN (UX_04) ───────
+   MEASURED AT 1440x900 BEFORE THIS RULE. `.escreen` spans the full 1130px
+   canvas, and then every block below it is 685px wide and left-aligned:
+
+       y=402  .then-fold   w=685   "Then, in order"
+       y=536  .ef-watch    w=685   "Worth keeping an eye on"
+       y=665  .bento       w=685   Guests 24 / Budget $24,000
+
+   That leaves 445px of dead canvas down the right at 1440 and 553px at 1920 —
+   the "command is just a version of the mobile in column 2" the host named in
+   Chrome. The 685px is not a mystery and not a bug in itself: :282 caps
+   `.escreen ~ *` at 68ch so the reference lane keeps a readable measure on a
+   phone-shaped canvas. :4235 already cleared that block's margin-left once a
+   rail was up, but left the CAP — so the content kept a phone's width at a desk.
+
+   UX_04 asks for zones: a command header carrying 3-4 stat cards, a priority
+   lane, then the work. UX_03 adds the hard number this surface was failing —
+   "stat cards must never stretch wider than 300px". Ours measured 685.
+
+   PLACEMENT IS EXPLICIT BECAUSE THE CHILD LIST IS KNOWN, not assumed. `.hero`
+   closes at HostShellV2.jsx:8172 and has exactly six possible children:
+   .escreen, .efold (display:none here since :287), .then-fold, .ef-watch,
+   .bento, and the conditional .tile-d. Every one is placed by name below, so
+   nothing auto-places into a track it was never meant for — which is the way a
+   grid written against a guessed child list fails.
+
+   .then-fold (askMode) and .tile-d (calm / day-of) are near-mutually-exclusive,
+   so row 2 is rarely more than half-used; it collapses to its content either
+   way rather than reserving space. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
+  display:grid;
+  /* The stat track grew by exactly what the bounding inset takes (:border-left
+     + 20px), so the CONTENT width is unchanged at ~288 and the plan-part chips
+     keep their two rows. Adding the edge without this squeezed them to three —
+     bounding a region must not cost the region its contents. */
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(253px,309px);
+  /* TWO rows, declared. `.efold` never renders on this canvas, so the third row
+     was a PHANTOM — an empty auto track, and a spanning item distributes its
+     size into exactly those. Measured: `grid-template-rows: 324px 93.66px 142px`
+     with 94px of height in a row holding a display:none element, which is where
+     the gap between the ask and the work was coming from after the stat column
+     started spanning. Declaring the rows means an unplaced child can never
+     invent one again. */
+  grid-template-rows:auto auto;
+  align-content:start;
+  column-gap:var(--sp-5);
+}
+/* Zone 1 + 2 — the eyebrow (title), the ask, and the progress foot keep one
+   stage, spanning the two work columns with the stat cards beside them. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
+  grid-column:1 / span 2; grid-row:1;
+}
+/* Zone 3 — the work, side by side in the width that just freed up. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .then-fold{ grid-column:1; grid-row:2; }
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .ef-watch{ grid-column:2; grid-row:2; }
+/* Stat cards — UX_04 Zone 1 puts them to the RIGHT of the title on desktop.
+   The track ceiling is 288px, under UX_03's 300px rule, and they stack down
+   their own column instead of stretching. */
+/* SPANS EVERY ROW, not just the first (2026-08-07). It sat in row 1 beside the
+   ask, and a grid row is as tall as its tallest item — the stat column is 475px
+   with the plan-part chips in it, the ask is 324px, so THE WORK BAND WAS WAITING
+   FOR THE STAT COLUMN. That is where the ~150px void under the ask came from,
+   and adding a row-gap on top of it made it worse before this was found.
+   Spanning it is also what the leaders do with a properties rail: it runs
+   alongside the whole content column rather than occupying one band of it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
+  /* `1 / span 3`, NOT `1 / -1`. `-1` counts back from the last line of the
+     EXPLICIT grid, and `.hero` declares no `grid-template-rows` — so its
+     explicit row grid has one line, `-1` resolved to line 1, and the span
+     silently collapsed to a single row. Computed proof before the fix:
+     `grid-template-rows: 457.312px 0px 142px` with row 1 exactly the bento's
+     own height, i.e. the stat column was still sizing the row the ask lives in.
+     The declaration was in the file and read correctly; it did nothing. */
+  grid-column:3; grid-row:1 / span 2;
+  display:flex; flex-direction:column; gap:var(--sp-2);
+  align-self:start; margin-top:0;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .tile-d{
+  grid-column:3; grid-row:2; align-self:start;
+}
+/* (The grid cell this element used to need is gone with it — it does not
+   render on a desktop canvas at all. See the ruling below.) */
+/* ── THE FOLD HANDLE, AND THE TWO GATES THAT DISAGREE (2026-08-07) ──────────
+   :287 already hides this handle on a wide canvas, for the right reason — it
+   is a phone affordance that says "there is more below the bottom edge", and
+   on a real canvas the next section is already in plain sight. But :287 lives
+   inside `@media (min-width:1280px) and (min-height:700px)`, and `data-rail`
+   comes from showsRail(), which is WIDTH-ONLY — and wider than it looks:
+   `isWideBp` is `bp === 'desktop' || bp === 'tablet-land'` (viewport.js:42), and
+   tablet-land starts at 1024 (viewport.js:26). So data-rail is "1" from 1024,
+   NOT from 1280. The board caught this: the three-column grid above was keyed on
+   [data-rail="1"] alone and therefore ran a 1fr/1fr/288px composition inside the
+   ~700px content area left at 1024, wrapping "5 confirmed guests still need
+   seats" onto four lines. It now carries [data-bp="desktop"] as well — >=1280,
+   with no height condition — and tablet-land keeps the single-column lane.
+
+   So on any canvas at least 1280 wide and UNDER 700 tall the two gates
+   disagree: the rail is up, this grid is on, and the handle is still visible.
+   That is not hypothetical — it is the host's own machine. Chrome on a 1280x800
+   display has an inner viewport of 1280x654, measured live, and there the
+   unhidden handle AUTO-PLACED into column 3 as a 288x259 block sitting under
+   the stat cards, because an unplaced child of a grid goes wherever the
+   auto-flow puts it. That is also why an earlier sweep recorded "a second fold
+   handle survives" and could not find it: it was driven at 1440x900, where the
+   height condition passes and the handle is correctly hidden.
+
+   Hiding it here keys the rule to the SAME signal the composition keys to, so
+   the handle cannot come back the moment a viewport is short. The wider
+   mismatch between showsRail()'s width-only test and the stylesheet's
+   width+height media queries is recorded for the board — it is not fixed here,
+   because changing showsRail() would take the rail off this very machine. */
+/* ── NO FOLD HANDLE ON A CANVAS WITH NO FOLD (host ruling 2026-08-07) ───────
+   "progress yes, fold no."
+
+   The handle means "there is more below the bottom edge". That sentence needs a
+   bottom edge, and a desktop canvas does not have one in the sense the phone
+   does: `.escreen` is content-sized here (min-height:0), so the handle was
+   marking the foot of a 324px block a third of the way down a 900px canvas and
+   announcing content that was already fully on screen.
+
+   An earlier attempt gated it on `.app.has-more` — real scroll overflow — which
+   sounded principled and was wrong twice over. It fired on pages that FIT,
+   because `.app::after` is a 104px invisible scroll-clearance spacer for
+   frame-pinned overlays and the threshold sat below it; and even when overflow
+   was genuine the handle still sat mid-canvas, pointing down the page from the
+   middle of it. Measured: 189px overflow of which 104 was the spacer.
+
+   Gone at desktop and wider. The fold model belongs to the phone, where
+   `.escreen.on` really is a viewport-height column and the handle really does
+   sit at the bottom edge. */
+.stagewrap--responsive-command[data-bp="desktop"] .hero.elegant > .efold{
+  display:none;
+}
+
+/* ── AND THE SAME DISAGREEMENT, ONE LAYER DOWN ──────────────────────────────
+   :4201 writes the rail-mode composition for the first screen — one column,
+   `grid-template-areas: eyebrow / head / main / prog`, progress returned to the
+   foot. Those are grid properties, and they are INERT unless something makes
+   `.escreen.on` a grid. The `display:grid` that does it lives back in the
+   @media at :162 — height-gated again.
+
+   Measured on the host's 1280x654 Chrome before this rule: `.escreen.on`
+   computes `display:flex`, every grid-template above is dead, and `.eprog`
+   renders at x=621 w=330 — a 330px progress block floated to the right of a
+   710px column instead of a full-width hairline at the foot. That is exactly
+   the "progress stranded far-right with nothing near it" the last handoff
+   recorded and could not place; it was never a placement bug, it was this
+   declaration never arriving.
+
+   One line, keyed to the rail rather than to a height, and :4201's rules mean
+   what they say wherever the rail is up. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on{
+  display:grid;
+}
+/* The 68ch cap was a phone measure standing in for a column. Each block now has
+   a real track that bounds it, so keeping the cap would only re-narrow it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen ~ *{
+  max-width:none;
+}
+
+/* ── THE REFERENCE ROWS, FOUND (2026-08-07) ─────────────────────────────────
+   ":201 recorded this same defect once already" and four selectors written for
+   it matched NOTHING and were deleted. They matched nothing because every one
+   of them was scoped to `.hero`, and THESE ROWS ARE NOT IN `.hero`. Measured
+   ancestor chain at 1440:
+
+       button.frow  x=267 w=1126  max-width:none
+         div.slidepanel-inner   w=1130
+           div.slidepanel
+             section              <- sibling of .hero, not a descendant
+
+   So the rows sit in the "what's counted" slide-down panel and inherit the full
+   canvas: `Set the start time` with its `›` roughly 1100px away from its label,
+   which is the stretched-phone tell :269 already names. The panel is reference
+   prose plus rows — it wants a measure, not a column — so it takes the same
+   68ch the below-fold lane used to carry. */
+.stagewrap--responsive-command[data-rail="1"] .slidepanel-inner{
+  max-width:68ch;
+}
+
+/* The reply is a CHIP, not a bar. On the phone it sits at the end of a flex row
+   and sizes to its text; in the table it was taking every remaining pixel and
+   rendering "Yes" inside a ~320px pill, which reads as a progress bar rather
+   than a tag. Give it its own track width so it stays a chip and the column of
+   replies lines up down the list. */
+.stagewrap--responsive-data[data-rail="1"] .grow > button + button{
+  /* CONTENT-SIZED, NOT A FIXED TRACK — and that is a deliberate retreat.
+     The chain, all measured:
+       - untouched it rendered 320px wide, "No reply" in a pill that reads as a
+         progress bar;
+       - `flex:0 0 96px` reported in the computed box AND was ignored, because a
+         flex item defaults to min-width:auto and this button's MIN-CONTENT is
+         the inline RSVP picker (Yes / No / Maybe / no reply) at ~320px;
+       - adding min-width:0 finally produced 96px and a perfectly aligned reply
+         column — with the LABEL CLIPPED OFF. Driven and seen: six chips with no
+         readable text.
+     A column that lines up but cannot be read is not density, it is damage. So
+     the chip sizes to its own content: ~74px for "No reply", less for "Yes".
+     The reply column is therefore ragged by ~30px where the header columns are
+     exact, which is why the header deliberately does not label it.
+     THE REAL FIX is to move the picker out of the trigger button so the
+     trigger's min-content is just its label — that is a row restructure, and it
+     is a CHOICE about the RSVP control, not a layout tweak. Board call. */
+
+  /* ── THE BOARD CALL LANDED, AND THE PAYMENT IS COLLECTED (2026-08-07) ─────
+     The picker moved into the guest's accordion, so this button's min-content
+     is now just its label. Both blockers named above are therefore gone:
+       - min-width:auto no longer resolves to a ~320px inline picker;
+       - so `flex:0 0 var(--gt-reply)` no longer clips the label to reach 96px.
+     --gt-reply was declared at :4157 and referenced NOWHERE — a track that was
+     designed, named, and never wired, because the retreat above landed first.
+     margin-left:auto pins the column right; the inner tag sizes to its text so
+     "Yes" is a chip and not a bar. */
+  flex:0 0 var(--gt-reply); min-width:0; margin-left:auto; text-align:right;
+}
+.stagewrap--responsive-data[data-rail="1"] .grow > button + button > .tag{
+  width:max-content; max-width:100%; margin-left:auto;
+}
+
+/* ── THE REPLY DISCLOSURE: A 44px THUMB ON A 23px BOX, AND A CARET ──────────
+   Board sitting 2026-08-07, and this one is EVERY viewport, not the data tier.
+
+   Norman's seat measured it at 17px tall on a 390px phone — and it is the only
+   advertised way into a guest's reply. min-height is the wrong instrument: it
+   would reflow the row, and this list's entire point tonight was that rows stop
+   moving. So the same trade the eyebrow makes at :558 — THE HIT AREA GROWS AND
+   THE BOX DOES NOT. The rule is about what a finger can hit, not how tall the
+   ink is.
+
+   The caret is the other half of the same finding, and it settles a doctrine
+   argument rather than decorating. UX_05:66 says a status chip never clicks;
+   this is a DISCLOSURE that displays status, which is a different object. Two
+   panels accepted that reading in the code and rejected it on the glass, for
+   the same reason: nothing on screen distinguished it from the inert chips the
+   rule describes, so the distinction lived only in the source. A caret is what
+   makes it true where the host actually is. It rotates on state, so it reports
+   rather than decorates — and it is a disclosure mark, not a navigation glyph,
+   which is why it does not fall under the "arrow only when it navigates" rule.
+
+   Fits the 96px track: tag 72 max + 8 gap + ~7 caret = 87.
+   (gap:8, not 6 — the spacing ratchet in spacingLadder.test.js caught 6px as
+   off-ladder and failed the build. Second time tonight it has caught me; it
+   is doing exactly the job it was written for.) */
+.grow > button[aria-expanded]{
+  position:relative; display:inline-flex; align-items:center;
+  justify-content:flex-end; gap:8px;
+}
+.grow > button[aria-expanded]::before{
+  content:''; position:absolute; left:0; right:0; top:50%;
+  transform:translateY(-50%); height:44px;
+}
+.grow > button[aria-expanded]::after{
+  content:'▾'; flex:0 0 auto; font-size:10px; line-height:1; color:var(--faint);
+  transition:transform var(--ms-press) var(--ease-out), color var(--ms-press) var(--ease-out);
+}
+.grow > button[aria-expanded="true"]::after{
+  transform:rotate(180deg); color:var(--steel-soft);
+}
+.grow > button[aria-expanded]:hover::after{ color:var(--steel-soft); }
+
+/* ── THE PANEL BELONGS TO THE GUEST ABOVE IT ────────────────────────────────
+   Board 2026-08-07, reported by two panels off the same pixels: on the phone
+   the picker began at x=22 — THE SAME LEFT EDGE AS THE ROSTER ROWS — and
+   .brow's own `border-top` ruled a line between the open guest and that
+   guest's own editor. So it read as the next section of the sheet rather than
+   as this guest's panel. That is the same cause-and-effect severance the whole
+   change set out to end, reintroduced one level down: the picker stopped
+   replacing its trigger and then stopped looking related to it.
+
+   Three cheap moves, no new colour:
+     - kill the divider. The row above is not a sibling, it is the parent.
+     - indent to where the NAME starts, so the panel hangs off the name rather
+       than off the avatar. Geometry is 28px avatar + two --sp-2 gutters = 44;
+       40 is the ladder step (spacingLadder.test.js), and 4px is not worth an
+       off-ladder literal.
+     - a steel left rule down the full height, which is what actually carries
+       "this belongs to that" — the tint alone would only say "different".  */
+/* ── THE ROSTER TOOLBAR (Mobbin tier read, 2026-08-07) ──────────────────────
+   6/6 web and 5/5 iOS leaders carry one; we carried none. Measured leader
+   strip height is 40–48px, so 44 with the search field at the phone's full
+   width and the lens chips wrapping beneath it.
+   The chips are 32px, NOT the 44 the reply picker uses. That is deliberate and
+   it is the read's finding: 44 is right for a chip that COMMITS a fact, and
+   oversized for one that only changes what you are looking at. Two sizes, two
+   meanings — and the filter rail is a scroll lane, so the finger has a whole
+   row to land in even at 32.
+   Search never collapses. It is the last control to go at any width, which is
+   what Apollo and Deel do when they drop their filter labels to an icon. */
+.rtoolbar{
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  margin:0 0 var(--sp-3);
+}
+.rtool-q{
+  flex:1 1 220px; min-width:0; min-height:40px;
+  font-size:var(--t-input); padding:var(--field-compact);
+}
+.rtool-lens{
+  display:flex; align-items:center; gap:8px; flex:1 1 100%;
+  overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch;
+}
+.rtool-lens::-webkit-scrollbar{ display:none }
+.rtool-lens > .chip{
+  flex:0 0 auto; min-height:32px; padding:4px 12px;
+  font-size:var(--t-pill); white-space:nowrap;
+}
+/* At width the whole strip is one line — the chips no longer need their own
+   row once there is room beside the field. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .rtool-lens{
+  flex:0 1 auto; overflow-x:visible;
+}
+
+.gdetail{
+  border-top:none;
+  margin-left:40px;
+  padding-left:var(--sp-3);
+  border-left:2px solid var(--steel);
+  background:var(--steel-tint);
+  border-radius:0 var(--r-md) var(--r-md) 0;
+}
+/* ── [data-bp="desktop"] IS LWA REQUIRED, AND I LEARNED IT TWICE TODAY ───────
+   Gated on [data-rail="1"] alone this ran from 1024, because showsRail() is
+   width-only from there — the exact misreading UX_03:23 documents, from the P0
+   I shipped earlier the same day. Measured at 1024x768 and 1194x834 it gave
+   `280px 340px`: THE DETAIL PANEL WIDER THAN THE ROSTER IT BELONGS TO, on a
+   sheet that only offers 640px total. A table crushed to 280px is worse than
+   the accordion it replaced.
+   Below 1280 the accordion stays, and that is the right answer rather than a
+   concession: at 1024 with a 200px rail there is no room for list AND detail,
+   which is why the phone pattern is still the correct one there. */
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster{
+  display:grid; width:100%; grid-template-columns:minmax(0,1fr) 340px;
+  column-gap:var(--sp-5); align-items:start;
+}
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rrow,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rgroup{ display:contents; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .ghead,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .rgroup-l,
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .grow{ grid-column:1; }
+.stagewrap--responsive-data[data-rail="1"][data-bp="desktop"] .roster .gdetail{
+  grid-column:2; grid-row:1 / span 9999; align-self:start;
+  position:sticky; top:0; margin-left:0; padding:var(--sp-3);
+  border-left:1px solid var(--line); border-radius:var(--r-md);
+}
+
+
+/* ── THE COLUMN HEADER ──────────────────────────────────────────────────────
+   Hidden by default: below the rail band the row is a chip run, not a table,
+   and a header there would label columns that do not exist.
+
+   The tracks are derived from the SAME variables the row uses, each widened by
+   the gap that follows it in the row's flex/grid chain, because the row's gaps
+   are uneven (sp-2 after the avatar, sp-5 after the name, sp-4 between metadata
+   cells). Expressing them as calc() keeps one source of truth; a single `gap`
+   could not reproduce an uneven chain. Verified by measuring header cell x
+   against row cell x, not by reading the arithmetic. */
+.ghead{ display:none; }
+.stagewrap--responsive-data[data-rail="1"] .ghead{
+  display:grid;
+  grid-template-columns:
+    calc(28px + var(--sp-2))
+    calc(var(--gt-name) + var(--sp-5))
+    calc(var(--gt-kids) + var(--sp-4))
+    calc(var(--gt-meal) + var(--sp-4))
+    minmax(0, 1fr);
+  align-items:end; gap:0;
+  padding:0 0 6px 8px;
+  border-bottom:1px solid var(--line-soft);
+  margin:var(--sp-3) 0 2px;
+  font-size:10.5px; font-weight:600; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--faint);
+}
+/* NO "REPLY" HEADER, deliberately. The reply chip is the row's last flex child
+   and its x is set by how the button flexes, not by this track chain — measured
+   266px off when I tried to label it. A header cell that does not sit over its
+   column is worse than an unlabelled column, so the label is omitted until the
+   row is a real grid. The chip is self-labelling anyway: it reads "Yes" /
+   "No reply". */
+.stagewrap--responsive-data[data-rail="1"] .ghead .gh-reply{ display:none; }
+
+/* ── A FULL-WIDTH CTA IS A PHONE AFFORDANCE ─────────────────────────────────
+   Host, in Chrome at 1280: "command is just a version of the mobile in
+   column 2." Measured on that render — the primary CTA spanning ~1220px, and
+   action rows whose arrow sits ~1200px from the label they belong to. The
+   codebase has already named that second one once: "one-line rows ran the full
+   1280 with their chevron a thousand pixels from the label" (:201). It came
+   back the moment the surface got real width and nothing capped the row.
+
+   A button stretches to the screen on a phone because the thumb needs the
+   target and there is no other column. Neither is true here. No leader in the
+   viewport ruling full-widths a primary action at desktop; the action takes its
+   own measure and the space around it is what makes it read as primary.
+
+   This is measure discipline, NOT the redesign. The zone structure UX_04 asks
+   for at desktop — command header with stat cards, then the priority lane, then
+   the work — is a real composition change and it is a board call, recorded
+   rather than smuggled in as a stylesheet tweak. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ecenter .cta{
+  max-width:min(42ch, 420px);
+}
+/* THE ROW MEASURE IS NOT FIXED HERE. I wrote four selectors for the reference
+   rows and drove it: the arrows were still ~1200px from their labels, so all
+   four matched nothing. Rather than leave dead CSS — the trap this stylesheet
+   has now recorded five times in one day — they are removed. The rows live
+   somewhere other than where I guessed, and finding them is the next pass, not
+   a guess dressed as a fix. */
+
+/* ═══ THE HEIGHT CONDITION COMES OFF THE COMPOSITION (board, 2026-08-07) ═════
+   Both design panels adopted Amendment 3 unanimously — the only 4-0 in the
+   sitting — and named the mechanism: strip the height condition from
+   COMPOSITION and MEASURE rules, and keep it only on the one rule that is
+   genuinely about vertical room (`.app{height:min(...)}` at :193).
+
+   The rules below are re-declared at `min-width:1280px` with NO height
+   condition. Each already exists inside the @media at :125 / :162; each was
+   dead on any desktop shorter than 700px, which is a stock laptop in Chrome. */
+@media (min-width:1280px){
+  /* THE HOST'S MACHINE HAD NO CANVAS. :162 gives the responsive surfaces real
+     width and an inset; :141 gives .app the 48px radius and the carbon frame.
+     Both are height-gated, so at 1280x654 the surface rendered edge-to-edge and
+     square-cornered — a full-bleed slab, not a board on a field. Measured
+     against 1440x900, where it is an inset rounded panel: the host and the
+     review board have not been looking at the same product. Scoped to the two
+     responsive surfaces rather than all of .app, so no legacy phone-silhouette
+     sheet changes shape at a short height. */
+  .stagewrap--responsive-command,
+  .stagewrap--responsive-food,
+  .stagewrap--responsive-lodging{
+    transform:none; transform-origin:initial;
+    width:min(100% - 48px, 1280px); max-width:1280px;
+    height:auto; margin:var(--sp-5) auto 40px;
+  }
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app,
+  .stagewrap--responsive-lodging .app{
+    border-radius:48px;
+    box-shadow:0 0 0 11px var(--carbon-panel), 0 0 0 13px var(--carbon-line),
+               0 42px 90px -28px rgba(0,0,0,.5);
+  }
+  /* THE MEASURE CAP .cta GOT AND .hero-card DID NOT. :272 caps all three at
+     62ch, height-gated. `.cta` was later given a rail-scoped, height-independent
+     cap at :4449; `.hero-card` was left behind. Measured: the recommendation
+     card runs 709px at 1280x654 against 624px at 1440x900, which puts the
+     `our pick` chip ~400px from the label it modifies — the same
+     "glyph detached from its label" defect :201 and :4432 each already name. */
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hero-card,
+  .stagewrap--responsive-command .hero.elegant .escreen.on > .ecenter .hc-row{
+    max-width:62ch;
+  }
+}
+
+/* THE PROGRESS LABELS WERE STACKED FOR A RAIL THAT NO LONGER EXISTS.
+   :251 sets `flex-direction:column` on the label pair, and its own comment says
+   why: the hero's INTERNAL 260px rail made the line cramped, so it spent height
+   instead of width. :4201 retired that internal rail. The rule survived it and
+   still fires wherever height >= 700, so at 1440 and 1728 the fraction and the
+   judgement stack left-aligned and read as two unrelated facts — while the
+   host's 654px viewport renders the correct justified version BY ACCIDENT, only
+   because the media query fails there.
+   Restored to the base :908 behaviour wherever a rail is up, keeping :254's
+   wrap-instead-of-clip so a long name still cannot be truncated. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog .eprog-labels{
+  flex-direction:row; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-3);
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .eprog .eprog-labels > span:last-child{
+  flex:none; text-align:right;
+}
+
+/* ── THE VOID WAS A RESERVED PHONE (board wave 2, 2026-08-07) ────────────────
+   Every seat on this board spent the sitting arguing about a "void budget" as
+   though someone had chosen the emptiness. Nobody chose it. :931 is
+
+       .hero{ min-height:calc(852px - 64px - 88px) }      -- resolves to 700px
+
+   (written without the inner comment markers on purpose: CSS has no nested
+   comments, and a `slash-star ... star-slash` inside this block would close it
+   early and feed the rest of the prose to the parser as declarations. That is
+   this session's own trap in its purest form — the @media below was silently
+   swallowed the first time and only the COMPUTED box showed it, minH=700px on
+   an element whose selector said auto.)
+
+   852 is an iPhone. That is a phone viewport minus its chrome, hard-reserved
+   inside .hero at EVERY width, and released in exactly one place — :942's
+   `@media (max-height:699px)`, whose own comment already calls it "a phantom
+   700px". Measured live at 1440 and 1728: the last real hero child ends at
+   y=473 and the hero box runs to y=737. 264px of dead air, and it is a phone.
+
+   That is also why the host's 1280x654 laptop looked DIFFERENT rather than
+   better: at 654 the max-height release fires, so the reservation vanishes and
+   the content simply runs to the bottom edge instead — two different wrong
+   answers from one rule.
+
+   Released here for the responsive command canvas only, where the grid above
+   sets height from content. Phones, tablets and every legacy phone-silhouette
+   surface keep the reservation, which is correct: on a real phone the number is
+   not phantom, it is the frame. */
+@media (min-width:1280px){
+  .stagewrap--responsive-command .hero{ min-height:auto; }
+}
+
+/* ── PHONE DISCLOSURE AT A DESK (board anti-pattern 8, 2026-08-07) ───────────
+   :746 gives `.ef-why` `white-space:nowrap; overflow:hidden; text-overflow:
+   ellipsis`, and :758 already recognises the phone case explicitly — below
+   430px a reason that would squeeze the title is DROPPED rather than truncated
+   to noise. Both are right on a phone.
+
+   Neither was given a desktop clause, so on a real canvas the board read
+   "0 of 5 confirmed gue…" — a sentence cut mid-word — sitting beside several
+   hundred pixels of empty column. Their ruling: truncation and folding are
+   density tools, and using them next to empty canvas is a phone habit, not
+   restraint. At desktop, disclosures whose content fits open by default.
+
+   The row moves to top alignment for the same reason `.watch-row` already does
+   at :3877 — once a cell can wrap, centring it against a taller sibling is what
+   makes wrapped text look like a mistake. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row{
+  align-items:flex-start;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .ef-row .ef-why{
+  white-space:normal; overflow:visible; text-overflow:clip;
+}
+
+/* ══ THE RICHEST BLOCK ON THE SURFACE WAS `display:none !important` ══════════
+   Board ruling 2026-08-07, named their single highest-leverage change.
+
+   `:902` suppresses `.tile-a` in elegant mode. What it suppresses is not a
+   decoration: the lifecycle line ("Active planning · 3 of 6 handled — ..."),
+   the "what's counted" disclosure, and the SIX NAMED PLAN-PART CHIPS — Date,
+   Venue, Guests, Food, Budget, The moment — each with a handled/open dot and
+   each a working route (HostShellV2.jsx ~:8060).
+
+   So the stat column that everyone kept calling a void budget problem was
+   288x370 of nothing sitting directly beneath a hidden block built to fill it.
+   Tufte's objection lands in the same place from the other side: the progress
+   rule is six unlabeled segments, and these ARE the labels. The chart was
+   built and the axis hidden.
+
+   It also makes the column legal under the clause adopted this morning —
+   UX_04 Zone 1 allows a vertical stat column only when it carries at least
+   three blocks, one of them a list or a named set. This is the named set, so
+   the column stops needing a fourth re-zone to justify itself.
+
+   Scoped to the rail composition ONLY. `:648` and `:902` stand for the phone,
+   where the bento is a 2x2 grid and this tile really is a card. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a{
+  display:flex !important;
+  flex-direction:column; align-items:stretch; gap:6px;
+  /* The elegant bento is a column of hairline rows, not cards — :1004's card
+     background/border/grid-area belong to the phone bento and would put a
+     boxed card on top of two bare rows. */
+  grid-area:auto; background:none; border:none; box-shadow:none; border-radius:0;
+  padding:0 0 14px; text-align:left; min-height:0;
+}
+/* :1005 sets a 48px jumbo numeral for the phone countdown tile. Beside two
+   18px hairline figures that reads as a different component. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num{
+  font-size:18px; font-weight:700; line-height:1.05;
+}
+/* ONE HEADER, NOT TWO. `.bento-head` was added (89063812) because tile-a was
+   hidden and the section had no DOM heading at all. tile-a carries its own
+   "Where you stand" label — and that label also holds the "what's counted"
+   caret, so it is the one that must survive. Rendering both is anti-pattern 5,
+   the double header. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento-head{
+  display:none;
+}
+
+/* ══ THE ORDER, NOT THE COLUMNS (host ruling 2026-08-07) ═════════════════════
+   "columns are fine but order of elements with wider screens needs to be
+   reorganized."
+
+   Measured on the host's canvas before this rule:
+
+       eyebrow    y=37    317 DAYS · BIRTHDAY · JUN 20–24
+       ask        y=55    "Sort where everyone stays."     <- the one loud thing
+       CTA        y=246
+       progress   y=330   3 of 6 plan parts handled        <- 34% down
+       work       y=430   THEN, IN ORDER | WORTH KEEPING AN EYE ON
+
+   The progress rule is a Zone 1 sentence — "what is the shape of my world" —
+   and it was sitting in the middle of the page because it is pinned to the foot
+   of `.escreen`, which is a phone's first screen and is content-sized here. So
+   the reading order was: urgent thing, then a summary, then everything. UX_04's
+   triage order is the other way round and is explicit that it is
+   non-negotiable: shape -> urgent -> everything.
+
+   `.escreen.on` is already a named-area grid in rail mode (:4212). Reordering
+   is a row swap, not a fourth re-zone of the composition: prog moves to row 2,
+   directly under the eyebrow, and joins the command header. The ask keeps every
+   pixel of its dominance — it is still the only display type on the canvas —
+   it simply stops being the first thing the eye meets before it knows where it
+   stands. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on{
+  grid-template-rows:auto auto auto 1fr;
+  grid-template-areas:
+    "eyebrow"
+    "prog"
+    "head"
+    "main";
+}
+/* It was `align-self:end; margin-top:28px` — a foot-pin. In the header it sits
+   directly under the eyebrow and needs neither. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on > .eprog{
+  align-self:start; margin-top:12px; margin-bottom:var(--sp-4);
+}
+
+/* ONE FRACTION, NOT TWO. Un-hiding `.tile-a` brought its own big "3 of 6" and
+   "parts of your plan handled" into the column — while the progress rule, now
+   moved into the same command header, says "3 of 6 plan parts handled" a few
+   hundred pixels to its left. Both visible at once, which is precisely what the
+   Zone 1 clause adopted this morning forbids: a Zone 1 figure may not restate a
+   fact already stated elsewhere in the visible viewport.
+   The rule keeps the number (it owns the six segments that ARE the fraction);
+   the tile keeps what only it has — the lifecycle sentence and the six NAMED,
+   routed, dot-marked parts, which is the reason it was worth un-hiding. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-num,
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a .t-sub{
+  display:none;
+}
+
+/* THE HEADING GOES FIRST. In the tile's DOM the lifecycle sentence ("Active
+   planning · 3 of 6 handled — ...") precedes `.t-label`, which is the section
+   heading "Where you stand". On the phone that tile is a card and the order
+   reads fine; in this column the heading arrived SECOND, under a paragraph it
+   is supposed to introduce. `.tile-a` is a flex column here, so one `order`
+   puts the heading back on top without touching the markup. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .bento .tile-a > .t-label{
+  order:-1;
+}
+
+/* ══ THE ASK AND ITS BUTTON WERE NOT IN BALANCE (host, 2026-08-07) ═══════════
+   Measured in a 930px column:
+
+       .ask   w=484   max-width:18ch        40px type
+       .cta   w=420   max-width:42ch/420px  17px type
+
+   The button was 87% as wide as the headline while carrying 40% of its type
+   size — so it competed with the one loud thing on width and lost on weight,
+   and the pair read as two bars rather than a statement and its answer.
+
+   It is 420 because `.ecenter` is a flex column and a flex child stretches by
+   default, so the button grows to whatever cap it is given. `b60095c4` already
+   took this from 1220px to ~500 on the grounds that a full-width primary button
+   is a phone affordance; the remaining 420 is the same affordance, smaller.
+   UX_05 specifies a primary button by PADDING (8-12px vertical, 16-24px
+   horizontal) and gives it no width at all — a button is sized by its label.
+
+   `align-self:start` stops the stretch; the min-width keeps a short label
+   ("Save", "Open it") from collapsing to a tap-hostile stub. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant .escreen.on > .ecenter .cta{
+  align-self:start;
+  /* `align-self` alone was not enough and the computed box said so: the button
+     is a flex ITEM inside `.actions-row`, so it kept growing to its 420px cap
+     regardless. `flex:0 0 auto` is the declaration that actually stops it —
+     width:auto loses to flex-grow every time. Found by reading the computed
+     width (420px) after the rule had already matched. */
+  flex:0 0 auto;
+  width:auto; max-width:none;
+  min-width:min(240px, 100%);
+  padding-left:var(--sp-5); padding-right:var(--sp-5);
+}
+
+/* ══ THE ACTION AREA WAS TAKING OVER THE SCREEN (host, 2026-08-07) ═══════════
+   Measured against a 1150k-px canvas:
+
+       .escreen   457px tall   37% of the canvas
+       .then-fold 120px         5%
+       .ef-watch  118px         5%
+
+   The ask block owned seven times the area of the work it is meant to sit
+   above. But its CONTENT is only ~240px — eyebrow, progress rule, the ask, the
+   guide line, the button. The other ~215px is borrowed, and the mechanism is
+   this grid: `.escreen` and `.bento` are both in ROW 1, a grid row is as tall as
+   its tallest item, and the stat column became 457px the moment `.tile-a` was
+   un-hidden into it. So the escreen stretched to match, and `.ecenter`
+   (justify-content:center) dutifully centred the ask inside the borrowed space,
+   which is where the air came from.
+
+   Un-hiding the chips was right; inflating the ask to match them was a
+   side-effect nobody chose. `align-self:start` opts the first screen out of the
+   row stretch so it takes its own content height, and the work moves up under
+   it. The stat column keeps its full height — it has content for it. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
+  align-self:start;
+}
+
+/* ══ THE HERO SAT IN A BOX TWICE ITS OWN WIDTH (host, 2026-08-07) ════════════
+   "hero on wider command is next to white space that doesn't quite work with
+   the whole screen."
+
+   `.escreen` spans the two work columns — 930px — while everything inside it is
+   bounded by its own measure: the ask caps at 18ch (484px), the guide line at
+   52ch, the button now sizes to its label (261px). So the first screen was a
+   930px container holding a 484px column, and the leftover 446px read as a hole
+   beside the hero rather than as canvas.
+
+   The same 930 was stretching the progress pair to opposite ends of the row —
+   "3 of 6 plan parts handled" and "the rest can wait till Jun 13" ~770px apart,
+   which is the detached-label defect :201 and :4432 already name, arriving in a
+   third place.
+
+   Capping the first screen to its own measure fixes both at once: the hero
+   becomes a correctly-proportioned block, and the space to its right stops
+   being a hole INSIDE the composition and becomes canvas beside it — which is
+   what the stat column is already occupying the far side of.
+
+   The work below keeps the full two-column span: a narrower lede over a wider
+   body is a composition; a headline rattling around a container is not. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .escreen{
+  max-width:64ch;
+}
+
+/* The watch row gains the Then row's right-hand cells, so give it the Then
+   row's layout for them: the reason takes the slack and right-aligns, the glyph
+   holds its size. Same declarations as :744/:761 — deliberately, because
+   identical render is the proof that the two lanes are one object now. */
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .watch-row .ef-why{
+  flex:1 1 auto; min-width:0; text-align:right; white-space:normal;
+  font-size:12.5px; font-weight:500; color:var(--steel-soft); letter-spacing:.01em;
+}
+.stagewrap--responsive-command[data-rail="1"] .hero.elegant .watch-row .ef-g{
+  flex:0 0 auto; color:var(--faint); font-weight:800;
+}
+
+/* ══ THE BLOCKER CARD OUTWEIGHED THE THING IT IS BLOCKING (host, 2026-08-07) ══
+   "not set yet venue should not be taking over that much of screen." Measured:
+
+       venue blocker card   1238px wide · 179px tall · 19% of the canvas
+       its text input       1117px wide
+       the hero above it      799px
+
+   So a below-fold blocker was HALF AGAIN WIDER than the priority lane, and a
+   one-line "Name or address" field ran 1117px — wider than the entire hero
+   block. UX_04's hierarchy rule is that the dominant element is Zone 2; a Zone 3
+   card that outweighs it inverts the whole board, and a text input sized to the
+   canvas rather than to its content is the same stretched-phone tell this
+   sprint keeps closing, arriving in the one place nobody had measured.
+
+   These cards are siblings of `.hero` in `section`, so the hero grid never
+   bounded them. Capped to the SAME 64ch the first screen now uses, so the whole
+   column — hero, work, blockers — reads as one width instead of three. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] section > article.card{
+  max-width:64ch;
+}
+/* The field is `style={{maxWidth:'none', flex:1}}` INLINE, and an inline style
+   beats the stylesheet — the trap this repo has already recorded three times in
+   one row. Overriding it needs the flex basis, not max-width: bounding the
+   growth is what stops a name field becoming a banner. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] section > article.card input.field{
+  flex:1 1 auto; min-width:0; max-width:44ch !important;
+}
+
+/* ══ P0 — THE PANEL WAS TALLER THAN THE SCREEN IT SITS ON ════════════════════
+   Board sitting 2026-08-07 put this above everything else in its ruling, and
+   driving it confirms the mechanism is worse than "the rules are off":
+
+       viewport   654    (1280x800 display, Chrome — the host's own machine)
+       .stagewrap 654    `@media(max-height:699px){ .stagewrap{height:100dvh} }` (:143)
+       .app       804    its height cap at :193 is inside min-height:700px
+       overflow   hidden on .stagewrap
+
+   So the panel is 150px TALLER than the frame that clips it, and the bottom
+   ~171px — "parts of your plan", the Next tile, the whole handled shelf — is
+   not scrolled off. It is CUT OFF and unreachable, because `.app` scrolls
+   INSIDE a box whose lower third is outside the stagewrap.
+
+   And nothing says so: the fold handle that would have hinted at it was removed
+   from desktop by ruling, correctly and for an unrelated reason. Correct rule,
+   wrong machine — which is this session's recurring shape.
+
+   I left :193 height-gated on purpose an hour ago, quoting a panel that said to
+   keep the height condition on the one rule genuinely about vertical room. That
+   was wrong for this case and I should have driven it: a SHORT viewport needs
+   the height bound MORE than a tall one, not less. min() already makes it a
+   no-op where there is room (a 900px laptop still resolves to ~840). */
+@media (min-width:1280px){
+  .stagewrap--responsive-command .app,
+  .stagewrap--responsive-food .app,
+  .stagewrap--responsive-lodging .app{
+    height:min(calc(100vh - var(--sp-5) - 40px), 900px);
+    min-height:0;
+  }
+}
+
+/* ══ GUTTERS CARRY HIERARCHY, OR THEY CARRY NOTHING (board, 2026-08-07) ══════
+   The sitting's sharpest structural finding: ONE value — 20px — was doing three
+   different structural jobs. The rail↔canvas seam, the padding inside the
+   canvas, and the gutter between the three work columns were all `--sp-5`. So
+   the composition had no vocabulary for RELATEDNESS, which is why columns 1 and
+   2 never read as siblings while column 3 reads as a different kind of thing:
+   nothing in the spacing said so.
+
+   Correct ordering for a three-column board whose columns have NO borders —
+   space is the only separator they get:
+
+       seam  <  padding  <  gutter  <  zone row-gap
+
+   The seam is the one boundary that already has another signal doing the work
+   (a plane change, --field -> --bg -> --card at :3980), so it stays smallest at
+   20 and does not grow.
+
+   AND row-gap. It appears THREE times in 4,900 lines, and the desktop command
+   grid declared `column-gap` only — so every vertical relationship between the
+   ask, the work band and the stat column was an accident of child margins.
+   That is the mechanism behind the unexplained ~100px void above "THEN, IN
+   ORDER": nobody set it, two `margin-top` values did. Declared now, so the
+   number is a decision.
+
+   Values are on the ratified 4px ladder. 56 is not invented — it already exists
+   at :226 for this composition. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
+  column-gap:40px;
+  row-gap:48px;
+}
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .content{
+  padding-left:28px; padding-right:28px;
+}
+/* ≥1536 — the WIDESCREEN constant that already exists (viewport.js:31). The
+   board's step, not a new threshold. */
+@media (min-width:1536px){
+  .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant{
+    column-gap:56px;
+    row-gap:64px;
+  }
+  .stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .content{
+    padding-left:36px; padding-right:36px;
+  }
+}
+
+/* ══ BOUND THE COLUMN, OR ITS EMPTINESS READS AS A FAULT (board, 2026-08-07) ══
+   The warmth seat's finding, and it is the cheapest real move on the ruling:
+   compare a leader's list with ten rows against the same list with three — the
+   column headers persist, so three rows reads as a SHORT LIST, not a broken
+   screen. Same with a near-empty card that still has its border: it reads as a
+   slot. Bounded emptiness is capacity. Unbounded emptiness is a defect.
+
+   Our stat column had a name and no edge, so the ~270px under the budget block
+   was carbon that simply stopped — indistinguishable from something that failed
+   to load. One hairline and a little inset, and the same pixels become "nothing
+   selected yet".
+
+   Deliberately a hairline and not a card: `--line-soft` is the same rule the
+   bento's own rows use between figures, so the column reads as one object with
+   the surface rather than a panel dropped onto it. This is also the region the
+   standing ruling at :3582 reserves for on-demand detail — bounding it now is
+   what makes that build a fill rather than a re-zone. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .bento{
+  border-left:1px solid var(--line);
+  padding-left:20px;
+}
+
+/* ══ THE CONTEXT PANE — the third column's SELECTED state ════════════════════
+   :3582's standing ruling is "rail + main + on-demand detail: extra width buys
+   measure and density, NEVER a permanent third pane." The stat column violated
+   it. This is the other half: the same 309px region, two states.
+
+       resting   .bento  — where you stand: the six named plan parts, guests, budget
+       selected  .cpane  — the picked row, gathered
+
+   Same cell, so nothing reflows when it flips and the composition never gains a
+   fourth region. `.bento` steps aside rather than the pane stacking beneath it —
+   two "where you stand" columns at once would be the double-telling this screen
+   keeps killing. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .cpane{
+  grid-column:3; grid-row:1 / span 2;
+  align-self:start;
+  border-left:1px solid var(--line);
+  padding-left:20px;
+  display:flex; flex-direction:column; gap:8px;
+}
+/* The resting state yields the cell to the selected one. */
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant > .cpane ~ .bento,
+.stagewrap--responsive-command[data-rail="1"][data-bp="desktop"] .hero.elegant:has(> .cpane) > .bento{
+  display:none;
+}
+.cpane-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+.cpane-eyebrow{ font-size:12px; font-weight:650; letter-spacing:.4px; color:var(--muted); text-transform:uppercase; }
+.cpane-x{ background:none; border:none; color:var(--faint); font-size:16px; line-height:1;
+  cursor:pointer; padding:4px 8px; margin:-4px -8px 0 0; font-family:inherit; }
+.cpane-x:hover{ color:var(--ink-soft); }
+.cpane-title{ font-size:16px; font-weight:650; color:var(--ink); margin:4px 0 0; line-height:1.3; }
+.cpane-why{ font-size:12.5px; font-weight:500; color:var(--steel-soft); margin:0; line-height:1.45; }
+/* Time pressure keeps the one urgency accent the row already uses, so the same
+   fact does not change colour between the row and its own detail. */
+.cpane-why[data-reason="time"]{ color:var(--warn); }
+.cpane-line{ font-size:12.5px; font-weight:400; color:var(--muted); margin:0; line-height:1.45; }
+.cpane-dest{ color:var(--faint); }
+.cpane-cta{ margin-top:8px; align-self:start; width:auto; flex:0 0 auto; max-width:none;
+  padding-left:16px; padding-right:16px; font-size:14px; min-height:40px; }
+/* The picked row keeps a quiet mark so the pane and its source stay tied. */
+.hero.elegant .ef-row.is-picked .t{ color:var(--ink); }
+.hero.elegant .ef-row.is-picked{ box-shadow:inset 2px 0 0 var(--steel-soft); padding-left:12px; }
+
+
+/* ── THE LODGING COCKPIT ALREADY HAD A DESKTOP COMPOSITION (2026-08-07) ──────
+   Found by real-clicking the command surface's own primary CTA: it routes to
+   `?demo=lodging` and landed on a 393px phone silhouette letterboxed in a
+   1568px window. So the surface this whole sprint has been fixing delivered the
+   host straight into the defect it was fixing.
+
+   And the surface was NOT missing a desktop layout. LodgingCockpit.jsx:2071
+   carries `@container (min-width:900px){ .lc-grid{grid-template-columns:190px
+   minmax(0,1fr)} }` — a rail + main, with `.lc-grid` already
+   `width:min(100%,1180px)`. It is a CONTAINER query, so it measures the
+   container, and the container was a 393px phone stage. The composition existed
+   and could never fire.
+
+   Its Frame renders `.stagewrap > .app.app-elegant` deliberately — "same frame
+   as the app" — so it inherits everything, including the silhouette. Adding the
+   surface class is the whole fix: real width reaches the container, the
+   container query fires, and the surface lays itself out using the composition
+   its own author wrote. Nothing here designs a layout for it — that would be
+   freestyling on a surface no board has judged at this width, and the day-of and
+   vendor canvases are already booked for their own sitting. */

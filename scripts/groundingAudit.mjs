@@ -20,35 +20,75 @@ const countRe = (txt, re) => (txt.match(re) || []).length;
 
 const files = (await readdir(DATA)).filter((f) => f.endsWith('.js')).sort();
 const rows = [];
-const totals = { cited: 0, synthesized: 0, consensus: 0, tradition: 0, priced: 0, sources: 0, lastVerified: 0 };
+const totals = { cited: 0, synthesized: 0, consensus: 0, researched: 0, partial: 0, tradition: 0, priced: 0, sources: 0, lastVerified: 0 };
 
 for (const f of files) {
   const txt = await readFile(path.join(DATA, f), 'utf8');
   const r = {
     file: f.replace(/\.js$/, ''),
+    // ── ALL FIVE STATUSES, FROM THE CANONICAL LIST (2026-08-07) ────────────
+    // `claimBasis.js:69-73` is THE classifier and it declares five:
+    // cited · established-consensus · researched · synthesized · partial.
+    // This counted THREE. `researched` is in live use on 98 items repo-wide
+    // and `partial` on 2 — labelled work that appeared in neither the
+    // numerator nor the denominator, so it was invisible to the grade.
+    // Note the spacing is optional in the wild (`verificationStatus:'researched'`
+    // appears 3 times), so the space is optional in the pattern too.
     cited: countRe(txt, /verificationStatus:\s*'cited'/g),
     synthesized: countRe(txt, /verificationStatus:\s*'synthesized'/g),
     consensus: countRe(txt, /verificationStatus:\s*'established-consensus'/g),
+    researched: countRe(txt, /verificationStatus:\s*'researched'/g),
+    partial: countRe(txt, /verificationStatus:\s*'partial'/g),
     tradition: countRe(txt, /tier:\s*'cultural-tradition'/g),
     priced: countRe(txt, /unitCostRange:\s*\[/g),
     sources: countRe(txt, /sources:\s*\[/g),
     lastVerified: countRe(txt, /lastVerified:/g),
   };
-  const labeled = r.cited + r.synthesized + r.consensus;
+  const labeled = r.cited + r.synthesized + r.consensus + r.researched + r.partial;
   r.grounded = labeled ? Math.round((r.cited / labeled) * 100) : 0;
   rows.push(r);
   for (const k of Object.keys(totals)) totals[k] += r[k] || 0;
 }
 
-const labeledTotal = totals.cited + totals.synthesized + totals.consensus;
+const labeledTotal = totals.cited + totals.synthesized + totals.consensus + totals.researched + totals.partial;
+// SETTLED is the honest middle number. claimBasis.js marks `cited` and
+// `established-consensus` settled:true and the other three settled:false — so
+// `% cited` alone understates the work (it discards 40 consensus items that the
+// classifier itself calls settled) while `% labelled` overstates it.
+const settled = totals.cited + totals.consensus;
+const settledPct = totals.priced ? Math.round((settled / totals.priced) * 1000) / 10 : 0;
 const groundedPct = labeledTotal ? Math.round((totals.cited / labeledTotal) * 100) : 0;
-const summary = { groundedPct, ...totals, playbooks: files.length, generatedNote: 'stamp the run date from the caller — Date.now() is intentionally not used here' };
+// ── THE HEADLINE WAS FLATTERING ITSELF (2026-08-07) ────────────────────────
+// groundedPct divides by LABELED items only. Measured: 8 cited + 40 consensus
+// + 132 synthesized = 180 labeled, against 541 priced items — so 361 priced
+// items carry no verificationStatus at all and were invisible to the number.
+// 8/180 reads 4%; 8/541 is 1.5%. An instrument that silently drops two thirds
+// of its population is the same class of defect the product's own honesty
+// doctrine exists to prevent, and this one grades that doctrine.
+// Both numbers are reported now. The unlabeled count is the FIRST thing to
+// drive down, and doing so will make groundedPct FALL before research lifts
+// it — that is the metric becoming honest, not a regression.
+const unlabeled = Math.max(0, totals.priced - labeledTotal);
+const truePct = totals.priced ? Math.round((totals.cited / totals.priced) * 1000) / 10 : 0;
+const summary = { groundedPct, truePct, settledPct, settled, labeledTotal, unlabeled, ...totals, playbooks: files.length, generatedNote: 'stamp the run date from the caller — Date.now() is intentionally not used here' };
 
 if (asJson) {
   console.log(JSON.stringify({ summary, rows: rows.sort((a, b) => a.grounded - b.grounded) }, null, 2));
 } else {
-  console.log(`\n  GROUNDING COVERAGE — ${groundedPct}% cited  (${totals.cited} cited · ${totals.consensus} consensus · ${totals.synthesized} synthesized · ${totals.priced} priced items · ${files.length} playbooks)\n`);
-  console.log('  Lowest-grounded playbooks (research these first):');
+  // The parenthetical used to itemise three statuses and then print a total of
+  // FIVE — 180 worth of labels beside a sum of 245. The by-status line below is
+  // the place for the breakdown; this line states the total only.
+  console.log(`\n  GROUNDING COVERAGE — ${groundedPct}% of ${labeledTotal} LABELED items cited`);
+  console.log(`  ACROSS ALL PRICED ITEMS  — ${truePct}% cited  (${totals.cited} of ${totals.priced}, in ${files.length} playbooks)`);
+  console.log(`  SETTLED (cited + established-consensus, per claimBasis) — ${settledPct}%  (${settled} of ${totals.priced})`);
+  console.log(`  labelled by status: ${totals.cited} cited · ${totals.consensus} consensus · ${totals.researched} researched · ${totals.synthesized} synthesized · ${totals.partial} partial`);
+  if (unlabeled > 0) {
+    console.log(`\n  ${unlabeled} PRICED ITEMS CARRY NO verificationStatus AT ALL — ${Math.round((unlabeled / totals.priced) * 100)}% of the priced set,`);
+    console.log('  invisible to the headline above. Label these FIRST: the honest default is');
+    console.log("  'synthesized', and labelling them will make the headline FALL toward the");
+    console.log('  across-all number. That is the metric telling the truth, not a regression.');
+  }
+  console.log('\n  Lowest-grounded playbooks (research these first):');
   rows.filter((r) => r.priced > 0).sort((a, b) => a.grounded - b.grounded).slice(0, 12)
     .forEach((r) => console.log(`    ${String(r.grounded + '%').padStart(4)}  ${r.file.padEnd(24)} ${r.cited} cited / ${r.priced} priced`));
   if (staleDays != null) {

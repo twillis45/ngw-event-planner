@@ -20,7 +20,7 @@
 // Thin composition over existing single sources (guestCountResolved, weather
 // readers, dayBefore-style vendor gaps, playbook plans) — not a new engine.
 
-import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos } from './playbooks';
+import { playbookFoodPlan, playbookCapacity, guestCountResolved, effectiveRos, playbookDecisionBoard } from './playbooks';
 import { rainPlanStatus, isLikelyOutdoor } from './weather';
 import { eventLocationStatus } from './locationAssist';
 import { buildCrabPlan } from './crabPlan';
@@ -29,6 +29,7 @@ import { hostSpending } from './hostSpending';
 import { daysUntil, spanEnd } from './dates';
 import { venueFor } from './venueFor';
 import { startTimeIsConfirmed } from './startTime';
+import { lodgingIsHeld } from './lodgingIntel';
 
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 const daysTo = (dateStr, now) => {
@@ -48,11 +49,11 @@ export function deriveEventPhaseProgress(event, now = new Date()) {
 
   if (phase === 'live_event') return liveProgress(ev, now);
   if (phase === 'post_event') return postProgress(ev);
-  return preProgress(ev, phase, d);
+  return preProgress(ev, phase, d, now);
 }
 
 // ── Pre-event (and unknown-date) — applicable essentials only ─────────────────
-function preProgress(ev, phase, daysOut) {
+function preProgress(ev, phase, daysOut, now = new Date()) {
   const noDate = phase === 'unknown';
   const items = [];
   // WAVE-6 (2026-07-15): `extra` lets an item name the RECORDS it summarizes
@@ -129,21 +130,77 @@ function preProgress(ev, phase, daysOut) {
   // rendering, but `event.foodChoices[id]` is what the host actually chose). Food is
   // handled when the menu decisions are made AND the dietary question is answered.
   const foodPicks = (ev.foodChoices && typeof ev.foodChoices === 'object') ? ev.foodChoices : {};
-  const openChoices = plan ? (plan.choices || []).filter(c => c && foodPicks[c.id] == null) : [];
   const dietaryDone = !!(plan && plan.dietaryResolved);
+  // THE DIETARY QUESTION IS ANSWERED SOMEWHERE ELSE (2026-08-07).
+  // Found by sweeping 12 event types x 12 horizons and comparing the hero's cue
+  // against the decision board: on babyShower, bridalShower and dinnerParty, at
+  // EVERY horizon, the cue named `dietary` as an open choice while the board had
+  // that exact row LOCKED, because: "Collected".
+  //
+  // Both were reading the truth; the cue was reading the wrong field. Whether
+  // dietary is settled is `plan.dietaryResolved` — the host noted allergies, or
+  // a guest recorded a need, or there is no list to collect from. It is NOT
+  // `foodChoices.dietary`, which nothing in that workflow ever writes. So for
+  // the three playbooks that carry `dietary` as a food choice, the axis could not
+  // complete: answer every real menu question and the hero still said "1 open"
+  // forever, pointing at a question the rest of the app considered closed.
+  //
+  // This suppresses the ask ONLY when it is genuinely settled. dietaryResolved
+  // is false for guestMode 'count' with nothing noted, and for a guest list
+  // where nobody has recorded a need — both verified — so a host who really
+  // does owe this answer is still asked for it.
+  const dietaryChoice = (c) => c.id === 'dietary' || /dietary|allerg/i.test(c.label || '');
+  const openChoices = plan
+    ? (plan.choices || []).filter(c => c && !(dietaryDone && dietaryChoice(c)) && foodPicks[c.id] == null)
+    : [];
+  // THE HERO NAGGED FOR DECISIONS THE BOARD HAD PARKED (2026-08-07).
+  // Reproduced on a birthday 90 days out: playbookDecisionBoard put `food_style`
+  // and `alcohol` in its `deferred` bucket — "comes up closer to the date" — and
+  // this cue was simultaneously the app's TOP instruction, reading "Decide what
+  // you're serving · 2 open". Two surfaces, one event, opposite advice. Same
+  // class as the dest_lodging weight bug: intelligence that exists on one
+  // surface and is contradicted on another.
+  //
+  // The deferral rule is NOT re-derived here. Re-implementing a horizon test is
+  // exactly the "second copy" trap this codebase already names (see the
+  // choicePickFor comment in playbooks/index.js) — the board owns the rule and
+  // is asked for its answer. Wrapped because a board throw must never take the
+  // progress header down with it; an empty set just restores the old behaviour.
+  let deferredIds = new Set();
+  try {
+    const board = playbookDecisionBoard(ev, now) || {};
+    deferredIds = new Set((board.deferred || []).map((r) => r && r.id).filter(Boolean));
+  } catch (e) { /* board unavailable — fall back to counting every open choice */ }
+  const activeChoices = openChoices.filter((c) => !deferredIds.has(c.id));
+  // `handled` deliberately still counts EVERY open choice. A parked decision is
+  // not a made decision, and flipping food to ✓ at 90 days out because nothing
+  // is due yet would be the opposite dishonesty — a green dot over an undecided
+  // menu. Deferral changes what we ASK FOR NOW, never what we claim is settled.
   const foodHandled = openChoices.length === 0 && dietaryDone;
+  // Cue precedence: active menu decisions first, then the dietary question
+  // (always active — allergies do not wait for a window), then nothing. A null
+  // cueLabel is how pickCue is told this axis has no ask right now; the item
+  // stays in the denominator as unhandled, so the count remains honest.
+  const foodCue =
+    activeChoices.length > 0
+      ? {
+        label: `Decide what you're serving · ${activeChoices.length} open`,
+        route: { tab: 'Planning', focusField: 'food-plan' },
+        // WAVE-6: the exact choice records the "N open" count claims — the same
+        // ids playbookDecisionBoard rows carry, so record-level dedup can
+        // subtract the ones the decisions surface raises individually instead
+        // of double-counting. Only the ACTIVE ids, matching the number shown.
+        extra: { records: activeChoices.map((c) => c.id) },
+      }
+      : !dietaryDone
+        ? {
+          label: 'Note dietary needs on the food plan',
+          route: { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
+          extra: null,
+        }
+        : { label: null, route: null, extra: null };
   add('food', usesFood && hasCount, foodHandled,
-    openChoices.length > 0
-      ? `Decide what you're serving · ${openChoices.length} open`
-      : 'Note dietary needs on the food plan',
-    openChoices.length > 0
-      ? { tab: 'Planning', focusField: 'food-plan' }
-      : { tab: 'Planning', focusField: `fp-diet-${ev.id}` },
-    6,
-    // WAVE-6: the exact choice records the "N open" count claims — the same ids
-    // playbookDecisionBoard rows carry, so record-level dedup can subtract the
-    // ones the decisions surface raises individually instead of double-counting.
-    openChoices.length > 0 ? { records: openChoices.map((c) => c.id) } : null);
+    foodCue.label, foodCue.route, 6, foodCue.extra);
 
   // Shopping only becomes an essential inside the final week — a full cart in
   // month two is not a readiness gap.
@@ -171,14 +228,32 @@ function preProgress(ev, phase, daysOut) {
   //
   // Priority 4 — above location (5) and food (6). Rooms sell out and a group rate
   // carries a deadline; a menu does not.
-  const _lodgingPicked = !!(ev.lodging && typeof ev.lodging === 'object'
-    && String(ev.lodging.hotelName || '').trim());
+  // ── A PICK IS NOT A HOLD (2026-08-06, review board, event-pro seat) ───────
+  // This read `ev.lodging.hotelName` alone. `stayFromPick` writes that field
+  // from a PICK, so one press of "Make it the pick" marked the whole lodging
+  // axis DONE — the command board read "sorted" with no rooms held, no booking
+  // code and no group-rate cutoff on file. For a group stay that is the exact
+  // wrong moment to go quiet: rooms sell out and the rate carries a deadline,
+  // which is the very reason this axis outranks food.
+  //
+  // lodgingStage already had the correct test and disagreed with this line
+  // about the same event. It is now one shared predicate (lodgingIsHeld), so
+  // the surface and the readiness board cannot drift apart again.
+  const _lodgingPicked = lodgingIsHeld(ev);
   // Stays at 4 throughout: it must keep outranking food ("rooms sell out, menus
   // do not"). What changes is that a MISSING location now outranks IT -- see the
   // location axis above.
+  // `records` names the decision row this cue summarises — the same mechanism
+  // the food cue uses. It exists here so the two surfaces can be CHECKED against
+  // each other: an invariant test asserts that nothing this cue leads with may
+  // sit on the board's horizon shelf. Without the link there was no way to state
+  // the contradiction that shipped on 2026-08-06, where the hero led with
+  // lodging while the board filed dest_lodging under "Comes up closer to the
+  // date." See destinationOrderingContract / heroBoardAgreement.
   add('lodging', ev.isDestination === true, _lodgingPicked,
     'Sort where everyone stays',
-    { tab: 'Travel', focusField: 'lodging' }, 4);
+    { tab: 'Travel', focusField: 'lodging' }, 4,
+    { records: ['dest_lodging'] });
 
   // Vendors — only when the host uses vendors; first-undone routing.
   const vendors = (Array.isArray(ev.vendors) ? ev.vendors : []).filter(v => v && String(v.name || '').trim());
@@ -353,6 +428,14 @@ function pickCue(items) {
   return {
     id: best.id, label: best.cueLabel, route: best.route, source: best.id,
     actionLabel: CUE_ACTIONS[best.id] || 'Open the plan',
+    // `records` names the decision rows this cue summarises. It was being
+    // DROPPED here: axes declare it (food since wave 6, lodging since the
+    // 2026-08-06 ruling) and this narrowing returned an object without it, so
+    // every consumer read undefined. Found because an invariant test written
+    // against cue.records passed while the defect it targeted was live — the
+    // helper was silently comparing an empty list. Carried through now, so the
+    // hero can be checked against the board it is supposed to agree with.
+    ...(Array.isArray(best.records) && best.records.length ? { records: best.records } : null),
   };
 }
 

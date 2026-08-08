@@ -62,7 +62,7 @@ describe('the kitchen consequence on the lodging surface', () => {
     const kc = kitchenConsequence(evt());
     expect(kc.state).toBe('untold');
     expect(kc.answered).toBe(false);
-    expect(kc.headline).toMatch(/nobody has told us/i);
+    expect(kc.headline).toMatch(/nobody has told you/i);
     // No claim in either direction.
     expect(kc.detail).not.toMatch(/there is a kitchen|there is no kitchen/i);
     expect(kc.answers.length).toBe(2);

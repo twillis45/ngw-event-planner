@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client';
 import ErrorBoundary from './ErrorBoundary.jsx';
 import { applyStudioMatte } from './theme.js';
 import { legacyVendorBriefUrl } from '@app/lib/vendorBriefPublicUrl';
+import { initSentry, captureError } from '@app/lib/sentry';
 import './styles.css';
 
 // ?vendor=TOKEN is a PUBLIC vendor brief — VB2 short code or legacy base64
@@ -12,6 +13,13 @@ import './styles.css';
 // isn't the legacy app — there the shell renders exactly as before.)
 const briefUrl = legacyVendorBriefUrl(window.location.href);
 if (briefUrl) window.location.replace(briefUrl);
+
+// ERROR REPORTING ON THE SHELL THAT ACTUALLY SHIPS (2026-08-07).
+// Sentry was wired in src/index.js — the FROZEN CRA host — and never here, so
+// every crash in the live hostv2 shell went to the user's console and nowhere
+// else. initSentry no-ops unless REACT_APP_SENTRY_DSN is set AND the build is
+// production, so local dev and the public demo stay silent.
+initSentry();
 
 // Studio Matte doctrine tokens land on :root before first paint.
 applyStudioMatte();
@@ -49,8 +57,10 @@ if (!briefUrl) {
     : demo === 'lodging'
       ? import('./LodgingCockpit.jsx').then(m => <m.default />)
       : import('./HostShellV2.jsx').then(m => <m.default />);
-  load.then(mount).catch(() => {
-    // A chunk that fails to load must say so, not hang on a blank frame.
+  load.then(mount).catch((err) => {
+    // A chunk that fails to load must say so, not hang on a blank frame — and
+    // it must be reported, because a host who sees this sees a dead app.
+    captureError(err, { where: 'main.chunkLoad', rsvp: Boolean(rsvpCode), demo });
     mount(<div style={{ padding: 24, fontFamily: 'system-ui', color: '#9aa7b2' }}>Couldn’t load — please refresh.</div>);
   });
 }

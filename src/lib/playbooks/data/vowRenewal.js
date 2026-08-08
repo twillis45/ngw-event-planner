@@ -145,12 +145,12 @@ const vowRenewal = {
   ],
 
   risks: [
-    { id: 'r_vows', trigger: 'Vows unwritten or the ceremony order never set/rehearsed', severity: 'high', mitigation: 'Write vows by T-35d; finalize the order with the officiant; rehearse the processional + vows + ring handoff at T-7d.' },
-    { id: 'r_officiant', trigger: 'No officiant booked, or the self-led plan has no rehearsed lead', severity: 'high', mitigation: 'Book the officiant or confirm the friend-officiant by T-49d; if self-led, one partner owns the script and the order is rehearsed.' },
-    { id: 'r_photographer', trigger: 'No photographer for a day you cannot reshoot', severity: 'high', mitigation: 'Book at T-45d with an agreed coverage window (ceremony + toast + cake) and a short shot list; assign a backup guest with a real camera.' },
-    { id: 'r_headcount', trigger: 'Final headcount not confirmed by T-4d', severity: 'high', mitigation: 'Chase the maybes; buy fresh + final alcohol AFTER the count locks; over-cater by ~10%, not 30%; size ceremony chairs to the count.' },
-    { id: 'r_arch', trigger: 'No focal arch/backdrop → the ceremony has no anchor for the vows or photos', severity: 'med', mitigation: 'Order/rent/DIY the arch by T-3d; dress it with the florals; test it stands and is anchored against wind if outdoors.' },
-    { id: 'r_cake', trigger: 'Cake ordered too late / wrong size', severity: 'med', mitigation: 'Order at T-14d sized to headcount (8" ~15-24, 2-tier ~25-40); confirm pickup/delivery time the day before.' },
+    { id: 'r_vows', trigger: 'Vows unwritten or the ceremony order never set/rehearsed', severity: 'high', mitigation: 'Write vows by 5 weeks out; finalize the order with the officiant; rehearse the processional + vows + ring handoff at a week out.' },
+    { id: 'r_officiant', trigger: 'No officiant booked, or the self-led plan has no rehearsed lead', severity: 'high', mitigation: 'Book the officiant or confirm the friend-officiant by 7 weeks out; if self-led, one partner owns the script and the order is rehearsed.' },
+    { id: 'r_photographer', trigger: 'No photographer for a day you cannot reshoot', severity: 'high', mitigation: 'Book at 45 days out with an agreed coverage window (ceremony + toast + cake) and a short shot list; assign a backup guest with a real camera.' },
+    { id: 'r_headcount', trigger: 'Final headcount still not confirmed 4 days out', severity: 'high', mitigation: 'Chase the maybes; buy fresh + final alcohol AFTER the count locks; over-cater by ~10%, not 30%; size ceremony chairs to the count.' },
+    { id: 'r_arch', trigger: 'No focal arch/backdrop → the ceremony has no anchor for the vows or photos', severity: 'med', mitigation: 'Order/rent/DIY the arch by 3 days out; dress it with the florals; test it stands and is anchored against wind if outdoors.' },
+    { id: 'r_cake', trigger: 'Cake ordered too late / wrong size', severity: 'med', mitigation: 'Order at 2 weeks out sized to headcount (8" ~15-24, 2-tier ~25-40); confirm pickup/delivery time the day before.' },
     { id: 'r_toast_low', trigger: 'Not enough champagne for everyone to toast', severity: 'med', mitigation: 'Budget ~1 bottle per 6-8 guests for one pour each; keep a zero-proof sparkling so non-drinkers can raise a glass too.' },
     { id: 'r_weather', trigger: 'Outdoor/destination ceremony hit by weather', severity: 'med', mitigation: 'Have a covered/indoor backup, a tent option, and a go/no-go call time; for a destination, build a buffer day.' },
     { id: 'r_access', trigger: 'Older or mobility-limited guests cannot navigate ceremony seating', severity: 'med', mitigation: 'Ask accessibility needs on the invite; reserve a front seating zone, a clear path, parking, and audible vows placement.' },

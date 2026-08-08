@@ -42,6 +42,22 @@ export function applyStudioMatte() {
   const c = carbonNeutral.mid; // the production default level
   set('--bg', c.bg);
   set('--bg-band', c.surface2);
+  // ── --field: the ground BEHIND the stage at >=1024 (host, 2026-08-07) ──────
+  // "need more of my carbon in the tablet, desktop, widescreens."
+  //
+  // It is the DEEPEST step of the same de-blued carbonNeutral ramp the shell
+  // already runs — NOT the --carbon* family. Those are two different ramps:
+  // carbonBody is blue-tinted (#070809/#121518) and carbonNeutral is de-blued
+  // (#141518/#1E1F22), and styles.css:793 already records what mixing them
+  // looks like ("a visible shift on a blue-grey pill"). A rail painted from the
+  // blue ramp against a de-blued content ground is that same clash at the scale
+  // of a whole screen, which is why this token exists rather than reusing
+  // --carbon.
+  //
+  // Declared here AND bundled, deliberately: --danger-solid was declared in
+  // TOKENS and never added to bundleForMode(), so it reached the DOM as the
+  // literal string "undefined" and no layer treated that as an error.
+  set('--field', carbonNeutral.deep.bg);
   set('--card', c.panel);
   set('--ink', dark.textPrimary);
   set('--ink-soft', dark.textSecondary);
@@ -91,7 +107,19 @@ export function applyStudioMatte() {
   // surfaces catch the canvas's top glow as a 1px top sheen. Derived from the
   // steel anchor — same light source as the .app background radial.
   set('--sheen', tint(dark.steelBlueMuted, 0.10));
-  set('--cta-grad', `linear-gradient(180deg, ${dark.steelBlueGradientTop} 0%, ${dark.steelBlueGradientBottom} 100%)`);
+  // ── THE PRIMARY IS FLAT (Mobbin read, 2026-08-04 §1) ───────────────────────
+  // Was linear-gradient(180deg, #4E6877 -> #3F5B6A) on every .cta and .tile-d.
+  // 27 leader screens were read and the finding is narrower than "no gradients":
+  // Airbnb's `Confirm and pay` IS a gradient, but a LATERAL hue sweep inside one
+  // brand colour. Not one leader runs a VERTICAL light-to-dark ramp, because
+  // 180deg is not colour — it is a simulated bevel, light falling from above
+  // onto a raised object, and that is what dates the button. Airbnb reads as
+  // brand; a 180deg ramp reads as plastic.
+  // So the kill is aimed at the ANGLE, not the idea: #4E6877 stays (it is the
+  // top stop, unchanged), and the --sheen top hairline stays as the material
+  // response, which is the same 1px the card family already carries. A lateral
+  // steel sweep is now a legitimate option here rather than a banned one.
+  set('--cta-grad', dark.steelBlueGradientTop);
 
   // ── Status anchors (Dark calibrations) ──
   set('--ok', dark.successGreen);

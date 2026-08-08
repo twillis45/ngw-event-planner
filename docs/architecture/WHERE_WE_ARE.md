@@ -4,46 +4,480 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-04
+**Last updated:** 2026-08-07 (latest) - command-surface board sitting + the gate split
 
 ---
 
 ## 1. Branch state
 
-**Branch:** `feat/lodging-cockpit-demo` - **HEAD `cee3e559`** - pushed, 5 ahead of
-`origin/main` (`8093dfa2`). **One uncommitted file:** `hostv2/src/LodgingCockpit.jsx`.
+> ### ⚠ A SECOND SESSION IS LIVE IN THIS TREE - AND IT SWEPT MY WORK INTO ITS COMMIT
+>
+> Still running as of 2026-08-07 (vite preview on :5233, restarted at least once).
+> It is building the **persistent section rail** (`VIEWPORT_PORT_RULING` step 3):
+> `src/lib/sectionDirectory.js`, `showsRail()`, `hostv2/src/sectionIcons.jsx`, `.srail*` CSS.
+>
+> **What happened.** `hostv2/src/styles.css` carried that session's rail CSS and this
+> session's wide-canvas fixes inside ONE diff hunk, so there was no pathspec that
+> committed either alone - the wide-canvas work was deliberately left uncommitted while
+> the entanglement lasted. That session then committed the whole tree in `cf0336c0`
+> ("The menu existed as an attribute..."), sweeping in `wideSurfaceCss.test.js`,
+> `wideCanvas.spec.mjs`, `playwright.config.mjs` and the styles.css fixes.
+>
+> **Nothing was lost and nothing is broken** - both CSS fixes are present and
+> `wideSurfaceCss.test.js` passes as committed. The only damage is attribution: that
+> work is described by an unrelated commit message. **History was deliberately NOT
+> rewritten** - rebasing shared history while another session is actively committing
+> is how work actually gets destroyed. Read `cf0336c0` as two changes, not one.
+>
+> That session has also already built what the design seat filed as item #7
+> ("fill the 356x422 command-rail void"). Do not build it twice.
+>
+> **Before any `git add` in this tree:** `lsof -nP -iTCP:5233 -sTCP:LISTEN` and
+> `git status --porcelain`. Untracked `src/lib/*.js` you did not write is someone's
+> in-flight work; its header carries a dated "EXTRACTED <date> from ..." note.
 
-**PR #70 MERGED 2026-08-03** (the 25-commit span-intelligence / knowledge-governance stack).
-`main` has since taken #75-#78. The 2026-08-03 "25 commits UNPUSHED" state is closed.
+**Branch:** `feat/lodging-search-offer` - **HEAD `0d273115`**, 3 ahead of `origin/main`.
+PRs #79/#80 are closed/merged; **#81 merged 2026-08-06**; **#82 is open and green on all
+five checks** (jest, e2e, backend, cra-build, hostv2-build).
 
-**Two PRs open, both green on all six CI checks** (jest, e2e, backend, cra-build, hostv2-build):
+| Commit | What |
+|---|---|
+| `d4ab4f5f` | occupancy is the bed count, not the capacity - and amenities were on the page |
+| `961a86b8` | the Hotels door carries the trip (dates + party) instead of a sentence about it |
+| `0d273115` | the review board killed the URL-capture feature and found six live defects under it |
 
-| PR | Branch | What | Note |
-|---|---|---|---|
-| #79 | `feat/lodging-sheet-calm` | The lodging sheet leads with the decision, folds the machinery | `0be2c4bf` |
-| #80 | `feat/lodging-cockpit-demo` | `lodgingStage(event)` cockpit at `?demo=lodging`, derived never stored | **contains #79** |
+**`public/hostv2/` IS NOW GITIGNORED** (`.gitignore:62`, zero tracked files). Section 2's
+old warning about it being a committed artifact that conflicts across branches is CLOSED -
+that was item 3 on this list and it is done.
 
-Both are based on `main`, and #79's commit is an ANCESTOR of #80 -- so merge #79 first, or
-merge #80 and let #79 close itself out. Do not merge them as independent PRs.
+### The Hotels door carried nothing, and said it did
 
-**Uncommitted, unbuilt, undriven:** `LodgingCockpit.jsx` retires the file-local `.lc-cta`
-button vocabulary for the app's real `.cta` / `.cta soft` atoms, and merges the paste + read
-buttons into one whose label follows the box. Both moves are backed by
-[`../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md`](../audits/2026-08-04_BUTTON_AND_CTA_LANGUAGE_MOBBIN_READ.md)
-section 5. **Nothing in it has reached a browser yet.**
+Driven live 2026-08-06: Google reads the PLACE out of `?q=` and **discards the dates and the
+party**, falling back to tomorrow / one night / two guests. `checkin=`/`checkout=`/`adults=`
+are ignored too. So the door opened on wrong-month, wrong-party prices and
+`extractHotelCandidates` would store one as `priceShown`. The code comment above it asserted
+the opposite ("Google parses 'Jun 17-Jun 21' perfectly well") and had been wrong since the
+door was built.
+
+`ts` is the only parameter that carries a trip - a base64url protobuf, decoded from a real
+shared link and re-captured from Google's own picker. Full shape in `src/lib/googleTravelTs.js`.
+Three findings that are not obvious and cost real time to establish:
+
+- **Name-only works.** The captured links carry a Knowledge Graph id we never hold for a town
+  the host typed; field `3.1.2.7` alone is honoured.
+- **The party size IS a repeat count** - one submessage per adult. No integer field holds it.
+- **A past check-in is silently ignored** and Google reverts to defaults. Two verification
+  attempts were misread as "the mechanism doesn't work" because of this. Emitting a `ts`
+  anyway would restore the original bug in a form that LOOKS fixed, so it returns null.
+
+**Do not propose passing a hotel NAME as the place** to get a per-hotel dated door - driven,
+returns an empty page (83 chars, no results). That field is a location.
 
 ---
 
-## 2. Gates -- CI green at `cee3e559`; the working-tree change is UNGATED
+## 1b. The viewport port landed - 2026-08-07 late session
 
-CI on PR #80 at `cee3e559`: jest, e2e, backend, cra-build, hostv2-build all SUCCESS
-(2026-08-04 12:07Z). **No local gate run this session, and the uncommitted
-`LodgingCockpit.jsx` change has not been built, gated or driven.** The figures below are the
-2026-08-03 local numbers at `7bbe1ad6`, carried forward unchanged.
+**HEAD `b60095c4`.** Seven commits, each driven live before it was committed.
 
-Jest **5195 passed / 1 skipped** - **334 suites** - `gate:cra` GREEN (242 of 245
-baselined) - `gate:hostv2` GREEN (no drift, 12 files) - `gate:knowledge` GREEN -
-hostv2 build + `check-parity` GREEN.
+| Commit | What |
+|---|---|
+| `cf0336c0` | the persistent section rail - `data-rail` was computed, written to the DOM, and consumed by NOTHING |
+| `25cb4f17` | the two-pane data grid retired - it produced up to **1344px of vertical void** |
+| `1c1eb799` | the command hero had a SECOND rail, and it was empty |
+| `bf584f86` | guest metadata laid out in aligned tracks |
+| `2e60f68b` | the column header, derived from shared track variables |
+| `0ba26511` + `56cd97f0` | the reply chip measured to the end - it is not a layout bug |
+| `b60095c4` | a full-width primary CTA is a phone affordance (1220px -> 500px) |
+
+**Measured before -> after, driven at 1024/1440/1920 plus real Chrome:**
+
+```
+dead space     1440: 4% -> 3%      1920: 33% -> 22%   (18% on data sheets)
+legacy sheet   1440: 73% -> 3%     1920: 80% -> 22%
+guest tracks   header cells sit at delta 0 over name / kids / meal / dietary
+rail           16 doors - icons - 44px rows - no truncation - no h-overflow
+```
+
+**The rail is not a new surface.** It renders the same `sectionGroups()` the Sections
+sheet renders, through the same `goToSection()`. Adding a door adds it to both, by
+construction - `src/lib/sectionDirectory.js`.
+
+**`showsRail()` no longer asks the surface.** It first withheld the rail at desktop on
+any sheet still wearing the phone silhouette; driven, that made navigation VANISH when
+you used it (open settings at 1920 -> 1500px canvas drops to a 393px phone, 80% dead, no
+rail). The fix was not to withhold the rail, it was to stop those surfaces being phones
+while a rail is up. Pinned by a test asserting every sheet in a band gives the same
+answer, so it can never start blinking again.
+
+### Three defects only DRIVING found
+
+1. **The rail was dead whenever a sheet was open.** `.sheet-scrim` is
+   `position:absolute; inset:0` and `.app` is not a positioned ancestor, so it resolved
+   against the whole grid. You could open Budget from the rail and then never reach
+   Guests. The sheet and its scrim now belong to the CONTENT column.
+2. **Rail rows measured 35px** - under the 44px floor, and tablet-land is a touch device.
+3. **The measure cap matched nothing, twice** - once as `68ch`, once as `> .app .sheet`
+   when `.sheet` is a DIRECT CHILD of `.stagewrap`.
+
+### Still open on wide - all measured, none guessed
+
+- **The command surface is still a stretched mobile column.** Host, in Chrome: "command
+  is just a version of the mobile in column 2." `UX_04` wants zones - a command header
+  carrying 3-4 stat cards from real data, then the priority lane, then the work. Instead:
+  no stat cards (24 guests / $24,000 are buried at the BOTTOM under "WHERE YOU STAND"),
+  progress stranded far-right with nothing near it, and the fold handle - a pure phone
+  affordance - mid-canvas. **This is a board call**: it would be the third re-zone of the
+  same `grid-template-areas` element.
+- **Reference rows are uncapped**, arrows ~1200px from their labels (:201 recorded this
+  same defect once already). Four selectors written for it matched NOTHING and were
+  deleted rather than left as dead CSS.
+- **The reply chip is 320px** because the inline RSVP picker lives INSIDE its trigger
+  button, so the trigger's min-content is ~320px. Chain measured end to end in
+  `56cd97f0`. The real fix moves the picker out of the trigger - a change to the RSVP
+  control on every viewport, so it is a board call, not a stylesheet tweak.
+- **No on-demand detail pane, no filter/view switcher.** The two remaining leader
+  patterns. Note the board already killed a PERMANENT third pane, so detail must be
+  on-demand only.
+
+**Honest score vs leaders on wide: ~8.5/10.** Parity on persistent rail, no vertical
+void, and aligned tracks with a header. Not parity on the three items above.
+
+---
+
+## 1c. The board sat on the command surface - 2026-08-07 (latest)
+
+**ONE ROOT CAUSE UNDER FOUR SESSIONS OF SYMPTOMS.** `showsRail()` is width-only, and
+wider than its own comment claimed: `isWideBp` is `bp === 'desktop' || bp === 'tablet-land'`
+(`viewport.js:42`), and tablet-land starts at **1024** (`viewport.js:26`). Every desktop
+rule in `styles.css` is `@media (min-width:1280px) and (min-height:700px)`.
+
+So on any canvas >=1280 wide and **under 700 tall** the rail is up and NOT ONE desktop
+rule applies. That is not an edge case - **the host's own machine is 1280x800, which is a
+1280x654 inner viewport in Chrome.** The headless matrix runs 1440x900 and 1920x1080,
+where the height condition passes, so it was structurally blind to the whole class. The
+host and the review board were not looking at the same product.
+
+| Commit | What |
+|---|---|
+| `f8ae0a50` | the other session's tap-target fix, recovered from the tree and committed intact |
+| `8a4d4556` | stretched column -> 3-col grid; reference rows found; orphan fold; stranded progress |
+| `8d36f6f0` | the four doctrine gaps, written up |
+| `60ec507a` | **P0 I shipped** - the 3-col grid was running at 1024 and wrecking tablet-land |
+| `7c482d0b` | tablet-land restored to byte-identical; the matrix baselined |
+| `32a34b6a` | height stripped off composition/measure rules - the host's laptop finally has a canvas |
+| `377515b9` | **the void was a reserved iPhone** |
+| `993c46db` | "Sort it out" named no act, and the gate was measuring indentation |
+| `89063812` | the Zone 1 header was a pseudo-element, not text |
+| `bc0429fd` | the canvas was not empty - the sentences were being swallowed |
+
+**The finding that retired the argument.** `styles.css:931` was
+`.hero{ min-height:calc(852px - 64px - 88px) }` = **700px. 852 is an iPhone.** A phone
+viewport minus its chrome, hard-reserved in the hero at every width, released only under
+`@media (max-height:699px)` - whose own comment already called it "a phantom 700px".
+Nobody ever chose a void budget. Released for the responsive command canvas: hero
+700 -> 565px at 1440, and the Venue capture - which `assembleRevealEngines.js:127` pushes
+as `urgency:'critical'` - moved from y=760 clipped to fully inside the first viewport with
+its input and Save. **The engine ranked it critical and the layout was overriding the
+engine with a phone.**
+
+Board verdict before this session's fixes: **4/10 at 1280x654, 3/10 at 1728** - and the
+direction mattered more than the number: *the surface degraded as the canvas grew.*
+
+**THE VENUE CAPTURE - DONE** (`62fd873b`, `57f48c33`). It was never four copies of one
+thing; the copies had DRIFTED, and each difference was a defect:
+
+```
+site                        source attribution   validation error
+hero wired editor           absent               .because / --warn   (AMBER)
+blocker card                absent               .grounding / --danger
+"Where is it happening?"    PRESENT              .grounding / --danger
+Venue sheet                 absent               .grounding / --danger
+```
+
+The address suggestions carried their source line on ONE of four surfaces - a provenance
+gap, not a style nit - and the same validation error rendered amber on one and red on
+three, which the colour doctrine forbids outright. `renderVenueCapture()` is the single
+control now (a plain function returning JSX, NOT a nested component: a component declared
+inside a render gets a fresh type each pass, so React would remount the input on every
+keystroke and drop focus mid-address).
+
+Then driving it showed the surface still rendered **two at once** - hero editor at y=189,
+blocker card at y=734. The blocker now defers to the hero, and the hero is derived as
+`queue.filter(show)[0]`, **not `queue[0]`** (an order-preserving filter is not the same
+list). Guard also mirrors the editor's own render condition so it can never remove the
+LAST venue input.
+
+**TWO SCORES, MEASURING DIFFERENT THINGS — do not conflate them.**
+
+```
+HOST, layout specifically, 2026-08-07 .......... 7.5 / 10
+BOARD, composite (layout + density + traversal
+       + data honesty), 1280x654 ............... 5.0 / 10
+BOARD, composite, 1920 ......................... 4.0 / 10
+```
+
+Both can be right and probably are. The board's composite is dragged down by things
+that are NOT layout — a 1.5% citation rate, no keyboard layer, six rows where leaders
+run 8-20. The host is scoring the composition. **When someone quotes a number for this
+surface, make them say which one.** The board's own ruling is that 8.5 composite is
+reachable on layout/CSS/copy and 9 is not, because the last point is research.
+
+On the host's axis the gap from 7.5 is roughly: nothing fluid above 1440, ink falling as
+the canvas grows, no traversal, and the Lodging Cockpit still a 393px phone.
+
+**THE WIDE-SCREEN SLOPE, MEASURED 2026-08-07.** The board's finding was never the
+number, it was the direction: *the surface degrades as the canvas grows.* Now quantified
+on the command surface (ink = area of leaf text nodes over canvas area):
+
+```
+viewport      .app        ink     hero      stat column
+1280x654      1010x804    63%     645x461   288x475
+1440x900      1170x840    51%     645x437   288x475
+1728x1080     1278x900    44%     645x437   288x475
+1920x1080     1278x900    44%     645x437   288x475
+```
+
+Three facts in that table, and they are the whole problem:
+- **`.app` hard-caps at 1278x900**, so 1728 and 1920 render IDENTICALLY. Above 1440 the
+  product stops responding to the canvas at all.
+- **Nothing is fluid.** Hero 645 and stat column 288 at every width.
+- **Ink FALLS as the canvas grows.** More room produces more nothing.
+
+**THE VENUE BLOCKER IS IN THE WRONG PLACE, and it is a symptom.**
+`assembleRevealEngines.js:127` pushes it `urgency:'critical'`, `reversibility:'locked'`,
+`blocks:['catering']` — the gate on the sequence — and the layout renders it dead last,
+below "Worth keeping an eye on", which is explicitly the BACKGROUND lane. A critical item
+wearing a footnote's position. Worse, the same question is already on screen as an open
+`Venue` chip in the named set ~300px above it: one question, two surfaces, again.
+Two builds, materially different, NOT chosen:
+  A. the blocker becomes the ask (board wave 2) — an ENGINE ranking change, a critical
+     blocker outranking the queue head. The stand-down mechanism already exists
+     (`heroCarriesVenue`, 57f48c33); it does not fire because the queue's head is lodging.
+  B. the open chip resolves it in the right column — removes a duplicate surface rather
+     than relocating it, and earns the empty column (the design seat's standing dissent:
+     the stat column and the detail pane are ONE region).
+
+**Board rulings still unbuilt:**
+
+- Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
+- `.tile-a` is `display:none !important` (`styles.css:891`) and carries the lifecycle line
+  plus **six named, routed, dot-marked plan-part chips**. The richest computed block on the
+  surface is suppressed. "Only two honest stats exist" was FALSE. Note it now COLLIDES with
+  the `<h2 class="bento-head">` added in `89063812` - both say "Where you stand".
+
+---
+
+## 2. Gates
+
+### GROUNDING — the number is now TRUE, not better (2026-08-07, latest)
+
+```
+541 priced items · 0 unlabelled     (was ~360 unlabelled and invisible)
+  cited 8 · consensus 40 · researched 64 · synthesized 504 · partial 1
+
+1.5%  cited across all 541          (the honest number)
+8.9%  SETTLED = cited + established-consensus, per claimBasis
+1%    of 617 labelled items cited
+```
+
+**NO ITEM BECAME BETTER GROUNDED. Zero research was done.** What changed is that
+the measurement stopped lying. The old "4% cited" was flattering on three counts,
+each pulling a different way: the denominator excluded ~360 unlabelled items; the
+audit counted 3 of the 5 statuses `claimBasis` declares (missing 98 `researched`,
+2 `partial`); and text-matching attributed provenance from risks and timeline
+entries to priced items (132 synthesized in text vs 63 in the objects).
+
+**Two NEW gaps, neither known before, both now gated by a ratchet
+(`researchPolicyCompliance.test.js`, frozen at 39/43):**
+
+- **39 of 45** research claims cite a SINGLE source. `RESEARCH_POLICIES.pricing`
+  says `corroborationRequired: true` — "always corroborate across >=2 sources".
+  One of the 39 is labelled `cited`.
+- **43 of 45** carry no date. `freshnessDays: 45` means a price is stale after 45
+  days, and `isStaleByPolicy()` cannot evaluate an undated item. An undated
+  "researched" price is neither fresh nor stale — it is unfalsifiable, which is
+  the one thing a grounded claim must never be. **Dates cannot be back-filled
+  honestly** — nobody knows when those items were researched.
+
+**THE ADMIN BACKLOG POINTS AWAY FROM THE WORK.** Full write-up in
+`docs/architecture/2026-08-07_GROUNDING_PREDICATE_FINDING.md`. `isGroundedItemQty`
+(`quantityProvenance.js:104`) is the sole predicate behind `fieldState`:
+
+```
+crabFeast.p_crabs       cited      tier: primary     4 sources -> needs-research
+crabFeast.p_softdrinks  researched tier: researched  1 source  -> correctable
+```
+
+The best-evidenced item in the product is sent back for research; a single-source
+price reads as done.
+
+**NEXT, AND IT IS ONE GOVERNED STEP — do it fresh, not at the end of a session.**
+Attempted 2026-08-07 and reverted: it broke 19 suites / 59 tests including
+`4 — NO TRUST EXPANSION: grounding outcomes are unchanged`, which is a
+deliberate freeze on what the corpus may claim. The prerequisite is now landed
+(`costco-pork-2026`, `costco-chicken-2026`, `costco-groundbeef-2026` registered
+in COST_SOURCES; universe 113 -> 116), so the remaining change is single and
+reviewable:
+
+1. point the cited purchases' `sources` at those ids + `dmv-crab-2026`;
+2. make `isGroundedItemQty` use `isGroundedTier` (the canonical ladder) plus
+   `>=2` corroboration, NOT a literal `tier === 'researched'`;
+3. map `primary` in `TIER_ALIASES` — it is unmapped, which is why first-hand
+   dated evidence scores ungrounded;
+4. re-baseline `NO TRUST EXPANSION` in the SAME commit with the new outcomes
+   stated.
+
+**Do NOT loosen source resolution to a length heuristic.** Tried it; it lets any
+12-character string ground a price and breaks `a partially-resolving source list
+never grounds`. That is trust expansion wearing the costume of a fix.
+
+Instruments: `npm run grounding:audit` (text, per-playbook worklist) ·
+`npm run grounding:census` (objects, true counts). They cross-check at 541 — and
+they once AGREED while both being wrong, so agreement is not correctness.
+
+---
+
+### THE MATRIX IS FULLY GREEN - `d3493840` (2026-08-07, latest)
+
+```
+Playwright   356 passed /  0 failed / 40 skipped   (16.8m)
+Jest         5643 passed / 1 skipped - 380 suites
+build        hostv2 + check-parity green
+```
+
+40 skipped = 34 + 6 board-capture skips (`_boardCapture.spec.mjs`, env-guarded).
+
+**Shipped since the all-green run**, all driven and gated:
+- The 2026-08-07 BOARD SITTING (three panels, render-first, 7/6/7 · 6.0/6.5 · 5/6/4).
+  Nine findings taken. The sharpest was theirs, not mine: `styles.css:4478` said outright
+  "THE REAL FIX is to move the picker out of the trigger... Board call" — I did exactly
+  that four commits earlier and never went back to collect, so the reply chip was still
+  rendering 258-311px wide. Now 96px, right edge identical on every row.
+- The guest editor moved into a RIGHT PANEL at >=1280 (Mobbin: 5 of 5 leaders do this,
+  none expands a row). Measured 1728: roster 1318, cols 958+340, list identical open and
+  closed.
+- Tier gating on that panel. See the trap below — it is the same one twice in one day.
+
+**Read the two audits before touching the roster:**
+`docs/audits/2026-08-07_SPACING_DENSITY_LAYOUT_MOBBIN_READ.md` and
+`..._TIER_READ_DENSITY_TYPE_COMMIT_MOTION.md` (~80 screens, three parallel reads). The
+second CORRECTS the first on row height, and both correct me.
+
+### Traps earned 2026-08-07, late
+
+- **`[data-rail="1"]` IS NOT `desktop`, AND I SHIPPED THAT TWICE IN ONE DAY.** The
+  two-column roster gated on rail-up alone ran from 1024 and gave `280px 340px` — the
+  detail panel WIDER than the roster it belongs to, on a sheet offering 640px total.
+  UX_03:23 documents this exact misreading *because of the earlier P0 the same session*.
+  Any composition rule that needs desktop must test `[data-bp="desktop"]`.
+- **A STRUCTURAL CAP MUST BE MATCHED BY STRUCTURE, NOT BY DEPTH.** `:3758` caps
+  `.sheet > *` at 820px (the prose measure) and `:3760-3771` exempt the wide things with
+  `:has(> X)` — a DIRECT-child test. Wrapping the rows in `.roster` made `.grow` a
+  GRANDchild, the exemption silently stopped matching, and the table inherited a prose
+  measure. The symptom looks exactly like a grid sizing bug and nothing points at a
+  max-width two rules away.
+- **WALK THE ANCESTOR CHAIN, DO NOT GREP FOR THE CAP.** I eliminated three candidate rules
+  by reading, all three wrong, and committed a revert note saying "nobody knows what caps
+  it". One probe reading `maxWidth` off each ancestor found it immediately. Third time in
+  one session that reading lost to measuring.
+- **DO NOT PIPE A BACKGROUND MATRIX THROUGH `tail`.** The output file then holds only the
+  tail, so the failure detail you need is gone.
+- **`jest` MUST RUN FROM `demo/`, NOT `demo/hostv2/`.** A compound `cd hostv2 && ...`
+  silently produced an empty log and a bare exit 1 twice.
+
+The 355 includes the 12 new `guestReplyPicker.spec.mjs` cases (6 projects x 2). That
+suite's own first run WAS the only failure in the 355/1 matrix, at `[landscape]` 860x430,
+and it was the SPEC that was wrong, not the surface: it asserted absolute
+`getBoundingClientRect().top`, which shifts for every row at once the moment a short
+sheet becomes scrollable. Re-measured as heights + inter-row gaps (scroll-invariant) it
+is 12/12, and the identical heights prove nothing reflowed. **When a geometry assertion
+fails only on the SHORT viewport, suspect the scroll container before the layout.**
+
+The all-green run at `20ee56e2` was 344 / 0 / 34 (16.3m).
+
+First all-green matrix on this branch. Progression across the session:
+
+```
+321 passed / 21 failed   baseline, before any of this session's work
+335 passed / 10 failed   after the wide-screen layout work
+344 passed /  0 failed   after 20ee56e2
+```
+
+The last 10 closed together, and **they were never pre-existing** - see the trap below,
+which corrects three separate claims made earlier in this same document. One test moved
+into `skipped` (33 -> 34) because the spec's own `no Calls to make section on this state`
+guard finally gets a chance to fire now that the sheet is reachable. 344 + 34 = 378.
+
+**THE "PRE-EXISTING" CLAIM BELOW WAS WRONG, AND THE METHOD THAT PRODUCED IT WAS WRONG.**
+The revert test was real - `styles.css` at `f8ae0a50` did reproduce all 10. But
+`f8ae0a50` **already contained `cf0336c09`**, the commit that caused them. Reverting to a
+point that still includes the cause proves nothing except that the cause was already
+there. `git merge-base --is-ancestor <suspect> <revert-target>` takes one second and
+would have caught it. Everything from "LATEST (after the fold-handle...)" down to the
+18-failure table is retained as the record of a wrong call, not as current state.
+
+---
+
+**At `bc0429fd` (2026-08-07): Jest 5640 passed / 1 skipped - 379 suites.** hostv2 build
++ `check-parity` green.
+
+**Playwright matrix, re-run at `c2fb53b4` after every change: 325 passed / 18 failed /
+35 skipped (16.4m).** Baseline earlier the same session was 321 / 21 / 36. So eleven
+commits of change produced **zero regressions**, and closed 3. An earlier attempt than
+either is not a result at all - its preview server died mid-run under concurrent load and
+returned **exit 0 having run nothing**. Never trust a green exit code from this harness
+without a pass count.
+
+LATEST (after the fold-handle and venue work): **14 real failures.**
+
+```
+tablet-land  boardMatrix:224/254   decisions sheet + checklist CTA   10   PRE-EXISTING
+desktop      boardMatrix:292       fold peek                          3   OPEN
+wide         boardMatrix:292       fold peek                          1   OPEN
+```
+
+Fold peek was **8**; the handle now renders on real overflow so 4 closed. The remaining 4
+are NOT understood - `.has-more` is set (the spec's guard passes) and `.efold` exists, yet
+it computes hidden. Do not assume it is the same cause as the four that were fixed.
+
+**BEWARE THE CONTENDED RUN.** One matrix took **27.2m against a normal 16.4m** and
+returned 15 failures including four names that had never failed: `ignitionBudget:25`
+("warm boot took 10305ms"), `responsiveBaseline:24` and `driftCapture:47`
+("Test timeout of 30000ms exceeded"), `lodgingCockpit`. Re-run alone: **75 passed, 0
+failed.** All four were load artifacts. A wall-clock much above 16-17m invalidates the
+run - check it before reading the failures.
+
+The 18-failure baseline was exactly the pre-existing set, by project:
+
+```
+desktop      boardMatrix.spec:292  fold peek        4
+wide         boardMatrix.spec:292  fold peek        4
+tablet-land  boardMatrix.spec:224  decisions sheet  5
+tablet-land  boardMatrix.spec:254  checklist CTA    5
+```
+
+**All PRE-EXISTING - reproduced, not inferred.** Method: revert
+`styles.css` to `f8ae0a50` (before any of this session's work), rebuild, re-run both
+clusters. Same 10 and same 8.
+
+- `tablet-land` decisions-sheet + checklist-CTA: 10, unchanged at `f8ae0a50`.
+- `desktop` + `wide` **fold peek**: 8, unchanged at `f8ae0a50`. `boardMatrix.spec:292`
+  asserts `.efold-grab` sits in the first viewport; `:287` deliberately hides that handle.
+  A `display:none` node keeps its DOM node, so `count()` passes the spec's own skip guard
+  and `boundingBox()` then returns null. **The spec and shipped doctrine have contradicted
+  each other for some time and nobody saw it, because the matrix had no project above 1280
+  until 2026-08-06.** NOT silenced - which one is right is a board call.
+
+Historical, at `0d273115` (2026-08-06):
+
+Jest **5430 passed / 1 skipped** - **358 suites** - `gate:cra` GREEN (242 of 245
+baselined) - `gate:hostv2` GREEN (no drift, 14 files, after `sync:hostv2`) -
+`gate:knowledge` GREEN - hostv2 build + `check-parity` GREEN. CI on PR #82 green on all
+five checks.
+
+**NOT run: the lodging e2e.** Its port (5233) was held by an orphaned `vite preview` that
+session did not start, and `playwright.config` sets `reuseExistingServer: false` on purpose -
+so a reused server would have tested a STALE bundle. Kill the orphan and run it.
 
 Two gates that had been red for weeks were closed this session:
 
@@ -53,10 +487,11 @@ Two gates that had been red for weeks were closed this session:
 - **`gate:cra`** was red on two dead symbols in `AdminConsole.jsx` left behind when
   Phase 5D moved the merge inside `exportBase`.
 
-**`public/hostv2/` is a committed BUILD ARTIFACT rewritten by 12 commits on this
-branch.** Linear, it is noise; across two parallel branches every one of those files
-conflicts and minified bundles cannot be hand-resolved. This is the mechanism behind
-the 2026-07-30 sweep. Moving it to a CI build is the only fix that scales.
+**RESOLVED: `public/hostv2/` is gitignored** (`.gitignore:62`, zero tracked files). It used
+to be a committed build artifact rewritten by every hostv2 commit, whose minified bundles
+could not be hand-resolved across parallel branches -- the mechanism behind the 2026-07-30
+sweep. It is still a real artifact on disk that a deploy serves, so **`npm run sync:hostv2`
+before trusting `gate:hostv2`** remains true; what changed is that it no longer conflicts.
 
 Commands that matter:
 
@@ -114,17 +549,69 @@ Four things to hold in your head:
 
 ## 5. Next actions, in order
 
-1. **Land the lodging pair.** #79 then #80 (or #80 alone -- it contains #79). Both green.
-   Finish the uncommitted `LodgingCockpit.jsx` first: build, drive at `?demo=lodging`, commit.
-2. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
+**0. KILL THE OTHER SESSION FIRST.** Two Claude sessions shared this tree on 2026-08-07
+and it cost real time - duplicated work on the tap-target fix and vendor-silence, and one
+`git add -A` that swept the other session's in-flight files into an unrelated commit.
+Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before editing
+`HostShellV2.jsx` or `styles.css`. **Commit single-file in a shared tree.**
+
+**1. DONE 2026-08-07.** The matrix has now run clean; result and baseline in section 2.
+
+**2. Build the board's unbuilt rulings, in this order** (all from section 1c):
+   a. **Un-hide `.tile-a`** for the rail composition only - scope the exception, leave
+      `styles.css:891` alone for phone. It brings the lifecycle line and six named,
+      routed plan-part chips into the column that is still mostly empty. This is the
+      single highest-density win left and it invents nothing.
+   b. **Critical blockers render IN the hero.** The engine already ranks venue
+      `urgency:'critical'`; the layout puts it after the hero. Let the engine win.
+   c. **Collapse the four venue-capture cards to one.**
+
+**3. DONE 2026-08-07** (`43287dd3`, `ffd2db9f`). The fold-peek contradiction is settled by
+fixing the PRODUCT, not the test. `.efold` is gated on `.app.has-more` - whether the
+scroll container actually overflows - instead of on a width breakpoint, so the handle
+appears exactly when it is telling the truth and stays hidden when the page fits. It also
+needed an explicit grid cell: the moment it could render it auto-placed into the stat
+column, the second time that element has found that orphan. The spec's guard used
+`count()`, which a `display:none` node passes; it now skips when nothing is below and
+asserts visibility when something is - a stronger contract than before.
+
+**4. DONE 2026-08-07** (`5624ae6e`). The four amendments are written into UX_01, UX_03 and
+UX_04 in the board's AMENDED wordings. Two places my originals were wrong and would have
+shipped a worse rule: the void budget must bound BOTH axes (the worst void measured was
+418px WIDE, and my draft said height only), and the wide tier is `WIDESCREEN = 1536`,
+already defined at `viewport.js:31` - my proposed 1600 would have re-stranded the
+1440/1536 laptops a previous board ruling explicitly rescued.
+
+**5. Two board calls still untouched:** move the RSVP picker out of its trigger; add an
+on-demand detail pane (permanent third pane already refused). Note Ive's dissent: the
+detail pane and the stat column are the SAME region, so building the pane collapses two
+calls into one.
+
+Then the pre-existing queue below - the grounding-coverage supply problem remains the
+binding constraint on the product, and none of the viewport work touched it.
+
+
+1. **Land #82**, then the two commits after it. All gates green locally.
+2. **The room-block half of lodging is still dark** - the biggest open item, and it is a
+   RECONNECTION not a build. A review board convened 2026-08-06 (8 seats, full ruling in
+   `0d273115`) put this above everything else on this surface: three of four `dest_lodging`
+   options are room blocks, and `goToLodgingCockpit` (`HostShellV2.jsx:3176`) navigates away
+   from the sheet that held them. The file says so itself at `:10233` - "This sheet is
+   unreachable now."
+   - **Reconnected in `0d273115`:** the booking code (it was written to `lodging.bookingCode`
+     while every engine reads `lodging.code`, so `draftLodgingNote` - the guest note that IS
+     the group-lodging deliverable - silently omitted it), and **Group rate ends** →
+     `lodging.deadline`, which `travelPlan` turns into the dated obligation.
+   - **STILL DARK:** the backups list, and **"Who's booked a room"** (`HostShellV2.jsx:11565+`).
+     For a block the roster IS the work - the cutoff matters because you chase the people who
+     have not booked.
+3. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
    name the **7 bare `done`/`View` labels** (file:line listed; read each call site first --
    do not guess the words), amend **UX_06 to sentence case** (shipped labels run 179 sentence
    to 14 Title, so doctrine is the holdout), kill the **180deg** gradient keeping `#4E6877`
    and `--sheen`, then put the number in the label where it is already in scope.
    Deferred to its own audit: classifying the record-only surfaces tap-to-result (only 2 of
    277 labels say `Mark`/`Record`, which is not plausible -- but it is a flag, not a finding).
-3. **Get `public/hostv2/` out of version control** and build it in CI -- the single
-   highest-leverage change for parallel sessions (see section 2).
 4. **Label the 397 unlabeled priced items**, then point the research factory at the 34
    zero-cited playbooks (`wedding` first). Unchanged from 2026-07-31 and still the
    binding constraint.
@@ -139,6 +626,109 @@ Four things to hold in your head:
 ---
 
 ## 6. Traps -- do not re-derive these
+
+- **TWO GATES FOR ONE CONCEPT IS THE BUG.** `showsRail()` is width-only and starts at
+  **1024**, not 1280 (`isWideBp` includes tablet-land). Every desktop rule in `styles.css`
+  is `min-width:1280px AND min-height:700px`. A rule keyed on `[data-rail="1"]` therefore
+  reaches 1024, and a rule inside that media query never reaches a 654px-tall laptop.
+  **Before writing any composition rule, decide which gate it belongs to and say so.**
+  Four separate defects came out of this one split.
+- **THE HOST'S MACHINE IS 1280x654, AND THE MATRIX CANNOT SEE IT.** 1280x800 display,
+  Chrome inner viewport 654. The matrix runs 1440x900 and 1920x1080 - both pass
+  `min-height:700px`. Every desktop defect found this session came from driving the host's
+  browser, not from CI. **Add 1280x654 and 1024x768 to the matrix.**
+- **852 IS AN IPHONE.** `calc(852px - 64px - 88px)` = 700px, and it was hard-reserved in
+  `.hero` at every width. Before theorising about "void", grep the literal numbers in the
+  min-heights: a phone frame nailed into a desktop composition looks exactly like a design
+  choice and is not one.
+- **A COMMENT CAN DESTROY THE RULE IT DOCUMENTS.** CSS HAS NO NESTED COMMENTS. An inner
+  `slash-star ... star-slash` inside an explanatory block closes it early, the remaining
+  prose is parsed as declarations, and the rule below is silently swallowed. Cost one
+  full build cycle on 2026-08-07 - the selector was in the file, grep found it, and it was
+  inert. Caught only by the computed box.
+- **A LENGTH BOUND MUST BE APPLIED AFTER `trim()`.** `ctaNamesTheAct.test.js` scanned JSX
+  button text with `([^<{]{2,60})` and so was **measuring indentation**: an 11-character
+  label six levels deep captures 67 characters. Every deeply-nested button in the file was
+  invisible to the gate, which is why "Sort it out" shipped green. A gate closes a class
+  only if it spans it, and a bound written against clean source does not span real files.
+- **PROVE A FAILURE IS PRE-EXISTING BY REPRODUCING IT.** When the matrix comes back red
+  after your change, revert the file to the last known commit, rebuild, re-run the failing
+  cluster. On 2026-08-07 that turned "21 failures" into "13 mine, 8 not" and then into
+  "all 21 pre-existing" after the 13 were fixed. Never argue it from reading.
+- **...AND THE REVERT TARGET MUST PREDATE THE SUSPECT, WHICH IS NOT THE SAME AS BEING
+  OLD.** The corollary that cost the most on 2026-08-07. Ten tablet-land failures were
+  called pre-existing three times in this document on the strength of a revert of
+  `styles.css` to `f8ae0a50` that reproduced all ten. `f8ae0a50` **already contained**
+  `cf0336c09`, the commit that caused them. A revert to a point that still includes the
+  cause reproduces the bug perfectly and proves nothing. **Run
+  `git merge-base --is-ancestor <suspect> <revert-target>` before believing your own
+  revert test** - it is one second, and "reproduced at an earlier commit" is worthless
+  until you know what that commit contained. The tell was there the whole time: the
+  Playwright log named the intercepting element (`srail-t intercepts pointer events`) in
+  every one of the ten, and that was read as noise for hours because the conclusion was
+  already filed. **A failure with a named mechanism in the log has never earned the label
+  "pre-existing" - it has earned five minutes of measurement.**
+- **`left` IS A CENTRE ANCHOR WHEREVER `translate(-50%,-50%)` IS IN PLAY.** Sheets are
+  edge-to-edge on the phone and at >=1280, but between 640 and 1279 at >=700 tall they are
+  the centred floating panel (`styles.css:3174`). A later rule that sets `left` on `.sheet`
+  without knowing which idiom is live will silently move the panel by half its own width:
+  `left:220px` rendered at `l:-119` with `w:680`, half off-screen and the rest under the
+  rail. **Grep for a `transform` on any element before writing its `left`,** and scope the
+  rule to the same media query the idiom uses.
+- **A `const` USED ABOVE ITS DECLARATION FAILS SILENTLY AND LOOKS LIKE A LAYOUT BUG.**
+  Twice on 2026-08-07. Naming a below-declared const in an effect's dependency array is
+  the obvious form; the dangerous form is inside an EXPRESSION, where nothing warns you.
+  Two flags placed at ~:987 that read `queue` (:2661), `askMode` (:2741), `show` (:2990)
+  and `wiredKind` (:4596) threw at render, took the WHOLE component down, and presented as
+  "the probe found zero venue inputs" - indistinguishable from a guard that hid one too
+  many. **If a UI element vanishes entirely after a small change, suspect a render throw
+  before you suspect your selector.**
+- **THE HERO IS `queue.filter(show)[0]`, NEVER `queue[0]`.** `shown = queue.filter(show)`
+  is an order-preserving FILTER, so position 0 of the two lists differ whenever the first
+  queued action is lensed out. This repo has already shipped one bug from reading position
+  0 of the wrong list.
+- **A TEST AND THE CODE UNDER TEST MUST NOT BOTH COMPUTE THE SAME BORDERLINE PREDICATE.**
+  They will eventually disagree and it will look like flake. The fold-peek spec measured
+  `scrollHeight - clientHeight > 24` while the shell measured the same thing a beat
+  earlier: run alone the page did not overflow and every case SKIPPED; run under load it
+  did, so the spec demanded a control the shell had already declined. One of them has to
+  be the authority - the product's own flag is.
+- **ISOLATION LIES, AND SO DOES ONE VIEWPORT.** `-g "fold peek"` returned green twice
+  while the full matrix failed the same eight. And a fix verified only in the host's
+  1280x654 Chrome looked complete while it was broken at 1440 and 1920 - because the
+  duplicate rule that was breaking them sits inside a `min-height:700px` media query that
+  654 cannot reach. Solo greens and single-viewport drives are evidence, never proof.
+- **A CSS RULE THAT MATCHES NOTHING IS INDISTINGUISHABLE FROM ONE THAT WORKS.** Five
+  times in one day (2026-08-07): `68ch`, `> .app .sheet` (`.sheet` is a direct child of
+  `.stagewrap`, not inside `.app`), a `.ghead` rule with no markup, four uncapped-row
+  selectors, and the `.seclist`/`.statcard` names already recorded at :3517. **Read the
+  computed box, never the selector.** `getBoundingClientRect()` and `getComputedStyle`
+  are the only evidence.
+- **INLINE STYLES BEAT THE STYLESHEET, and this shell is full of them.** Three in one
+  row: the guest row button's `display:block`, the metadata span's `gap:6`, and the
+  reply control's flex. Each needed `!important` and each was found by measuring, not
+  reading. If a rule "should" apply and the box disagrees, suspect an inline style first.
+- **`min-width:auto` floors a flex item at its MIN-CONTENT.** The reply chip reported
+  `flex: 0 0 96px` AND `width: 320px` simultaneously, which looks impossible. It is not:
+  the trigger button contains the inline RSVP picker, so its min-content is ~320px and
+  the basis was legally overridden. Nothing was fighting the rule; the rule was never
+  allowed to win.
+- **`--responsive-command` / `--responsive-data` are SURFACE IDENTITY, NOT BREAKPOINTS.**
+  Those classes are on the stagewrap at 393px too. A rule written for the data tier and
+  left outside a media query WILL hit the phone - it gave a 353px phone row 88px/132px
+  fixed metadata tracks. Gate on `[data-rail="1"]` or a media query, always.
+- **A percentage cannot be a shared column track.** `24%` of the row button drifted the
+  metadata tracks 8px, because the button's width changes per row with the reply chip
+  beside it ("Yes" 43px vs "No reply" ~75px). Use `vw` or a fixed length.
+- **`E2E_BASE=1` is required for `vite preview`** or the asset base does not match and
+  NOTHING mounts - the page renders an empty `#root` and looks like a crashed app. The
+  playwright config sets it; a hand-started preview must too.
+- **Kill orphaned `vite preview` processes before an e2e run.** Port 5233 with
+  `strictPort` + `reuseExistingServer:false` means an orphan blocks the run, and a reused
+  one would test a STALE bundle. Two orphans were found on 2026-08-07.
+- **Never rebuild `dist` while playwright is running against it** - the preview serves
+  that directory, so the run silently tests a half-swapped bundle. One full matrix run
+  was invalidated this way and had to be killed.
 
 - **Bare `npm test` HANGS** (watch mode). Always `CI=true`. Backend is **pytest**;
   `demo/backend` has no `package.json`.
@@ -165,6 +755,21 @@ Four things to hold in your head:
 - **hostv2-drift**: rebuild with `npm run sync:hostv2` (Node 20) before trusting the gate.
 - **Never claim absent/dead/disconnected from one probe.** Four such claims were wrong or
   imprecise in the 2026-07-31 audit. Close the search space first.
+- **A pasted page is not a DOM.** Building a parser against markup (hrefs, `aria-label`,
+  anchor counts) assumes the clipboard carried it; a plain-text copy carries none of it.
+  Match on VISIBLE TEXT where the discrimination has to hold. Three markup discriminators
+  for "is this a results list or one hotel" were measured live and all three failed - `/aclk`
+  counts (9 vs 67, both pages have them), "exactly one non-Google anchor" (the detail page
+  has 27), and entity hrefs.
+- **One field, two meanings, is this repo's recurring defect.** Three instances landed in a
+  single day 2026-08-06: `occupancy` (bed count) read as guest capacity, the Hotels door's
+  dates read as carried when Google dropped them, and a hotel's NIGHTLY rate stored as a stay
+  total then split across the party. Each wore `sources: 'read'`. When a value arrives from a
+  platform, establish what the platform MEANS by it before storing it - a field that returns
+  a plausible number is not the same as a field that means what you assumed.
+- **Choosing is not booking, on every surface.** `lodgingIsHeld` is the one predicate;
+  `phaseProgress` had its own looser copy (bare `hotelName`) and marked a mere PICK as a held
+  room. Gated by `lodgingHeldNotPicked.test.js` from both ends.
 - **Every number ships with its command.** Proof ledger:
   `review-artifacts/2026-07-31-intelligence-audits/12-PROOF-LEDGER.md`. If a figure is not
   in the ledger, it is unproven -- say so.

@@ -196,10 +196,30 @@ async def list_channels(event_id: str):
 
 
 # ── 2. POST /channels/ensure ────────────────────────────────────────────────────
+# GATED 2026-08-07. This is a WRITE, and it was anonymous. `_ensure_channels`
+# inserts into event_channels for whatever `event_id` string it is handed, and
+# migrations/0001_communication.sql declares that column `text not null` with NO
+# foreign key to events — so any caller could create two rows per arbitrary
+# string, without limit and without owning anything.
+#
+# Safe to gate: the only caller is commApi.ensureChannels, and commApi's `req()`
+# already attaches plannerAuthHeaders to every request, which is how the eight
+# already-gated routes in this same file work today.
+#
+# The GET beside it is deliberately left public — `list_messages` shows this
+# module intends unauthenticated reads for the client portal (it requires a
+# planner only for INTERNAL_TEAM), so quietly gating a read could break that
+# portal. That one is recorded in the audit instead of changed here.
 @router.post("/channels/ensure")
-async def ensure_channels(event_id: str):
+async def ensure_channels(
+    event_id: str,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
+    principal = await require_planner(authorization, x_planner_token)
     pool = await get_pool()
     async with pool.acquire() as conn:
+        await _assert_event_access(conn, event_id, principal)
         await _ensure_channels(conn, event_id)
         rows = await conn.fetch(
             "select * from event_channels where event_id=$1 order by channel_type", event_id)

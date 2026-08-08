@@ -1,3 +1,4 @@
+import { isWideBp } from './viewport';
 // ─── responsiveSurface — which shell composition a surface gets ──────────────
 //
 // Phase 5G-C1. The C1 acceptance path spans TWO host experiences — "where the
@@ -19,14 +20,51 @@
 // Guests, Vendors, Budget and every other sheet stay legacy on purpose. They are
 // documented responsive debt, not silently stretched surfaces.
 
-export const SURFACE_MODES = Object.freeze(['command', 'food-recommendation', 'legacy']);
+// SCOPE EXTENDED 2026-08-07 — the `data` mode.
+//
+// Measured before extending: 38 sheet kinds + 7 stages = 45 surfaces, of which
+// exactly 2 had a desktop layout. The other 43 rendered as a 393x852 phone
+// silhouette on a 1440px screen. The host's ruling is that desktop and wide
+// "can't be just a larger version of a mobile viewport", so the debt this file
+// documents is now being paid down — through this function, by explicit surface
+// identity, which is the mechanism it was built to allow.
+//
+// WHICH SURFACES, and why not all 38 at once. UX_03 already names the tier that
+// should use width: "data — dense tables & boards that should USE width (Budget
+// · Guests · triage)". Those are surfaces whose content is a LIST WITH COLUMNS,
+// so width buys real density rather than longer lines. Every other sheet is a
+// single decision or a form, where extra width buys nothing and costs measure —
+// widening those would produce exactly the "silently stretched surfaces" this
+// module was written to prevent. They stay legacy, still documented debt.
+export const SURFACE_MODES = Object.freeze(['command', 'food-recommendation', 'data', 'legacy']);
 
 /** The shell class for each mode. `legacy` adds nothing — it is the existing stage. */
 export const SURFACE_CLASS = Object.freeze({
   command: 'stagewrap--responsive-command',
   'food-recommendation': 'stagewrap--responsive-food',
+  data: 'stagewrap--responsive-data',
   legacy: '',
 });
+
+/** The dense-data sheets, per UX_03's `data` measure tier. Explicit identity only.
+ *
+ * EXTENDED 2026-08-07 from [budget, guests] to every sheet whose body is a
+ * REPEATED ROW LIST — the shape where width buys density instead of longer
+ * lines. Verified against the JSX rather than guessed from names: these render
+ * `.brow` / `.later-row` / `.frow` lists, which is what the two-column
+ * composition is built around.
+ *
+ * Safe by construction if a sheet turns out to be thinner than expected: column
+ * one is capped at 420px, close to the phone's own 393, so a sheet with no rows
+ * degrades to a normal-measure single column rather than 1360px of blown-out
+ * prose. That cap is why extending this list is not a risk.
+ *
+ * Still NOT here, still deliberate debt: single-decision sheets and forms
+ * (ask, date, settings, qr, pass, help, meaning, thanks...). Width buys them
+ * nothing and costs them measure. */
+export const DATA_SHEETS = Object.freeze([
+  'budget', 'guests', 'vendors', 'tasks', 'risks', 'decisions', 'seating', 'supplies',
+]);
 
 /**
  * responsiveSurfaceMode({ stage, sheet }) -> 'command' | 'food-recommendation' | 'legacy'
@@ -74,12 +112,52 @@ export function responsiveSurfaceMode(state) {
   const { stage, sheet } = (state || {});
   if (stage === 'plan' && !sheet) return 'command';
   if (stage === 'plan' && sheet === 'food') return 'food-recommendation';
+  if (stage === 'plan' && DATA_SHEETS.includes(sheet)) return 'data';
   return 'legacy';
 }
 
 /** The className to put on .stagewrap for this surface. '' for legacy. */
 export function stagewrapClass(state) {
   return SURFACE_CLASS[responsiveSurfaceMode(state)] || '';
+}
+
+/**
+ * showsRail({ bp, stage, sheet }) -> boolean — is the persistent section rail up?
+ *
+ * VIEWPORT_PORT_RULING step 3. UX_03 hangs the whole rail/hamburger decision on
+ * one flag: `isWide` means the sidebar is visible, below it navigation collapses
+ * to the hamburger (which this shell already has — the eyebrow IS the menu).
+ *
+ * THE TRAP THIS FUNCTION EXISTS TO AVOID, and it has already been paid for once:
+ * the breakpoint is NOT a width test. At >=1280 the stage is a fixed 393x852
+ * phone silhouette for every surface EXCEPT command / food / data. Rules keyed on
+ * `data-bp="desktop"` alone shipped 3- and 4-column grids INSIDE that phone —
+ * measured at 104.3px tracks at 1440 and 73.25px at 1920, with the event name
+ * truncated to two letters. A rail hung off the breakpoint would reproduce that
+ * exactly: 200px of navigation nailed to the side of a 393px phone.
+ *
+ * FIRST VERSION GATED DESKTOP ON optsOutOfFit() AND THE HOST REJECTED IT, for
+ * a reason worth keeping: it made the rail appear and vanish as you navigated.
+ * Opening "You & your account" at 1920 dropped a 1500px canvas to a 393px phone
+ * with 80% dead space and no navigation — measured. A rail that leaves when you
+ * use it is not persistent navigation, it is a surprise.
+ *
+ * So the answer was never to withhold the rail on those surfaces; it was to
+ * stop those surfaces being phones while a rail is up. The stylesheet takes
+ * [data-rail="1"] as "this is a real canvas" and drops the silhouette for it —
+ * the content keeps its measure inside that canvas rather than being stretched,
+ * which is the distinction responsiveSurface was written to protect.
+ *
+ * The breakpoint trap this function documents is unchanged and still live: the
+ * .navrows density rules must stay gated on the SURFACE classes, because they
+ * ask "how much width does this content have", which is a different question
+ * from "is navigation up".
+ */
+export function showsRail(state) {
+  const { bp } = (state || {});
+  // The forced phone stage is a phone in every respect, including its navigation.
+  if (phoneStageForced()) return false;
+  return isWideBp(bp);   // the ONE definition, from viewport.js
 }
 
 /**

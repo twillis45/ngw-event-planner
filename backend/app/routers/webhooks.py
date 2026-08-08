@@ -9,15 +9,19 @@ CTA truthfulness: DONE — the relay fires and logs the delivery status.
 Retry logic is Phase 4.
 
 Routes:
-  POST /api/webhooks/relay  — relay payload to external URL
+  POST /api/webhooks/relay  — relay payload to external URL (planner-only,
+                              destination validated by safe_fetch)
   GET  /api/webhooks/status — confirm relay is operational
 """
 
 import logging
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
-from typing import Any
+from typing import Any, Optional
+
+from ..auth import require_planner
+from ..safe_fetch import SafeFetchError, validate_public_url
 
 log = logging.getLogger("ngw.webhooks")
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
@@ -35,7 +39,11 @@ async def webhook_status():
 
 
 @router.post("/relay")
-async def relay_webhook(body: RelayRequest):
+async def relay_webhook(
+    body: RelayRequest,
+    authorization: Optional[str] = Header(default=None),
+    x_planner_token: Optional[str] = Header(default=None),
+):
     """
     Relay a webhook payload to an external URL.
 
@@ -47,11 +55,36 @@ async def relay_webhook(body: RelayRequest):
     Timeout: 10s (aggressive — webhook receivers should ACK fast).
     No retry: Phase 4 concern.
     """
-    if not body.url or not body.url.startswith("http"):
-        raise HTTPException(status_code=400, detail="Invalid webhook URL — must start with http/https")
+    # ── THIS WAS AN UNAUTHENTICATED SSRF (fixed 2026-08-07) ──────────────────
+    # The endpoint took an arbitrary `url` from an unauthenticated request body
+    # and POSTed to it from inside the server's own network, gated only by
+    # `startswith("http")`. That accepted http://169.254.169.254/... (cloud
+    # instance metadata, which hands out credentials), http://localhost:5432,
+    # and any private-range address — turning the relay into a proxy into the
+    # deployment's internals for anyone who could reach the API.
+    #
+    # This repo already had the guard: app/safe_fetch.py, written for exactly
+    # this class and already applied at three other call sites. The relay was
+    # never wired to it.
+    #
+    # Two changes: the caller must now be a planner, and the destination goes
+    # through validate_public_url — https only, no embedded credentials, and
+    # every resolved address must be global unicast.
+    await require_planner(authorization, x_planner_token)
+
+    if not body.url:
+        raise HTTPException(status_code=400, detail="A webhook URL is required.")
+    try:
+        await validate_public_url(body.url)
+    except SafeFetchError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.reason)
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        # follow_redirects stays OFF — a 302 would move this POST to an address
+        # that was never validated, which is the standard bypass for the check
+        # above. httpx defaults to False; it is explicit here so nobody "fixes"
+        # it later.
+        async with httpx.AsyncClient(timeout=10, follow_redirects=False) as client:
             resp = await client.post(
                 body.url,
                 json=body.payload,

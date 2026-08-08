@@ -34,10 +34,10 @@ export const ATTENDANCE_SOURCES = [
 // "what to expect" note. low = realistic floor (no-shows), high = realistic ceiling to
 // SIZE to so you don't run short (no-shows recovered + plus-ones/walk-ins).
 const CLASS = {
-  formal:         { low: 0.90, high: 1.00, note: 'usually ~5–10% no-shows, walk-ins rare.' },
-  rsvp_social:    { low: 0.85, high: 1.05, note: 'usually ~10–15% no-shows, a few plus-ones.' },
-  casual_open:    { low: 0.80, high: 1.15, note: 'some no-shows, some plus-ones and walk-ins.' },
-  community_free: { low: 0.55, high: 1.10, note: 'open-invite turnout swings wide.' },
+  formal:         { low: 0.90, high: 1.00, note: 'usually ~5–10% no-shows, walk-ins rare' },
+  rsvp_social:    { low: 0.85, high: 1.05, note: 'usually ~10–15% no-shows, a few plus-ones' },
+  casual_open:    { low: 0.80, high: 1.15, note: 'some no-shows, some plus-ones and walk-ins' },
+  community_free: { low: 0.55, high: 1.10, note: 'open-invite turnout swings wide' },
 };
 
 // Type → class. Keyword-matched, with a sensible middle default. A playbook can override
@@ -93,5 +93,9 @@ export function expectedFromPlanned(n, type, playbook) {
   const low = Math.round(planned * sh.low);
   const high = Math.round(planned * sh.high);
   const highNote = implausibleGuestNote(planned, type, playbook);
-  return { planned, low, high, planning: high, note: highNote ? `${sh.note} ${highNote}` : sh.note, class: sh.class };
+  return { planned, low, high, planning: high, // The base notes lost their terminal period (2026-08-06) so the renderer's
+  // own parens read correctly — "(… a few plus-ones.)" had the period inside
+  // and nothing outside. That means THIS join has to supply the sentence
+  // break itself, or the two clauses run together.
+  note: highNote ? `${sh.note}. ${highNote}` : sh.note, class: sh.class };
 }

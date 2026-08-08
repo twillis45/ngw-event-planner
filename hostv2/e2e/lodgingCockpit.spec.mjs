@@ -84,11 +84,29 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     for (const door of ['Airbnb', 'Vrbo', 'Hotels']) {
       await expect(page.getByRole('link', { name: new RegExp(door, 'i') })).toBeVisible();
     }
-    const line = page.getByText(/Opens with your own answers already in it/i);
+    // ── AMENDED 2026-08-06 ───────────────────────────────────────────────
+    // The line used to open "Opens with your own answers already in it" for
+    // all three doors unconditionally, and rendered links[0].applied — AIRBNB'S
+    // list — which put its budget and must-have filters into a sentence
+    // covering two doors that never took them. It is now derived twice over:
+    // the SUBJECT depends on whether every door truly carries the dates (the
+    // Hotels door only started to once googleTravelTs shipped), and the LIST is
+    // appliedByEveryDoor() — the intersection, never the union.
+    //
+    // Matching the tail rather than the whole sentence keeps this test honest
+    // about the part that must always be true, while letting the subject vary
+    // with what the doors actually carry.
+    const line = page.getByText(/with your own answers already in it/i);
     await expect(line).toContainText('Santa Fe');
     await expect(line).toContainText('10 guests');
     // Host language, never ISO — this shipped as "2028-06-17" once.
     await expect(line).not.toHaveText(/\d{4}-\d{2}-\d{2}/);
+    // The budget is Airbnb's alone; the shared line must not claim it.
+    await expect(line).not.toContainText('under $');
+    // This event's stay is in the future, so the Hotels door carries the dates
+    // too and the caveat below must NOT be showing.
+    await expect(line).toContainText('These open');
+    await expect(page.getByText(/Hotels open at the town only/i)).toHaveCount(0);
   });
 
   test('a pasted listing comes back with its own facts', async ({ page }) => {
@@ -195,5 +213,83 @@ test.describe('Where everyone stays — the Santa Fe birthday', () => {
     expect(overflow, 'the page must never scroll sideways').toBeLessThanOrEqual(0);
     expect(await page.locator('body').innerText()).not.toMatch(/undefined|NaN|\[object/);
     expect(errors).toEqual([]);
+  });
+});
+
+// ── THE FIX THAT CLOSED THE HOTEL PATH (2026-08-06, review board) ──────────
+// Hotel photos are refused because Google's CDN never cleared the media
+// allowlist — correct, and guest-privacy-load-bearing. But it made EVERY hotel
+// card photo-less, and the photo-less branch carried `height:100%` on its
+// placeholder: it consumed the whole card and pushed name / price / "Pick this
+// place" past `overflow:hidden` on .lc-card. Measured before the fix: card
+// 372→731, placeholder 359px, the button at 822 — 91px below the card's bottom
+// edge, and elementFromPoint returned .lc-why-sum. Not visible, not clickable.
+//
+// An all-hotel shortlist could not reach `picked` at all, and the whole suite
+// stayed green: nothing asserted that the primary act was REACHABLE. A photo is
+// not a precondition for choosing a place, so this drives the no-photo card.
+test.describe('a place with no photo can still be picked', () => {
+  test('the Pick button is inside its card and hit-testable', async ({ page }) => {
+    await seed(page);
+    // A Google Hotels results page: real card shape, no per-hotel url, and —
+    // the point of this test — an image host the allowlist refuses.
+    await paste(page, [
+      '<div>https://www.google.com/travel/search?q=hotels</div>',
+      '<a href="/aclk?adurl=x"><img src="https://lh3.googleusercontent.com/a"/>',
+      '<span>Inn of the Turquoise Bear</span><span>$212</span><span>4.9/5</span>',
+      '<span>(242)</span><span>4-star hotel</span></a>',
+      // TWO places: the swipe deck (.lc-card) only renders with more than one
+      // live option; a single option takes the list layout instead.
+      '<a href="/aclk?adurl=y"><img src="https://lh3.googleusercontent.com/b"/>',
+      '<span>La Fonda on the Plaza</span><span>$257</span><span>4.5/5</span>',
+      '<span>(2.9K)</span><span>4-star hotel</span></a>',
+    ].join(''));
+    const add = page.getByRole('button', { name: /Add \d+ to the shortlist|Add it/i });
+    if (await add.count()) await add.first().click();
+
+    const card = page.locator('.lc-card').first();
+    await expect(card).toBeVisible();
+    // The placeholder must not have eaten the card.
+    await expect(card.locator('.lc-card-nophoto')).toBeVisible();
+
+    const pick = card.getByRole('button', { name: /Pick/i }).first();
+    await expect(pick).toBeVisible();
+
+    // Geometry, not just visibility: Playwright's actionability would catch a
+    // clipped button, but this states the actual invariant that broke.
+    const inside = await card.evaluate((el) => {
+      const btn = [...el.querySelectorAll('button')].find((b) => /Pick this place/i.test(b.innerText || ''));
+      if (!btn) return { found: false };
+      const c = el.getBoundingClientRect();
+      const b = btn.getBoundingClientRect();
+      const hit = document.elementFromPoint(b.left + 30, b.top + 8);
+      return { found: true, insideCard: b.bottom <= c.bottom, hitTestable: hit === btn || btn.contains(hit) };
+    });
+    expect(inside.found).toBe(true);
+    expect(inside.insideCard).toBe(true);
+    expect(inside.hitTestable).toBe(true);
+
+    // And it actually works — the whole point.
+    await pick.click();
+    await expect(page.locator('.lc-step.is-on')).toHaveText(/The pick/i);
+  });
+
+  test('a hotel row shows the rate it knows, labelled as one room', async ({ page }) => {
+    await seed(page);
+    await paste(page, [
+      '<div>https://www.google.com/travel/search?q=hotels</div>',
+      '<a href="/aclk?adurl=x"><img src="https://lh3.googleusercontent.com/a"/>',
+      '<span>Inn of the Turquoise Bear</span><span>$212</span><span>4-star hotel</span></a>',
+      '<a href="/aclk?adurl=y"><img src="https://lh3.googleusercontent.com/b"/>',
+      '<span>La Fonda on the Plaza</span><span>$257</span><span>4-star hotel</span></a>',
+    ].join(''));
+    const add = page.getByRole('button', { name: /Add \d+ to the shortlist|Add it/i });
+    if (await add.count()) await add.first().click();
+    const card = page.locator('.lc-card').first();
+    // $212 x 4 nights = one room, not the stay. The total is withheld; the rate
+    // is shown and says what it buys.
+    await expect(card).toContainText(/\$212 a night · one room/);
+    await expect(card).not.toContainText(/\$848/);
+    await expect(card).not.toContainText(/a person/);
   });
 });

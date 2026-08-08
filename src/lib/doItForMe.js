@@ -8,6 +8,8 @@
 import { isVendorBooked } from './workstreams';
 import { transportDecision } from './travelPlan';
 import { venueFor } from './venueFor';
+import { STAY_FROM_PICK, STAY_FROM_PLAN } from './lodgingIntel';
+import { normalizeCvbContact } from './cvbIntel';
 import { incidentPlanFor } from './knowledge/incidentContext';
 
 // A gathering that must carry a somber, respectful tone — never the festive template.
@@ -990,12 +992,40 @@ export function draftLodgingNote(event) {
   const backups = (Array.isArray(lo.backupOptions) ? lo.backupOptions : [])
     .filter(b => b && String(b.name || '').trim())
     .slice(0, 2);
+  // ── ONLY A NEGOTIATED RATE IS A "GROUP RATE" (2026-08-06, review board) ───
+  // `stayFromPick` fills `lodging.rate` from the chosen option's nightly price
+  // — which, for a hotel row, was READ off a Google card. This note then told
+  // the guests "The group rate is $X a night", asserting a negotiation that
+  // never happened, on the one artifact that leaves the app. A rate the host
+  // typed off a confirmation is a group rate; a rate we read off a listing is
+  // just the rate. `from === STAY_FROM_PICK` is exactly that distinction, and
+  // it is already stored.
+  // Same rule as lodgingIsHeld: a picked listing's price and a stated PLAN are
+  // not negotiated rates; anything else came off the host's own confirmation.
+  const rateWasNegotiated = String(lo.from || '') !== STAY_FROM_PICK
+    && String(lo.from || '') !== STAY_FROM_PLAN;
+  const rateWord = rateWasNegotiated ? 'group rate' : 'rate';
+  // ALL THREE SENTENCES, not one. The first gate shipped on the "The group rate
+  // is $X" line alone and left "to get the group rate" and "the group rate goes
+  // away" asserting the same un-negotiated claim two lines below it. A gate
+  // that covers one of three renderings of a lie is not a gate.
+  const rateNoun = rateWasNegotiated ? 'the group rate' : 'that rate';
   const lines = [`Hi everyone — here’s where to stay${forName}:`, ''];
-  lines.push(`We’ve lined up rooms at ${hotel}.`);
-  if (hasRate && code) lines.push(`The group rate is $${rate} a night — give them the code ${code} when you book.`);
-  else if (hasRate) lines.push(`The group rate is $${rate} a night.`);
-  else if (code) lines.push(`Give them the code ${code} when you book to get the group rate.`);
-  if (deadline) lines.push(`Book by ${deadline} — after that the group rate goes away and rooms may cost more.`);
+  lines.push(rateWasNegotiated ? `We’ve lined up rooms at ${hotel}.` : `We’re staying at ${hotel}.`);
+  if (hasRate && code) lines.push(`The ${rateWord} is $${rate} a night — give them the code ${code} when you book.`);
+  else if (hasRate) lines.push(`The ${rateWord} is $${rate} a night.`);
+  else if (code) lines.push(`Give them the code ${code} when you book to get ${rateNoun}.`);
+  if (deadline) lines.push(`Book by ${deadline} — after that ${rateNoun} goes away and rooms may cost more.`);
+  // ── THE NUMBER THEY NEED TO ACTUALLY BOOK (2026-08-06, Grandmother seat) ──
+  // "I have told ten people to go book, with a code, and given them no way to
+  // do it. Every one of them texts me back asking how. That is the whole day,
+  // on my phone, one person at a time — which is exactly the thing I bought
+  // this to stop." The host types this contact on the same screen that renders
+  // this note, and the note was omitting it.
+  const contact = normalizeCvbContact(lo.contact);
+  if (contact && contact.phone) {
+    lines.push(`Call ${contact.name ? `${contact.name} — ` : ''}${contact.phone} to book${code ? `, and give them the code ${code}` : ''}.`);
+  }
   if (backups.length) {
     lines.push('', 'If it fills up, or you’d rather stay somewhere else:');
     backups.forEach(b => {

@@ -23,10 +23,15 @@
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import {
   lodgingIntel, lodgingStage, LODGING_STAGES, lodgingCompare, lodgingRecommendation,
-  kitchenConsequence, lodgingSearchLinks, lodgingSearchBlocked,
-  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
+  kitchenConsequence, lodgingSearchLinks, appliedByEveryDoor, lodgingSearchBlocked,
+  extractListingCandidates, normalizeLodgingOption, stayFromPick, looksLikeSearchUrl, looksLikeHotelsResultsPage, looksLikeHotelDetailPage, unfurlListing, lodgingResults, isUnfurlConfigured, rankCandidates,
   lodgingTitleFor, lodgingTitleIsReal, lodgingTrouble, lodgingProvenance, lodgingRankBasis, lodgingPriceHistory,
+  STAY_FROM_CONFIRMATION, STAY_FROM_PLAN,
 } from '@app/lib/lodgingIntel';
+import { buildTravelPlan, nextLodgingStatus, LODGING_STATUS_LABEL } from '@app/lib/travelPlan';
+import { normalizeCvbContact } from '@app/lib/cvbIntel';
+import { draftLodgingNote } from '@app/lib/doItForMe';
+import { saveCustomEvents } from '@app/lib/customEventStore';
 import { venueFor } from '@app/lib/venueFor';
 import { spanNights } from '@app/lib/dates';
 import { LS_CUSTOMS, LS_LAST_EVENT, loadCustomEvents } from './eventPool.js';
@@ -66,7 +71,10 @@ function seedExample() {
   try {
     const all = loadCustomEvents() || [];
     const without = all.filter((e) => e && e.id !== SANTA_FE_EXAMPLE.id);
-    localStorage.setItem(LS_CUSTOMS, JSON.stringify([...without, { ...SANTA_FE_EXAMPLE }]));
+    // Through the guard: this rebuilds the array, and a bare setItem of a
+    // rebuilt array is exactly how a real event was lost on 2026-08-06. It
+    // keeps `without`, so it drops nothing and is never refused.
+    saveCustomEvents([...without, { ...SANTA_FE_EXAMPLE }], { reason: 'lodging:seed-example' });
     localStorage.setItem(LS_LAST_EVENT, SANTA_FE_EXAMPLE.id);
     window.location.reload();
   } catch { /* private mode — the planner link is still there */ }
@@ -91,7 +99,9 @@ export default function LodgingCockpit() {
     try {
       const all = loadCustomEvents() || [];
       const next = all.map((e) => (e && e.id === eventId ? { ...e, ...changes } : e));
-      localStorage.setItem(LS_CUSTOMS, JSON.stringify(next));
+      // A map preserves every id, so this can never be refused — the guard is
+      // here so no future edit to this line can quietly become a replacement.
+      saveCustomEvents(next, { reason: 'lodging:patch' });
       setTick((t) => t + 1);
       // FINISHING A STEP LANDS YOU ON THE NEXT ONE (host, 2026-08-04). The
       // stage is derived, so the data moving forward already moves the host —
@@ -346,8 +356,14 @@ function Looking({ event, patch }) {
     // ('' === ''): ticking one hotel's checkbox ticked or unticked all of
     // them. `_k` falls back to url when there is one (unchanged behavior for
     // Airbnb/Vrbo) and to a per-paste index otherwise.
+    // ALWAYS index-prefixed (2026-08-06, review board). The `c.url ||` form
+    // above still collided whenever two candidates in one paste shared a url —
+    // the same '' === '' failure this key was invented to end, just needing two
+    // identical hrefs instead of two empty ones. The index makes it unique by
+    // construction. Nothing compares `_k` to a url: it is Set membership and a
+    // React key, and nothing else (see 490, 536, 571-577).
     let cands = (found.candidates || []).filter(Boolean)
-      .map((c, i) => ({ ...c, _k: c.url || `k${i}-${c.name || ''}` }));
+      .map((c, i) => ({ ...c, _k: `k${i}-${c.url || c.name || ''}` }));
 
     // ── PARITY WITH THE LIVE INTAKE (2026-08-03) ───────────────────────────
     // The live sheet's readPage does four things this did not, and each one is
@@ -361,8 +377,32 @@ function Looking({ event, patch }) {
     //   · advise per DEVICE on failure — the live code carries a board finding
     //     that telling a host on a phone to press ⌘A was "the single documented
     //     abandonment point in the feature".
-    const known = new Set((event.lodgingOptions || []).map((o) => String((o && o.url) || '').split('?')[0]));
-    const fresh = cands.filter((c) => c && !known.has(String(c.url || '').split('?')[0]));
+    // ── A URL-LESS ROW IS NOT EVERY OTHER URL-LESS ROW (2026-08-06) ─────────
+    // Six seats of the review board arrived at this line independently, and two
+    // reproduced it. `known` was built from EVERY stored option including the
+    // url-less ones, so it contained ''. Hotel candidates are url-less by
+    // design (extractHotelCandidates refuses Google's /aclk ad redirects), so
+    // every one of them matched '' and was dropped as a duplicate. The host
+    // read "All 9 of those are already on your list." about nine hotels she had
+    // never seen — a confident, specific, FALSE claim, on the second paste,
+    // exactly when she was starting to trust the surface.
+    //
+    // One typed or hand-added option was enough to poison every hotel paste
+    // that followed, so this was never hotels-only.
+    //
+    // Dedup is a URL question. A candidate with no url cannot be answered by it
+    // and must not be silently discarded by it — it goes to staging, where the
+    // host can see it and untick it herself.
+    const known = new Set(
+      (event.lodgingOptions || [])
+        .map((o) => String((o && o.url) || '').split('?')[0])
+        .filter(Boolean),
+    );
+    const fresh = cands.filter((c) => {
+      if (!c) return false;
+      const u = String(c.url || '').split('?')[0];
+      return u ? !known.has(u) : true;
+    });
     const dupes = cands.length - fresh.length;
     try { const r = rankCandidates(fresh, event, { budget: Number(event.totalBudget || 0) || 0 });
       cands = (r && r.ranked && r.ranked.length) ? r.ranked : fresh; } catch { cands = fresh; }
@@ -423,6 +463,10 @@ function Looking({ event, patch }) {
             sleeps: r.sleeps != null ? r.sleeps : cands[0].sleeps,
             rating: r.rating != null ? r.rating : cands[0].rating,
             ratingCount: r.ratingCount != null ? r.ratingCount : cands[0].ratingCount,
+            // The listing's OWN amenity words. Every must-have row read "—"
+            // without them, even where the page said yes (host, 2026-08-06).
+            amenities: Array.isArray(r.amenities) && r.amenities.length
+              ? r.amenities : cands[0].amenities,
           }];
           found = { ...found, linksOnly: !(r.title) };
         } else if (r && r.reason) {
@@ -456,22 +500,31 @@ function Looking({ event, patch }) {
       const touch = typeof window !== 'undefined' && window.matchMedia
         && window.matchMedia('(pointer:coarse)').matches;
       // HONEST COPY, NOT A SILENT DEAD END (host, 2026-08-05: "honest copy").
-      // Airbnb and Vrbo card links are the only ones this file can read —
-      // Hotels has no card parser (no verified Google results fixture to
-      // build one against). The generic "tap Share, then Copy Link, try
-      // again" message below implies retrying would work; for a Hotels-door
-      // paste it never will, so say that specifically instead of the generic
-      // line. door (from looksLikeSearchUrl) only catches a BARE search
-      // link with no whitespace — a real "select all, copy" of the whole
-      // results page is exactly the shape this checks for instead.
+      // door (from looksLikeSearchUrl) only catches a BARE search link with no
+      // whitespace — a real "select all, copy" of the whole results page is a
+      // different shape, checked separately.
+      //
+      // ── TWO SENTENCES CORRECTED 2026-08-06 (review board) ─────────────────
+      // The line here used to read "Hotels can't be read back the way Airbnb
+      // and Vrbo can yet — open the hotel's own booking page and add what it
+      // says by hand below." Three seats flagged it. It was true when written
+      // on 2026-08-05 and false the next morning: extractHotelCandidates
+      // shipped, and a hotels results page IS read (name, price, rating, star
+      // class, amenities, photo). It also pointed at an "add by hand below"
+      // control that has never existed anywhere in this file. So the surface
+      // was talking the host out of a feature it has, and sending her to a
+      // form that isn't there.
+      const detailPage = looksLikeHotelDetailPage(src);
       const hotelsPage = looksLikeHotelsResultsPage(src);
       setReadErr(door
         ? `That’s the ${DOOR_SHORT[door] || 'search'} search link, not a house. Open it, then copy one place from the results and bring that back.`
-        : hotelsPage
-          ? 'Hotels can’t be read back the way Airbnb and Vrbo can yet — open the hotel’s own booking page and add what it says by hand below.'
-          : touch
-            ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
-            : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
+        : detailPage
+          ? 'That’s one hotel’s page — go back to the list of hotels and copy that instead. It reads every hotel on it at once.'
+          : hotelsPage
+            ? 'I couldn’t find any hotels on that page — copy the whole list (⌘A then ⌘C) and paste it again.'
+            : touch
+              ? 'That didn’t have a link I could read — tap Share, then Copy Link, and try again.'
+              : 'Nothing I could read on that — copy the listing page itself (⌘A then ⌘C) and paste it here.');
       return;
     }
     setReadErr('');
@@ -494,7 +547,16 @@ function Looking({ event, patch }) {
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
       // Airbnb's type+place pattern rather than "Option 1" — the paste has to
       // visibly produce something, or the host has no reason to believe it worked.
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
+      // stay total. `priceBasis` says which, set by the extractor that read it
+      // (see extractHotelCandidates). Storing a nightly rate as a stay total
+      // made the per-person split divide one room-night across the whole party.
+      ...(c.priceBasis === 'night'
+        // A hotel card's rate buys ONE ROOM. `rateBasis` carries that through
+        // so nothing downstream multiplies it into a whole-party stay total.
+        ? { pricePerNight: c.priceShown, rateBasis: 'room' }
+        : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -504,7 +566,10 @@ function Looking({ event, patch }) {
         ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
-        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
+        ...(c.priceShown != null
+          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
+          : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
@@ -533,7 +598,16 @@ function Looking({ event, patch }) {
     const before = event.lodgingOptions || [];
     const next = keep.map((c, i) => normalizeLodgingOption({
       id: 'lodge-' + Math.random().toString(36).slice(2, 8),
-      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, totalPrice: c.priceShown,
+      url: c.url, label: lodgingTitleFor(c), beds: c.beds, sleeps: c.sleeps, amenities: c.amenities,
+      // A hotel card's number is a NIGHTLY rate; an Airbnb/Vrbo card's is the
+      // stay total. `priceBasis` says which, set by the extractor that read it
+      // (see extractHotelCandidates). Storing a nightly rate as a stay total
+      // made the per-person split divide one room-night across the whole party.
+      ...(c.priceBasis === 'night'
+        // A hotel card's rate buys ONE ROOM. `rateBasis` carries that through
+        // so nothing downstream multiplies it into a whole-party stay total.
+        ? { pricePerNight: c.priceShown, rateBasis: 'room' }
+        : { totalPrice: c.priceShown }),
       photoUrl: c.photo, notes: notesFor(c),
       status: 'option',
       // Provenance is captured HERE or not at all — reconstructing it later
@@ -543,7 +617,10 @@ function Looking({ event, patch }) {
         ...(lodgingTitleIsReal(c) ? { label: 'read' } : null),
         ...(c.beds != null ? { beds: 'read' } : null),
         ...(c.sleeps != null ? { sleeps: 'read' } : null),
-        ...(c.priceShown != null ? { totalPrice: 'read' } : null),
+        ...(Array.isArray(c.amenities) && c.amenities.length ? { amenities: 'read' } : null),
+        ...(c.priceShown != null
+          ? (c.priceBasis === 'night' ? { pricePerNight: 'read' } : { totalPrice: 'read' })
+          : null),
         ...(c.photo ? { photoUrl: 'read' } : null),
         ...(c.bedrooms || c.place || c.starClass || c.rating != null || (Array.isArray(c.amenities) && c.amenities.length) ? { notes: 'read' } : null),
       },
@@ -636,7 +713,21 @@ function Looking({ event, patch }) {
               onClick={() => setWentLooking(true)}>{shortDoor(l)} <span aria-hidden="true">↗</span></a>
           ))}
         </div>
-        {links[0] && <p className="lc-note">Opens with your own answers already in it — {(links[0].applied || []).join(' · ')}.</p>}
+        {/* THIS LINE NEVER GOT THE 2026-08-05 CORRECTION the live sheet got, so
+            the two surfaces disagreed: HostShellV2 said hotels open on the town
+            alone, and this one — under the same three doors — said all three
+            arrive pre-filled. It also rendered links[0].applied, which is
+            AIRBNB'S list, putting its budget and must-have filters into a
+            sentence covering doors that never took them. Both halves are fixed
+            here from the same source the live sheet uses. */}
+        {links[0] && (
+          <p className="lc-note">
+            {links.every((l) => l.carriesDates) ? 'These open' : 'Airbnb and Vrbo open'} with your own answers already in it — {appliedByEveryDoor(links).join(' · ')}.
+          </p>
+        )}
+        {links.some((l) => l.id === 'hotels' && !l.carriesDates) && (
+          <p className="lc-note">Hotels open at the town only — set the dates and guests once you’re there.</p>
+        )}
         {!links.length && <p className="lc-note">No doors yet — the town is missing.</p>}
       </Panel>
       <Panel label={wentLooking ? 'NOW BRING ONE BACK' : 'BRING ONE BACK'}>
@@ -724,7 +815,71 @@ function Looking({ event, patch }) {
           } catch { setReadErr('I couldn’t read the clipboard — paste into the box instead.'); }
         }}>{busy ? 'Reading…' : (text.trim() ? 'Read what I pasted' : 'Paste what I copied')}</button>
       </Panel>
+      <AlreadySorted event={event} patch={patch} />
     </>
+  );
+}
+
+// ─── THE FRONT DOOR FOR A ROOM BLOCK (2026-08-06, event-industry seat) ──────
+// Her P0, and she was right: three of the four `dest_lodging` answers are room
+// BLOCKS, and every room-block field on this surface sat behind a shortlist
+// pick. A host who phoned the hotel, negotiated twelve rooms and got a code —
+// the actual workflow — could not enter one character of it. Her only route was
+// to paste a results page, find the hotel she had ALREADY BOOKED, and "pick" it,
+// which is both absurd and a lie about what happened.
+//
+// This writes the one field the stage machine reads as a real booking:
+// `hotelName` with `from` set to something other than the pick, which is
+// precisely what lodgingIsHeld tests. That moves the stage to `booked` and
+// everything the block needs — code, cutoff, backups, who to call, the roster,
+// the guest note — is there. No new stage, no parallel intake: the same door
+// the confirmation-typing host was always supposed to have.
+function AlreadySorted({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const [name, setName] = useState('');
+  const [rate, setRate] = useState('');
+  if (String(stay.hotelName || '').trim()) return null;   // already sorted
+  const n = Number(rate);
+  // The rate is only a GROUP rate when the rooms are actually held — the guest
+  // note reads `from` to decide exactly that.
+  const save = (from) => patch({
+    lodging: {
+      ...stay, hotelName: name.trim(), from,
+      ...(Number.isFinite(n) && n > 0 ? { rate: Math.round(n) } : null),
+    },
+  });
+  return (
+    <Panel label="ALREADY SORTED IT YOURSELF?">
+      {/* ── ASK, DO NOT ASSUME (2026-08-06, 3rd sitting) ──────────────────────
+          The first cut of this panel invited BOTH "booked a block on the phone"
+          and "know where everyone's staying" — then stamped every answer
+          `typed off the confirmation`. So a host who had merely decided where
+          she wanted everyone got "The stay is on the books" in the largest type
+          on screen, lodging marked done on the command board, and a note
+          telling her guests "We've lined up rooms at X."
+          That is the same defect this board already killed twice: choosing is
+          not booking, a listing price is not a group rate, and INTENDING IS NOT
+          BOOKING. This one was the worst of the three because it asserted a
+          provenance the host was never asked about. So it asks. */}
+      <p className="lc-note">
+        Already know where everyone’s staying? Put it here and skip the shopping.
+      </p>
+      <div className="lc-row-form">
+        <input className="lc-field" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Hotel or place" aria-label="Where everyone is staying" />
+        <input className="lc-field" value={rate} onChange={(e) => setRate(e.target.value)}
+          placeholder="$ a night" inputMode="decimal" aria-label="Nightly rate you were quoted" />
+      </div>
+      <div className="lc-ctas lc-ctas-wrap">
+        <button className="cta" disabled={!name.trim()}
+          onClick={() => save(STAY_FROM_CONFIRMATION)}>The rooms are held</button>
+        <button className="cta soft" disabled={!name.trim()}
+          onClick={() => save(STAY_FROM_PLAN)}>That’s the plan, not booked</button>
+      </div>
+      <p className="lc-note">
+        Only “held” counts as booked — it is what the rest of the plan reads when it says lodging is sorted.
+      </p>
+    </Panel>
   );
 }
 
@@ -815,6 +970,13 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
           const hist = (() => { try { return lodgingPriceHistory(o); } catch { return null; } })();
           const pv = (() => { try { return lodgingProvenance(o); } catch { return null; } })();
           const total = o.allIn != null ? o.allIn : o.totalPrice;
+          // A per-room rate has no honest stay total (see the allIn block in
+          // lodgingIntel — a party of ten needs rooms we have not been told
+          // about). Suppressing the total must not also hide the one number we
+          // DO know: show the rate, and say what it buys. "More honest but less
+          // useful" was the Grandmother seat's explicit warning about this fix.
+          const perRoomRate = (total == null && o.rateBasis === 'room' && o.pricePerNight != null)
+            ? `${money(o.pricePerNight)} a night · one room` : null;
           return (
             <article className="lc-card" key={o.id}>
               {/* FLOAT ON THE PHOTO, NOT STACKED BELOW IT (host, 2026-08-05:
@@ -839,7 +1001,9 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                   <>
                     <div className="lc-card-top">
                       <h3 className="lc-card-name">{o.label}</h3>
-                      {money(total) && <span className="lc-card-price">{money(total)}</span>}
+                      {money(total)
+                        ? <span className="lc-card-price">{money(total)}</span>
+                        : perRoomRate ? <span className="lc-card-price lc-card-price-room">{perRoomRate}</span> : null}
                     </div>
                     <p className="lc-card-sub">
                       {[sc && sc.mustsTotal ? `Fits ${sc.mustsMet} of your ${sc.mustsTotal} musts` : null,
@@ -854,6 +1018,24 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                       )}
                       <button className="cta soft" aria-label={`${o.label} is gone`} onClick={() => onGone(o.id)}>It’s gone</button>
                     </div>
+                    {/* SAY IT, LIKE THE MISSING PHOTO ALREADY DOES (2026-08-06,
+                        Grandmother seat, overriding two design stars). Twelve
+                        lines below, a place with no photo says "no picture yet
+                        — this one's still real". A place with no LINK rendered
+                        nothing at all: the button was simply absent, with the
+                        neighbouring row's button still there. UX_08:179 bans
+                        exactly this ("hide the field entirely — user doesn't
+                        know it exists"), and the seat reported the consequence
+                        precisely: "I think I did it wrong" → she re-does the
+                        whole copy for nothing → the identical result → and now
+                        she distrusts the rows that DID work. The self-blame is
+                        the damage; one sentence removes it and tells her this
+                        is how hotels come back, not a failure she caused. */}
+                    {!String(o.url || '').trim() && (
+                      <p className="lc-note" style={{ margin: '6px 0 0' }}>
+                        No link — Google’s hotel cards point at its advertisers, not the hotel. This one’s still real.
+                      </p>
+                    )}
                   </>
                 );
                 return o.photoUrl ? (
@@ -908,7 +1090,13 @@ function Choices({ opts, event, intel, scores, basis, onPick, onGone, onPhoto })
                         <div className="lc-pv" key={r.field}>
                           <span className="lc-pv-label">{r.label}</span>
                           <span className="lc-pv-src">
-                            {r.source === 'read' ? 'read from the link' : 'you typed it'}
+                            {/* "read from the link" sat two inches under "No link"
+                                on the same hotel card — the card denying its own
+                                link and citing it three times. The value really
+                                was read; it was read off the PAGE she pasted, not
+                                from a per-place link. Say that, and the card stops
+                                contradicting itself. */}
+                            {r.source === 'read' ? 'read from the page you pasted' : 'you typed it'}
                           </span>
                         </div>
                       ))}
@@ -1236,7 +1424,10 @@ function Weighing({ event, intel, patch }) {
 function Picked({ event, intel, patch }) {
   const chosen = (intel && intel.chosen) || null;
   const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
-  const [code, setCode] = useState(stay.bookingCode || '');
+  // `code` is canonical (travelPlan and the guest note read it); `bookingCode`
+  // is what this panel used to write alone, so it seeds from either.
+  const [code, setCode] = useState(stay.code || stay.bookingCode || '');
+  const [rateEnds, setRateEnds] = useState(stay.deadline || '');
   if (!chosen) return <Panel label="THE PICK"><p className="lc-note">Nothing picked yet — this is what it will show once one is.</p></Panel>;
   const money = (n) => (Number.isFinite(Number(n)) && Number(n) > 0 ? `$${Math.round(Number(n)).toLocaleString()}` : '—');
   const pickSub = [
@@ -1247,7 +1438,19 @@ function Picked({ event, intel, patch }) {
   return (
     <Panel label="THE PICK">
       <StayHero photoUrl={chosen.photoUrl} label={chosen.label} sub={pickSub} />
-      <p className="lc-note">Choosing is not booking. Book on the platform, then bring the confirmation back.</p>
+      {/* ── DO NOT SEND HER TO A DOOR WE JUST SAID ISN'T THERE ───────────────
+          Grandmother seat, third sitting, on the worst moment in the flow: "I've
+          done everything right, I've picked the place, I'm holding my phone, and
+          the app points me at a thing it has already told me doesn't exist. That
+          is the moment I decide the app doesn't know what's going on."
+          A hotel row has no url BY DESIGN — Google's cards point at advertisers.
+          So when there is nothing to open, the honest next step is the phone,
+          and the app already holds the number if she typed one. */}
+      <p className="lc-note">
+        {String(chosen.url || '').trim()
+          ? 'Choosing is not booking. Book on the platform, then bring the confirmation back.'
+          : 'Choosing is not booking — and this one came back without a link, so it’s a phone call.'}
+      </p>
       {/* NAME THE ACT, THEN OFFER IT. This screen told the host to book it on
           the platform and did not hand them the platform — while holding the
           very URL they pasted to get here. Same defect as every CTA rewritten
@@ -1259,11 +1462,65 @@ function Picked({ event, intel, patch }) {
           Open it to book ↗
         </a>
       )}
+      {/* No link — offer the call instead of a dead instruction. Uses the number
+          the host already typed into WHO TO CALL; when there is none, the same
+          labelled search that panel uses, never an invented number. */}
+      {!String(chosen.url || '').trim() && (() => {
+        const c = normalizeCvbContact(stay.contact);
+        const town = String(venueFor(event).city || '').trim();
+        const place = String(chosen.label || '').trim();
+        if (c && c.telHref) {
+          return (
+            <a className="cta" href={c.telHref} style={{ textDecoration: 'none' }}
+              aria-label={`Call ${c.name || place} on ${c.phone} to book`}>
+              Call {c.name || place} — {c.phone}
+            </a>
+          );
+        }
+        return (
+          <a className="cta soft" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}
+            href={`https://www.google.com/search?q=${encodeURIComponent(`${town} ${place} group sales room block`.trim())}`}>
+            Find their number ↗
+          </a>
+        );
+      })()}
+      {/* ── THE CODE WAS BEING WRITTEN WHERE NOTHING READS IT (2026-08-06) ───
+          Found tracing the review board's room-block ruling. This panel wrote
+          `lodging.bookingCode`. Every engine downstream reads `lodging.code`:
+          travelPlan.js:326 builds the group-rate obligation from it, and
+          draftLodgingNote (doItForMe.js:995-997) is the guest note itself —
+          "give them the code X when you book". So a host typed her booking code
+          into the live surface, saw it echoed back on the next screen, and the
+          note that goes to the guests silently omitted it. The one deliverable
+          of a group stay went out empty, and nothing anywhere said so.
+
+          Writes `code` — the key the engines read — and keeps `bookingCode` in
+          step so events saved before today, and the hero line below, keep
+          working. lodgingIsHeld accepts either.
+
+          GROUP RATE ENDS is the other half of the same wire. travelPlan reads
+          `lodging.deadline` and raises a real dated obligation from it
+          (HostShellV2.jsx:1534, "Group rate ends — N of M have no room yet"),
+          and the guest note says "Book by DATE — after that the group rate goes
+          away." No reachable field had written it since the old sheet went dark
+          on 2026-08-05, so the deadline the app warns about had no face. This
+          is the narrow port; the backups list and the who's-booked roster are
+          still dark and are a larger job. */}
       <div className="lc-row-form">
         <input className="lc-field" placeholder="Booking code" value={code}
           onChange={(e) => setCode(e.target.value)} aria-label="Booking code" />
-        <button className="cta" disabled={!code.trim()}
-          onClick={() => patch({ lodging: { ...stay, bookingCode: code.trim() } })}>Save the stay details</button>
+        <label className="lc-field-label" htmlFor="lc-rate-ends">Group rate ends</label>
+        <input className="lc-field" id="lc-rate-ends" type="date" value={rateEnds}
+          onChange={(e) => setRateEnds(e.target.value)}
+          aria-label="Last day to book at the group rate" />
+        <button className="cta" disabled={!code.trim() && !rateEnds}
+          onClick={() => patch({
+            lodging: {
+              ...stay,
+              ...(code.trim() ? { code: code.trim(), bookingCode: code.trim() } : null),
+              ...(rateEnds ? { deadline: rateEnds } : null),
+            },
+          })}>Save the stay details</button>
       </div>
     </Panel>
   );
@@ -1277,7 +1534,9 @@ function Booked({ event, patch }) {
     <>
       <Panel label="ON THE BOOKS">
         <StayHero photoUrl={stay.photoUrl} label={stay.hotelName}
-          sub={String(stay.bookingCode || '').trim() ? `Booking code ${stay.bookingCode.trim()}` : 'No booking code on file'} />
+          sub={String(stay.code || stay.bookingCode || '').trim()
+            ? `Booking code ${String(stay.code || stay.bookingCode).trim()}`
+            : 'No booking code on file'} />
       </Panel>
       <Panel label="THE MONEY-SAFE DATES">
         <p className="lc-note">Copy these off the booking confirmation — they are the ones with a deadline.</p>
@@ -1289,9 +1548,225 @@ function Booked({ event, patch }) {
           </div>
         ))}
       </Panel>
+      <StayContact event={event} patch={patch} />
+      <Backups event={event} patch={patch} />
+      <WhosBooked event={event} patch={patch} />
+      <GuestNote event={event} />
     </>
   );
 }
+
+// ─── A NUMBER SHE CAN PRESS (2026-08-06, both override seats) ───────────────
+// The event-industry seat's strongest practical point, twice: "a number I can
+// press at 4pm on a Tuesday beats a homepage every single time." A group stay
+// is not a consumer booking flow — a hotel will not put twenty people through a
+// web form, it hands you to group sales. And the Grandmother seat, on the same
+// gap: "I am going to CALL them. I was always going to call them."
+//
+// Host-typed, never harvested: nothing in this repo may invent a phone number,
+// and the one page that carries one is refused for good reasons elsewhere. The
+// rendering runs through normalizeCvbContact so a real `tel:` is built by the
+// same code the bureau panel already trusts, rather than a second guess at what
+// a dialable number looks like.
+function StayContact({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const saved = (stay.contact && typeof stay.contact === 'object') ? stay.contact : {};
+  const [name, setName] = useState(saved.name || '');
+  const [phone, setPhone] = useState(saved.phone || '');
+  const c = normalizeCvbContact({ name, phone });
+  const town = String(venueFor(event).city || '').trim();
+  const hotel = String(stay.hotelName || '').trim();
+  return (
+    <Panel label="WHO TO CALL">
+      <p className="lc-note">A block is a phone call, not a checkout. Keep the desk’s number where the dates are.</p>
+      <div className="lc-row-form">
+        <input className="lc-field" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="Group sales contact" aria-label="Group sales contact name" />
+        <input className="lc-field" value={phone} onChange={(e) => setPhone(e.target.value)}
+          placeholder="Phone" inputMode="tel" aria-label="Group sales phone number" />
+        <button className="cta" disabled={!name.trim() && !phone.trim()}
+          onClick={() => patch({ lodging: { ...stay, contact: { name: name.trim(), phone: phone.trim() } } })}>
+          Save who to call
+        </button>
+      </div>
+      {c && c.telHref && (
+        <a className="cta soft" href={c.telHref} style={{ textDecoration: 'none' }}
+          aria-label={`Call ${c.name || hotel || 'the hotel'} on ${c.phone}`}>
+          Call {c.name || hotel || 'the hotel'} — {c.phone}
+        </a>
+      )}
+      {!(c && c.telHref) && (hotel || town) && (
+        // No number yet. A LABELLED search is truthful; a fabricated number is
+        // not. Same shape cvbIntel already uses for the bureau.
+        <a className="cta soft" target="_blank" rel="noreferrer" style={{ textDecoration: 'none' }}
+          href={`https://www.google.com/search?q=${encodeURIComponent(`${town} ${hotel} group sales room block`.trim())}`}>
+          Find their group sales desk ↗
+        </a>
+      )}
+    </Panel>
+  );
+}
+
+// ─── THE NOTE HAD NO BUTTON (2026-08-06, event-industry seat) ───────────────
+// `draftLodgingNote` is the deliverable of group lodging — the hotel, the rate,
+// the code, the cutoff and the backups, written for the guests. Its only render
+// site was inside the sheet this cockpit navigates away from, which the file
+// itself calls unreachable. So the wiring repaired earlier today (the code
+// reaching `lodging.code` rather than dying in `bookingCode`) still ended in a
+// engine with no outlet: a host could enter everything correctly and have no
+// way to send it.
+//
+// Offered, never sent — UX_07 Level 5. The host reads it and sends it herself.
+function GuestNote({ event }) {
+  const [copied, setCopied] = useState('');
+  let note = null;
+  try { note = draftLodgingNote(event); } catch { note = null; }
+  if (!note || !String(note.body || '').trim()) return null;
+  return (
+    <Panel label="WHAT THE GROUP GETS TOLD">
+      <p className="lc-note">Everything above, written out. Read it, change what you want, then send it yourself.</p>
+      <pre className="lc-draft">{note.body}</pre>
+      <button className="cta" onClick={() => {
+        try {
+          navigator.clipboard.writeText(`${note.subject}\n\n${note.body}`);
+          setCopied('Copied — paste it wherever your group talks.');
+        } catch { setCopied('Select the text above and copy it.'); }
+      }}>Copy the note</button>
+      {copied && <p className="lc-note">{copied}</p>}
+    </Panel>
+  );
+}
+
+// ─── THE TWO HALVES THAT WENT DARK ON 2026-08-05 ────────────────────────────
+// `goToLodgingCockpit` (HostShellV2.jsx:3176) navigates away before the old
+// sheet can open — the file says so itself at :10233, "This sheet is unreachable
+// now." Two things went with it, and the review board's event-industry seat
+// ruled them the real wound: three of four `dest_lodging` options are ROOM
+// BLOCKS, and a block is a rate, a code, a cutoff, backups, and the chase.
+//
+// The code and the cutoff came back in the same commit as this. These are the
+// other two. Nothing here is new intelligence — `travelPlan` has computed the
+// roster and `notBookedCount` the whole time, and `draftLodgingNote` has always
+// written the backups into the guest note. They had no reachable intake, so
+// they read empty and the engines had nothing to say.
+
+function Backups({ event, patch }) {
+  const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  const saved = Array.isArray(stay.backupOptions) ? stay.backupOptions : [];
+  // ── A DRAFT ROW HAS TO SURVIVE BEING TYPED IN (2026-08-06, board) ─────────
+  // This filtered `!b.name.trim()` out on EVERY KEYSTROKE and then re-rendered
+  // from the filtered result. So typing into the note of a not-yet-named row
+  // deleted the row mid-keystroke — the field bounced back to its placeholder
+  // and the text was gone. "Add another backup" was inert for the same reason:
+  // it appended an empty row that its own filter dropped before paint.
+  //
+  // The engine's contract is right — travelPlan keeps only NAMED backups — so
+  // the filter belongs on what is PERSISTED, never on what is rendered. The
+  // draft lives here; only named rows reach the event.
+  const [rows, setRows] = useState(() => (saved.length ? saved : [{ name: '', note: '' }]));
+  const commit = (next) => {
+    setRows(next);
+    patch({ lodging: { ...stay, backupOptions: next.filter((b) => String(b.name || '').trim()) } });
+  };
+  const setAt = (i, key) => (e) => commit(rows.map((b, j) => (j === i ? { ...b, [key]: e.target.value } : b)));
+  const shown = rows;
+  // Only offer another row once the last one has a name — otherwise there is
+  // already an empty row on screen and the button would add a second.
+  const canAdd = shown.length > 0 && String(shown[shown.length - 1].name || '').trim();
+  return (
+    <Panel label="IF THE FIRST ONE FILLS">
+      {/* travelPlan keeps `{name, note}` and drops any row with no name
+          (travelPlan.js:328-331); draftLodgingNote reads them into the guest
+          note. Same field names, so what is typed here is what those read. */}
+      <p className="lc-note">Rooms sell out. A second place, named now, is what the group gets told instead of nothing.</p>
+      {shown.map((b, i) => (
+        <div key={i} className="lc-row-form">
+          <input className="lc-field" value={b.name || ''} onChange={setAt(i, 'name')}
+            placeholder={i === 0 ? 'Backup place' : 'One more option'}
+            aria-label={`Backup place ${i + 1}`} />
+          <input className="lc-field" value={b.note || ''} onChange={setAt(i, 'note')}
+            placeholder="Farther? Cheaper?" aria-label={`What to know about backup ${i + 1}`} />
+        </div>
+      ))}
+      {canAdd && (
+        <button className="cta soft" onClick={() => setRows([...rows, { name: '', note: '' }])}>
+          Add another backup
+        </button>
+      )}
+    </Panel>
+  );
+}
+
+function WhosBooked({ event, patch }) {
+  let plan = null;
+  try { plan = buildTravelPlan(event); } catch { plan = null; }
+  const lg = (plan && plan.relevant && plan.lodging) ? plan.lodging : null;
+  const roster = (lg && Array.isArray(lg.roster)) ? lg.roster : [];
+
+  // HEADCOUNT MODE IS NOT ZERO. travelPlan returns notBookedCount:null when
+  // there is no guest list, because it cannot know — and this must not render
+  // "0 still need a room" over an absence. Same rule as everywhere else here.
+  if (!lg) return null;
+  if (!roster.length) {
+    return (
+      <Panel label="WHO’S BOOKED A ROOM">
+        <p className="lc-note">
+          {plan.rosterMode
+            ? 'Everyone on the list has declined — nobody needs a room right now.'
+            : 'Add the guest list and this tracks who still needs a room.'}
+        </p>
+      </Panel>
+    );
+  }
+
+  const setStatus = (row, status) => {
+    const gs = (event.guests || []).filter(Boolean).map((g) => ({ ...g }));
+    const i = gs.findIndex((g) => (row.guestId != null && g.id === row.guestId)
+      || (row.guestId == null && String(g.name || '').trim() === row.name));
+    if (i < 0) return;
+    const tr = (gs[i].travel && typeof gs[i].travel === 'object') ? gs[i].travel : {};
+    const cur = (tr.lodging && typeof tr.lodging === 'object') ? tr.lodging : {};
+    patch({ guests: gs.map((g, j) => (j === i
+      ? { ...g, travel: { ...tr, lodging: { ...cur, status, updatedAt: Date.now() } } }
+      : g)) });
+  };
+
+  const left = lg.notBookedCount;
+  return (
+    <Panel label="WHO’S BOOKED A ROOM">
+      {/* THE CUTOFF IS WHY THIS EXISTS. A group rate expires, and the work it
+          creates is chasing the people who have not booked yet — which is
+          exactly what `notBookedCount` feeds (HostShellV2.jsx:1534 raises
+          "Group rate ends — N of M have no room yet" from it). Without this
+          list the deadline had nobody attached to it. */}
+      <p className="lc-note">
+        {left === 0
+          ? 'Everyone has a room.'
+          : `${left} of ${roster.length} still need a room${String(stayDeadline(event)).trim() ? ' before the rate ends' : ''}.`}
+      </p>
+      {roster.map((r, i) => (
+        <button key={r.guestId != null ? r.guestId : `g${i}`} className="lc-staged"
+          onClick={() => setStatus(r, nextLodgingStatus(r.status))}
+          aria-label={`${r.name} — ${LODGING_STATUS_LABEL[r.status]}. Tap to change.`}>
+          <span className="lc-staged-main">
+            <span className="lc-staged-name">{r.name}</span>
+            {(r.roommate || r.accessibility) && (
+              <span className="lc-staged-sub">
+                {[r.roommate ? `rooming with ${r.roommate}` : null, r.accessibility].filter(Boolean).join(' · ')}
+              </span>
+            )}
+          </span>
+          <span className="lc-staged-fit">{LODGING_STATUS_LABEL[r.status]}</span>
+        </button>
+      ))}
+    </Panel>
+  );
+}
+
+const stayDeadline = (event) => {
+  const stay = (event && event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
+  return stay.deadline || '';
+};
 
 // UX_03 MULTI-VIEWPORT DOCTRINE (rule 5: "No information-dense tables. Use
 // stacked card layouts" — rule 6 sanctions horizontal scroll ONLY for image
@@ -1507,7 +1982,25 @@ const CSS = `
 .lc-stayhero-flat{margin-bottom:14px;}
 .lc-stayhero-flat-sub{margin-top:4px;}
 .lc-card-photo{display:block;width:100%;height:100%;object-fit:cover;background:var(--hair);}
-.lc-card-nophoto{height:100%;width:100%;display:flex;flex-direction:column;
+/* ── height:100% CLIPPED THE ONLY BUTTON THAT MATTERS (2026-08-06) ──────────
+   Found by the board and reproduced by measurement. The photo branch overlays
+   name/price/Pick ON the image (absolute, inside .lc-card-photo-wrap), so a
+   full-bleed hero costs it nothing. This branch puts them in NORMAL FLOW below
+   the placeholder — and "height:100%" against a stretch-sized card meant the
+   placeholder consumed the entire card, pushing the body past "overflow:hidden"
+   on .lc-card. Measured on a 3-hotel shortlist: card 372→731, placeholder 359px
+   (the whole card), "Pick this place" at 822 — 91px BELOW the card's bottom
+   edge, and document.elementFromPoint returned .lc-why-sum instead of the
+   button. Not visible, not hit-testable.
+
+   It became unreachable the moment hotel photos started being refused by
+   isAllowedMedia earlier the same day: before that every hotel card HAD a photo
+   and took the working branch, so the privacy fix — which is right — silently
+   closed the hotel path. An all-hotel shortlist could not reach "picked" at all.
+
+   Bounded so the placeholder is a hero and not the whole card. Gated by an e2e
+   assertion that the button is hit-testable on a photo-less card. */
+.lc-card-nophoto{height:clamp(120px,20vh,180px);width:100%;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:6px;background:var(--hair);border:none;cursor:pointer;
   padding:0;font:inherit;}
 .lc-card-nophoto-add{font:600 16px/1.3 Inter,sans-serif;color:var(--steel-soft);}
@@ -1524,6 +2017,13 @@ const CSS = `
 .lc-card-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
 .lc-card-name{font:600 17px/1.25 Inter,sans-serif;color:#fff;margin:0;min-width:0;
   text-shadow:0 1px 3px rgba(0,0,0,.5);}
+/* A room rate is a smaller claim than a stay total, and reads as one. */
+.lc-card-price-room{font-size:13px;font-weight:500;white-space:nowrap;}
+/* The guest note, shown as written. Wraps rather than scrolls sideways:
+   UX_03 rule 6 sanctions horizontal scroll for carousels, not for prose. */
+.lc-draft{white-space:pre-wrap;word-break:break-word;font:400 13px/1.55 Inter,sans-serif;
+  color:var(--ink);background:var(--sheen);border:1px solid var(--hair);border-radius:10px;
+  padding:12px;margin:0 0 10px;max-height:280px;overflow:auto;}
 .lc-card-price{font:600 17px/1.25 Inter,sans-serif;color:#fff;flex:0 0 auto;
   font-variant-numeric:tabular-nums;text-shadow:0 1px 3px rgba(0,0,0,.5);}
 .lc-card-sub{font:400 13px/1.4 Inter,sans-serif;color:rgba(255,255,255,.85);margin:6px 0 0;}
@@ -1586,7 +2086,7 @@ const CSS = `
 // below that gate this is simply a full-bleed phone surface, which is the case
 // being judged.
 const Frame = ({ children }) => (
-  <div className="stagewrap">
+  <div className="stagewrap stagewrap--responsive-lodging">
     <div className="app app-elegant">
       <style>{CSS}</style>
       <div className="lc-wrap">{children}</div>

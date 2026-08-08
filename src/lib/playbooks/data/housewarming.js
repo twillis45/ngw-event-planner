@@ -108,7 +108,7 @@ const housewarming = {
   ],
 
   risks: [
-    { id: 'r_entry', trigger: 'No coat/shoe/entry plan — 25 pairs of shoes pile at a new front door', severity: 'med', mitigation: 'Decide shoes-on/off at T-7d; stage a shoe tray + basket, a cleared coat space, and a small sign before anyone arrives.' },
+    { id: 'r_entry', trigger: 'No coat/shoe/entry plan — 25 pairs of shoes pile at a new front door', severity: 'med', mitigation: 'Decide shoes-on/off at a week out; stage a shoe tray + basket, a cleared coat space, and a small sign before anyone arrives.' },
     { id: 'r_ice', trigger: 'No ice / warm drinks', severity: 'med', mitigation: 'Buy ~1-1.5 lb ice/guest the day of; keep a backup bag in the freezer and bottles pre-chilled.' },
     { id: 'r_overlap', trigger: 'Everyone arrives at once instead of spreading across the window', severity: 'med', mitigation: 'Size food/drink to peak overlap (~50-60% of the list) and keep a non-perishable backup (extra crackers, nuts, frozen apps) ready to deploy.' },
     { id: 'r_gifts', trigger: 'Guests bring gifts with nowhere to put them / host stance unclear', severity: 'low', mitigation: 'State the gift stance on the invite; if welcoming gifts, set an obvious landing table near the door.' },

@@ -40,7 +40,7 @@ export const resolveGuestCount = (event) => {
 //   status: string,           // 'Ready' | 'Needs Clarification' | 'Needs Research' | 'Awaiting Decision'
 //   nextDecision: string,     // decision that unlocks this (or null)
 //   sourceEngines: string[],  // transparency
-//   confidenceLabel: string,  // 'High confidence', 'We think so', etc.
+//   confidenceLabel: string,  // 'High confidence', 'Fairly confident', etc.
 //   mark: string              // optional: 'ready' | 'caution' | 'blocker'
 // }
 
@@ -68,7 +68,7 @@ function buildIdentityStage(event, eventIdentity, persona) {
     : `${article(primaryEventType)} ${primaryEventType.toLowerCase()}.`;
 
   const compoundExplanation = isCompound
-    ? ' Two milestones, one event. We\'ll handle both.'
+    ? ' Two milestones, one event. I\'ll plan both.'
     : '';
 
   const ceremonyNote = ceremonyComponents.length > 0 && isCompound
@@ -79,7 +79,7 @@ function buildIdentityStage(event, eventIdentity, persona) {
     ? ` Guests span ${participants.join(' and ')}.`
     : '';
 
-  const confidenceWord = confidence >= 0.85 ? 'High confidence' : 'We think so';
+  const confidenceWord = confidence >= 0.85 ? 'High confidence' : 'Fairly confident';
 
   return {
     key: 'identity',
@@ -87,8 +87,8 @@ function buildIdentityStage(event, eventIdentity, persona) {
     title: 'Your Event',
     what: eventDesc + compoundExplanation,
     why: ceremonyNote.length > 0 || participantNote.length > 0
-      ? `We recognized ${primaryEventType}.${ceremonyNote}${participantNote}`
-      : `We recognized ${primaryEventType}. Planning starts here.`,
+      ? `I recognized ${primaryEventType}.${ceremonyNote}${participantNote}`
+      : `I recognized ${primaryEventType}. Planning starts here.`,
     status: 'Ready',
     nextDecision: isCompound
       ? 'Confirm: ceremony timing (before, during, or after celebration)?'
@@ -544,11 +544,11 @@ function buildRiskStage(topRisks) {
     icon: 'alert',
     title: 'Watch Out',
     what: riskExplanations,
-    why: 'These aren\'t fears—they\'re patterns we see in events like yours.',
+    why: 'These aren\'t fears — they\'re patterns I see in events like yours.',
     status: 'Needs Research',
     nextDecision: mitigations,
     sourceEngines: ['Risk Engine', 'Event Identity'],
-    confidenceLabel: 'We can help',
+    confidenceLabel: 'Worth planning for',
     mark: 'caution'
   };
 }

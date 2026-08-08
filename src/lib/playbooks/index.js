@@ -707,7 +707,25 @@ function taskPhaseLabel(offset) {
 export const DEST_LODGING_OPTIONS = ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'];
 
 const DESTINATION_DECISIONS = [
-  { id: 'dest_lodging', label: 'How are guests staying?', options: DEST_LODGING_OPTIONS, default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
+  // ── weight ADDED 2026-08-06 (board ruling D) ─────────────────────────────
+  // This row was the one destination decision the priority-axis authoring pass
+  // missed, and the omission was visible to a host: the board's anchor test
+  // reads authored weight only, so a gate-holder with `blocks:['vendors','food']`
+  // was misfiled as a low-stakes leaf and shelved to the horizon — rendered as
+  // "Comes up closer to the date." Meanwhile the home hero led with "Sort where
+  // everyone stays". One event, one instant, two surfaces, opposite verdicts.
+  //
+  // The board was already incoherent with itself before the hero entered: it
+  // showed the LATER-opening `dest_transport` (T-60d, weight 'high') as open
+  // while hiding the EARLIER-opening lodging row (T-210d). Timing was not
+  // driving that partition — a missing field was.
+  //
+  // 'high' is honest here rather than generous: on a destination event where
+  // everyone sleeps IS the venue-class call, it gates vendors and food, and the
+  // answer decides whether there is a kitchen — which decides the whole food
+  // path. `dest_transport` already carries 'high' and is strictly less
+  // consequential. No engine changed, no `when` changed, no special case.
+  { id: 'dest_lodging', label: 'How are guests staying?', options: DEST_LODGING_OPTIONS, default: 'Guests book on their own', when: 'T-210d', blocks: ['vendors', 'food'], weight: 'high', optionGates: { 'A room block I guarantee fills': { minGuests: 10 } }, why: 'The no-commitment block is safer — the hotel just holds rooms and releases what doesn’t sell. Guaranteeing a block can get a firmer rate, but you’re on the hook to pay for any rooms that don’t fill.' },
   { id: 'dest_travelmix', label: 'How many guests are traveling in?', options: ['Most guests are local', 'A mix of local and traveling', 'Most guests are traveling'], default: 'A mix of local and traveling', when: 'T-210d', why: 'This is what decides whether lodging, flights, and ground transport need real planning or just a heads-up.' },
   { id: 'dest_transport', label: 'Are you providing group transport?', options: ['Yes, a shuttle or van', 'No, guests self-manage', 'Not sure yet'], default: 'Not sure yet', when: 'T-60d', blocks: ['vendors'], weight: 'high', optionGates: { 'Yes, a shuttle or van': { minGuests: 10 } }, why: 'The late-night ride back from the venue is the single riskiest gap in a destination event — worth deciding early, not day-of.' },
   { id: 'dest_childcare', whenKids: true, label: 'Childcare during the event?', options: ['Hiring childcare', 'A family member is watching kids', 'Kids are part of the event', 'No kids attending'], default: 'Kids are part of the event', when: 'T-90d', why: 'A rotating kids’ program is what actually lets parents be present for toasts and dinner.' },
@@ -2429,7 +2447,24 @@ function decisionRankReason(row) {
   // they read as derived, never as an authored human rationale (Honesty guardrail: a
   // derived-ranked row must sound derived). Only reached for un-authored rows.
   if (row.importanceBasis === 'derived') {
-    if (row._derivedReason === 'diet') return 'Worth settling early — allergies gate the menu.';
+    // ── A HEALTH QUESTION IS NOT AN ALLERGY QUESTION (2026-08-06, board) ────
+    // `_derivedReason === 'diet'` comes from DIETARY_SAFETY_RE, which is a
+    // SAFETY regex and deliberately matches heart / lung / condition / mobility
+    // / health as well as allergy / dietary. This line assumed safety meant
+    // food, so the destination altitude question — "Any guests with heart or
+    // lung conditions?" — shipped with the reason "Worth settling early —
+    // allergies gate the menu." Seen in a live trace of the real host event.
+    //
+    // A fabricated rationale on a MEDICAL row is the sharpest form of the thing
+    // 06_AI_GROUNDING bans: it is confident, it is specific, and it is about
+    // someone's health. The regex is right and stays; the sentence has to know
+    // which half of it matched.
+    if (row._derivedReason === 'diet') {
+      const hay = `${row.id || ''} ${row.label || ''}`;
+      return /allerg|dietary|\bnut(s|-free|\b)|shellfish|epi.?pen/i.test(hay)
+        ? 'Worth settling early — allergies gate the menu.'
+        : 'Worth settling early — it affects who can do what.';
+    }
     if (row.timeCritical) return 'Its window is open and the runway is short — worth doing now.';
     if (row._derivedReason === 'gates') return 'This decides other choices.';
     if (row._derivedReason === 'cost') return 'This one costs real money.';
@@ -2820,8 +2855,8 @@ export function playbookDecisionBoard(event, asOf, profile) {
         // ask-mode) -- the hero then prints nothing rather than a generic reassurance.
         assurance = d.default
           ? (d.reversibility === 'costly'
-            ? 'The plan’s been running on our pick — swapping it now costs more than it did.'
-            : 'Nothing’s stalled — the plan’s been running on our pick.')
+            ? 'The plan’s been running on my pick — swapping it now costs more than it did.'
+            : 'Nothing’s stalled — the plan’s been running on my pick.')
           : null;
       } else {
         // never in the easy window — surface as an open, do-this-first item,

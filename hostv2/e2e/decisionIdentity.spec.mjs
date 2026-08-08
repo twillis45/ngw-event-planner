@@ -27,6 +27,19 @@ const GN_PATCH = {
   dietCounts: { Vegetarian: 1 }, sourcing: 'costco',
 };
 
+// ── A LOCAL DAY, NOT A UTC ONE (2026-08-06) ────────────────────────────────
+// These specs seed the event N days out with `new Date()` + `setDate()`, which
+// are LOCAL, and then serialised with `.toISOString()`, which is UTC. West of
+// Greenwich that rolls the date forward an extra calendar day once local time
+// passes ~20:00 — so "2 days out" silently became 3, the engine picked a
+// different top decision, and all 24 runs from this file failed. It passed
+// every daytime run and failed at night; the app was never wrong.
+// Playwright sets no TZ (jest uses TZ=UTC, which is why only e2e saw it).
+const localISO = (d) => {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+
 const VIEWPORTS = [
   { name: 'mobile 390×844', viewport: { width: 390, height: 844 } },
   { name: 'desktop 1440×900', viewport: { width: 1440, height: 900 } },
@@ -39,7 +52,7 @@ const bootGameNight = async (page) => {
     localStorage.setItem('ngw-hostv2-patch-gn', JSON.stringify(patch));
     localStorage.setItem('ngw-hostv2-last-event', 'gn');
     localStorage.setItem('ngw-v2-splash-seen', '1');
-  }, [GN_EVENT, GN_PATCH, d.toISOString().slice(0, 10)]);
+  }, [GN_EVENT, GN_PATCH, localISO(d)]);
 };
 
 // The solemn control. NOT the ev-x-repast sample — that one carries a fixed
@@ -65,7 +78,7 @@ const bootRepast = async (page) => {
     localStorage.setItem('ngw-hostv2-patch-rp', JSON.stringify(patch));
     localStorage.setItem('ngw-hostv2-last-event', 'rp');
     localStorage.setItem('ngw-v2-splash-seen', '1');
-  }, [RP_EVENT, RP_PATCH, d.toISOString().slice(0, 10)]);
+  }, [RP_EVENT, RP_PATCH, localISO(d)]);
 };
 
 // What the hero is actually saying, read off the DOM — the ask, the record, and

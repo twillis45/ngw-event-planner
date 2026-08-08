@@ -345,7 +345,35 @@ describe('fixture D — the money decision is reachable', () => {
 });
 
 describe('fixture F — consequence beats an ordering artifact', () => {
-  test('the winner is stable regardless of how the producers were ordered', () => {
+  // ── THIS TEST USED TO PROVE NOTHING (corrected 2026-08-06, audit) ─────────
+  // It called actionsFor(fixtureF) TWICE on identical input and asserted the
+  // two results matched. That is determinism — the same function returning the
+  // same answer for the same argument — and it would have passed even if array
+  // position were the only thing deciding the winner. The name claimed order
+  // independence; the body never reordered anything.
+  //
+  // Fixture F exists precisely to expose this: 'incidental' is listed FIRST and
+  // is marginally sooner (-4d); 'consequential' is listed SECOND and later
+  // (-3d). Its judgement says the consequential act must win "despite the later
+  // date and later array position", and names "array order deciding" as
+  // unacceptable. So the honest test reverses the array and demands the same
+  // winner from semantically identical input.
+  test('the winner is stable when the same inputs arrive in a different order', () => {
+    const forward = actionsFor(fixtureF);
+    expect(forward.length).toBeGreaterThan(0);
+
+    const ev = fixtureF.event();
+    const reversed = eventPlan({ ...ev, timeline: [...ev.timeline].reverse() });
+    const reversedActs = reversed.nextActions || [];
+
+    expect({ rule: RULES.RANKED, winner: reversedActs[0] && reversedActs[0].id })
+      .toEqual({ rule: RULES.RANKED, winner: forward[0].id });
+    // …and the whole ranking, not just the head — a stable head over a churning
+    // tail would still be an ordering artifact one position down.
+    expect(reversedActs.map((a) => a.id)).toEqual(forward.map((a) => a.id));
+  });
+
+  test('the same call twice is deterministic (what the old test actually checked)', () => {
     const ids = actionsFor(fixtureF).map((a) => a.id);
     const again = actionsFor(fixtureF).map((a) => a.id);
     expect(again).toEqual(ids);

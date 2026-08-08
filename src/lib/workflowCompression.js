@@ -170,20 +170,20 @@ export const COMPRESSION_META = {
     badge: '⏱ TIGHT',
     tone: 'accent',
     headline: 'A little less runway than usual — still very doable.',
-    sub: 'Some vendors may want quicker decisions. We\'ll flag what to do first.',
+    sub: 'Some vendors may want quicker decisions. I\'ll flag what to do first.',
   },
   compressed: {
     label: 'Compressed timeline',
     badge: '⏱ COMPRESSED',
     tone: 'warn',
     headline: 'Half the usual lead time — focus on the must-haves.',
-    sub: 'We\'ll skip phases that have already passed and tag what still fits.',
+    sub: 'I\'ll skip phases that have already passed and tag what still fits.',
   },
   rush: {
     label: 'Rush timeline',
     badge: '⏱ RUSH',
     tone: 'danger',
-    headline: 'Short turnaround — we\'ll keep the plan tight and honest.',
+    headline: 'Short turnaround — I\'ll keep the plan tight and honest.',
     sub: 'Expect to swap a few templates for faster substitutes. That\'s normal at this lead time.',
   },
 };

@@ -25,7 +25,18 @@ export default defineConfig(({ command, mode }) => {
       alias: { '@app': path.resolve(__dirname, '../src') },
     },
     define: {
-      'process.env': JSON.stringify(appEnv),
+      // NODE_ENV IS BAKED TOO (2026-08-07). loadEnv only returns REACT_APP_*
+      // keys, so `process.env.NODE_ENV` was replaced with `undefined` in this
+      // bundle. That silently disabled every production check in ../src:
+      // sentry.js gates on `NODE_ENV === 'production'`, so error reporting
+      // could never have switched on in hostv2 even with a DSN configured —
+      // wiring initSentry() without this would have shipped a reporter that
+      // reports nothing. supabaseClient's dev-only misconfiguration warning was
+      // dead for the opposite reason.
+      // Only 4 reads exist in the hostv2 closure and all four want the real
+      // value; `mode` is 'production' for `vite build` and 'development' for
+      // the dev server, which is exactly the CRA semantics ../src expects.
+      'process.env': JSON.stringify({ ...appEnv, NODE_ENV: mode }),
     },
     // ── HTTPS=1 FOR PHONE TESTING, OPT-IN ────────────────────────────────
     // `navigator.clipboard.readText()` requires a SECURE CONTEXT. `localhost`

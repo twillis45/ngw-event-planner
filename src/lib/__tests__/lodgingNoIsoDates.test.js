@@ -75,10 +75,22 @@ describe('the lodging surface never prints an ISO date', () => {
     // Google echoes ?q= straight into its own search box, so this string is
     // host-facing even though it travels in a URL. The href exemption covers
     // parameters a platform parses, not prose that rides along inside one.
+    //
+    // AMENDED 2026-08-06. This used to require "Jun 17" IN the query, which
+    // encoded a belief driven live and found false: Google reads the place out
+    // of `q` and throws the dates away. The dates now ride `ts`, the parameter
+    // it actually parses, and they came out of `q` in the same move — leaving
+    // them would have shown the host one span in the search box and a different
+    // one in the date pickers beside it.
+    //
+    // The rule this file exists to enforce is unchanged and still checked: what
+    // the host READS carries no ISO. The span itself is asserted at its new
+    // home in googleTravelTs.test.js, against strings proven in a browser.
     const hotels = lodgingSearchLinks(evt()).find((l) => l.id === 'hotels');
-    const q = decodeURIComponent((hotels.href.split('?q=')[1] || ''));
+    const q = decodeURIComponent((hotels.href.match(/[?&]q=([^&]*)/) || [])[1] || '');
     expect(q).toMatch(/hotels in/);
-    expect(q).toMatch(/Jun 17/);
     expect(ISO.test(q)).toBe(false);
+    expect(q).not.toMatch(/\d/);            // no span in the box at all
+    expect(hotels.href).toMatch(/[?&]ts=/); // because it is carried properly
   });
 });

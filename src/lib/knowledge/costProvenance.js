@@ -26,6 +26,44 @@ export const COST_SOURCES = {
     fetched: '2026-07-16',
     claim: '2026 US catering per person: full-service $75–150; buffet with servers $45–85; drop-off buffet $28–50; drop-off $15–35. The food is often identical between drop-off and staffed — the price difference is LABOR — so full-service runs ~2–4x drop-off, and host-cooked/DIY is cheaper still. Add 20–30% for service, gratuity, and tax.',
   },
+  // ── PER-CHANNEL PROTEIN PRICING (registered 2026-08-07) ────────────────────
+  // These three already back cited claims in backyardBbq, juneteenthCookout and
+  // theCookout — but as RAW URLS inside each purchase's provenance, which no
+  // registry resolves. `isGroundedCost` and `isGroundedItemQty` both require
+  // `sources.every((s) => !!REGISTRY[s])`, so real, dated, corroborated evidence
+  // was failing on its FORM.
+  //
+  // Registering them changes no grounding outcome by itself — the purchases
+  // still cite their URLs, and flipping those to ids would move outcomes that
+  // `NO TRUST EXPANSION: grounding outcomes are unchanged` deliberately freezes.
+  // This is the prerequisite, landed on its own so the governed change can be a
+  // single reviewable step rather than a rewrite bundled with a rule change.
+  //
+  // Each entry names EVERY publisher behind it, following `dmv-crab-2026` — a
+  // registry id can itself be the corroborated set, which is what the pricing
+  // policy's ">=2 sources" is asking for. Claims are lifted verbatim from the
+  // provenance blocks already in the corpus; nothing here is newly asserted.
+  'costco-pork-2026': {
+    org: 'Red Table Meats (Costco pork rib pricing) + Eat Like No One (Costco pork guide)',
+    url: 'https://redtablemeats.com/fresh-meat/pork/how-much-are-pork-ribs-at-costco/',
+    corroboratingUrl: 'https://www.eatlikenoone.com/costco-pork-guide.htm',
+    fetched: '2026-08-07',
+    claim: 'Raw pork ribs cost ~$3–4/lb at Costco, $4–5+/lb at grocery, and more at a butcher or for pre-marinated. Bone-in runs heavy — plan ~half a rack per serious eater; smoke cuts ~30–40% of raw weight.',
+  },
+  'costco-chicken-2026': {
+    org: 'Eat Like No One (Costco chicken prices) + CostcoFDB (Costco chicken price guide)',
+    url: 'https://www.eatlikenoone.com/chicken-prices-at-costco.htm',
+    corroboratingUrl: 'https://costcofdb.com/the-complete-guide-to-costcos-chicken-prices-tips-and-hacks-costco-guides',
+    fetched: '2026-08-07',
+    claim: 'Bone-in chicken costs ~$1.79/lb (thighs) or ~$0.99/lb (drumsticks) at Costco; $3–5/lb at grocery; ~$0.50/lb more pre-marinated.',
+  },
+  'costco-groundbeef-2026': {
+    org: 'Beyond Forest (Costco meat price list 2025) + The Kitchn (Kirkland 90/10 ground beef review)',
+    url: 'https://www.beyondforest.org/post/costco-meat-prices-list-2025',
+    corroboratingUrl: 'https://www.thekitchn.com/costco-kirkland-90-10-ground-beef-review-23776246',
+    fetched: '2026-08-07',
+    claim: 'Ground beef costs $3.29/lb in bulk at Costco ($6.80/lb in packs) and $5.86–7.66/lb at grocery; chicken runs $1–2.50/lb at Costco. Hot dogs and links price below ground beef per lb.',
+  },
   'dmv-crab-2026': {
     org: 'DMV crab-house retail survey (Captain\'s White, Don\'s, Blue Crab House, Cameron\'s)',
     url: 'https://www.captainwhitesseafood.com/',

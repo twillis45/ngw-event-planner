@@ -121,7 +121,7 @@ export function isDormant(section, event, signals) {
 // it's gone; "Vendors" is framed as the people a host actually hires, not a pipeline.
 const RAIL = [
   { section: 'vendors',    label: 'Anyone you’re hiring', hint: 'Caterer, photographer, rentals — add them when you have them', route: 'Vendors' },
-  { section: 'foodDrinks', label: 'Food & drinks',        hint: 'We’ll help with this once guests are in',                     route: 'Budget' },
+  { section: 'foodDrinks', label: 'Food & drinks',        hint: 'I’ll help with this once guests are in',                     route: 'Budget' },
 ];
 export function upcomingRail(event, signals) {
   if (isPlanner(event)) return [];

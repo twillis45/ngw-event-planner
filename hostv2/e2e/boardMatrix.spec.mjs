@@ -292,7 +292,32 @@ for (const state of STATES) {
       test('fold peek — the pull handle is in the first viewport', async ({ page }) => {
         await boot(page, state);
         const grab = page.locator('.efold-grab');
+        // ── THE FOLD MODEL IS A PHONE MODEL (host ruling 2026-08-07) ────────
+        // "progress yes, fold no." A pull handle means "there is more below the
+        // bottom edge", and a desktop canvas has no bottom edge in that sense:
+        // `.escreen` is content-sized there, so the handle marked the foot of a
+        // 324px block a third of the way down a 900px canvas.
+        //
+        // So this test now asserts the contract in BOTH directions rather than
+        // skipping half of it — which matters, because two earlier versions of
+        // this guard each silently disabled themselves. `count()` passes for a
+        // display:none node, and a later `.app.has-more` guard would skip
+        // everywhere the moment that class stopped existing.
+        const isDesktopCanvas = await page
+          .locator('.stagewrap--responsive-command[data-bp="desktop"]').count() > 0;
+        if (isDesktopCanvas) {
+          // The handle must be ABSENT here. Asserting the absence is what stops
+          // it creeping back — it has done so twice already, once by escaping a
+          // height-gated media query and once by auto-placing into a grid.
+          const visibleGrabs = await grab.evaluateAll(
+            (els) => els.filter((el) => el.getBoundingClientRect().height > 0).length);
+          expect(visibleGrabs, 'a desktop canvas has no fold, so it must show no fold handle').toBe(0);
+          return;
+        }
+        // Phone / tablet / tablet-land: the fold model applies and the peek
+        // guarantee holds — the handle must exist and sit in the first viewport.
         if (await grab.count() === 0) { test.skip(true, 'no fold on this state (calm/day-of)'); return; }
+        await expect(grab.first(), 'the fold model applies here, so the handle must render').toBeVisible({ timeout: 5000 });
         // Documented boundary: the peek guarantee applies when the ask FITS the
         // viewport. When the ask content itself exceeds it (short landscape),
         // scrolling is already inevitable and the handle follows the content.

@@ -277,7 +277,7 @@ const quinceanera = {
       buyAt: 'T-1d',
       note: 'Light bites while guests arrive and photos are taken keeps the room comfortable before the seated dinner.',
       alternatives: ['Chips + salsa + guacamole station — budget appetizer swap', 'Taquitos (frozen) baked tray — cheaper passed app option'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cake',
       item: 'Tiered quinceañera cake (to the color story; serves the headcount)',
@@ -288,9 +288,9 @@ const quinceanera = {
       unitCostRange: [250, 700],
       essential: true,
       buyAt: 'T-1d',
-      note: 'A multi-tier cake is a centerpiece and a photo moment, often matched to the gown. Order from the baker at T-180d; pick up or confirm delivery the day before. Some families add a smaller decorative top tier and sheet cakes to serve a large crowd.',
+      note: 'A multi-tier cake is a centerpiece and a photo moment, often matched to the gown. Order from the baker at 6 months out; pick up or confirm delivery the day before. Some families add a smaller decorative top tier and sheet cakes to serve a large crowd.',
       alternatives: ['Grocery bakery sheet cake with custom decorations — far cheaper', 'Tres leches cake from Latin bakery — traditional, often more affordable'],
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_beverages',
       item: 'Aguas frescas, soda & juice (coffee; + alcohol for adults if served)',
@@ -327,8 +327,8 @@ const quinceanera = {
       unitCostRange: [600, 2500],
       essential: true,
       buyAt: 'T-1d',
-      note: 'Centerpieces on every table plus the entrance, the head table, and ceremony pieces. Booked with the florist at T-90d to the color story; delivered the day before or the morning of.',
-    },
+      note: 'Centerpieces on every table plus the entrance, the head table, and ceremony pieces. Booked with the florist at 3 months out to the color story; delivered the day before or the morning of.',
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_decor',
       item: 'Decor: backdrop, entrance arch, linens (if not venue-supplied), signage, balloons',
@@ -340,7 +340,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'The backdrop and entrance set the theme and anchor photos and the grand entrance. Confirm what linens and a dance floor the venue includes so you do not pay twice.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_doll_crown',
       item: 'Ceremonial items: last doll (última muñeca), tiara/crown, scepter, heels, toast glasses, candles/roses',
@@ -351,8 +351,8 @@ const quinceanera = {
       unitCostRange: [80, 300],
       essential: true,
       buyAt: 'T-3d',
-      note: 'COMMONLY FORGOTTEN under the bigger vendor decisions. The heels for the changing of the shoes, the last doll, the crown and scepter, the toast glasses, and any candles or roses are small purchases that carry the most meaningful moments — gather them in one kit at T-14d and assign who hands off each.',
-    },
+      note: 'COMMONLY FORGOTTEN under the bigger vendor decisions. The heels for the changing of the shoes, the last doll, the crown and scepter, the toast glasses, and any candles or roses are small purchases that carry the most meaningful moments — gather them in one kit at 2 weeks out and assign who hands off each.',
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_favors',
       item: 'Recuerdos (favors) for guests',
@@ -364,7 +364,7 @@ const quinceanera = {
       essential: false,
       buyAt: 'T-3d',
       note: 'Recuerdos are a warm quince tradition — a small keepsake per guest, often personalized with the quinceañera\'s name and date.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_tableware',
       item: 'Tableware / disposables (if the venue or caterer does not supply place settings)',
@@ -376,7 +376,7 @@ const quinceanera = {
       essential: false,
       buyAt: 'T-3d',
       note: 'Most halls and caterers include china, glassware, and linens — confirm first. Buy disposables only for a venue that supplies nothing, or for an overflow/kids table.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
     {
       id: 'p_cleanup',
       item: 'Cleanup supplies: trash bags, bins, paper towels, gift transport boxes',
@@ -388,7 +388,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T-3d',
       note: 'COMMONLY FORGOTTEN: boxes to carry home the many gifts, the doll, the crown, and leftover cake at the end of a long night. Confirm whether the venue handles end-of-night trash or you do.',
-    },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
   ],
 
   rentalsGap: [
@@ -414,12 +414,12 @@ const quinceanera = {
   ],
 
   risks: [
-    { id: 'r_late_booking', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at T-270d, then core vendors by T-180d; quince season Saturdays go a year out.' },
-    { id: 'r_gown_delay', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by T-240d, schedule alterations early, and hold the final fitting at T-30d with buffer for re-alterations.' },
-    { id: 'r_court_unready', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at T-120d, run weekly rehearsals, and keep one or two alternates ready.' },
-    { id: 'r_vendor_dropout', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at T-7d, and keep a backup contact and a phone playlist on a charged device.' },
-    { id: 'r_budget_overrun', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at T-270d, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
-    { id: 'r_headcount', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by T-88d, chase RSVPs, lock the count at T-30d, and order ~5-10% over for the caterer.' },
+    { id: 'r_late_booking', trigger: 'Date set late — church, salón, or top vendors already booked', severity: 'high', mitigation: 'Lock the date, the church (if a Mass), and the venue at 9 months out, then core vendors by 6 months out; quince season Saturdays go a year out.' },
+    { id: 'r_gown_delay', trigger: 'Ballgown arrives late or does not fit at the final fitting', severity: 'high', mitigation: 'Order the gown by 8 months out, schedule alterations early, and hold the final fitting at 30 days out with buffer for re-alterations.' },
+    { id: 'r_court_unready', trigger: 'Court members drop out or the vals/surprise dance is under-rehearsed', severity: 'high', mitigation: 'Pick a court that will commit, book a choreographer at 4 months out, run weekly rehearsals, and keep one or two alternates ready.' },
+    { id: 'r_vendor_dropout', trigger: 'A core vendor (caterer, DJ, photographer) cancels or no-shows', severity: 'high', mitigation: 'Sign contracts with deposits, confirm every vendor at a week out, and keep a backup contact and a phone playlist on a charged device.' },
+    { id: 'r_budget_overrun', trigger: 'Costs spiral past the family budget across many vendors', severity: 'med', mitigation: 'Build the budget at 9 months out, line up padrinos/sponsors for specific items, and track deposits vs balances as each vendor is booked.' },
+    { id: 'r_headcount', trigger: 'Final guest count drifts from RSVPs at a large family event', severity: 'med', mitigation: 'Send invitations by 88 days out, chase RSVPs, lock the count at 30 days out, and order ~5-10% over for the caterer.' },
     { id: 'r_weather', trigger: 'Outdoor or tented portion hit by rain or heat', severity: 'med', mitigation: 'Have an indoor fallback or a tented backup, move ice up in heat, and confirm a rain plan with the venue a week out.' },
   ],
 

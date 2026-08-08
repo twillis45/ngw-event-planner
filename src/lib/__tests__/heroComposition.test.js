@@ -293,7 +293,7 @@ describe('re-sit — the hero says what is true forward', () => {
     // And where it IS set, it must be the grounded claim, not a generic softener.
     const set = overdueRows().filter(x => x.r.assurance);
     expect(set.length).toBeGreaterThan(0);
-    for (const { r } of set) expect(r.assurance).toMatch(/running on our pick/);
+    for (const { r } of set) expect(r.assurance).toMatch(/running on my pick/);
   });
 
   it('`because` still EXISTS on the row — the fact is kept, not deleted', () => {
