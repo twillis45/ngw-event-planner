@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-07 (latest) - command-surface board sitting + the gate split
+**Last updated:** 2026-08-07 (latest) - the entity-URL guard, and two "still dark" claims driven and retired
 
 ---
 
@@ -36,9 +36,13 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 > `git status --porcelain`. Untracked `src/lib/*.js` you did not write is someone's
 > in-flight work; its header carries a dated "EXTRACTED <date> from ..." note.
 
-**Branch:** `feat/lodging-search-offer` - **HEAD `0d273115`**, 3 ahead of `origin/main`.
-PRs #79/#80 are closed/merged; **#81 merged 2026-08-06**; **#82 is open and green on all
-five checks** (jest, e2e, backend, cra-build, hostv2-build).
+**`origin/main` is `208ebbb3`** - PR #82 merged and deployed. PRs #79/#80/#81 are also in.
+Work since then branches off `origin/main`.
+
+> **THE LOCAL `main` REF LIES. Fetch before you read it.** On 2026-08-07 local `main` was
+> still at `8093dfa2` (PR #78) while `origin/main` was 175 commits ahead at `208ebbb3`.
+> Every `git ls-tree main`, `git merge-base main` and "N ahead of main" answer taken from
+> that ref was wrong by 175 commits. `git fetch origin` first, then read `origin/main`.
 
 | Commit | What |
 |---|---|
@@ -49,6 +53,20 @@ five checks** (jest, e2e, backend, cra-build, hostv2-build).
 **`public/hostv2/` IS NOW GITIGNORED** (`.gitignore:62`, zero tracked files). Section 2's
 old warning about it being a committed artifact that conflicts across branches is CLOSED -
 that was item 3 on this list and it is done.
+
+**Consequence for `npm run gate:hostv2`:** it builds hostv2 and diffs the result against the
+**untracked, local** `public/hostv2/`. On a machine whose copy is stale it reports drift that
+has nothing to do with your change - baseline it by stashing before you believe it. **CI does
+not run this gate at all** (`checks.yml` runs `gate:knowledge` + jest, playwright e2e, pytest,
+`gate:cra`, and a build). It is a release-path tool, not a check.
+
+**Handoff hygiene item 1 is closed; item 2 is real.**
+`hostv2/test-results/.last-run.json` is NOT tracked on `origin/main` and `.gitignore:67`
+covers the directory - the handoff read the stale local `main`, so that one is done.
+**`hostv2/review-shots/*.png` DO churn**: a clean tree before `npx playwright test` came back
+with six modified baselines (desktop, laptop, large-mobile, large-monitor, narrow-mobile,
+tablet-portrait). `git checkout -- hostv2/review-shots` after every matrix run, and check
+`git status` before staging - a `git add -A` sweeps six binary diffs into an unrelated commit.
 
 ### The Hotels door carried nothing, and said it did
 
@@ -72,6 +90,42 @@ Three findings that are not obvious and cost real time to establish:
 
 **Do not propose passing a hotel NAME as the place** to get a per-hotel dated door - driven,
 returns an empty page (83 chars, no results). That field is a location.
+
+### The same defect in URL form - CLOSED 2026-08-07
+
+The 2026-08-06 guard `looksLikeHotelDetailPage` fires on the **tab strip**
+(Overview/Prices/Reviews/...), which is visible TEXT. A pasted **link** carries none, so a
+single-property `/travel/hotels/entity/<id>` URL walked straight past it. The handoff listed
+this as open; it is now fixed (`lodgingIntel.js:1855`, `HOTEL_ENTITY_URL`).
+
+**The handoff's stated mechanism was wrong, and the correction matters.** It said the URL
+"falls into `extractHotelCandidates`" - i.e. the fabricated-provenance bug all over again.
+It does not. `extractHotelCandidates` groups on the `<a>` boundary and a bare URL has no
+anchors, so it returned **zero** candidates. Measured, not read:
+
+```
+/travel/hotels/entity/<id>   looksLikeHotelsResultsPage true
+                             looksLikeHotelDetailPage  false     <- the hole
+                             extractListingCandidates  0 candidates
+```
+
+So the damage was the **wrong instruction**, not a bad row. Zero candidates dropped
+`LodgingCockpit` into its `hotelsPage` branch, which told the host *"I couldn't find any
+hotels on that page - copy the whole list"* while the host was standing on ONE hotel's page.
+That instruction can never succeed there. It is a loop, not a dead end.
+
+Both branches driven live in hostv2 (`?demo=lodging` -> Go look -> paste):
+
+| Pasted | Says |
+|---|---|
+| `/travel/hotels/entity/<id>` | "That's one hotel's page - go back to the list of hotels and copy that instead." |
+| `/travel/hotels/Santa-Fe-NM` | "I couldn't find any hotels on that page - copy the whole list" (unchanged, correct) |
+
+**The clause is anchored `^...$` on purpose** - the whole payload must BE the link. Unanchored,
+a results page carrying a single entity href would be refused outright and every hotel on it
+thrown away. `hotelsResultsPaste.test.js` holds that down with the results fixture plus an
+appended entity anchor. No new copy was written: the existing detail-page sentence is true for
+both shapes, and a second string saying the same thing would be a duplicate surface.
 
 ---
 
@@ -264,6 +318,78 @@ Two builds, materially different, NOT chosen:
   plus **six named, routed, dot-marked plan-part chips**. The richest computed block on the
   surface is suppressed. "Only two honest stats exist" was FALSE. Note it now COLLIDES with
   the `<h2 class="bento-head">` added in `89063812` - both say "Where you stand".
+
+---
+
+## 1d. The Santa Fe drive - 2026-08-07, two defects in the RISK lane
+
+The handoff's START HERE. Driven against the seeded `cust-demo-santafe` (Mom's 80th, Santa
+Fe, Jun 17-21 **2028** - i.e. **680 days out**, which is what exposed both of these). Both
+are live on the birthday playbook, the highest-traffic type there is. Neither is fixed.
+
+### A. The rail strips the words that made a risk a contingency
+
+`surfaceRegistry.js:123` titles a playbook risk **`Have a plan for: ${r.trigger}`**. That
+prefix is the whole honesty of the thing: `trigger` is the CONDITION under which the risk
+fires, not a statement about now. `wlabel` (`HostShellV2.jsx:7959`) then does:
+
+```js
+.replace(/^have a plan for:\s*/i, '')
+```
+
+so the command-board rail renders the bare trigger: **"Final headcount still not locked
+3 days out"** - at 680 days out, under a heading that offers no disclaimer. It reads as a
+present-tense state claim, and it is false.
+
+**The risks SHEET is honest and the rail is not - same data, opposite framing.** The sheet
+leads with *"None of these are happening - they're the ones worth a plan"*
+(`HostShellV2.jsx:12908`). The rail carries no such line and has removed the four words that
+did the same job. Fix is a choice between restoring the framing on the rail and giving the
+lane the sheet's disclaimer; do not do both, and do not fix it by editing the playbook
+`trigger` strings - they are correct as conditions and 40+ files carry them.
+
+### B. Three of five risks offer only "Handled - stop showing this"
+
+`riskRouteFor` (`HostShellV2.jsx:1463`) is a keyword regex over trigger+mitigation and
+returns `null` on no match; `route &&` at `:12933` then drops the **"Plan for this"** button
+entirely. Run against the five birthday risks the drive surfaced:
+
+| Risk | Route |
+|---|---|
+| Final headcount still not locked 3 days out | **none** |
+| Kid food allergies not collected | `Planning/food` |
+| Cake ordered too late | **none** |
+| Outdoor party, no rain plan | `rain-plan` |
+| No ice / warm drinks | **none** |
+
+So on three of five the only act the host is offered is **dismissal**. Two holes, both
+plain once named: there is **no guests/RSVP/headcount rule at all** (no `guest`, `rsvp`,
+`headcount`, `count`), and the food rule (`\bfood\b|portion|allergen|\bdiet\b|\bmeal\b|
+\bmenu\b`) misses `cake`, `ice` and `drinks`.
+
+**Do not just append keywords.** A regex that returns a tab is not proof the tab lands
+anywhere useful - click each one through first (`feedback_dead_links_click_through`). The
+structural fix is that a risk should carry its route as authored data, the way `sufficientWhen`
+is authored, instead of being re-derived from its own prose at render time.
+
+### What the drive CONFIRMED working, so nobody re-opens it
+
+- **The ignition reveal** runs and lands on the command board.
+- **The selected-decision panel** (PR #70) is live: clicking a "Then, in order" row raises
+  `SELECTED / Set the start time / Resolves in Event Details` in the rail with its CTA.
+- **The air/ground Sections doors exist** - `Getting here` and `Getting around` are both in
+  the nav. The 2026-07-29 "no Sections door" finding stays closed; it was fixed 2026-07-30.
+- **Destination nav appears on `isDestination`** - `Travel & where everyone stays` too.
+- **Risk dismissal** writes `riskStatus` and the sheet re-derives its count.
+
+### The multi-day hole, seen from the surface
+
+Corroborates the one item the handoff confirmed missing (`itinerary.js:201`). On a
+**Jun 17-21** event the queue's own row reads **"Set the start time"** (singular) and the
+panel resolves it in Event Details - one clock for a five-day trip. There is **no schedule,
+programme or run-of-show door in the nav at all** for a destination event. The per-day
+programme schema is not a nice-to-have here; the surface is already asking a question that
+only makes sense for a one-day party.
 
 ---
 
@@ -602,9 +728,25 @@ binding constraint on the product, and none of the viewport work touched it.
      while every engine reads `lodging.code`, so `draftLodgingNote` - the guest note that IS
      the group-lodging deliverable - silently omitted it), and **Group rate ends** →
      `lodging.deadline`, which `travelPlan` turns into the dated obligation.
-   - **STILL DARK:** the backups list, and **"Who's booked a room"** (`HostShellV2.jsx:11565+`).
-     For a block the roster IS the work - the cutoff matters because you chase the people who
-     have not booked.
+   - **~~STILL DARK: the backups list, and "Who's booked a room"~~ - RETIRED 2026-08-07,
+     DRIVEN.** Both are live in `LodgingCockpit.jsx`, the "On the books" stage - the surface
+     `goToLodgingCockpit` actually navigates to. This entry was reading
+     `HostShellV2.jsx:11565+`, the sheet the file itself calls unreachable, and calling the
+     FEATURE dark because the DEAD COPY of it is. Driven at `?demo=lodging`:
+     - **IF THE FIRST ONE FILLS** - "Backup place" + "Farther? Cheaper?". That is the backups list.
+     - **WHO'S BOOKED A ROOM** - real roster rows (Ada, Ben), each a button. Clicking Ada
+       flipped her to `Booked` and the rollup recounted `2 of 2 still need a room` ->
+       `1 of 2`. Survived a reload. So it renders, commits, derives its own count and persists.
+     - **WHAT THE GROUP GETS TOLD** - `draftLodgingNote` with booking code NGW28 in the body.
+
+     What is genuinely unbuilt is narrower than "the roster": there is **no cutoff-driven
+     chase** - nothing turns "1 of 2 still need a room" plus the group-rate deadline into an
+     act aimed at the named person who has not booked. That is the real item. Re-scope it
+     before working it; the surface underneath is finished.
+
+     *Method note, same class as the handoff's own stale-claim warning: this was found by
+     opening the screen, not by grepping. The line number in a doc points at the code that
+     was true when it was written.*
 3. **Buttons + CTA language, from the 2026-08-04 Mobbin read** (full sequence in that doc):
    name the **7 bare `done`/`View` labels** (file:line listed; read each call site first --
    do not guess the words), amend **UX_06 to sentence case** (shipped labels run 179 sentence
