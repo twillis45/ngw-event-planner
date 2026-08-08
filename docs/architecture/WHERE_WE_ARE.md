@@ -269,6 +269,74 @@ Two builds, materially different, NOT chosen:
 
 ## 2. Gates
 
+### GROUNDING — the number is now TRUE, not better (2026-08-07, latest)
+
+```
+541 priced items · 0 unlabelled     (was ~360 unlabelled and invisible)
+  cited 8 · consensus 40 · researched 64 · synthesized 504 · partial 1
+
+1.5%  cited across all 541          (the honest number)
+8.9%  SETTLED = cited + established-consensus, per claimBasis
+1%    of 617 labelled items cited
+```
+
+**NO ITEM BECAME BETTER GROUNDED. Zero research was done.** What changed is that
+the measurement stopped lying. The old "4% cited" was flattering on three counts,
+each pulling a different way: the denominator excluded ~360 unlabelled items; the
+audit counted 3 of the 5 statuses `claimBasis` declares (missing 98 `researched`,
+2 `partial`); and text-matching attributed provenance from risks and timeline
+entries to priced items (132 synthesized in text vs 63 in the objects).
+
+**Two NEW gaps, neither known before, both now gated by a ratchet
+(`researchPolicyCompliance.test.js`, frozen at 39/43):**
+
+- **39 of 45** research claims cite a SINGLE source. `RESEARCH_POLICIES.pricing`
+  says `corroborationRequired: true` — "always corroborate across >=2 sources".
+  One of the 39 is labelled `cited`.
+- **43 of 45** carry no date. `freshnessDays: 45` means a price is stale after 45
+  days, and `isStaleByPolicy()` cannot evaluate an undated item. An undated
+  "researched" price is neither fresh nor stale — it is unfalsifiable, which is
+  the one thing a grounded claim must never be. **Dates cannot be back-filled
+  honestly** — nobody knows when those items were researched.
+
+**THE ADMIN BACKLOG POINTS AWAY FROM THE WORK.** Full write-up in
+`docs/architecture/2026-08-07_GROUNDING_PREDICATE_FINDING.md`. `isGroundedItemQty`
+(`quantityProvenance.js:104`) is the sole predicate behind `fieldState`:
+
+```
+crabFeast.p_crabs       cited      tier: primary     4 sources -> needs-research
+crabFeast.p_softdrinks  researched tier: researched  1 source  -> correctable
+```
+
+The best-evidenced item in the product is sent back for research; a single-source
+price reads as done.
+
+**NEXT, AND IT IS ONE GOVERNED STEP — do it fresh, not at the end of a session.**
+Attempted 2026-08-07 and reverted: it broke 19 suites / 59 tests including
+`4 — NO TRUST EXPANSION: grounding outcomes are unchanged`, which is a
+deliberate freeze on what the corpus may claim. The prerequisite is now landed
+(`costco-pork-2026`, `costco-chicken-2026`, `costco-groundbeef-2026` registered
+in COST_SOURCES; universe 113 -> 116), so the remaining change is single and
+reviewable:
+
+1. point the cited purchases' `sources` at those ids + `dmv-crab-2026`;
+2. make `isGroundedItemQty` use `isGroundedTier` (the canonical ladder) plus
+   `>=2` corroboration, NOT a literal `tier === 'researched'`;
+3. map `primary` in `TIER_ALIASES` — it is unmapped, which is why first-hand
+   dated evidence scores ungrounded;
+4. re-baseline `NO TRUST EXPANSION` in the SAME commit with the new outcomes
+   stated.
+
+**Do NOT loosen source resolution to a length heuristic.** Tried it; it lets any
+12-character string ground a price and breaks `a partially-resolving source list
+never grounds`. That is trust expansion wearing the costume of a fix.
+
+Instruments: `npm run grounding:audit` (text, per-playbook worklist) ·
+`npm run grounding:census` (objects, true counts). They cross-check at 541 — and
+they once AGREED while both being wrong, so agreement is not correctness.
+
+---
+
 ### THE MATRIX IS FULLY GREEN - `d3493840` (2026-08-07, latest)
 
 ```
