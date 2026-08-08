@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-07 (latest) - the entity-URL guard, and two "still dark" claims driven and retired
+**Last updated:** 2026-08-08 (latest) - the lodging deep link lands, and the goals audit that chose it
 
 ---
 
@@ -571,6 +571,69 @@ start time"**, singular, and resolves in Event Details - one clock for a five-da
 *Lesson, and it is the handoff's own: I repeated an inherited "confirmed missing" without
 opening the file, then added an absence claim ("no door in the nav") from a single failed
 look. Both are the exact error `feedback_absence_claims_need_exhaustion` names.*
+
+---
+
+## 1e. The lodging deep link did not survive the hand-off - FIXED 2026-08-08
+
+Worked because it serves an OWNER-STATED goal rather than a derived one: *"CTAs are
+broken again. CTAs should be deep links only"* (`PHASE_HERO_1.md:25`) and *"this may be my
+biggest truth function and it has got to work every time"* (`:32`). A goals audit this
+session found that the attention system has no open item anywhere in section 5, while the
+board's rulings have become the de-facto queue. This is the first item taken off the host's
+own words in a while.
+
+**The defect.** Every sheet kind keeps its `focus` because the dispatcher builds
+`{kind, focus}` and hands it to `setSheet` - same page, component state. The cockpit is a
+PAGE LOAD (`goToLodgingCockpit` assigns `window.location.href`), so anything not in the URL
+is gone. It was gone: `HostShellV2.jsx:3829` called `goToLodgingCockpit()` with no argument,
+**one line above** the generic path that preserves focus for everything else.
+
+So `surfaceRegistry.js:436` raises the group-rate obligation with
+`focusField:'lodging-deadline'`, `routeResolver.js:98` resolves it to
+`{kind:'lodging', focus:'deadline'}`, and the host tapped a dated warning about a deadline
+and arrived at a screen that never mentioned one. Nothing caught it because the only
+consumer of `sheet.focus === 'deadline'` in the shell lives inside the lodging sheet the
+file itself calls unreachable.
+
+**Fixed** by carrying focus as a query param (`goToLodgingCockpit(focus)`), read ONCE into
+cockpit state and cleared by `patch()` alongside the stage peek - a param re-read every
+render would drag the host back to the same row after every write, which is the opposite of
+landing. Two anchors: `#lc-rate-ends` for `'deadline'`, the roster row for a guest id
+(string-compared, because an id that survives a URL is text and `5 === '5'` is false).
+
+**A focus may not invent a stage.** It moves the host only when the event is already at or
+past `picked`/`booked`; otherwise `Picked` renders "Nothing picked yet" and the link would
+have claimed progress the host has not made.
+
+Gated twice, because one gate could not hold it: `lodgingDeepLinkLands.test.js` (8 tests) is
+a CROSS-FILE source contract - neither file is wrong alone, the defect is in the seam - and
+two e2e cases in `lodgingCockpit.spec.mjs` hold the actual landing. 11/11 in that spec, 70
+unit tests green across the attention, deep-link and risk suites.
+
+> ### ⚠ THE TRAP THAT MADE THREE MUTATION CHECKS LIE
+>
+> `playwright.config.mjs:65` runs `vite preview` against the BUILT bundle in `dist/`, never
+> the dev server. Editing source and re-running playwright tests **the old build**. Three
+> mutation checks in a row "passed with the defect reintroduced" and all three were
+> meaningless. `npx vite build` between the edit and the run, every time - the same rule as
+> `feedback_deploy_rebuild_hostv2`, one layer earlier.
+>
+> Second, smaller trap in the same session: the first version of the e2e asserted
+> `toBeInViewport()` at the desktop 1440x900 geometry, where the rate field sits **above**
+> the fold anyway. The assertion was free. Measured with a throwaway probe: at 420x520 the
+> field lands at `top: 613` with `scrollTop: 0` unfocused, and `top: 266` / `scrollTop: 347`
+> focused - and the scroller is the inner `.app`, not the document, which is why a
+> `window.scrollY` check would also have proved nothing.
+
+**Still open, deliberately not built:** the per-guest chase. `surfaceRegistry.js:437`
+comments that the lodging raise carries NO `key` on purpose - "an aggregate raise about one
+shared deadline" - so emitting one raise per un-booked guest **amends a wave-6 ruling** and
+is the host's call, not a code edit. The routing now survives the hand-off, so that work is
+unblocked whenever it is wanted.
+
+`.claude/launch.json` gained a `hostv2` entry (port 5199); it previously offered only the
+frozen CRA shell on :3000.
 
 ---
 

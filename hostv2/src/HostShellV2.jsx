@@ -3315,12 +3315,28 @@ export default function HostShellV2() {
   // route, since the cockpit is its own top-level mount (main.jsx). The sheet
   // render path stays for now (removal is its own careful pass, not bundled
   // into a navigation change); this makes it unreachable.
-  const goToLodgingCockpit = () => {
+  // A DEEP LINK MUST SURVIVE THE HAND-OFF (2026-08-08). The cockpit is a page
+  // load, not a sheet, so `focus` cannot ride in component state the way it
+  // does for every other kind — it has to become a query param or it is gone.
+  // It was gone: the dispatcher below called this with no argument, one line
+  // above the generic path that preserves focus for every other sheet kind.
+  // So `{tab:'Travel', focusField:'lodging-deadline'}` — the route the group-
+  // rate raise emits (surfaceRegistry.js:436) — resolved to
+  // {kind:'lodging', focus:'deadline'} and then landed on whatever stage the
+  // cockpit happened to derive, with no anchor. The host tapped a dated
+  // obligation about a deadline and arrived at a screen that never mentioned
+  // one.
+  const goToLodgingCockpit = (focus) => {
+    const f = focus != null && String(focus).trim() ? String(focus).trim() : null;
     try {
       const u = new URL(window.location.href);
       u.searchParams.set('demo', 'lodging');
+      if (f) u.searchParams.set('focus', f); else u.searchParams.delete('focus');
       window.location.href = u.toString();
-    } catch { window.location.href = window.location.pathname + '?demo=lodging'; }
+    } catch {
+      window.location.href = window.location.pathname + '?demo=lodging'
+        + (f ? '&focus=' + encodeURIComponent(f) : '');
+    }
   };
 
   // ── ONE ROUTER FOR THE SECTION DIRECTORY (2026-08-07) ──────────────────────
@@ -3826,7 +3842,7 @@ export default function HostShellV2() {
     // sheet kind. Patching the 4 direct call sites missed this ONE shared
     // dispatcher underneath all of them, which is why "Open where everyone
     // stays" kept opening the old sheet through every rebuild.
-    if (r.kind === 'lodging') { goToLodgingCockpit(); return true; }
+    if (r.kind === 'lodging') { goToLodgingCockpit(r.focus); return true; }
     // Sheet landings: open the named sheet on its row/section. vendorSection is
     // carried through only for vendor routes (money/insurance sub-sections).
     const s = { kind: r.kind, focus: r.focus != null ? r.focus : null };

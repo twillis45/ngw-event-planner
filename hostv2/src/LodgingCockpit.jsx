@@ -109,16 +109,47 @@ export default function LodgingCockpit() {
       // them to the screen they had just finished with. Any real write clears
       // the peek, so completing an act always hands them wherever they now are.
       setViewing(null);
+      // The link has been answered. Same argument as the peek above: once the
+      // host acts, the thing that sent them here stops steering.
+      setFocus(null);
     } catch { /* storage full or blocked — the surface simply does not change */ }
   }, [eventId]);
 
   const intel = useMemo(() => { try { return event ? lodgingIntel(event) : null; } catch { return null; } }, [event]);
   const derived = useMemo(() => { try { return event ? lodgingStage(event, intel) : null; } catch { return null; } }, [event, intel]);
 
+  // ── THE DEEP LINK THAT ARRIVED (2026-08-08) ────────────────────────────
+  // HostShellV2's dispatcher now carries `focus` across the page load as a
+  // query param (goToLodgingCockpit). Two shapes reach here, and they are the
+  // two the router already emits: 'deadline' (routeResolver.js:98, from the
+  // group-rate raise) and a guest id (routeResolver.js:96).
+  //
+  // It is READ ONCE and then owned by state, never re-read from the URL. A
+  // param that kept asserting itself would drag the host back to the same row
+  // every time the surface re-derived, which is the opposite of landing.
+  const [focus, setFocus] = useState(() => {
+    try {
+      const f = new URLSearchParams(window.location.search).get('focus');
+      return f && String(f).trim() ? String(f).trim() : null;
+    } catch { return null; }
+  });
+
   // `viewing` changes only which stage you LOOK at — it never rewrites the
   // event, so this cannot lie about where the host actually is.
   const [viewing, setViewing] = useState(null);
-  const stage = viewing || (derived && derived.stage) || null;
+  // A FOCUS MAY NOT INVENT A STAGE. 'deadline' lives in `picked` and the roster
+  // lives in `booked`, but neither screen is honest before a stay is chosen —
+  // Picked renders "Nothing picked yet" and WhosBooked has no rate to chase. So
+  // the focus moves the host only when the event is ALREADY at or past the
+  // stage that holds the thing, and otherwise leaves them where they really
+  // are. A link is allowed to point at a row; it is not allowed to claim the
+  // host is further along than they are.
+  const focusStage = (() => {
+    const at = derived && derived.stage;
+    if (!focus || (at !== 'picked' && at !== 'booked')) return null;
+    return focus === 'deadline' ? 'picked' : 'booked';
+  })();
+  const stage = viewing || focusStage || (derived && derived.stage) || null;
   const isCurrent = !viewing || (derived && viewing === derived.stage);
 
   // ── AN EMPTY STORE IS A ROUTE, NOT A DEAD END ──────────────────────────
@@ -202,7 +233,7 @@ export default function LodgingCockpit() {
           )}
           <h1 className="lc-h1">{copy.title}</h1>
           <p className="lc-why">{copy.why}</p>
-          <Body stage={stage} event={event} intel={intel} patch={patch} />
+          <Body stage={stage} event={event} intel={intel} patch={patch} focus={focus} />
           <EventPicker events={events} eventId={eventId} onPick={(id) => { setEventId(id); setViewing(null); }} />
         </main>
       </div>
@@ -223,12 +254,12 @@ function stageCopy(derived, stage) {
   })[stage] || derived;
 }
 
-function Body({ stage, event, intel, patch }) {
+function Body({ stage, event, intel, patch, focus }) {
   if (stage === 'no-town') return <NoTown event={event} patch={patch} />;
   if (stage === 'looking') return <Looking event={event} patch={patch} />;
   if (stage === 'weighing') return <Weighing event={event} intel={intel} patch={patch} />;
-  if (stage === 'picked') return <Picked event={event} intel={intel} patch={patch} />;
-  return <Booked event={event} patch={patch} />;
+  if (stage === 'picked') return <Picked event={event} intel={intel} patch={patch} focus={focus} />;
+  return <Booked event={event} patch={patch} focus={focus} />;
 }
 
 function NoTown({ event, patch }) {
@@ -1421,7 +1452,7 @@ function Weighing({ event, intel, patch }) {
   );
 }
 
-function Picked({ event, intel, patch }) {
+function Picked({ event, intel, patch, focus }) {
   const chosen = (intel && intel.chosen) || null;
   const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
   // `code` is canonical (travelPlan and the guest note read it); `bookingCode`
@@ -1512,7 +1543,13 @@ function Picked({ event, intel, patch }) {
         <label className="lc-field-label" htmlFor="lc-rate-ends">Group rate ends</label>
         <input className="lc-field" id="lc-rate-ends" type="date" value={rateEnds}
           onChange={(e) => setRateEnds(e.target.value)}
-          aria-label="Last day to book at the group rate" />
+          aria-label="Last day to book at the group rate"
+          /* THE LANDING. Same idiom the shell uses at every focus row —
+             scrollIntoView, block:'center', no focus() call. Focusing a date
+             input pops the picker on some platforms, which is a modal dialog
+             the host did not ask for; the ask here is "show me the field", not
+             "start editing it". */
+          ref={(el) => { if (el && focus === 'deadline') el.scrollIntoView({ block: 'center' }); }} />
         <button className="cta" disabled={!code.trim() && !rateEnds}
           onClick={() => patch({
             lodging: {
@@ -1526,7 +1563,7 @@ function Picked({ event, intel, patch }) {
   );
 }
 
-function Booked({ event, patch }) {
+function Booked({ event, patch, focus }) {
   const stay = (event.lodging && typeof event.lodging === 'object') ? event.lodging : {};
   const md = (event.moneyDates && typeof event.moneyDates === 'object') ? event.moneyDates : {};
   const setMd = (k) => (e) => patch({ moneyDates: { ...md, [k]: e.target.value } });
@@ -1550,7 +1587,7 @@ function Booked({ event, patch }) {
       </Panel>
       <StayContact event={event} patch={patch} />
       <Backups event={event} patch={patch} />
-      <WhosBooked event={event} patch={patch} />
+      <WhosBooked event={event} patch={patch} focus={focus} />
       <GuestNote event={event} />
     </>
   );
@@ -1697,7 +1734,7 @@ function Backups({ event, patch }) {
   );
 }
 
-function WhosBooked({ event, patch }) {
+function WhosBooked({ event, patch, focus }) {
   let plan = null;
   try { plan = buildTravelPlan(event); } catch { plan = null; }
   const lg = (plan && plan.relevant && plan.lodging) ? plan.lodging : null;
@@ -1747,6 +1784,15 @@ function WhosBooked({ event, patch }) {
       {roster.map((r, i) => (
         <button key={r.guestId != null ? r.guestId : `g${i}`} className="lc-staged"
           onClick={() => setStatus(r, nextLodgingStatus(r.status))}
+          /* A guest-id deep link lands on that guest's row. String-compared
+             because a route id survives a URL as text and the roster's may be
+             a number — `5 === '5'` is false and would silently land nowhere,
+             which is the failure this whole change is about. */
+          ref={(el) => {
+            if (el && focus != null && r.guestId != null && String(focus) === String(r.guestId)) {
+              el.scrollIntoView({ block: 'center' });
+            }
+          }}
           aria-label={`${r.name} — ${LODGING_STATUS_LABEL[r.status]}. Tap to change.`}>
           <span className="lc-staged-main">
             <span className="lc-staged-name">{r.name}</span>
