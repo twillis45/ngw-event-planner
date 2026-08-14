@@ -16,14 +16,43 @@
 # requirement (locally the shell defaults to 16 — the harness docs cover it).
 name: Checks
 
+# EVERY PUSH TO A BRANCH WITH AN OPEN PR RAN THIS TWICE (fixed 2026-08-08).
+# `push` + `pull_request` both fired, producing two identical runs of all five
+# jobs — and e2e alone is ~19 minutes, so each push cost ~38 minutes of runner
+# time for one commit's worth of signal. Measured on PR #83: runs 31255386923
+# (event=push) and 31255388176 (event=pull_request), same SHA, same results.
+#
+# The concurrency block below could not collapse them, and that is worth
+# understanding before anyone "simplifies" this again: `github.ref` is
+# `refs/heads/<branch>` on push but `refs/pull/<n>/merge` on pull_request, so
+# the two events landed in DIFFERENT groups and neither cancelled the other.
+# The group key is now normalised to the branch name, which is identical across
+# both events.
+#
+# `push` is now main-only. Working branches are covered by `pull_request`, which
+# is where merges are decided, and main is covered on the way in. THE TRADE:
+# a branch with NO open PR gets no automatic run — use workflow_dispatch, or
+# open the PR early (a draft PR gets the full matrix).
+#
+# KNOWN, DELIBERATE OVERLAP ON MAIN, so nobody "fixes" it by accident: a merge
+# runs jest and backend here AND again inside pages-from-source.yml's build job
+# (`pytest` at :119, the jest suite at :126), which runs them before publishing.
+# That is the release-integrity gate between source and published and it must
+# keep its own tests — a deploy that trusts an upstream workflow's green is
+# exactly the "no gate between source and published" hole that workflow was
+# written to close. The overlap costs ~90s per merge. It is NOT the 19-minute
+# e2e, which runs only here, and squash-merge means main's SHA is new anyway, so
+# this run is not simply repeating the PR's.
 on:
   push:
-    branches-ignore: [gh-pages]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: checks-${{ github.ref }}
+  # head_ref on a pull_request, ref_name on a push — the same string either way,
+  # so a second push supersedes the first instead of racing it.
+  group: checks-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 # Least privilege: every job here only reads the repo, runs tests and builds.
