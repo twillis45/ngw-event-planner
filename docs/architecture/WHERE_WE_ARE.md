@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - hero-void and stat-column gates proven and PUSHED (`cb2f1ae7`)
+**Last updated:** 2026-08-14 (latest) - board ruling 2b built as Tier 0.6 (`923ba55b`); the two venue readers disagree and that is now the open item. Engine 3244/3244, e2e matrix 422 passed / 46 skipped.
 
 ---
 
@@ -315,7 +315,45 @@ Two builds, materially different, NOT chosen:
 
 **Board rulings still unbuilt:**
 
-- Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
+- ~~Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.~~
+  **BUILT + GATED + DRIVEN 2026-08-14** as `_selectEventNextActionInner` **Tier 0.6**.
+  Three findings came out of building it, and two of them are worth more than the ruling:
+
+  1. **IT BELONGS IN THE SELECTOR, NOT IN `eventPlan`.** The first build promoted the
+     blocker inside `eventPlan`, after the selector had already chosen.
+     `hostEngineSelectionParity` caught it — that contract compares the selector's head
+     against `eventPlan().nextActions[0]` precisely so the host can never be shown
+     something the engine did not select. Ranking it as a TIER makes every derivation
+     agree by construction and `eventPlan` needs no special case at all.
+  2. **IT MUST NOT FIRE ON A FRESH EVENT.** "No venue" is true of every brand-new event,
+     so an unconditional promotion made a critical blocker the first thing every host
+     would ever see. `decisionSoundness` fixture A is a written contract against exactly
+     that (`unacceptable: ['critical severity', …]`). Tier 0.6 sits BELOW the Tier 0/0.5
+     foundation moves — a gate is worth raising when there is work behind it to gate.
+     Twelve tests across seven suites said this; none of them were edited.
+  3. **THE TWO VENUE READERS DISAGREE — STILL OPEN, AND NOW THE REAL ITEM.** Measured:
+
+     ```
+     eventLocationStatus(ev)     "city_only"   -> location essential HANDLED
+     deriveDecisionBlockers(ev)  venue-selection, urgency: "critical"
+     ```
+
+     One fact, two engines, opposite answers, on any destination event with a town but
+     no named venue. It is **pre-existing and visible today**: the stat column's Venue
+     chip reads "handled" on the very event whose blocker list calls venue critical.
+     Promoting on the blocker alone would have put "Add the location." at display size
+     beside a chip saying Venue is done. **So Tier 0.6 promotes only where BOTH readers
+     say unresolved**, and where they disagree the surface keeps today's behaviour.
+     That is a standoff, not a resolution — `criticalBlockerLeads.test.js` says so in
+     its own header and tells the next person to delete the guard once someone decides
+     which reader is right. **Deciding that is the next move on this surface.**
+
+  Also fixed, and found only by DRIVING: the hero asked "Add the location." while the
+  queue's second row said "Add the location". `topDomain` adopted a matched phase
+  concern's domain only for `category:'readiness'` heroes, so a `'blocker'` hero never
+  deduped against the location cue that resolves through the same `event-venue` field.
+  And `blockerType` was the FOURTH field the `topAction` rebuild has silently dropped
+  (after F1 `level`, F7 `leadDays`, and `sourceCategory`) — that whitelist is a hazard.
 - ~~`.tile-a` is `display:none !important` and the richest computed block on the surface is
   suppressed.~~ **BUILT `1c163c97`, GATED `cb2f1ae7`, DRIVEN 2026-08-14.** The exception is
   scoped to the rail composition only (`.stagewrap--responsive-command[data-rail="1"]
@@ -1036,8 +1074,9 @@ Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before
 **2. Build the board's unbuilt rulings, in this order** (all from section 1c):
    a. **DONE - `1c163c97`, gated `cb2f1ae7`, driven 2026-08-14.** `.tile-a` is un-hidden
       for the rail composition only; the phone rule at `:909` is untouched. See 1c.
-   b. **Critical blockers render IN the hero.** The engine already ranks venue
-      `urgency:'critical'`; the layout puts it after the hero. Let the engine win.
+   b. **DONE - Tier 0.6 in `_selectEventNextActionInner`, driven 2026-08-14.** Gated by
+      `criticalBlockerLeads.test.js`. It promotes only where BOTH venue readers agree the
+      venue is unresolved - the reader split is the open item now, see 1c.
    c. **Collapse the four venue-capture cards to one.**
 
 **3. DONE 2026-08-07** (`43287dd3`, `ffd2db9f`). The fold-peek contradiction is settled by
