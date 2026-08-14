@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - board ruling 2b built as Tier 0.6 (`923ba55b`); the two venue readers disagree and that is now the open item. Engine 3244/3244, e2e matrix 422 passed / 46 skipped.
+**Last updated:** 2026-08-14 (latest) - 2b built as Tier 0.6 (`923ba55b`); the venue-reader board RULED (split the fact in two) and found the strict reader reaches the host not at all. Engine 3244/3244, e2e 422 passed / 46 skipped.
 
 ---
 
@@ -344,9 +344,22 @@ Two builds, materially different, NOT chosen:
      Promoting on the blocker alone would have put "Add the location." at display size
      beside a chip saying Venue is done. **So Tier 0.6 promotes only where BOTH readers
      say unresolved**, and where they disagree the surface keeps today's behaviour.
-     That is a standoff, not a resolution — `criticalBlockerLeads.test.js` says so in
-     its own header and tells the next person to delete the guard once someone decides
-     which reader is right. **Deciding that is the next move on this surface.**
+     That is a standoff, not a resolution. **THE BOARD SAT ON IT 2026-08-14 AND RULED —
+     full ruling in [`docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md`](../audits/2026-08-14_VENUE_READER_BOARD_RULING.md).**
+     Verdict: **neither reader wins — SPLIT THE FACT IN TWO** (`Where it happens` = town,
+     `Venue address` = signed address). Options A and B both died; the event pros
+     overrode Rams/Ive's option B as "the status quo, repainted". The address does NOT
+     count in the handled numerator (count reads 2 of 6, not 3), `critical` at 310 days
+     is sequence mistaken for severity and becomes a countdown ladder, and the real
+     injury is the hero sending a host with no address to book 24 non-refundable rooms.
+
+     **AND THE SITTING FOUND SOMETHING THAT OUTRANKS ITS OWN RULING, verified by
+     checksum: naming the venue changes NOTHING on screen.** `b-cityonly` and `c-named`
+     are byte-identical at mobile-390 and tablet-768; at desktop the only difference in
+     the whole frame is one orphan card. The strict reader's verdict reaches the host
+     *not at all* — filtered out at `HostShellV2.jsx:8908-8917` while the hero talks
+     about hotel rooms. So Tier 0.6 is not a truce over a disagreement, it is a truce
+     over **a wire that was never connected**. Fix the wire before the wording.
 
   Also fixed, and found only by DRIVING: the hero asked "Add the location." while the
   queue's second row said "Add the location". `topDomain` adopted a matched phase
