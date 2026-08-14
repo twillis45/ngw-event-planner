@@ -77,6 +77,13 @@ import { effectiveDone, taskSatisfied } from './lib/taskEngine';
 // docs/POP1_PHASE1_DELTA_AND_WORKSTREAM_DESIGN.md.
 import { workstreamsFor, workstreamReadinessRollup, buildVendorReadinessRollup, isVendorBooked, isVendorConfirmed } from './lib/workstreams';
 import { buildExperienceContext } from './lib/experienceContext';
+// The blocker derivation and its CARD copy — reused rather than re-authored, so
+// the critical blocker the selector ranks (Tier 0.6) says exactly what its card
+// said, and resolves through the same route (board 1c).
+import { deriveDecisionBlockers, buildBlockerStage } from './lib/assembleRevealEngines';
+// The cue ladder's own reader for the same fact — Tier 0.6 promotes a venue
+// blocker only where this agrees it is unresolved (see the tier's note).
+import { eventLocationStatus } from './lib/locationAssist';
 import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1786,6 +1793,12 @@ export function eventPlan(event, ctx = null) {
     // leadDays); sourceCategory joined the list and the shell fell back to
     // title-prose sniffing. Carried explicitly now.
     sourceCategory: top.sourceCategory || null,
+    // The FOURTH field this rebuild has dropped, and caught the same way the
+    // other three were: `blockerType` is what the shell's card stand-down
+    // matches on, so losing it here renders the promoted ask in the hero AND
+    // its card below — the duplicate surface Tier 0.6 exists to prevent. The
+    // whitelist is the hazard; anything a producer stamps must be listed.
+    blockerType: top.blockerType || null,
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
@@ -1833,8 +1846,17 @@ export function eventPlan(event, ctx = null) {
   // that IS a phase concern (matched by row-level route), take that concern's AREA domain
   // (rain/budget/…). Narrowed to 'readiness' ONLY: a food DECISION hero shares the food-plan
   // route with the food SUMMARY but is not it, and must not adopt 'food' and dedupe the summary.
+  // 'blocker' joins 'readiness' here, and it is not a widening of the risk the
+  // comment above guards against. That risk is a hero that SHARES a route with a
+  // phase concern without BEING it (the food decision vs the food summary). A
+  // Tier 0.6 blocker's `primaryRoute` is the field that RESOLVES it — venue's is
+  // `event-venue`, the same field the location essential routes to — so a match
+  // there is identity, not overlap. Found by driving it: without this the hero
+  // asked "Add the location." while the queue's second row said "Add the
+  // location", because the promoted blocker's domain was 'blocker' and the
+  // location cue's was 'location', so dedup never saw them as one concern.
   const topDomain = topAction
-    ? ((top.category === 'readiness' && _topPhaseMatch)
+    ? (((top.category === 'readiness' || top.category === 'blocker') && _topPhaseMatch)
         ? (PHASE_TO_DOMAIN[_topPhaseMatch.id] || _topPhaseMatch.id)
         : (CATEGORY_TO_DOMAIN[top.category] || top.category))
     : null;
@@ -2563,6 +2585,92 @@ export function _selectEventNextActionInner(event) {
       primaryCta: 'Set budget',
       // focusField deep-links to the budget $ input so the host lands on it, not the tab top.
       primaryRoute: { tab: 'Budget', focusField: 'hsp-budget' },
+      contextLine: daysSub,
+    };
+  }
+
+  // ── Tier 0.6: A CRITICAL BLOCKER IS THE GATE (board 1c, built 2026-08-14) ───
+  // `deriveDecisionBlockers` marks an unresolved venue `urgency:'critical'`,
+  // `reversibility:'locked'`, `blocks:['catering']` — the gate on the sequence.
+  // That list fed `unresolvedBlockerStages` -> the shell's blocker CARDS only,
+  // which is a DIFFERENT PIPE from this selector. So the engine's own severity
+  // never entered the ranking and the layout rendered the gate dead last, below
+  // "Worth keeping an eye on" — explicitly the background lane.
+  //
+  // IT LIVES HERE, NOT IN eventPlan, AND THAT IS THE WHOLE POINT. The first
+  // build promoted it inside eventPlan, after this selector had already chosen.
+  // `hostEngineSelectionParity` caught it: that contract compares this
+  // function's head against `eventPlan().nextActions[0]` precisely so the host
+  // can never be shown something the engine did not select. Promoting downstream
+  // made eventPlan's head an action this selector had never heard of — the exact
+  // divergence that test exists to catch. Ranking it as a TIER means every
+  // derivation of "what is next" sees the same answer by construction, and
+  // eventPlan needs no special case at all.
+  //
+  // BELOW TIER 0/0.5, DELIBERATELY. "No venue" is true of every brand-new event,
+  // so ranking this above the opening moves would make a critical blocker the
+  // first thing every host ever saw. `decisionSoundness` fixture A is a written
+  // contract against exactly that — a 60-day-out event with nothing entered,
+  // whose judgement lists `critical severity` under `unacceptable`. A gate is
+  // worth raising when there is work behind it to gate; on a fresh event there
+  // is not yet any. Sitting below the foundation tiers says that in the ranking
+  // rather than in a threshold that would drift.
+  //
+  // ACKNOWLEDGED/DISMISSED BLOCKERS STAY GONE. Same `decisionBlockerStatus`
+  // filter buildExperienceContext applies (POP-1/WOW-1) — replicated rather than
+  // imported so this selector keeps taking only `event`, and so a blocker the
+  // host already dismissed cannot come back as the loudest thing on the surface.
+  const _criticalBlocker = (() => {
+    if (days !== null && days < 0) return null;          // past events are exempt
+    try {
+      const status = event.decisionBlockerStatus || {};
+      const b = (deriveDecisionBlockers(event) || [])
+        .filter((x) => x && x.urgency === 'critical' && !status[x.type])
+        // ── ONLY WHERE THE TWO READERS AGREE (measured 2026-08-14) ──────────
+        // `venue-selection` fires on `!venueFor(event).name`. The cue ladder
+        // reads the SAME fact through `eventLocationStatus` and does not agree:
+        // on a destination event with a town but no named venue it returns
+        // `city_only` and marks the location essential HANDLED, because a town
+        // is what gates weather, shopping and lodging search.
+        //
+        //     eventLocationStatus     "city_only"  -> location handled: true
+        //     deriveDecisionBlockers  venue-selection, urgency: critical
+        //
+        // One fact, two engines, opposite answers — and it is pre-existing:
+        // it is why the stat column's Venue chip reads "handled" on the very
+        // event whose blocker list calls venue critical. Promoting on the
+        // blocker alone would put "Add the location." at display size directly
+        // beside a chip saying Venue is done, which the data-honesty doctrine
+        // forbids outright and which no layout ruling can make true.
+        //
+        // So this tier promotes only where BOTH readers say unresolved. Where
+        // they disagree the surface keeps today's behaviour and the
+        // disagreement stays visible as an open item, rather than being
+        // silently arbitrated by a ranking change. See WHERE_WE_ARE 1c.
+        .filter((x) => x.type !== 'venue-selection' || eventLocationStatus(event) === 'missing')[0];
+      if (!b) return null;
+      const stage = buildBlockerStage(b);
+      // No route means nowhere to answer it. `buildBlockerStage` deliberately
+      // leaves dress-code routeless rather than inventing a destination, so a
+      // routeless blocker is skipped rather than promoted to a dead end.
+      if (!stage || !stage.route || !stage.route.focusField) return null;
+      return { b, stage };
+    } catch { return null; }
+  })();
+  if (_criticalBlocker) {
+    const { b, stage } = _criticalBlocker;
+    return {
+      level: 'critical',
+      category: 'blocker',
+      // The identity the shell's card stand-down matches on, so the promoted
+      // ask and the below-fold card can never both render.
+      blockerType: b.type,
+      title: stage.title,
+      consequence: stage.why || b.reasoning || null,
+      // The blocker copy's own decision line names the act (CTA doctrine) —
+      // never a bare "Go".
+      primaryCta: stage.nextDecision || 'Set the venue',
+      primaryRoute: stage.route,
       contextLine: daysSub,
     };
   }

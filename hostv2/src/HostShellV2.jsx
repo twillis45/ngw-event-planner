@@ -4960,6 +4960,19 @@ export default function HostShellV2() {
   const heroCarriesVenue = !!heroFirstAction
     && wiredKind(heroFirstAction) === 'venue'
     && !(elegantMode && heroDecisionND);
+  // ── THE STAND-DOWN NOW MATCHES BY FIELD, NOT BY REGEX (board 1c, 2026-08-14)
+  // Critical blockers are promoted into `nextActions` by eventPlan and carry
+  // `blockerType`, so the hero can be ANY of them — not just venue. Matching
+  // `/venue/i` over a title worked only because venue was the one case that
+  // could reach the hero, and it would have silently doubled the moment a
+  // second critical (ceremony-timing on a wedding) got there.
+  //
+  // Same guard as `heroCarriesVenue` above and for the same reason: this may
+  // only be true when the hero is ACTUALLY showing the control, or the card
+  // below would be removed while nothing replaced it.
+  const heroBlockerType = (heroFirstAction && !(elegantMode && heroDecisionND))
+    ? (heroFirstAction.blockerType || null)
+    : null;
 
   // Inline editors, one per wired kind. Each writes the SAME fields the engine's
   // done-conditions read (_eventFoundationActions), so closing a gap closes the card.
@@ -8899,6 +8912,10 @@ export default function HostShellV2() {
                    venue action is first; a second copy below the fold is the
                    duplicate surface the board ruled against. */
                 .filter(b => !(heroCarriesVenue && /venue/i.test(String(b.title || ''))))
+                /* And the same promise for any OTHER critical blocker the engine
+                   promotes into the hero — matched on `blockerType`, which both
+                   sides carry, rather than on the rendered title. */
+                .filter(b => !(heroBlockerType && b && b.blockerType === heroBlockerType))
                 .filter(b => !(elegantMode && b && b.fieldKey && Array.isArray(b.options) && b.options.length && !/venue/i.test(String(b.title || '')))).map((b, i) => {
                 const isVenueBlock = /venue/i.test(String(b.title || ''));
                 const venueSet = !!vf.name;
