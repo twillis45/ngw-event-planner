@@ -33,6 +33,12 @@ export const LIFECYCLE_LABELS = Object.freeze({
 export const DIMENSION_LABELS = Object.freeze({
   datetime: 'Date & time',
   location: 'Place',
+  // The venue address, split out of `location` by the board 2026-08-14. Without
+  // an entry here `label` falls through to `it.id` and the RAW ID reaches host
+  // copy — driven live, the summary line read "date & time and venueaddress
+  // still need you". A missing label in this map is not a styling gap, it is a
+  // string the host was never meant to see.
+  venueaddress: 'Venue address',
   headcount: 'Guests',
   food: 'Food',
   shopping: 'Shopping',

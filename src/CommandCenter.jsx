@@ -81,9 +81,8 @@ import { buildExperienceContext } from './lib/experienceContext';
 // the critical blocker the selector ranks (Tier 0.6) says exactly what its card
 // said, and resolves through the same route (board 1c).
 import { deriveDecisionBlockers, buildBlockerStage } from './lib/assembleRevealEngines';
-// The cue ladder's own reader for the same fact — Tier 0.6 promotes a venue
-// blocker only where this agrees it is unresolved (see the tier's note).
-import { eventLocationStatus } from './lib/locationAssist';
+// The ONE place reader — used here only to name the town in the venue ask.
+import { venueFor as venueForEvent } from './lib/venueFor';
 import { daysUntil } from './lib/dates';
 
 // An approval counts as SENT (ball in the client's court) when it's gone out —
@@ -1778,9 +1777,18 @@ export function eventPlan(event, ctx = null) {
   // SAME concern — captured here so topDomain (below) can adopt that concern's AREA domain
   // rather than the coarse category map that assumes every 'readiness' hero is the budget step.
   const _topFocus = top && top.primaryRoute && top.primaryRoute.focusField;
-  const _topPhaseMatch = _topFocus
-    ? ((phaseProgressForPlan && phaseProgressForPlan.items) || []).find((it) => it && it.route && it.route.focusField === _topFocus)
-    : null;
+  // ── ALL OF THEM, NOT THE FIRST ONE (driven 2026-08-14) ──────────────────────
+  // `.find()` was enough while one essential owned a focusField. The venue split
+  // put TWO on `event-venue` — `location` (the town) and `venueaddress` (the
+  // signed address) — and `find` returned `location`, so dedup absorbed the town
+  // cue and left the address cue standing. Live result: the hero asked for the
+  // venue while "Name the venue" ALSO sat in "Then, in order", below lodging.
+  // Every essential that resolves through the field the hero is answering is the
+  // same concern as the hero, whatever it is called.
+  const _topPhaseMatches = _topFocus
+    ? ((phaseProgressForPlan && phaseProgressForPlan.items) || []).filter((it) => it && it.route && it.route.focusField === _topFocus)
+    : [];
+  const _topPhaseMatch = _topPhaseMatches[0] || null;
   const topAction = top && top.title ? {
     // WAVE-5 RANKING (2026-07-15): per-ITEM id, not per-category — snooze keys on
     // this, and a category key made "Confirm the caterer" inherit the DJ's snooze
@@ -1799,6 +1807,13 @@ export function eventPlan(event, ctx = null) {
     // its card below — the duplicate surface Tier 0.6 exists to prevent. The
     // whitelist is the hazard; anything a producer stamps must be listed.
     blockerType: top.blockerType || null,
+    // THE FIFTH. `heroAsk` reads `a.ask` before every other rung — it is the
+    // documented way a producer whose DOMAIN and JOB differ authors its own
+    // question instead of teaching the prose ladder a new regex. Dropping it
+    // here silently returned the hero to that ladder, which classified the
+    // venue gate as "Add the location." on an event whose town was already set.
+    // Driven live; invisible to every test that reads the selector directly.
+    ask: top.ask || null,
     consequence: top.consequence || null,
     cta: top.primaryCta || null,
     route: top.primaryRoute || null,
@@ -1867,6 +1882,22 @@ export function eventPlan(event, ctx = null) {
   if (topAction) topAction.domain = topDomain;
 
   const seen = new Set(topDomain ? [topDomain] : []);
+  // Every essential resolving through the hero's own field is the hero's concern
+  // — see `_topPhaseMatches`. Seeding them all here is what stops the second one
+  // reappearing as a queue row under the ask that already answers it.
+  //
+  // NARROWED TO THE SAME CATEGORIES AS `topDomain`, AND FOR THE REASON ALREADY
+  // WRITTEN THERE: route-sharing means concern-identity only for a readiness or
+  // blocker hero. A food DECISION hero shares the food-plan route with the food
+  // SUMMARY without being it. Seeding unconditionally deleted that summary from
+  // the queue — caught by wave6IdentityPolicy's partial-coverage test, which is
+  // the gate that documents the case.
+  if (top && (top.category === 'readiness' || top.category === 'blocker')) {
+    for (const it of _topPhaseMatches) {
+      const d = PHASE_TO_DOMAIN[it.id] || it.id;
+      if (d) seen.add(d);
+    }
+  }
   // WAVE-6: the top action's canonical id joins the dedup set so a registry raise
   // for the SAME record (e.g. tier 7.8's board decision vs the decisions surface)
   // collapses on identity, not just on title prose.
@@ -2625,29 +2656,36 @@ export function _selectEventNextActionInner(event) {
     try {
       const status = event.decisionBlockerStatus || {};
       const b = (deriveDecisionBlockers(event) || [])
-        .filter((x) => x && x.urgency === 'critical' && !status[x.type])
-        // ── ONLY WHERE THE TWO READERS AGREE (measured 2026-08-14) ──────────
-        // `venue-selection` fires on `!venueFor(event).name`. The cue ladder
-        // reads the SAME fact through `eventLocationStatus` and does not agree:
-        // on a destination event with a town but no named venue it returns
-        // `city_only` and marks the location essential HANDLED, because a town
-        // is what gates weather, shopping and lodging search.
+        // ── THE AGREEMENT GUARD IS GONE, AND THAT IS THE POINT ──────────────
+        // This filter used to carry a second clause requiring
+        // `eventLocationStatus(event) === 'missing'` before a venue blocker
+        // could be promoted — a truce, because the two readers disagreed about
+        // whether a town resolved the venue and a ranking change is no way to
+        // settle a data-honesty question.
         //
-        //     eventLocationStatus     "city_only"  -> location handled: true
-        //     deriveDecisionBlockers  venue-selection, urgency: critical
+        // The board settled it (2026-08-14): the fact was SPLIT. The town and
+        // the venue address are two essentials now, so `venueaddress` is
+        // unhandled on exactly the events where `venue-selection` fires, and
+        // both readers return the same answer by construction. There is nothing
+        // left to arbitrate and no guard left to write.
         //
-        // One fact, two engines, opposite answers — and it is pre-existing:
-        // it is why the stat column's Venue chip reads "handled" on the very
-        // event whose blocker list calls venue critical. Promoting on the
-        // blocker alone would put "Add the location." at display size directly
-        // beside a chip saying Venue is done, which the data-honesty doctrine
-        // forbids outright and which no layout ruling can make true.
+        // ── POSITION AND TONE ARE DIFFERENT AXES ────────────────────────────
+        // "First in order, not on fire" (both event seats) needs BOTH halves,
+        // and an urgency filter alone can only express one. Severity is now a
+        // countdown (assembleRevealEngines), so gating this tier on `critical`
+        // would have made the venue gate VANISH from the hero at 310 days and
+        // reappear at T-120 — while the cue ladder ranked it first the whole
+        // time. That is exactly the divergence `hostEngineSelectionParity`
+        // exists to catch: the host would be shown something the engine had not
+        // selected. Caught by that gate, not by review.
         //
-        // So this tier promotes only where BOTH readers say unresolved. Where
-        // they disagree the surface keeps today's behaviour and the
-        // disagreement stays visible as an open item, rather than being
-        // silently arbitrated by a ranking change. See WHERE_WE_ARE 1c.
-        .filter((x) => x.type !== 'venue-selection' || eventLocationStatus(event) === 'missing')[0];
+        // So the venue gate qualifies at EVERY stage — it is the gate on the
+        // sequence, and `venueaddress` (phaseProgress, priority 3) ranks it
+        // first on the other side by the same reasoning. Every other blocker
+        // still needs `critical` to reach the hero. The laddered urgency rides
+        // through as `level` below, so the TONE escalates on the countdown
+        // while the POSITION stays put.
+        .filter((x) => x && !status[x.type] && (x.urgency === 'critical' || x.type === 'venue-selection'))[0];
       if (!b) return null;
       const stage = buildBlockerStage(b);
       // No route means nowhere to answer it. `buildBlockerStage` deliberately
@@ -2659,8 +2697,32 @@ export function _selectEventNextActionInner(event) {
   })();
   if (_criticalBlocker) {
     const { b, stage } = _criticalBlocker;
+    // ── AN AUTHORED ASK, BECAUSE THE TOWN CHANGES THE QUESTION ───────────────
+    // heroAsk's prose ladder classifies any title containing "venue" as
+    // "Add the location." — which was TRUE before this split and is false after
+    // it: on a town-set event the location is already answered and the open
+    // question is which place inside it. Driven live, the hero read "Add the
+    // location." over an event whose own chip said the town was set.
+    //
+    // heroAsk.js states the remedy in its own header — "any future surface
+    // whose domain and job differ authors one line instead of teaching this
+    // ladder a new regex" — and `a.ask` is read before every other rung. So the
+    // ask is authored here, where the town is known, rather than by adding a
+    // fourth special case to a ladder that already documents two misfires.
+    const _town = (() => {
+      if (b.type !== 'venue-selection') return null;
+      try { const v = venueForEvent(event); return (v && v.city) ? String(v.city).trim() : null; } catch { return null; }
+    })();
+    const _venueAsk = b.type !== 'venue-selection' ? null
+      : (_town ? `Pick the place in ${_town}.` : 'Add the location.');
     return {
-      level: 'critical',
+      ...(_venueAsk ? { ask: _venueAsk } : null),
+      // THE LADDER RIDES THROUGH. Stamping a flat 'critical' here would put the
+      // constant back one layer down and re-spend the alarm the countdown was
+      // built to save — the hero would read as an emergency ten months out
+      // while `deriveDecisionBlockers` was calling the same item 'medium'. Tone
+      // follows the ladder; position is already decided by being this tier.
+      level: b.urgency || 'critical',
       category: 'blocker',
       // The identity the shell's card stand-down matches on, so the promoted
       // ask and the below-fold card can never both render.

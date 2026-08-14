@@ -127,10 +127,45 @@ function deriveDecisionBlockers(event, eventIdentity) {
   const vf = venueFor(event);
   const venueResolved = vf.isHome ? !vf.needsCityForWeather : !!vf.name;
   if (!venueResolved) {
+    // ── SEVERITY IS A COUNTDOWN, NOT A CONSTANT (board ruling 2026-08-14) ────
+    // docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md
+    //
+    // This was a flat `critical`. Both event-industry seats ruled that wrong,
+    // and for the same reason: an unsigned venue ten months out on a
+    // destination event is the NORMAL, HEALTHY shape of a plan, and a permanent
+    // red gate over it trains the host to ignore the word before it is ever
+    // true. Alarm is a currency; this was spending it on day one. Being first
+    // in ORDER is what an early unsigned venue earns — the essentials ladder
+    // carries that (phaseProgress `venueaddress`, priority 3, ahead of lodging).
+    //
+    // The ladder is driven BACKWARD from the dependents' real lead times, which
+    // is what makes it a claim about the world rather than a taste in numbers:
+    //
+    //   T-240  save-the-dates — nothing telling guests where to book goes first
+    //   T-180  peak-season caterer and rental availability closes; site visit due
+    //   T-120  COI, permits, load-in scheduling, final rental counts — each
+    //          needs ~90 days and NONE of them can start on a town
+    //   T-60   past the point where the venue can still be solved; move the date
+    //
+    // A null date cannot be laddered, so it holds at 'high' — real, unranked by
+    // time, never silently downgraded to nothing.
+    const _dte = daysToEvent(event.date);
+    const venueUrgency =
+      _dte === null ? 'high'
+        : _dte <= 60 ? 'critical'
+          : _dte <= 120 ? 'critical'
+            : _dte <= 180 ? 'high'
+              : _dte <= 240 ? 'medium'
+                : 'medium';
     blockers.push({
       type: 'venue-selection',
-      urgency: 'critical',
-      reasoning: 'Venue unlocks vendors, timeline, logistics'
+      urgency: venueUrgency,
+      // Carried so a consumer can say WHY it escalated rather than re-deriving
+      // the ladder and drifting from it.
+      daysToEvent: _dte,
+      reasoning: (_dte !== null && _dte <= 120)
+        ? 'Insurance certificates, rentals, and the load-in schedule need about 90 days, and none of them can start on a town'
+        : 'Venue unlocks vendors, timeline, logistics'
     });
   }
 

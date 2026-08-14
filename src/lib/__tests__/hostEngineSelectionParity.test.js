@@ -53,8 +53,19 @@ const hostSide = (ev) => {
 const engineSide = (ev) => selectEventNextAction(ev);
 const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z]+/g, ' ').trim();
 
+// ── WHAT THIS FILE ASSERTS DID NOT CHANGE; WHAT LEADS DID (2026-08-14) ──────
+// The recovered fixture has a TOWN and no named venue. The board ruled that
+// state is not "venue handled" — the venue address is its own essential and it
+// is upstream of lodging, because rooms booked against a town can land forty
+// minutes from the eventual site and are rarely refundable.
+// (docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md)
+//
+// So both derivations now lead with the venue on this fixture, and they still
+// AGREE — which is the only thing this file was ever about. The expectations
+// below moved with the ruling; the contract did not. Fixtures that are about
+// the lodging→food chain name a venue so the new upstream does not mask them.
 describe('host and engine name the same next decision', () => {
-  test('the recovered real event: both say lodging, neither says menu', () => {
+  test('the recovered real event: both say the venue, neither says menu', () => {
     const ev = recovered();
     const host = hostSide(ev);
     const engine = engineSide(ev);
@@ -62,20 +73,26 @@ describe('host and engine name the same next decision', () => {
     expect(host).toBeTruthy();
     expect(engine).toBeTruthy();
 
-    // Same subject, expressed in each side's own vocabulary: the host cue names
-    // the AXIS ('lodging'), the engine names the ACT ('Sort where everyone
-    // stays'). Asserting each in its own terms is the honest comparison —
-    // normalising them into one string would just hide a real divergence.
-    expect(norm(host.cueLabel || host.id)).toMatch(/lodging|where everyone stays/);
-    expect(norm(engine.title || engine.label)).toContain('where everyone stays');
+    // Same subject, each in its own vocabulary: the host cue names the ACT
+    // ('Name the venue'), the engine names the SUBJECT ('Venue'). Asserting
+    // each in its own terms is the honest comparison — normalising them into
+    // one string would just hide a real divergence.
+    expect(norm(host.cueLabel || host.id)).toMatch(/venue|name the venue/);
+    expect(norm(engine.title || engine.label)).toContain('venue');
     // …and explicitly NOT the menu, which is what was reported.
     expect(norm(engine.title || engine.label)).not.toContain('serving');
     expect(norm(engine.title || engine.label)).not.toContain('menu');
   });
 
+  test('with the venue named, both advance to lodging — the original contract', () => {
+    const ev = recovered({ venue: 'The Eldorado Hotel' });
+    expect(norm(hostSide(ev).cueLabel || hostSide(ev).id)).toMatch(/lodging|where everyone stays/);
+    expect(norm(engineSide(ev).title || engineSide(ev).label)).toContain('where everyone stays');
+  });
+
   test('they MOVE TOGETHER — the real proof, since agreeing once could be luck', () => {
     // Hold the rooms. Both derivations must advance to the same next subject.
-    const held = recovered({ lodging: { hotelName: 'The Eldorado', from: STAY_FROM_CONFIRMATION } });
+    const held = recovered({ venue: 'The Eldorado Hotel', lodging: { hotelName: 'The Eldorado', from: STAY_FROM_CONFIRMATION } });
     const host = hostSide(held);
     const engine = engineSide(held);
 
@@ -87,7 +104,7 @@ describe('host and engine name the same next decision', () => {
   });
 
   test('and again on a local event, where the whole chain is different', () => {
-    const local = recovered({ isDestination: false });
+    const local = recovered({ isDestination: false, venue: 'The Elks Lodge' });
     const host = hostSide(local);
     const engine = engineSide(local);
     expect(norm(host.cueLabel || host.id)).toMatch(/serving|food|dietary/);

@@ -72,8 +72,22 @@ describe('the destination chain outranks food', () => {
     expect(rankOf(ev, 'location')).toBeLessThan(rankOf(ev, 'lodging'));
   });
 
+  // THE NEW UPSTREAM (board ruling 2026-08-14). The venue address was split out
+  // of the location essential, and it is upstream of lodging for the reason this
+  // whole file exists: rooms booked against a town can land forty minutes from
+  // the eventual site, and they are rarely refundable. So the ladder now reads
+  //     date 1 · location-missing 3 · VENUE ADDRESS 3 · lodging 4 · food 6
+  // and this file's own principle — unresolved upstream outranks downstream — is
+  // what puts it there. The fixtures below name a venue so that the lodging→food
+  // relationship they are actually about is not masked by it.
+  test('the unsigned venue address outranks lodging — the new upstream', () => {
+    const ev = destEvent();          // Santa Fe, no venue named
+    expect(rankOf(ev, 'venueaddress')).toBeLessThan(rankOf(ev, 'lodging'));
+    expect(leads(ev)).toBe('venueaddress');
+  });
+
   test('once the rooms are held, food rises — the order is contextual, not "menu always last"', () => {
-    const held = destEvent({ lodging: { hotelName: 'The Eldorado', from: STAY_FROM_CONFIRMATION } });
+    const held = destEvent({ venue: 'The Eldorado Hotel', lodging: { hotelName: 'The Eldorado', from: STAY_FROM_CONFIRMATION } });
     expect(axis(held, 'lodging').handled).toBe(true);
     // Lodging leaves the open list entirely, so food moves up.
     expect(rankOf(held, 'lodging')).toBe(-1);
@@ -94,7 +108,11 @@ describe('a local event inherits no travel logic', () => {
   });
 
   test('…and food leads, because it is genuinely the next thing', () => {
-    const local = destEvent({ isDestination: false });
+    // Venue named for the same reason as above: with a town and no venue, the
+    // address essential legitimately leads on a LOCAL event too — it gates the
+    // dock, the certificates and the run-of-show wherever the party is. This
+    // test is about the absence of travel logic, so it isolates that.
+    const local = destEvent({ isDestination: false, venue: 'The Elks Lodge' });
     expect(leads(local)).toBe('food');
   });
 

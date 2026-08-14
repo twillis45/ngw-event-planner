@@ -98,9 +98,46 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
   // what lodgingSearchBlocked says. Promoting the GAP (rather than demoting
   // lodging) is the honest shape: the town also gates weather and shopping, and
   // it leaves lodging's "rooms sell out, menus do not" ranking over food intact.
-  const _locationMissing = eventLocationStatus(ev) === 'missing';
+  // ── THE BOARD SPLIT THIS FACT IN TWO (ruling 2026-08-14) ───────────────────
+  // docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md
+  //
+  // One row could not answer two questions, and shipped a screen that said both
+  // answers at once: the chip read "Venue — handled" off a town while a card
+  // below it read "Not set yet" over an empty venue input.
+  //
+  //   the TOWN    unblocks the TRAVEL layer     — weather, shopping, lodging search
+  //   the ADDRESS unblocks the PRODUCTION layer — COI (a certificate names the
+  //               venue as additional insured), the dock and load-in window,
+  //               final rental counts and spec, power and kitchen, run-of-show
+  //               timing, transport — and every signature and deposit
+  //
+  // TWO FACTS, NOT THREE VALUES OF ONE, because they REGRESS INDEPENDENTLY:
+  // when a venue falls through the address goes null while the town stays
+  // committed, and an enum cannot tell "never had one" from "just lost one".
+  const _locStatus = eventLocationStatus(ev);
+  const _locationMissing = _locStatus === 'missing';
+  // The town. Unchanged in meaning — including the at-home carve-out and the
+  // 2026-08-03 promotion to 3 when missing, both reasoned above.
   add('location', true, !_locationMissing, 'Add the location',
     { tab: 'Event Details', focusField: 'event-venue' }, _locationMissing ? 3 : 5);
+  // The address. APPLIES ONLY ONCE THERE IS A TOWN — otherwise it and the row
+  // above would both fire on a blank event, which is two asks for one thing and
+  // the duplicate surface this product forbids. `venue_only` counts as settled:
+  // a named venue IS the address for this purpose (`full_address` merely adds
+  // the street line), and demanding more would re-open the nag this file's own
+  // comment block records.
+  //
+  // PRIORITY 3 — AHEAD OF LODGING (4), BEHIND NOTHING ELSE. The event seats were
+  // unanimous that an unsigned venue is FIRST IN ORDER, NOT ON FIRE: rooms
+  // booked against a town can land forty minutes from the eventual site and are
+  // rarely refundable, so it must outrank lodging — but a permanent red gate
+  // ten months out is noise a host learns to ignore before it is ever true.
+  // Order carries this, not severity. (Severity escalates on the countdown; see
+  // assembleRevealEngines.)
+  const _addressSigned = _locStatus === 'venue_only' || _locStatus === 'full_address';
+  add('venueaddress', !_locationMissing, _addressSigned,
+    'Name the venue',
+    { tab: 'Event Details', focusField: 'event-venue' }, 3);
   const gc = (() => { try { return guestCountResolved(ev); } catch { return { resolved: false }; } })();
   // A real named guest list — even with replies still pending — IS the host
   // having set a count: it's a real floor number, informative on its own.
@@ -392,6 +429,7 @@ function preProgress(ev, phase, daysOut, now = new Date()) {
 const CUE_ACTIONS = {
   datetime: 'Open the date',
   location: 'Open the place',
+  venueaddress: 'Open the venue field',
   headcount: 'Open guests',
   food: 'Open the food plan',
   shopping: 'Open the list',

@@ -32,9 +32,17 @@ const dayFrom = (d) => {
   return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
 };
 
+// `venue` is set deliberately (added 2026-08-14, board ruling on the venue
+// readers). The subject of this file is the hero-vs-shelved-board invariant on
+// the LODGING axis, so the fixture must not sit in the state where the venue
+// address — a newly separated essential that legitimately outranks lodging —
+// is the thing leading. Without a venue these events would lead with
+// `venueaddress` and this file would be testing the wrong axis.
+// See docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md.
 const evAt = (daysOut, extra) => ({
   id: `hb-${daysOut}`, type: 'Birthday', name: 'A destination birthday',
   isDestination: true, venueCity: 'Santa Fe', venueState: 'NM',
+  venue: 'The Eldorado Hotel',
   date: dayFrom(daysOut), endDate: dayFrom(daysOut + 4),
   guestMode: 'count', guestEstimate: 5, guestCount: 5, totalBudget: 2000,
   budget: [], guests: [], vendors: [], timeline: [],

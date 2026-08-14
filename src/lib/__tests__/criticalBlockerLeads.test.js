@@ -28,7 +28,6 @@
 // Context lives in the test name and in `describe` here.
 import { eventPlan } from '../../CommandCenter';
 import { deriveDecisionBlockers } from '../assembleRevealEngines';
-import { eventLocationStatus } from '../locationAssist';
 import { useFrozenClock } from '../../testUtils/frozenClock';
 
 useFrozenClock();
@@ -37,10 +36,9 @@ useFrozenClock();
 // Everything the foundation would otherwise lead with is ALREADY DONE, so if
 // the venue blocker does not lead here it is not being ranked at all.
 //
-// NO `venueCity` — and that is the contract, not an omission. See the
-// disagreement test at the bottom: with a town but no named venue the two
-// readers of this one fact return opposite answers, and Tier 0.6 deliberately
-// stands down there rather than arbitrating it by ranking.
+// NO `venueCity`: this fixture isolates the promotion itself. The town-set case
+// is now a separate essential entirely (`venueaddress`) and is covered by
+// venueAddressEssential.test.js.
 const venuelessEvent = () => ({
   id: 'T_critblock', type: 'Birthday', name: 'Critical Blocker',
   date: '2027-06-20', endDate: '2027-06-24',
@@ -51,31 +49,38 @@ const venuelessEvent = () => ({
 
 const withVenue = () => ({ ...venuelessEvent(), venue: 'The Lodge at Santa Fe' });
 
-// The SAME event with a town filled in. `eventLocationStatus` -> 'city_only'
-// (handled), `deriveDecisionBlockers` -> venue-selection critical.
-const cityOnlyEvent = () => ({
-  ...venuelessEvent(), isDestination: true, venueCity: 'Santa Fe', venueState: 'NM',
-});
-
 const headOf = (ev) => (eventPlan(ev).nextActions || [])[0];
 
 describe('a critical blocker leads the queue', () => {
-  // The premise, asserted rather than assumed. If the engine ever stops marking
-  // venue critical, this must fail HERE — on the premise — and not further down
-  // where the failure would read as a ranking bug.
-  test('PREMISE — the engine marks an unresolved venue critical', () => {
-    const venue = deriveDecisionBlockers(venuelessEvent()).find((b) => b.type === 'venue-selection');
-    expect(venue).toBeTruthy();
-    expect(venue.urgency).toBe('critical');
+  // The premise, asserted rather than assumed — and it is now a LADDER, not a
+  // constant. Both event-industry seats ruled a flat `critical` wrong: an
+  // unsigned venue ten months out is the normal shape of a plan, and a
+  // permanent red gate trains the host to ignore the word before it is ever
+  // true. Severity is driven backward from the dependents' real lead times.
+  test('PREMISE — venue severity escalates on the countdown, it is not constant', () => {
+    const at = (iso) => (deriveDecisionBlockers({ ...venuelessEvent(), date: iso, endDate: iso }) || [])
+      .find((b) => b.type === 'venue-selection');
+    // ~310 days out: real, ranked first, but not on fire.
+    expect(at('2027-06-20').urgency).toBe('medium');
+    // Inside T-120 the address-bound work (COI, permits, load-in, final rental
+    // counts) can no longer fit its own lead time.
+    expect(at('2026-10-01').urgency).toBe('critical');
   });
 
-  test('it is nextActions[0] — ahead of every non-critical the foundation offers', () => {
+  // POSITION AND TONE ARE DIFFERENT AXES. The venue gate leads at every stage —
+  // it is the gate on the sequence — while its `level` rides the countdown. An
+  // earlier build gated the tier on `urgency === 'critical'`, which made the
+  // gate VANISH from the hero at 310 days and reappear at T-120 while the cue
+  // ladder ranked it first the whole time; `hostEngineSelectionParity` caught it.
+  test('it is nextActions[0] at every stage, carrying the laddered tone', () => {
     const actions = eventPlan(venuelessEvent()).nextActions || [];
     expect(actions.length).toBeGreaterThan(0);
-    // Both asserted: `level` is what the band sorts on, `blockerType` is what
-    // makes it THIS item rather than a coincidental critical from elsewhere.
-    expect(actions[0].level).toBe('critical');
     expect(actions[0].blockerType).toBe('venue-selection');
+    expect(actions[0].level).toBe('medium');          // 310 days out
+    const near = { ...venuelessEvent(), date: '2026-10-01', endDate: '2026-10-01' };
+    const nearHead = (eventPlan(near).nextActions || [])[0];
+    expect(nearHead.blockerType).toBe('venue-selection');
+    expect(nearHead.level).toBe('critical');          // inside T-120
   });
 
   test('it carries the route the hero can actually wire', () => {
@@ -104,9 +109,6 @@ describe('a critical blocker leads the queue', () => {
     expect(actions.some((a) => a.blockerType === 'venue-selection')).toBe(false);
   });
 
-  // Non-critical blockers keep their existing home. `guest-count-confirmation`
-  // is `urgency:'high'` and dress-code is 'medium'; promoting those too would
-  // turn the hero into the blocker list, which is the opposite of the ruling.
   // FOUND BY DRIVING, NOT BY A TEST. The hero asked "Add the location." while
   // the queue's SECOND ROW said "Add the location" — the same ask twice on one
   // screen. `topDomain` only adopted a matched phase concern's domain for
@@ -125,52 +127,31 @@ describe('a critical blocker leads the queue', () => {
     expect(venueAsks[0].blockerType).toBe('venue-selection');
   });
 
-  test('only CRITICAL is promoted — high and medium stay where they were', () => {
+  // ONLY THE VENUE GATE IS EXEMPT FROM THE CRITICAL BAR. Every other blocker
+  // still needs `critical` to reach the hero — `guest-count-confirmation` is
+  // 'high' and dress-code is 'medium', and promoting those too would move the
+  // blocker LIST into the hero, which is the opposite of the ruling.
+  test('a high-urgency blocker is still not promoted', () => {
     const noGuests = { ...venuelessEvent(), guestEstimate: 0, guestCount: 0 };
     const promoted = (eventPlan(noGuests).nextActions || []).filter((a) => a.blockerType);
-    for (const a of promoted) expect(a.level).toBe('critical');
     expect(promoted.some((a) => a.blockerType === 'guest-count-confirmation')).toBe(false);
   });
 });
 
-// ── WHERE THE TWO READERS DISAGREE, THE RANKING STANDS DOWN ──────────────────
+// ── THE STANDOFF IS OVER — THE BOARD SPLIT THE FACT (2026-08-14) ────────────
 //
-// This is the live split that scoped the whole ruling, measured 2026-08-14:
+// This file previously ended with a `describe` locking a TRUCE: Tier 0.6
+// promoted a venue blocker only where `eventLocationStatus` and
+// `deriveDecisionBlockers` agreed, because they disagreed about whether a town
+// resolved the venue and a ranking change is no way to settle a data-honesty
+// question. Its header said, in as many words, that it encoded a standoff and
+// must be deleted once someone decided which reader was right.
 //
-//     eventLocationStatus(ev)     "city_only"   -> location essential HANDLED
-//     deriveDecisionBlockers(ev)  venue-selection, urgency: "critical"
+// The board decided: NEITHER. The fact was split in two — the town and the
+// venue address are separate essentials (phaseProgress `location` and
+// `venueaddress`), so both readers now return the same answer by construction
+// and the guard has nothing left to guard. Ruling and evidence:
+// docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md
 //
-// One fact, two engines, opposite answers. It is pre-existing and visible on
-// the surface today: the stat column's Venue chip reads "handled" on the very
-// event whose blocker list calls venue critical.
-//
-// Promoting on the blocker alone would put "Add the location." at display size
-// beside a chip saying Venue is done. So Tier 0.6 requires BOTH readers to say
-// unresolved, and this describes that rule so the next person meets the
-// disagreement here rather than rediscovering it from a contradictory screen.
-//
-// WHEN THE SPLIT IS RESOLVED, THIS TEST SHOULD CHANGE — it encodes a standoff,
-// not a desired end state. Whichever reader wins, delete the guard in Tier 0.6
-// and rewrite this block; do not leave it asserting a truce that no longer
-// describes the product.
-describe('the venue readers disagree, and the ranking does not arbitrate it', () => {
-  test('PREMISE — a town with no named venue: handled by one reader, critical by the other', () => {
-    const ev = cityOnlyEvent();
-    expect(eventLocationStatus(ev)).toBe('city_only');
-    const blockers = deriveDecisionBlockers(ev) || [];
-    expect(blockers.some((b) => b.type === 'venue-selection' && b.urgency === 'critical')).toBe(true);
-  });
-
-  test('so the blocker is NOT promoted into the hero there', () => {
-    const head = (eventPlan(cityOnlyEvent()).nextActions || [])[0];
-    // Falsy, not `undefined`: the topAction rebuild normalizes every whitelisted
-    // field to null, so a head that is not a blocker carries `blockerType: null`.
-    expect(head.blockerType).toBeFalsy();
-  });
-
-  test('and it IS promoted once the location is genuinely missing', () => {
-    expect(eventLocationStatus(venuelessEvent())).toBe('missing');
-    const head = (eventPlan(venuelessEvent()).nextActions || [])[0];
-    expect(head.blockerType).toBe('venue-selection');
-  });
-});
+// The truce block is deleted rather than left asserting a peace that no longer
+// describes the product. What replaced it lives in venueAddressEssential.test.js.

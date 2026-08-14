@@ -8453,7 +8453,13 @@ export default function HostShellV2() {
                               dimmed with a done-dot, the open ones bright. The caret
                               still opens the full interactive breakdown below. */}
                           {hasCues && Array.isArray(phaseCues.items) && phaseCues.items.length > 0 && (() => {
-                            const areaLabel = (id) => ({ datetime: 'Date & time', date: 'Date', location: 'Venue', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
+                            {/* `location` was labelled "Venue" while the essential
+                                underneath it measures LOCATION — satisfied by a town.
+                                So the chip claimed a named venue the row never tested,
+                                and read "Venue — handled" beside a card saying "Not set
+                                yet". The axis is named for what it measures now, and the
+                                venue address is its own row (board ruling 2026-08-14). */}
+                            const areaLabel = (id) => ({ datetime: 'Date & time', date: 'Date', location: 'Where it happens', venueaddress: 'Venue address', headcount: 'Guests', food: 'Food', dietary: 'Dietary', diet: 'Dietary', rain: 'Rain plan', crabs: 'Crab order', vendors: 'Vendors', shopping: 'Shopping', payments: 'Payments', thankyous: 'Thank-yous', rentals: 'Rentals' }[id] || (id ? id.charAt(0).toUpperCase() + id.slice(1) : 'Area'));
                             const nextId = nextCue && (nextCue.id || nextCue.source);
                             return (
                               <>
