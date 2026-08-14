@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-08 (latest) - PR #83 merged and VERIFIED IN PROD at the chunk level
+**Last updated:** 2026-08-14 (latest) - hero-void and stat-column gates proven and PUSHED (`cb2f1ae7`)
 
 ---
 
@@ -316,10 +316,22 @@ Two builds, materially different, NOT chosen:
 **Board rulings still unbuilt:**
 
 - Blockers marked `urgency:'critical'` render IN the hero, not as siblings after it.
-- `.tile-a` is `display:none !important` (`styles.css:891`) and carries the lifecycle line
-  plus **six named, routed, dot-marked plan-part chips**. The richest computed block on the
-  surface is suppressed. "Only two honest stats exist" was FALSE. Note it now COLLIDES with
-  the `<h2 class="bento-head">` added in `89063812` - both say "Where you stand".
+- ~~`.tile-a` is `display:none !important` and the richest computed block on the surface is
+  suppressed.~~ **BUILT `1c163c97`, GATED `cb2f1ae7`, DRIVEN 2026-08-14.** The exception is
+  scoped to the rail composition only (`.stagewrap--responsive-command[data-rail="1"]
+  [data-bp="desktop"]`, `styles.css:4866`); `:909` still stands for the phone, where the
+  bento is a 2x2 grid and the tile really is a card. Measured live at 1440x900: 288x228,
+  six named routed chips, `.bento-head` deferring, duplicate fraction down, heading above
+  the lifecycle sentence. The header collision noted here was resolved in the same commit.
+
+> **THIS LIST WAS STALE, AND IT IS THE THIRD TIME.** Ruling 2a was read as open on
+> 2026-08-14 and a session was spent starting work that `1c163c97` had already finished —
+> including the follow-on defects un-hiding it caused (the borrowed 215px of escreen
+> height, the double fraction, the second header), all already fixed in that commit. Same
+> class as the lodging "STILL DARK" entry retired 2026-08-07 and the same as the hero-void
+> "fix pending" note the same morning. **A ruling's presence on an unbuilt list is not
+> evidence it is unbuilt.** Grep the selector and drive the surface before working an item
+> off this section; the doc records what was true when it was written.
 
 ---
 
@@ -1022,10 +1034,8 @@ Check `git log` and `pgrep -x claude` (compare `lsof -a -p <pid> -d cwd`) before
 **1. DONE 2026-08-07.** The matrix has now run clean; result and baseline in section 2.
 
 **2. Build the board's unbuilt rulings, in this order** (all from section 1c):
-   a. **Un-hide `.tile-a`** for the rail composition only - scope the exception, leave
-      `styles.css:891` alone for phone. It brings the lifecycle line and six named,
-      routed plan-part chips into the column that is still mostly empty. This is the
-      single highest-density win left and it invents nothing.
+   a. **DONE - `1c163c97`, gated `cb2f1ae7`, driven 2026-08-14.** `.tile-a` is un-hidden
+      for the rail composition only; the phone rule at `:909` is untouched. See 1c.
    b. **Critical blockers render IN the hero.** The engine already ranks venue
       `urgency:'critical'`; the layout puts it after the hero. Let the engine win.
    c. **Collapse the four venue-capture cards to one.**
