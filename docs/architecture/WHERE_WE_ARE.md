@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-08 (latest) - live-mode census, sign-in upload, and a delete that crashed the shell
+**Last updated:** 2026-08-08 (latest) - PR #83 merged and VERIFIED IN PROD at the chunk level
 
 ---
 
@@ -36,8 +36,10 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 > `git status --porcelain`. Untracked `src/lib/*.js` you did not write is someone's
 > in-flight work; its header carries a dated "EXTRACTED <date> from ..." note.
 
-**`origin/main` is `208ebbb3`** - PR #82 merged and deployed. PRs #79/#80/#81 are also in.
-Work since then branches off `origin/main`.
+**`origin/main` is `0d5052c2`** - PR #83 merged 2026-08-08 and DEPLOYED, verified in prod at
+the chunk level (see 1f). It carries the risk-lane severity fix, the lodging deep link, the
+live-mode census, the sign-in upload and event deletion. PR #82 (`208ebbb3`) and #79/#80/#81
+are underneath it. Work since then branches off `origin/main`.
 
 > **THE LOCAL `main` REF LIES. Fetch before you read it.** On 2026-08-07 local `main` was
 > still at `8093dfa2` (PR #78) while `origin/main` was 175 commits ahead at `208ebbb3`.
@@ -685,10 +687,47 @@ Four findings the checklist does not name:
 signed out, and a queued delete means the row is still in the cloud - so the next `hydrate()`
 would pull the deleted event back. Ids release only once the cloud confirms.
 
-**Deploy status: NOTHING IS DEPLOYED.** As of this writing the branch is
-`feat/hotel-entity-url` with **7 unpushed commits**; `origin/main` has not moved and no Pages
-run has been dispatched. The risk-severity work (`c9193772`) is committed and driven but
-lives only on this branch.
+**Deploy status: SHIPPED AND VERIFIED IN PROD 2026-08-08.** PR #83 merged as `0d5052c2`
+(squash); deploy run `31832191023` succeeded on that SHA. `demo` profile - auth stays off,
+which is what a push to main floors to.
+
+**Verified at the CHUNK, with a before AND an after** - the only form of this claim worth
+anything, because a green Pages run can ship a stale bundle:
+
+| | Pre | Post |
+|---|---|---|
+| shell chunk | `HostShellV2-85e3a644.js` | **`HostShellV2-315a4e71.js`** |
+| `Safety - plan this first` | 0 | **1** |
+| `Worth having a plan for` | 0 | **2** |
+| `Keep an eye on it` | 3 | 2 (two inline lookups collapsed to one table) |
+| `Worth a look today` | 1 | 1 (untouched, different surface) |
+
+> **TWO MEASUREMENT TRAPS, both of which produced a confident wrong number first.**
+>
+> 1. **`index.html` never names the shell bundle.** It loads `index-<hash>.js`, which
+>    LAZY-IMPORTS `HostShellV2-<hash>.js`. Verifying against `index.html` proves nothing
+>    about whether the shell changed. Curl the entry chunk and grep it for the shell chunk.
+> 2. **`grep -c` on minified JS counts LINES, not occurrences.** This 873KB bundle is 48
+>    lines, so the first counts were "does some line contain it". Use `grep -oF | wc -l`.
+>
+> And a premise error worth more than either: I predicted the bare `Worth a look` fallbacks
+> would go 3 -> 0. They went 3 -> 1. The survivor is **not** the risk fallback - it is
+> `confidenceGrammar.js:80`, `ATTENTION: { host: 'Worth a look', ... }`, a different
+> subsystem's deliberate vocabulary. The pre-deploy 3 was **2 risk fallbacks + 1 confidence
+> grammar label**. Both risk fallbacks are gone. Corroborated independently:
+> `riskSeverityCorpus.test.js:123` asserts the SHELL carries no `'Worth a look'` and passes,
+> because confidenceGrammar is a lib, not the shell. Do not "fix" that remaining string.
+
+**Still unproven in behaviour:** the sign-in upload shipped in the same merge and is inert
+until someone signs in - and auth is off in the `demo` profile. It is gated by a source
+contract, never driven. Do not count it as verified.
+
+**CI: the matrix used to run TWICE on every branch push** (`push` + `pull_request` both fired;
+the concurrency key was `github.ref`, which differs between the two events, so neither
+cancelled the other). Fixed - `push` is main-only and the key is now the branch name. e2e is
+~19 minutes, so this was ~38 minutes of runner time per commit. Measured after: one run, not
+two. **Also: jest is NOT red at baseline any more** - the handoff note saying so is out of
+date, the suite is 387 suites / 5699 tests green, so a red jest is now a real signal.
 
 ---
 
