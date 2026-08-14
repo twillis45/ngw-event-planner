@@ -34,7 +34,15 @@ test('a warm boot reaches the primary action fast', async ({ page }) => {
   }, RICH);
   const t0 = Date.now();
   await page.goto('./');
-  const cta = page.locator('button, a').filter({ hasText: /Open|Add|Sort|Decide|Confirm|Plan/i }).first();
+  // `Save` joined the verb list 2026-08-14. This fixture is a destination event
+  // with a town and no named venue, and the board's venue split made that state
+  // lead with the venue capture — whose primary action is an input plus a
+  // `Save`, not an "Open …" row. Without the verb the locator fell through to a
+  // hidden `.efold` handle and timed out, reporting a latency failure for a
+  // hero shape it simply could not see. The budget itself is unchanged and the
+  // measurement still comes in far under it; what was wrong was the locator's
+  // idea of what a primary action looks like.
+  const cta = page.locator('button, a').filter({ hasText: /Open|Add|Sort|Decide|Confirm|Plan|Save/i }).first();
   await cta.waitFor({ state: 'visible', timeout: 20000 });
   await expect(cta).toBeInViewport({ timeout: 20000 });
   const elapsed = Date.now() - t0;

@@ -147,7 +147,67 @@ screen that ignores the value underneath relabels an axis on a chart that is not
 
 ---
 
-## Build order
+## BUILT 2026-08-14 - what shipped
+
+All six steps, in the board's order. Verified: engine **3253/3253**.
+
+```
+                     BEFORE                          AFTER
+a-nothing   hero  "Add the location."            "Add the location."
+b-cityonly  hero  "Sort where everyone stays."   "Pick the place in Santa Fe."
+            chip  "Venue - handled."             "Venue address - still open."
+            card  tag "Not set yet" + input      (gone; hero carries the capture)
+            count "3 of 6 plan parts handled"    "3 of 7"
+c-named     hero  "Sort where everyone stays."   "Sort where everyone stays."
+            chip  "Venue - handled."             "Venue address - handled."
+```
+
+**The wire is connected.** The b/c captures were byte-identical at mobile-390 and
+tablet-768; they are now distinct at every viewport, and the three states produce three
+different asks.
+
+Four defects surfaced only by DRIVING, none reachable from code:
+
+1. **A raw id reached host copy.** The summary read "date & time and *venueaddress*
+   still need you" - `DIMENSION_LABELS` had no entry and `label` falls through to the
+   id. Now gated for the whole class, not the one instance.
+2. **The venue ask was duplicated in the queue.** `_topPhaseMatch` used `.find()`, fine
+   while one essential owned a focusField; the split put two on `event-venue`, so dedup
+   absorbed the town cue and left "Name the venue" sitting below lodging. Now absorbs
+   all matches - narrowed to readiness/blocker heroes, because a food DECISION shares
+   the food-plan route with the food SUMMARY without being it (caught by
+   `wave6IdentityPolicy` when the first fix was too broad).
+3. **The hero said "Add the location." on a town-set event.** `heroAsk`'s prose ladder
+   classifies any title containing "venue" that way - true before the split, false
+   after. Fixed by authoring `ask`, which that file's own header prescribes.
+4. **`ask` was the FIFTH field the `topAction` rebuild has silently dropped** (after F1
+   `level`, F7 `leadDays`, `sourceCategory`, `blockerType`). The authored ask vanished
+   and the hero fell back to the ladder. That whitelist is a standing hazard and
+   deserves a gate of its own.
+
+Severity now escalates on the countdown, so Tier 0.6 could not be gated on `critical`
+without the gate vanishing from the hero at 310 days and reappearing at T-120 while the
+cue ladder ranked it first the whole time - `hostEngineSelectionParity` caught that.
+Position and tone are separate axes now: the venue gate leads at every stage, its
+`level` rides the ladder.
+
+**Shipped tests that changed, and why that is not gate-inversion.** Four fixtures in
+`destinationOrderingContract`, `heroBoardAgreement` and `hostEngineSelectionParity`
+asserted lodging leads on a town-with-no-venue event. Their contract - "unresolved
+upstream outranks downstream", the 2026-08-06 ruling - is UNCHANGED and still asserted;
+the split simply revealed a new upstream above lodging. Fixtures whose subject is the
+lodging/food chain now name a venue so the new upstream does not mask them, and a new
+test asserts the new relationship directly.
+
+**Still not built:** the lodging spend-guard interstitial ("rooms booked now can end up
+an hour away") is carried structurally - the address outranks lodging, so the hero no
+longer sends a host there with no address - but there is no warning at the point of
+spend if they navigate to lodging themselves. That is the operations seat's "guard the
+spend, not the status", and it remains open.
+
+---
+
+## Build order (as ruled)
 
 1. **Wire it before wording it.** Make the resolution a real three-valued read that the
    hero actually consumes, so `b-cityonly` and `c-named` stop rendering the same screen.

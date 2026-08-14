@@ -7,7 +7,7 @@
 // [data-bp="desktop"]`.
 //
 // NOTHING MEASURED IT. `tile-a` appears nowhere in e2e/ or __tests__/. The
-// richest computed block on the surface — the lifecycle line and six named,
+// richest computed block on the surface — the lifecycle line and the named,
 // routed, dot-marked plan-part chips — is held open by a three-attribute
 // selector, any one of which a future refactor of the stagewrap could rename
 // while every gate in this suite stayed green. It spent months hidden once
@@ -92,13 +92,21 @@ const readColumn = (page) =>
     };
   });
 
-// The six plan parts the block names. Order is the engine's, and it is stable
-// across the fixture — asserting the SET rather than the sequence keeps this
-// from breaking on a legitimate re-rank while still catching a lost chip.
-const PARTS = ['Date & time', 'Venue', 'Guests', 'Food', 'Lodging', 'Budget'];
+// The plan parts the block names. Order is the engine's and is stable across
+// the fixture — asserting the SET rather than the sequence keeps this from
+// breaking on a legitimate re-rank while still catching a lost chip.
+//
+// SEVEN SINCE 2026-08-14, and the two venue entries are the point. The board
+// split one fact in two: `Where it happens` is the TOWN (which genuinely
+// unblocks weather, shopping and lodging search) and `Venue address` is the
+// signed address (which gates COI, the dock, final rentals, power, run-of-show
+// and transport). Before the split a single chip labelled "Venue" read
+// "handled" off a town while a card below it said "Not set yet" — one word
+// answering two questions. See docs/audits/2026-08-14_VENUE_READER_BOARD_RULING.md.
+const PARTS = ['Date & time', 'Where it happens', 'Venue address', 'Guests', 'Food', 'Lodging', 'Budget'];
 
 test.describe('the stat column carries the named set', () => {
-  test('1440x900 — six routed plan-part chips, one header, one fraction', async ({ page }) => {
+  test('1440x900 — the named plan-part set, one header, one fraction', async ({ page }) => {
     await boot(page);
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto('./');
@@ -117,7 +125,7 @@ test.describe('the stat column carries the named set', () => {
     expect(m.tileBox.h, 'and real height — a collapsed tile is a hidden tile').toBeGreaterThan(120);
 
     // ── The named set, which is what earns the column under UX_04 Zone 1.
-    expect(m.chipCount, `visible plan-part chips (${m.chipNames.join(', ')})`).toBe(6);
+    expect(m.chipCount, `visible plan-part chips (${m.chipNames.join(', ')})`).toBe(PARTS.length);
     expect(m.chipNames.slice().sort()).toEqual(PARTS.slice().sort());
     // Every chip must say it routes. "Open it." is the act; a bare part name is
     // the state UX_06 and the CTA doctrine both forbid.

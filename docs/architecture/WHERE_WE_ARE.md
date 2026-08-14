@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - 2b built as Tier 0.6 (`923ba55b`); the venue-reader board RULED (split the fact in two) and found the strict reader reaches the host not at all. Engine 3244/3244, e2e 422 passed / 46 skipped.
+**Last updated:** 2026-08-14 (latest) - the venue-reader board ruled AND the ruling is BUILT: the town and the venue address are two essentials, severity is a countdown, the wire is connected. Engine 3253/3253.
 
 ---
 
@@ -360,6 +360,31 @@ Two builds, materially different, NOT chosen:
      *not at all* — filtered out at `HostShellV2.jsx:8908-8917` while the hero talks
      about hotel rooms. So Tier 0.6 is not a truce over a disagreement, it is a truce
      over **a wire that was never connected**. Fix the wire before the wording.
+
+     **BUILT 2026-08-14.** All six steps. The town and the venue address are now two
+     essentials (`location`, `venueaddress` in phaseProgress); the address is priority 3,
+     ahead of lodging, and is NOT in the handled numerator. Venue severity is a countdown
+     (`assembleRevealEngines`), so Tier 0.6 promotes the venue gate at every stage and
+     carries the laddered tone rather than a constant `critical` — gating the tier on
+     `critical` made the gate vanish at 310 days and reappear at T-120 while the cue
+     ladder ranked it first the whole time, which `hostEngineSelectionParity` caught.
+     The agreement guard is deleted: both readers agree by construction now.
+
+     Driven live: `a-nothing` "Add the location." · `b-cityonly` **"Pick the place in
+     Santa Fe."** with the chip reading "Venue address — still open" · `c-named` "Sort
+     where everyone stays." The b/c captures are no longer byte-identical.
+
+     **Four defects only driving could find**, all fixed: a RAW ID reached host copy
+     ("date & time and *venueaddress* still need you" — `DIMENSION_LABELS` had no entry);
+     the venue ask was DUPLICATED in the queue (`_topPhaseMatch` used `.find()`, and the
+     split put two essentials on `event-venue`); the hero said "Add the location." on a
+     town-set event (`heroAsk`'s prose ladder — fixed by authoring `ask`, as that file's
+     own header prescribes); and **`ask` was the FIFTH field the `topAction` rebuild has
+     silently dropped** (after F1 `level`, F7 `leadDays`, `sourceCategory`, `blockerType`).
+     **That whitelist is a standing hazard and wants a gate of its own.**
+
+     STILL OPEN: the spend-guard interstitial. The address outranking lodging carries it
+     structurally, but a host who navigates to lodging themselves still gets no warning.
 
   Also fixed, and found only by DRIVING: the hero asked "Add the location." while the
   queue's second row said "Add the location". `topDomain` adopted a matched phase
