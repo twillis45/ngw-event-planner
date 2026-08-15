@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - grounding started: the census was reporting a FALSE ZERO and is fixed; labelling is complete; the first citation moved a price and exposed a missing wire. Engine 5724 passed, e2e 440 passed / 0 failed.
+**Last updated:** 2026-08-15 (latest) - grounding: census false-zero fixed, labelling complete, **wedding 7 of 7 cited** (3 prices wrong, 4 right). Coverage 2.8%. Engine 5724 passed, e2e 440 passed / 0 failed.
 
 ---
 
@@ -1068,9 +1068,8 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 ## 3. The one number to watch
 
 ```
-GROUNDING COVERAGE -- 1.7% cited   (9 of 541 priced)   measured 2026-08-14
-  9 cited - 40 consensus - 64 researched - 511 synthesized - 1 partial
-  labelled 541 of 541.  SETTLED (cited + consensus) 9.1%
+GROUNDING COVERAGE -- 2.8% cited   (15 of 541 priced)   measured 2026-08-15
+  labelled 541 of 541 - dated 8 - wedding is 7 of 7 cited
 ```
 
 Mind the denominator: the figure that matters for host trust is `cited / PRICED`, not
@@ -1093,9 +1092,12 @@ job than the one this section used to describe.
 an absent citation is still "nobody researched this". But two things learned on the first
 real citation change what the work looks like:
 
-1. **Citing can move the NUMBER, not just its provenance.** Wedding favors carried
-   `[2, 8]`, matching editorial guidance that names no survey; two named surveys put the
-   band at `[1, 5]`. Expect the corpus to be wrong, not merely unsourced.
+1. **Citing can move the NUMBER, not just its provenance — but usually it does not.**
+   Across wedding's 7 priced items, **3 were wrong and 4 were already right**. Favors
+   `[2,8]`->`[1,5]`, welcome bags `[8,20]`->`[15,35]` (low), the emergency kit
+   `[40,80]`->`[20,45]` (boutique pricing on a drugstore item). Signage, guest book,
+   toast bottle and bar alcohol all survived unchanged. **Citation is a check, not a
+   rewrite** — budget for verification, not for re-authoring.
 2. **A price citation could not reach the host until 2026-08-14.** `directCitationEligible`
    resolved ids only against the QUANTITY registry, so a price cited to real market
    sources rendered "Needs confirmation". Fixed to (qty OR cost). Before adding citations
