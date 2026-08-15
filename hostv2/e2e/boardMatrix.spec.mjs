@@ -14,7 +14,7 @@
 //      clears them.
 //   4. FOLD PEEK (W9 class): on future-event ask screens the see-all pull
 //      handle intersects the first viewport.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const COI_PATCH = {
   vendors: [
@@ -75,9 +75,7 @@ const boot = async (page, state) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, [state.id, state.patch || null]);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1600); // quick-splash + settle beat
-  await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await settled(page);
 };
 
 for (const state of STATES) {

@@ -10,7 +10,7 @@
 // NOTHING on screen says so. The code indexes first and filters the {g,i}
 // pairs; this proves it, because a unit test cannot see the rendered list and
 // a bug here is invisible until a host has already written the wrong fact.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const ROSTER = Array.from({ length: 12 }, (_, k) => ({
   id: 'g-t' + k,
@@ -27,9 +27,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, ROSTER);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1600);
-  await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await settled(page);
 };
 
 const openGuests = async (page) => {

@@ -1,6 +1,6 @@
 // Render-first capture for a board sitting (REVIEW_BOARD_ROSTER step 1).
 // Not a gate — run on demand, output is gitignored review-artifacts/.
-import { test } from './fixtures.mjs';
+import { test, settled } from './fixtures.mjs';
 import fs from 'fs';
 
 const OUT = new URL('../../review-artifacts/', import.meta.url).pathname;
@@ -20,9 +20,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   });
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1600);
-  await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  await settled(page);
 };
 
 test('capture the surfaces this sitting judges', async ({ page }) => {

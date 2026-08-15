@@ -13,7 +13,7 @@
 //      floor here even though UX_05:72 would accept 32 for a chip.
 //
 // Runs on the phone project because that is where the floor bites.
-import { test, expect } from './fixtures.mjs';
+import { test, expect, settled } from './fixtures.mjs';
 
 const boot = async (page) => {
   await page.addInitScript(() => {
@@ -23,9 +23,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   });
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1600);
-  await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(300);
+  await settled(page);
 };
 
 // Deterministic nav to the roster: masthead menu → Jump to a section → Guests.

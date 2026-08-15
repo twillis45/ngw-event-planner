@@ -13,7 +13,7 @@
 //
 // Both surfaces are captured because the finding spans them: the RAIL lane on
 // the command surface, and the RISKS SHEET where the CTA row actually lives.
-import { test } from './fixtures.mjs';
+import { test, settled } from './fixtures.mjs';
 import fs from 'fs';
 
 const OUT = new URL('../../review-artifacts/2026-08-08_risk_routing/', import.meta.url).pathname;
@@ -45,9 +45,7 @@ const boot = async (page) => {
     localStorage.setItem('ngw-v2-welcomed', '1');
   }, SANTA_FE);
   await page.goto('?elegant=1');
-  await page.waitForTimeout(1600);
-  await page.locator('.splash').waitFor({ state: 'detached', timeout: 8000 }).catch(() => {});
-  await page.waitForTimeout(400);
+  await settled(page);
 };
 
 test('capture the risk lane and the risks sheet', async ({ page }) => {
