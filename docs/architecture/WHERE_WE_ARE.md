@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - the venue-reader board ruled AND the ruling is BUILT: the town and the venue address are two essentials, severity is a countdown, the wire is connected. Engine 3253/3253.
+**Last updated:** 2026-08-14 (latest) - venue-reader ruling BUILT in full, including the spend guard; the topAction whitelist is gated at last. Engine 3258/3258, e2e 440 passed / 58 skipped / 0 failed.
 
 ---
 
@@ -383,8 +383,15 @@ Two builds, materially different, NOT chosen:
      silently dropped** (after F1 `level`, F7 `leadDays`, `sourceCategory`, `blockerType`).
      **That whitelist is a standing hazard and wants a gate of its own.**
 
-     STILL OPEN: the spend-guard interstitial. The address outranking lodging carries it
-     structurally, but a host who navigates to lodging themselves still gets no warning.
+     **The spend guard is BUILT too**, in the cockpit rather than as an interstitial —
+     the ops seat's "the warning belongs where the money leaves". Amber on the exact
+     `--warn` token, carrying the hold-vs-booking distinction the product had no words
+     for. Gated both directions (`hostv2/e2e/lodgingSpendGuard.spec.mjs`).
+
+     **And the `topAction` whitelist finally has a gate**
+     (`topActionCarriesEveryField.test.js`) — it sweeps every field the selector
+     produces, so the SIXTH dropped field fails the day it is added. Red-proofed:
+     stamping `reversibility` without updating the rebuild fails and NAMES the field.
 
   Also fixed, and found only by DRIVING: the hero asked "Add the location." while the
   queue's second row said "Add the location". `topDomain` adopted a matched phase

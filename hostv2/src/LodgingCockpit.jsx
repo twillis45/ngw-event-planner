@@ -202,6 +202,28 @@ export default function LodgingCockpit() {
 
   const copy = stageCopy(derived, stage);
 
+  // The SAME predicate the `venueaddress` essential uses (phaseProgress) — a
+  // named venue or a full address settles it; a town alone does not. Read
+  // through `venueFor`, the one place reader, so this cannot drift from the
+  // essential it mirrors.
+  const addressUnsigned = (() => {
+    try { const v = venueFor(event) || {}; return !(v.address || v.name); } catch { return false; }
+  })();
+  // Back to the host shell, landing ON the venue field rather than a tab top
+  // (row-level CTA doctrine). `demo=lodging` is what put us in the cockpit, so
+  // clearing it is what leaves.
+  const goAddVenue = () => {
+    try {
+      const u = new URL(window.location.href);
+      u.searchParams.delete('demo');
+      u.searchParams.delete('focus');
+      u.searchParams.set('focus', 'event-venue');
+      window.location.href = u.toString();
+    } catch {
+      window.location.href = window.location.pathname + '?focus=event-venue';
+    }
+  };
+
   return (
     <Frame>
       <div className="lc-grid">
@@ -229,6 +251,37 @@ export default function LodgingCockpit() {
             <p className="lc-peek">
               Looking ahead — you’re actually at <strong>{STEP_LABEL[derived.stage]}</strong>.
               <button onClick={() => setViewing(null)} className="lc-link">Back to now</button>
+            </p>
+          )}
+          {/* ── THE SPEND GUARD (board ruling 2026-08-14) ───────────────────
+              The operations seat was explicit about WHERE this belongs: "the
+              warning belongs where the money leaves, not on a status pill 400
+              pixels away." So it is not an interstitial on the way in — it is
+              here, in view for the whole booking, rather than a dialog the host
+              clicks past once and never sees again.
+
+              Why it matters, in the pros' own terms: a hold costs nothing and
+              can be released, a contracted block cannot. Rooms booked against a
+              town can land forty minutes from the eventual venue, and most are
+              non-refundable — the single money-losing ordering error on this
+              surface, and the one the Grandmother seat said she would make
+              because the app told her to.
+
+              ONE ASK, and it is not "don't book". Booking may well be right —
+              Santa Fe in June sells out. The guard names the cheaper order.
+              Amber, not red: UX_02 gives amber to "needs attention, incomplete",
+              and both event seats ruled that a red gate here is alarm the host
+              learns to ignore. */}
+          {addressUnsigned && (
+            <p className="lc-venuegap">
+              <strong>The venue address isn’t set yet.</strong>{' '}
+              Rooms booked now can end up an hour from the venue, and most bookings
+              aren’t refundable. Ask hotels to <em>hold</em> rooms — a hold costs
+              nothing and you can release it — and wait on the block until the
+              venue is signed.
+              <button type="button" className="lc-link" onClick={goAddVenue}>
+                Add the venue address
+              </button>
             </p>
           )}
           <h1 className="lc-h1">{copy.title}</h1>
@@ -1914,6 +1967,15 @@ const CSS = `
 .lc-step.is-on{color:var(--ink);border-bottom-color:var(--ok);font-weight:650;}
 .lc-h1{font:700 clamp(27px,5.2vw,40px)/1.12 Inter,sans-serif;letter-spacing:-.03em;margin:26px 0 0;text-wrap:balance;}
 .lc-why{font:italic 400 clamp(14px,1.9vw,17px)/1.5 Newsreader,Georgia,serif;color:var(--muted);margin:12px 0 0;max-width:52ch;}
+/* The spend guard. Amber per UX_02 ("needs attention, incomplete") — NOT crit:
+   both event seats ruled a red gate here is alarm a host learns to ignore, and
+   the colour budget allows one meaning per token. A hairline rule rather than a
+   filled panel keeps it a note beside the work instead of a slab over it. */
+.lc-venuegap{font:400 13px/1.6 Inter,sans-serif;color:var(--ink-soft);margin:16px 0 0;
+  border-left:2px solid var(--warn); padding:2px 0 2px 12px; max-width:62ch;}
+.lc-venuegap strong{color:var(--ink);font-weight:650;}
+.lc-venuegap em{font-style:italic;}
+.lc-venuegap .lc-link{margin-left:0;display:inline-block;margin-top:6px;}
 .lc-peek{font:400 12px/1.5 Inter,sans-serif;color:var(--muted);margin:16px 0 0;}
 .lc-peek strong{color:var(--ink-soft);}
 .lc-link{background:none;border:none;color:var(--steel-soft);cursor:pointer;font:500 12px/1 Inter,sans-serif;padding:0 0 0 6px;text-decoration:underline;}

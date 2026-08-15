@@ -199,11 +199,30 @@ the split simply revealed a new upstream above lodging. Fixtures whose subject i
 lodging/food chain now name a venue so the new upstream does not mask them, and a new
 test asserts the new relationship directly.
 
-**Still not built:** the lodging spend-guard interstitial ("rooms booked now can end up
-an hour away") is carried structurally - the address outranks lodging, so the hero no
-longer sends a host there with no address - but there is no warning at the point of
-spend if they navigate to lodging themselves. That is the operations seat's "guard the
-spend, not the status", and it remains open.
+**The spend guard is BUILT (2026-08-14, same day).** It is not an interstitial on the
+way in - the operations seat was specific that "the warning belongs where the money
+leaves", so it renders inside the cockpit, above the fold, for the whole booking:
+
+```
+The venue address isn't set yet. Rooms booked now can end up an hour from the
+venue, and most bookings aren't refundable. Ask hotels to HOLD rooms - a hold
+costs nothing and you can release it - and wait on the block until the venue is
+signed.                                              [ Add the venue address ]
+```
+
+Amber measured as `rgb(236,161,63)` - exactly the `--warn` token, no invented colour,
+and deliberately NOT red: both event seats ruled a red gate here is alarm a host learns
+to ignore. It carries the distinction the product had no vocabulary for - a hold is not
+a booking - which is the whole of Weiss's ordering argument. Gated by
+`hostv2/e2e/lodgingSpendGuard.spec.mjs` in both directions (present on a town-only
+event, absent once the venue is named, CTA driven to its destination), red-proofed by
+drifting the predicate to the permissive reader.
+
+**The `topAction` whitelist is gated too** (`src/lib/__tests__/topActionCarriesEveryField.test.js`).
+It sweeps every field the selector produces across four fixtures, so the SIXTH dropped
+field fails on the day it is added rather than on a host's screen. Red-proofed by
+stamping `reversibility` on the venue tier without updating the rebuild; the failure
+names the field.
 
 ---
 
