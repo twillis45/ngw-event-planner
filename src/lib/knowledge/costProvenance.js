@@ -14,6 +14,23 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── BACHELORETTE (registered 2026-08-15) ───────────────────────────────────
+  // Spirits only. The sparkling line on the same playbook needed NO new source —
+  // the champagne/sparkling pair registered for wedding and anniversary already
+  // covers it, which is what a citation by genuine REUSE looks like: zero new
+  // registry entries, and the band still moved.
+  'spirits-budgetbar-2026': {
+    org: 'Feast + West, "Budget Bar Setup: Stock Your Home Bar for $100 or Less" (fetched)',
+    url: 'https://feastandwest.com/stock-your-bar-for-100-or-less/',
+    fetched: '2026-08-15',
+    claim: 'Named 750ml shelf prices (North Carolina, pre-tax): vodka SKYY $12.95, Finlandia $15.95, Tito\'s $25. Gin Seagram\'s $12.95, Beefeater $19.95, Bombay $19.95. Tequila blanco Jose Cuervo $20.95, El Jimador $21.95, Lunazul $21.95. Rum Bacardi $12.95, Captain Morgan $15.95, Sailor Jerry $21.95. The article states prices vary by state and exclude tax.',
+  },
+  'spirits-retail-2026': {
+    org: '2026 vodka/gin retail price guides and bottle-price aggregators (listing — figures read from search results)',
+    url: 'https://selector.kurlon.com/live/vodka-bottle-costs-price-ranges-and-budget-guide-2026-35499.html',
+    fetched: '2026-08-15',
+    claim: 'Vodka 750ml: most buyers pay $18-40, with basic store brands from ~$8 and premium/limited to $60. Tequila blanco $18-22. Popular-brand gin runs higher than both — Bombay Sapphire $30.99, St. George Terroir $36.60. National brands hold price floors; local shops discount and holidays lift prices.',
+  },
   // ── ANNIVERSARY, third batch (registered 2026-08-15) ───────────────────────
   // Both picked by the channel-span test again. `p_bread` is the clearest case
   // the pass has produced: its band was too HIGH at the bottom and too LOW at
