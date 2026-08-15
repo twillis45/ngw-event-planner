@@ -14,6 +14,35 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── ANNIVERSARY, second batch (registered 2026-08-15) ──────────────────────
+  // Both items were flagged BEFORE researching them, by the channel-span test
+  // the first batch produced: an item whose `where` names a discount channel
+  // and a premium one in the same list is a candidate for a band that only
+  // covers one of them. Both were, and both were too LOW at the top.
+  'charcuterie-ica-2026': {
+    org: 'International Charcuterie Association, "The Ultimate Charcuterie Board Price Guide" (fetched)',
+    url: 'https://charcuterieassociation.com/charcuterie-board-price/',
+    fetched: '2026-08-15',
+    claim: 'Per pound 2026 — cheese: budget $5-15, crowd-pleasers $10-25, hard $10-30, soft $8-25, artisanal $20-40, blue $15-40. Meats: mortadella $8-20, salami $10-25, capicola $15-30, prosciutto $25-40. Accompaniments: fresh fruit $1-5, nuts $5-15, olives $5-15. Serving norm 2-4 oz meat and cheese per person plus 1-2 oz other. CATERED boards price per person or per board, not per pound: $15-50 per person; small (2-4) $40-60, medium (6-10) $80-120, large (12-20) $150-250.',
+  },
+  'charcuterie-grocery-2026': {
+    org: 'US grocery specialty-cheese and cured-meat averages, via charcuterie pricing guides (listing — figures read from search results)',
+    url: 'https://homebodyeats.com/charcuterie-board-pricing/',
+    fetched: '2026-08-15',
+    claim: 'US grocery averages: specialty cheese ~$15/lb, charcuterie meats ~$20/lb. A DIY medium board for 5-15 people runs $50-120 in ingredients. Ready-made boards from a cheese shop run $85 (small) to $285 (extra large), or ~$15 per person with a $120 minimum.',
+  },
+  'coffeeurn-rental-2026': {
+    org: 'US party-rental catalogues (ABC Rentals, White Gables, Cheboygan Party Rental) and big-box retail listings for 40-cup urns (listing — figures read from search results)',
+    url: 'https://whitegableshome.com/products/coffee-percolator-urn-40-cup-rental',
+    fetched: '2026-08-15',
+    claim: 'A 40-cup coffee urn RENTS for $21-22 per event. Buying the same urn outright runs $45-59 (Walmart commercial 40-cup $44.99-47.99; Zulay stainless 40-cup $58.74 at Home Depot). So the three channels this line names differ by ~5x on the same job.',
+  },
+  'coffee-percup-2026': {
+    org: 'Low Key Coffee Snobs, "The Cost of Coffee at Home vs. the Coffee Shop" (fetched), with budget/mainstream per-cup figures from 2026 coffee-cost guides',
+    url: 'https://www.lowkeycoffeesnobs.com/coffee-cost-calculations/',
+    fetched: '2026-08-15',
+    claim: 'Home-brewed cost per cup: budget store-brand pre-ground ~$0.10; mainstream specialty (Starbucks, Peet\'s) $0.20-0.30; premium subscription beans $0.75-1.25 (a 12 oz bag at ~$20 yields 16-17 cups at ~20g per brew). Cafe drip is $3-5 for comparison. NOTE an urn "cup" is 5 oz, not a 10-12 oz mug, so per-mug figures overstate the grounds needed for a 40-cup urn.',
+  },
   // ── ANNIVERSARY (registered 2026-08-15) ────────────────────────────────────
   // Two of these corrected a band that was too NARROW rather than simply wrong,
   // and both for the same reason: the item's own `where` lists two very different

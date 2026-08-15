@@ -77,12 +77,17 @@ const MUST_NOT_RESOLVE = [
 ];
 
 describe('1 — the source universe is what we think it is', () => {
-  // 133 since 2026-08-15 also registered four for `anniversary` — cake and
+  // 137 since 2026-08-15 registered four more for `anniversary` — the app
+  // spread and the coffee service. Both were flagged BEFORE research by the
+  // channel-span test the earlier batch produced (an item whose `where` names a
+  // discount channel and a premium one is a candidate for a band covering only
+  // one), and both were too low at the top.
+  // (133 since 2026-08-15 also registered four for `anniversary` — cake and
   // florals. Both were corrected for the same reason and it is worth naming:
   // the item's own `where` lists two very different CHANNELS (grocery bakery vs
   // custom bakery; Trader Joe's vs florist) and the authored band only covered
   // one of them, so whichever channel the host picked, the number was wrong for
-  // half of them.
+  // half of them.)
   // (129 since 2026-08-15 registered eleven more price sources for the rest of the
   // wedding playbook — welcome bags, guest book, signage, the toast bottle, the
   // self-supplied bar and the day-of emergency kit. Wedding went 0 -> 7 of 7
@@ -106,11 +111,11 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 133 source identities — verified, not assumed', () => {
+  test('20 axes, 137 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(133);
-    expect(unionIds().size).toBe(133);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(137);
+    expect(unionIds().size).toBe(137);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
