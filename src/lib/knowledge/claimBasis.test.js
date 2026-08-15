@@ -185,18 +185,18 @@ describe('host labels are truthful', () => {
     // form, with the sentence preserved as `note` and the honest status
     // `synthesized`, which is what they always were.
     //
-    // 8 remain as of 2026-08-15: five of the shorthand lines (anniversary's
-    // cake, florals, toast bottle, the app spread and the coffee service) were
-    // researched and now carry the full object form with sources, a claim and
-    // a date. The remainder are the
+    // 6 remain as of 2026-08-15: seven of the shorthand lines (anniversary's
+    // cake, florals, toast bottle, app spread, coffee service, bread and
+    // signage) were researched and now carry the full object form with sources,
+    // a claim and a date. The remainder are the
     // harmless shorthand — the bare word "synthesized", which names a real
     // status even if it skips the object.
     // THIS NUMBER MAY ONLY GO DOWN. If someone authors a new string shape, or
     // re-introduces prose here, this fails rather than letting it fall silently
     // into the baseline bucket.
     const strings = allProvenances().filter((p) => typeof p === 'string');
-    expect(strings.length).toBe(8);
-    expect(strings.filter((s) => s === 'synthesized').length).toBe(8);
+    expect(strings.length).toBe(6);
+    expect(strings.filter((s) => s === 'synthesized').length).toBe(6);
     expect(strings.filter((s) => s !== 'synthesized').length).toBe(0);
     for (const s of strings) expect(classifyClaim(s).basis).toBeNull();
   });

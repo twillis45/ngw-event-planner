@@ -14,6 +14,34 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── ANNIVERSARY, third batch (registered 2026-08-15) ───────────────────────
+  // Both picked by the channel-span test again. `p_bread` is the clearest case
+  // the pass has produced: its band was too HIGH at the bottom and too LOW at
+  // the top, covering only mid-bakery and missing BOTH channels the item names.
+  'bread-retail-2026': {
+    org: 'LatestCost, "Bread Cost Today: Price Insights for a Loaf 2026" (fetched)',
+    url: 'https://latestcost.com/bread-cost-today-price-insights-loaf/',
+    fetched: '2026-08-15',
+    claim: 'Per loaf 2026: mass-market white averages $2.50 across a $1.00-4.50 range; basic grocery-chain loaves $1.50-2.50. Artisan loaves average $6.00 across $3.50-9.00; premium handmade with specialty flour and long fermentation $6.50-12.00.',
+  },
+  'bread-artisan-2026': {
+    org: 'BakeProfit sourdough pricing guide and 2026 home-baker pricing guides (listing — figures read from search results)',
+    url: 'https://bakeprofit.com/blog/pricing/how-to-price-sourdough',
+    fetched: '2026-08-15',
+    claim: 'Mid-size bakery loaves $3.50-5.50; premium artisan with long fermentation and specialty flour $6.50-12.00; a quality farmers-market sourdough is $8-14 in 2026. Corroborates the artisan half of the retail source above from the baker\'s side.',
+  },
+  'foamboard-print-2026': {
+    org: '48HourPrint custom foam-board sign pricing (fetched)',
+    url: 'https://www.48hourprint.com/foam-boards.html',
+    fetched: '2026-08-15',
+    claim: 'A single custom-printed 24x36 foam board lists at $73.08, discounted to $43.85 on a promotional coupon. SquareSigns advertises foam-board posters from $36.00 at the same size. Price moves on board thickness, size, and single- vs double-sided printing.',
+  },
+  'amazon-partysigns-2026': {
+    org: 'Amazon party-banner and foam-board listings, browse-node price bands (listing — figures read from search results)',
+    url: 'https://www.amazon.com/party-banners/s?k=party+banners',
+    fetched: '2026-08-15',
+    claim: 'Amazon foam-board backdrops and blank boards fall in published bands of up to $15, $15-20, and $20-40 by size; these are unprinted or pre-made rather than custom-printed. Party banners and number props sit at the low end of the same range.',
+  },
   // ── ANNIVERSARY, second batch (registered 2026-08-15) ──────────────────────
   // Both items were flagged BEFORE researching them, by the channel-span test
   // the first batch produced: an item whose `where` names a discount channel
