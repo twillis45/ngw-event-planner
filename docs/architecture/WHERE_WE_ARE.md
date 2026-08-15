@@ -1079,8 +1079,8 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 ## 3. The one number to watch
 
 ```
-GROUNDING COVERAGE -- 2.8% cited   (15 of 541 priced)   measured 2026-08-15
-  labelled 541 of 541 - dated 8 - wedding is 7 of 7 cited
+GROUNDING COVERAGE -- 3.7% cited   (20 of 541 priced)   measured 2026-08-15
+  labelled 541 of 541 - wedding 7 of 7 - anniversary 5 of 18
 ```
 
 Mind the denominator: the figure that matters for host trust is `cited / PRICED`, not
@@ -1109,6 +1109,17 @@ real citation change what the work looks like:
    `[40,80]`->`[20,45]` (boutique pricing on a drugstore item). Signage, guest book,
    toast bottle and bar alcohol all survived unchanged. **Citation is a check, not a
    rewrite** — budget for verification, not for re-authoring.
+
+1b. **THE CHANNEL-SPAN TEST — use it to pick what to research next.** Every wrong band
+   found so far shares one cause: the item's own `where` names a DISCOUNT channel and a
+   PREMIUM one, and the authored range covers only one of them, so whichever channel the
+   host picks the number is wrong for half of them. It is greppable, and it now PREDICTS:
+   `p_apps` and `p_coffee` were flagged from their `where` lists before a single source
+   was opened, and both were wrong the same way — too low at the top. Coffee's three
+   channels differ by ~5x on the same job (own an urn $12 / rent $21-22 / buy $45-59).
+   Corollary: when a channel prices in a DIFFERENT UNIT (a catered board is per person,
+   not per pound), say so in `sufficientWhen` rather than stretching the band to swallow
+   it. And watch units — an urn "cup" is 5 oz, not a 10-12 oz mug.
 2. **A price citation could not reach the host until 2026-08-14.** `directCitationEligible`
    resolved ids only against the QUANTITY registry, so a price cited to real market
    sources rendered "Needs confirmation". Fixed to (qty OR cost). Before adding citations
