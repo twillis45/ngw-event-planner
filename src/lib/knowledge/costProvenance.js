@@ -14,6 +14,30 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── WEDDING FAVORS (registered 2026-08-14) ─────────────────────────────────
+  // The first item grounded under the "start grounding" pass, and it did not
+  // merely gain a source — it changed the NUMBER. The corpus carried
+  // `unitCostRange: [2, 8]`, which matches the editorial band published by
+  // wedding-planning guides that name no survey at all. Two named, dated
+  // surveys put the real distribution lower, and the corrected range follows
+  // the surveys rather than the guidance that agreed with what we already had.
+  //
+  // Both are reached through the same reporting page, which names each survey
+  // and quotes its figures; `url` is the page actually fetched rather than a
+  // primary PDF nobody here has opened. Saying which is the difference between
+  // a citation and a decoration.
+  'zola-favors-2026': {
+    org: 'Zola 2026 Registry & Gifting Survey, as reported and quoted by Paperlust, "How Much Do Wedding Favors Cost?" (2026 guide)',
+    url: 'https://paperlust.co/blog/how-much-do-wedding-favors-cost/',
+    fetched: '2026-08-14',
+    claim: 'US wedding favors, 2026: the common spend is $1–5 per guest, with $3 the typical mid-range figure. 56% of couples in Zola\'s 2026 Registry & Gifting Survey kept favors at $5 or less per guest. Tiers as published: budget ≤$1, mid-range $2–3, premium $5+.',
+  },
+  'theknot-realweddings-2025': {
+    org: 'The Knot 2025 Real Weddings Study (couples married 2024; ~17,000 respondents), via theknot.com',
+    url: 'https://www.theknot.com/content/average-cost-wedding-favors',
+    fetched: '2026-08-14',
+    claim: 'Favors AND gifts COMBINED average $460 (this figure includes wedding-party gifts, so the favors-only portion is lower). By guest count: ≤50 guests $301, >100 guests $529. By region: Northeast $473, Mid-Atlantic $591, Midwest $409, South $415, West $419, destination $702. Corroborates the per-guest band from the total side; it does NOT state a per-guest favors figure on its own.',
+  },
   'usda-meat-2026': {
     org: 'USDA ERS Meat Price Spreads / U.S. BLS retail food prices',
     url: 'https://www.ers.usda.gov/data-products/meat-price-spreads',

@@ -27,7 +27,7 @@
 // the corpus is a claim and output is the witness.
 import { ALL_PLAYBOOKS, playbookFoodPlan } from '../playbooks/index';
 import { isGroundedItemQty, QTY_SOURCES } from './quantityProvenance';
-import { COST_SOURCES } from './costProvenance';
+import { COST_SOURCES, isGroundedCost } from './costProvenance';
 
 const key = (pb, p) => `${pb.type} | ${p.id}`;
 const sourcesOf = (prov) => (prov && typeof prov === 'object' && Array.isArray(prov.sources)
@@ -59,9 +59,22 @@ describe('the AUTHORED corpus — sources vs the predicate', () => {
     expect(LINES.length).toBeGreaterThan(400);
   });
 
-  test('RATCHET: no NEW authored line lists sources while failing isGroundedItemQty', () => {
+  // ── THE PREDICATE WAS THE WRONG AXIS (2026-08-14) ──────────────────────────
+  // This measured `!isGroundedItemQty` alone, which resolves sources only in the
+  // per-guest QUANTITY registry. Six of the seven pinned offenders are the
+  // channel-priced proteins and the seventh is p_crabs — every one of them cites
+  // real, dated COST sources. They were never "sourced but not grounding"; they
+  // were being graded against a registry their claim does not belong to.
+  //
+  // A line is an offender when it lists sources and fails BOTH axes — that is
+  // the defect this file exists to stop: a claim citing something no registry
+  // resolves. Each predicate still requires tier:'researched' and that EVERY id
+  // resolve, so nothing here lowers the bar.
+  const failsBothAxes = (prov) => !isGroundedItemQty(prov) && !isGroundedCost(prov);
+
+  test('RATCHET: no NEW authored line lists sources while resolving in NO registry', () => {
     const offenders = LINES
-      .filter(({ prov }) => sourcesOf(prov).length && !isGroundedItemQty(prov))
+      .filter(({ prov }) => sourcesOf(prov).length && failsBothAxes(prov))
       .map(({ pb, p }) => key(pb, p))
       .sort();
     // Named, not counted: a failure has to say WHICH line regressed.
@@ -69,7 +82,7 @@ describe('the AUTHORED corpus — sources vs the predicate', () => {
   });
 
   test('RATCHET: the count may shrink, never grow', () => {
-    const n = LINES.filter(({ prov }) => sourcesOf(prov).length && !isGroundedItemQty(prov)).length;
+    const n = LINES.filter(({ prov }) => sourcesOf(prov).length && failsBothAxes(prov)).length;
     expect(n).toBeLessThanOrEqual(KNOWN_SOURCED_NOT_GROUNDING.length);
   });
 });

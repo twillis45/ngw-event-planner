@@ -25,6 +25,9 @@
 // changes no readiness, and does not alter `isGroundedItemQty` — which it CALLS
 // rather than reimplements, so the two can never drift apart.
 import { isGroundedItemQty } from './quantityProvenance';
+// The cost axis of the same question — a purchase line's PRICE claim resolves
+// against COST_SOURCES, not the quantity registry. See directCitationEligible.
+import { isGroundedCost } from './costProvenance';
 
 // ─── Dimension 1: EVIDENCE BASIS ─────────────────────────────────────────────
 //
@@ -168,7 +171,26 @@ export function classifyClaim(prov) {
   // absent — an unrecognised basis is a gap in THIS table, not in the corpus.
   const offLadder = !basisDef;
 
-  const directCitationEligible = isGroundedItemQty(p.obj);
+  // ── EITHER AXIS, MATCHED TO THE CLAIM (2026-08-14) ─────────────────────────
+  // This was `isGroundedItemQty` alone, and that predicate resolves sources ONLY
+  // against QTY_SOURCES — the per-guest QUANTITY registry. But a purchase line
+  // makes two different claims, and the one hosts budget on is the PRICE. A
+  // `unitCostRange` cited to real, dated market sources registered in
+  // COST_SOURCES could never be citation-eligible, because it was being judged
+  // against the wrong registry.
+  //
+  // Measured while grounding the first wedding item: two named surveys (Zola
+  // 2026 Registry & Gifting, The Knot 2025 Real Weddings) backing a corrected
+  // favors range classified as **"Needs confirmation"** — the label meaning
+  // "claims research and cannot back it" — on the best-evidenced line in that
+  // file. That is worse than silence: it tells the host to doubt the one number
+  // somebody actually checked.
+  //
+  // Each predicate still demands `tier:'researched'` and that EVERY source id
+  // resolve in its own registry, so this widens the axis, not the bar. A cost
+  // claim is judged by the cost registry, a quantity claim by the quantity one,
+  // and a line citing something registered nowhere still fails both.
+  const directCitationEligible = isGroundedItemQty(p.obj) || isGroundedCost(p.obj);
 
   // Ordered so that the label always names the most INFORMATIVE true thing. Basis
   // beats verification: `cultural-tradition / established-consensus` reads as

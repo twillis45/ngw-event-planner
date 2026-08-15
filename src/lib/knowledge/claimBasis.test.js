@@ -6,6 +6,24 @@
 // schema.
 import { ALL_PLAYBOOKS } from '../playbooks/index';
 import { isGroundedItemQty } from './quantityProvenance';
+import { isGroundedCost } from './costProvenance';
+
+// ── THE BOUNDARY MOVED BY ONE AXIS, AND ONLY BY ONE (2026-08-14) ────────────
+// These tests exist to stop classification LAUNDERING an ungrounded claim into a
+// sourced one, and that property is unchanged: eligibility still requires
+// `tier:'researched'` AND that EVERY source id resolve in a real registry.
+//
+// What changed is which registry counts. A purchase line makes two claims, and
+// the one hosts budget on is the PRICE. `isGroundedItemQty` resolves ids only
+// against QTY_SOURCES, so a `unitCostRange` cited to dated market sources in
+// COST_SOURCES could never be citation-eligible — measured live while grounding
+// the first wedding item, two named surveys backing a corrected favors range
+// rendered as "Needs confirmation", the label meaning "claims research and
+// cannot back it".
+//
+// So the predicate is now (qty OR cost), each matched to its own registry, and
+// these tests assert THAT — with the anti-laundering teeth intact below.
+const citable = (prov) => isGroundedItemQty(prov) || isGroundedCost(prov);
 import {
   classifyClaim, basisDistribution, CLAIM_BASIS, CLAIM_VERIFICATION, HOST_LABELS,
 } from './claimBasis';
@@ -13,20 +31,34 @@ import {
 const allProvenances = () => ALL_PLAYBOOKS.flatMap((pb) => (pb.purchases || []).map((p) => p.provenance));
 
 describe('it does not weaken or duplicate the citation predicate', () => {
-  test('directCitationEligible IS isGroundedItemQty, on every corpus line', () => {
-    // Not "agrees with" — identical. The classifier calls the predicate rather than
-    // reimplementing it, so the two modules that disagreed in Phase A cannot drift.
+  test('directCitationEligible IS the grounding predicates, on every corpus line', () => {
+    // Not "agrees with" — identical. The classifier CALLS the predicates rather
+    // than reimplementing them, so the modules that disagreed in Phase A cannot
+    // drift apart again.
     let checked = 0;
     for (const prov of allProvenances()) {
-      expect(classifyClaim(prov).directCitationEligible).toBe(isGroundedItemQty(prov));
+      expect(classifyClaim(prov).directCitationEligible).toBe(citable(prov));
       checked += 1;
     }
     expect(checked).toBeGreaterThan(500);
   });
 
+  test('a line grounded in NEITHER registry is never citation-eligible', () => {
+    // The anti-laundering tooth, stated directly rather than implied by the
+    // identity above: widening the axis must not let anything through that no
+    // registry can resolve.
+    for (const prov of allProvenances()) {
+      if (!citable(prov)) expect(classifyClaim(prov).directCitationEligible).toBe(false);
+    }
+    // …and a fabricated source id resolves nowhere, whatever tier it claims.
+    const faked = { tier: 'researched', verificationStatus: 'cited', sources: ['no-such-source-2026'] };
+    expect(classifyClaim(faked).directCitationEligible).toBe(false);
+    expect(classifyClaim(faked).hostLabel).toBe(HOST_LABELS.NEEDS_CONFIRMATION);
+  });
+
   test('the citation count is unchanged by classification', () => {
     const d = basisDistribution(allProvenances());
-    const predicate = allProvenances().filter((p) => isGroundedItemQty(p)).length;
+    const predicate = allProvenances().filter((p) => citable(p)).length;
     expect(d.directlyCited).toBe(predicate);
     expect(d.directlyCited).toBeGreaterThan(0);
   });
@@ -145,12 +177,23 @@ describe('host labels are truthful', () => {
   });
 
   test('the corpus string forms are exactly what was measured', () => {
-    // Pins the 13/8 split. If someone authors a THIRD string shape, this fails rather
-    // than letting it fall silently into the baseline bucket.
+    // Was 21 = 13 "synthesized" + 8 free prose. The 8 PROSE ones are gone
+    // (2026-08-14): a sentence sitting in the provenance slot carried no tier,
+    // no verificationStatus and no sources, so it read as labelled to every
+    // instrument while being unlabelled in substance — the census even counted
+    // each sentence as its own distinct "status". They now carry the object
+    // form, with the sentence preserved as `note` and the honest status
+    // `synthesized`, which is what they always were.
+    //
+    // 13 remain, and they are the harmless shorthand: the bare word
+    // "synthesized", which names a real status even if it skips the object.
+    // THIS NUMBER MAY ONLY GO DOWN. If someone authors a new string shape, or
+    // re-introduces prose here, this fails rather than letting it fall silently
+    // into the baseline bucket.
     const strings = allProvenances().filter((p) => typeof p === 'string');
-    expect(strings.length).toBe(21);
+    expect(strings.length).toBe(13);
     expect(strings.filter((s) => s === 'synthesized').length).toBe(13);
-    expect(strings.filter((s) => s !== 'synthesized').length).toBe(8);
+    expect(strings.filter((s) => s !== 'synthesized').length).toBe(0);
     for (const s of strings) expect(classifyClaim(s).basis).toBeNull();
   });
 
@@ -184,9 +227,14 @@ describe('the honesty boundary holds', () => {
 
   test('classification NEVER upgrades a line into citation eligibility', () => {
     // The one thing that would make a line look better sourced than it is.
+    // Eligibility must still be EARNED by a grounding predicate — classification
+    // may not confer it. Widening to the cost axis (2026-08-14) did not soften
+    // this: `citable` is the two predicates, not a looser rule of its own, and
+    // each still demands tier:'researched' with every source id resolving in a
+    // real registry.
     for (const prov of allProvenances()) {
       const c = classifyClaim(prov);
-      if (c.directCitationEligible) expect(isGroundedItemQty(prov)).toBe(true);
+      if (c.directCitationEligible) expect(citable(prov)).toBe(true);
     }
   });
 

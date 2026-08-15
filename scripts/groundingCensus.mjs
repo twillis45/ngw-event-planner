@@ -1,15 +1,70 @@
 // Exact census against the REAL objects, not the source text. Imports every
 // playbook and walks it for anything carrying a unitCostRange.
-import { readdir } from 'node:fs/promises';
+import { readdir, mkdtemp, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// ─── IT REPORTED ZERO, AND ZERO IS A NUMBER (2026-08-14) ─────────────────────
+// This script used to `import()` each playbook directly. The data files are ESM
+// `.js` with no `"type":"module"` anywhere above them, so node loads them as
+// CommonJS and every single one throws `Unexpected token 'export'`. Each throw
+// printed a SKIP line and `continue`d — and then the summary printed:
+//
+//     priced items          0
+//     WITHOUT (need labelling)           0
+//
+// A reader sees a headline of zeroes. The SKIP lines scroll past above it. So
+// the instrument that measures THE binding constraint on this product — the one
+// number WHERE_WE_ARE tells you to watch — was reporting "nothing priced,
+// nothing unlabelled" for a corpus of 538 priced items, and it was reporting it
+// in the same shape a genuinely clean result would take.
+//
+// The files are bundled through esbuild first, which resolves their imports and
+// emits real ESM. That also closes the KNOWN LIMIT recorded at the bottom of
+// this file: crabFeast.js used to fail on an unresolved dependency and its ~16
+// priced items were silently missing from the totals.
+//
+// AND IT CAN NEVER REPORT A FALSE ZERO AGAIN: any file that fails to load is
+// now a hard exit, not a SKIP line. A census that cannot read its corpus must
+// refuse to print a number rather than print a comforting one.
 const DIR = process.argv[2];
 const files = (await readdir(DIR)).filter((f) => f.endsWith('.js')).sort();
+
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const ESBUILD = path.resolve(HERE, '../hostv2/node_modules/.bin/esbuild');
+if (!existsSync(ESBUILD)) {
+  console.error('CENSUS ABORTED — esbuild not found at ' + ESBUILD);
+  console.error('It lives in hostv2/node_modules; run `npm --prefix hostv2 install` first.');
+  process.exit(1);
+}
+const TMP = await mkdtemp(path.join(os.tmpdir(), 'ngw-census-'));
+const bundled = new Map();
+for (const f of files) {
+  const out = path.join(TMP, f.replace(/\.js$/, '.mjs'));
+  try {
+    execFileSync(ESBUILD, [path.resolve(DIR, f), '--bundle', '--format=esm', '--platform=neutral', '--log-level=error', '--outfile=' + out], { stdio: 'pipe' });
+    bundled.set(f, out);
+  } catch (e) {
+    console.error('CENSUS ABORTED — could not bundle ' + f);
+    console.error(String(e.stderr || e.message).slice(0, 400));
+    await rm(TMP, { recursive: true, force: true });
+    process.exit(1);
+  }
+}
+
 let priced = 0, labeled = 0, unlabeled = 0, inAlt = 0;
 const byStatus = {};
 const worst = [];
 for (const f of files) {
   let mod;
-  try { mod = await import(path.resolve(DIR, f)); } catch (e) { console.log('SKIP ' + f + ' — ' + e.message.slice(0, 80)); continue; }
+  try { mod = await import(bundled.get(f)); } catch (e) {
+    console.error('CENSUS ABORTED — could not load ' + f + ' — ' + e.message.slice(0, 200));
+    await rm(TMP, { recursive: true, force: true });
+    process.exit(1);
+  }
   let p = 0, u = 0;
   const seen = new Set();
   const walk = (node, underAlternatives) => {
@@ -42,6 +97,14 @@ console.log(`  WITH provenance.verificationStatus ${labeled}  ${JSON.stringify(b
 console.log(`  WITHOUT (need labelling)           ${unlabeled}`);
 console.log(`\nworst files:`);
 worst.sort((a, b) => b.u - a.u).slice(0, 10).forEach((r) => console.log(`  ${String(r.u).padStart(3)} unlabeled / ${String(r.p).padStart(3)} priced   ${r.f}`));
+// A census whose denominator is zero read the corpus and found nothing priced,
+// which for THIS corpus means it did not really read it. Refuse the number.
+if (!priced) {
+  console.error('\nCENSUS ABORTED — zero priced items across ' + files.length + ' files. That is not a result, it is a failure to read.');
+  await rm(TMP, { recursive: true, force: true });
+  process.exit(1);
+}
+await rm(TMP, { recursive: true, force: true });
 
 // ─── WHY THIS EXISTS ALONGSIDE groundingAudit.mjs ───────────────────────────
 // The audit counts REGEX HITS IN SOURCE TEXT. That is fast and it is wrong in
