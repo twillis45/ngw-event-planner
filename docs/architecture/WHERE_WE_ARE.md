@@ -1079,8 +1079,13 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 ## 3. The one number to watch
 
 ```
-GROUNDING COVERAGE -- 3.7% cited   (20 of 541 priced)   measured 2026-08-15
-  labelled 541 of 541 - wedding 7 of 7 - anniversary 5 of 18
+GROUNDING COVERAGE -- 4.4% cited (24 of 541)   measured 2026-08-15
+  BUT the number a HOST sees is different: 54 of 537 purchase lines read
+  "Directly sourced" (10%) - the label also turns on for `researched` lines
+  whose sources resolve. Full worklist: docs/audits/2026-08-15_GROUNDING_WORKLIST.md
+
+  206  spanning-unsourced lines  <- the worklist, ordered by playbook in the audit
+   54  cannot be cited at all    <- one provenance slot, two claims (see below)
 ```
 
 Mind the denominator: the figure that matters for host trust is `cited / PRICED`, not
@@ -1120,6 +1125,23 @@ real citation change what the work looks like:
    Corollary: when a channel prices in a DIFFERENT UNIT (a catered board is per person,
    not per pound), say so in `sufficientWhen` rather than stretching the band to swallow
    it. And watch units — an urn "cup" is 5 oz, not a 10-12 oz mug.
+
+1c. **54 LINES CANNOT BE CITED AT ALL, AND THAT IS A SCHEMA QUESTION.** A purchase line
+   makes TWO claims — how much to buy and what it costs — and has ONE `provenance` slot.
+   On 54 lines that slot already holds a legitimate QUANTITY claim (`~0.5 lb per guest`),
+   so citing the price would DELETE authored knowledge. Same two-axis problem as the
+   `directCitationEligible` fix, but in the data model rather than the predicate. Either a
+   line carries `provenance` + `costProvenance` separately (the pattern
+   `costFactorProvenance` already uses on decisions), or provenance becomes a list.
+   **Until that is decided the practical ceiling is 483, not 537.**
+
+1d. **NOT EVERYTHING LEFT IS GROUNDABLE.** Anniversary finished at 12 of 18 and the
+   remaining six were a CLASS, not a backlog: beer (403 from both sources), candles,
+   napkins, paper, cleaning supplies, A/V gear. Every item that could be grounded had a
+   real industry source (The Knot, Zola, the Charcuterie Association, bakery/florist
+   guides, rental catalogues); household commodities have none, and summing retail
+   listings into a "kit" price produces a decoration. **Say this before anyone reads the
+   coverage percentage as a target to drive to 100%.**
 2. **A price citation could not reach the host until 2026-08-14.** `directCitationEligible`
    resolved ids only against the QUANTITY registry, so a price cited to real market
    sources rendered "Needs confirmation". Fixed to (qty OR cost). Before adding citations
