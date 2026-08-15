@@ -77,14 +77,20 @@ const MUST_NOT_RESOLVE = [
 ];
 
 describe('1 — the source universe is what we think it is', () => {
-  // 129 since 2026-08-15 registered eleven more price sources for the rest of the
+  // 133 since 2026-08-15 also registered four for `anniversary` — cake and
+  // florals. Both were corrected for the same reason and it is worth naming:
+  // the item's own `where` lists two very different CHANNELS (grocery bakery vs
+  // custom bakery; Trader Joe's vs florist) and the authored band only covered
+  // one of them, so whichever channel the host picked, the number was wrong for
+  // half of them.
+  // (129 since 2026-08-15 registered eleven more price sources for the rest of the
   // wedding playbook — welcome bags, guest book, signage, the toast bottle, the
   // self-supplied bar and the day-of emergency kit. Wedding went 0 -> 7 of 7
   // priced items cited. Two of those six ranges were WRONG and four were already
   // right, which is the useful shape of this work: citation is a check, not a
   // rewrite. Each entry says whether the page was `(fetched)` or read as a
   // `(listing)` in search results, because those are different strengths of
-  // evidence and collapsing them is how a citation becomes a decoration.
+  // evidence and collapsing them is how a citation becomes a decoration.)
   // (118 since 2026-08-14 registered the two wedding-favor price sources in
   // COST_SOURCES — `zola-favors-2026` and `theknot-realweddings-2025`. First
   // items of the grounding pass, and they did not merely add a citation: the
@@ -100,11 +106,11 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 129 source identities — verified, not assumed', () => {
+  test('20 axes, 133 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(129);
-    expect(unionIds().size).toBe(129);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(133);
+    expect(unionIds().size).toBe(133);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

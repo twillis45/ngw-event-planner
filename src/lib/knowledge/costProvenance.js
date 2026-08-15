@@ -14,6 +14,36 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── ANNIVERSARY (registered 2026-08-15) ────────────────────────────────────
+  // Two of these corrected a band that was too NARROW rather than simply wrong,
+  // and both for the same reason: the item's own `where` lists two very different
+  // channels and the authored range only covered one of them. A cake bought at a
+  // grocery bakery and a cake bought at a custom bakery are not the same price,
+  // and neither is a Trader Joe's arrangement and a florist's.
+  'paperlust-weddingcake-2026': {
+    org: 'Paperlust, "How Much Does a Wedding Cake Cost? (2026 Guide)" (fetched)',
+    url: 'https://paperlust.co/blog/how-much-does-a-wedding-cake-cost/',
+    fetched: '2026-08-15',
+    claim: 'Per slice 2026: grocery-store bakery $1-5; standard custom bakery $3-8; designer/fondant and boutique studio $8-20+. Whole cakes: Costco full sheet $25-30 (~48 servings); Publix full sheet $80-95 (75-80 servings); Publix tiered $150-800. National average wedding cake ~$540 (The Knot Real Weddings), typical budgets $300-700.',
+  },
+  'retail-sheetcake-2026': {
+    org: 'Costco / Walmart / Publix bakery sheet-cake pricing (listing — figures read from 2026 price-guide search results)',
+    url: 'https://costcoguides.com/costco-bakery-menu-prices/',
+    fetched: '2026-08-15',
+    claim: 'Warehouse and supermarket sheet cakes 2026: Costco half-sheet $24.99 feeding ~48; Publix quarter sheet from ~$24 serving 20-30; Walmart quarter-sheet or 8-inch rounds $25-45. A single-tier rectangular sheet cake with a custom design spans $25-300 by size.',
+  },
+  'paperlust-centerpieces-2026': {
+    org: 'Paperlust, "Wedding Centerpieces: 50+ Ideas + Cost Breakdown (2026 Trends)" (fetched)',
+    url: 'https://paperlust.co/blog/wedding-centerpieces-2026/',
+    fetched: '2026-08-15',
+    claim: 'Per table 2026: DIY simple $20-50; DIY elevated $50-100; florist standard $75-150; florist premium $150-300; luxury installation $300-500+. Hidden costs: vessel rentals $8-25 per piece, delivery and setup often $200-500 per event.',
+  },
+  'traderjoes-flowers-2026': {
+    org: 'Trader Joe\'s flower-section price guides (The Kitchn, The Stem Edit) (listing — figures read from search results)',
+    url: 'https://thestemedit.com/trader-joes-flowers-price-a-complete-guide/',
+    fetched: '2026-08-15',
+    claim: 'Trader Joe\'s bouquets $3.99-19.99: basic bunches (alstroemeria, carnations, daisies) $3.99-4.99; roses/tulips/sunflowers $6.99-9.99; specialty (peonies, ranunculus, orchids) $8.99-12.99. A supermarket rose bouquet runs $12-20, against $40-100 for the same from a traditional florist; a DIY arrangement built from TJ bunches lands ~$30-40.',
+  },
   // ── WEDDING PLAYBOOK, remaining 6 priced items (registered 2026-08-15) ─────
   // The grounding pass continued through wedding's other purchases. Result worth
   // recording because it cuts both ways: TWO more ranges were wrong and FOUR were
