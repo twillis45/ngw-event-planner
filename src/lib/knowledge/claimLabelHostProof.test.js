@@ -12,6 +12,17 @@
 // move. Relabelling must never promote a line.
 import { ALL_PLAYBOOKS, playbookFoodPlan } from '../playbooks/index';
 import { isGroundedItemQty } from './quantityProvenance';
+import { isGroundedCost } from './costProvenance';
+
+// ── THE SAME AXIS FIX AS claimBasis (2026-08-15) ───────────────────────────
+// This file pins `Directly sourced` to the grounding predicate so relabelling can
+// never promote a row. That property is intact; what changed is that a purchase
+// line's PRICE claim resolves in COST_SOURCES, not the per-guest QUANTITY
+// registry, so the predicate is now both axes matched to the claim. Each still
+// demands tier:'researched' with every source id resolving in a real registry.
+// Wedding's 7 priced items were cited to dated market sources on 2026-08-15 and
+// are the rows that moved this count.
+const citable = (prov) => isGroundedItemQty(prov) || isGroundedCost(prov);
 import { classifyClaim, HOST_LABELS } from './claimBasis';
 
 const EVENT = (type) => ({ id: 'lbl', type, date: '2026-09-01', guestCount: 18 });
@@ -43,15 +54,15 @@ describe('relabelling promotes nothing', () => {
     // no wider. This is the test that would fail if classification ever upgraded a line.
     for (const r of allRows()) {
       const c = classifyClaim(r.provenance);
-      const wasSourced = isGroundedItemQty(r.provenance);
+      const wasSourced = citable(r.provenance);
       expect(c.hostLabel === HOST_LABELS.DIRECTLY_SOURCED).toBe(wasSourced);
       expect(c.directCitationEligible).toBe(wasSourced);
     }
   });
 
-  test('the count of directly-sourced rows is unchanged by the rewrite', () => {
+  test('the count of directly-sourced rows is exactly the predicate count', () => {
     const rows = allRows();
-    const byPredicate = rows.filter((r) => isGroundedItemQty(r.provenance)).length;
+    const byPredicate = rows.filter((r) => citable(r.provenance)).length;
     const byLabel = rows.filter((r) => classifyClaim(r.provenance).hostLabel === HOST_LABELS.DIRECTLY_SOURCED).length;
     expect(byLabel).toBe(byPredicate);
     expect(byPredicate).toBeGreaterThan(0);

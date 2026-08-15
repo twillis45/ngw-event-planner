@@ -14,6 +14,81 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── WEDDING PLAYBOOK, remaining 6 priced items (registered 2026-08-15) ─────
+  // The grounding pass continued through wedding's other purchases. Result worth
+  // recording because it cuts both ways: TWO more ranges were wrong and FOUR were
+  // already right. Citation is not a rubber stamp and it is not a rewrite — it is
+  // a check, and most of this corpus survives it.
+  //
+  // `(fetched)` means the page was retrieved and read. `(listing)` means the
+  // figures came from a search result set naming that source, which is weaker
+  // evidence and is labelled so nobody later mistakes one for the other.
+  'paperlust-welcomebags-2026': {
+    org: 'Paperlust, "Wedding Welcome Bag Ideas: The Complete Guide for 2026" (fetched)',
+    url: 'https://paperlust.co/blog/wedding-welcome-bag-ideas/',
+    fetched: '2026-08-15',
+    claim: 'US wedding welcome bags, 2026: "Most couples spend between $15 and $35 per bag." Tiers as published: under $15 thoughtful essentials; $15-30 curated mid-range; $30-60 elevated; $60+ luxury keepsake.',
+  },
+  'pacificgiftbox-welcomebags-2026': {
+    org: 'Pacific Gift Box Co., "How Much Do Wedding Welcome Bags Cost? A Real Budget Breakdown" (fetched)',
+    url: 'https://www.pacificgiftbox.com/blog/how-much-do-wedding-welcome-bags-cost-a-real-budget-breakdown',
+    fetched: '2026-08-15',
+    claim: 'Cost per bag "typically lands somewhere between $15 and $150+, depending on what is inside, who does the work, and how it gets delivered." DIY budget builds reach $15-25 per bag excluding assembly labour and hotel coordination. Assembled boxes start at $50 (welcome), $100 (grazing), $150 (luxury).',
+  },
+  'costhelper-guestbook-2026': {
+    org: 'CostHelper Weddings, "Cost of a Guest Book" (fetched)',
+    url: 'https://weddings.costhelper.com/guest-book.html',
+    fetched: '2026-08-15',
+    claim: 'US wedding guest books: inexpensive $25 or less; moderately priced $25-50; expensive $50-80. Signature photo frames $20-170. Shipping typically adds $7-9.',
+  },
+  'mixbook-guestbook-2026': {
+    org: 'Mixbook, "How Much Is a Wedding Guest Book?" (listing — figures read from search results, page not fetched)',
+    url: 'https://www.mixbook.com/inspiration/how-much-is-a-wedding-guest-book',
+    fetched: '2026-08-15',
+    claim: 'Traditional guest books $15-50 for basic models, $100+ for custom handcrafted; moderately priced $30-60 buy better paper and binding; luxury leather or gold foil $100-200.',
+  },
+  'printitmyway-signs-2026': {
+    org: 'PrintItMyWay, "Custom Wedding Sign Maker Online: Design Your Own Welcome Sign (2026)" (fetched)',
+    url: 'https://www.printitmyway.com/blog/custom-wedding-sign-maker-online-welcome-sign-2026',
+    fetched: '2026-08-15',
+    claim: 'US wedding signage 2026: welcome signs $75-145 (acrylic 24x36 $95-145; wood $75-115); seating charts $95-185 (acrylic $125-185). Stated average order value $48-225 depending on size and material.',
+  },
+  'weddingsigns-materials-2026': {
+    org: 'Truly Engaging / Vistaprint / Walmart wedding-sign listings (listing — material bands read from search results)',
+    url: 'https://www.trulyengaging.com/shop/wedding-signs',
+    fetched: '2026-08-15',
+    claim: 'By material: foam board $12-25 (budget); wood $22-48; acrylic $28-65; metal $32-72. Budget welcome signs and seating charts start around $13.99, with mass-retail options under $10.',
+  },
+  'costhelper-champagne-2026': {
+    org: 'CostHelper Weddings, "Cost of a Champagne Toast" (fetched)',
+    url: 'https://weddings.costhelper.com/champagne-toast.html',
+    fetched: '2026-08-15',
+    claim: 'Per-bottle tiers for a wedding toast: budget ~$5 (California sparkling); mid-range ~$14 (Spanish cava); premium $40+ (French champagne). Per person $1.50 low / $3 medium / $7+ high. Caterers may add a corking fee of $1+ per bottle; flute rental ~$0.50-1.00 each.',
+  },
+  'sparklingwine-band-2026': {
+    org: 'The Wedding Wines / High Mountain Weddings toast guides (listing — bands read from search results)',
+    url: 'https://www.theweddingwines.com/guides/best-budget-champagne-for-a-wedding-toast',
+    fetched: '2026-08-15',
+    claim: 'Sparkling wine averages $15-25 per bottle; budget sparkling (e.g. Chandon Brut Classic) $10-15. True Champagne from the Champagne region runs $30-500 retail, with entry options $30-40.',
+  },
+  'selfsupplied-bar-2026': {
+    org: 'Fash "2026 Open Bar Wedding Cost" and eventplanning.com "Wedding Alcohol Cost & Bar Budget Calculator (2026)" (listing — figures read from search results)',
+    url: 'https://fash.com/costs/open-bar-wedding-cost',
+    fetched: '2026-08-15',
+    claim: 'SELF-SUPPLIED alcohol runs $15-30 per person, against $45-100 per person for a venue open bar. Planning norm ~5-6 drinks per guest over ~5 hours at roughly $5 per drink. Venues that allow BYO almost always charge corkage: $1.50-3 per beer, $15-25 per bottle of wine or spirits.',
+  },
+  'myweddingkit-emergency-2026': {
+    org: 'MyWeddingKit, "Wedding Day Emergency Kit: 15 Things You Need in Your Bag (2026)" (fetched)',
+    url: 'https://myweddingkit.co/blog/wedding-day-emergency-kit',
+    fetched: '2026-08-15',
+    claim: '"Total cost for a well-stocked kit runs $25 to $40 when you build it yourself from scratch"; individual drugstore items under $3 each. Pre-made kits sold online typically $60-100.',
+  },
+  'amazon-emergencykit-2026': {
+    org: 'Amazon marketplace listings for bridal/wedding emergency kits (listing — price bands and examples read from search results)',
+    url: 'https://www.amazon.com/bridal-emergency-kit/s?k=bridal+emergency+kit',
+    fetched: '2026-08-15',
+    claim: 'Pre-assembled bridal emergency kits retail in bands up to $10, $10-15, $15-25, $25-35, and $35+. Observed examples: a 30+ piece kit at $21.84 and another at $13.19 (both after a 5% coupon).',
+  },
   // ── WEDDING FAVORS (registered 2026-08-14) ─────────────────────────────────
   // The first item grounded under the "start grounding" pass, and it did not
   // merely gain a source — it changed the NUMBER. The corpus carried
