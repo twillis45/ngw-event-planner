@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-14 (latest) - venue-reader ruling BUILT in full, including the spend guard; the topAction whitelist is gated at last. Engine 3258/3258, e2e 440 passed / 58 skipped / 0 failed.
+**Last updated:** 2026-08-14 (latest) - grounding started: the census was reporting a FALSE ZERO and is fixed; labelling is complete; the first citation moved a price and exposed a missing wire. Engine 5724 passed, e2e 440 passed / 0 failed.
 
 ---
 
@@ -1068,16 +1068,39 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 ## 3. The one number to watch
 
 ```
-GROUNDING COVERAGE -- 4% cited   (8 cited - 40 consensus - 131 synthesized - 541 priced)
+GROUNDING COVERAGE -- 1.7% cited   (9 of 541 priced)   measured 2026-08-14
+  9 cited - 40 consensus - 64 researched - 511 synthesized - 1 partial
+  labelled 541 of 541.  SETTLED (cited + consensus) 9.1%
 ```
 
-Mind the denominator. 4% is `cited / labeled`. The figure that matters for host trust is
-**8 of 541 priced items cited = 1.5%**, and **73% of priced items carry no provenance
-block at all**. 34 of 39 playbooks are 0% cited; `wedding` has zero provenance on any of
-its 7 priced items; one `lastVerified` stamp exists in the whole canon.
+Mind the denominator: the figure that matters for host trust is `cited / PRICED`, not
+`cited / labelled`. Both are printed by `npm run grounding:audit`.
 
-**This is a SUPPLY problem, not a carriage problem, and it is the binding constraint.**
-Perfect delivery of an absent citation is still "nobody researched this".
+> **THE INSTRUMENT WAS REPORTING ZERO (fixed 2026-08-14, `b3d39154`).** Every one of the
+> 39 corpus files threw `Unexpected token 'export'` inside `grounding:census`, each throw
+> printed a SKIP line and continued, and the summary printed `priced items 0 / WITHOUT
+> (need labelling) 0` — zeroes in the same shape a clean result takes. It bundles through
+> esbuild now and **hard-exits** on an unreadable file or a zero denominator. Do not trust
+> a grounding number produced before that commit.
+
+**TWO CLAIMS ABOVE THIS LINE WERE FALSE and are corrected here.** "73% of priced items
+carry no provenance block at all" — labelling is **complete**, 541 of 541. And `wedding`
+did not have "zero provenance on any of its 7 priced items"; it had 8 synthesized blocks
+and now has one cited. The remaining gap is CITATION, which is a different and smaller
+job than the one this section used to describe.
+
+**It is still a SUPPLY problem, and still the binding constraint.** Perfect delivery of
+an absent citation is still "nobody researched this". But two things learned on the first
+real citation change what the work looks like:
+
+1. **Citing can move the NUMBER, not just its provenance.** Wedding favors carried
+   `[2, 8]`, matching editorial guidance that names no survey; two named surveys put the
+   band at `[1, 5]`. Expect the corpus to be wrong, not merely unsourced.
+2. **A price citation could not reach the host until 2026-08-14.** `directCitationEligible`
+   resolved ids only against the QUANTITY registry, so a price cited to real market
+   sources rendered "Needs confirmation". Fixed to (qty OR cost). Before adding citations
+   in bulk, confirm the axis you are citing has a render path — this is the Wire the
+   Outlet law, and grounding walked straight into it.
 
 ---
 
@@ -1186,9 +1209,13 @@ binding constraint on the product, and none of the viewport work touched it.
    and `--sheen`, then put the number in the label where it is already in scope.
    Deferred to its own audit: classifying the record-only surfaces tap-to-result (only 2 of
    277 labels say `Mark`/`Record`, which is not plausible -- but it is a flag, not a finding).
-4. **Label the 397 unlabeled priced items**, then point the research factory at the 34
-   zero-cited playbooks (`wedding` first). Unchanged from 2026-07-31 and still the
-   binding constraint.
+4. **DONE - labelling is complete** (541 of 541, verified by the repaired census
+   2026-08-14). What remains is CITATION: point the research factory at the zero-cited
+   playbooks, `wedding` first (1 of 7 cited now). Still the binding constraint.
+   Per item the pricing policy demands >=2 corroborating sources, a `claim`, a
+   `sufficientWhen`, and a `lastVerified` stamp - and the source ids must resolve in a
+   real registry (`COST_SOURCES` for prices, `QTY_SOURCES` for per-guest quantities) or
+   the claim fails closed and reads "Needs confirmation" to the host.
 5. **Activity content for the 4 destinations** (Santa Fe, Tulum, Deep Creek, one
    DestWed locale). Now the ONLY thing standing between the multi-day arc and a real
    programme -- the machinery is finished and honest about the hole.
