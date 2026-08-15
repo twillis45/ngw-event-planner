@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding: census false-zero fixed, labelling complete, **wedding 7 of 7 cited** (3 prices wrong, 4 right). Coverage 2.8%. Engine 5724 passed, e2e 440 passed / 0 failed.
+**Last updated:** 2026-08-15 (latest) - grounding at 3.3% (wedding 7/7, anniversary 3/18); e2e matrix 18.6m -> 13.9m with no coverage lost. Engine 5724 passed, e2e 325 passed / 0 failed / 0 flaky.
 
 ---
 
@@ -979,6 +979,17 @@ would have caught it. Everything from "LATEST (after the fold-handle...)" down t
 
 **At `bc0429fd` (2026-08-07): Jest 5640 passed / 1 skipped - 379 suites.** hostv2 build
 + `check-parity` green.
+
+> **THE MATRIX IS 13.9m NOW, NOT 18.6m (`c1a5aca6`, 2026-08-15).** Two changes, no
+> coverage lost. (1) Specs that pin their own geometry run in ONE project instead of six —
+> 498 slots to 368. The rule is PER-TEST, not per-file: `lodgingCockpit` has 11 tests and
+> pins in one of them, so it still runs everywhere. (2) The five-spec boot beat
+> (`goto` + `waitForTimeout(1600)` + a `.splash` detach wait + `300`) is now a real
+> state-wait in `e2e/fixtures.mjs`. The detach wait never worked — it resolves immediately
+> when the splash has not mounted yet, which right after `goto` is the normal case, so the
+> sleeps were governing the boot and papering over a race. That is the flake source the
+> `retries: 1` note in playwright.config.mjs names. STILL OPEN: the 900ms settle beat in
+> boardMatrix's 42.5s loop, and whether that spec needs all six projects (a coverage call).
 
 **Playwright matrix, re-run at `c2fb53b4` after every change: 325 passed / 18 failed /
 35 skipped (16.4m).** Baseline earlier the same session was 321 / 21 / 36. So eleven
