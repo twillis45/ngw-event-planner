@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). PROVENANCE SPLIT INTO TWO SLOTS (`c16b5d41`, `d2dc77a9`). Engine 5741 passed / 392 suites, e2e 331 passed / 0 failed / 0 flaky.
+**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). PROVENANCE SPLIT INTO TWO SLOTS (`c16b5d41`, `d2dc77a9`). Engine 5750 passed / 393 suites, e2e 331 passed / 0 failed / 0 flaky.
 
 > ### THE SOURCED BADGE WAS ANSWERING FOR AN AXIS IT NEVER CHECKED (2026-08-15)
 >
@@ -38,11 +38,21 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 > only BY ACCIDENT before (`tier` is single-valued, so a cultural slot could not
 > satisfy `isGroundedCost`); the second block removed that accident.
 >
-> **STILL OPEN:** the admin authoring path (`governedFieldTypes`, `missionControl`,
-> `knowledgeInventory`) is not cost-aware - the slot is engine- and host-complete
-> but NOT authorable through Admin. Override records carry no schema marker. Six
-> cultural slots refused by name: p_watermelon, p_libation, p_unitycup, p_reddrink,
-> p_veganwat, p_zawadi.
+> **CLOSED 2026-08-16 (`0dbd2e96`):** the admin authoring path is cost-aware.
+> `governedFieldTypes` keys on the path SUFFIX, so `p_x.costProvenance` returned
+> null and the field was not merely uneditable but UNVALIDATED on publish (the
+> unknown-paths-pass branch). `missionControl` showed the QUANTITY claim's sources
+> when reviewing a price. `knowledgeInventory` asked `isGroundedItemQty` alone, so
+> cost-cited lines read as outstanding work. All three failed SILENTLY. Override
+> records now carry `schemaVersion`; absent means v1, nothing migrated or rejected.
+>
+> Six cultural slots refused by name: p_watermelon, p_libation, p_unitycup,
+> p_reddrink, p_veganwat, p_zawadi.
+>
+> **STILL OPEN:** the corpus migration itself. Only ONE line (`bacheloretteParty
+> p_apps`) has been moved to the new slot as a proof; ~109 blocked lines remain,
+> and every cost citation in the corpus still lives in the shared `provenance`
+> slot. Both paths are read, so this is a backlog, not a defect.
 
 > ### THE TAP SWEEP WAS SIGNING OFF CONTROLS THAT WERE DEAD TO TOUCH (2026-08-15)
 >
