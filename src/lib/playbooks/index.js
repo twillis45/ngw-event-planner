@@ -704,7 +704,11 @@ function taskPhaseLabel(offset) {
 // ONE list. lodgingIntel's kitchen answers derive from this rather than
 // restating it -- a reworded option here must not silently produce a button
 // that writes a value `lodgingKitchen` no longer recognises.
-export const DEST_LODGING_OPTIONS = ['A room block, no commitment', 'A room block I guarantee fills', 'Guests book on their own', 'A host-arranged Airbnb'];
+// Re-exported so every existing importer keeps working and there is still ONE
+// definition. The array itself moved to a leaf module because importing it
+// from here put the whole corpus on the guest's critical path.
+export { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
+import { DEST_LODGING_OPTIONS } from '../destLodgingOptions';
 
 const DESTINATION_DECISIONS = [
   // ── weight ADDED 2026-08-06 (board ruling D) ─────────────────────────────

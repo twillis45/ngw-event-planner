@@ -32,7 +32,10 @@ import { BOOKING_RISK_SOURCES } from './knowledge/bookingRiskContext';
 import { venueFor } from './venueFor';
 import { isAllowedMedia } from './lodgingBookmarklet';
 import { googleTravelTs } from './googleTravelTs';
-import { DEST_LODGING_OPTIONS } from './playbooks';
+// LEAF IMPORT ON PURPOSE (2026-08-16). Importing this from './playbooks'
+// dragged the entire 1.4MB playbook corpus onto the guest invite path,
+// because InviteV2 imports this module. See destLodgingOptions.js.
+import { DEST_LODGING_OPTIONS } from './destLodgingOptions';
 
 // ─── A PHOTO VIEWER IS NOT A DIFFERENT HOUSE ────────────────────────────────
 // Opening a listing's gallery keeps the listing URL and swaps the title, so a
