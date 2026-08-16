@@ -169,6 +169,29 @@ test('the home surface with the food decision UNSETTLED clears it too', async ({
   expect(surprising(await sweep(page))).toEqual([]);
 });
 
+test('the account panel clears it — a surface this sweep had never measured', async ({ page }) => {
+  // The 2026-08-15 audit found the account panel was simply not covered: the
+  // sweep walked the home surface, the section directory and one sheet, and
+  // nothing else. An unmeasured surface reads exactly like a clean one in the
+  // report, which is the same false-zero shape as the state gap above.
+  //
+  // Reached the way a PHONE reaches it. The `.wm-you` rail control carrying
+  // aria-label "You and your account" exists in the DOM at 393px but is not
+  // visible — it belongs to the desktop rail. On mobile the route is the
+  // eyebrow, then a directory row, and that row is labelled "You & settings".
+  // Same destination, two names; the naming is logged, not fixed here.
+  await boot(page);
+  await page.locator('.ev-eyebrow').first().click();
+  await page.waitForTimeout(1500);
+  await page.locator('.navrow', { hasText: /^You &/ }).first().click();
+  await expect(page.locator('#sheet-title')).toBeVisible();
+  // Premise: prove the panel actually opened before believing an empty sweep.
+  await expect(page.locator('#sheet-title')).toHaveText(/account|settings/i);
+  // ...and that there were controls on it to measure. Clean must mean measured.
+  expect(await page.locator('.sheet button, .sheet a').count()).toBeGreaterThan(2);
+  expect(surprising(await sweep(page))).toEqual([]);
+});
+
 test('the section directory clears it too — including the phase segments', async ({ page }) => {
   await boot(page);
   // The dock is `dock-retired` (0x0 buttons); mobile navigates by the eyebrow.
