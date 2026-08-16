@@ -8,29 +8,28 @@ counting statuses in source text. Method note at the bottom.
 
 ## The four numbers
 
+Re-measured after the 2026-08-15 grounding push (`013a93f6` .. `1b831bde`):
+
 ```
 537   priced lines in `purchases`
- 54   already read "Directly sourced" to a host          10%
-215   spanning a discount and a premium channel, NOT sourced
+121   read "Directly sourced" to a host          22.5%   (was 54)
+183   spanning a discount and a premium channel, NOT sourced
       of those:
-       16   slot holds a CULTURAL claim    <- must not be overwritten
-       24   slot holds a QUANTITY claim    <- must not be overwritten
-      175   slot is free                   <- THE ACTUAL WORKLIST
+       16   slot holds a CULTURAL claim    protected
+       42   slot holds a QUANTITY claim    protected
+      125   slot is free - but:
+             42   multi-component KIT        ungroundable, shape 1
+             10   home-cooked BY WEIGHT      ungroundable, shape 2
+             73   everything else            <- the real remainder
 ```
 
-> **CORRECTION, same day.** The first version of this audit gave the worklist as
-> **206** and a blocker count of 54. Both were wrong in the same direction — too
-> optimistic about what can be cited. Two fixes: the premium-channel vocabulary was
-> missing `black-owned`, `seafood` and `fish` (so the span count rose 206 -> 215), and
-> more importantly the blocker test only looked for QUANTITY claims. It missed the 16
-> lines whose provenance slot holds a **cultural** claim, which must not be overwritten
-> for a different and stronger reason. **The number to plan against is 175, not 206.**
+**QUOTE 22.5%, NOT 17.9%.** `grounding:audit` counts `verificationStatus === 'cited'`
+and reports 17.9%. The host label also turns on for `researched` lines whose sources
+resolve in a real registry, so what a HOST actually sees is 121 of 537. Both are true;
+only one describes the product.
 
-**"Directly sourced" is 10%, not the 4.4% the audit reports as `cited`.** Both are
-true and they measure different things: `grounding:audit` counts
-`verificationStatus === 'cited'`, while the host label also turns on for
-`researched` lines whose sources resolve in a real registry. The number that
-describes what a HOST sees is 54 of 537.
+**Of the 73 remaining, perhaps 25-30 are realistically groundable** - desserts, beer,
+partial tableware, buffet trays. The rest are the no-source commodity class.
 
 ---
 
@@ -106,6 +105,26 @@ corpus-wide ceiling is below 537 by more than these 40.
 
 ---
 
+## Three shapes of ungroundable, all found by trying
+
+1. **NO PUBLISHED SOURCE.** Candles, napkins, cleaning supplies, A/V gear. Beer returns
+   403 from both candidate sources. Evidence is scattered retail listings; summing them
+   produces a decoration.
+2. **MULTI-COMPONENT KIT (42 lines).** Nobody sells a "cleanup kit" or a "signage kit",
+   so any band is a SUM of separately-priced parts. Where the components are genuinely
+   priced this is still citable, but only at `confidence: 'low'` with the sum declared -
+   which is exactly how the cleanup and signage families were handled.
+3. **HOME-COOKED BY FINISHED WEIGHT (10 lines).** The sharpest of the three, because it
+   has an authoritative source that does not fit. The corpus prices INGREDIENTS to cook
+   at home: `crabFeast p_sides` is "Cabbage/carrot for slaw, potatoes for salad";
+   `theCookout p_potato_salad` is "Potato salad ingredients". USDA ERS prices raw
+   commodities individually ($0.31/lb potatoes, $0.32/lb watermelon) and publishes
+   nothing for "the ingredients for coleslaw per finished pound". Citing the USDA range
+   there would be a decoration WITH A GOVERNMENT SOURCE ATTACHED - the most convincing
+   kind, and the worst.
+
+---
+
 ## The class boundary: not everything left is groundable
 
 Anniversary stopped at 12 of 18 sourced, and the remaining six were not a
@@ -125,6 +144,26 @@ Summing four listings into a "kit" price produces a decoration, not a citation.
 So the ceiling is lower again than 483. **Event-industry items are groundable;
 household commodities largely are not**, and that should be stated before anyone
 reads the coverage percentage as a target to be driven to 100%.
+
+---
+
+## What made this fast, and what it cost
+
+**Batch by SOURCE FAMILY, not by playbook.** Research a family once, apply it everywhere
+it legitimately fits, in one pass. That took the rate from ~4 items an hour to 32 in a
+single pass, and no verification was dropped for it - the engine suite still runs per
+batch, every touched file is parse-checked, and the e2e matrix still runs on the built
+bundle before any push.
+
+**The applier enforces what was learned rather than trusting memory.** It refuses any
+slot already holding a `claim`, preserves an existing `note`, rejects apostrophes in
+authored text, refuses to write a double-escape, cross-checks `confidence` against the
+prose, and supports a CONFIRMATION - a citation where the band does not move, which is
+the common case rather than the edge.
+
+Two of those rules exist because the tool caught what scanning missed:
+`retirementParty p_wine` and `housewarming p_cleanup` both read as free to a
+700-character window scan and hold real quantity claims under brace-matching.
 
 ---
 

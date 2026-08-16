@@ -4,7 +4,7 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding at 3.3% (wedding 7/7, anniversary 3/18); e2e matrix 18.6m -> 13.9m with no coverage lost. Engine 5724 passed, e2e 325 passed / 0 failed / 0 flaky.
+**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Engine 5727 passed, e2e 325 passed / 0 failed.
 
 ---
 
@@ -1079,7 +1079,8 @@ PATH=/usr/local/opt/node@20/bin:$PATH                       # Node 20 required
 ## 3. The one number to watch
 
 ```
-GROUNDING COVERAGE -- 4.4% cited (24 of 541)   measured 2026-08-15
+GROUNDING COVERAGE -- 17.9% cited (97 of 541)   measured 2026-08-15
+  HOST-VISIBLE: 121 of 537 purchase lines read "Directly sourced" = 22.5%
   BUT the number a HOST sees is different: 54 of 537 purchase lines read
   "Directly sourced" (10%) - the label also turns on for `researched` lines
   whose sources resolve. Full worklist: docs/audits/2026-08-15_GROUNDING_WORKLIST.md
