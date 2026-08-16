@@ -4,7 +4,45 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). Engine 5727 passed, e2e 330 passed / 0 failed / 0 flaky.
+**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). PROVENANCE SPLIT INTO TWO SLOTS (`c16b5d41`, `d2dc77a9`). Engine 5741 passed / 392 suites, e2e 331 passed / 0 failed / 0 flaky.
+
+> ### THE SOURCED BADGE WAS ANSWERING FOR AN AXIS IT NEVER CHECKED (2026-08-15)
+>
+> A purchase line makes TWO claims - how much to buy, and what it costs - and had
+> ONE `provenance` slot. Measured: **63 food-plan rows rendered a sourced badge off
+> a COST citation, 45 off a QUANTITY one, and ZERO cited both.** Every one said the
+> same word, "Directly sourced", directly beneath the quantity rationale
+> ("1/2 lb/guest x 15 guests") in identical styling. On 63 rows the badge vouched
+> for the price while the amount above it was a guess.
+>
+> Now `Price directly sourced` / `Amount directly sourced`, the unqualified label
+> reserved for lines cited on both axes. Same bar, stated at true scope.
+>
+> **Two more layers of the 2026-08-14 axis bug were still live**, both fixed:
+> `axisForField` routed `unitCostRange`/`priceLadder` to the QUANTITY registry (so
+> a correct cost source on a price field was reported `wrongAxis` and the picker
+> offered the 5-entry quantity list), and `adminTruth` computed
+> `directCitationEligible` from `isGroundedItemQty` alone - a table whose purpose
+> is catching host/admin drift WAS the drift. The classifier was fixed in August;
+> the authoring path was left pointing the wrong way.
+>
+> **Board ruled Design A** (a separate `costProvenance` block), unanimous. Additive:
+> the corpus had zero, the second argument is optional, so nothing reclassified.
+> A beat B on the OVERLAY path - `effectiveValue` matches field paths by exact
+> string and replaces whole values, so under a list an override published against
+> `<id>.provenance` would serve a single object into an array-typed field and
+> degrade to "Board-authored baseline" on events already in the field. Separate
+> paths make old overrides inert.
+>
+> **A price never outranks a cultural basis**, now explicit and red-proved. It held
+> only BY ACCIDENT before (`tier` is single-valued, so a cultural slot could not
+> satisfy `isGroundedCost`); the second block removed that accident.
+>
+> **STILL OPEN:** the admin authoring path (`governedFieldTypes`, `missionControl`,
+> `knowledgeInventory`) is not cost-aware - the slot is engine- and host-complete
+> but NOT authorable through Admin. Override records carry no schema marker. Six
+> cultural slots refused by name: p_watermelon, p_libation, p_unitycup, p_reddrink,
+> p_veganwat, p_zawadi.
 
 > ### THE TAP SWEEP WAS SIGNING OFF CONTROLS THAT WERE DEAD TO TOUCH (2026-08-15)
 >
