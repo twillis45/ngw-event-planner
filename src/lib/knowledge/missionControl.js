@@ -29,7 +29,19 @@ function getFieldProvenance(pb, fieldPath) {
   const purchaseIdMatch = fieldPath.match(/^([^.[]+)\./);
   if (purchaseIdMatch) {
     const p = (pb.purchases || []).find((x) => x.id === purchaseIdMatch[1]);
-    return p?.provenance || null;
+    if (!p) return null;
+    // A COST FIELD SHOWS THE COST BLOCK (2026-08-16). The comment above this
+    // function used to say `'crabLegs.unitCostRange' -> purchase.provenance`, and
+    // that was the only block there was. Now a price field has its own, so an
+    // operator reviewing `unitCostRange` was being shown the QUANTITY claim's
+    // sources and asked to judge a price against them.
+    //
+    // Falls back to the shared slot, because that is where every cost citation in
+    // the corpus still lives — the migration moves them line by line.
+    if (/\.(unitCostRange|priceLadder|costProvenance)$/.test(fieldPath)) {
+      return p.costProvenance || p.provenance || null;
+    }
+    return p.provenance || null;
   }
   return null;
 }

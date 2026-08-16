@@ -22,6 +22,31 @@ export function readAuthored(pb, fieldPath) {
   return parts.reduce((o, k) => (o == null ? undefined : o[k]), pb);
 }
 
+// ─── RECORDS SAY WHICH SHAPE THEY WERE WRITTEN IN (2026-08-16) ──────────────
+//
+// An override is `{id, assetId, fieldPath, value, provenance, kcrId, versionId,
+// at}` and carried NO schema version. That was survivable while there was exactly
+// one provenance-shaped field path. There are now two — `<id>.provenance` and
+// `<id>.costProvenance` — and `effectiveValue` matches field paths by exact string
+// and replaces whole values with no merge and no shape check.
+//
+// So a record already sitting in a browser's localStorage is indistinguishable at
+// read time from one written today, and the only way to tell what shape its
+// `value` holds is to sniff the value itself at every read site. Stamping the
+// version costs one field and makes that a lookup instead of a guess.
+//
+// SCHEMA_V1 is "before the cost slot existed": records where a provenance-shaped
+// path could only ever mean the quantity block. Nothing is migrated and nothing is
+// rejected for lacking it — an absent version simply MEANS v1, which is true by
+// construction, since every record written before today was written under it.
+export const OVERRIDE_SCHEMA_VERSION = 2;
+
+/** The schema an override record was written under. Absent means v1. */
+export function overrideSchemaVersion(ovr) {
+  const v = ovr && ovr.schemaVersion;
+  return Number.isInteger(v) && v > 0 ? v : 1;
+}
+
 // A published KCR (status 'published', with a proposal) becomes an override record.
 export function overrideFromPublishedKCR(kcr) {
   if (!kcr || kcr.status !== 'published' || !kcr.proposal) return null;
@@ -32,6 +57,7 @@ export function overrideFromPublishedKCR(kcr) {
     provenance: kcr.proposal.newProvenance || null,
     kcrId: kcr.id, versionId: kcr.publishedVersion || null,
     at: kcr.createdAt || null,
+    schemaVersion: OVERRIDE_SCHEMA_VERSION,
   };
 }
 

@@ -27,6 +27,7 @@
 //
 // PURE: no I/O, no storage, no UI.
 import { isGroundedItemQty } from './quantityProvenance';
+import { isGroundedCost } from './costProvenance';
 import { governableFieldsFor } from './knowledgeAcquisition';
 import { fieldOwnership } from './governedOwnership';
 
@@ -70,7 +71,16 @@ export function lineState(assetId, purchase, publishedKeys, governedProvenance =
 
   // 1. DIRECTLY CITED — the host-facing predicate, not a separate notion of
   //    "researched", and NOT a claim about whether the line has an intellectual basis.
-  if (isGroundedItemQty(prov)) return 'directly-cited';
+  // EITHER AXIS COUNTS AS CITED (2026-08-16). This asked the QUANTITY predicate
+  // alone, so a line whose PRICE is cited to registered cost sources — which a host
+  // sees badged as "Price directly sourced" — was reported here as not directly
+  // cited, and fell through to `reviewed` or `ambiguous`. The inventory was doing
+  // the exact thing its own comment above says this programme exists to prevent:
+  // reporting something other than what the runtime serves.
+  //
+  // Reads the cost block first and the shared slot second, matching classifyClaim,
+  // so lines report the same way before and after they migrate.
+  if (isGroundedItemQty(prov) || isGroundedCost(purchase.costProvenance) || isGroundedCost(prov)) return 'directly-cited';
 
   // 2. REVIEWED — governance has published something on this line. It went through the
   //    chain; it just does not ground (a value correction with no provenance, say).

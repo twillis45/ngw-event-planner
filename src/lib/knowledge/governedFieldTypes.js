@@ -29,6 +29,74 @@ const SANE_COST_MAX = 1000000;
 
 const num = (v) => (typeof v === 'number' && Number.isFinite(v));
 
+// The provenance descriptor, named so the cost block can share it verbatim.
+const PROVENANCE_TYPE = {
+    type: 'provenance',
+    label: 'Provenance',
+    hint: 'Where this claim comes from. A source and a note are required.',
+    format: (v) => (v && typeof v === 'object'
+      ? { sources: (v.sources || []).join(', '), note: v.note || '', confidence: v.confidence || 'medium', tier: v.tier || 'researched' }
+      // Legacy string provenance (21 in the corpus) surfaces as its note so it can
+      // be upgraded to a structured block rather than silently discarded.
+      : { sources: '', note: typeof v === 'string' ? v : '', confidence: 'medium', tier: 'researched' }),
+    parse: (raw) => {
+      const sources = String((raw && raw.sources) || '').split(',').map((s) => s.trim()).filter(Boolean);
+      const note = String((raw && raw.note) || '').trim();
+      const confidence = String((raw && raw.confidence) || '').trim();
+      if (!sources.length) return { ok: false, error: 'At least one source id is required.' };
+      if (!note) return { ok: false, error: 'A note is required — a source without a claim is not provenance.' };
+      if (!CONFIDENCE_LEVELS.includes(confidence)) {
+        return { ok: false, error: `Confidence must be one of ${CONFIDENCE_LEVELS.join(' | ')}.` };
+      }
+      return {
+        ok: true,
+        value: {
+          tier: String((raw && raw.tier) || 'researched'),
+          confidence,
+          verificationStatus: 'researched',
+          sources,
+          note,
+        },
+      };
+    },
+    // TYPE SAFETY (publish gate). Deliberately narrower than the editor's rules.
+    // Requiring a source and a note here felt right and was wrong: it is EDITORIAL
+    // completeness, not schema safety, and enforcing it at publish would reject
+    // legitimate historical provenance that predates the convention. The gate's job
+    // is "will this break the engine", not "is this well written".
+    // SCOPE OF THE PUBLISH GATE, stated plainly because I got it wrong twice.
+    //
+    // The harm this gate exists to stop is a NUMBER that resolves to NaN in a
+    // host's shopping list. `qtyPerGuest: "banana"` sizes a real purchase; that
+    // must never publish. Provenance is metadata: a malformed block degrades the
+    // "Sourced -" line to nothing, which is ugly and honest, not corrupting.
+    //
+    // So the gate is strict where the blast radius is a host's numbers and
+    // permissive where it is a caption. Editorial quality on provenance is the
+    // composer's job (validateForEditor), not the publish gate's — enforcing it
+    // here also rejected legitimate historical records that predate the shape.
+    validate: (v) => (v == null ? ['Provenance cannot be null.'] : []),
+    // EDITORIAL completeness (composer only). A human authoring a NEW correction
+    // must name a source and state a claim; history is held to the gate above.
+    validateForEditor: (v) => {
+      const e = [];
+      if (!v || typeof v !== 'object') return ['Expected a provenance object.'];
+      if (!Array.isArray(v.sources) || !v.sources.length) e.push('At least one source id is required.');
+      if (!v.note) e.push('A note is required - a source without a claim is not provenance.');
+      if (!CONFIDENCE_LEVELS.includes(v.confidence)) e.push(`Confidence must be one of ${CONFIDENCE_LEVELS.join(' | ')}.`);
+      return e;
+    },
+  };
+
+// Same editor, same parse, same gates — only what a human is told differs.
+const COST_PROVENANCE_TYPE = {
+  ...PROVENANCE_TYPE,
+  type: 'costProvenance',
+  label: 'Cost provenance',
+  hint: 'Where the PRICE comes from. The sources must be COST sources — a quantity '
+    + 'source cannot ground a price, and would publish and then silently fail to ground.',
+};
+
 // ── The registry ─────────────────────────────────────────────────────────────
 // Keyed by the field SUFFIX of a governed path (`p_crabs.qtyPerGuest` -> `qtyPerGuest`).
 export const GOVERNED_FIELD_TYPES = Object.freeze({
@@ -252,64 +320,29 @@ export const GOVERNED_FIELD_TYPES = Object.freeze({
     },
   },
 
-  provenance: {
-    type: 'provenance',
-    label: 'Provenance',
-    hint: 'Where this claim comes from. A source and a note are required.',
-    format: (v) => (v && typeof v === 'object'
-      ? { sources: (v.sources || []).join(', '), note: v.note || '', confidence: v.confidence || 'medium', tier: v.tier || 'researched' }
-      // Legacy string provenance (21 in the corpus) surfaces as its note so it can
-      // be upgraded to a structured block rather than silently discarded.
-      : { sources: '', note: typeof v === 'string' ? v : '', confidence: 'medium', tier: 'researched' }),
-    parse: (raw) => {
-      const sources = String((raw && raw.sources) || '').split(',').map((s) => s.trim()).filter(Boolean);
-      const note = String((raw && raw.note) || '').trim();
-      const confidence = String((raw && raw.confidence) || '').trim();
-      if (!sources.length) return { ok: false, error: 'At least one source id is required.' };
-      if (!note) return { ok: false, error: 'A note is required — a source without a claim is not provenance.' };
-      if (!CONFIDENCE_LEVELS.includes(confidence)) {
-        return { ok: false, error: `Confidence must be one of ${CONFIDENCE_LEVELS.join(' | ')}.` };
-      }
-      return {
-        ok: true,
-        value: {
-          tier: String((raw && raw.tier) || 'researched'),
-          confidence,
-          verificationStatus: 'researched',
-          sources,
-          note,
-        },
-      };
-    },
-    // TYPE SAFETY (publish gate). Deliberately narrower than the editor's rules.
-    // Requiring a source and a note here felt right and was wrong: it is EDITORIAL
-    // completeness, not schema safety, and enforcing it at publish would reject
-    // legitimate historical provenance that predates the convention. The gate's job
-    // is "will this break the engine", not "is this well written".
-    // SCOPE OF THE PUBLISH GATE, stated plainly because I got it wrong twice.
-    //
-    // The harm this gate exists to stop is a NUMBER that resolves to NaN in a
-    // host's shopping list. `qtyPerGuest: "banana"` sizes a real purchase; that
-    // must never publish. Provenance is metadata: a malformed block degrades the
-    // "Sourced -" line to nothing, which is ugly and honest, not corrupting.
-    //
-    // So the gate is strict where the blast radius is a host's numbers and
-    // permissive where it is a caption. Editorial quality on provenance is the
-    // composer's job (validateForEditor), not the publish gate's — enforcing it
-    // here also rejected legitimate historical records that predate the shape.
-    validate: (v) => (v == null ? ['Provenance cannot be null.'] : []),
-    // EDITORIAL completeness (composer only). A human authoring a NEW correction
-    // must name a source and state a claim; history is held to the gate above.
-    validateForEditor: (v) => {
-      const e = [];
-      if (!v || typeof v !== 'object') return ['Expected a provenance object.'];
-      if (!Array.isArray(v.sources) || !v.sources.length) e.push('At least one source id is required.');
-      if (!v.note) e.push('A note is required - a source without a claim is not provenance.');
-      if (!CONFIDENCE_LEVELS.includes(v.confidence)) e.push(`Confidence must be one of ${CONFIDENCE_LEVELS.join(' | ')}.`);
-      return e;
-    },
-  },
+  // ── THE COST BLOCK IS AUTHORABLE (Design A follow-through, 2026-08-16) ─────
+  //
+  // `costProvenance` shipped as an engine and host field and this registry did not
+  // know it existed. `fieldTypeFor` keys on the path SUFFIX, so `p_x.costProvenance`
+  // returned null, `validateGovernedValue` took its unknown-paths-pass branch, and
+  // the composer had no editor to offer. The slot was real, renderable, and NOT
+  // authorable — every cost citation had to be hand-written into the corpus.
+  //
+  // It is defined below `provenance` and spread FROM it rather than written twice.
+  // Two hand-maintained near-identical descriptors is exactly the drift that put
+  // the axes out of step to begin with: the classifier learned about the cost axis
+  // in August, the authoring path did not, and nothing noticed for months. Sharing
+  // the object makes a change to one a change to both by construction; only the
+  // two host-facing strings differ.
+  //
+  // (Declared as a getter-free plain spread at the END of this literal, because
+  // the object is frozen on creation — assigning afterwards throws in a module.)
+
+  provenance: PROVENANCE_TYPE,
+  costProvenance: COST_PROVENANCE_TYPE,
 });
+
+
 
 /** The field suffix of a governed path: 'p_crabs.qtyPerGuest' -> 'qtyPerGuest'. */
 export function governedFieldOf(fieldPath) {

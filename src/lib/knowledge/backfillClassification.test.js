@@ -3,6 +3,7 @@ import { ALL_PLAYBOOKS } from '../playbooks/index';
 import snapshot from './publishedKnowledge.json';
 import { knowledgeInventory } from './knowledgeInventory';
 import { resolveGroundingSource } from './groundingSources';
+import { isGroundedCost } from './costProvenance';
 import {
   backfillClassification, classifyLine, effortEstimate, classificationSummary,
   SUBJECT_SOURCES, RECORDED_CONFLICTS, BACKFILL_TYPES, INTERACTIONS_PER_CORRECTION,
@@ -134,9 +135,25 @@ describe('the shape of the real backlog', () => {
     // which FAILED once `jollychef-disposables-2026` landed — because `p_tableware`
     // and `p_napkins` are filed under those categories and are genuinely reachable.
     // Category was the wrong unit; the kit shape is the real boundary.
+    //
+    // WAS `expect(kit.length).toBeGreaterThan(40)` — a pin on 44, which is every
+    // kit line in the corpus. It broke on 2026-08-16 at 25, and the pin was right
+    // to break: `lineState` now reports a line as directly-cited when its PRICE is
+    // cited, and 19 of these kit lines carry exactly that. Their "$8-15/kit range
+    // is a COST-axis question", as this comment already said — so the moment the
+    // cost axis became visible, they stopped being outstanding work.
+    //
+    // So the count is derived instead of pinned. The PROPERTY is what mattered all
+    // along: whatever kit lines remain outstanding are Type B, because no quantity
+    // source can ground "1 kit". A line leaving this backlog must leave because its
+    // price got cited — never because a per-guest rate was invented for a kit.
     const KIT_IDS = ['p_cleanup', 'p_paper', 'p_trash', 'p_clean', 'p_dish'];
     const kit = cls.rows.filter((r) => KIT_IDS.includes(r.id));
-    expect(kit.length).toBeGreaterThan(40);
+    const allKit = ALL_PLAYBOOKS.flatMap((pb) => (pb.purchases || []).filter((p) => KIT_IDS.includes(p.id)));
+    const priced = allKit.filter((p) => isGroundedCost(p.costProvenance) || isGroundedCost(p.provenance));
+    expect(allKit.length).toBeGreaterThan(40);          // the shape is still large
+    expect(priced.length).toBeGreaterThan(0);           // ...and partly cost-cited
+    expect(kit.length).toBe(allKit.length - priced.length);
     expect(kit.every((r) => r.type === 'B')).toBe(true);
   });
 
@@ -144,11 +161,16 @@ describe('the shape of the real backlog', () => {
     // 20 since Batch 2 (5F.11) grounded ten p_tableware lines — a grounded
     // line leaves `needsWork`, which is the count moving in the right direction.
     // Pinned so it cannot move without somebody noticing.
+    //
+    // 2026-08-16: somebody noticed. p_tableware went 8 -> 6 when `lineState` became
+    // cost-aware and two more tableware lines turned out to have cited prices. Same
+    // direction as before — work leaving the backlog because it is genuinely done —
+    // so the pin is re-set rather than loosened, and it stays a pin.
     const reached = cls.rows.filter((r) => r.source === 'jollychef-disposables-2026');
     const byId = {};
     for (const r of reached) byId[r.id] = (byId[r.id] || 0) + 1;
-    expect(byId).toEqual({ p_tableware: 8, p_cups: 4, p_napkins: 8 });
-    expect(reached.length).toBe(20);
+    expect(byId).toEqual({ p_tableware: 6, p_cups: 4, p_napkins: 8 });
+    expect(reached.length).toBe(18);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {
