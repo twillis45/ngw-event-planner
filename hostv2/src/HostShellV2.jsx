@@ -112,6 +112,7 @@ import { resolveRoute } from '@app/lib/routeResolver';
 import { hostSpending } from '@app/lib/hostSpending';
 import { expectedFromPlanned } from '@app/lib/attendanceModel';
 import { estimateTotalRange } from '@app/lib/budgetEstimator';
+import { geoPlanNote } from '@app/lib/knowledge/geoCostIndex';
 import { ALL_PLAYBOOKS, getPlaybook, withheldPlaybookBeats, playbookDuringCues, playbookFoodPlan, effectiveRos, classifyRos, hostIsCooking, foodApproach, guestCountResolved, attendanceBand, attendanceBandLabel, playbookDecisionBoard, playbookDecisionOptions, playbookCapacity, playbookRisks, supplyRetailLinks, playbookHeartMoments, playbookChecklist, playbookContingencyForWeather, crabPriceLadder, playbookOpenDecisionAffects, playbookTypicalGuests, normalizeAlternative } from '@app/lib/playbooks';
 import { buildReturnSnapshot, readReturnSnapshot, writeReturnSnapshot, deriveReturnNarration, narrationDuplicatesTelling } from '@app/lib/returnNarration';
 import { makeRecord, appendDecision, latestRationaleForSubject } from '@app/lib/decisionMemory';
@@ -14630,6 +14631,17 @@ export default function HostShellV2() {
                         nobody researched — so the sheet states what the number
                         actually covers, right under the "sized for" line. */}
                     {fSpan ? <Grounding gap={3}>{fSpan.text}</Grounding> : null}
+                    {/* GEOGRAPHY, SAID ONCE (2026-08-16). Every priced line in the
+                        corpus is a NATIONAL band - 226 cost citations, none adjusted
+                        for where the host is - and until today nothing said so. BLS
+                        regional series show the error is real and item-specific: the
+                        South runs 5% under the national average on bananas and 6%
+                        over on potatoes, so a blanket regional multiplier would be
+                        confidently wrong in both directions and is deliberately not
+                        built. What IS honest is telling the host which kind of number
+                        they are reading. Sheet-level on purpose: the same sentence on
+                        every row would be noise, and noise is not honesty. */}
+                    <Grounding gap={3}>{geoPlanNote(venueFor(event).state)}</Grounding>
                     {PRICE_VINTAGE ? <p className="grounding" style={{ margin: '3px 0 0', fontSize: 'var(--t-caption-min)', color: 'var(--faint)' }}>est. prices · {PRICE_VINTAGE}</p> : null}
                   </div>
                   );

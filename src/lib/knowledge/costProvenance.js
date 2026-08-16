@@ -508,6 +508,48 @@ export const COST_SOURCES = {
     fetched: '2026-08-16',
     claim: 'Aluminum foil at retail 2026, with Target unit pricing: standard 75 sq ft $5.99 ($0.08/sq ft); standard 200 sq ft $16.19 ($0.08); heavy duty 50 sq ft $5.99 ($0.12); heavy duty 130 sq ft $13.49 ($0.10); heavy duty wide 75 sq ft $10.19 ($0.14); non-stick 130 sq ft $15.19 ($0.12). So foil runs $0.08-0.14 per square foot and $6-16 a roll depending on size and grade.',
   },
+  // ── THE PAPER-GOODS KIT, COMPONENT BY COMPONENT (2026-08-16) ──────────────
+  //
+  // These kits were the last big shape-blocked family: 8+ lines reading "Paper
+  // goods (tablecloth, foil, leftover containers)" or "Foil pans + foil + serving
+  // spoons". A kit band is a SUM, and a sum needs every addend priced - citing
+  // foil alone would be the decoration this corpus declines by rule. Foil had
+  // just been registered; the rest are here, all from listings that publish
+  // per-unit pricing so a sum can be built rather than guessed.
+  'disposable-kit-2026': {
+    org: 'Target listings for disposable table covers, foil pans, food storage bags and chafing fuel, all with per-unit pricing (fetched)',
+    url: 'https://www.target.com/s/disposable+plastic+tablecloth',
+    fetched: '2026-08-16',
+    claim: 'Kit components at retail 2026, with unit pricing: plastic table covers $1.00 each for a single 54x108 (multi-packs $21.99 per 32 to $29.99 per 12, decorative prints $2.50-3.50); disposable foil pans $1.18-4.45 each in small packs, or bulk at $22.99 per 50 8x8 and $33.99 per 30 9x13; gallon storage bags $0.09-0.26 per bag (Dealworthy 13ct $1.19, Hefty 38ct $4.99, Ziploc slider 28ct $6.69); Sterno canned chafing fuel $3.99 per 6.96oz can, $0.57 per fluid ounce.',
+  },
+  // ── CANDLES AND PROPANE (registered 2026-08-16) ───────────────────────────
+  'candles-retail-2026': {
+    org: 'Target listings for unscented pillar, votive and taper candles, with per-ounce unit pricing (fetched)',
+    url: 'https://www.target.com/s/unscented+pillar+candles',
+    fetched: '2026-08-16',
+    claim: 'Unscented candles at retail 2026: 3x3 pillars $6.50 a 3-pack ($0.24/oz, 90hr burn); 3x6 pillars $6.00 a 2-pack ($0.15/oz, 130hr); votives $8.50 an 8-pack ($1.12/oz, 15hr each); tapers $7.00 a 12-pack ($0.30/oz, 6hr each). Decorative and artisan pillars run far higher (a 3-pack of 3x8 ivory at $51.99), so the band for ordinary event candles is the store-brand tier, not the decor tier.',
+  },
+  'propane-exchange-2026': {
+    org: 'PropaneHQ, "Blue Rhino Propane Refill Cost in 2026" (fetched), with Target listings for small cylinders',
+    url: 'https://propanehq.com/blue-rhino-propane-refill-cost/',
+    fetched: '2026-08-16',
+    claim: 'A 20lb propane tank EXCHANGE runs $20-25 on average in 2026, $18-22 at the low end and $26-35+ in premium locations (named: $15.99 at a farm store, $20.72 at H-E-B, $23.99 at Walgreens). A local refill is cheaper at $15-20. IMPORTANT for sizing: an exchanged 20lb tank holds only 15lb of propane, filled to 80% capacity - the company cut it from 17lb in 2008 - so an exchange buys less fuel than a refill of the same tank. Small camping cylinders are $5.99 for 16oz, $10.99 a 2-pack, $15.79 a 3-pack.',
+  },
+  // Second sources so candles and propane meet minCorroboration 2. Both were
+  // caught by `researchPolicyCompliance` as single-source citations AFTER that
+  // gate was widened to see costProvenance - the gate working on its author.
+  'propane-ace-2026': {
+    org: 'Ace Hardware product listing, Blue Rhino 20 lb steel LP tank exchange (fetched)',
+    url: 'https://www.acehardware.com/departments/outdoor-living/grills-and-smokers/propane-cylinders-and-accessories/8679912',
+    fetched: '2026-08-16',
+    claim: 'A Blue Rhino 20 lb LP tank exchange lists at $23.99 at Ace Hardware, an independent point inside the $20-25 national average band and just under the $26-35 premium tier.',
+  },
+  'candles-event-2026': {
+    org: 'Wedding Clever, "Wedding Candles: Types, Costs and Decorating Guide" (fetched)',
+    url: 'https://www.weddingclever.com/wedding-candles',
+    fetched: '2026-08-16',
+    claim: 'Event candles by type 2026: tapers $12-28 a dozen (about $1.00-2.33 each); pillars $8-22 each for a 3x4; votives and tea lights $9-18 per 50-pack (about $0.18-0.36 each); floating $10-25 a dozen; LED or flameless $18-45 for a 6-pack (about $3.00-7.50 each). A couple spends $280-650 on candles across a wedding, and about $220-300 buying in bulk for 100 guests. Note this is the EVENT-DECOR tier and runs above the store-brand household tier.',
+  },
   'usda-meat-2026': {
     org: 'USDA ERS Meat Price Spreads / U.S. BLS retail food prices',
     url: 'https://www.ers.usda.gov/data-products/meat-price-spreads',

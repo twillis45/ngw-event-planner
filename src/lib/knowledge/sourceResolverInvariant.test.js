@@ -146,11 +146,11 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 170 source identities — verified, not assumed', () => {
+  test('20 axes, 175 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(170);
-    expect(unionIds().size).toBe(170);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(175);
+    expect(unionIds().size).toBe(175);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
