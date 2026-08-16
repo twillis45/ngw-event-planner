@@ -10,7 +10,49 @@
 // numbers come from the same build and the same app state. It asserts nothing about
 // what the design SHOULD be — it records what is, so the after-sweep has something
 // honest to compare against.
+import fs from 'node:fs';
 import { test, expect } from './fixtures.mjs';
+
+// ─── A BASELINE THAT CHANGES ON ITS OWN MEASURES NOTHING (2026-08-15) ────────
+//
+// These six PNGs are tracked, and every matrix run left them modified. Measured
+// across two consecutive runs of the SAME build: four of six differed, 17k-26k
+// pixels each. No pixel differed by more than 30/255 — faint everywhere, strong
+// nowhere — which is the signature of antialiasing on a moving element, not of
+// content changing.
+//
+// The cause was the line below this one: `waitForTimeout(400)` to "let the reveal
+// settle". The welcome screen animates in, 400ms is not when it finishes, and the
+// diff bbox sat exactly on the hero text and buttons. Each run screenshotted a
+// different frame of the same animation.
+//
+// The cost of that is not the churn itself, it is what the churn HIDES: a drift
+// gate whose baselines move ~5% on their own cannot detect a real regression
+// smaller than its own noise, and nobody can tell a meaningful diff from the
+// usual. Six files sat modified across three runs this session for exactly that
+// reason.
+//
+// So the capture now waits for the SCREEN TO STOP CHANGING rather than for a
+// duration: shoot, wait, shoot again, and keep the frame only once two
+// consecutive shots are byte-identical. That is the property actually wanted —
+// "nothing is still moving" — asserted instead of hoped for.
+async function stableScreenshot(page, path, { tries = 15, gap = 120 } = {}) {
+  let prev = null;
+  for (let i = 0; i < tries; i += 1) {
+    const buf = await page.screenshot();
+    if (prev && buf.equals(prev)) {
+      fs.writeFileSync(path, buf);
+      return true;
+    }
+    prev = buf;
+    await page.waitForTimeout(gap);
+  }
+  // Never settled. Write the last frame so the artefact exists, and report it —
+  // a surface that animates forever is a real finding, and silently baking in one
+  // of its frames is how this file came to lie in the first place.
+  if (prev) fs.writeFileSync(path, prev);
+  return false;
+}
 
 const VIEWPORTS = [
   { name: 'narrow-mobile', width: 360, height: 780 },
@@ -40,7 +82,11 @@ test('measure the shell composition at every viewport class', async ({ page }) =
       const app = document.querySelector('.app');
       return !!app && (app.innerText || '').trim().length > 120;
     }, null, { timeout: 20_000 });
-    await page.waitForTimeout(400);       // let the reveal settle before measuring
+    // Measurement reads geometry, which the reveal also moves — so settle the
+    // screen FIRST, then measure and capture from the same still frame.
+    const settled = await stableScreenshot(page, `review-shots/baseline-${vp.name}.png`);
+    expect(settled, `${vp.name}: screen never stopped changing — the capture would `
+      + 'bake in one frame of an animation and this baseline would drift every run').toBe(true);
 
     const m = await page.evaluate(() => {
       const stage = document.querySelector('.stagewrap');
@@ -64,8 +110,6 @@ test('measure the shell composition at every viewport class', async ({ page }) =
 
     // No horizontal overflow anywhere — this one IS an assertion, at every size.
     expect(m.docScrollW, `${vp.name}: horizontal overflow`).toBeLessThanOrEqual(m.docClientW + 1);
-
-    await page.screenshot({ path: `review-shots/baseline-${vp.name}.png`, fullPage: false });
   }
 
   // eslint-disable-next-line no-console
