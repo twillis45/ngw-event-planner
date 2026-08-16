@@ -9,7 +9,10 @@
     "build": "node src/parity/check-parity.mjs && vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
-    "device": "node scripts/device-preview.mjs"
+    "device": "node scripts/device-preview.mjs",
+    "synctest:build": "REACT_APP_AUTH_BYPASS=false vite build --mode synctest --outDir dist-synctest",
+    "synctest:serve": "E2E_BASE=1 vite preview --outDir dist-synctest --port 5244",
+    "synctest": "playwright test e2e/crossDeviceSync.spec.mjs --project=desktop"
   },
   "dependencies": {
     "react": "^19.2.6",
