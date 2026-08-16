@@ -339,7 +339,9 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-3d',
       note: 'Teens cycle plates/cups fast at a buffet and bar; buy ~2.5x headcount in cups especially.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
+      costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['disposables-bulk-2026', 'disposables-partyqty-2026'], lastVerified: '2026-08-16', claim: 'Disposable tableware runs about 6 cents a plate in bulk packs (roughly $18 per 300) and $0.25-0.40 a plate at a grocery store, with bulk restaurant supply at $0.08-0.15; cups, cutlery and napkins bought in bulk alongside them save $100-200 across a party.', sufficientWhen: 'Current shelf prices for one bulk plate pack and the same item at a grocery store confirm the per-piece spread.' }
+    },
     {
       id: 'p_favors',
       item: 'Party favors / goody bags',

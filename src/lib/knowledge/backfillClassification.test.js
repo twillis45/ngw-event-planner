@@ -162,15 +162,18 @@ describe('the shape of the real backlog', () => {
     // line leaves `needsWork`, which is the count moving in the right direction.
     // Pinned so it cannot move without somebody noticing.
     //
-    // 2026-08-16: somebody noticed. p_tableware went 8 -> 6 when `lineState` became
-    // cost-aware and two more tableware lines turned out to have cited prices. Same
-    // direction as before — work leaving the backlog because it is genuinely done —
-    // so the pin is re-set rather than loosened, and it stays a pin.
+    // 2026-08-16: somebody noticed, twice in one day. First p_tableware went 8 -> 6
+    // when `lineState` became cost-aware. Then the disposables citation batch landed
+    // cost blocks on five more p_tableware lines (Retirement, Sweet 16, Quinceanera,
+    // Pupusa, Bachelorette) and two p_cups lines (Graduation, Day Party), taking the
+    // pin to 1 and 2. Both moves are the same direction — work leaving the backlog
+    // because it is genuinely done — so the pin is re-set rather than loosened, and
+    // it stays a pin. When it moves again, check the citations before the code.
     const reached = cls.rows.filter((r) => r.source === 'jollychef-disposables-2026');
     const byId = {};
     for (const r of reached) byId[r.id] = (byId[r.id] || 0) + 1;
-    expect(byId).toEqual({ p_tableware: 6, p_cups: 4, p_napkins: 8 });
-    expect(reached.length).toBe(18);
+    expect(byId).toEqual({ p_tableware: 1, p_cups: 2, p_napkins: 8 });
+    expect(reached.length).toBe(11);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {
