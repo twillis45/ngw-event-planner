@@ -184,7 +184,24 @@ export function classifyClaim(prov, costProv) {
   // the board authored this figure as a starting point.
   //
   // Silence was the alternative, and silence falsely implied no reasoning existed.
-  if (!p || !p.tier) {
+  // ── ...UNLESS THE PRICE IS CITED IN ITS OWN BLOCK (2026-08-16) ─────────────
+  //
+  // This branch hardcoded `directCitationEligible: false` and a Planning-baseline
+  // label, and it fires on the QUANTITY slot alone. Harmless while cost claims
+  // lived in that same slot — impossible to reach with a cited price. The corpus
+  // migration makes it reachable and dangerous: moving a cost block OUT of
+  // `provenance` empties the slot, and every migrated line would silently drop
+  // from "Price directly sourced" to "Planning baseline".
+  //
+  // Measured before migrating anything: `classifyClaim(null, <cited cost block>)`
+  // returned "Planning baseline" with directCitationEligible false. That is 63 rows
+  // losing a badge they had earned, as a side effect of tidying where the data
+  // lives — the migration would have been a downgrade dressed as a cleanup.
+  //
+  // So a line with no declared quantity basis but a cited price falls through to
+  // the ladder below, which names the axis it actually proved.
+  const costCitedOnly = isGroundedCost(costProv);
+  if ((!p || !p.tier) && !costCitedOnly) {
     const verDef = p && p.verificationStatus ? (CLAIM_VERIFICATION[p.verificationStatus] || null) : null;
     return {
       basis: null,
@@ -203,8 +220,12 @@ export function classifyClaim(prov, costProv) {
     };
   }
 
-  const basisDef = CLAIM_BASIS[p.tier] || null;
-  const verDef = p.verificationStatus ? (CLAIM_VERIFICATION[p.verificationStatus] || null) : null;
+  // A cost-only line reaches here with NO quantity provenance at all — that is the
+  // whole point of the branch above — so normalise rather than assume one exists.
+  // Everything downstream reads a basis that is legitimately absent on these lines.
+  const pq = p || { obj: null, sources: [] };
+  const basisDef = CLAIM_BASIS[pq.tier] || null;
+  const verDef = pq.verificationStatus ? (CLAIM_VERIFICATION[pq.verificationStatus] || null) : null;
   // A tier nobody has classified. Reported honestly rather than silently scored as
   // absent — an unrecognised basis is a gap in THIS table, not in the corpus.
   const offLadder = !basisDef;
@@ -228,12 +249,12 @@ export function classifyClaim(prov, costProv) {
   // resolve in its own registry, so this widens the axis, not the bar. A cost
   // claim is judged by the cost registry, a quantity claim by the quantity one,
   // and a line citing something registered nowhere still fails both.
-  const qtyCited = isGroundedItemQty(p.obj);
+  const qtyCited = isGroundedItemQty(pq.obj);
   // Cost grounding is read from the COST block when there is one, and otherwise
   // from the shared slot — which is where every cost citation in the corpus lives
   // today. Both paths, so the migration can proceed line by line without a flag
   // day and without any line losing its badge in between.
-  const costCited = isGroundedCost(costProv) || isGroundedCost(p.obj);
+  const costCited = isGroundedCost(costProv) || isGroundedCost(pq.obj);
   const directCitationEligible = qtyCited || costCited;
 
   // Ordered so that the label always names the most INFORMATIVE true thing. Basis
@@ -276,21 +297,23 @@ export function classifyClaim(prov, costProv) {
     // Includes `trade-heuristic / established-consensus` (23 lines): settled among
     // practitioners is still practitioner guidance, not independent consensus.
     hostLabel = HOST_LABELS.PRACTITIONER_GUIDANCE;
-  } else if (basisDef.family === 'consensus' || p.verificationStatus === 'established-consensus') {
+  } else if (basisDef.family === 'consensus' || pq.verificationStatus === 'established-consensus') {
     hostLabel = HOST_LABELS.ESTABLISHED_CONSENSUS;
   } else {
     hostLabel = HOST_LABELS.PLANNING_BASELINE;
   }
 
   return {
-    basis: p.tier,
+    // `pq` throughout — a migrated cost-only line has no quantity provenance, and
+    // reports that honestly as a null basis rather than borrowing the price's.
+    basis: pq.tier || null,
     basisFamily: basisDef ? basisDef.family : null,
     basisLabel: basisDef ? basisDef.label : null,
     basisRecorded: !offLadder,
     authoredBaseline: false,
-    verification: p.verificationStatus,
+    verification: pq.verificationStatus,
     verificationLabel: verDef ? verDef.label : null,
-    rationale: p.rationale || null,
+    rationale: pq.rationale || null,
     hostLabel,
     directCitationEligible,
     // The app may lead with any claim whose basis someone recorded and classified.
@@ -298,7 +321,7 @@ export function classifyClaim(prov, costProv) {
     // not replace them.
     recommendationEligible: !offLadder,
     offLadder,
-    sources: p.sources,
+    sources: pq.sources,
   };
 }
 

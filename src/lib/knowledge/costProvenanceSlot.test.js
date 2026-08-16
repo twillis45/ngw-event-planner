@@ -11,7 +11,8 @@
 import { classifyClaim, HOST_LABELS, SOURCED_LABELS } from './claimBasis';
 import { axisForField, axesForField, wouldGround, validateSourcesFor } from './sourceAuthority';
 import { QTY_SOURCES } from './quantityProvenance';
-import { COST_SOURCES } from './costProvenance';
+import { ALL_PLAYBOOKS } from '../playbooks/index';
+import { COST_SOURCES, isGroundedCost } from './costProvenance';
 
 const SOURCED = new Set(SOURCED_LABELS);
 const costBlock = () => ({
@@ -138,5 +139,46 @@ describe('the two registries stay disjoint', () => {
     // one registry into the other.
     const overlap = Object.keys(QTY_SOURCES).filter((id) => COST_SOURCES[id]);
     expect(overlap).toEqual([]);
+  });
+});
+
+describe('the corpus migration holds', () => {
+  // Migrated 2026-08-16: 89 cost blocks moved out of the shared `provenance` slot
+  // into `costProvenance`, plus the p_apps proof line = 90. Zero had BOTH axes in
+  // one block, so nothing had to be adjudicated by hand.
+  test('no cost citation is left sitting in the shared quantity slot', () => {
+    // This is the migration's completion condition AND its ratchet. The shared slot
+    // is still READ for cost (so a half-migrated corpus renders identically), which
+    // means a new cost claim written into the wrong slot would work fine and nobody
+    // would notice — that is exactly how the axes tangled the first time. This makes
+    // "it happens to work" fail out loud.
+    const stragglers = [];
+    for (const pb of ALL_PLAYBOOKS) {
+      for (const p of (pb.purchases || [])) {
+        if (isGroundedCost(p.provenance)) stragglers.push(`${pb.type} ${p.id}`);
+      }
+    }
+    expect(stragglers).toEqual([]);
+  });
+
+  test('the migration moved blocks rather than rewriting them', () => {
+    // A cost block's authored text must survive the move verbatim. Spot-checked on
+    // a line whose claim is distinctive enough to be unmistakable.
+    const pb = ALL_PLAYBOOKS.find((x) => x.type === 'Bachelorette Party');
+    const spirits = (pb.purchases || []).find((p) => p.id === 'p_spirits');
+    expect(spirits.costProvenance).toBeTruthy();
+    expect(spirits.costProvenance.claim).toMatch(/750ml/);
+    expect(spirits.provenance).toBeUndefined();   // the slot is genuinely vacated
+  });
+
+  test('a migrated cost-only line keeps its badge and admits it has no amount basis', () => {
+    // The hazard that would have made this migration a downgrade: classifyClaim's
+    // no-basis-declared branch hardcoded directCitationEligible:false, and moving a
+    // cost block empties the quantity slot. Measured before migrating — it returned
+    // "Planning baseline" — so 63 rows would have silently lost a badge they earned.
+    const c = classifyClaim(undefined, costBlock());
+    expect(c.hostLabel).toBe(HOST_LABELS.PRICE_SOURCED);
+    expect(c.directCitationEligible).toBe(true);
+    expect(c.basis).toBeNull();                   // honest: no amount claim recorded
   });
 });
