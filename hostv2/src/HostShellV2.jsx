@@ -163,6 +163,7 @@ import { guestItinerary, dayLabelFor } from '@app/lib/itinerary';
 import { spanIntel, shouldAskSpan } from '@app/lib/eventSpan';
 import { mayExhale } from '@app/lib/exhaleGate';
 import { checklistRouteFor } from '@app/lib/taskRoute';
+import { vendorObligations } from '@app/lib/vendorObligations';
 import { heartPlaceholders } from '@app/lib/heartPrompts';
 import { parseMin } from '@app/lib/dayAlerts';
 // The viewport system, ported 2026-08-07. hostv2 had NO breakpoint machinery at
@@ -14404,8 +14405,8 @@ export default function HostShellV2() {
                 <p className="grounding" style={{ marginTop: 10 }}>“Share…” opens your phone’s own share sheet — pick Messages, WhatsApp, or anywhere else. Voices re-shape the same real details mechanically — and you can edit every word above; your voice choice is remembered for every draft.</p>
               </>
             )}
-            {sheet.kind === 'tasks' && (
-              (event.timeline || []).length ? (
+            {sheet.kind === 'tasks' && (<>
+              {(event.timeline || []).length ? (
                 <>
                   {(() => {
                     // taskEngine.effectiveDone: a step the event's own facts
@@ -14586,8 +14587,67 @@ export default function HostShellV2() {
                   <div className="v-meta" style={{ padding: 'var(--pad-empty)' }}>No checklist yet — that’s exactly why the plan flagged “catch up.” Draft the real one:</div>
                   <button className="cta" onClick={draftTimeline}>Draft my checklist from the playbook</button>
                 </>
-              )
-            )}
+              )}
+              {/* ── WHAT YOUR VENDORS STILL OWE ────────────────────────────────
+                  Derived, never authored. The gap this closes: a booked caterer
+                  with no COI, no deposit and no signed contract produced an
+                  eleven-row checklist that mentioned none of it, while the vendor
+                  engine already knew the COI was required.
+
+                  THREE DELIBERATE CHOICES.
+
+                  (a) A SEPARATE GROUP, not merged into the rows above. `toggleTask`
+                      indexes into `event.timeline` and has real side effects (it
+                      writes foodGot). Splicing derived rows into that map would
+                      make tapping one toggle an unrelated authored task and mutate
+                      the shopping state. Index-safety is not the main reason, but
+                      it is a hard one.
+
+                  (b) THEY ROUTE, THEY DO NOT CHECK OFF. This is the source-of-truth
+                      rule, not a style preference. Ticking a box here would not put
+                      a certificate on file — the COI would still be missing and the
+                      app would now be showing a handled row over an unhandled fact.
+                      These resolve by fixing the underlying vendor record, so the
+                      row lands on that exact vendor. It routes, so it earns a glyph.
+
+                  (c) THEY DO NOT COUNT IN THE HERO. "N of M checked off" counts
+                      authored steps the host can actually check. Folding uncheckable
+                      rows into that denominator would make the number unreachable —
+                      it could never hit M of M.
+
+                  Each row shows its rule (UX_08 source #4: inference is allowed only
+                  with the rule visible), and the whole group is silent when nothing
+                  is owed. */}
+              {(() => {
+                const owed = (() => { try { return vendorObligations(event); } catch { return []; } })();
+                if (!owed.length) return null;
+                return (
+                  <div style={{ marginTop: 'var(--sp-5)' }}>
+                    <div className="v-meta" style={{ marginBottom: 'var(--sp-2)' }}>
+                      From your vendors · {owed.length} outstanding
+                    </div>
+                    {owed.map((o, i) => (
+                      <button key={o.id} className="frow"
+                        style={{ animation: `cardin 280ms var(--ease-out) ${Math.min(i, 8) * 35}ms both` }}
+                        onClick={() => setSheet({ kind: 'vendors', focus: o.vendorId || null })}>
+                        <span className="f-main">
+                          <span className="f-name">{o.label}</span>
+                          {/* `v-meta` and `chev`, not invented classes: the authored
+                              rows above use v-meta for their detail line, and .chev is
+                              the existing chevron. Shipped this with `f-sub`/`f-go`
+                              first and classNameHasRule caught both -- the same
+                              phantom-class defect this very sheet already carries a
+                              comment about (`focus-task`, a class with no matching
+                              rule anywhere, which silently did nothing). */}
+                          <span className="v-meta" style={{ fontWeight: 400, whiteSpace: 'normal' }}>{o.why}</span>
+                        </span>
+                        <span className="chev" aria-hidden="true">›</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
+            </>)}
             {sheet.kind === 'food' && (foodPlan ? (
               <>
                 {/* PRINCIPLES REDESIGN: summary before detail — the bought count
