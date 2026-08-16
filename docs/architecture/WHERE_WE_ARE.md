@@ -4,7 +4,33 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Engine 5727 passed, e2e 325 passed / 0 failed.
+**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). Engine 5727 passed, e2e 330 passed / 0 failed / 0 flaky.
+
+> ### THE TAP SWEEP WAS SIGNING OFF CONTROLS THAT WERE DEAD TO TOUCH (2026-08-15)
+>
+> `Open the spread (N items)` shipped at **187x17** on the home surface while
+> `mobileTapFloor.spec.mjs` was green. Three separate faults, all worth knowing:
+>
+> 1. **STATE, not surface.** That control renders only while the food decision is
+>    unsettled, and the fixture settles it. The sweep was honest; the offender was
+>    never on screen. *A sweep is only as complete as the STATES its fixture reaches.*
+> 2. **The sweep credited unreachable geometry.** It grew hit boxes from
+>    `getComputedStyle` alone with no clip check. The first fix here - a 44px
+>    `::after`, copying `.sheet-back` - computed as position:absolute / height:44px,
+>    passed every geometry assertion, and was clipped to nothing by an
+>    `overflow:clip` ancestor ending at the button's exact bottom edge. **Measured
+>    fixed, dead to touch.** Only a real click at a real coordinate caught it.
+>    The sweep now probes each grown edge with `elementFromPoint`.
+> 3. **The account panel was never swept at all.** Now covered; measures clean.
+>
+> The red-proof took three attempts, and both failed gates were green:
+> a fixture with no `venue` put the venue blocker in the hero so the control never
+> rendered, and a reachability helper that accepted `hit.contains(el)` let the
+> clipped expander's own ANCESTOR count as a hit - silently reverting the probe to
+> the geometry check it replaced. **Reading the code would not have found either.**
+>
+> Open, not fixed: the account row reads **"You & settings"** on mobile and
+> **"You & your account"** on the desktop rail. Same destination, two names.
 
 ---
 
