@@ -49,10 +49,23 @@ snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 > Six cultural slots refused by name: p_watermelon, p_libation, p_unitycup,
 > p_reddrink, p_veganwat, p_zawadi.
 >
-> **STILL OPEN:** the corpus migration itself. Only ONE line (`bacheloretteParty
-> p_apps`) has been moved to the new slot as a proof; ~109 blocked lines remain,
-> and every cost citation in the corpus still lives in the shared `provenance`
-> slot. Both paths are read, so this is a backlog, not a defect.
+> **CORPUS MIGRATED 2026-08-16 (`abe43fc6`):** 89 cost blocks moved out of the
+> shared slot across 29 playbooks (90 with the p_apps proof line). ZERO cost
+> citations remain in the quantity slot, and a gate now fails out loud if one
+> reappears — the shared slot is still READ for cost, so a wrongly-placed claim
+> would otherwise work fine and nobody would notice, which is how the axes tangled
+> the first time.
+>
+> The migration would have been a DOWNGRADE if run as-is: `classifyClaim`'s
+> no-basis branch hardcoded `directCitationEligible:false` and reads the QUANTITY
+> slot alone, so emptying that slot dropped a cited line to "Planning baseline".
+> Measured before migrating; 63 rows would have silently lost an earned badge with
+> no test failing. Badge count conserved 109 -> 109 (price 64, amount 45->38,
+> both 0->7 — the 7 are p_tableware lines whose quantity citation comes from
+> PUBLISHED knowledge, which the single slot could never express).
+>
+> **STILL OPEN:** the ~109 lines the split UNBLOCKED are still uncited. The slot
+> exists and is empty for them; the research to fill it has not been done.
 
 > ### THE TAP SWEEP WAS SIGNING OFF CONTROLS THAT WERE DEAD TO TOUCH (2026-08-15)
 >
