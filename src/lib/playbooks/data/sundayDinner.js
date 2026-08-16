@@ -347,7 +347,9 @@ const sundayDinner = {
       essential: true,
       buyAt: 'T-2d',
       note: 'Fixing a plate to send home is part of the meal, not an afterthought. Buy one per guest plus a few extra.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
+      costProvenance: { tier: 'researched', confidence: 'low', verificationStatus: 'cited', sources: ['disposable-kit-2026', 'foil-wrap-2026'], lastVerified: '2026-08-16', claim: 'A SUM of two components: disposable foil pans and containers at $1.18-4.45 each in small packs or $22.99 per 50 in bulk, plus aluminium foil at $0.08-0.14 per square foot ($5.99 for 75 sq ft standard). Cited to each; the summed band is low-confidence by construction.', sufficientWhen: 'Current shelf prices for one container pack and one foil roll at the same store, summed, confirm the band.' }
+    },
     {
       id: 'p_napkins',
       item: 'Napkins and serving spoons',
@@ -359,7 +361,9 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-2d',
       note: 'Cloth or sturdy paper napkins and enough serving spoons so each dish has its own.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' },
+      costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['disposables-bulk-2026', 'disposables-partyqty-2026'], lastVerified: '2026-08-16', claim: 'Disposable tableware runs about 6 cents a plate in bulk packs (roughly $18 per 300) and $0.25-0.40 a plate at a grocery store, with bulk restaurant supply at $0.08-0.15; cups, cutlery and napkins bought in bulk alongside them save $100-200 across a party.', sufficientWhen: 'Current shelf prices for one bulk plate pack and the same item at a grocery store confirm the per-piece spread.' }
+    },
   ],
 
   rentalsGap: [

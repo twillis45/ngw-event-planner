@@ -550,6 +550,16 @@ export const COST_SOURCES = {
     fetched: '2026-08-16',
     claim: 'Event candles by type 2026: tapers $12-28 a dozen (about $1.00-2.33 each); pillars $8-22 each for a 3x4; votives and tea lights $9-18 per 50-pack (about $0.18-0.36 each); floating $10-25 a dozen; LED or flameless $18-45 for a 6-pack (about $3.00-7.50 each). A couple spends $280-650 on candles across a wedding, and about $220-300 buying in bulk for 100 guests. Note this is the EVENT-DECOR tier and runs above the store-brand household tier.',
   },
+  // ── CHARCOAL AND LIGHTER (registered 2026-08-16) ──────────────────────────
+  // The last component blocking the grill-fuel lines. Those lines read
+  // "Charcoal / propane + lighter", so propane alone could not carry them - a
+  // band that is a sum needs every addend, and charcoal was the missing one.
+  'charcoal-retail-2026': {
+    org: 'Target listings for Kingsford charcoal briquettes and lighter fluid, with bag weights (fetched)',
+    url: 'https://www.target.com/s/charcoal+briquettes+kingsford',
+    fetched: '2026-08-16',
+    claim: 'Charcoal at retail 2026: standard briquettes $11.19 for 16lb (about $0.70/lb), $7.99 for 8lb (about $1.00/lb), match-light $10.89 for 12lb (about $0.91/lb) and easy-light $5.99 for 4lb (about $1.50/lb) - so the smaller the bag the worse the per-pound price. All-natural lump runs far higher at $43.15 for 12lb (about $3.60/lb). Lighter fluid is $9.79 for 32oz and a refillable utility lighter $2.99.',
+  },
   'usda-meat-2026': {
     org: 'USDA ERS Meat Price Spreads / U.S. BLS retail food prices',
     url: 'https://www.ers.usda.gov/data-products/meat-price-spreads',

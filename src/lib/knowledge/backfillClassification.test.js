@@ -176,8 +176,13 @@ describe('the shape of the real backlog', () => {
     // took another p_cups line (Day Party) and a p_napkins line (Vow Renewal) out
     // of the backlog. The pin is doing exactly what its comment asks — refusing to
     // let coverage change without somebody looking at why.
-    expect(byId).toEqual({ p_tableware: 1, p_cups: 1, p_napkins: 7 });
-    expect(reached.length).toBe(9);
+    // Fourth move today, still the same direction. This round cited the last
+    // p_cups line and three more p_napkins lines (Engagement, Card Party, Sunday
+    // Dinner) against the disposables and cleaning registries, so they left the
+    // backlog. When only p_tableware and p_napkins remain and both are small, the
+    // disposables seam is close to worked out.
+    expect(byId).toEqual({ p_tableware: 1, p_napkins: 4 });
+    expect(reached.length).toBe(5);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {

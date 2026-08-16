@@ -142,3 +142,42 @@ describe('the sheet-level note never implies a locality it does not have', () =>
     }
   });
 });
+
+describe('partial regional coverage degrades to national, per region', () => {
+  // Bone-in chicken has US, South and West and NO Northeast or Midwest — those
+  // series return only an October 2025 point marked "Data unavailable due to the
+  // 2025 lapse in appropriations". A government shutdown is now a permanent hole
+  // in this dataset, and the honest handling is per-region, not per-item.
+  test('a covered region gets its real factor', () => {
+    expect(geoAdjust('chickenLegs', 'GA').national).toBe(false);
+    expect(geoAdjust('chickenLegs', 'GA').factor).toBe(0.950);
+  });
+
+  test('an UNCOVERED region on a covered item still reads national', () => {
+    // The failure this prevents: filling Boston from the South because the item
+    // "has data". A host in Boston would be shown a southern chicken price with
+    // no way to know.
+    const ne = geoAdjust('chickenLegs', 'MA');
+    expect(ne.region).toBe('northeast');
+    expect(ne.national).toBe(true);
+    expect(ne.factor).toBe(1);
+    expect(ne.basis).toMatch(/No BLS regional series/);
+  });
+
+  test('the same host gets a real factor on an item that IS covered', () => {
+    // Same person, same event: chicken falls back, ground beef does not. The
+    // resolution is per item AND per region, which is why there is no single
+    // "is this event localised?" flag.
+    expect(geoAdjust('chickenLegs', 'MA').national).toBe(true);
+    expect(geoAdjust('groundBeef', 'MA').national).toBe(false);
+    expect(geoAdjust('groundBeef', 'MA').factor).toBe(1.002);
+  });
+
+  test('the South is not uniformly cheap — it moves by item', () => {
+    // Four items now disagree in direction for the South: beef 0.937, chicken
+    // 0.950, bananas 0.949, potatoes 1.064. Anyone tempted to collapse this to
+    // one regional number should read that row again.
+    expect(geoAdjust('groundBeef', 'GA').factor).toBeLessThan(1);
+    expect(geoAdjust('potatoes', 'GA').factor).toBeGreaterThan(1);
+  });
+});
