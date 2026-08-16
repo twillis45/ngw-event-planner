@@ -14,6 +14,66 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── CLEANUP KIT (registered 2026-08-15) ────────────────────────────────────
+  // READ THE CONFIDENCE FIELD ON THESE CITATIONS. A cleanup kit is not a product
+  // anybody sells or prices - it is bags plus towels plus wipes or soap, bought
+  // separately. So the band is a SUM of individually-priced components, and the
+  // items carry `confidence: 'low'` and say so in `sufficientWhen`. That is the
+  // same treatment the signage kit got, and for the same reason: the components
+  // are real, the bundle is ours.
+  'costco-cleaning-2026': {
+    org: 'Wealthy Single Mommy, "16 Costco cleaning supply deals" - Kirkland Signature shelf prices (fetched)',
+    url: 'https://www.wealthysinglemommy.com/costco-cleaning-supply-deals',
+    fetched: '2026-08-15',
+    claim: 'Costco 2026: 200 13-gallon drawstring trash bags $20.42 (about 10 cents a bag); 12 rolls of paper towels at 160 sheets each $23.60 (about $1.97 a roll); dish soap starter spray plus two 21.5oz refills $14.74; five 85-count disinfecting wipe canisters $21.33 (about $4.27 each); 24 sponges $12.47. The source notes prices vary by store.',
+  },
+  'trashbags-retail-2026': {
+    org: 'Grocery and big-box trash-bag listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/browse/household-essentials/trash-bags/1115193_1073264_1149385',
+    fetched: '2026-08-15',
+    claim: 'Retail (non-warehouse) tall kitchen bags: 120-count Hefty 13-gallon $17.99, or about $13.49 per 120 on a subscribe-and-save bulk price - roughly 11-15 cents a bag against the warehouse 10 cents. Confirms the warehouse-to-grocery spread on the single largest component of a cleanup kit.',
+  },
+  // ── DISPOSABLE TABLEWARE, per guest set (registered 2026-08-15) ────────────
+  // The largest reusable family left: 17 free per-guest-set lines across the
+  // corpus. Note what this does NOT do - `jollychef-disposables-2026` was
+  // declined twice earlier in this pass because it is a QUANTITY claim
+  // (counts per guest) and cannot price anything. These two are prices, and the
+  // quantity source stays where it belongs.
+  'disposables-bulk-2026': {
+    org: 'DTOCS, "Bulk Disposable Plates for Large Seasonal Gatherings" - a host costing a 200-person event (fetched)',
+    url: 'https://dtocs.com/blogs/news/bulk-disposable-plates-for-large-seasonal-gatherings-everything-i-learned-hosting-200-people',
+    fetched: '2026-08-15',
+    claim: 'Per plate 2026: basic white paper at a grocery store $0.25-0.40; the same from bulk restaurant supply $0.08-0.15; coated paper $0.10-0.12 bulk; good foam $0.09 bulk; premium plastic $0.15-0.25; compartment plates $0.12-0.18; compostable or bamboo $0.18-0.35. Worked example for 200 plates: grocery $50-80 against bulk supply $16-30. The article warns that bulk is not automatically cheaper and that cost-per-plate must be computed before buying.',
+  },
+  'disposables-partyqty-2026': {
+    org: '2026 party-supply planning guides and bulk retail listings (listing - figures read from search results)',
+    url: 'https://www.webstaurantstore.com/48825/disposable-party-supplies.html',
+    fetched: '2026-08-15',
+    claim: 'Basic paper plates run about $18 per 300 (roughly 6 cents each) in bulk packs. Planning norm for a full place setting is 2-3 plates per guest across appetizer, main and dessert, 2-3 cups, one set of cutlery per course and 2-3 napkins, plus 10-15% extra for spills and unexpected guests. Buying cups, utensils and napkins in bulk together saves $100-200 across a party.',
+  },
+  // ── WINE, per bottle (registered 2026-08-15) ───────────────────────────────
+  // Registered once and applied to every uncited per-bottle wine line in the
+  // corpus in the same pass - the source-family pattern, which is what makes
+  // this work compound rather than repeat.
+  //
+  // A CAVEAT WORTH THE SPACE: a widely-syndicated January 2026 headline put the
+  // average US bottle at $56.78. Tablas Creek published a rebuttal showing that
+  // figure is direct-to-consumer data, and DTC is only 10-11% of off-premise
+  // volume - the shelf a host actually buys from is nothing like it. Taking the
+  // headline at face value would have inflated every band here fourfold while
+  // looking impeccably sourced.
+  'wine-retail-2026': {
+    org: 'LatestCost, "Average Bottle of Wine Cost 2026" (fetched)',
+    url: 'https://latestcost.com/average-bottle-of-wine-cost/',
+    fetched: '2026-08-15',
+    claim: 'US retail 2026 by tier: everyday table wine (the grocery shelf) $8-15; mid-range $15-30; premium $30-100+. By type: red $12-40, white $10-30, rose $10-25. Sparkling $20-60. Retail stores hold $8-25 overall while restaurant markups run $30-100+; online $10-40 before shipping.',
+  },
+  'wine-statewide-2026': {
+    org: "Today's Homeowner state-by-state wine pricing, with the Tablas Creek rebuttal to the $56.78 DTC headline (listing - figures read from search results)",
+    url: 'https://todayshomeowner.com/blog/cost/wine-cost-state/',
+    fetched: '2026-08-15',
+    claim: 'State averages cluster tightly: cheapest Massachusetts $10.97, then Maryland $11.14, Delaware $11.31, New Mexico $11.43, Connecticut $11.47; most expensive Mississippi $15.51. An average retail bottle is around $14. Category bands: jug under $5, popular table $5-10, mid-premium $10-15, super-premium $15-20. The $56.78 average-US-bottle headline is DTC-only data (10-11% of off-premise volume) and does not describe a shelf price.',
+  },
   // ── BACHELORETTE (registered 2026-08-15) ───────────────────────────────────
   // Spirits only. The sparkling line on the same playbook needed NO new source —
   // the champagne/sparkling pair registered for wedding and anniversary already

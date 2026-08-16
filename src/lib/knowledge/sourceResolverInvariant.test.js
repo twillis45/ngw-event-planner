@@ -77,11 +77,25 @@ const MUST_NOT_RESOLVE = [
 ];
 
 describe('1 — the source universe is what we think it is', () => {
-  // 143 since 2026-08-15 registered two for `bacheloretteParty` — spirits. Worth
+  // 149 since 2026-08-15 also registered the CLEANUP KIT family. Those two are
+  // deliberately cited at `confidence: 'low'` on every line they touch, because
+  // nobody sells a "cleanup kit" — the band is a SUM of individually-priced
+  // components (bags, towels, wipes, soap) and says so in its sufficientWhen.
+  // (147 since 2026-08-15 also registered the DISPOSABLE TABLEWARE family — two
+  // sources covering 11 per-guest place-setting lines in one pass, the largest
+  // reusable family left in the corpus. Note what it does NOT include:
+  // `jollychef-disposables-2026` was declined twice in this pass because it is a
+  // QUANTITY claim and cannot price anything. The quantity source stays where it
+  // belongs and these two carry the price.)
+  // (145 since 2026-08-15 registered the WINE family — two sources applied to
+  // every uncited per-bottle wine line in the corpus in one pass. That is the
+  // shape this work takes now: research a family once, apply it everywhere it
+  // legitimately fits, rather than re-opening the same source per playbook.)
+  // (143 since 2026-08-15 registered two for `bacheloretteParty` — spirits. Worth
   // noting what did NOT need registering: the same playbook's sparkling line was
   // cited with ZERO new sources, reusing the champagne/sparkling pair already
   // registered for wedding and anniversary. A citation by genuine reuse costs
-  // nothing here and still moved the band.
+  // nothing here and still moved the band.)
   // (141 since 2026-08-15 registered four more for `anniversary` — bread and the
   // signage kit. Bread is the clearest channel-span failure the pass has found:
   // its band was too HIGH at the bottom and too LOW at the top, covering only
@@ -120,11 +134,11 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 143 source identities — verified, not assumed', () => {
+  test('20 axes, 149 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(143);
-    expect(unionIds().size).toBe(143);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(149);
+    expect(unionIds().size).toBe(149);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {
