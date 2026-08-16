@@ -14,6 +14,47 @@
 // cited sources, nothing invented. Factors reference these ids from their costFactorProvenance.
 
 export const COST_SOURCES = {
+  // ── ZERO-PROOF AND MOCKTAILS, per drink (registered 2026-08-15) ────────────
+  // The other half of the non-alcoholic split. Deliberately NOT covered by the
+  // soda band below: a zero-proof drink carries an NA spirit, a mixer and a
+  // garnish, and costs several times a can of soda. Two families, two bands,
+  // because pretending they are one thing would make the expensive item look
+  // cheap and the cheap one look extravagant.
+  //
+  // BAR PRICES ARE EXCLUDED AND SHOULD STAY EXCLUDED. The same research turns up
+  // $13-17 mocktails at Boston and Brooklyn bars. That is hospitality pricing
+  // for a served drink, not what a host pays to pour one at home, and dropping
+  // it into a per-drink band would inflate it roughly tenfold.
+  'zeroproof-retail-2026': {
+    org: 'The Zero Proof, "Why Are Non-Alcoholic Drinks So Damn Expensive?" (fetched), with BevSpot category averages',
+    url: 'https://thezeroproof.com/blogs/the-distiller/why-are-non-alcoholic-drinks-so-damn-expensive',
+    fetched: '2026-08-15',
+    claim: 'Non-alcoholic spirits average about $25 a bottle per BevSpot and hold flat: Seedlip $30, Everleaf aperitif about $24, Abstinence Cape Floral $35, GELATO BAR NA whiskey $33.99. Athletic Brewing NA beer is $13 a six-pack. Bar and restaurant zero-proof drinks run $13-17, which is served-drink pricing rather than retail.',
+  },
+  'nabeer-retail-2026': {
+    org: 'US non-alcoholic beer and canned-mocktail retail listings, 2026 (listing - figures read from search results)',
+    url: 'https://www.walmart.com/browse/food/non-alcoholic-beer-wine/976759_2975985_4158159',
+    fetched: '2026-08-15',
+    claim: 'NA beer retail has fallen since 2023: Budweiser Alcohol Free $29.99 a 12-pack (about $2.50 a can) and Athletic Brewing craft NA $13 a six-pack (about $2.17 a can). Canned mocktails sit higher - Curious Elixir wholesales at $6 a bottle for two servings against a $16 suggested retail, roughly $8 a serving at the premium end.',
+  },
+  // ── SODA AND BOTTLED WATER, per serving (registered 2026-08-15) ────────────
+  // Scoped narrowly ON PURPOSE. These price a CAN OF SODA or a BOTTLE OF WATER.
+  // They do not price a mocktail, a zero-proof spirit, a punch base or brewed
+  // iced tea - those carry mixers, garnish and N/A spirits and cost several
+  // times as much per drink. Lines bundling those are left for a separate pass
+  // rather than flattened into this band.
+  'soda-12pack-2026': {
+    org: 'LatestCost, "12 Pack Soda Pricing Guide for U.S. Shoppers 2026" (fetched)',
+    url: 'https://latestcost.com/12-pack-soda-pricing-u-s-shoppers/',
+    fetched: '2026-08-15',
+    claim: 'A 12-pack of soda runs $3.00-6.50 (average $4.50), which is $0.25-0.60 per can with an average of $0.38. Store brand $2.50-5.00; craft or specialty $6.00-14.00. By region: urban $4.50-6.50, suburban $3.50-5.50, rural $3.00-5.00; Northeast and South run $5.50-7.00 while the Midwest and West Coast sit at $3.50-5.50 on discount-chain competition. Promotions cut 10-25%.',
+  },
+  'bottledwater-case-2026': {
+    org: 'LatestCost pack-of-water pricing and 2026 bulk-beverage listings (listing - figures read from search results)',
+    url: 'https://latestcost.com/cost-pack-water-bottles/',
+    fetched: '2026-08-15',
+    claim: 'A 24-pack of 16.9oz bottled water runs $4-7 on sale and $6-9 at everyday pricing; 40-48 bottle packs $8-15, premium brands $20+. Per bottle that is $0.13-0.25 for basic brands in a larger pack, rising to $0.50-1.00+ for premium.',
+  },
   // ── CLEANUP KIT (registered 2026-08-15) ────────────────────────────────────
   // READ THE CONFIDENCE FIELD ON THESE CITATIONS. A cleanup kit is not a product
   // anybody sells or prices - it is bags plus towels plus wipes or soap, bought
