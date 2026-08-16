@@ -264,6 +264,7 @@ const quinceanera = {
       note: 'A quince is a full seated meal, not a buffet of snacks. The menu reflects the family\'s tradition — Mexican, Central American, Caribbean or South American. Give the caterer the final count at T-30d; the per-plate price is set by contract well before.',
       provenance: { tier: 'norm', confidence: 'med', verificationStatus: 'synthesized', note: 'US catered-event norm: ~$18-45/plate for a seated meal.', claim: 'A seated Latino dinner at a quinceañera typically costs $18-45 per plate under US catering norms', sufficientWhen: '≥2 quinceañera caterer quotes in the US confirm the $18-45/plate range' },
       alternatives: ['Chicken mole instead of beef — cheaper, traditional and impressive', 'Buffet-style rice + beans + chicken — lower cost per head than plated'],
+      costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['catering-perperson-2026', 'catering-chefry-2026'], lastVerified: '2026-08-16', claim: 'US catering per person 2026: drop-off $15-35, buffet with servers $45-85 (a second 2026 guide puts buffet at $25-55 and drop-off at $15-30), full service $50-150. Service charge of 18-22% on food is SEPARATE from gratuity, so add 20-30% to any quoted per-plate figure.', sufficientWhen: 'Two current per-plate quotes from local caterers at the same headcount, with service charge and gratuity itemised, confirm the range.' }
     },
     {
       id: 'p_appetizers',
@@ -315,8 +316,7 @@ const quinceanera = {
       essential: true,
       buyAt: 'T0',
       note: 'Buy day-of so it does not melt. ~1-1.5 lb/guest for a long event with a bar; the venue or caterer may supply it — confirm in the contract.',
-      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1-1.5 lb ice/guest for a full bar event.', claim: '~1-1.5 lb of ice per guest is the US standard for a full bar event', sufficientWhen: 'US event-planning and catering guides from ≥2 sources confirm the ~1-1.5 lb ice/guest norm for a full bar event' },
-    },
+      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US norm: ~1-1.5 lb ice/guest for a full bar event.', claim: '~1-1.5 lb of ice per guest is the US standard for a full bar event', sufficientWhen: 'US event-planning and catering guides from ≥2 sources confirm the ~1-1.5 lb ice/guest norm for a full bar event' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['ice-retail-2026', 'ice-warehouse-2026'], lastVerified: '2026-08-16', claim: 'Bagged ice 2026: warehouse clubs run 10-12c per pound (a 20lb bag is $1.75-2.50 at Sams Club, $1.80-2.50 at Costco); grocery and gas-station bags cluster 23-31c/lb; small bags reach 41-45c/lb.', sufficientWhen: 'Current shelf prices for one 20lb bag at a warehouse club and one at a grocery store confirm the per-pound spread.' } },
     {
       id: 'p_florals',
       item: 'Florals: centerpieces, ceremony flowers, bouquet, court accents',

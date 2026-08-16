@@ -323,7 +323,7 @@ const sundayDinner = {
       essential: false,
       buyAt: 'T-2d',
       note: 'A bottle or two for the adults if your family takes a glass — never the centerpiece.',
-     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' } },
+     provenance: { tier: 'estimate', confidence: 'low', verificationStatus: 'synthesized' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['wine-retail-2026', 'wine-statewide-2026'], lastVerified: '2026-08-16', claim: 'US retail wine 2026: everyday table wine (the grocery shelf) $8-15 a bottle, mid-range $15-30, premium above that; state averages cluster tightly with the cheapest around $10.97-11.14.', sufficientWhen: 'Current shelf prices for one everyday and one mid-range bottle at a grocery store confirm the range.' } },
     {
       id: 'p_foil-oil',
       item: 'Frying oil, foil, parchment, and paper towels',

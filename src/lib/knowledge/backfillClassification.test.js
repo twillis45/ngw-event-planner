@@ -172,8 +172,12 @@ describe('the shape of the real backlog', () => {
     const reached = cls.rows.filter((r) => r.source === 'jollychef-disposables-2026');
     const byId = {};
     for (const r of reached) byId[r.id] = (byId[r.id] || 0) + 1;
-    expect(byId).toEqual({ p_tableware: 1, p_cups: 2, p_napkins: 8 });
-    expect(reached.length).toBe(11);
+    // Third move in one day, same direction every time: the second citation batch
+    // took another p_cups line (Day Party) and a p_napkins line (Vow Renewal) out
+    // of the backlog. The pin is doing exactly what its comment asks — refusing to
+    // let coverage change without somebody looking at why.
+    expect(byId).toEqual({ p_tableware: 1, p_cups: 1, p_napkins: 7 });
+    expect(reached.length).toBe(9);
   });
 
   test('effort is estimated for reachable work and REFUSED for research', () => {

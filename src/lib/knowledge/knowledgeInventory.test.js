@@ -151,10 +151,25 @@ describe('against the REAL corpus', () => {
     expect(share).toBeLessThan(50);
   });
 
-  test('the AMBIGUOUS class is non-empty — it is the one that misleads', () => {
-    // Authored lines that list sources and do not ground. Guarded as a ratchet in
-    // `authoredCorpusIntegrity.test.js`; counted here so it cannot hide inside a total.
-    expect(inv.counts.ambiguous).toBeGreaterThan(0);
+  test('AMBIGUOUS reads 0 here, and that is a LIMIT of this counter, not a clean corpus', () => {
+    // Authored lines that list sources and do not ground — "looks sourced, is not".
+    // This asserted `> 0` and was true until 2026-08-16, when the six meat lines
+    // that made up the class each gained a `costProvenance` citing registered
+    // sources. `lineState` tests directly-cited FIRST and the cost axis now
+    // satisfies it, so those lines leave this class while their `provenance` still
+    // lists raw URLs that resolve in no registry.
+    //
+    // So the zero is MASKING, not repair, and saying so is the point of this test.
+    // A single-state-per-line counter cannot express "price cited, quantity
+    // ambiguous", and distorting `lineState` to make the number look right would
+    // trade a true host label for a tidy report.
+    //
+    // THE SIGNAL IS NOT LOST — it moved to a better home. `authoredCorpusIntegrity`
+    // pins those exact seven lines by name (KNOWN_SOURCED_NOT_GROUNDING), reading
+    // authored sources directly rather than a derived state, so it cannot be masked
+    // by a citation on another axis. That file is the authoritative guard for this
+    // class; this assertion exists to stop anyone reading the 0 as good news.
+    expect(inv.counts.ambiguous).toBe(0);
   });
 
   test('no published entry is orphaned from its authored line', () => {

@@ -318,6 +318,196 @@ export const COST_SOURCES = {
     fetched: '2026-08-14',
     claim: 'Favors AND gifts COMBINED average $460 (this figure includes wedding-party gifts, so the favors-only portion is lower). By guest count: ≤50 guests $301, >100 guests $529. By region: Northeast $473, Mid-Atlantic $591, Midwest $409, South $415, West $419, destination $702. Corroborates the per-guest band from the total side; it does NOT state a per-guest favors figure on its own.',
   },
+  // ── CORROBORATION FOR THE PROTEIN AND CATERING LINES (added 2026-08-16) ────
+  //
+  // `pricing` policy is corroborationRequired with minCorroboration 2, and these
+  // three families each had exactly ONE registered source, so five cost citations
+  // written against them were non-compliant and had to be withdrawn.
+  //
+  // USDA was the tempting shortcut and is the wrong one: it prices PORK CHOPS at
+  // ~$4.33/lb and never states a chicken $/lb at all, so on a ribs or bone-in
+  // chicken line it would be authority attached to a number it did not measure —
+  // "a decoration WITH A GOVERNMENT SOURCE ATTACHED, the most convincing kind and
+  // the worst", which is this corpus's own standing finding. These are independent
+  // trade guides that price the SAME cut in the same channels.
+  'ribs-retail-2026': {
+    org: 'Eat Healthy 365 — "Average Price for Ribs (2026): A Complete Guide" (fetched)',
+    url: 'https://eathealthy365.com/how-much-do-ribs-cost-a-detailed-price-breakdown/',
+    fetched: '2026-08-16',
+    claim: 'Per pound 2026 for raw pork ribs: baby back $5.00-8.00; untrimmed spareribs $3.50-5.50; St. Louis-style (trimmed spareribs) $4.50-7.00. Sale benchmarks: baby back under $4.50, spareribs under $3.00, St. Louis under $4.00 are good prices. Independently confirms the grocery tier that the Costco guide contrasts against.',
+  },
+  'chicken-retail-2026': {
+    org: 'Cook Answers — "What Is the Price of Chicken Thighs? Your 2026 Cost Guide" (fetched)',
+    url: 'https://cookanswers.com/what-is-the-price-of-chicken-thighs/',
+    fetched: '2026-08-16',
+    claim: 'Per pound 2026: bone-in skin-on chicken thighs $1.50-3.00; boneless skinless $3.00-5.80; fresh thighs overall $1.50-5.80 with most grocery options $1.90-4.50. Big-box and warehouse chains undercut supermarkets by $0.40-1.00/lb on family packs — an independent confirmation of both the bone-in floor and the warehouse-to-grocery spread.',
+  },
+  'catering-chefry-2026': {
+    org: 'Chefry — "How Much Does Catering Cost? Per-Person Pricing by Event (2026)" (fetched)',
+    url: 'https://www.chefry.io/blog/catering-cost-guide',
+    fetched: '2026-08-16',
+    claim: 'Per person 2026: drop-off $15-30 (trays, no staff); buffet $25-55 with setup and chafing dishes and optional light staffing; plated or full service $50-120 with servers, courses, setup and cleanup. Caterers typically add an 18-22% service charge on food, which is SEPARATE from gratuity — a $40 per-person quote can land 68% higher once both are applied.',
+  },
+  // ── ICE, AT LAST (registered 2026-08-16) ──────────────────────────────────
+  //
+  // 28 priced lines name ice and NOT ONE could be cost-cited, because the only
+  // registered ice source (`reddy-ice-2026`) is a QUANTITY claim — lb per guest —
+  // and reusing it for price was declined twice on exactly that ground. The gap
+  // was recorded as "no published source" and never actually searched. It was
+  // searchable: two independent 2026 guides publish per-retailer bag prices.
+  //
+  // The two agree on the SHAPE (warehouse cheapest, convenience dearest) and
+  // differ on the floor — 10-12c/lb at Sam's against 15-23c at the low end of the
+  // retailer survey — so the band below spans both rather than picking a winner.
+  'ice-retail-2026': {
+    org: 'Hip2Save — "Where to Buy Ice from Everywhere & Best Prices" (fetched; per-retailer survey)',
+    url: 'https://hip2save.com/tips/where-to-buy-ice/',
+    fetched: '2026-08-16',
+    claim: 'Bagged ice per pound 2026 by retailer: BJs 20lb $4.49 (23c/lb); 7-Eleven 20lb $4.79 (23c); Giant 20lb $4.99 (25c); Walmart 5-10lb $2.33 (as low as 23c); Albertsons 10lb $2.99 (30c); Kroger 7lb crushed $2.19 (31c); Publix 16lb $4.99 (31c); Lowes 7lb $2.88 (41c); Safeway 16lb $7.29 (45c); bulk Ice2U 20lb $3.00 (15c). Grocery and gas-station bags cluster 23-31c/lb; small bags and hardware stores run higher.',
+  },
+  'ice-warehouse-2026': {
+    org: 'Eat Healthy 365 — "How Much is a Bag of Ice at Sams Club? (2026 Price)" (fetched)',
+    url: 'https://eathealthy365.com/sams-club-ice-prices-your-complete-2026-buying-guide/',
+    fetched: '2026-08-16',
+    claim: 'A 20lb bag of Members Mark ice runs $1.75-2.50 at Sams Club (most commonly about $2.00), which is 10-12c per pound; Costco is near-identical at $1.80-2.50 or about 11c. Walmart 10lb is $2.50 (25c/lb) and a 7lb gas-station bag is about $3.00 (43c/lb) — convenience ice is more than four times warehouse ice per pound.',
+  },
+  // ── BEER, WHICH WAS WRITTEN OFF TOO EARLY (registered 2026-08-16) ─────────
+  //
+  // The 2026-08-15 worklist recorded beer as ungroundable because "beer returns
+  // 403 from both candidate sources". That was true of those two URLs and false
+  // as a conclusion — it was a fetch failure recorded as an absence of evidence.
+  // Two other 2026 retail guides publish per-unit figures and agree closely.
+  //
+  // Both are explicit that they give RANGES rather than confirmed year-end
+  // figures, so confidence stays medium and `sufficientWhen` asks for a real
+  // shelf check. On-premise and bar pricing is excluded on purpose, the same way
+  // `selfsupplied-bar-2026` is corkage rather than retail.
+  'beer-retail-2026': {
+    org: 'LatestCost — "Average Cost of Beer 2026" (fetched; states its figures are ranges, not confirmed year-end prices)',
+    url: 'https://latestcost.com/average-cost-of-beer/',
+    fetched: '2026-08-16',
+    claim: 'Per 12oz unit 2026: domestic lager $0.80-1.20; imported $1.20-2.50; craft $1.50-3.00. A domestic six-pack runs $6.00-10.00 depending on state (Ohio at the low end, California at the high end), and a 24-pack case is the best per-unit price though no case figure is given.',
+  },
+  'beer-budget-2026': {
+    org: 'PorchDrinking — "Best Cheap Beer for 2026" (fetched; range estimates, varies by state and retailer)',
+    url: 'https://porchdrinking.com/best-cheap-beer/',
+    fetched: '2026-08-16',
+    claim: 'Domestic lagers run about $20-22 for a 24-pack in many states in 2026; value brands go lower (Hamms and Genesee 30-packs about $15-20, Miller High Life often under $1 per 12oz in large packs). Mid-tier 12-packs: Yuengling $12-16, Narragansett $12-15, Blue Moon $15-19, Sierra Nevada Hazy Little Thing about $19-20 — so craft runs roughly 1.5-2x domestic at the same pack size.',
+  },
+  // ── HARD SELTZER (registered 2026-08-16) ──────────────────────────────────
+  // The last drink family with no source. Several lines read "beer + hard
+  // seltzer", so without this the whole band stayed uncitable even though beer
+  // itself now has two sources.
+  'seltzer-retail-2026': {
+    org: 'Target product listing (White Claw variety 12pk, fetched) cross-checked against 2026 retail listings for White Claw and Truly',
+    url: 'https://www.target.com/p/white-claw-hard-seltzer-variety-pack-12pk-12-fl-oz-slim-cans/-/A-51609879',
+    fetched: '2026-08-16',
+    claim: 'Hard seltzer 2026: a White Claw 12-pack of 12oz slim cans lists at $15.99 (regular $16.99), about 11c per fluid ounce or $1.33 a can; other 2026 retail listings put White Claw variety packs at $19.00-22.99 and Truly at $18.00-18.27 per 12-pack, roughly $1.50-1.60 a can. So seltzer prices close to craft beer per can and above domestic lager.',
+  },
+  // ── BROWN LIQUOR (registered 2026-08-16) ──────────────────────────────────
+  // Both existing spirits sources cover vodka, gin, tequila and rum by name and
+  // NEITHER carries whiskey, bourbon or cognac — so `Card Party p_brown` and the
+  // grown-folks lines had no source for the one spirit they actually name.
+  //
+  // Honest about its own thinness: bourbon retail is unusually dispersed (the same
+  // bottle ran $26.99-49.39 across the retailers checked) and allocated bottles
+  // are a separate market entirely, so this bands the ORDINARY shelf and says so.
+  'bourbon-entry-2026': {
+    org: 'Bourbon Veach — "Whiskey Prices Per Bottle" (fetched)',
+    url: 'https://bourbonveach.com/2026/04/20/whiskey-prices-per-bottle/',
+    fetched: '2026-08-16',
+    claim: 'Entry-level bourbon in 2026: good widely-available whiskey runs about $20 a 750ml bottle (Old Forester, Old Grand Dad named). Allocated bottles are a different market — Pappy Van Winkle 20yr MSRP $399.99 and 23yr $499.99 — and the article stresses that shelf price commonly diverges from MSRP on anything in demand.',
+  },
+  'bourbon-shelf-2026': {
+    org: 'Cost Plus Liquors product listing, Buffalo Trace 750ml (fetched)',
+    url: 'https://costplusliquors.com/products/buffalo-trace-bourbon-750ml',
+    fetched: '2026-08-16',
+    claim: 'A named mid-shelf bourbon, Buffalo Trace 750ml, lists at $49.39 regular and $37.99 on sale. Other 2026 retail listings for the same bottle run $26.99-43.99 depending on retailer and state, which is the dispersion to expect on brown liquor rather than a single national price.',
+  },
+  // ── SHELF TIERS: what "upper" and "lower shelf" actually cost ─────────────
+  // Registered 2026-08-16. The two spirits sources give NAMED bottle prices but
+  // no tier framing, so nothing told a host where a $13 bottle and a $50 bottle
+  // sit relative to each other. This bands the tiers; the named-price sources
+  // then confirm the bands empirically from opposite ends (SKYY and Bacardi at
+  // $12.95 in the bottom band, Buffalo Trace $37.99-49.39 mid, Pappy $400+ top).
+  //
+  // Deliberately US-only. A UK guide with the same tier structure was found and
+  // NOT used: its bands are in pounds (mid-shelf GBP 15-40) and folding a foreign
+  // currency into a US band would be a decoration dressed as corroboration.
+  'liquor-shelf-tiers-2026': {
+    org: 'Kitchen Sterling — "The Difference Between Top and Bottom Shelf: Uncovering the Mysteries of Liquor Quality and Pricing" (fetched)',
+    url: 'https://kitchensterling.com/whats-the-difference-between-top-and-bottom-shelf/',
+    fetched: '2026-08-16',
+    claim: 'Per 750ml bottle: BOTTOM SHELF (well/rail) $10-30, made with lower-cost ingredients and production shortcuts; TOP SHELF $50-200 or more, with longer aging and higher-grade inputs. Mid-shelf sits between and is where most named call brands land. The source is explicit that price correlates with quality but does not guarantee it, and that some budget bottles are genuinely good value — so the band is a spend guide, not a quality claim.',
+  },
+  // ── PREPARED / DELI SIDES, BOUGHT MADE (registered 2026-08-16) ────────────
+  //
+  // A correction to this corpus's own standing finding. The 2026-08-15 worklist
+  // ruled home-cooked-by-finished-weight ungroundable because USDA prices raw
+  // commodities and publishes nothing for "the ingredients for coleslaw per
+  // finished pound". That holds for lines pricing INPUTS — `theCookout p_slaw`
+  // is literally "Coleslaw ingredients" and a deli price does not ground flour.
+  //
+  // But it was applied too widely. Plenty of lines price THE DISH AS BOUGHT and
+  // say so in `where`: Juneteenth p_mac is "Mac & cheese" from Grocery/caterer/
+  // bakery, p_potatosalad is "Potato salad" from Grocery/caterer. Delis and
+  // warehouse clubs sell exactly those, by the pound, and publish the price.
+  //
+  // So the rule is not "finished dishes cannot be grounded". It is: a line that
+  // buys the dish can cite a prepared-food price; a line that buys the inputs
+  // cannot. The two shapes sit side by side in the same playbook.
+  'costco-deli-2026': {
+    org: 'Tasting Table — "Costco Best New Deli Items And Prepared Foods In 2026 (So Far)" (fetched)',
+    url: 'https://www.tastingtable.com/2213364/costco-best-new-deli-items-prepared-foods-2026-so-far/',
+    fetched: '2026-08-16',
+    claim: 'Costco prepared-food per pound 2026: BBQ chicken mac and cheese with bacon about $5/lb; pesto pasta salad with mozzarella about $7/lb; Italian sausage and pasta about $6/lb; braised beef with mashed potatoes $8-9/lb; beef short rib ragu, fajita kit and beef and broccoli about $8/lb. Warehouse prepared sides cluster $5-8 per pound.',
+  },
+  'costco-prepared-2026': {
+    org: 'Tasting Table — "12 Best Costco Prepared Foods To Buy And 10 To Avoid" (fetched)',
+    url: 'https://www.tastingtable.com/1944312/costco-prepared-foods-buy-avoid/',
+    fetched: '2026-08-16',
+    claim: 'Costco prepared foods per pound: beef chili $3.49/lb (about a 4lb tub); meatloaf with mashed potatoes $3.99/lb; chicken pot pie $3.99/lb; stuffed bell peppers $4.99/lb (under $1 a serving); tortellini pasta salad $5.49/lb; butter chicken $5.99/lb; gyro and burger kits $6.49/lb; rotisserie chicken $4.99 for about 3lb. Confirms the $3.50-6.50/lb band for warehouse prepared sides, below the $5-8 of the newer premium items.',
+  },
+  // ── RAW PRODUCE, AT THE RIGHT UNIT (registered 2026-08-16) ────────────────
+  //
+  // USDA ERS was the obvious government source and does NOT fit: it publishes
+  // per-CUP-EQUIVALENT figures for 2023 and omits collard greens, red potatoes
+  // and strawberries entirely, while the corpus prices produce per POUND.
+  // Converting cup-equivalents to pounds would have been a derivation invented
+  // to make a citation possible — the same unit mismatch that made the earlier
+  // "ingredients for coleslaw per finished pound" attempt a decoration.
+  //
+  // The BLS Average Price series (APU) IS per pound, monthly, and current. This
+  // is a government source used on the exact quantity it measures, which is the
+  // distinction that matters — not whether the source is authoritative.
+  'bls-produce-2026': {
+    org: 'Basket Report, republishing US Bureau of Labor Statistics CPI Average Price Data (series APU0000712112 white potatoes, APU0000711211 bananas) (fetched)',
+    url: 'https://basketreport.com/prices/potatoes/',
+    fetched: '2026-08-16',
+    claim: 'BLS average retail price per pound, July 2026 (released 2026-08-12): white potatoes $0.94/lb, up 2.1% on the month and down 3.7% on the year; bananas $0.65/lb, up 0.8% on the month and down 1.1% on the year. These are national city-average retail prices for the raw commodity, not a prepared or finished dish.',
+  },
+  'usda-produce-outlook-2026': {
+    org: 'USDA ERS Food Price Outlook / Fruit and Vegetable Prices (fetched)',
+    url: 'https://ers.usda.gov/data-products/fruit-and-vegetable-prices/highlights-and-interactive-charts',
+    fetched: '2026-08-16',
+    claim: 'USDA ERS 2026 outlook: fresh vegetable retail prices predicted to rise 6.8% (interval 4.3-9.5%) and fresh fruit 2.0% (interval 0.2-3.9%). Its price tables are per CUP EQUIVALENT for 2023 (sweet potatoes $0.58, watermelon $0.26, onions $0.42, baby carrots $0.40, fresh okra $2.60), NOT per pound — so it corroborates direction and magnitude for produce but cannot itself price a per-pound line.',
+  },
+  // ── MIXERS AND FOIL/WRAP (registered 2026-08-16) ──────────────────────────
+  // Both families were recorded as unresearchable earlier today, and both were
+  // simply behind the wrong retailer: Walmart and Amazon return bot-checks to a
+  // fetcher, Target does not. "No source" meant "two hosts refused me" again.
+  'mixers-retail-2026': {
+    org: 'Target product listings, Canada Dry tonic water 1L and ginger ale 2L (fetched)',
+    url: 'https://www.target.com/p/canada-dry-tonic-water-1-l-bottle/-/A-47100023',
+    fetched: '2026-08-16',
+    claim: 'Bar mixers at retail 2026: Canada Dry tonic water 1L $1.99; Canada Dry ginger ale 2L $2.99, listed at $0.04 per fluid ounce. Club soda sells in the same 1L and 2L formats at comparable shelf prices, so a mixer allowance of roughly $2-3 a bottle covers tonic, club soda and ginger ale alike.',
+  },
+  'foil-wrap-2026': {
+    org: 'Target product listing, Reynolds Wrap aluminum foil, full size ladder with unit pricing (fetched)',
+    url: 'https://www.target.com/p/reynolds-wrap-heavy-duty-aluminum-foil-130-sq-ft/-/A-47976048',
+    fetched: '2026-08-16',
+    claim: 'Aluminum foil at retail 2026, with Target unit pricing: standard 75 sq ft $5.99 ($0.08/sq ft); standard 200 sq ft $16.19 ($0.08); heavy duty 50 sq ft $5.99 ($0.12); heavy duty 130 sq ft $13.49 ($0.10); heavy duty wide 75 sq ft $10.19 ($0.14); non-stick 130 sq ft $15.19 ($0.12). So foil runs $0.08-0.14 per square foot and $6-16 a roll depending on size and grade.',
+  },
   'usda-meat-2026': {
     org: 'USDA ERS Meat Price Spreads / U.S. BLS retail food prices',
     url: 'https://www.ers.usda.gov/data-products/meat-price-spreads',

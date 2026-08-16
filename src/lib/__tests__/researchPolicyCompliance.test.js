@@ -42,7 +42,15 @@ const pricedItems = () => {
     if (!n || typeof n !== 'object' || seen.has(n)) return;
     seen.add(n);
     if (Array.isArray(n)) { n.forEach((x) => walk(x, pb)); return; }
-    if ('unitCostRange' in n) out.push({ pb, id: n.id, prov: n.provenance });
+    // BOTH BLOCKS (2026-08-16). This walked `provenance` alone, so every cost
+    // citation written into `costProvenance` was invisible to the corroboration
+    // and freshness policy it invokes — five single-source cost citations were
+    // authored and no gate objected. A policy that cannot see half the claims it
+    // governs is not a policy.
+    if ('unitCostRange' in n) {
+      out.push({ pb, id: n.id, prov: n.provenance });
+      if (n.costProvenance) out.push({ pb, id: `${n.id}.cost`, prov: n.costProvenance });
+    }
     Object.values(n).forEach((v) => walk(v, pb));
   };
   for (const pb of ALL_PLAYBOOKS || []) walk(pb, pb.type || pb.name || '?');

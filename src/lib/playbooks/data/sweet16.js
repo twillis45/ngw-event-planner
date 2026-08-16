@@ -265,8 +265,7 @@ const sweet16 = {
       essential: true,
       buyAt: 'T-1d',
       note: 'Plan ~1 drink/guest/hr, front-loaded (≈2 in the first hour). For a 4-hr party budget ~3-5 servings/guest of soda+mocktails combined. NO alcohol — this is a teen event.',
-      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr, ~2 in first hour.', claim: 'Beverage need runs ~1 drink/guest/hour, front-loaded to ~2 in the first hour', sufficientWhen: 'Standard US catering or bartending guide confirms the 1 drink/guest/hour rule with a first-hour front-load of 2' },
-    },
+      provenance: { tier: 'norm', confidence: 'high', verificationStatus: 'synthesized', note: 'US beverage norm: ~1 drink/guest/hr, ~2 in first hour.', claim: 'Beverage need runs ~1 drink/guest/hour, front-loaded to ~2 in the first hour', sufficientWhen: 'Standard US catering or bartending guide confirms the 1 drink/guest/hour rule with a first-hour front-load of 2' }, costProvenance: { tier: 'researched', confidence: 'medium', verificationStatus: 'cited', sources: ['soda-12pack-2026', 'bottledwater-case-2026'], lastVerified: '2026-08-16', claim: 'A 12-pack of soda runs $3.00-6.50 (about $0.25-0.60 a can) and a 24-pack of 16.9oz bottled water runs $4-7 on sale or $6-9 at everyday pricing, which is roughly $0.17-0.38 a bottle.', sufficientWhen: 'Current shelf prices for one 12-pack of soda and one 24-pack of water at a national grocer confirm the per-serving range.' } },
     {
       id: 'p_mocktail',
       item: 'Mocktail mixers, juices, syrups, garnishes (3-4 signature drinks)',

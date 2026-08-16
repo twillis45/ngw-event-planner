@@ -77,6 +77,11 @@ const MUST_NOT_RESOLVE = [
 ];
 
 describe('1 — the source universe is what we think it is', () => {
+  // 160 since 2026-08-16 also registered ICE (28 lines had no cost source at all)
+  // and BEER (previously written off after two 403s — a fetch failure recorded as
+  // an absence of evidence).
+  // 156 since 2026-08-16 registered corroborating pork-rib, bone-in-chicken and
+  // catering sources, so those three families meet minCorroboration 2.
   // 153 since 2026-08-15 also registered ZERO-PROOF AND MOCKTAILS — the other
   // half of the non-alcoholic split, kept as its own family because a drink
   // built on an NA spirit costs several times a can of soda. Bar pricing
@@ -141,11 +146,11 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 153 source identities — verified, not assumed', () => {
+  test('20 axes, 170 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(153);
-    expect(unionIds().size).toBe(153);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(170);
+    expect(unionIds().size).toBe(170);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

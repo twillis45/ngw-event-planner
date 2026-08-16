@@ -182,3 +182,49 @@ describe('the corpus migration holds', () => {
     expect(c.basis).toBeNull();                   // honest: no amount claim recorded
   });
 });
+
+describe('no purchase line declares the same provenance key twice', () => {
+  // FOUND 2026-08-16 on juneteenthCookout p_ribs and p_chicken, which each carried
+  // THREE `provenance:` keys in one object literal. JS keeps the last and discards
+  // the rest in silence — no parse error, no lint, no test. Two authored blocks per
+  // line had been dead for as long as they had existed.
+  //
+  // It surfaced only because `knowledgeInventory`'s ambiguous count moved and I went
+  // looking for why. Nothing else in the corpus would ever have reported it, which
+  // is exactly the profile of a defect worth a permanent gate rather than a fix.
+  //
+  // Purchases are authored one-per-line, so this reads the SOURCE TEXT rather than
+  // the parsed object — by the time the module is imported the duplicates are gone
+  // and the evidence with them. A parsed-object test cannot see this class at all.
+  const fs = require('fs');
+  const path = require('path');
+  const dir = path.join(__dirname, '..', 'playbooks', 'data');
+
+  test('every purchase line declares `provenance` at most once', () => {
+    const offenders = [];
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+      const lines = fs.readFileSync(path.join(dir, file), 'utf8').split('\n');
+      lines.forEach((line, i) => {
+        if (!line.includes("id: '")) return;
+        // negative lookbehind so `costProvenance` and `costFactorProvenance`
+        // are not counted as the bare key
+        const n = (line.match(/(?<![A-Za-z])provenance: \{/g) || []).length;
+        if (n > 1) offenders.push(`${file}:${i + 1} declares provenance ${n}x`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  test('...and `costProvenance` at most once', () => {
+    const offenders = [];
+    for (const file of fs.readdirSync(dir).filter((f) => f.endsWith('.js'))) {
+      const lines = fs.readFileSync(path.join(dir, file), 'utf8').split('\n');
+      lines.forEach((line, i) => {
+        if (!line.includes("id: '")) return;
+        const n = (line.match(/costProvenance: \{/g) || []).length;
+        if (n > 1) offenders.push(`${file}:${i + 1} declares costProvenance ${n}x`);
+      });
+    }
+    expect(offenders).toEqual([]);
+  });
+});
