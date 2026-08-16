@@ -151,7 +151,7 @@ import { orientation as deriveOrientation, segmentsText, hairlineLabel } from '@
 import { stagewrapClass, showsRail } from '@app/lib/responsiveSurface';
 import { isSupabaseConfigured, supabase, authRedirectUrl } from '@app/lib/supabaseClient';
 import { loadProfile as cloudLoadProfile, saveProfile as cloudSaveProfile } from '@app/lib/api/profile';
-import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent } from '@app/lib/api/events';
+import { loadEvents as cloudLoadEvents, saveEvent as cloudSaveEvent, deleteEvent as cloudDeleteEvent, getPendingEventIds } from '@app/lib/api/events';
 import { recordSaveResult, flushPendingEvents as flushSync, installOnlineFlush, getEventSyncStatus, SYNC_STATUS, SYNC_STATUS_LABEL, getLastSyncTime, getPendingCount, markEventSynced } from '@app/lib/api/syncState';
 import { buildVendorBriefPayload } from '@app/lib/vendorBrief';
 import { mintVendorBriefLink, isVendorBriefApiConfigured, fetchVendorConfirmations } from '@app/lib/api/vendorBrief';
@@ -1313,7 +1313,27 @@ export default function HostShellV2() {
         // the moment any writes queued while offline/signed-out become
         // flushable, so retry the queue right here rather than waiting for
         // the 'online' event (which won't fire — the connection never dropped).
-        try { markEventSynced(evs.map(e => e && e.id).filter(Boolean)); } catch { /* stamping is best-effort, never blocks hydration */ }
+        //
+        // BUT NOT THE DIRTY ONES (2026-08-16, found by crossDeviceSync.spec.mjs).
+        // markEventSynced also DROPS the event's queued upsert, on the reasoning
+        // that "the latest full snapshot just reached the cloud, so an older
+        // queued snapshot must never flush over it." That reasoning holds only
+        // when the returned row is OURS. When it came from another device, the
+        // queued write is not stale — it is an edit that has never been uploaded,
+        // and clearing it destroys the host's typing.
+        //
+        // Measured before the fix: a device with an offline edit queued had
+        // `ngw-cache-pending` emptied by this line and made ZERO upload attempts,
+        // while the event got stamped SYNCED. The edit survived on that device
+        // and could never leave it, under a badge claiming it was in the account.
+        // That is worse than the stale-read bug this file was opened for.
+        //
+        // So: stamp only events with nothing queued. A dirty event keeps its
+        // queue entry and is uploaded by the flush immediately below.
+        try {
+          const dirty = new Set(getPendingEventIds());
+          markEventSynced(evs.map(e => e && e.id).filter(Boolean).filter(id => !dirty.has(id)));
+        } catch { /* stamping is best-effort, never blocks hydration */ }
         flushSync().then(res => {
           if (!dead && res && res.flushed > 0) {
             toast(res.flushed + (res.flushed === 1 ? ' change' : ' changes') + ' synced to your account.');
@@ -1333,6 +1353,64 @@ export default function HostShellV2() {
         const fresh = evs.filter(e => e && e.id && !known.has(e.id) && !tombstoned.has(e.id)
           && String(e.recordKind || 'host_event') === 'host_event' && !/^demo-/.test(String(e.id)) && String(e.name || '').trim());
         if (fresh.length) setHydratedEvents(fresh);
+
+        // ── AN EDIT MADE ON ANOTHER DEVICE HAS TO ARRIVE ────────────────────
+        // Until 2026-08-16 it never did. `fresh` above drops every cloud event
+        // this device already knows, so sync carried NEW events between devices
+        // and silently dropped EDITS: change the venue on the phone, open the
+        // laptop, see the old venue under a badge reading "synced" (honest about
+        // the upload, which is the only direction it measures).
+        //
+        // THE RULE IS THE QUEUE, NOT A CLOCK (board ruling, 2026-08-16). The
+        // proposal was "newest updated_at wins" and it cannot be built: the local
+        // event carries no event-level timestamp, and `updated_at` is a Postgres
+        // trigger — a SERVER clock. Stamping a local one means comparing a device
+        // clock to a server clock, where a phone with a wrong clock either loses
+        // every edit it makes or wins every conflict forever, silently.
+        //
+        // The queue already answers it, with no clock in the path:
+        //   queued write      → LOCAL WINS. Edited since its last confirmed push.
+        //   clean + stamped   → CLOUD WINS. The local copy IS what this device
+        //                       last pushed, so a differing row is someone
+        //                       else's later write.
+        //   clean + unstamped → LOCAL WINS. Never confirmed; the upload path
+        //                       below settles it.
+        // getEventSyncStatus returns exactly those three states already.
+        //
+        // Mindy Weiss set the direction of the danger: "I would rather see a
+        // stale screen than lose the change I typed." Adopting over a queued
+        // edit would turn a stale-read bug into a data-loss bug, so the dirty
+        // case is the one that must never be got wrong.
+        //
+        // Writes through saveCustomEvents (never a raw setItem) so it goes
+        // through the drop-guard and backup that exist because of the 2026-08-06
+        // loss, and carries a reason for the write log.
+        try {
+          const localList = JSON.parse(localStorage.getItem(LS_CUSTOMS)) || [];
+          const byId = new Map(localList.map(e => [e && e.id, e]));
+          const adopted = [];
+          for (const cloudEv of evs) {
+            if (!cloudEv || !cloudEv.id || tombstoned.has(cloudEv.id)) continue;
+            const localEv = byId.get(cloudEv.id);
+            if (!localEv) continue;                       // new here — `fresh` has it
+            if (getEventSyncStatus(localEv) !== SYNC_STATUS.SYNCED) continue;  // dirty/unstamped → local wins
+            if (JSON.stringify(localEv) === JSON.stringify(cloudEv)) continue; // nothing changed
+            adopted.push(cloudEv.id);
+            byId.set(cloudEv.id, { ...cloudEv });
+          }
+          if (adopted.length) {
+            const next = localList.map(e => (e && byId.get(e.id)) || e);
+            const res = saveCustomEvents(next, { reason: 'hostshell:adopt-cloud-edit' });
+            if (res && res.ok) {
+              setCustoms(next);
+              // Grandmother's override: say which copy was kept. A quiet line,
+              // not a modal, and it must not claim more than it did.
+              toast(adopted.length === 1
+                ? 'Updated with a newer version from your account.'
+                : `${adopted.length} events updated with newer versions from your account.`);
+            }
+          }
+        } catch { /* unreadable store — the device keeps what it has, never data loss */ }
         // Welcome-gate re-eval (engine-gap NEW-5): shouldShowWelcome was
         // decided ONCE at load, before the cloud could answer — so a signed-in
         // host on a fresh device got welcomed as brand-new. The moment

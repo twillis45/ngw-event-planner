@@ -168,27 +168,47 @@ test.describe('cross-device sync, against a fake cloud', () => {
     expect(seen, 'a brand-new cloud event should reach this device').toContain('Harvest Lunch');
   });
 
-  test('DEFECT — an EDIT made on another device never reaches this one', async ({ page }) => {
-    // TRIPWIRE. This test asserts the CURRENT behavior, which is wrong, so that
-    // the defect is recorded in something executable rather than in prose.
+  test('AN OFFLINE EDIT SURVIVES A DIFFERING CLOUD COPY', async ({ page }) => {
+    // THE TEST THE WHOLE FIX STANDS ON. The board made this the bar for done and
+    // Mindy Weiss set its direction: "I would rather see a stale screen than lose
+    // the change I typed." A merge that adopts the cloud copy over an edit this
+    // device has not yet pushed turns a stale-read bug into a data-loss bug,
+    // which is strictly worse than what we started with.
     //
-    // Device A changed the venue to "The New Terrace" and the count to 44, and
-    // the cloud says so. Device B holds the older copy and keeps showing it.
-    //
-    // WHEN SOMEONE FIXES THIS, THIS TEST WILL FAIL. That is intended. Delete it
-    // and keep `the fix, once it lands` below, which states the wanted behavior.
+    // State: this device edited the venue offline, so the write is sitting in
+    // the pending queue ('ngw-cache-pending'). The cloud meanwhile holds a
+    // DIFFERENT copy. The queued edit must win, and must still be uploaded.
+    // ASSERTS THE UPLOAD, NOT JUST THE SCREEN. The first version of this test
+    // only checked the local value and passed against genuinely broken code:
+    // `markEventSynced` was clearing the queued write for every pulled event, so
+    // the edit stayed visible on THIS device, was never uploaded, and got stamped
+    // SYNCED. The host would have been told their change was in their account
+    // while it could never leave the phone. Measured before the fix:
+    // `ngw-cache-pending` emptied, ZERO upload attempts. Checking the rendered
+    // value alone cannot see that, which is why the queue and the wire are
+    // asserted here too.
+    const uploads = [];
     await install(page, { cloudEvents: [cloudCopy()] });
-    await boot(page);
-    await page.waitForTimeout(2500);
-    const shown = await page.evaluate(() => {
-      const raw = localStorage.getItem('ngw-hostv2-custom-events');
-      try { const e = (JSON.parse(raw) || [])[0]; return { venue: e && e.venue, guestCount: e && e.guestCount }; }
-      catch { return null; }
+    page.on('request', (req) => {
+      if (req.url().includes('/rest/v1/events') && req.method() !== 'GET') uploads.push(req.method());
     });
-    expect(shown).toEqual({ venue: 'The Old Room', guestCount: 20 });
+    await page.addInitScript((ev) => {
+      localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
+      localStorage.setItem('ngw-cache-pending', JSON.stringify([{ type: 'upsert', id: ev.id, data: ev }]));
+    }, { ...localCopy(), venue: 'The Edit I Typed Offline' });
+    await boot(page);
+    await page.waitForTimeout(3000);
+
+    const after = await page.evaluate(() => {
+      const read = (k) => { try { return JSON.parse(localStorage.getItem(k)) || null; } catch { return null; } };
+      const customs = read('ngw-hostv2-custom-events') || [];
+      return { venue: customs[0] && customs[0].venue };
+    });
+    expect(after.venue, 'the offline edit was overwritten by the cloud copy').toBe('The Edit I Typed Offline');
+    expect(uploads.length, 'the queued offline edit was never uploaded — it can never leave this device').toBeGreaterThan(0);
   });
 
-  test.fixme('the fix, once it lands — the newer cloud copy wins', async ({ page }) => {
+  test('the newer cloud copy wins for a clean event', async ({ page }) => {
     // The behavior a host expects and does not get. Marked fixme so it does not
     // fail the matrix while the defect stands; unmark it in the change that
     // fixes hydrate(), and delete the tripwire above in the same commit.
