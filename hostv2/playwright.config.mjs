@@ -23,6 +23,17 @@ const SELF_PINNED = [
   '**/_venueReaderCapture.spec.mjs',
 ];
 
+// VIEWPORT-INDEPENDENT specs — deliberately a separate list from SELF_PINNED,
+// which they are not. Nothing here asserts layout; they exercise the data and
+// sync layers, so running them across six geometries buys six identical results
+// for six times the wall-clock. They run under `desktop` only, alongside the
+// self-pinned ones, because a test has to run SOMEWHERE.
+const VIEWPORT_INDEPENDENT = [
+  '**/crossDeviceSync.spec.mjs',
+];
+
+const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
@@ -78,12 +89,12 @@ export default defineConfig({
   // that does not, leave it out — the default is the full matrix, which is the
   // safe direction to be wrong in.
   projects: [
-    { name: 'mobile',    use: { viewport: { width: 430, height: 860 } }, testIgnore: SELF_PINNED },
-    { name: 'landscape', use: { viewport: { width: 860, height: 430 } }, testIgnore: SELF_PINNED },
+    { name: 'mobile',    use: { viewport: { width: 430, height: 860 } }, testIgnore: NON_RESPONSIVE },
+    { name: 'landscape', use: { viewport: { width: 860, height: 430 } }, testIgnore: NON_RESPONSIVE },
     // Tablet joined the matrix with the first ported tablet ruling (T1,
     // 2026-07-22) — every probe now guards the full-bleed tablet layouts.
-    { name: 'tablet',      use: { viewport: { width: 768,  height: 1024 } }, testIgnore: SELF_PINNED },
-    { name: 'tablet-land', use: { viewport: { width: 1024, height: 768 } }, testIgnore: SELF_PINNED },
+    { name: 'tablet',      use: { viewport: { width: 768,  height: 1024 } }, testIgnore: NON_RESPONSIVE },
+    { name: 'tablet-land', use: { viewport: { width: 1024, height: 768 } }, testIgnore: NON_RESPONSIVE },
     // ── THE MATRIX STOPPED BELOW THE FEATURE IT SHOULD GUARD (2026-08-06) ───
     // Every project above is under 1280, and 1280 is exactly where the shell
     // stops being a phone silhouette and the responsive command / food / data
@@ -99,17 +110,43 @@ export default defineConfig({
     // set for themselves, so a spec that ever loses its own setViewportSize
     // degrades to something sane rather than to a phone.
     { name: 'desktop', use: { viewport: { width: 1440, height: 900 } } },
-    { name: 'wide',    use: { viewport: { width: 1920, height: 1080 } }, testIgnore: SELF_PINNED },
+    { name: 'wide',    use: { viewport: { width: 1920, height: 1080 } }, testIgnore: NON_RESPONSIVE },
   ],
-  webServer: {
-    // Serves the EXISTING dist — run `npm run build` first (the deploy dance
-    // already does; CI chains them). Keeping the build out of here makes the
-    // readiness probe deterministic.
-    // --host 127.0.0.1: under Node ≥17 'localhost' resolves IPv6-first, so a
-    // bare preview binds ::1 and the IPv4 readiness probe refuses forever.
-    command: 'E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1',
-    url: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
-    reuseExistingServer: false,
-    timeout: 60_000,
-  },
+  webServer: [
+    {
+      // Serves the EXISTING dist — run `npm run build` first (the deploy dance
+      // already does; CI chains them). Keeping the build out of here makes the
+      // readiness probe deterministic.
+      // --host 127.0.0.1: under Node ≥17 'localhost' resolves IPv6-first, so a
+      // bare preview binds ::1 and the IPv4 readiness probe refuses forever.
+      command: 'E2E_BASE=1 npx vite preview --port 5233 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:5233/ngw-event-planner/hostv2/',
+      reuseExistingServer: false,
+      timeout: 60_000,
+    },
+    {
+      // ── THE CROSS-DEVICE SYNC HARNESS ────────────────────────────────────
+      // Its own bundle, because it needs a Supabase project configured (a fake
+      // one) and the dev auth-bypass forced off. Wired here so it cannot quietly
+      // stop running: it used to self-skip when this server was absent, and 24
+      // silent skips are indistinguishable from 24 passes in a summary line.
+      // A gate that can vanish without anyone noticing is not a gate.
+      //
+      // BUILDS FIRST, unlike the server above, and that difference is load-
+      // bearing: dist-synctest is gitignored and is not produced by any other
+      // command, so without the build this either serves a stale bundle (testing
+      // code nobody has) or nothing at all. The main dist is built by the deploy
+      // path; this one has no other author.
+      //
+      // AUTH_BYPASS must be inline — .env.local sets it true for dev and outranks
+      // .env.[mode]. With the bypass on, currentStudioId() returns the non-uuid
+      // 'dev-studio', loadEvents() bails before any cloud call, and every test in
+      // that spec passes while measuring NOTHING. That is not hypothetical; it is
+      // what happened on the first run.
+      command: 'REACT_APP_AUTH_BYPASS=false npx vite build --mode synctest --outDir dist-synctest && E2E_BASE=1 npx vite preview --outDir dist-synctest --port 5244 --strictPort --host 127.0.0.1',
+      url: 'http://127.0.0.1:5244/ngw-event-planner/hostv2/',
+      reuseExistingServer: false,
+      timeout: 120_000,
+    },
+  ],
 });

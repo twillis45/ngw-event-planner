@@ -17,26 +17,30 @@
 // browser is device B, holding an older local copy of the same event. That is
 // exactly the state two phones are in a second after one of them saves.
 //
-// THE FINDING THIS FILE PINS. `hydrate()` filters the cloud pull to events NOT
-// already known to this device:
+// WHAT IT FOUND, and now guards (both fixed in 8fc29d4d).
 //
-//     const fresh = evs.filter(e => e && e.id && !known.has(e.id) && …)
+// 1. EDITS NEVER CROSSED. `hydrate()` filtered every already-known id out of the
+//    cloud pull, so sync carried NEW events between devices and dropped EDITS.
+//    Change the venue on the phone, open the laptop, see the old venue under a
+//    badge reading "synced".
 //
-// and `base` prefers the local copy over anything hydrated:
+// 2. WORSE, AND LIVE: an offline edit was silently discarded. `markEventSynced`
+//    ran on every pulled event and also DROPS that event's queued upsert. That is
+//    right when the returned row is ours and wrong when another device wrote it.
+//    Measured: `ngw-cache-pending` emptied, ZERO upload attempts, event stamped
+//    SYNCED. The host's edit could never leave the phone, under a badge saying it
+//    was in their account.
 //
-//     const base = activeCustom || ALL_SAMPLES.find(…) || hydratedEvents.find(…)
-//
-// So a cloud edit to an event the device already has is dropped twice over. New
-// events cross between devices; EDITS DO NOT. `loadEvents` even selects
-// `updated_at` and orders by it, then discards it in the row map — the raw
-// material for last-write-wins is fetched and thrown away.
-//
-// These tests are written to describe REALITY, not the wish. The one that pins
-// the defect is named for what it is and will fail the moment someone fixes it,
-// which is the point: it is a tripwire, and its comment says what to do then.
+// The merge rule these now pin is the QUEUE, not a clock — dirty wins locally,
+// clean-and-stamped yields to the cloud. See the board ruling in
+// docs/audits/2026-08-16_CROSS_DEVICE_SYNC_BOARD.md for why a timestamp merge was
+// rejected outright.
 import { test, expect } from '@playwright/test';
 
-const BASE = 'http://localhost:5244/ngw-event-planner/hostv2/';
+// 127.0.0.1, not localhost: under Node >=17 'localhost' resolves IPv6-first,
+// so the preview binds ::1 and an IPv4 probe refuses forever. The main webServer
+// in playwright.config.mjs carries the same note; I rediscovered it the slow way.
+const BASE = 'http://127.0.0.1:5244/ngw-event-planner/hostv2/';
 const PROJECT = 'https://synctest.supabase.co';
 const STUDIO = '11111111-2222-3333-4444-555555555555';
 const EVENT_ID = 'ev-sync-probe';
@@ -108,36 +112,22 @@ const boot = async (page) => {
   }, null, { timeout: 20000 });
 };
 
-// This file needs its OWN build (a fake Supabase project configured, and the
-// dev auth-bypass forced off) and its own server, so it cannot ride the default
-// matrix. Rather than fail for everyone, it skips when that server is absent —
-// and says exactly how to start it, because a skip nobody can act on is just a
-// test that quietly never runs.
+// ITS SERVER IS WIRED INTO playwright.config.mjs (webServer[1]), which builds
+// dist-synctest and serves it on 5244 before any test runs. So this file needs
+// no special invocation — a plain `npx playwright test` covers it.
 //
-//   cd demo/hostv2
-//   REACT_APP_AUTH_BYPASS=false npx vite build --mode synctest --outDir dist-synctest
-//   E2E_BASE=1 npx vite preview --outDir dist-synctest --port 5244
-//   npx playwright test e2e/crossDeviceSync.spec.mjs --project=desktop
+// IT NO LONGER SELF-SKIPS, and that is the point of wiring the server. It used
+// to skip when 5244 was absent, which felt safe and was not: the matrix reported
+// 24 skips that read exactly like 24 passes in the summary line, and a gate that
+// can vanish unnoticed is not a gate. Now an absent server is a LOUD failure with
+// the reason attached, because the only thing worse than a red gate is one that
+// quietly stopped measuring.
 //
-// AUTH_BYPASS must be passed INLINE: .env.local sets it true for dev and
-// outranks .env.[mode] in Vite's precedence. With the bypass on, currentStudioId()
-// returns the non-uuid 'dev-studio', loadEvents() bails to readLocal() before any
-// cloud call, and every test here passes while measuring NOTHING. That is not
-// hypothetical -- it is what happened on the first run, and the PREMISE test is
-// what caught it.
-let harnessUp = false;
-test.beforeAll(async () => {
-  try {
-    const res = await fetch(BASE, { method: 'GET' });
-    harnessUp = res.ok;
-  } catch { harnessUp = false; }
-});
-
+// To run it alone:  npx playwright test e2e/crossDeviceSync.spec.mjs --project=desktop
+// Runs under `desktop` only (VIEWPORT_INDEPENDENT in the config) — it asserts
+// data and sync behavior, never layout, so six geometries would buy six
+// identical results.
 test.describe('cross-device sync, against a fake cloud', () => {
-  test.beforeEach(() => {
-    test.skip(!harnessUp, `synctest server not on :5244 — see the header of ${'crossDeviceSync.spec.mjs'} for the two commands that start it`);
-  });
-
   test('PREMISE — the harness really is signed in and really did reach the cloud', async ({ page }) => {
     // Without this the whole file could pass while Supabase sat unconfigured and
     // hydrate() returned at its first line. Every claim below depends on the
