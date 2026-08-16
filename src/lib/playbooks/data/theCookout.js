@@ -215,14 +215,14 @@ const theCookout = {
       { when: 'T0 -0:30', what: 'Lay out foil pans warm, sturdy plates, sturdy cutlery; stage trash + recycling bins; cue the playlist' },
     ],
     program: [
-      { when: 'T0 +5h', what: 'Last call at the grill; start pressing plates on people who are heading out' },
-      { when: 'T0 +6h', what: 'Music down, chairs pulled in, the long goodbyes on the porch' },
       { when: 'T0 +5m', what: 'Doors: drinks on ice, music on, first people at the grill' },
       { when: 'T0 +45m', what: 'First plates off the grill — feed the elders and kids first' },
       { when: 'T0 +1:30', what: 'Main service: sides out, keep the grill going for second rounds' },
       { when: 'T0 +2:15', what: 'Spades table and the music turns up' },
       { when: 'T0 +3h', what: 'Dessert and the last round off the grill' },
       { when: 'T0 +4h', what: 'Wind down: to-go plates, kill the coals safely' },
+      { when: 'T0 +5h', what: 'Last call at the grill; start pressing plates on people who are heading out' },
+      { when: 'T0 +6h', what: 'Music down, chairs pulled in, the long goodbyes on the porch' },
     ],
     cleanup: [
       { when: 'during', what: 'Keep cold sides on ice; bag cans for recycling as you go; refill ice and the red drink; set out to-go containers as people start making plates' },

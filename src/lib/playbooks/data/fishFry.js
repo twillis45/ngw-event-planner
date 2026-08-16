@@ -134,6 +134,12 @@ const fishFry = {
     ],
     program: [
       { when: 'T0 +5m', what: 'Doors: fryer at temperature and attended, drinks out, plates staged' },
+      // The outlet for `ff_spread_word` (T-10d), which sets a price and takes
+      // pre-orders. That intake had no day-of counterpart, so a host who sold
+      // plates was left to improvise the handover and the money in the middle
+      // of service. Conditional in the same voice the T-10d task uses, because
+      // the fundraiser framing is a decision, not the default.
+      { when: 'T0 +15m', what: 'If you sold plates: box the pre-orders first and put a name on each one, so they go out before the walk-up line starts' },
       { when: 'T0 +30m', what: 'First batch out — serve while it’s hot, elders first' },
       { when: 'T0 +1:15', what: 'Second batch; sides and bread down the line' },
       { when: 'T0 +2h', what: 'Third batch for the late arrivals and anyone going back' },
