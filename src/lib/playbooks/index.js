@@ -1037,6 +1037,29 @@ export function purchaseProvenance(playbook, purchase) {
     return purchase.provenance;
   }
 }
+
+// The COST claim's own block (Design A, 2026-08-15). Same governance, its own
+// field path — and that separate path is the reason Design A was chosen over
+// making `provenance` a list.
+//
+// `effectiveValue` matches on EXACT string equality and replaces the whole value
+// with no merge and no shape check (knowledgeOverride.js). Under a list, an
+// override already published against `<id>.provenance` would keep matching and
+// happily serve a single object into a field the engine now reads as an array —
+// degrading to "Board-authored baseline" rather than erroring, on events already
+// in the field. Under a separate path, an old override simply has no entry for
+// `<id>.costProvenance` and falls through to the authored value. Old overrides
+// are INERT with respect to the new axis, which is a safety property we get for
+// free rather than one we have to police.
+export function purchaseCostProvenance(playbook, purchase) {
+  if (!playbook || !purchase || !purchase.id) return purchase && purchase.costProvenance;
+  try {
+    const eff = effectiveValue(playbook, `${purchase.id}.costProvenance`, null);
+    return (eff && eff.value !== undefined) ? eff.value : purchase.costProvenance;
+  } catch (_e) {
+    return purchase.costProvenance;
+  }
+}
 // ─── GOVERNED PURCHASE — the wire from published knowledge to the host ────────
 //
 // PHASE 5C.10. Until now the ONLY governed read on the host path was the
@@ -3691,6 +3714,7 @@ export function playbookFoodPlan(event, opts = {}) {
           crabDelegated: true, excludeFromFoodTotal: true,
           // Governance, carried to the surface (5C.10).
           provenance: purchaseProvenance(playbook, p0) || null,
+          costProvenance: purchaseCostProvenance(playbook, p0) || null,
           qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
           governedFields: p._governed || [],
         };
@@ -3777,6 +3801,7 @@ export function playbookFoodPlan(event, opts = {}) {
         // can read; `qtyGrounded` is whether the quantity is sourced; `governedFields`
         // names which numbers came from a published KCR rather than the authored file.
         provenance: purchaseProvenance(playbook, p0) || null,
+        costProvenance: purchaseCostProvenance(playbook, p0) || null,
         qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
         governedFields: p._governed || [],
       };
@@ -3934,6 +3959,7 @@ export function playbookFoodPlan(event, opts = {}) {
       // surface should not have to know whether a line came from the food loop or
       // this one to answer "where did this number come from".
       provenance: purchaseProvenance(playbook, p0) || null,
+      costProvenance: purchaseCostProvenance(playbook, p0) || null,
       qtyGrounded: isGroundedItemQty(purchaseProvenance(playbook, p0)),
       governedFields: p._governed || [],
     });

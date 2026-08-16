@@ -84,7 +84,10 @@ export function evidenceSubjectMismatch(fieldPath, evidence) {
 export function priorShapeOk(fieldPath, value) {
   const f = String(fieldPath || '');
   if (value === undefined || value === null) return true;   // "there was nothing" is valid
-  if (/\.provenance$/.test(f)) return typeof value === 'object';
+  // Both provenance blocks. `costProvenance` does NOT end in `.provenance` (the
+  // capital P), so the bare check above silently skipped it and the new cost block
+  // would have been the one governed field with no shape check at all.
+  if (/\.(provenance|costProvenance)$/.test(f)) return typeof value === 'object';
   if (/\.(qtyPerGuest|qtyFlat)$/.test(f)) return typeof value === 'number';
   if (/\.unitCostRange$/.test(f)) return Array.isArray(value);
   return true;                                              // unknown field: no claim

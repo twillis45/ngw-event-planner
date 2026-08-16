@@ -15197,7 +15197,7 @@ export default function HostShellV2() {
                                     what `Sourced —` meant, on exactly the same 52 lines.
                                     Muted, one line, no accent (UX_02 restraint). */}
                                 {(() => {
-                                  const claim = classifyClaim(it.provenance);
+                                  const claim = classifyClaim(it.provenance, it.costProvenance);
                                   if (!claim.hostLabel) return null;
                                   // The detail is whatever the author actually wrote. Never
                                   // synthesised — a label with no recorded reasoning stands
@@ -15360,7 +15360,7 @@ export default function HostShellV2() {
                                 {(() => {
                                   const rec = iceRecommendation(event.type, it.id, {
                                     guestCount: foodPlan.guests || 0,
-                                    claim: classifyClaim(it.provenance),
+                                    claim: classifyClaim(it.provenance, it.costProvenance),
                                     facts: claimFacts,
                                   });
                                   if (!rec) return null;

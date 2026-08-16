@@ -147,7 +147,16 @@ function readProvenance(prov) {
 }
 
 /**
- * classifyClaim(provenance) -> the single answer for one claim.
+ * classifyClaim(provenance, costProvenance?) -> the single answer for one line.
+ *
+ * TWO CLAIMS, TWO BLOCKS (board ruling, Design A, 2026-08-15). A purchase line says
+ * how much to buy AND what it costs. Those are separate claims with separate
+ * registries and separate remedies, and they had one slot between them — so citing
+ * the price meant overwriting the amount, and ~109 lines were blocked by a claim
+ * they already carried.
+ *
+ * `costProvenance` is optional and additive: every line that omits it classifies
+ * exactly as before, which is why no corpus rewrite was needed to land this.
  *
  * Returns the five things the ruling requires, kept apart on purpose:
  *   basis                   what kind of knowing (authored vocabulary, verbatim)
@@ -162,7 +171,7 @@ function readProvenance(prov) {
  * consensus, cultural tradition and primary evidence, which is how 485 lines came to
  * render as silence.
  */
-export function classifyClaim(prov) {
+export function classifyClaim(prov, costProv) {
   const p = readProvenance(prov);
 
   // NO BASIS VOCABULARY DECLARED — 368 lines with no provenance at all, 13 carrying
@@ -220,14 +229,35 @@ export function classifyClaim(prov) {
   // claim is judged by the cost registry, a quantity claim by the quantity one,
   // and a line citing something registered nowhere still fails both.
   const qtyCited = isGroundedItemQty(p.obj);
-  const costCited = isGroundedCost(p.obj);
+  // Cost grounding is read from the COST block when there is one, and otherwise
+  // from the shared slot — which is where every cost citation in the corpus lives
+  // today. Both paths, so the migration can proceed line by line without a flag
+  // day and without any line losing its badge in between.
+  const costCited = isGroundedCost(costProv) || isGroundedCost(p.obj);
   const directCitationEligible = qtyCited || costCited;
 
   // Ordered so that the label always names the most INFORMATIVE true thing. Basis
   // beats verification: `cultural-tradition / established-consensus` reads as
   // Cultural tradition, because where a number comes from is what a host needs.
   let hostLabel;
-  if (directCitationEligible) {
+  // ── A PRICE NEVER OUTRANKS A CULTURAL BASIS (board ruling, 2026-08-15) ─────
+  //
+  // `directCitationEligible` is tested before the cultural branch below, so the
+  // moment a cultural line could carry a cost citation it would stop reading
+  // "Cultural tradition" and start reading "Price directly sourced". Before the
+  // cost block existed that was impossible — `tier` is single-valued, so a
+  // `cultural-tradition` slot could never satisfy `isGroundedCost`. Adding the
+  // second block removes that accidental protection, so it is made explicit here.
+  //
+  // The material this guards: half-smokes anchored to Ben's Chili Bowl, the red
+  // drink traced through the diaspora, watermelon documented as an early
+  // Juneteenth red food "served with dignity, a tradition, not a stereotype".
+  // Attaching a per-pound grocery price to those and letting it become the
+  // headline would trade cultural scholarship for a coverage percentage. The
+  // price is not lost — it stays on the line and in the detail; it just does not
+  // get to speak first.
+  const culturalBasis = basisDef && basisDef.family === 'cultural';
+  if (directCitationEligible && !(culturalBasis && !qtyCited)) {
     // Unqualified only when BOTH axes are actually cited. Otherwise the label
     // says which one — see HOST_LABELS above for the measurement behind this.
     hostLabel = (qtyCited && costCited) ? HOST_LABELS.DIRECTLY_SOURCED

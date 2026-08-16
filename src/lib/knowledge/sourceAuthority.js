@@ -77,7 +77,16 @@ export const SOURCE_AXES = Object.freeze({
  */
 export function axesForField(fieldPath) {
   const f = String(fieldPath || '');
-  if (/costFactorProvenance$/.test(f)) return [SOURCE_AXES.cost];
+  // Both cost-block names, matched BEFORE the shared-slot pattern below.
+  //
+  // The board flagged a suffix collision here — that `/\.provenance$/` tests
+  // elsewhere would also match `costProvenance`. Checked, and they do not: the
+  // capital P means `p_ice.costProvenance` has no `.provenance` ending. The real
+  // consequence is the opposite one, and easy to miss: suffix checks written for
+  // the bare slot SKIP the cost block entirely, so it inherits no validation by
+  // default. Each such site has to opt the new field in — see the shape check in
+  // governanceReconciliation.
+  if (/\.(costFactorProvenance|costProvenance)$/.test(f)) return [SOURCE_AXES.cost];
   const m = f.match(/^p_[^.]+\.(provenance|qtyPerGuest|qtyFlat|unitCostRange|priceLadder|servingGuide)$/);
   if (!m) return [];
   switch (m[1]) {

@@ -55,8 +55,13 @@ export function playbookGrounding(pb) {
   const priced = purchases.filter((p) => Array.isArray(p.unitCostRange));
   let cited = 0, synthesized = 0, consensus = 0, withProvenance = 0;
   for (const p of purchases) {
-    const v = p.provenance && p.provenance.verificationStatus;
-    if (p.provenance) withProvenance++;
+    // Either block counts as "somebody recorded a basis here". Reading only the
+    // bare slot would report every cost-only line as unprovenanced once the
+    // migration starts moving cost claims into their own block — a coverage
+    // number that falls while coverage rises is worse than no number.
+    const v = (p.provenance && p.provenance.verificationStatus)
+      || (p.costProvenance && p.costProvenance.verificationStatus);
+    if (p.provenance || p.costProvenance) withProvenance++;
     if (v === 'cited') cited++;
     else if (v === 'synthesized') synthesized++;
     else if (v === 'established-consensus') consensus++;
@@ -145,7 +150,8 @@ export function playbookWeaknesses(pb) {
   const g = playbookGrounding(pb);
   if (g.pricedItems > 0 && g.cited === 0) w.push('Priced items are synthesized/consensus — no citations attached');
   if (!g.hasSources) w.push('knowledge.sources is empty (no source list)');
-  const missingProv = (pb.purchases || []).filter((p) => Array.isArray(p.unitCostRange) && !p.provenance).length;
+  const missingProv = (pb.purchases || [])
+    .filter((p) => Array.isArray(p.unitCostRange) && !p.provenance && !p.costProvenance).length;
   if (missingProv > 0) w.push(`${missingProv} priced item(s) without a provenance block`);
   const ugcf = ungroundedCostFactors(pb);
   if (ugcf.length > 0) w.push(`${ugcf.length} decision(s) with ungrounded costFactors (${ugcf.map((d) => d.id).join(', ')})`);
