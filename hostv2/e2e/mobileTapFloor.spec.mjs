@@ -183,8 +183,15 @@ test('the account panel clears it — a surface this sweep had never measured', 
   await boot(page);
   await page.locator('.ev-eyebrow').first().click();
   await page.waitForTimeout(1500);
-  await page.locator('.navrow', { hasText: /^You &/ }).first().click();
+  const row = page.locator('.navrow', { hasText: /^You &/ }).first();
+  const rowName = (await row.locator('.nr-l').innerText()).trim();
+  await row.click();
   await expect(page.locator('#sheet-title')).toBeVisible();
+  // ONE NAME FOR ONE DESTINATION (host ruling, 2026-08-15). This row said
+  // "You & settings" and the sheet it opens said "You & your account", so a
+  // host had no way to tell they were the same place. The row and the thing it
+  // opens must agree — that is the property, not either particular string.
+  expect(rowName).toBe((await page.locator('#sheet-title').innerText()).trim());
   // Premise: prove the panel actually opened before believing an empty sweep.
   await expect(page.locator('#sheet-title')).toHaveText(/account|settings/i);
   // ...and that there were controls on it to measure. Clean must mean measured.

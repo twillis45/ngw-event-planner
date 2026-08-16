@@ -110,7 +110,11 @@ export function sectionGroups(state) {
       { k: 'meaning', label: 'Make it yours', sub: 'The moments that make it personal' },
       { k: 'ask', label: 'Ask the Boss', sub: 'A question, answered from your numbers' },
       { k: 'pass', label: 'The One-Event Pass', sub: '$39 · one event, no subscription' },
-      { k: 'settings', label: 'You & your account', sub: 'Your name, area, what it remembers' },
+      // ONE NAME FOR THIS DESTINATION (host ruling, 2026-08-15). It read
+      // "You & settings" on the phone row and "You & your account" everywhere
+      // else — same sheet, two names, so a host could not tell they were the
+      // same place. "You & settings" won.
+      { k: 'settings', label: 'You & settings', sub: 'Your name, area, what it remembers' },
     ] },
   ];
 }

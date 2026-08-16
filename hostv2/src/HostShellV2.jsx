@@ -6112,8 +6112,8 @@ export default function HostShellV2() {
                 </svg>
               </button>
               {/* Header carries ONE control (host request 2026-07-11): the
-                  account icon. Sound moved into the You & your account sheet. */}
-              <button className="sheet-x wm-you" onClick={() => setSheet({ kind: 'settings' })} aria-label="You and your account">
+                  account icon. Sound moved into the You & settings sheet. */}
+              <button className="sheet-x wm-you" onClick={() => setSheet({ kind: 'settings' })} aria-label="You and settings">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <circle cx="12" cy="8" r="3.6" />
                   <path d="M5 20c1.4-3.4 4-5 7-5s5.6 1.6 7 5" />
@@ -10180,7 +10180,7 @@ export default function HostShellV2() {
                     ‹ Sections
                   </button>
                 )}
-              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & your account' : 'Guest list'}</strong>
+              <strong id="sheet-title" role="heading" aria-level={2}>{sheet.kind === 'nav' ? 'Jump to' : sheet.kind === 'date' ? 'Date & time' : sheet.kind === 'venue' ? 'Venue' : sheet.kind === 'sections' ? 'Everything in your plan' : sheet.kind === 'pass' ? 'The One-Event Pass' : sheet.kind === 'help' ? 'Feeling stuck?' : sheet.kind === 'ask' ? 'Ask the Boss' : sheet.kind === 'vendors' ? 'People you’re hiring' : sheet.kind === 'budget' ? 'Your money' : sheet.kind === 'food' ? 'The spread & shopping' : sheet.kind === 'tasks' ? 'Your checklist' : sheet.kind === 'draft' ? (sheet.title || 'Written for you') : sheet.kind === 'decisions' ? 'Calls to make' : sheet.kind === 'space' ? 'Space, seats & helpers' : sheet.kind === 'seating' ? 'Who sits where' : sheet.kind === 'lodging' ? 'Where everyone stays' : sheet.kind === 'air' ? 'Getting here' : sheet.kind === 'ground' ? 'Getting around' : sheet.kind === 'costshare' ? 'Who pays for what' :sheet.kind === 'risks' ? 'What could go wrong' : sheet.kind === 'rain' ? 'If it rains' : sheet.kind === 'crabs' ? 'The crab order' : sheet.kind === 'events' ? 'Your events' : sheet.kind === 'meaning' ? 'Make it yours' : sheet.kind === 'qr' ? (sheet.vendorQr ? 'Scan for the vendor brief' : 'Scan to RSVP') : sheet.kind === 'sweep' ? 'Reconfirm your vendors' : sheet.kind === 'thanks' ? 'The thank-you run' : sheet.kind === 'settings' ? 'You & settings' : 'Guest list'}</strong>
               </div>
               <button className="sheet-x" onClick={() => setSheet(null)}>Close</button>
             </div>
@@ -17741,7 +17741,10 @@ export default function HostShellV2() {
           { label: 'Calls to make', sub: 'decisions', go: () => setSheet({ kind: 'decisions' }) },
           { label: 'What could go wrong', sub: 'risks', go: () => setSheet({ kind: 'risks' }) },
           { label: 'Make it yours', sub: 'the meaning', go: () => setSheet({ kind: 'meaning' }) },
-          { label: 'You & your account', sub: 'settings', go: () => setSheet({ kind: 'settings' }) },
+          // One name everywhere — see sectionDirectory.js. `sub` carried
+          // "settings" only to disambiguate the old label; it would now just
+          // repeat it, so it says what is actually inside.
+          { label: 'You & settings', sub: 'your name, your area', go: () => setSheet({ kind: 'settings' }) },
         ];
         const dests = dRaw.map(d => ({ kind: 'go', label: d.label, sub: d.sub, run: () => { d.go(); setPaletteOpen(false); } }));
         const match = (it) => !q || (it.label + ' ' + (it.sub || '')).toLowerCase().includes(q);
