@@ -61,6 +61,35 @@ const sweep = (page) => page.evaluate((FLOOR) => {
       if (Number.isFinite(ph)) { const cy = box.top + box.height / 2; top = Math.min(top, cy - ph / 2); bot = Math.max(bot, cy + ph / 2); }
       if (Number.isFinite(pw)) { const cx = box.left + box.width / 2; left = Math.min(left, cx - pw / 2); right = Math.max(right, cx + pw / 2); }
     }
+    // A COMPUTED PSEUDO-ELEMENT IS NOT A TAP TARGET (2026-08-15).
+    //
+    // The block above used to be the whole story, and it credited geometry that
+    // getComputedStyle reports but a finger can never reach. `.spread-link` got
+    // a 44px `::after` that computed as position:absolute / height:44px and was
+    // clipped to nothing by an `overflow:clip` ancestor whose box ended at the
+    // button's exact bottom edge. This sweep would have called it 44px and moved
+    // on — certifying a control that was dead to touch.
+    //
+    // So expansion now has to survive a hit test: probe just inside each grown
+    // edge and keep the growth only where the probe actually resolves to this
+    // element. Where it does not, fall back to the element's own box, which is
+    // the honest number. This is the same reason `spreadLinkTapFloor.spec.mjs`
+    // clicks a real coordinate instead of asserting a computed one.
+    // `hit.contains(el)` must NOT count here, however natural it looks. The
+    // clipped expander's own ancestor is what elementFromPoint returns at the
+    // dead coordinate, so accepting ancestors makes every clipped pseudo-element
+    // "reachable" and turns this probe back into the geometry check it replaces.
+    // Only the element itself or something inside it means a tap lands on it.
+    const reaches = (x, y) => {
+      const hit = document.elementFromPoint(x, y);
+      return !!hit && (hit === el || el.contains(hit));
+    };
+    const cx = Math.min(Math.max((left + right) / 2, 1), window.innerWidth - 1);
+    const cy = Math.min(Math.max((top + bot) / 2, 1), window.innerHeight - 1);
+    if (top < box.top && !reaches(cx, top + 2)) top = box.top;
+    if (bot > box.bottom && !reaches(cx, bot - 2)) bot = box.bottom;
+    if (left < box.left && !reaches(left + 2, cy)) left = box.left;
+    if (right > box.right && !reaches(right - 2, cy)) right = box.right;
     const h = Math.round(bot - top), w = Math.round(right - left);
     if (h >= FLOOR && w >= FLOOR) continue;
     const label = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 28);
@@ -100,6 +129,43 @@ test('the home surface clears the 44px floor', async ({ page }) => {
   // nothing". A trivial DOM is how the first version of this sweep reported a
   // spotless mobile experience while looking at the welcome screen.
   expect(await page.locator('button').count()).toBeGreaterThan(5);
+  expect(surprising(await sweep(page))).toEqual([]);
+});
+
+test('the home surface with the food decision UNSETTLED clears it too', async ({ page }) => {
+  // THE STATE BLIND SPOT (2026-08-15). `EV` above has food settled, and a whole
+  // family of controls — `.spread-link` among them — renders only while it is
+  // not. That is how a 187x17 control lived on the home surface while this file
+  // was green: the sweep was honest, and the offender was never on screen.
+  //
+  // A sweep is only as complete as the STATES its fixture reaches. This boots
+  // the same surface in the other state rather than trusting one fixture to
+  // stand for the surface.
+  await page.addInitScript((ev) => {
+    localStorage.setItem('ngw-hostv2-custom-events', JSON.stringify([ev]));
+    localStorage.setItem('ngw-hostv2-last-event', ev.id);
+    localStorage.setItem('ngw-v2-splash-seen', '1');
+    localStorage.setItem('ngw-v2-welcomed', '1');
+    // `EV` above cannot be reused as-is: it has no `venue` and is a destination
+    // event, so the venue blocker owns the hero and the food decision never
+    // surfaces at all. Reusing it made this test pass against a KNOWN-BROKEN
+    // control — it was measuring a surface the control was not on, which is the
+    // exact failure this test exists to end. Hence the venue, and hence the
+    // premise assertion below.
+  }, { ...EV, id: 'E2E_unsettled', name: 'Unsettled', venue: 'The Lodge',
+       isDestination: false, endDate: undefined });
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.goto('./', { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2500);
+  // The splash sits over the page after load and makes every hit test report the
+  // overlay — which silently turns the sweep's new reachability probe into a
+  // machine that finds nothing. Wait it out before measuring anything.
+  await page.waitForFunction(() => !document.querySelector('.splash'), null, { timeout: 15_000 });
+  // Premise, same as above: empty must mean measured-and-clean. Plus the one
+  // this test was added for — the unsettled-only control must actually BE here,
+  // or the sweep below is measuring the wrong screen and reporting a clean bill.
+  expect(await page.locator('button').count()).toBeGreaterThan(5);
+  await expect(page.locator('button.spread-link')).toHaveCount(1);
   expect(surprising(await sweep(page))).toEqual([]);
 });
 

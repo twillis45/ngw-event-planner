@@ -16,6 +16,7 @@ const SELF_PINNED = [
   '**/tabletLandscapeSplit.spec.mjs',
   '**/tapTargets.spec.mjs',
   '**/mobileTapFloor.spec.mjs',
+  '**/spreadLinkTapFloor.spec.mjs',
   '**/driftCapture.spec.mjs',
   '**/_boardCapture.spec.mjs',
   '**/_riskLaneCapture.spec.mjs',
