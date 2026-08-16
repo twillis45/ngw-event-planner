@@ -4,7 +4,37 @@
 Undated on purpose: there is exactly one of these, and it is always current. Dated
 snapshots (`2026-07-17_WHERE_WE_ARE.md`, `2026-07-17_THE_PLAN.md`) are history.
 
-**Last updated:** 2026-08-15 (latest) - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). PROVENANCE SPLIT INTO TWO SLOTS (`c16b5d41`, `d2dc77a9`). Engine 5750 passed / 393 suites, e2e 331 passed / 0 failed / 0 flaky.
+**Last updated:** 2026-08-16 (latest) - COST GROUNDING 63 -> 226 blocks, all grounded; host-visible sourced 22.5% -> 49.7%; 65 registered cost sources (was 43). Geography named and bounded (`geoCostIndex`). Engine 5785 passed / 395 suites, e2e 331 passed / 0 failed. Audit: `docs/audits/2026-08-16_COST_GROUNDING_AUDIT.md`.
+
+> ### PRICES ARE NATIONAL, AND NOW THEY SAY SO (2026-08-16)
+>
+> All 226 cost citations are NATIONAL bands. There was no geographic adjustment
+> anywhere and nothing told the host - grepped `costOfLiving`, `regionalMultiplier`,
+> `costIndex`, `metroMultiplier`: no hits. The sources record the error themselves:
+> beer $16.43 a case in Illinois vs $33.62 in Alaska (105%), wine MA $10.97 vs
+> MS $15.51 (41%).
+>
+> `geoCostIndex` now maps state -> Census region and serves PER-ITEM BLS factors.
+> There is deliberately **no blanket multiplier**: bananas run 0.949x in the South
+> while potatoes run 1.064x, and the West flips the same way, so one regional
+> factor is wrong in both directions. `national: true` is a DIFFERENT ANSWER from a
+> factor of 1.0 - a silent 1.0 is indistinguishable from a real regional match.
+> The food sheet carries one line: "These are national average prices - not yet
+> adjusted for the South."
+>
+> **REGION IS THE CEILING FOR FOOD, PROBED NOT ASSUMED.** BLS publishes 9 divisions,
+> 4 size classes and ~23 metros (incl. Urban Alaska/Hawaii) - but bananas at Middle
+> Atlantic, Size Class A, NY metro and LA metro all return "Series does not exist",
+> while LA metro ELECTRICITY exists to Dec 2024. Metro average prices are an ENERGY
+> series. Probe ids are recorded in `geoCostFactors.js`.
+>
+> Data via the BLS public API (no key) after bls.gov and FRED both 403 a fetcher.
+>
+> **STILL OPEN:** the factor table covers 2 commodities (bananas, potatoes); every
+> other item returns `national: true`. Alaska/Hawaii extremes need a different
+> source class - state alcohol boards, retailer APIs - not finer BLS.
+
+**Previously:** 2026-08-15 - grounding 4.4% -> 17.9% cited (22.5% host-visible) via source-family batching; three shapes of ungroundable identified. e2e matrix 18.6m -> 13.9m. Tap floor: one 187x17 offender fixed and the sweep hardened (`28fae937`, `d06ae10d`, `48c9c0ae`). PROVENANCE SPLIT INTO TWO SLOTS (`c16b5d41`, `d2dc77a9`). Engine 5750 passed / 393 suites, e2e 331 passed / 0 failed / 0 flaky.
 
 > ### THE SOURCED BADGE WAS ANSWERING FOR AN AXIS IT NEVER CHECKED (2026-08-15)
 >
