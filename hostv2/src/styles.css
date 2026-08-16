@@ -345,6 +345,34 @@ button{font-family:inherit}
 .sheet-back{ position:relative; }
 .sheet-back::after{ content:''; position:absolute; left:0; right:0; top:50%;
   transform:translateY(-50%); height:44px; }
+
+/* THE SPREAD LINK WAS 187x17 (2026-08-15 account-surface sweep).
+
+   THIS ONE CANNOT USE THE .sheet-back TECHNIQUE ABOVE, and the reason is worth
+   keeping: `.editor-slot`, two levels up, is `overflow:clip` and its box ends at
+   exactly this button's bottom edge. A 44px `::after` there computes correctly —
+   it reports height:44px and passes any geometry assertion you write — and is
+   then clipped to nothing, so `elementFromPoint` two pixels below the text
+   returns the ancestor. A pseudo-element expander is INVISIBLE TO MEASUREMENT
+   AND DEAD TO TOUCH at the same time, which is the worst combination available:
+   it looks fixed in a test and is not fixed on a phone. It only got caught here
+   because the spec drives a real click at a real coordinate.
+
+   Centring it would not have helped either. Measured live at 393x852, the gap
+   above is 12px and the control above is a `.decopt` decision option, a real
+   button — a centred 44px expander needs 14px of overhang each side and would
+   have reached 2px into Potluck and stolen its taps. That is the same failure
+   the `.pill` known-open note in mobileTapFloor.spec.mjs describes.
+
+   So this grows the button for real. The clip on `.editor-slot` exists for its
+   height enter-transition, not to bound content — the slot is `height:auto` and
+   grows with what is inside it, so padding here is absorbed by the slot rather
+   than clipped by it. Cost is 27px of hero-card height, paid deliberately.
+
+   Why the existing gates never caught the control at all: it renders only when
+   the food decision is UNSETTLED, and the mobileTapFloor fixture settles it. The
+   sweep was clean because the offender was never on screen. */
+.spread-link{ padding-block:14px 13px !important; }
 .navseg-b.on{ background:#33363b; color:var(--ink); font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05); }
 .navrows{ margin-top:14px; }
 .navrow{ display:flex; align-items:center; justify-content:space-between; gap:14px; width:100%; text-align:left;

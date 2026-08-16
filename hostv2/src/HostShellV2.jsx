@@ -5276,7 +5276,7 @@ export default function HostShellV2() {
           {foodPlan && (
             // PARITY (Figma 369:60): a subtle steel-soft TEXT LINK, not a .chip pill — the options
             // are the CTAs; opening the detail is secondary.
-            <button style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
+            <button className="spread-link" style={{ alignSelf: 'flex-start', background: 'none', border: 'none', padding: 0, fontFamily: 'var(--sans)', fontSize: 'var(--t-meta)', fontWeight: 600, letterSpacing: 0, color: 'var(--steel-soft)', cursor: 'pointer' }}
               onClick={() => setSheet({ kind: 'food' })}>Open the spread ({foodPlan.itemCount} items) ›</button>
           )}
         </div>
