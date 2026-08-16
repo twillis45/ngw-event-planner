@@ -73,11 +73,91 @@
 // a time. Also: a summarised fetch of ap.series reported that S49G and S49F were
 // absent; grepping the downloaded file found 23 of them. Grep the file.
 //
+// ── ALCOHOL GEOGRAPHY: WHAT EXISTS, AND WHAT STATE BOARDS CAN AND CANNOT DO ─
+//
+// Investigated 2026-08-16 because alcohol carries the widest geographic spread
+// in the corpus (beer $16.43 a case in Illinois against $33.62 in Alaska).
+//
+// BEER AND WINE: BLS HAS THEM, CURRENTLY, ALL FOUR REGIONS. Malt beverages
+// (720111) and table wine (720311) both run to May 2026 and are in the table
+// above. I had recorded that alcohol geography would need state boards; for beer
+// and wine that was wrong.
+//
+// SPIRITS: BLS HAS EFFECTIVELY NOTHING. Bourbon (720211) and domestic vodka
+// (720221) have NO rows at all in the current data file. "Vodka, all types"
+// (720222) has a US series ending 2024-M04 and regional series that stopped in
+// NOVEMBER 1997. So for spirits the state boards really are the only route.
+//
+// WHAT CONTROL STATES GIVE YOU, precisely: there are 18 control jurisdictions
+// (OR ID MT WY UT IA MI MS AL ME VT NH OH PA WV VA NC, plus Montgomery County
+// MD), and within one, a product "is available in all retail locations
+// throughout the state at the same cost" (NABCA). That uniformity is the prize -
+// a control-state price is THE state price, not a sample of one shop. The corpus
+// already leans on this indirectly: `spirits-budgetbar-2026` cites named North
+// Carolina shelf prices.
+//
+// WHAT THEY CANNOT GIVE YOU, and this corrects an earlier note in this repo:
+// **ALASKA AND HAWAII ARE NOT CONTROL STATES.** They are license states where
+// retailers set their own prices, so no board publishes a price for them. The
+// two markets where a national band is most wrong are reachable by neither BLS
+// (no food or alcohol series - see the Alaska/Hawaii block below) NOR by control
+// boards. Any fix there needs retailer-level data, and should be labelled a
+// sample rather than a state price.
+//
+// The other 32 license states have no single price either - only a distribution
+// across retailers - so a "state price" is a category error outside the 18.
+
+// ── DATE-MATCHING IS NOT OPTIONAL (learned the hard way, 2026-08-16) ────────
+//
+// A factor is regionValue / usValue at THE SAME PERIOD. Taking each series' own
+// most recent value and dividing produces garbage, because regional series are
+// discontinued at different times. Computed that way this file would have
+// claimed coffee at 0.377x in the Northeast and sugar at 0.534x in the Midwest -
+// 60% swings on staples, which should be the tell.
+//
+// The cause: those regional series stopped years ago. Date-matched, the newest
+// period where all five carry a value is 2004 for coffee, 2013 for sugar, 2016
+// for flour, 2020 for milk, 2024 for cheddar. Only 30 items still have current
+// four-region coverage at all, and those are the only ones eligible here.
+//
+// So: match periods, and reject anything whose common period is stale.
+//
 // THIS TABLE IS DELIBERATELY SMALL. It covers the two commodities actually
 // verified end to end. Adding a row means pulling five series and computing the
 // factors — never estimating one from a neighbouring item, because the two rows
 // below already disagree in DIRECTION (see the South).
 export const ITEM_SERIES = Object.freeze({
+  // ── ALCOHOL HAS REGIONAL DATA AFTER ALL (added 2026-08-16) ────────────────
+  // I had recorded that alcohol geography would need state control boards. It
+  // does not, at region level: BLS publishes malt beverages (720111) and table
+  // wine (720311) across all four regions, currently. State boards remain the
+  // only route to STATE-level spirits pricing and to Alaska/Hawaii, but the
+  // regional shape for beer and wine is public and free.
+  beerMalt: {
+    us: 'APU0000720111', northeast: 'APU0100720111', midwest: 'APU0200720111',
+    south: 'APU0300720111', west: 'APU0400720111',
+  },
+  wineTable: {
+    us: 'APU0000720311', northeast: 'APU0100720311', midwest: 'APU0200720311',
+    south: 'APU0300720311', west: 'APU0400720311',
+  },
+  breadWhite: {
+    us: 'APU0000702111', northeast: 'APU0100702111', midwest: 'APU0200702111',
+    south: 'APU0300702111', west: 'APU0400702111',
+  },
+  chickenWhole: {
+    us: 'APU0000706111', northeast: 'APU0100706111', midwest: 'APU0200706111',
+    south: 'APU0300706111', west: 'APU0400706111',
+  },
+  potatoChips: {
+    us: 'APU0000718311', northeast: 'APU0100718311', midwest: 'APU0200718311',
+    south: 'APU0300718311', west: 'APU0400718311',
+  },
+  bacon: {
+    us: 'APU0000704111', northeast: 'APU0100704111', midwest: 'APU0200704111',
+    south: 'APU0300704111', west: 'APU0400704111',
+  },
+
   groundBeef: {
     us: 'APU0000703112',
     northeast: 'APU0100703112',
@@ -113,6 +193,52 @@ export const ITEM_SERIES = Object.freeze({
 });
 
 export const REGIONAL_FACTORS = Object.freeze({
+  // Six items added from the BULK FILE rather than the API, which was rate
+  // limited. Each uses the newest period where ALL FIVE series carry a value -
+  // see the date-matching note below, which is not optional.
+  beerMalt: {
+    label: 'average price for malt beverages, all types, per 16 oz',
+    period: 'May 2026',
+    usValue: 1.877,
+    regionValues: { northeast: 1.896, midwest: 1.751, south: 1.785, west: 2.177 },
+    factors: { northeast: 1.010, midwest: 0.933, south: 0.951, west: 1.160 },
+  },
+  wineTable: {
+    label: 'average price for red and white table wine, per litre',
+    period: 'May 2026',
+    usValue: 13.841,
+    regionValues: { northeast: 15.348, midwest: 13.181, south: 12.679, west: 14.600 },
+    factors: { northeast: 1.109, midwest: 0.952, south: 0.916, west: 1.055 },
+  },
+  breadWhite: {
+    label: 'average price for white pan bread, per pound',
+    period: 'April 2026',
+    usValue: 1.869,
+    regionValues: { northeast: 1.921, midwest: 1.792, south: 1.731, west: 2.100 },
+    factors: { northeast: 1.028, midwest: 0.959, south: 0.926, west: 1.124 },
+  },
+  chickenWhole: {
+    label: 'average price for fresh whole chicken, per pound',
+    period: 'May 2026',
+    usValue: 2.036,
+    regionValues: { northeast: 2.181, midwest: 2.169, south: 1.899, west: 2.093 },
+    factors: { northeast: 1.071, midwest: 1.065, south: 0.933, west: 1.028 },
+  },
+  potatoChips: {
+    label: 'average price for potato chips, per 16 oz',
+    period: 'May 2026',
+    usValue: 6.580,
+    regionValues: { northeast: 7.828, midwest: 6.085, south: 6.798, west: 5.694 },
+    factors: { northeast: 1.190, midwest: 0.925, south: 1.033, west: 0.865 },
+  },
+  bacon: {
+    label: 'average price for sliced bacon, per pound',
+    period: 'May 2026',
+    usValue: 6.712,
+    regionValues: { northeast: 7.498, midwest: 6.544, south: 6.163, west: 7.133 },
+    factors: { northeast: 1.117, midwest: 0.975, south: 0.918, west: 1.063 },
+  },
+
   groundBeef: {
     label: 'average price for ground beef, 100% beef, per pound',
     period: 'July 2026',
