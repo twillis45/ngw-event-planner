@@ -83,12 +83,39 @@ export const CLAIM_VERIFICATION = Object.freeze({
 // when it applies, because it is the strongest claim that can actually be PROVEN.
 export const HOST_LABELS = Object.freeze({
   DIRECTLY_SOURCED:     'Directly sourced',
+  // ── THE BADGE NAMES WHICH CLAIM IT BACKS (2026-08-15) ─────────────────────
+  // A purchase line makes two claims — how much to buy, and what it costs — and
+  // `Directly sourced` was answering for both while proving only one.
+  //
+  // Measured: 42 priced lines carry a per-guest QUANTITY rate AND a
+  // `tier:'researched'` provenance whose claim states a dollar figure. The row
+  // renders the quantity rationale ("1/2 lb/guest x 15 guests") and then, in the
+  // identical `v-meta` style directly beneath it, the badge. A host reads the
+  // badge as vouching for the number they are about to put in a cart. It vouched
+  // for the price.
+  //
+  // This is not a new claim, it is the same claim stated at its true scope, so
+  // nothing is downgraded and no citation is hidden. The bar is untouched: both
+  // still require `tier:'researched'` and every source id resolving in its own
+  // registry.
+  PRICE_SOURCED:        'Price directly sourced',
+  AMOUNT_SOURCED:       'Amount directly sourced',
   ESTABLISHED_CONSENSUS: 'Established consensus',
   CULTURAL_TRADITION:   'Cultural tradition',
   PRACTITIONER_GUIDANCE: 'Practitioner guidance',
   PLANNING_BASELINE:    'Planning baseline',
   NEEDS_CONFIRMATION:   'Needs confirmation',
 });
+
+// The three labels that mean "a real source backs this". `Directly sourced` used to
+// be the whole set, so anything asking "is this row cited?" compared against that one
+// string. Exported once, because that question is asked in several places and three
+// hand-rolled copies of the answer is how the axes drifted apart in the first place.
+export const SOURCED_LABELS = Object.freeze([
+  HOST_LABELS.DIRECTLY_SOURCED,
+  HOST_LABELS.PRICE_SOURCED,
+  HOST_LABELS.AMOUNT_SOURCED,
+]);
 
 // A provenance may be authored as a bare string on 21 corpus lines, and measurement
 // (not assumption) shows the string is never a tier name. It is one of two things:
@@ -126,7 +153,9 @@ function readProvenance(prov) {
  *   basis                   what kind of knowing (authored vocabulary, verbatim)
  *   verification            how settled it is
  *   hostLabel               what a host is told
- *   directCitationEligible  === isGroundedItemQty. Narrow, provable, unchanged.
+ *   directCitationEligible  === isGroundedItemQty OR isGroundedCost, each judged
+ *                           against its own registry. Narrow and provable; the
+ *                           axis it passed on is named in `hostLabel`.
  *   recommendationEligible  may the app lead with this number
  *
  * NEVER returns a field called `grounded`. That word silently excluded established
@@ -190,14 +219,20 @@ export function classifyClaim(prov) {
   // resolve in its own registry, so this widens the axis, not the bar. A cost
   // claim is judged by the cost registry, a quantity claim by the quantity one,
   // and a line citing something registered nowhere still fails both.
-  const directCitationEligible = isGroundedItemQty(p.obj) || isGroundedCost(p.obj);
+  const qtyCited = isGroundedItemQty(p.obj);
+  const costCited = isGroundedCost(p.obj);
+  const directCitationEligible = qtyCited || costCited;
 
   // Ordered so that the label always names the most INFORMATIVE true thing. Basis
   // beats verification: `cultural-tradition / established-consensus` reads as
   // Cultural tradition, because where a number comes from is what a host needs.
   let hostLabel;
   if (directCitationEligible) {
-    hostLabel = HOST_LABELS.DIRECTLY_SOURCED;
+    // Unqualified only when BOTH axes are actually cited. Otherwise the label
+    // says which one — see HOST_LABELS above for the measurement behind this.
+    hostLabel = (qtyCited && costCited) ? HOST_LABELS.DIRECTLY_SOURCED
+      : costCited ? HOST_LABELS.PRICE_SOURCED
+        : HOST_LABELS.AMOUNT_SOURCED;
   } else if (offLadder) {
     hostLabel = HOST_LABELS.NEEDS_CONFIRMATION;
   } else if (basisDef.family === 'researched') {

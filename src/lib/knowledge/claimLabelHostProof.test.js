@@ -23,7 +23,13 @@ import { isGroundedCost } from './costProvenance';
 // Wedding's 7 priced items were cited to dated market sources on 2026-08-15 and
 // are the rows that moved this count.
 const citable = (prov) => isGroundedItemQty(prov) || isGroundedCost(prov);
-import { classifyClaim, HOST_LABELS } from './claimBasis';
+import { classifyClaim, HOST_LABELS, SOURCED_LABELS } from './claimBasis';
+
+// The set of labels that mean "a real source backs this". It was the single string
+// `Directly sourced` until 2026-08-15, when the badge started naming WHICH claim it
+// backs (price vs amount). The invariant these tests protect is unchanged: that set
+// must be exactly the set the predicate passes — no wider.
+const SOURCED = new Set(SOURCED_LABELS);
 
 const EVENT = (type) => ({ id: 'lbl', type, date: '2026-09-01', guestCount: 18 });
 const rowsFor = (type) => ((playbookFoodPlan(EVENT(type), {}) || {}).list || []).filter(Boolean);
@@ -37,7 +43,7 @@ describe('no host-facing row is silent', () => {
     expect(silent).toEqual([]);
   });
 
-  test('only the six approved labels ever reach a host', () => {
+  test('only the approved labels ever reach a host', () => {
     const allowed = new Set(Object.values(HOST_LABELS));
     for (const r of allRows()) expect(allowed.has(classifyClaim(r.provenance).hostLabel)).toBe(true);
   });
@@ -55,7 +61,7 @@ describe('relabelling promotes nothing', () => {
     for (const r of allRows()) {
       const c = classifyClaim(r.provenance);
       const wasSourced = citable(r.provenance);
-      expect(c.hostLabel === HOST_LABELS.DIRECTLY_SOURCED).toBe(wasSourced);
+      expect(SOURCED.has(c.hostLabel)).toBe(wasSourced);
       expect(c.directCitationEligible).toBe(wasSourced);
     }
   });
@@ -63,7 +69,7 @@ describe('relabelling promotes nothing', () => {
   test('the count of directly-sourced rows is exactly the predicate count', () => {
     const rows = allRows();
     const byPredicate = rows.filter((r) => citable(r.provenance)).length;
-    const byLabel = rows.filter((r) => classifyClaim(r.provenance).hostLabel === HOST_LABELS.DIRECTLY_SOURCED).length;
+    const byLabel = rows.filter((r) => SOURCED.has(classifyClaim(r.provenance).hostLabel)).length;
     expect(byLabel).toBe(byPredicate);
     expect(byPredicate).toBeGreaterThan(0);
   });
@@ -71,11 +77,12 @@ describe('relabelling promotes nothing', () => {
   test('every Wave 0 governed line still reads Directly sourced with its note', () => {
     // The 5F.11 backfill must survive the rewrite intact, caveat and all.
     const ice = rowsFor('Crab Feast').find((r) => r.id === 'p_ice');
-    expect(classifyClaim(ice.provenance).hostLabel).toBe(HOST_LABELS.DIRECTLY_SOURCED);
+    // Ice is cited to the QUANTITY registry (lb/guest), so it names that axis.
+    expect(classifyClaim(ice.provenance).hostLabel).toBe(HOST_LABELS.AMOUNT_SOURCED);
     expect(ice.provenance.note).toMatch(/CAVEAT|ceiling-leaning/);
 
     const tw = rowsFor('Birthday').find((r) => r.id === 'p_tableware');
-    expect(classifyClaim(tw.provenance).hostLabel).toBe(HOST_LABELS.DIRECTLY_SOURCED);
+    expect(classifyClaim(tw.provenance).hostLabel).toBe(HOST_LABELS.AMOUNT_SOURCED);
     expect(tw.provenance.note).toMatch(/LIMITATION/);
   });
 });
@@ -131,8 +138,11 @@ describe('no silent ice row, checked one at a time', () => {
       const c = classifyClaim(row.provenance);
       expect(c.hostLabel).toBeTruthy();               // never silent
       expect(Object.values(HOST_LABELS)).toContain(c.hostLabel);
-      // Directly sourced ONLY where the predicate passes -- no false source claim.
-      if (c.hostLabel === HOST_LABELS.DIRECTLY_SOURCED) {
+      // A sourced label ONLY where the predicate passes -- no false source claim.
+      // Ice rows are cited on the QUANTITY axis, so the label must be the one that
+      // names that axis: a row reading "Price directly sourced" here would mean a
+      // cost citation had been accepted as proof of a per-guest rate.
+      if (c.hostLabel === HOST_LABELS.AMOUNT_SOURCED) {
         expect(isGroundedItemQty(row.provenance)).toBe(true);
       } else {
         expect(isGroundedItemQty(row.provenance)).toBe(false);
@@ -148,7 +158,7 @@ describe('no silent ice row, checked one at a time', () => {
   test('the 29 rows span more than one basis label -- not a relabelled silence', () => {
     const labels = new Set(ICE_MEMBERS.map((m) => classifyClaim(iceRow(m.assetId).provenance).hostLabel));
     expect(labels.size).toBeGreaterThanOrEqual(3);
-    expect(labels.has(HOST_LABELS.DIRECTLY_SOURCED)).toBe(true);
+    expect([...labels].some((l) => SOURCED.has(l))).toBe(true);
     expect(labels.has(HOST_LABELS.PLANNING_BASELINE)).toBe(true);
     expect(labels.has(HOST_LABELS.PRACTITIONER_GUIDANCE)).toBe(true);
   });

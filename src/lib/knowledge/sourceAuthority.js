@@ -75,13 +75,56 @@ export const SOURCE_AXES = Object.freeze({
  * `cost` is returned only for the decision-level `costFactorProvenance` path, which
  * is what `isGroundedCost` actually guards.
  */
-export function axisForField(fieldPath) {
+export function axesForField(fieldPath) {
   const f = String(fieldPath || '');
-  if (/costFactorProvenance$/.test(f)) return SOURCE_AXES.cost;
-  if (/^p_[^.]+\.(provenance|qtyPerGuest|qtyFlat|unitCostRange|priceLadder|servingGuide)$/.test(f)) {
-    return SOURCE_AXES.quantity;
+  if (/costFactorProvenance$/.test(f)) return [SOURCE_AXES.cost];
+  const m = f.match(/^p_[^.]+\.(provenance|qtyPerGuest|qtyFlat|unitCostRange|priceLadder|servingGuide)$/);
+  if (!m) return [];
+  switch (m[1]) {
+    // A PRICE FIELD IS A COST CLAIM (fixed 2026-08-15). These three lived in the
+    // quantity branch, which meant a correct, registered COST source attached to
+    // `p_x.unitCostRange` was reported to the operator as `wrongAxis`, and
+    // `approvedSourcesFor` offered them the 5-entry QUANTITY picker for a price.
+    // This is the same axis confusion as the 2026-08-14 `directCitationEligible`
+    // bug: that one was fixed in the classifier, and the AUTHORING path was left
+    // pointing the wrong way, so the surface stopped lying while the tool that
+    // creates the data kept doing so.
+    case 'unitCostRange':
+    case 'priceLadder':
+      return [SOURCE_AXES.cost];
+    case 'qtyPerGuest':
+    case 'qtyFlat':
+    case 'servingGuide':
+      return [SOURCE_AXES.quantity];
+    // THE SHARED SLOT STAYS ON THE QUANTITY AXIS HERE, and that is a KNOWN,
+    // DELIBERATE DISAGREEMENT with `classifyClaim`, recorded rather than papered
+    // over.
+    //
+    // `classifyClaim` accepts either registry on this slot; this validator accepts
+    // only quantity. So a cost citation living in `p_x.provenance` renders a
+    // sourced badge to a host (63 rows do today) yet cannot be authored through
+    // the admin tool. That is genuinely broken.
+    //
+    // It is NOT fixed by widening this to both axes. Five gates across four suites
+    // (iceAcquisitionRepeatability, commercialSourcePolicy, tierGroundingGate,
+    // evidenceFromSources, sourceAuthority) deliberately encode "a cost source
+    // cannot ground a purchase quantity claim", and widening the slot silently
+    // relaxes all five — a purchase would gain a sourced badge from a price
+    // citation with nothing left asserting the amount was ever checked.
+    //
+    // The board ruled the real fix on 2026-08-15: a separate cost slot, with every
+    // existing block keeping its current meaning (Design A). Until that migration
+    // lands, the honest state is a contradiction that is WRITTEN DOWN, not one
+    // resolved by loosening the only gates that still hold the line.
+    case 'provenance':
+    default:
+      return [SOURCE_AXES.quantity];
   }
-  return null;
+}
+
+// Back-compat: the PRIMARY axis, which is what the picker defaults to.
+export function axisForField(fieldPath) {
+  return axesForField(fieldPath)[0] || null;
 }
 
 /**
@@ -91,16 +134,18 @@ export function axisForField(fieldPath) {
  * offered and the ids that can actually ground cannot drift apart.
  */
 export function approvedSourcesFor(fieldPath) {
-  const axis = axisForField(fieldPath);
-  if (!axis) return [];
-  return Object.entries(axis.registry).map(([id, s]) => ({
+  const axes = axesForField(fieldPath);
+  if (!axes.length) return [];
+  // The picker offers exactly what the validator will accept. When those two
+  // disagree the operator is invited to make a mistake and then told off for it.
+  return axes.flatMap((axis) => Object.entries(axis.registry).map(([id, s]) => ({
     id,
     org: s.org || id,
     url: s.url || null,
     fetched: s.fetched || null,
     claim: s.claim || '',
     axis: axis.id,
-  })).sort((a, b) => a.id.localeCompare(b.id));
+  }))).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 /**
@@ -114,7 +159,8 @@ export function approvedSourcesFor(fieldPath) {
  * different mistakes, and an operator can only fix the second if told which it is.
  */
 export function validateSourcesFor(fieldPath, ids) {
-  const axis = axisForField(fieldPath);
+  const axes = axesForField(fieldPath);
+  const axis = axes[0] || null;
   const list = Array.isArray(ids) ? ids.filter(Boolean) : [];
   if (!axis) {
     return { ok: true, errors: [], unknown: [], wrongAxis: [], axis: null };
@@ -122,13 +168,28 @@ export function validateSourcesFor(fieldPath, ids) {
   if (!list.length) {
     return { ok: false, errors: ['At least one approved source is required.'], unknown: [], wrongAxis: [], axis };
   }
+  // EVERY ID MUST RESOLVE IN THE **SAME** REGISTRY, not merely in some registry.
+  //
+  // `isGroundedItemQty` and `isGroundedCost` each use `.every()` over one registry,
+  // so a set mixing a quantity source with a cost source grounds under NEITHER.
+  // Checking ids one at a time against "any allowed axis" therefore reports `ok`
+  // for a citation that cannot ground — the exact silent-ungrounding path this
+  // function exists to block. (Caught by the test at sourceAuthority.test.js:106,
+  // which is the only reason this is not shipping.)
+  const satisfying = axes.find((a) => list.every((id) => a.registry[id]));
   const unknown = [];
   const wrongAxis = [];
-  for (const id of list) {
-    if (axis.registry[id]) continue;
-    const other = Object.values(SOURCE_AXES).find((a) => a.id !== axis.id && a.registry[id]);
-    if (other) wrongAxis.push({ id, belongsTo: other.id, belongsToLabel: other.label });
-    else unknown.push(id);
+  if (!satisfying) {
+    // Report against whichever allowed axis the operator got CLOSEST to, so the
+    // message names the smallest correct fix rather than the first axis in the list.
+    const best = axes.reduce((acc, a) =>
+      (list.filter((id) => a.registry[id]).length > list.filter((id) => acc.registry[id]).length ? a : acc), axes[0]);
+    for (const id of list) {
+      if (best.registry[id]) continue;
+      const other = Object.values(SOURCE_AXES).find((a) => a.id !== best.id && a.registry[id]);
+      if (other) wrongAxis.push({ id, belongsTo: other.id, belongsToLabel: other.label });
+      else unknown.push(id);
+    }
   }
   const errors = [];
   for (const u of unknown) {
@@ -200,9 +261,14 @@ export function groundingHonesty(fieldPath, value) {
  * discovering after a bake that the Sourced line never appeared.
  */
 export function wouldGround(fieldPath, provenance) {
-  const axis = axisForField(fieldPath);
-  if (!axis) return false;
-  return !!axis.predicate(provenance);
+  const axes = axesForField(fieldPath);
+  if (!axes.length) return false;
+  // ANY allowed axis whose predicate passes. On the shared `provenance` slot this
+  // is `isGroundedItemQty(p) || isGroundedCost(p)` — the same union `classifyClaim`
+  // has used since 2026-08-14. When this asked the quantity predicate alone, it
+  // answered "would not ground" about 63 corpus rows that render a sourced badge
+  // to a host right now, and the admin tool refused to author more of them.
+  return axes.some((a) => !!a.predicate(provenance));
 }
 
 // ─── EVIDENCE FROM THE SOURCES A HUMAN ALREADY CHOSE (Phase 5F.8) ────────────

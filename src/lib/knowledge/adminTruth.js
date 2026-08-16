@@ -94,7 +94,15 @@ export function recommendationFacts(assetId, purchaseId, event) {
     ['basis', 'classifyClaim().basis', show(claim.basis), 'derived'],
     ['verificationStatus', 'provenance.verificationStatus', show(claim.verification), 'derived'],
     ['basisRecorded', 'classifyClaim().basisRecorded', show(claim.basisRecorded), 'derived'],
-    ['directCitationEligible', 'isGroundedItemQty()', show(isGroundedItemQty(prov)), 'host'],
+    // ADMIN MUST NOT DISAGREE WITH THE HOST (fixed 2026-08-15). This row is
+    // labelled 'host' — it claims to report what the host is actually told — and
+    // it computed `isGroundedItemQty(prov)` alone, while `classifyClaim` has used
+    // `isGroundedItemQty || isGroundedCost` since 2026-08-14. Every cost-cited
+    // line therefore read "not citation-eligible" in Admin's own truth table and
+    // "Directly sourced" on the surface. A table whose purpose is to catch
+    // host/admin drift was itself the drift.
+    ['directCitationEligible', 'classifyClaim().directCitationEligible',
+      show(claim.directCitationEligible), 'host'],
     ['recommendationEligible', 'classifyClaim().recommendationEligible', show(claim.recommendationEligible), 'derived'],
     ['current source', 'provenance.sources[]', show(claim.sources), 'host'],
     ['recovered condition', 'ICE_MEMBERS[].condition', show(rec.authoredCondition), 'derived'],
