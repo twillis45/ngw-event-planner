@@ -96,6 +96,11 @@ export default defineConfig({
     // 2026-07-22) — every probe now guards the full-bleed tablet layouts.
     { name: 'tablet',      use: { viewport: { width: 768,  height: 1024 } }, testIgnore: NON_RESPONSIVE },
     { name: 'tablet-land', use: { viewport: { width: 1024, height: 768 } }, testIgnore: NON_RESPONSIVE },
+    // A 13-inch iPad in PORTRAIT is 1024 wide, so it resolves to tablet-land —
+    // whose project above is 1024x768, short and wide. Tall-and-narrow was tested
+    // at no size, and that is the geometry the fold defect lived in (host-reported
+    // 2026-08-17: the handle sat 49% up a 1366px screen).
+    { name: 'tablet-tall',  use: { viewport: { width: 1024, height: 1366 } }, testIgnore: NON_RESPONSIVE },
     // ── THE MATRIX STOPPED BELOW THE FEATURE IT SHOULD GUARD (2026-08-06) ───
     // Every project above is under 1280, and 1280 is exactly where the shell
     // stops being a phone silhouette and the responsive command / food / data

@@ -1010,6 +1010,34 @@ button{font-family:inherit}
 @media(max-width:699px){
   .hero{min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px))}
 }
+
+/* ── THE HOST COMMAND HAS TO BREATHE ON A TABLET (2026-08-17) ───────────────
+   Host-reported on a 13-inch iPad in PORTRAIT: the below-fold section is
+   encroaching. Measured at 1024x1366 — the "TOMORROW · YOUR DAY-BEFORE PLAN"
+   card sat at y=775, fully inside the first screen, beside the ask.
+
+   DOCTRINE, not taste:
+     · UX_04 "Every view has exactly one dominant element ... If everything is
+       the same size and weight, nothing is dominant. Fix it." The ask is Zone 2
+       (priority/action); the day-before card is Zone 3 (main content). Two
+       filled blocks in one screen means neither dominates.
+     · UX_04 zone ordering is non-negotiable: Zone 3 sits BELOW Zone 2.
+     · UX_03 tablet-land test: "does the content area still breathe?"
+
+   WHY IT HAPPENED: `.escreen.on` sizes itself with `calc(100cqh - 72px)`
+   (~:632). Measured, that resolves to 772px on a phone and to **0px** at
+   1024x1366 — the ask screen then collapses to its content (646px) and Zone 3
+   rides up into the gap. cqh is the phone's mechanism and it does not survive
+   this geometry; dvh is what the phone rule directly above uses, and it holds.
+
+   Bounded 700-1279 on purpose: phones keep the rule above, and >=1280 is the
+   responsive-command layout, which composes its own height (~:220) and must not
+   be touched by this. */
+@media (min-width:700px) and (max-width:1279px){
+  .hero.elegant .escreen.on{
+    min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px));
+  }
+}
 /* The hero's slack lives INSIDE the tile cluster (rows stretch), not as dead
    air between the countdown and the tiles — taller tiles, no empty band. */
 /* Type-scale migration (host-directed, 2026-07-11): the larger scale grew the
@@ -4318,6 +4346,32 @@ button.vc-pill::after{
     "prog";
   column-gap:0;
   min-height:0;
+}
+
+/* ── THE RAIL RULE ABOVE IS GLOBAL, AND IT REACHES DOWN TO 1024 ─────────────
+   Host-reported on a 13-inch iPad in portrait: "the handle is supposed to be at
+   the bottom of the viewport in tablet portrait mode" — it was sitting at y=667
+   on a 1366-tall screen, 49% up, with the day-before card fully visible beside
+   the ask.
+
+   The rule directly above sets `min-height:0` and carries NO media query, while
+   `data-rail="1"` goes up at 1024. Its own comment says it was "driven at 1920"
+   and belongs to the responsive-command layout, whose every other rule is gated
+   to `(min-width:1280px) and (min-height:700px)`. So from 1024 to 1279 the ask
+   screen collapsed to its content (646px measured) while the layout that
+   justifies collapsing it did not apply. Specificity 0-6-0 — it also silently
+   beat the tablet rule added earlier at ~:1013, which is why that alone did not
+   move the handle.
+
+   DOCTRINE: UX_04 "every view has exactly one dominant element" and its zone
+   order — Zone 3 (main content) sits BELOW Zone 2 (the ask), never beside it.
+   UX_03's tablet-land test asks whether the content area still breathes. Below
+   1280 the ask owns the first screen and the handle sits at its foot; at 1280+
+   the command layout keeps min-height:0 exactly as before. */
+@media (max-width:1279px){
+  .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
+    min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px));
+  }
 }
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
   grid-area:eyebrow; align-self:start;
