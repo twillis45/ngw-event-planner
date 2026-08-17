@@ -1755,6 +1755,27 @@ export function latenessBoost(a) {
   // staleness buys nothing, so age alone can never hold position one.
   return 4 + Math.min(2, (daysLate / 14) * 2);
 }
+/**
+ * The BANDED comparator — the one `eventPlan` actually sorts nextActions with.
+ *
+ * Exported for the same reason compareNextActions is: "the shipped comparator
+ * lives at module scope so the ranking gates test THE FUNCTION THAT RUNS, not a
+ * copy of it." I proved that warning on myself on 2026-08-17 — I wrote band-0
+ * tests that called compareNextActions directly, so they passed identically with
+ * the band-0 fix REVERTED. A gate that cannot fail is not a gate, and mine could
+ * not, because the code under test was inlined in eventPlan and unreachable.
+ *
+ * `severityBand` is injected so this stays a pure function of its inputs.
+ */
+export function compareBandedActions(a, b, severityBand) {
+  const ba = severityBand(a), bb = severityBand(b);
+  if (ba !== bb) return ba - bb;                 // 1 — severity is categorical
+  if (ba === 0 || ba === 1) {                    // criticals AND real work
+    const r = compareNextActions(a, b);
+    if (r !== 0) return r;
+  }
+  return 0;                                      // stable: producer order
+}
 export function compareNextActions(a, b) {
   // 2/3/4 — weight = what it costs to leave undone, PLUS a bounded lateness
   //         boost. Lateness is a strong signal, not an override; see
@@ -2346,25 +2367,10 @@ export function eventPlan(event, ctx = null) {
   // still the loudest signal where time is real — a genuinely past-due item still
   // leads — but among items that are merely SCHEDULED, consequence decides, and a
   // deterministic identity breaks true ties so the order is stable across runs.
-  nextActions.sort((a, b) => {
-    // 1 — hard gating: severity band is categorical and still dominant.
-    const ba = _severityBand(a), bb = _severityBand(b);
-    if (ba !== bb) return ba - bb;
-    if (ba === 1) {
-      const r = compareNextActions(a, b);
-      if (r !== 0) return r;
-    }
-    // 6 — stable tie-break: PRODUCER ORDER, deliberately.
-    //     Array.prototype.sort is stable in V8, so returning 0 keeps the order the
-    //     producers emitted — and that order is itself curated (the foundational
-    //     dominoes are pushed in their canonical sequence: guests, then budget,
-    //     then food). An identity tie-break was tried here and was worse: sorting
-    //     ties by id is deterministic but alphabetical, so it silently reordered
-    //     the foundation set on a fresh event and "Set your budget." led over
-    //     "Add your guest list." Determinism comes from stability over
-    //     deterministic producers, not from imposing an unrelated ordering.
-    return 0;
-  });
+  // Sorts through the module-scope compareBandedActions so the gates can execute
+  // the real thing (see its own note — an inlined comparator here is exactly how
+  // a band-0 test passed against reverted code).
+  nextActions.sort((a, b) => compareBandedActions(a, b, _severityBand));
 
   // ── WAVE-6: ONE POST-SNOOZE TRUTH ───────────────────────────────────────────
   // Snooze applies HERE, inside the single source — `nextActions` is post-snooze

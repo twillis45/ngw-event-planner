@@ -20,7 +20,7 @@
 // directions are pinned below, and a fix that holds only one of them is half a fix.
 //
 // See docs/audits/2026-08-17_RANKING_FLOOR_BOARD.md for the ruling.
-import { compareNextActions, actionConsequence, latenessBoost } from '../../CommandCenter';
+import { compareNextActions, compareBandedActions, actionConsequence, latenessBoost } from '../../CommandCenter';
 
 const rank = (rows) => [...rows].sort(compareNextActions).map((r) => r.id);
 
@@ -100,5 +100,40 @@ describe('the ordering is a function of the items, not of the array', () => {
     const a = { id: 'a', dueInDays: -29, priorityScore: 40 };
     const b = { id: 'b', dueInDays: 1, priorityScore: 300, gateHolder: true, unlocks: 3 };
     expect(rank([a, b])).toEqual(rank([b, a]));
+  });
+});
+
+describe('band 0 — the criticals the host reads first', () => {
+  // W8's SECOND Ranking cap, re-derived 2026-08-17: `compareNextActions` ran for
+  // band 1 only, so criticals fell through to producer order. It survived the
+  // comparator fix earlier the same day precisely because criticals never called
+  // the comparator — the W8 lesson, exactly: a gate on one axis cannot lift a
+  // dimension floored on another.
+  //
+  // None of the nine critical producers sets priorityScore, unlocks or
+  // gateHolder, so lateness is the ONLY signal a critical carries. If band 0 does
+  // not order by it, nothing does.
+  const critical = (id, dueInDays) => ({ id, level: 'critical', dueInDays });
+  // Drives the BANDED comparator eventPlan actually sorts with, not
+  // compareNextActions. The first version of these tests used the latter and
+  // passed identically with the band-0 fix reverted — they were measuring the
+  // comparator, which was never the broken part.
+  const band = (a) => (a && a.level === 'critical') ? 0 : 1;
+  const rankBanded = (rows) => [...rows].sort((x, y) => compareBandedActions(x, y, band)).map((r) => r.id);
+
+  test('among criticals, the more overdue leads', () => {
+    const rows = [critical('fresh', -2), critical('ancient', -27), critical('today', 0)];
+    expect(rankBanded(rows)).toEqual(['ancient', 'fresh', 'today']);
+  });
+
+  test('a critical with no date sorts last among criticals, never first', () => {
+    // Absence of a deadline is not urgency. A null must not win by accident.
+    expect(rankBanded([critical('undated', null), critical('late', -5)])[0]).toBe('late');
+  });
+
+  test('a critical still outranks band-1 work however consequential', () => {
+    // Ordering WITHIN band 0 must not have made the band itself negotiable.
+    const bigWork = { id: 'big', level: 'attention', dueInDays: 0, gateHolder: true, unlocks: 2, priorityScore: 900 };
+    expect(rankBanded([bigWork, critical('crit', 3)])[0]).toBe('crit');
   });
 });
