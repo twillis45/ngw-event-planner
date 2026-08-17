@@ -107,3 +107,61 @@ to pass, the change is wrong — they encode a prior board's ruling."
 **Not attempted tonight.** This is the attention path, it broke once already
 today, and the ruling is worth more than a 4am implementation of it. Recorded so
 the next attempt starts from the finding rather than rediscovering it.
+
+---
+
+## Attempt 2, REVERTED — the mechanism is not what either of us thought
+
+Built the ruling on 2026-08-17 (09:0x–09:3x) as commit `93fef455`, then reset it.
+Engine went 5863 green; **the matrix went 12 red**. Recording precisely, because
+the next attempt should not re-derive any of this.
+
+### What was built
+1. **Pinned the selector's head** out of the sort and put it back, so scoring
+   cannot overrule the tier ladder.
+2. **Wired the declared foundational ladder** into consequence behind the pin.
+
+Both directions of the bar measured GREEN at engine level:
+- bare event: "Add your guest list." led, `gateHolder`, `unlocks: 2` (was rank 3)
+- 310 days, consequence populated: head still "Venue"
+- `criticalBlockerLeads` + `hostEngineSelectionParity` passed UNMODIFIED
+
+### What broke
+`decisionIdentity.spec.mjs` — "Solemn repast · a real open decision still
+renders, aligned with its ask". Attributed conclusively by bisecting the one
+file:
+
+    without the change   6 passed
+    with the change      2 failed, 4 passed
+
+    Expected pattern: /who provides the food/i
+    Received string:  "Set your budget."
+
+### A CORRECTION TO THIS BOARD'S PREMISE, which I supplied
+I told the board blocker precedence was **positional** — "pushed first, held by
+sort stability". It is not. `_selectEventNextActionInner` picks the head through a
+TIER ladder (Tier 0 → 0.5 → 0.6), and `hostEngineSelectionParity` +
+`criticalBlockerLeads` require `nextActions[0]` to BE that choice. The ruling's
+"express precedence as consequence" was reasoning from a wrong description.
+
+### Two mechanisms guessed, both WRONG
+1. *"`nextActions[0] === topAction` fails because the phase splice lands
+   something ahead of it."* Re-pinned by `indexOf` identity instead — **still 2
+   failed**.
+2. *"The stamp's spread copy breaks an identity comparison downstream."* Not
+   verified either way; the run above rules out the index theory only.
+
+The Repast case could not be reproduced from the sample event directly: the
+committed `REPAST_SAMPLE_EVENT` is dated in the past, and forcing it future gives
+selector head "Buy sweet tea…", not the food decision the spec asserts. **The e2e
+harness state differs from the raw sample in some way that matters**, and finding
+that difference is step one for whoever picks this up.
+
+### For the next attempt
+- The repro is cheap and exact: `npx playwright test e2e/decisionIdentity.spec.mjs
+  --project=mobile` — 15 seconds, no full matrix needed.
+- Start by instrumenting what `readHero` actually reads on that state, rather
+  than reasoning about `nextActions[0]`. Both failed guesses assumed the hero
+  reads the sorted head; that assumption is now the prime suspect.
+- The engine suite is NOT sufficient cover for this change class. It passed at
+  5863 while the hero was showing the wrong ask on a real seeded event.
