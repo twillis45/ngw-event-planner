@@ -24,6 +24,22 @@
 // therefore cannot be caught by the visual matrix: a name a screen reader reads,
 // a ratio a designer's eye approves at 2.9:1, a focus ring that goes nowhere, a
 // dialog a keyboard cannot leave, a dialog a keyboard cannot escape.
+//
+// ─── IT WALKS EVERY SECTION, AND FINDS ITS OWN LIST ────────────────────────
+//
+// The first version covered the home screen and ONE sheet. I only found that
+// boundary by accident: a fault injected into a checklist row changed nothing,
+// because no test ever rendered a checklist row. A floor with an invisible edge
+// reports "accessible" about the small part it happens to visit.
+//
+// So the sweep now ENUMERATES the Sections door at runtime and walks whatever it
+// offers, rather than carrying a hardcoded list of sheet kinds. A hardcoded list
+// is wrong the day someone adds a sheet, and wrong silently — the new surface is
+// simply never visited and the suite stays green. Reading the door means a
+// section that exists for hosts is a section this checks, by construction.
+//
+// The PREMISE test guards that mechanism: if the door ever yields fewer rows than
+// expected, the sweep is measuring less than it claims and says so.
 import { test, expect } from './fixtures.mjs';
 
 const boot = async (page) => {
@@ -106,6 +122,43 @@ const NAME_PROBE = () => {
   return { total: els.length, unnamed };
 };
 
+
+/** The Sections door, read at runtime — never a hardcoded list of sheets. */
+const sectionRows = async (page) => {
+  await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
+  await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 8000 });
+  const labels = await page.locator('.sheet').last().locator('button').allInnerTexts();
+  await page.keyboard.press('Escape').catch(() => {});
+  await page.waitForTimeout(200);
+  // First line only: each row renders "Label\nsub-label".
+  return labels.map((t) => (t || '').split('\n')[0].trim())
+    .filter(Boolean)
+    .filter((t) => !/^(New event|Ask the Boss|Close)$/.test(t));   // leave the shell / start a flow / not a section
+};
+
+/**
+ * Open one section by its door label, from a FRESH BOOT. Returns false if it did
+ * not open.
+ *
+ * The reboot is not defensive padding — the first version reused one page and
+ * silently measured a THIRD of the app. After tabbing through a sheet, focus can
+ * land in a text field, and Escape from a field is swallowed by that field's own
+ * cancel (HostShellV2 documents exactly this). The sheet stayed open, the
+ * Sections door was unreachable, and every later section quietly failed to open
+ * while the sweep still reported success on the handful it managed. Twelve
+ * sections open this way; four did the other way.
+ */
+const openSection = async (page, label) => {
+  try {
+    await boot(page);
+    await page.locator('.ev-eyebrow').first().click({ timeout: 6000 });
+    await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 6000 });
+    await page.locator('.sheet').last().getByText(label, { exact: false }).first().click({ timeout: 6000 });
+    await page.waitForTimeout(300);
+    return await page.locator('.sheet').count() > 0;
+  } catch { return false; }
+};
+
 test.describe('the accessibility floor', () => {
   test('every visible control has a name a screen reader can read', async ({ page }) => {
     await boot(page);
@@ -121,16 +174,68 @@ test.describe('the accessibility floor', () => {
     expect(bad).toEqual([]);
   });
 
-  test('the same holds inside an open sheet', async ({ page }) => {
-    // Sheets are where new UI actually lands, so a floor that only covered the
-    // home screen would rot within a sprint.
+  test('PREMISE — the Sections door really lists the app\'s surfaces', async ({ page }) => {
+    // The sweep below is only as wide as this list. If the door stops yielding
+    // rows, every sweep assertion passes over nothing at all.
     await boot(page);
-    await page.locator('.ev-eyebrow').first().click({ timeout: 8000 });
-    await expect(page.locator('.sheet').last()).toBeVisible({ timeout: 8000 });
-    const names = await page.evaluate(NAME_PROBE);
-    expect(names.unnamed).toEqual([]);
-    const bad = await page.evaluate(CONTRAST_PROBE);
-    expect(bad).toEqual([]);
+    const rows = await sectionRows(page);
+    expect(rows.length).toBeGreaterThan(8);
+    expect(rows).toContain('Your checklist');      // the surface the old floor missed
+  });
+
+  test('EVERY section holds the floor — names and contrast', async ({ page }) => {
+    // The sweep. Walks each row the Sections door offers, opens it, and probes.
+    // Any surface a host can reach is a surface this covers; the failure message
+    // names the section so a red run points at the screen, not at the suite.
+    test.setTimeout(180_000);
+    await boot(page);
+    const rows = await sectionRows(page);
+    const findings = [];
+    let visited = 0;
+    for (const label of rows) {
+      const opened = await openSection(page, label);
+      if (!opened) continue;               // a row that needs state we have not set
+      visited++;
+      const names = await page.evaluate(NAME_PROBE);
+      for (const u of names.unnamed) findings.push(`[${label}] unnamed control: ${u}`);
+      const bad = await page.evaluate(CONTRAST_PROBE);
+      for (const b of bad) findings.push(`[${label}] contrast ${b.ratio} < ${b.need} on "${b.text}" (${b.px}px)`);
+    }
+    // Without this the loop could visit nothing and report a clean sweep.
+    expect(visited, 'the sweep opened no sections at all').toBeGreaterThan(9);
+    expect(findings).toEqual([]);
+  });
+
+  test('EVERY section that opens as a dialog traps the keyboard', async ({ page }) => {
+    // aria-modal="true" is a promise to assistive tech that the background is
+    // inert. A sheet that makes the promise and lets Tab walk out leaves the user
+    // somewhere the screen reader says does not exist — worse than never having
+    // claimed it.
+    test.setTimeout(180_000);
+    await boot(page);
+    const rows = await sectionRows(page);
+    const findings = [];
+    let checked = 0;
+    for (const label of rows) {
+      if (!await openSection(page, label)) continue;
+      const claims = await page.evaluate(() => {
+        const s = document.querySelector('.sheet');
+        return !!(s && s.getAttribute('aria-modal') === 'true');
+      });
+      if (!claims) continue;               // not a modal; nothing promised
+      checked++;
+      for (let i = 0; i < 12; i++) {
+        await page.keyboard.press('Tab');
+        const out = await page.evaluate(() => {
+          const s = document.querySelector('.sheet'); const a = document.activeElement;
+          if (!s || !a || s.contains(a)) return null;
+          return `${a.tagName}|${(a.innerText || '').trim().slice(0, 24)}`;
+        });
+        if (out) { findings.push(`[${label}] focus escaped to ${out}`); break; }
+      }
+    }
+    expect(checked, 'no section claimed aria-modal — the sweep proved nothing').toBeGreaterThan(9);
+    expect(findings).toEqual([]);
   });
 
   test('a sheet announces itself as a dialog, and says what it is', async ({ page }) => {
