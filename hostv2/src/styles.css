@@ -3628,14 +3628,21 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
    holding the viewport, the space it was pushing the ask away from is the
    composed void the ask is supposed to sit inside, not dead air above it.
 
-   PORTRAIT ONLY. Landscape keeps flex-start: a 1024x768 stage has ~700px of
-   usable height for the same block, and centring there pushes the ask into the
-   fold handle. Orientation is the honest discriminator — a portrait tablet has
-   height to give and a landscape one does not.
+   TALL PORTRAIT ONLY (>=1200px). Orientation alone was NOT the discriminator,
+   and the correction matters: measured, `.escreen` at 768x1024 is 952px WITH or
+   WITHOUT the min-height rule — it never collapsed there, because the collapse
+   came from the rail rule and 768 has no rail. So the "~230px stranded above the
+   headline" that heroVoid.spec.mjs was written against WAS centring in a
+   full-height box, at exactly this size. Centring 768x1024 puts that defect back,
+   which is why that gate turns red and why it is right to.
+   A 13-inch iPad in portrait (1366px) has 340px more height for the same block,
+   and that is where the host asked for the ask to float. 1200 separates the two
+   with clearance: 1366 centres, 1024 and 1180 stay top-aligned, landscape stays
+   flex-start. heroVoid is untouched and stays green on its own terms.
 
    `.ecenter`'s own base rule (~:638) is already `justify-content:center`, so
    this restores the default rather than inventing a new alignment. */
-@media (orientation: portrait){
+@media (orientation: portrait) and (min-height: 1200px){
   .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
   .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
     justify-content:center; padding-top:0;
