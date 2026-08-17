@@ -165,7 +165,21 @@ function deriveDecisionBlockers(event, eventIdentity) {
       daysToEvent: _dte,
       reasoning: (_dte !== null && _dte <= 120)
         ? 'Insurance certificates, rentals, and the load-in schedule need about 90 days, and none of them can start on a town'
-        : 'Venue unlocks vendors, timeline, logistics'
+        : 'Venue unlocks vendors, timeline, logistics',
+      // WHAT IT BLOCKS, AS DATA (board ruling 2026-08-17, second sitting).
+      // The `reasoning` line above has always named these three; they were
+      // trapped in prose, so the ranker could not see them and the blocker
+      // reached the ranked list carrying ZERO consequence. It led only because
+      // 52% of raises score 0 and nothing outscored it — an accident, not a rule.
+      //
+      // Authored rather than parsed out of the sentence: a regex over copy is a
+      // new source of truth that drifts the first time someone edits the words.
+      //
+      // NB `CommandCenter.jsx` has asserted `blocks:['catering']` in a comment
+      // since long before this — describing a field nothing ever set. That
+      // comment is what sent the first board to an unimplementable ruling; it is
+      // corrected in the same change.
+      blocks: ['vendors', 'timeline', 'logistics'],
     });
   }
 

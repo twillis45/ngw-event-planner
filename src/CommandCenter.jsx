@@ -1882,6 +1882,14 @@ export function eventPlan(event, ctx = null) {
     // its card below — the duplicate surface Tier 0.6 exists to prevent. The
     // whitelist is the hazard; anything a producer stamps must be listed.
     blockerType: top.blockerType || null,
+    // CONSEQUENCE SURVIVES THE REBUILD (2026-08-17). This whitelist is a
+    // silent-drop machine — it has eaten five fields before, which is why
+    // topActionCarriesEveryField exists. It ate these two within minutes of the
+    // Tier 0.6 blocker starting to stamp them, and that gate named both by name.
+    // Without them the blocker reaches the ranked list with consequence 0 and
+    // leads only because nothing else scores either.
+    gateHolder: top.gateHolder === true,
+    unlocks: Number.isFinite(top.unlocks) ? top.unlocks : 0,
     // THE FIFTH. `heroAsk` reads `a.ask` before every other rung — it is the
     // documented way a producer whose DOMAIN and JOB differ authors its own
     // question instead of teaching the prose ladder a new regex. Dropping it
@@ -2367,6 +2375,35 @@ export function eventPlan(event, ctx = null) {
   // still the loudest signal where time is real — a genuinely past-due item still
   // leads — but among items that are merely SCHEDULED, consequence decides, and a
   // deterministic identity breaks true ties so the order is stable across runs.
+  // ── THE DECLARED LADDER, AS CONSEQUENCE (step 4 of the ruling) ───────────
+  // Foundational dominoes carry gateHolder + unlocks, counted over the order
+  // `_eventFoundationActions` already DECLARES — arithmetic on a declared
+  // structure, not an invented score. Without it, "Add your guest list." (which
+  // the ladder's own prose calls the first domino, sizing budget, food and
+  // schedule) reached the ranker with consequence 0.
+  //
+  // ORDER MATTERS AND THE BOARD SAID SO: blocker consequence first, ladder
+  // second. The reverted attempt did ladder-first and the dominoes outranked the
+  // venue gate — the blocker had nothing to compete with, because it scored 0 too.
+  //
+  // AND NO PIN. The sort correcting the tier selection is real behaviour, not a
+  // bug: on the repast state the tier picks "Set your budget." and the sort
+  // rightly promotes the food decision over it. Pinning inverted that and broke
+  // the hero (12 matrix failures).
+  const _openDomino = new Map();
+  {
+    const open = foundation.filter((f) => f && !f.done);
+    open.forEach((f, i) => _openDomino.set(f.domain, Math.max(0, open.length - i - 1)));
+  }
+  for (let i = 0; i < nextActions.length; i++) {
+    const a = nextActions[i];
+    if (!a || a.gateHolder === true) continue;
+    const dom = a.domain || CATEGORY_TO_DOMAIN[a.category] || a.category;
+    if (!_openDomino.has(dom)) continue;
+    // Spread, never mutate: `foundation` also feeds progress/handled, and the
+    // top action object is shared with callers.
+    nextActions[i] = { ...a, gateHolder: true, unlocks: _openDomino.get(dom) };
+  }
   // Sorts through the module-scope compareBandedActions so the gates can execute
   // the real thing (see its own note — an inlined comparator here is exactly how
   // a band-0 test passed against reverted code).
@@ -2681,8 +2718,14 @@ export function _selectEventNextActionInner(event) {
   }
 
   // ── Tier 0.6: A CRITICAL BLOCKER IS THE GATE (board 1c, built 2026-08-14) ───
-  // `deriveDecisionBlockers` marks an unresolved venue `urgency:'critical'`,
-  // `reversibility:'locked'`, `blocks:['catering']` — the gate on the sequence.
+  // `deriveDecisionBlockers` marks an unresolved venue with an escalating
+  // `urgency` and — since 2026-08-17 — `blocks: ['vendors','timeline',
+  // 'logistics']`, the gate on the sequence.
+  //
+  // CORRECTED: this comment previously claimed `reversibility:'locked'` and
+  // `blocks:['catering']`. Neither field existed. The blocks claim in particular
+  // sent a review board to an unimplementable ruling ("source consequence from
+  // its declared blocks") before anyone checked that the declaration was real.
   // That list fed `unresolvedBlockerStages` -> the shell's blocker CARDS only,
   // which is a DIFFERENT PIPE from this selector. So the engine's own severity
   // never entered the ranking and the layout rendered the gate dead last, below
@@ -2784,6 +2827,15 @@ export function _selectEventNextActionInner(event) {
       // follows the ladder; position is already decided by being this tier.
       level: b.urgency || 'critical',
       category: 'blocker',
+      // CONSEQUENCE, so the blocker COMPETES rather than relying on nothing
+      // outscoring it. `blocks` is authored on the blocker itself; `unlocks` is
+      // simply its length. The ranking is the one mechanism that decides what
+      // leads — there is deliberately no positional pin, because the sort
+      // CORRECTING the tier selection is real, measured behaviour (on the repast
+      // state the tier picks "Set your budget." and the sort rightly promotes the
+      // food decision over it). A pin inverts that and breaks the hero.
+      gateHolder: true,
+      unlocks: Array.isArray(b.blocks) ? b.blocks.length : 0,
       // The identity the shell's card stand-down matches on, so the promoted
       // ask and the below-fold card can never both render.
       blockerType: b.type,
