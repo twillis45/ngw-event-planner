@@ -99,3 +99,67 @@ relationship stated first — which is a board question, not a constant.
 
 Ranking stays **4/10**. The path to 5+ is now specific: express blocker-vs-gate
 precedence, then wire the declared ladder into consequence behind it.
+
+
+---
+
+## Re-score 2026-08-17 (14:1x) — and a correction to a number I was quoting
+
+**First, the bookkeeping failure.** This document's last recorded score was
+**4/10**. I have been carrying Ranking as **7, then 8** in conversation on the
+strength of work that was real and gated but never written down here. A score
+that lives only in chat is not a score. Recomputed below from measurement.
+
+### What the boards asked for, and whether it landed — verified, not assumed
+
+| board ruling | gate | state |
+|---|---|---|
+| express blocker-vs-gate precedence | `criticalBlockerLeads` | PASS — leads at every stage, carries its route, names the act, leaves once resolved |
+| cap lateness below a real gate, keep it above a scheduled item | `rankingFloor` | PASS — both directions, saturating, order-independent |
+| the two guards stay green untouched | `decisionSoundness`, `hostEngineSelectionParity` | PASS |
+| a late gate is still a gate | `gateHolderSurvivesOverdue` | PASS — new today |
+
+79 tests across those files, all green.
+
+### The measurement that sets the score — 827 raises, all 39 playbooks
+
+| surface | raises | unlocks | gateHolder |
+|---|---|---|---|
+| risks | 432 (52%) | 0 | 0 |
+| decisions | 250 | 58 | 54 |
+| vendor-coi | 78 | 0 | 0 |
+| vendor-unbooked | 67 | 0 | 0 |
+
+**Only ONE of four producing surfaces declares consequence at all.**
+
+`risks` carrying zero is CORRECT and not counted against the dimension — a
+standing worry gates nothing, and the registry already argues a worry is not a
+chore. The vendor surfaces are the real gap: a required caterer still unbooked
+past its authored window plainly gates the menu and the shopping run, and the
+ranker cannot see it.
+
+### Why it was NOT fixed in this pass
+
+There is no authored source. `blocks: [...]` is authored on DECISIONS — nine of
+them in wedding.js alone — and vendor categories carry only `category`,
+`required`, `altToDIY`, `when`, `costRange`, `costUnit`. Nothing says what a
+missing caterer blocks. Declaring it in code would be inventing a dependency and
+calling it authored, which is the failure this repo gates against everywhere
+else. Boarded instead: `2026-08-17_VENDOR_CONSEQUENCE_BOARD.md`.
+
+## Score
+
+**Ranking: 7/10** (from a recorded 4; and correcting the 8 I was quoting).
+
+Raised because blocker precedence, the lateness/consequence balance, order
+determinism and late-gate visibility are all now gated and green — four
+sub-dimensions that were open or broken.
+
+**Capped at 7 by the lowest sub-dimension: consequence COVERAGE.** One surface of
+four declares. Today's `gateHolder` fix repaired signal availability across the
+countdown (0 gate-holders from T-300 onward, now 3) but it did not widen
+coverage, so it lifted a sub-dimension without lifting the floor. Scoring it 8
+was optimistic and is withdrawn.
+
+**To reach 8+:** author what a required vendor category blocks, per the board.
+That is content with event-pro judgment behind it, not an engine change.
