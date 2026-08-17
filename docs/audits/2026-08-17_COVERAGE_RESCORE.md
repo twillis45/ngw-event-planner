@@ -213,3 +213,65 @@ correct rather than assumed — including its refusal to invent a debt.
 
 Capped at 7 by the cost-sharing gap: a whole domain with a sheet, an engine, and
 no way to raise. Guest money is not a minor surface.
+
+
+---
+
+## Third pass (11:2x) — the cost-sharing gap is closed, and my statement of it was wrong
+
+**The gap is closed** (`32e6909d`): `dues-unpriced` ships, gated, red-proofed on
+four refusals, with the route defect fixed ahead of it.
+
+**But first, a correction to the pass above.** I recorded the gap as "a host
+whose guests have not paid is told nothing by the ranked list." Measured since,
+that overstates what the data can support:
+
+`costSharingSummary` returns `mode`, `reason`, `cadence`, `tiers[{label, amount,
+note}]` and derived counts. **There is no headcount and no per-guest payment
+record anywhere in the model** — `costSharing.js:36` states it as a deliberate
+choice. So the chase raise fails on TWO counts, not one: no deadline AND no
+ledger. It would have invented the debt itself, not merely its timing.
+
+That refusal is now recorded in three places (the registry comment, the gate
+header, the board) so it is not re-proposed later as a threshold problem.
+
+## What shipped, and why it is honest
+
+| axis | how it is grounded |
+|---|---|
+| subject | the HOST's unfinished setup — a declared pool with unpriced tiers. No guest is named |
+| threshold | **borrowed**: a vendor's host-entered `payDueDate` with a balance owed. No bill, no raise |
+| scope | destination-only, mirroring the sheet's own `travel.relevant` guard |
+| route | `/^costshare/` added to routeResolver — it resolved to **lodging** before |
+
+The route defect is worth naming on its own: shipped as-is, the raise would have
+opened "Where everyone stays." That is the silent mis-landing class the route
+audit fixed seven of, and it was one commit from returning.
+
+## A red-proof that lied, and what it cost to catch
+
+The destination guard reported GREEN when faulted — i.e. the gate appeared not to
+protect it. It was a false negative: `perl` matched an **identical guard line in a
+different raiser at :587** and mutated that instead. Re-run against the correct
+line by number, it goes red properly. Same silent-substitution trap as this
+morning; the lesson is the same one, which is that a red-proof needs its edit
+CONFIRMED applied to the intended line, not merely reported as substituted.
+
+## Found, not fixed
+
+`raiseAll` collapses every non-critical severity to `attention` (~:1028), so an
+authored `'urgent'` evaporates — the ninth casualty of the explicit-field-list
+normalizer whose own comment documents eight. **`money-dates:540` authors
+`'urgent'` through that same pipe, so its sharpening branch has never had an
+effect.** Out of scope for this change; recorded for the next Ranking pass.
+
+## Score
+
+**Coverage: 8/10** (from 7).
+
+Raised: the last domain with a surface and no voice now has one, and it earns it
+without inventing a fact — plus a live route defect caught before it shipped.
+
+Capped at 8, not higher, by the decision-window gradient: coverage of WHEN each
+domain should speak is still authored per-playbook and uneven. That needs an
+event-pro bench across 39 playbooks, not another raiser.
