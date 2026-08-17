@@ -158,3 +158,58 @@ second.
 **Coverage stays 5/10.** The score is unchanged, but one of its two stated
 reasons is withdrawn: the remaining gap is the unbooked-vendor producer, not a
 missing gradient.
+
+
+---
+
+## Second pass (11:0x) — last cap closed, post-event verified, new gap found
+
+**All three W8 caps are now closed** (enforcement, silent guests, unbooked
+vendors — the last in `5e85a17d`).
+
+**Post-event verified CORRECT**, having first misread it. `eventPlan().nextActions`
+is EMPTY after the event, which looked like a hole; every raiser gates on
+`isPastEvent` by design, because the wrap-up ledger owns that phase. It orders
+properly:
+
+| state | what the host is told |
+|---|---|
+| vendor cost recorded, unpaid | **"Settle up with Acme"** (priority 1) |
+| vendor cost recorded, paid | "Send thank-yous · 12 left" |
+| **no cost recorded**, unpaid | "Send thank-yous" — correctly refuses to claim a debt it has no amount for |
+
+That last row is the honest one: with no recorded cost, asserting money is owed
+would be fabrication.
+
+## THE NEW GAP — cost sharing cannot raise at all
+
+`grep -c costSharing src/lib/surfaceRegistry.js` → **0**.
+
+`costSharing` is read by its own engine, by `sectionDirectory`, and by the shell —
+and by NOTHING that can raise. So a host collecting pooled dues whose guests have
+not paid is told nothing by the ranked list, at any distance, ever. The roster
+carries a seat for precisely this failure mode: *The Trench Organizer — the cousin
+who actually collects the money; organizer exposure, partial/cash payments, the
+11pm chase roster.*
+
+**It is not buildable without a ruling.** `costSharingSummary` returns amounts
+(`lowestDue`, `highestDue`) and no DATE. Every producer added today rested on an
+authored threshold — the reply-by for silent guests, `when: 'T-300d'` for unbooked
+vendors. Cost sharing has none, so "when is a share late?" would be a number I
+invented, and inventing a deadline to nag a host's friends about money is the
+worst possible place to guess.
+
+**Board question for the next pass:** what makes a pooled due late — an authored
+`dueDate` on the cost-sharing record (new field, host-set, same shape as
+`rsvpDeadline`), or a derived offset from the event date? The first is honest and
+needs UI; the second is cheap and invents a promise nobody made.
+
+## Score
+
+**Coverage: 7/10** (from 6).
+
+Raised: the last W8 cap is closed and gated, and post-event closeout is verified
+correct rather than assumed — including its refusal to invent a debt.
+
+Capped at 7 by the cost-sharing gap: a whole domain with a sheet, an engine, and
+no way to raise. Guest money is not a minor surface.
