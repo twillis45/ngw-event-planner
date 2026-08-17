@@ -1349,6 +1349,14 @@ export function topPlaybookDecision(event, asOf) {
       category: 'decision',
       decision: 'dietary',
       title: 'Collect dietary restrictions & allergies',
+      // The hero ask, authored (2026-08-17). The title is 40 characters and
+      // heroAskFor's cutoff is 26, so this item showed the host "Your next
+      // step." — the last of the placeholder cases in the T-3 census, and the
+      // worst one to lose: an unflagged allergy is a safety issue, not a
+      // courtesy. Plain host language per UX_06; the clinical register
+      // ("dietary restrictions & allergies", reading grade 12.3) stays on the
+      // card where a list needs a precise noun.
+      ask: 'Who has a food allergy?',
       consequence: 'Lock the menu only after allergies are in — one unflagged allergy is a safety issue, not a courtesy. Collect from your guest list before buying food.',
       level: 'attention',
       primaryCta: 'Collect dietary needs',
@@ -2913,7 +2921,15 @@ export function playbookDecisionBoard(event, asOf, profile) {
     // Only a label AUTHORED as a question becomes an ask — authoredQuestion()
     // returns null for a declarative decision NAME, which then falls through to
     // the builder ladder rather than being punctuated into a fake question.
-    open.push({ id: d.id, label: decisionShortLabel(d.label), ask: authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
+    // `d.ask` FIRST (2026-08-17): a decision may author the question a host is
+    // actually being asked, separately from its board LABEL. The label is a
+    // terse card title in a list; the ask is the one sentence a hero shows.
+    // Deriving the hero from the label forced a choice between a good card and
+    // a good hero — 'Ceremony type + officiant' is a fine card and a poor
+    // sentence. authoredQuestion stays as the fallback, so every existing
+    // question-authored label keeps working untouched and nothing is invented
+    // where neither exists.
+    open.push({ id: d.id, label: decisionShortLabel(d.label), ask: d.ask || authoredQuestion(d.label), status, because, assurance, dueDate, daysOut, ...priority, ...derived, route });
   }
 
   // Wave-2a priority ordering (DECISION_SCHEMA_SPEC §4.A/§6). Every open row is

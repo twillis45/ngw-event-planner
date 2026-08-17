@@ -3186,6 +3186,15 @@ export function _selectEventNextActionInner(event) {
       decision: opDecision.decision || null,
       decisionId: opDecision.decisionId != null ? opDecision.decisionId : null,
       title: opDecision.title,
+      // THE AUTHORED ASK (2026-08-17) — the THIRD re-projection to drop a field,
+      // and this one's own comment above already records the first (`decision`,
+      // WAVE-7). heroAskFor prefers `a.ask` and falls back to a 26-character
+      // title cutoff; 'Collect dietary restrictions & allergies' is 40, so this
+      // item showed the host "Your next step." at T-3 on three event types. The
+      // worst possible one to lose — an unflagged allergy is a safety issue, not
+      // a courtesy. Carried explicitly rather than by spreading the prompt: it
+      // also holds `id`/`kind`, and `_topActionId` keys off the fields above.
+      ask: opDecision.ask || null,
       consequence: opDecision.consequence,
       primaryCta: opDecision.primaryCta,
       // Spread the full primaryRoute — previously narrowed to just .tab, dropping
