@@ -73,3 +73,66 @@ idiom; here there is no gate at all.
 - Note the `dates.js` comment claiming `policyForkEnforcement` enforces idiom B.
   It does not exist. Fifth comment found today asserting behaviour the code does
   not have.
+
+
+---
+
+## Second pass — the behavioural half, and a correction to the running score
+
+The pass above scored **6** and named what 10+ needed: *"a guard that hostv2's
+overdue comes from taskIsOverdue ... behavioural (drive a snoozed and an
+unreachable task), not textual."*
+
+**Correction first.** I have been carrying Over time as **7** in the running
+scoreboard since `overduePolicyFork` shipped. That gate is TEXTUAL — it proves no
+consumer derives an overdue state from the display bucket. It is the half this doc
+already had. The behavioural half did not exist, so 7 was half-earned.
+
+## What was actually uncovered
+
+`taskIsOverdue` is THE overdue policy and it suppresses on four grounds. Measured
+coverage before this pass:
+
+| # | suppressor | covered before |
+|---|---|---|
+| 1 | `task.done` | yes — leadTimesAreReal |
+| 2 | `effectiveDone` (event proves it handled) | **no** |
+| 3 | `snoozedUntil` | **no** |
+| 4 | `taskWasReachable` | yes — leadTimesAreReal |
+
+`snooze.test.js` covers the snooze MODULE — a raise hides, a raise returns — and
+never asks `taskIsOverdue` about a snoozed task. **A snooze that does not suppress
+overdue is not a snooze**: the host sets something aside and the app goes on
+calling it late. That one had no guard at all.
+
+## Two of my own assertions were weak, and both are fixed
+
+Written honestly rather than quietly repaired:
+
+- the `effectiveDone` test had an `if/else` fallback that would have passed on the
+  trivial branch without saying so. Measured instead (`true` booked / `false`
+  unbooked) and both halves asserted outright.
+- the reachability test asserted `typeof result === 'boolean'` — **vacuous**, true
+  of every possible answer. Replaced with the real arithmetic: created 1 day ago
+  against a T-5d lead on an event 2 days out gives runway 3, and 3 + (-5) < 0, so
+  never reachable; plus the control that a host who HAD the runway is still told.
+
+## Red-proof
+
+Each suppressor removed independently, each edit confirmed on the intended line:
+snooze → 1 red, effectiveDone → 1 red, reachability → 1 red. One test each, so the
+gate distinguishes them rather than failing as a block.
+
+## Score
+
+**Over time: 8/10** (from a half-earned 7).
+
+Raised because the class now has BOTH halves — textual (no consumer forks the
+policy) and behavioural (the policy itself suppresses for the right four reasons,
+each independently proven to fail when removed).
+
+Capped at 8 by the same thing as before: the guard is at the ENGINE. Nothing
+drives a snoozed task through the hostv2 surface to prove the host sees it
+suppressed there. The shell delegates correctly (`overduePolicyFork` pins the
+`taskIsOverdue` call site), so the risk is small — but "the shell calls the right
+function" is a textual claim, not a driven one.
