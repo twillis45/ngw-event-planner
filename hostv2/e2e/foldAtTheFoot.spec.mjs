@@ -27,9 +27,27 @@
 // wide. Tall-and-narrow tablet-land was tested at no size at all, which is why
 // the one failing geometry was invisible. `tablet-tall` is added to the matrix
 // alongside this file so the geometry is covered permanently.
+// SELF-PINNED, and that is the point. This rule governs BELOW 1280 only. At
+// >=1280 the responsive-command layout deliberately keeps `min-height:0` and
+// composes its own fold (measured at 1440x900: handle at 0%, 250px of Zone 3
+// showing) — designed that way with board input, and untouched by this fix,
+// whose guard stops at max-width:1279. Left unpinned, this spec ran on the
+// `desktop` project and failed there, asserting a tablet rule against a surface
+// that never claimed it. Whether the >=1280 fold is right is a separate
+// question, recorded rather than smuggled in under a tablet gate.
 import { test, expect } from './fixtures.mjs';
 
 const EV = 'test-day-before-vendors';
+
+// Every geometry below 1280 that a host actually holds. tablet-tall (1024x1366)
+// is the reporting device: a 13-inch iPad in portrait, which resolves to
+// `tablet-land` on a width-only breakpoint and was tested at no size before.
+const SIZES = [
+  ['phone', 430, 860],
+  ['tablet portrait', 768, 1024],
+  ['tablet landscape', 1024, 768],
+  ['13-inch iPad portrait', 1024, 1366],
+];
 
 const boot = async (page) => {
   await page.addInitScript((id) => {
@@ -60,31 +78,36 @@ const geometry = (page) => page.evaluate(() => {
   };
 });
 
-test('PREMISE — the fold handle and the below-fold section both exist', async ({ page }) => {
-  // Without this, "the handle is low" passes on a page that has no handle.
-  await boot(page);
-  const g = await geometry(page);
-  expect(g.foldTop).not.toBeNull();
-  expect(g.zone3Top).not.toBeNull();
-});
+for (const [label, w, h] of SIZES) {
+  test(`${label} ${w}x${h} — PREMISE: the handle and the below-fold section both exist`, async ({ page }) => {
+    // Without this, "the handle is low" passes on a page that has no handle.
+    await page.setViewportSize({ width: w, height: h });
+    await boot(page);
+    const g = await geometry(page);
+    expect(g.foldTop).not.toBeNull();
+    expect(g.zone3Top).not.toBeNull();
+  });
 
-test('THE HANDLE SITS AT THE FOOT, not halfway up', async ({ page }) => {
-  // The host's own criterion. 80% is the floor, not the target — phone measures
-  // 94%, iPad portrait 87-90%. Below 80% the ask has stopped owning the screen.
-  await boot(page);
-  const { vh, foldTop } = await geometry(page);
-  const pct = Math.round((foldTop / vh) * 100);
-  expect(pct, `fold handle at ${pct}% of a ${vh}px viewport`).toBeGreaterThanOrEqual(80);
-});
+  test(`${label} ${w}x${h} — THE HANDLE SITS AT THE FOOT`, async ({ page }) => {
+    // The host's own criterion. 80% is the floor, not the target — measured
+    // 93-96% across these four once the fix landed.
+    await page.setViewportSize({ width: w, height: h });
+    await boot(page);
+    const { vh, foldTop } = await geometry(page);
+    const pct = Math.round((foldTop / vh) * 100);
+    expect(pct, `fold handle at ${pct}% of a ${vh}px viewport`).toBeGreaterThanOrEqual(80);
+  });
 
-test('BELOW THE FOLD MEANS BELOW THE FOLD — zero of Zone 3 is visible', async ({ page }) => {
-  // Host's words. Written first as "a peek is fine, cap it at 120px", which was
-  // my invention — the PHONE has always shown exactly 0, so 0 is the standard
-  // the product already sets and there is no reason a tablet gets a laxer one.
-  // The fold HANDLE stays visible (asserted above); the below-fold SECTION does
-  // not intrude at all.
-  await boot(page);
-  const { vh, zone3Top } = await geometry(page);
-  const peek = Math.max(0, vh - zone3Top);
-  expect(peek, `${peek}px of the below-fold section visible in the first screen`).toBe(0);
-});
+  test(`${label} ${w}x${h} — BELOW THE FOLD MEANS BELOW THE FOLD`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    // Host's words. Written first as "a peek is fine, cap it at 120px", which
+    // was my invention — the PHONE has always shown exactly 0, so 0 is the
+    // standard the product already sets and a tablet does not get a laxer one.
+    // The fold HANDLE stays visible (asserted above); the below-fold SECTION
+    // does not intrude at all.
+    await boot(page);
+    const { vh, zone3Top } = await geometry(page);
+    const peek = Math.max(0, vh - zone3Top);
+    expect(peek, `${peek}px of the below-fold section visible in the first screen`).toBe(0);
+  });
+}

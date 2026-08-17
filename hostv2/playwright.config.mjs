@@ -9,6 +9,9 @@ import { defineConfig } from '@playwright/test';
 // See the note above `projects` for why this is per-test, not per-file.
 const SELF_PINNED = [
   '**/heroVoid.spec.mjs',
+  // Drives its own four geometries below 1280; the >=1280 command layout composes
+  // a different fold and this rule does not govern it.
+  '**/foldAtTheFoot.spec.mjs',
   '**/statColumnChips.spec.mjs',
   '**/lodgingSpendGuard.spec.mjs',
   '**/regimeBoundary.spec.mjs',

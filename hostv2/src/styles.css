@@ -3617,6 +3617,30 @@ button.vc-pill:focus-visible{outline:2px solid var(--steel); outline-offset:1px}
 .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
   justify-content:flex-start; padding-top:clamp(24px, 6vh, 72px);
 }
+
+/* ── PORTRAIT FLOATS THE ASK IN THE CENTRE (2026-08-17) ─────────────────────
+   Host: "portraits are supposed to float the hero on command in center."
+
+   The top-align above was written against a REAL defect — "it strands ~230px of
+   dead space above the headline, measured at 768x1024" — but that measurement
+   was taken while `.escreen` was collapsing to its content, because the
+   unguarded rail rule zeroed its min-height below 1280. With the escreen now
+   holding the viewport, the space it was pushing the ask away from is the
+   composed void the ask is supposed to sit inside, not dead air above it.
+
+   PORTRAIT ONLY. Landscape keeps flex-start: a 1024x768 stage has ~700px of
+   usable height for the same block, and centring there pushes the ask into the
+   fold handle. Orientation is the honest discriminator — a portrait tablet has
+   height to give and a landscape one does not.
+
+   `.ecenter`'s own base rule (~:638) is already `justify-content:center`, so
+   this restores the default rather than inventing a new alignment. */
+@media (orientation: portrait){
+  .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .ecenter,
+  .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .ecenter{
+    justify-content:center; padding-top:0;
+  }
+}
 .stagewrap[data-bp="tablet"] .hero.elegant .escreen.on > .hzone,
 .stagewrap[data-bp="tablet-land"] .hero.elegant .escreen.on > .hzone{
   margin-top:clamp(20px, 5vh, 56px);
