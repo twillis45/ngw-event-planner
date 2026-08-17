@@ -1702,15 +1702,69 @@ export function actionConsequence(a) {
   if (Number.isFinite(a.priorityScore)) c += a.priorityScore / 100;               // the board's own ranking, bounded
   return c;
 }
+/**
+ * How much being late adds to an action's weight. BOUNDED ON PURPOSE.
+ *
+ * Board ruling 2026-08-17 (docs/audits/2026-08-17_RANKING_FLOOR_BOARD.md), on the
+ * Ranking floor — 3/10, the lowest dimension and therefore the cap on the whole
+ * scoreboard.
+ *
+ * WHAT WAS WRONG. `_rankOverdue` is a BOOLEAN, and it used to sit ABOVE
+ * consequence in the comparator, so "is it late" outranked "how much does it
+ * matter". Re-derived against the running engine: a COI 29 days late
+ * (consequence 0.4) ranked #1 above a gate-holding vendor reconfirm due tomorrow
+ * that unlocks three other things (consequence 7.0). The engine scored the
+ * reconfirm 17x more consequential and the comparator discarded that.
+ *
+ * The harm is not the ordering in the abstract, it is LEARNED IGNORING: the same
+ * dead row sits at position one today, tomorrow and in three weeks, and the host
+ * stops reading position one at all. Then there is no top action — just a
+ * decoration where the top action used to be.
+ *
+ * WHY A BOOST AND NOT A REORDER. Simply putting consequence first creates the
+ * mirror-image bug: a merely-scheduled item buries a genuinely late critical one.
+ * A bounded boost holds BOTH directions with one number:
+ *
+ *     dead COI       0.4 + boost  ->  loses to a 7.0 due tomorrow
+ *     late CRITICAL  6.0 + boost  ->  still beats a 7.0 scheduled item
+ *
+ * THE CAP is the part that fixes the pathology. More-late is more urgent up to a
+ * point; past that, extra staleness buys nothing, because a 29-day-old problem
+ * and a 60-day-old problem are the same kind of problem and neither should be
+ * able to hold position one forever on age alone.
+ *
+ * Rank moved, signal untouched: a demoted late item still renders as late
+ * everywhere it did before. Demotion is not permission to stop saying so.
+ */
+export function latenessBoost(a) {
+  if (!a || !_rankOverdue(a)) return 0;
+  const daysLate = Math.abs(a.dueInDays);
+  // 4 for being late at all, plus up to 2 more for how late, saturating at 14
+  // days.
+  //
+  // THE 4 IS CALIBRATED, NOT PICKED. It started at 3 and an existing guard —
+  // decisionSoundness "genuine lateness still leads" — went red: a 6-day-late
+  // item with no consequence signals (0 + 3.857) lost to a gate-holder unlocking
+  // two due in three days (4.0), by 0.14. That guard was RIGHT and the constant
+  // was wrong; the fix was to raise the floor, not to retune the test.
+  //
+  // At 4 both directions hold, which is the board's bar for done:
+  //   -6d, consequence 0   -> 4.857  beats a 4.0 scheduled gate-holder   (guard kept)
+  //   -29d, consequence 0.4 -> 6.4   loses to a 7.0 reconfirm due tomorrow (floor fixed)
+  // The saturating term is what makes the second line true: past 14 days extra
+  // staleness buys nothing, so age alone can never hold position one.
+  return 4 + Math.min(2, (daysLate / 14) * 2);
+}
 export function compareNextActions(a, b) {
-  // 2 — real lateness leads. Past-due is not a timing artifact; it is the event
-  //     telling the host something has already slipped. Most-late first.
-  const oa = _rankOverdue(a), ob = _rankOverdue(b);
-  if (oa !== ob) return oa ? -1 : 1;
-  if (oa && ob && a.dueInDays !== b.dueInDays) return a.dueInDays - b.dueInDays;
-  // 3/4 — consequence and unlock value, for everything merely scheduled.
-  const ca = actionConsequence(a), cb = actionConsequence(b);
+  // 2/3/4 — weight = what it costs to leave undone, PLUS a bounded lateness
+  //         boost. Lateness is a strong signal, not an override; see
+  //         latenessBoost above for why the boolean tier was removed.
+  const ca = actionConsequence(a) + latenessBoost(a);
+  const cb = actionConsequence(b) + latenessBoost(b);
   if (ca !== cb) return cb - ca;
+  // Among equals, the later one leads — most-late first, unchanged.
+  const oa = _rankOverdue(a), ob = _rankOverdue(b);
+  if (oa && ob && a.dueInDays !== b.dueInDays) return a.dueInDays - b.dueInDays;
   // 5 — runway: among equally consequential items, soonest first, nulls last.
   const da = Number.isFinite(a.dueInDays) ? a.dueInDays : Infinity;
   const db = Number.isFinite(b.dueInDays) ? b.dueInDays : Infinity;
