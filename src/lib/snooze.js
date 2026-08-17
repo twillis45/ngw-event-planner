@@ -40,8 +40,24 @@ export function proposedSnoozeDays(event, opts = {}) {
   // window closes `toEvent + leadDays` days from now. Come back with a day to spare.
   if (Number.isFinite(opts.leadDays)) {
     const windowCloses = toEvent + Number(opts.leadDays);      // e.g. 20 days out, T-5d → 15
-    if (windowCloses > 0) days = Math.min(days, Math.max(1, windowCloses - 1));
-    else return null;                                          // window already open/closed — don't hide it
+    // The latest HONEST comeback: a day before the window shuts. If no such day
+    // exists, the item cannot be set down at all — refuse rather than hide it.
+    //
+    // THE BOUNDARY USED TO DIVERGE FROM clampSnoozeUntil (W7-F1, re-derived
+    // 2026-08-17). This line was `Math.max(1, windowCloses - 1)`, and that floor
+    // silently overrode the rule stated one line above it: at windowCloses === 1
+    // it returned 1 — TOMORROW, which is the closing day itself — so the item
+    // came back with zero days to spare, not one. Meanwhile the custom-date path
+    // computes `upper = windowCloses - 1` and refuses when `upper < 1`, so the
+    // same item was un-snoozeable by picking a date and snoozeable by tapping
+    // "not now". Two answers to one question, differing only at the edge, which
+    // is where a host is most likely to be when it matters.
+    //
+    // Measured before the fix, at three different event distances: proposal 1 day
+    // vs clamp null, every time windowCloses === 1. They agree from 2 upward.
+    const latest = windowCloses - 1;
+    if (latest < 1) return null;                               // window opens/closes too soon — don't hide it
+    days = Math.min(days, latest);
   }
   return days;
 }
