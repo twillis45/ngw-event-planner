@@ -146,11 +146,18 @@ describe('1 — the source universe is what we think it is', () => {
   // (113 since Phase 5F.7 registered `jollychef-disposables-2026` in QTY_SOURCES;
   // 112 after 5F's `reddy-ice-2026`.) This counter is SUPPOSED to move when a real
   // source is added - that is the point of pinning it.
-  test('20 axes, 176 source identities — verified, not assumed', () => {
+  // (183 since the 2026-08-16 INSIDER PASS registered seven cultural-object
+  // sources in COST_SOURCES: `sheromeda-jebena-2026`,
+  // `ancientcookware-jebena-2026`, `shebelle-sini-2026`, `eight50-sini-2026`,
+  // `blackartdepot-kwanzaa-2026`, `sevensymbols-kwanzaa-2026` and
+  // `7principles-mkeka-2026`. Community and specialist retailers rather than a
+  // marketplace search, because a jebena is not "a clay pot" and a mkeka is not
+  // "a placemat".)
+  test('20 axes, 183 source identities — verified, not assumed', () => {
     const cat = catalog();
     expect(cat.length).toBe(20);
-    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(176);
-    expect(unionIds().size).toBe(176);        // therefore every id is globally unique
+    expect(cat.reduce((n, g) => n + g.sources.length, 0)).toBe(183);
+    expect(unionIds().size).toBe(183);        // therefore every id is globally unique
   });
 
   test('no id appears in two axes', () => {

@@ -550,6 +550,72 @@ export const COST_SOURCES = {
     fetched: '2026-08-16',
     claim: 'Event candles by type 2026: tapers $12-28 a dozen (about $1.00-2.33 each); pillars $8-22 each for a 3x4; votives and tea lights $9-18 per 50-pack (about $0.18-0.36 each); floating $10-25 a dozen; LED or flameless $18-45 for a 6-pack (about $3.00-7.50 each). A couple spends $280-650 on candles across a wedding, and about $220-300 buying in bulk for 100 guests. Note this is the EVENT-DECOR tier and runs above the store-brand household tier.',
   },
+  // ── CULTURAL RITUAL OBJECTS — INSIDER PASS (registered 2026-08-16) ────────
+  // These lines price objects that belong to a living practice, not generic
+  // homewares, so the sources are community and specialist retailers rather than
+  // whatever a marketplace search returns first. A jebena is not "a clay pot".
+  //
+  // WHAT THE PASS FOUND, and it was not what I expected: the Ethiopian ceremony
+  // objects were UNDERPRICED in the corpus, not over. Every source found — an
+  // Ethiopian-owned shop, an importer selling artisan pots made in Ethiopia, and
+  // the secondhand market — prices a jebena at or above the authored band's TOP.
+  // The Ethiopian-owned shop is the most expensive of the three, which is worth
+  // stating plainly because it kills the assumption I started with: that
+  // specialty retail was a markup and a community shop would be the cheap channel.
+  //
+  // The Kwanzaa objects, by contrast, were priced about right.
+  //
+  // LIMIT, recorded rather than papered over: every price here is ONLINE retail.
+  // An in-person Ethiopian market in the DMV (the roster names U Street's Little
+  // Ethiopia) may price differently, and no online source establishes that. A
+  // host who already owns the jebena — most Ethiopian households do — buys none
+  // of this. That is a real insider fact the corpus should carry and does not.
+  'sheromeda-jebena-2026': {
+    org: 'Sheromeda.com, Ethiopian goods retailer — "Jebena, Traditional Ethiopian Coffee Pot" (fetched)',
+    url: 'https://sheromeda.com/products/jebena-traditional-ethiopian-coffee-pot',
+    fetched: '2026-08-16',
+    claim: 'A hand-made 100% ground-clay buna jebena from an Ethiopian goods retailer lists at $79.99.',
+  },
+  'ancientcookware-jebena-2026': {
+    org: 'Ancient Cookware, Ethiopian Collection — clay jebena, artisan-made in Ethiopia (fetched)',
+    url: 'https://ancientcookware.com/ethiopian-collection/ethiopian-clay-jebena-coffee-pot-detail',
+    fetched: '2026-08-16',
+    claim: 'Clay jebena by size: small 7 oz $44.99, medium 12 oz $54.99, large 24 oz $64.99. Pots are hand-crafted by artisans in Ethiopia.',
+  },
+  // TWO retailers, so TWO ids. The first draft bundled them into one entry and
+  // the corroboration gate correctly rejected the citation that leaned on it:
+  // the pricing policy needs two INDEPENDENT sources, and one id is one source
+  // however many shops its prose names.
+  'shebelle-sini-2026': {
+    org: 'Shebelle Market, Ethiopian grocery — Ethiopian coffee cup (sini) listings',
+    url: 'https://shebellemarket.com/product-category/crockery/ethiopian-coffee-cup/',
+    fetched: '2026-08-16',
+    claim: 'Shebelle Market lists individual Ethiopian sini coffee cups at $9.99.',
+  },
+  'eight50-sini-2026': {
+    org: 'Eight50 Coffee — Sini Cups, Ethiopian Traditional Coffee Cups (fetched)',
+    url: 'https://eight50coffee.com/products/sini-cups-ethiopian-traditional-coffee-cups',
+    fetched: '2026-08-16',
+    claim: 'Eight50 Coffee lists traditional Ethiopian sini cups at $5.00. Thin-walled porcelain, about 50 ml, handleless by design so the cup sits in the hand during the ceremony.',
+  },
+  '7principles-mkeka-2026': {
+    org: '7 Principles 365 — Mkeka (Mat), handwoven raffia, handcrafted in Uganda (fetched)',
+    url: 'https://www.7principles365.com/product-page/mkeka-mat',
+    fetched: '2026-08-16',
+    claim: 'A handwoven raffia mkeka, 16 x 13 inches, handcrafted in Uganda, lists at $14.99 on sale from a regular price of $19.99.',
+  },
+  'blackartdepot-kwanzaa-2026': {
+    org: 'BlackArtDepot, Black-owned retailer — Kwanzaa kinaras and candleholders collection (fetched)',
+    url: 'https://www.blackartdepot.com/collections/kwanzaa-kinaras-and-kwanzaa-candleholders',
+    fetched: '2026-08-16',
+    claim: 'Kwanzaa 2026 from a Black-owned retailer: kinara CELEBRATION SETS (holder plus candles, sometimes a mat) run $64.99-89.99 — Arch $64.99, Ankh Third Eye $69.99, Akoma and Kente $79.99, Gye Nyame $84.99, Barlumba Unity Couple from $89.99. A Kwanzaa bamboo mat (mkeka) is $14.99 and a set of Kwanzaa taper candles is $24.99.',
+  },
+  'sevensymbols-kwanzaa-2026': {
+    org: 'Seven Symbols of Kwanzaa, Kwanzaa specialist retailer — kinara and candle sets',
+    url: 'https://sevensymbolsofkwanzaa.com/products',
+    fetched: '2026-08-16',
+    claim: 'Kwanzaa kinara sets with seven mishumaa saba span roughly $10-100: a 7-piece Kwanzaa candle set is $17.00 (from $20.29), a Kwanzaa Celebration Set $69.73, and a Traditional Kwanzaa Celebration Set $75.19 (from $110.15). Mishumaa saba are seven 10-inch smokeless tapers — three red, one black, three green.',
+  },
   // ── CHARCOAL AND LIGHTER (registered 2026-08-16) ──────────────────────────
   // The last component blocking the grill-fuel lines. Those lines read
   // "Charcoal / propane + lighter", so propane alone could not carry them - a
