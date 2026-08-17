@@ -78,6 +78,22 @@ const CONTRACT_IDS = [
   // vendorPlan's `booked`, because that field means a row EXISTS in the category
   // — a Shortlisted caterer is matched and not booked, which is the whole case.
   'vendor-unbooked',
+  // 'dues-unpriced' closes the cost-sharing hole found 2026-08-17: the surface
+  // had a sheet, an engine and a section-directory row, and NOTHING that could
+  // raise. It raises about the host's own unfinished setup — a declared pool
+  // whose tiers carry no amounts.
+  //
+  // WHAT IT REFUSES TO BE, permanently: a payment chase. costSharingSummary has
+  // no headcount and no per-guest payment record (costSharing.js:36 — "with
+  // per-tier headcounts unknown, no pool total exists"), so "your guests owe you
+  // $600" would invent the debt itself, not merely its timing.
+  //
+  // Threshold BORROWED, not invented: the pool has no date, so this waits for a
+  // real authored bill — a vendor's host-entered payDueDate with a balance still
+  // owed, the same field vendor-payments gates on. No bill, no raise. Also
+  // destination-only, mirroring the sheet's own guard.
+  // Ruling: docs/audits/2026-08-17_COST_SHARING_RAISE_BOARD.md
+  'dues-unpriced',
   // Money-Safe Date Chain (program MVP #1, 2026-07-27): host-transcribed
   // booking deadlines (refund window / installment / headcount) raised inside
   // the 14-day action window, exposure-led when money is fronted.

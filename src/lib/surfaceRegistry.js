@@ -71,6 +71,7 @@ import { isVendorBooked } from './workstreams';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
 import { moneyDatesFor } from './moneyDates';
+import { costSharingSummary } from './costSharing';
 import { deriveHelperResponsibilities, helperStatusLine } from './helperResponsibility';
 import { DAY_BEFORE_WINDOW } from './dayBefore';
 import { getVendorCOIState, coiNextAction } from './vendorIntelligence';
@@ -828,6 +829,89 @@ export const SURFACES = [
         });
       }
       return out;
+    },
+  },
+
+  // ── A declared pool nobody has been given a number for ─────────────────────
+  // Coverage gap found 2026-08-17: `costSharing` had a sheet, an engine and a
+  // section-directory row, and NOTHING that could raise.
+  //
+  // WHAT THIS DELIBERATELY DOES NOT DO. The obvious raise — "your guests still
+  // owe you $600" — is unbuildable and stays unbuilt. `costSharingSummary`
+  // returns tiers and amounts with **no headcount and no per-guest payment
+  // record**; costSharing.js:36 says so on purpose ("with per-tier headcounts
+  // unknown, no pool total exists"). That raise would invent the debt, not just
+  // its timing. See docs/audits/2026-08-17_COST_SHARING_RAISE_BOARD.md.
+  //
+  // WHAT IT DOES. The host declared an ongoing pool and never said what anyone
+  // contributes — their own half-finished setup, which the engine already
+  // distinguishes ("contribution tiers not set yet" / "amounts not set yet").
+  // The subject of the sentence is the host's setup, never a guest's debt.
+  //
+  // THE THRESHOLD IS BORROWED, NOT INVENTED. The pool carries no date of its
+  // own, so this stays silent until a REAL authored commitment is coming: a
+  // vendor's host-entered `payDueDate` with a balance still owed — the same
+  // field `vendor-payments` gates on. No bill, no raise.
+  {
+    id: 'dues-unpriced',
+    label: 'Who pays for what',
+    domain: 'travel',
+    route: { tab: 'Travel', focusField: 'costshare' },
+    bundleTitle: () => 'Set what each group contributes',
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      // Cost sharing is DESTINATION-ONLY — a local event renders "everyone
+      // covers their own costs" and has no pool to set up. Raising there would
+      // speak where the surface itself refuses to exist.
+      let travel = null;
+      try { travel = buildTravelPlan(event); } catch (_e) { return []; }
+      if (!travel || !travel.relevant) return [];
+
+      let cs = null;
+      try { cs = costSharingSummary(event); } catch (_e) { return []; }
+      if (!cs || !cs.pooled) return [];                    // self-pay owes nobody a number
+      // Fully priced is finished setup. Partially priced still understates —
+      // the engine withholds oneOfEachTotal for exactly that reason.
+      const incomplete = cs.tierCount === 0 || cs.pricedTierCount < cs.tierCount;
+      if (!incomplete) return [];
+
+      // The borrowed deadline: the soonest real bill the pool has to meet.
+      const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
+      let soonest = null;
+      for (const v of vendors) {
+        if (!v || !v.payDueDate || v.balancePaid || !(v.cost > 0)) continue;
+        let d = null;
+        try { d = daysUntil(v.payDueDate); } catch (_e) { continue; }
+        if (d == null) continue;
+        if (soonest == null || d < soonest.days) soonest = { days: d, name: v.name || 'a vendor' };
+      }
+      if (!soonest) return [];                             // no bill, no nagging
+
+      let dte = null;
+      try { dte = daysUntil(event && event.date); } catch (_e) { dte = null; }
+      const d = soonest.days;
+      const when = d < 0
+        ? `was due ${Math.abs(d)} ${Math.abs(d) === 1 ? 'day' : 'days'} ago`
+        : d === 0 ? 'is due today' : `is due in ${d} ${d === 1 ? 'day' : 'days'}`;
+      return [{
+        // ALWAYS `attention`, on two counts. Weiss's override — "do not nag
+        // about money on a schedule of the app's choosing" — and the mechanical
+        // one: raiseAll collapses everything that is not 'critical' to
+        // 'attention' (~:1028), so an authored 'urgent' evaporates. Nearness
+        // rides `dueInDays`, which the ranker actually reads.
+        // NOTE, not fixed here: `money-dates` (~:540) authors 'urgent' through
+        // that same normalizer, so its sharpening branch has never had an
+        // effect. Pre-existing and out of scope for this change.
+        severity: 'attention',
+        title: 'Set what each group contributes.',
+        why: cs.tierCount === 0
+          ? `You're collecting dues and haven't set the tiers yet — ${soonest.name}'s balance ${when}`
+          : `Some tiers still have no amount — ${soonest.name}'s balance ${when}`,
+        route: { tab: 'Travel', focusField: 'costshare' },
+        key: 'dues-unpriced',
+        dueInDays: d,
+        leadDays: dte != null ? d - dte : null,
+      }];
     },
   },
 

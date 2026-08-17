@@ -25,6 +25,7 @@
 //
 //   kind         a sheet kind ('vendors','seating','budget','guests','food',
 //                'rain','crabs','ground','air','lodging','space','tasks',
+//                'costshare',
 //                'risks','decisions') OR a stage landing ('stage:plan',
 //                'stage:day') — the surfaces whose target is a full-screen stage,
 //                not a sheet (the plan editor, the day-of run of show).
@@ -93,6 +94,11 @@ export function resolveRoute(route) {
   if (/^air/.test(ff)) {
     return { kind: 'air', focus: gid };
   }
+  // Who pays for what. MUST branch before the tab:'Travel' lodging catch below,
+  // which would otherwise swallow it — a dues route landing the host on "Where
+  // everyone stays" is the silent mis-landing this module exists to prevent.
+  // Single-purpose sheet, so focus is null.
+  if (/^costshare/.test(ff)) return { kind: 'costshare', focus: null };
   // Lodging — a guest's roster row, the deadline card, or the stay card itself.
   if (route.tab === 'Travel' || /^lodging/.test(ff)) {
     return { kind: 'lodging', focus: gid != null ? gid : (ff === 'lodging-deadline' ? 'deadline' : null) };
