@@ -71,12 +71,14 @@ test('THE HANDLE SITS AT THE FOOT, not halfway up', async ({ page }) => {
   expect(pct, `fold handle at ${pct}% of a ${vh}px viewport`).toBeGreaterThanOrEqual(80);
 });
 
-test('ZONE 3 ONLY PEEKS — it does not sit beside the ask', async ({ page }) => {
-  // A peek is the design; the whole card in the first screen is the defect.
-  // Measured at 1366 tall: 23px of label. 120px allows for type-scale drift
-  // without allowing the card body back into the first screen.
+test('BELOW THE FOLD MEANS BELOW THE FOLD — zero of Zone 3 is visible', async ({ page }) => {
+  // Host's words. Written first as "a peek is fine, cap it at 120px", which was
+  // my invention — the PHONE has always shown exactly 0, so 0 is the standard
+  // the product already sets and there is no reason a tablet gets a laxer one.
+  // The fold HANDLE stays visible (asserted above); the below-fold SECTION does
+  // not intrude at all.
   await boot(page);
   const { vh, zone3Top } = await geometry(page);
   const peek = Math.max(0, vh - zone3Top);
-  expect(peek, `${peek}px of the below-fold section visible`).toBeLessThanOrEqual(120);
+  expect(peek, `${peek}px of the below-fold section visible in the first screen`).toBe(0);
 });

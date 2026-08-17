@@ -1035,7 +1035,8 @@ button{font-family:inherit}
    be touched by this. */
 @media (min-width:700px) and (max-width:1279px){
   .hero.elegant .escreen.on{
-    min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px));
+    /* Same -72px as the phone's .escreen rule (~:632). */
+    min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
   }
 }
 /* The hero's slack lives INSIDE the tile cluster (rows stretch), not as dead
@@ -4370,7 +4371,11 @@ button.vc-pill::after{
    the command layout keeps min-height:0 exactly as before. */
 @media (max-width:1279px){
   .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on{
-    min-height:calc(100dvh - 64px - 88px - env(safe-area-inset-bottom,0px));
+    /* -72px, matching the phone's own .escreen rule (~:632), NOT the -152px
+       (64+88) that belongs to `.hero`. Borrowing the hero's arithmetic left the
+       below-fold label peeking 23px into the first screen; the phone subtracts
+       72 and shows exactly 0. Below the fold means below the fold. */
+    min-height:calc(100dvh - 72px - env(safe-area-inset-bottom,0px));
   }
 }
 .stagewrap--responsive-command[data-rail="1"] .hero.elegant .escreen.on > .ev-eyebrow{
