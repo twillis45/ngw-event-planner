@@ -119,7 +119,7 @@ export function geoHonestyLine(itemKey, state) {
   if (g.national) {
     return g.region
       ? 'National average — we do not have a regional price for this item yet.'
-      : 'National average — add your venue state and we can localise what we can.';
+      : 'National average — add your venue state and we can localize what we can.';
   }
   const pct = Math.round((g.factor - 1) * 100);
   if (pct === 0) return `Adjusted for the ${g.region}: within a point of the national average.`;
@@ -145,7 +145,7 @@ export function geoPlanNote(state) {
     south: 'the South', west: 'the West',
   };
   if (!region) {
-    return 'These are national average prices — add your venue state and we can start localising them.';
+    return 'These are national average prices — add your venue state and we can start localizing them.';
   }
   return `These are national average prices — not yet adjusted for ${REGION_LABEL[region]}.`;
 }
