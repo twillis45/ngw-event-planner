@@ -46,6 +46,32 @@ const unbalanced = (s) => {
   return d !== 0;
 };
 
+
+// ─── WHY SOME OF THESE RUN ON TWO GEOMETRIES AND NOT SIX ────────────────────
+//
+// Measured 2026-08-17 over a full matrix: this file was 1230s of the suite's
+// 1689s — 73% — and ONE test in it, the decisions sweep, was 904s of that. 54%
+// of the whole matrix was a single behavioural test re-running across six
+// viewports.
+//
+// The split is by what a test actually asserts, not by convenience:
+//   GEOMETRY  (pinned geometry + scroll-end reachability, fold peek) measure
+//             rendered boxes and MUST run on every viewport — they are the
+//             reason the six projects exist.
+//   BEHAVIOUR (decisions sweep, checklist CTA, display lint, loop-advance) ask
+//             "does the row open its editor", "does this CTA land somewhere
+//             real", "is there machinery in the copy". None of that changes
+//             between 768 and 1024 wide.
+//
+// Two, not one: 1280 is where the shell stops being a phone silhouette and the
+// responsive canvases switch on (see the `desktop` project note in the config),
+// so a phone and a desktop are genuinely different code paths for a behaviour
+// test. The four middle widths were buying repeat results at ~10 minutes a run.
+const BEHAVIOUR_GEOMETRIES = ['mobile', 'desktop'];
+const behaviourOnly = (testInfo) =>
+  test.skip(!BEHAVIOUR_GEOMETRIES.includes(testInfo.project.name),
+    `behaviour test — runs on ${BEHAVIOUR_GEOMETRIES.join(' + ')} only (see the note above; this file was 73% of the matrix)`);
+
 const stageWeather = async (page) => {
   const day = new Date(); day.setDate(day.getDate() + 2);
   const iso = day.toISOString().slice(0, 10);
@@ -81,6 +107,7 @@ const boot = async (page, state) => {
 for (const state of STATES) {
   test.describe(state.label, () => {
     test('display lint — no machinery in visible copy', async ({ page }) => {
+      behaviourOnly(test.info());
       await boot(page, state);
       const strings = await page.$$eval('h1, h2, h3, button, .decopt-name, .nb-title, .qt, .of, .eb-text',
         els => els.map(e => (e.innerText || '').trim()).filter(Boolean));
@@ -93,6 +120,7 @@ for (const state of STATES) {
     });
 
     test('loop-advance — settles walk the queue without stalling', async ({ page }) => {
+      behaviourOnly(test.info());
       await boot(page, state);
       // WALK THE QUEUE (Up-Next #2): repeatedly take the hero's first in-place
       // settle (.decopt row or .cta.stay) and require the board to MOVE each
@@ -221,6 +249,7 @@ for (const state of STATES) {
       // lands a sheet instead of dying under a fall-through.
       test('decisions sheet — every unsettled row opens its editor', async ({ page }) => {
         test.setTimeout(90_000);
+        behaviourOnly(test.info());
         await boot(page, state);
         // Deterministic nav: masthead menu → Jump to a section → Calls to make.
         await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
@@ -240,8 +269,20 @@ for (const state of STATES) {
           if (await row.count() === 0) break;
           const before = await read();
           await row.click({ timeout: 4000 }).catch(() => {});
-          await page.waitForTimeout(700);
-          const after = await read();
+          // POLL FOR THE CHANGE, don't sleep and hope. The old
+          // `waitForTimeout(700)` paid 700ms on every row whether the sheet had
+          // recomposed in 80ms or not — and this file runs its sweep six times
+          // per state. It is also the exact idiom the config header names as the
+          // suite's real flake source: a fixed sleep is a bet that the machine is
+          // no slower than the day the number was picked.
+          //
+          // Polling is both faster AND a stronger assertion: it waits for the
+          // thing the test is about instead of for the clock. The explicit expect
+          // below still runs, so a genuinely dead row fails with its own message
+          // rather than a poll timeout.
+          let after = before;
+          await expect.poll(async () => { after = await read(); return after !== before; },
+            { timeout: 4000, intervals: [80, 120, 200, 300, 500] }).toBe(true).catch(() => {});
           expect(after !== before, `decisions row #${i + 1} changed nothing (dead row)`).toBe(true);
           swept++;
           await page.locator('.toast.on').waitFor({ state: 'hidden', timeout: 6000 }).catch(() => {});
@@ -251,6 +292,7 @@ for (const state of STATES) {
 
       test('checklist CTA — a task action lands a real destination, never a dead tap', async ({ page }) => {
         test.setTimeout(60_000);
+        behaviourOnly(test.info());
         await boot(page, state);
         await page.locator('.ev-eyebrow').first().click({ timeout: 5000 });
         await page.locator('.sheet').last().getByText('Jump to a section', { exact: false }).first().click({ timeout: 5000 });
