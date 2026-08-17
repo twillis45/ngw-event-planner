@@ -536,11 +536,30 @@ export const SURFACES = [
       const due = m.rows.filter((r) => !r.passed && r.daysLeft <= 14);
       if (!due.length) return [];
       const first = due[0];
+      // THREE DEFECTS, all hidden by the old explicit-field-list normalizer and
+      // found 2026-08-17 when it was inverted:
+      //   1. `because:` — the ONLY raiser spelling it that way (18 author `why`).
+      //      No consumer reads `.because` on a raise, so **the exposure line has
+      //      never reached a host**: every money-deadline raise shipped with no
+      //      reason at all. The sibling at ~:752 maps `r.because || null` INTO
+      //      `why`, which is the convention this drifted from.
+      //   2. `'urgent'` — outside the declared vocabulary ('critical' |
+      //      'attention', contract at the top of this file), so the normalizer
+      //      canonicalized it and the sharpening branch never had an effect.
+      //      Now expressed where it is actually read: dueInDays.
+      //   3. no `dueInDays` — so a deadline 1 day out ranked identically to one
+      //      13 days out. The nearness this raiser is entirely about could not
+      //      reach the ranker.
+      let dte = null;
+      try { dte = daysUntil(event && event.date); } catch (_e) { dte = null; }
       return [{
-        severity: first.daysLeft <= 5 ? 'urgent' : 'attention',
+        severity: 'attention',
         title: `${first.label} in ${first.daysLeft} ${first.daysLeft === 1 ? 'day' : 'days'}`,
-        because: m.exposureLine || `${first.note}.`,
+        why: m.exposureLine || `${first.note}.`,
         route: { tab: 'Travel' },
+        key: first.id != null ? String(first.id) : 'money-date',
+        dueInDays: first.daysLeft,
+        leadDays: dte != null ? first.daysLeft - dte : null,
       }];
     },
   },
@@ -1031,35 +1050,50 @@ export function raiseAll(event) {
     try { items = s.raise(event) || []; } catch (_e) { items = []; }
     for (const i of items) {
       if (!i || !i.title) continue;
+      // ── PASS THROUGH BY DEFAULT; HAND-CODE ONLY THE ONE-OFFS ────────────────
+      // This was an explicit field list, and an explicit field list is a
+      // silent-drop machine: a raiser authors a field, no consumer ever sees it,
+      // and NOTHING fails. Its own comments recorded eight deaths one at a time
+      // — sourceCategory (the "fourth and last", 2026-07-22), then
+      // priorityScore / gateHolder / unlocks / ask (the fifth through eighth,
+      // 2026-07-31, each with a consumer already reading undefined: a decision
+      // scored 308.5 arrived null and ranked 0).
+      //
+      // Eight identical bugs in one place is a design verdict, not bad luck. The
+      // list is now INVERTED (2026-08-17): the raise spreads through whole, and
+      // only fields that genuinely need coercion or a default are named below.
+      // A new field a raiser authors now arrives by default; forgetting to
+      // update this site can no longer erase it. Pinned by
+      // raiseNormalizerPassesThrough.test.js.
       out.push({
-        surface: s.id, label: s.label, domain: s.domain,
+        // Everything the raiser authored, verbatim — including fields added
+        // after this line was written. THIS is the fix; the rest is coercion.
+        ...i,
+        // One-off 1: the declared vocabulary (see the contract at the top of
+        // this file — 'critical' | 'attention'). Anything else canonicalizes to
+        // 'attention' so no consumer meets a value it cannot read. Authoring
+        // outside the vocabulary is caught loudly by raiseVocabulary.test.js
+        // rather than silently flattened here — that gate is why money-dates'
+        // long-dead `'urgent'` branch was found.
         severity: i.severity === 'critical' ? 'critical' : 'attention',
-        // DOCTRINE (2026-07-22): the raiser's declared classification rides the
-        // raise — this normalizer's explicit field list was the fourth and last
-        // place it silently died (raiser → HERE → registry mapping → topAction).
-        sourceCategory: i.sourceCategory != null ? i.sourceCategory : null,
-        title: i.title, why: i.why || null,
+        // One-off 2: a raise may omit its route and inherit the surface's.
         route: i.route || s.route,
+        // One-off 3: coercions and null-defaults consumers rely on. `!= null`
+        // callers would not care, but these are pinned by decisionEvidence and a
+        // spread alone would hand them `undefined`.
+        why: i.why || null,
+        sourceCategory: i.sourceCategory != null ? i.sourceCategory : null,
         key: i.key != null ? String(i.key) : null,
         dueInDays: Number.isFinite(i.dueInDays) ? i.dueInDays : null,
         leadDays: Number.isFinite(i.leadDays) ? i.leadDays : null,
-        // ── THE FOURTH DEATH, AND THE FIFTH THROUGH EIGHTH (2026-07-31) ──────
-        // The sourceCategory note above records this normalizer as the last place
-        // that field silently died. Four MORE were still dying here, and every one
-        // of them has a consumer that was reading undefined:
-        //   priorityScore/gateHolder/unlocks — eventPlan's registry mapping copies
-        //     all three (CommandCenter ~:2090) and compareNextActions ranks on
-        //     them, so the board's score never reached the ranker: a decision
-        //     scored 308.5 arrived null and ranked as 0.
-        //   ask — heroAskFor prefers `a.ask`; the decisions raiser and the seating
-        //     raiser both author one, and neither could ever arrive.
-        // An explicit-field-list normalizer is a silent-drop machine; these are
-        // pinned by decisionEvidence.test.js so the next field cannot vanish here.
         priorityScore: Number.isFinite(i.priorityScore) ? i.priorityScore : null,
         gateHolder: i.gateHolder === true,
         unlocks: Number.isFinite(i.unlocks) ? i.unlocks : 0,
         ask: i.ask != null ? i.ask : null,
         evidence: i.evidence || null,
+        // LAST, deliberately: the registry is the authority on a raise's
+        // identity, so a raise cannot shadow it through the spread above.
+        surface: s.id, label: s.label, domain: s.domain,
       });
     }
   }
