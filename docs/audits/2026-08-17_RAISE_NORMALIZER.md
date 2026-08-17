@@ -90,3 +90,56 @@ could not express nearness), and the normalizer closes a defect CLASS rather tha
 an instance. But neither adds a consequence signal, which is what the 7 is capped
 on: producers still do not declare what their items block. That remains authoring
 work, not engine work.
+
+
+---
+
+## Driven live — and a correction to what I said the host was missing
+
+The unit gates proved the raise now carries `why` and `dueInDays`. They proved
+nothing about a host, and the standing rule here is that a fix is done only when
+driven live. Driving it corrected the claim.
+
+**What I wrote:** *"Every money-deadline raise has shipped with no reason at all
+— the host saw 'Refund window closes in 4 days' with the exposure line silently
+dropped."*
+
+**The first half is true. The attribution was wrong.** The exposure line could
+never have rendered in that cell, for two independent reasons measured in the
+live DOM:
+
+1. `actionReason`'s ladder is `blocking · money · time · risk · consequence ·
+   dependency`, first match wins. `r.why` arrives as the action's `consequence`
+   (CommandCenter.jsx:2258) at priority **5**, below `time` at **3**.
+2. `MAX_REASON_CHARS` is 40. The exposure line is 84 characters and fails `fit()`
+   even at its em-dash clause boundary.
+
+So the `because:`→`why:` fix is real — that field was genuinely dead, and
+`consequence` now receives it — but it is not what the host was missing here.
+
+**The row was bare because nothing fed `time`: money-dates had no `dueInDays`.**
+That is the host-visible defect, and it is the one now proven.
+
+### The measurement
+
+    before (dueInDays removed):  <button class="ef-row"><span class="t">…</span>  → reason cell NULL
+    after:                       <span class="ef-why" data-reason="time">due in 4 days</span>
+
+Red-proofed against the real build: deleting `dueInDays`, rebuilding hostv2 and
+re-running turns the reason assertion red with `Received has value: null`.
+
+### A third finding, from the tooling
+
+`settled(page)` resolves against an **empty body** on a patched boot — measured 0
+characters via `settled`, 2789 via a fixed wait, same page. Every spec that boots
+with a patch and trusts `settled` is one timing change away from asserting
+against a blank page. The new spec uses a fixed wait and says why; the helper
+itself is untouched and this is recorded for a separate fix.
+
+### Also true, and still unfixed
+
+`money-dates` routes `{ tab: 'Travel' }` with **no `moneyKey`**, so
+`actionReason`'s MONEY branch — priority 2, above `time` — can never match it.
+A money deadline is reasoned about as a clock rather than as money. That is a
+one-field change with a visible consequence, and it is the obvious next step;
+left out here because this change was already scoped to the normalizer.
