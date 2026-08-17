@@ -10,7 +10,7 @@ inherited.
 |---|---|
 | the missing reply-by / silent-guest PRODUCER | **was real, now CLOSED** (`26f434ad`) |
 | callsPill vs decisions — two thresholds | **real but practically closed** |
-| booking-progress bypasses the ledger | not yet re-derived |
+| booking-progress bypasses the ledger | **real, still open, and worse than stated** |
 
 **Silent guests.** Confirmed still open five weeks on: a hard reply-by five days
 past with three of five guests silent produced fourteen raises, none about the
@@ -20,6 +20,36 @@ silence. Closed with a raiser; every other piece already existed.
 raiser filters `status === 'overdue'`. Measured, the divergence is at most ONE
 decision and only at T-180; from T-90 inward the two agree exactly. Not worth a
 change on its own.
+
+**Booking progress.** Re-derived and confirmed — the shell documents it against
+itself at `HostShellV2.jsx:9189`: *"no SURFACES id covers 'not yet booked'… add a
+real raiser before adding another."*
+
+Measured across the countdown with a Caterer at `Shortlisted` and a DJ at
+`Contacted`:
+
+| distance | raises | anything about the unbooked vendors |
+|---|---|---|
+| T-120d | 14 | none |
+| T-45d | 14 | none |
+| T-20d | 15 | none |
+| T-7d | 15 | none |
+| **T-3d** | 20 | **none** |
+
+The only matches at any distance are the two standing risk cards ("Outdoor
+ceremony…", "A key vendor cancels…"), which render identically whether every
+vendor is booked or none is. So a wedding THREE DAYS OUT with no caterer booked
+says nothing about it in the ranked list.
+
+**The threshold for a fix already exists and does not need inventing.** Playbooks
+author a booking lead per vendor category — `{ category: 'Caterer', required:
+true, when: 'T-300d' }` (wedding.js:114) — so "should have been booked by now" is
+a declared fact, in the same shape as the reply-by date that closed the
+silent-guest cap. What is missing is again only the raiser.
+
+Not built in this pass: matching authored CATEGORY to the host's actual vendor
+`role` across 39 playbooks is real work, and this is the attention path, which
+already took one revert tonight from moving quickly.
 
 ## THE NEW FINDING — the overdue signal is saturated at one end and silent at the other
 
