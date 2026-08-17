@@ -67,6 +67,17 @@ const CONTRACT_IDS = [
   // against a date nobody agreed to would be the app inventing a promise on
   // their behalf.
   'rsvpchase',
+  // 'vendor-unbooked' closes W8's last Coverage cap — the one the shell documents
+  // against itself at HostShellV2.jsx:9189 ("no SURFACES id covers 'not yet
+  // booked' ... add a real raiser before adding another"). Measured before it
+  // existed: a wedding THREE DAYS OUT with a Shortlisted caterer and a Contacted
+  // DJ produced twenty raises and none about either.
+  //
+  // Threshold authored, not invented: playbooks declare `{ category: 'Caterer',
+  // required: true, when: 'T-300d' }`. And it asks isVendorBooked rather than
+  // vendorPlan's `booked`, because that field means a row EXISTS in the category
+  // — a Shortlisted caterer is matched and not booked, which is the whole case.
+  'vendor-unbooked',
   // Money-Safe Date Chain (program MVP #1, 2026-07-27): host-transcribed
   // booking deadlines (refund window / installment / headcount) raised inside
   // the 14-day action window, exposure-led when money is fronted.

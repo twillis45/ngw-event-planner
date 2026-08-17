@@ -65,6 +65,9 @@ import { raisesToCommandBoard } from './riskSeverity';
 import { evidenceFromDecisionRow } from './decisionEvidence';
 import { daysUntil, isEventDay, isPastEvent, daysUntilEnd, rsvpDeadlineFor } from './dates';
 import { rsvpHasResponded } from './rsvp';
+import { buildVendorPlan } from './vendorPlan';
+import { venueFor } from './venueFor';
+import { isVendorBooked } from './workstreams';
 import { buildSeatingPlan } from './seatingPlan';
 import { buildTravelPlan } from './travelPlan';
 import { moneyDatesFor } from './moneyDates';
@@ -295,6 +298,92 @@ export const SURFACES = [
   // attn: seating.totals.unassigned > 0, gated on seating.hasRoster &&
   // seating.totals.confirmed > 0 — a hand-wired boolean the ranked list never
   // saw. Same engine (buildSeatingPlan), same predicate, mirrored exactly.
+  // ── A REQUIRED VENDOR NOBODY HAS ACTUALLY BOOKED (2026-08-17) ────────────
+  // W8's third Coverage cap, and the shell documents it against itself at
+  // HostShellV2.jsx:9189 — "no SURFACES id covers 'not yet booked' ... add a real
+  // raiser before adding another."
+  //
+  // Measured before this existed, with a Caterer at `Shortlisted` and a DJ at
+  // `Contacted`: at T-120, T-45, T-20, T-7 and even T-3 the ranked list said
+  // NOTHING about either. Twenty raises three days before a wedding and not one
+  // of them was "you have no caterer". The only matches at any distance were two
+  // standing risk cards that render whether every vendor is booked or none is.
+  //
+  // THE THRESHOLD IS AUTHORED, NOT INVENTED. Playbooks declare a booking lead per
+  // category — `{ category: 'Caterer', required: true, when: 'T-300d' }`
+  // (wedding.js:114) — so "should have been booked by now" is a declared fact, the
+  // same shape as the reply-by date the silent-guest raiser reads.
+  //
+  // MATCHED IS NOT BOOKED. `buildVendorPlan`'s `booked` field means a vendor row
+  // EXISTS in that category; vendorPlan.js documents that distinction deliberately
+  // rather than changing it. A Shortlisted caterer is matched and not booked, and
+  // that is exactly the case this raiser exists for — so it resolves `vendorId`
+  // and asks `isVendorBooked`, the one canonical status vocabulary.
+  {
+    id: 'vendor-unbooked',
+    label: 'People you\u2019re hiring',
+    domain: 'vendors',
+    route: { tab: 'Vendors' },
+    bundleTitle: (n) => `${n} key vendors are still not booked`,
+    raise(event) {
+      if (isPastEvent(event && event.date)) return [];
+      let dte = null;
+      try { dte = daysUntil(event && event.date); } catch (_e) { return []; }
+      if (dte == null || dte < 0) return [];
+      let plan = null;
+      try { plan = buildVendorPlan(event); } catch (_e) { return []; }
+      if (!plan || !plan.relevant || !Array.isArray(plan.categories)) return [];
+      const vendors = Array.isArray(event && event.vendors) ? event.vendors : [];
+      const out = [];
+      for (const row of plan.categories) {
+        if (!row || !row.required) continue;              // optional roles are never nagged
+        // THE VENUE IS EVIDENCED BY THE EVENT, NOT ONLY BY A VENDOR ROW. Caught
+        // before shipping: this raised "No venue booked yet" on an event whose
+        // venue reads "The Hall". The playbook lists Venue as a required VENDOR
+        // category, and a host who typed a venue name never creates a vendor row
+        // for it — so the category looked unmatched while the fact was plainly on
+        // the event. Telling that host they have no venue is the kind of wrong
+        // that makes a host stop believing the rest of the list.
+        //
+        // Reads through venueFor rather than the raw field: that helper exists
+        // because a venue field holding "Santa Fe, NM" is a CITY, not a venue
+        // name, and this must not accept a town as a booked hall.
+        //
+        // (Phrased without the raw accessor on purpose — venueSourceProof scans
+        // source text and does not strip comments, so writing the forbidden form
+        // even to say "not this" trips the CITY-LEAK guard. It caught this
+        // comment, which is the scanner being blunt rather than wrong.)
+        if (/venue/i.test(String(row.category))) {
+          let vname = '';
+          try { vname = String((venueFor(event) || {}).name || '').trim(); } catch (_e) { vname = ''; }
+          if (vname) continue;
+        }
+        // The authored window, e.g. 'T-300d' -> 300 days before the event.
+        const m = /^T-(\d+)d$/.exec(String(row.when || ''));
+        if (!m) continue;                                  // no declared lead, no claim to be late
+        const lead = Number(m[1]);
+        const dueInDays = dte - lead;                      // negative once the window has passed
+        if (dueInDays >= 0) continue;                      // still inside the window
+        const matched = row.vendorId ? vendors.find((v) => v && v.id === row.vendorId) : null;
+        let booked = false;
+        try { booked = !!(matched && isVendorBooked(matched)); } catch (_e) { booked = false; }
+        if (booked) continue;                              // genuinely handled — say nothing
+        out.push({
+          severity: 'attention',
+          title: matched
+            ? `${row.category} is not booked yet \u2014 ${matched.name || 'your pick'} is still just a shortlist`
+            : `No ${String(row.category).toLowerCase()} booked yet`,
+          why: `Most ${String(row.category).toLowerCase()}s are booked by ${row.when.replace('T-', '')} out; you are ${Math.abs(dueInDays)} days past that.`,
+          ask: `Book your ${String(row.category).toLowerCase()}.`,
+          route: matched ? { tab: 'Vendors', vendorId: matched.id } : { tab: 'Vendors' },
+          key: `vendor-unbooked:${row.category}`,
+          dueInDays,
+          leadDays: -lead,
+        });
+      }
+      return out;
+    },
+  },
   // ── THE REPLY-BY PASSED AND NOBODY SAID ANYTHING (2026-08-17) ────────────
   // W8 named this as a Coverage cap — "the missing reply-by/silent-guest
   // PRODUCER" — and re-derivation confirmed it, five weeks on. Measured: a
