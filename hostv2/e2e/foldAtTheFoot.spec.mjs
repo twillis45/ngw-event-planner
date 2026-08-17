@@ -45,7 +45,13 @@ const boot = async (page) => {
 const geometry = (page) => page.evaluate(() => {
   const vh = window.innerHeight;
   const fold = document.querySelector('.efold');
-  const zone3 = [...document.querySelectorAll('*')].find(
+  // Element nodes only — NOT `*`. Driving this in Chrome dev caught it: Vite
+  // inlines the stylesheet as a <style> tag, and the CSS comment documenting
+  // this very fix contains the words "YOUR DAY-BEFORE PLAN", so `*` matched a
+  // display:none STYLE at top=0 and reported the whole viewport as intruding.
+  // Harmless against the built preview (CSS is a separate file) and wrong the
+  // moment anyone runs it against dev.
+  const zone3 = [...document.querySelectorAll('div,section,h1,h2,h3,p,span,li')].find(
     (e) => e.children.length === 0 && /YOUR DAY-BEFORE PLAN/i.test(e.textContent || ''));
   return {
     vh,
