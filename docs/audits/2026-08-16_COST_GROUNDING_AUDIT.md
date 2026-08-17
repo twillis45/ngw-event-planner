@@ -176,3 +176,47 @@ Quote the second when describing the product. The first is an inventory number.
 
 `confidence: 'low'` is not a weaker citation - it marks a band that is a SUM of
 separately-priced families. All 45 declare the sum in their claim text.
+
+---
+
+## Non-cultural batch, 2026-08-16 (second pass)
+
+Worked the worst-covered NON-cultural playbooks. Two lines cited, 243 -> 245.
+The small number is the finding, not the effort.
+
+### Cited from sources already registered
+- `boardMeeting/p_breakfast` — catering-perperson-2026 + catering-chefry-2026.
+  Band $12-35/person sits at and just below the drop-off tier both sources put at
+  $15-35 and $15-30.
+- `surpriseProposal/p_flowers` — traderjoes-flowers-2026 + paperlust-centerpieces-2026.
+  Band $20-80/bouquet spans a supermarket bunch ($12-20) through a small florist
+  arrangement ($40-100 / DIY-elevated $50-100).
+
+### REFUSED, with the reason — do not re-derive these
+Each looked citable from the registry and is not. A citation that does not
+actually support the band at that UNIT is worse than none: it launders a guess
+into a sourced number.
+
+- `surpriseProposal/p_candles` ($1-3, LED/battery) — every candle source we hold
+  prices WAX (pillars, tapers, votives). LED candles are a different product with
+  a different cost curve. Needs its own source.
+- `surpriseProposal/p_champagne` ($3-10 per GLASS) — sources are per BOTTLE.
+  Converting would mean inventing a pour count and a bottle tier.
+- `conference/p_signage` ($800-4000 per "sign package") — foamboard-print-2026
+  gives a per-board unit price ($43.85-73.08). The aggregate needs a package
+  composition (how many boards, banners, easels) that no source states.
+- `boardMeeting/p_coffee` ($2-5 per serving, service) — coffee-percup-2026 is
+  home-brewed cost per cup (~$0.10). It does not support a served-price band.
+
+### What the remaining gap actually is
+The corporate playbooks (conference 0%, boardMeeting, teamRetreat) price
+PACKAGES and SERVICES — a signage package, a registration desk kit, a swag bag.
+Registry sources price UNITS. Closing these needs either package-level sources
+(event-production quotes) or a re-authoring of the lines into unit terms. That is
+a research task, not a citation task, and it should be named as such rather than
+left looking like unfinished clerical work.
+
+The cultural playbooks (ethiopianCoffeeCeremony 6%, kwanzaaGathering 9%) remain
+blocked on the insider sourcing pass. The roster rule is to recruit a community's
+authority BEFORE authoring its event type; citing them from general retail
+sources would be exactly the appropriation that rule exists to prevent.
