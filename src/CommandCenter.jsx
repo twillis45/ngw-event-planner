@@ -2240,6 +2240,22 @@ export function eventPlan(event, ctx = null) {
         // ('vendors' | 'risks' | 'day'), not the old 'surface:*' form — the shell's
         // DOMAIN_LENS files a vendor raise under the Vendors lens off exactly this
         // word. The snooze/dedup key (itemKey/id) is separate.
+        // ── PASS THROUGH BY DEFAULT (2026-08-17) ────────────────────────────
+        // This was an explicit field list, and the comments below record TWO
+        // fields that died here one at a time — `sourceCategory` (2026-07-22)
+        // and `ask` (2026-07-31, "a consumer with no producer reads as a working
+        // feature"). It is the same silent-drop machine the raiseAll normalizer
+        // was, and it was fixed the same way there earlier today.
+        //
+        // The census that found it also found the live third instance:
+        // `ifDelayed` is absent from this list, so a raise carrying it would die
+        // crossing here even once a producer exists.
+        //
+        // The raise now spreads through whole and only genuine coercions are
+        // named. Pinned by raiseSurvivesToAction.test.js, which drives a field no
+        // consumer names — because a gate that enumerates fields cannot catch the
+        // field nobody thought of, which is how these two got through.
+        ...r,
         id: itemKey, domain: r.domain,
         title: r.title,
         // DOCTRINE (2026-07-22): the raiser's declared classification rides the
