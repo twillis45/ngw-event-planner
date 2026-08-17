@@ -122,7 +122,7 @@ const quinceanera = {
     },
     {
       id: 'vals_song',
-      label: 'Choose the vals (waltz) song and music plan',
+      label: 'Choose the vals (waltz) song and music plan', ask: 'Which song for the vals, and who plays it?',
       options: ['Classical Spanish-language waltz', 'Modern song, waltz-choreographed', 'Surprise dance (baile sorpresa) + vals', 'Live banda for the vals'],
       default: 'Classical Spanish-language waltz',
       when: 'T-180d',

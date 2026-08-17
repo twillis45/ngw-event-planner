@@ -152,7 +152,30 @@ export function heroAskFor(a, event) {
     // carried through as its own field. It must not be re-derived from the
     // short label, and the cutoff must not be widened blindly — a long
     // declarative title genuinely does not read as a hero; a question does.
-    return (t.length <= 26 ? normalizeAsk(t + '.') : null) || 'Your next step.';
+    // ── THE LAST RESORT NAMES THE ACT (2026-08-17) ────────────────────────
+    // The 26-char rule itself is SOUND and stays: a long declarative title does
+    // not read as a hero. Measured across all 39 playbooks x 7 stages, 221 of
+    // 273 heads carry a title over 26 characters and NONE of them is a question,
+    // so a shape-based rule here would be inert — the length test is not what
+    // was hurting anyone.
+    //
+    // What was hurting: when every branch above declines, the host got "Your
+    // next step.", which names nothing. That is now the LAST resort rather than
+    // the first fallback. An action's own CTA is authored, and house doctrine
+    // already requires a CTA to name the act ("Collect dietary needs", "Settle
+    // it") — so it is a truthful ask when nothing better exists.
+    //
+    // 'Go' is EXCLUDED deliberately: it is the sanctioned routing sentinel the
+    // shell expands per destination (HostShellV2 ~403), not host copy. Promoting
+    // it would put the bare "Go." in the hero that ctaNamesTheAct forbids.
+    const short = t.length <= 26 ? normalizeAsk(t + '.') : null;
+    if (short) return short;
+    const cta = String((a && (a.primaryCta || a.ctaLabel || a.cta)) || '').trim();
+    if (cta && cta.toLowerCase() !== 'go') {
+      const fromCta = normalizeAsk(/[.?!]$/.test(cta) ? cta : cta + '.');
+      if (fromCta) return fromCta;
+    }
+    return 'Your next step.';
   } catch { return 'Your next step.'; }
 }
 // The record the panel names — only when it adds info beyond the ask (dedup:

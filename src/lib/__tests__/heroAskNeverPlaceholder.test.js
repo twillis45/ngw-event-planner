@@ -21,9 +21,14 @@
 // neither exists the builder ladder still phrases the instruction.
 import { eventPlan } from '../../CommandCenter';
 import { heroAskFor } from '../heroAsk';
+import { ALL_PLAYBOOKS } from '../playbooks';
 
 const isoIn = (d) => { const x = new Date(); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
-const TYPES = ['Wedding', 'Birthday Party', 'Dinner Party', 'Baby Shower', 'Graduation', 'Retirement Party', 'Game Night', 'Anniversary', 'Reunion', 'Holiday Party'];
+// EVERY playbook, not a sample. The first version of this file swept 10 types
+// and reported "0%", which is a claim about the sample rather than the product —
+// there are 39. A partial sweep is how a metric reaches zero without the defect
+// being gone.
+const TYPES = ALL_PLAYBOOKS.map((pb) => pb.type);
 const STAGES = [180, 120, 60, 30, 14, 7, 3];
 
 const EV = (type, days) => ({
@@ -84,5 +89,32 @@ describe('the hero always asks something real', () => {
       if (!/\?/.test(r.ask)) continue;
       expect(r.ask.trim().length).toBeGreaterThan(6);
     }
+  });
+});
+
+describe('the last resort names the act', () => {
+  // The 26-char rule stays — measured, 221 of 273 heads carry a title over 26
+  // characters and NONE is a question, so a shape-based rule there is inert.
+  // What changed is what happens when every branch declines.
+  test('a long title falls back to the AUTHORED CTA, not to nothing', () => {
+    const a = { title: 'Reconcile the outstanding vendor balance ledger entries', primaryCta: 'Settle the balance' };
+    expect(heroAskFor(a)).toBe('Settle the balance.');
+  });
+
+  test("the 'Go' sentinel is never promoted into the hero", () => {
+    // 'Go' is the shell's routing sentinel (HostShellV2 ~403 expands it per
+    // destination), not host copy. ctaNamesTheAct forbids a bare "Go." on screen.
+    const a = { title: 'Reconcile the outstanding vendor balance ledger entries', cta: 'Go' };
+    expect(heroAskFor(a)).toBe('Your next step.');
+  });
+
+  test('a short title still wins over the CTA — ladder order is unchanged', () => {
+    expect(heroAskFor({ title: 'Plan the food', primaryCta: 'Open the food plan' })).toBe('Decide the menu.');
+  });
+
+  test('and the placeholder survives as the TRUE last resort', () => {
+    // Deliberately kept: a bland string beats an empty hero, and its presence is
+    // what the corpus sweep above is measuring the absence of.
+    expect(heroAskFor({ title: 'Reconcile the outstanding vendor balance ledger entries' })).toBe('Your next step.');
   });
 });

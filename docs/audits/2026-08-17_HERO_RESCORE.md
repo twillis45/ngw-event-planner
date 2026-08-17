@@ -129,3 +129,65 @@ something real and never shows a placeholder; I cannot prove "What kind of
 ceremony, and who will lead it?" is the sentence that host needed. The last point
 belongs to the panel, and awarding it myself is precisely the score inflation the
 house rule forbids.
+
+
+---
+
+## Third pass — the 0% was a sampling artifact, and the cutoff is not the defect
+
+The host pushed on two things in the pass above, and was right on both.
+
+### 1. "16 and 0" — corrected
+
+The 16% -> 0% was measured over **10 event types**. There are **39**. Widened to
+the full registry, the honest picture after the first fix was:
+
+| corpus | states | placeholder |
+|---|---|---|
+| 10 types (what I reported) | 70 | 0 |
+| **all 39 playbooks** | **273** | **14 (5%)** |
+
+Five more decisions were still falling back, none of them visible in my sample —
+Quinceanera at FIVE stages ("Choose the vals (waltz) song and music plan"), Team
+Retreat, Vow Renewal, Bachelorette Party, Low Country Boil. All five now author an
+ask, and the gate sweeps `ALL_PLAYBOOKS` rather than a hand-picked list, so 0% is
+a claim about the product instead of about my sample.
+
+**A partial sweep is how a metric reaches zero without the defect being gone.**
+That is the same class as this morning's false-green red-proofs, one layer up.
+
+### 2. The 26-character cutoff is NOT the defect
+
+Measured before touching it — across all 39 playbooks x 7 stages:
+
+| | |
+|---|---|
+| heads carrying a title over 26 chars | **221 of 273 (81%)** |
+| of those, authored as a question | **0** |
+| that reach the cutoff and fall back badly | **0** |
+
+So the obvious repair — "promote a question regardless of length" — would have
+been **completely inert**. Those 221 long titles are answered by earlier branches
+in the ladder and never reach line 155. The cutoff's own comment blamed itself for
+a defect whose real cause was the missing `ask` transport three projections
+upstream.
+
+**The length rule is sound and stays.** A long declarative genuinely does not read
+as a hero, exactly as the comment says.
+
+What WAS wrong is the last resort. When every branch declines the host got "Your
+next step.", which names nothing — while the action was carrying an authored CTA
+that house doctrine already requires to name the act. The fallback now degrades to
+that CTA ("Settle the balance." instead of "Your next step."), with the `Go`
+routing sentinel excluded so a bare "Go." can never reach the hero, and the
+placeholder kept as the true last resort because a bland string still beats an
+empty hero.
+
+## Score, restated
+
+**Hero: 9/10.** Unchanged from the second pass — the corrected corpus found more
+defects and they were fixed, which keeps the 9 honest rather than raising it.
+
+The last point still belongs to the panel: I can prove the hero always asks
+something real across 273 states, and I cannot prove "Which song for the vals, and
+who plays it?" is the sentence that host needed.
