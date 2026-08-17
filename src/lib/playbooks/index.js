@@ -2973,6 +2973,26 @@ export function playbookDecisionBoard(event, asOf, profile) {
     const activeReady = open.filter((r) => r.status === 'ready' && r.horizon !== 'later');
     const isSafety = (r) => r.deliversHeartMoment === true || r._derivedReason === 'diet' || /dietary|allerg/i.test(`${r.id} ${r.label || ''}`);
     const safetyFloor = Math.min(Infinity, ...activeReady.filter(isSafety).map((r) => r.priorityScore));
+    // ── FACT FIRST, POLICY SECOND (2026-08-17) ─────────────────────────────
+    // `gateHolder` is a FACT — this decision has siblings waiting on it — and it
+    // was only ever stamped inside the ready-only bump loop below, which is a
+    // SCORING POLICY. Measured on a wedding, the two came apart completely:
+    //
+    //   T-400  3 rows with dependents, gateHolder set on 2   (statuses ready)
+    //   T-300  3 rows with dependents, gateHolder set on 0   (all overdue)
+    //   T-120 .. T-10  same: 3 dependents, ZERO gateHolder
+    //
+    // Decisions saturate to `overdue` early, so from ~T-300 onward the ranker
+    // could not see that a late decision gates three others — the case where
+    // sequencing matters MOST. The consequence signal was dead for effectively
+    // the whole countdown, and `compareNextActions` reads exactly this field.
+    //
+    // The bump stays ready-only and unchanged: lifting an overdue row is
+    // pointless (the 100-point status tier already carries it) and would risk
+    // the safety clamp. Only the fact is now stamped unconditionally.
+    for (const r of open) {
+      if (!isSafety(r) && typeof r._dependedOnCount === 'number' && r._dependedOnCount > 0) r.gateHolder = true;
+    }
     for (const r of activeReady) {
       if (!isSafety(r) && typeof r._dependedOnCount === 'number' && r._dependedOnCount > 0) {
         r.gateHolder = true;
