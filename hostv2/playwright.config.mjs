@@ -30,6 +30,7 @@ const SELF_PINNED = [
 // self-pinned ones, because a test has to run SOMEWHERE.
 const VIEWPORT_INDEPENDENT = [
   '**/crossDeviceSync.spec.mjs',
+  '**/a11yFloor.spec.mjs',
 ];
 
 const NON_RESPONSIVE = [...SELF_PINNED, ...VIEWPORT_INDEPENDENT];
