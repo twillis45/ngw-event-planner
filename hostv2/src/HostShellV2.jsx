@@ -15138,6 +15138,32 @@ export default function HostShellV2() {
                     <button className="mini" onClick={() => setFoodSect(m => ({ ...m, list: false }))}>Done</button>
                   </div>
                 )}
+                {/* ── TAKE IT WITH YOU, FROM INSIDE THE LIST ─────────────────
+                    "Copy the shopping list" already existed, as a full-width
+                    action on the food summary — and it is HIDDEN the moment any
+                    drill-in opens, `foodSect.list` included. So the one host who
+                    could not reach it was the host actually looking at their
+                    list, which is the host about to walk out of the door.
+
+                    That matters more than it looks. Measured 2026-08-16: a warm
+                    visit then an offline reload gives a blank page — no service
+                    worker, and the board upheld that bar (see
+                    docs/audits/2026-08-16_OFFLINE_SHELL_BOARD.md). So the list
+                    the host carries into a shop with no signal is the one they
+                    took OUT of the app before they left. This is that door, put
+                    where they are standing when they need it.
+
+                    Same engines as the summary button and as legacy's copy path
+                    (foodShopItems + eventGeoQuery), so all three produce the
+                    identical list — a second list that disagreed would be worse
+                    than no second entry point. */}
+                {foodSect.list && (
+                  <button className="food-act" style={{ width: '100%', marginBottom: 'var(--sp-3)' }} onClick={() => {
+                    let shopItems = []; try { shopItems = foodShopItems(foodPlan, event); } catch { shopItems = []; }
+                    let anchor = ''; try { anchor = eventGeoQuery(event, profile); } catch { anchor = ''; }
+                    openDraft('Your shopping list', draftShoppingList(event, profile, { items: shopItems, anchor }));
+                  }}>Copy the shopping list</button>
+                )}
                 {/* Bulk price-lock — parity with legacy's "Use typical prices for
                     the other N items →" (App.js ~11040-11060). Locks every still-
                     estimated line to the ENGINE's own honest midpoint
