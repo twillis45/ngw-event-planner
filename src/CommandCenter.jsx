@@ -1698,7 +1698,12 @@ export function actionConsequence(a) {
   if (!a) return 0;
   let c = 0;
   if (a.gateHolder === true) c += 2;                                              // settling it frees other work
-  if (Number.isFinite(a.unlocks) && a.unlocks > 0) c += Math.min(2, a.unlocks);   // how much it frees
+  // UNCLIPPED (board ruling 2026-08-17). This was `Math.min(2, a.unlocks)`, which
+  // threw away a measurement the engine had deliberately taken: a blocker gating
+  // vendors, timeline AND logistics scored identically to one gating two. Tufte's
+  // note — "you went to the trouble of counting three dependents and then clipped
+  // it to two". Count what was counted.
+  if (Number.isFinite(a.unlocks) && a.unlocks > 0) c += a.unlocks;                // how much it frees
   if (Number.isFinite(a.priorityScore)) c += a.priorityScore / 100;               // the board's own ranking, bounded
   return c;
 }
@@ -1739,8 +1744,23 @@ export function actionConsequence(a) {
 export function latenessBoost(a) {
   if (!a || !_rankOverdue(a)) return 0;
   const daysLate = Math.abs(a.dueInDays);
-  // 4 for being late at all, plus up to 2 more for how late, saturating at 14
-  // days.
+  // 4 for being late at all, plus up to 0.9 more for how late, saturating at 14
+  // days — a ceiling of 4.9.
+  //
+  // THE CEILING IS SET AGAINST CONSEQUENCE, not chosen for roundness (board
+  // ruling 2026-08-17). It was 4→6, and 6 exceeded everything: a trivial item one
+  // day late outranked the venue gate that blocks vendors, timeline and
+  // logistics. Lateness was a veto wearing a boost's clothing — the exact thing
+  // this function's own header says it must not be.
+  //
+  // Now it sits in the gap the two existing gates leave open:
+  //   above an ordinary scheduled gate-holder (2 + 2 unlocks = 4.0), so
+  //     decisionSoundness's "genuine lateness still leads" holds untouched
+  //   below a multi-dependency gate (2 + 3 unlocks = 5.0), so the venue blocker
+  //     leads a 20-day-late trifle
+  // That gap only exists because the unlocks clip above was removed; with it, a
+  // three-dependency gate and a two-dependency gate were the same number and no
+  // ceiling could separate them.
   //
   // THE 4 IS CALIBRATED, NOT PICKED. It started at 3 and an existing guard —
   // decisionSoundness "genuine lateness still leads" — went red: a 6-day-late
@@ -1753,7 +1773,7 @@ export function latenessBoost(a) {
   //   -29d, consequence 0.4 -> 6.4   loses to a 7.0 reconfirm due tomorrow (floor fixed)
   // The saturating term is what makes the second line true: past 14 days extra
   // staleness buys nothing, so age alone can never hold position one.
-  return 4 + Math.min(2, (daysLate / 14) * 2);
+  return 4 + Math.min(0.9, (daysLate / 14) * 0.9);
 }
 /**
  * The BANDED comparator — the one `eventPlan` actually sorts nextActions with.

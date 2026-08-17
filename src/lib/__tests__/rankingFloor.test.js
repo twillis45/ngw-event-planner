@@ -137,3 +137,46 @@ describe('band 0 — the criticals the host reads first', () => {
     expect(rankBanded([bigWork, critical('crit', 3)])[0]).toBe('crit');
   });
 });
+
+describe('lateness is bounded BELOW a real gate (board ruling, 2026-08-17)', () => {
+  // The last Ranking defect. With the blocker finally declaring `blocks` and the
+  // ladder wired, consequence and lateness could be compared — and they were not
+  // balanced: ANY late item outranked the venue gate, including one a single day
+  // late that gated nothing.
+  //
+  //   venue gate (3 dependents)  4.0      trivial 1d late   4.1
+  //   trivial 20d late           6.0
+  //
+  // Two structural causes, both fixed: `actionConsequence` clipped unlocks at 2
+  // (so gating three things scored the same as two), and the boost ran 4→6, whose
+  // FLOOR already exceeded most real consequence. Lateness was a veto wearing a
+  // boost's clothing — the exact thing latenessBoost's own header forbids.
+  const venueGate = { id: 'venue', gateHolder: true, unlocks: 3, dueInDays: 200 };
+  const twoGate = { id: 'two-gate', gateHolder: true, unlocks: 2, dueInDays: 3 };
+
+  test('a multi-dependency gate outranks a 20-day-late trifle', () => {
+    expect(rank([{ id: 'trifle', dueInDays: -20 }, venueGate])[0]).toBe('venue');
+  });
+
+  test('but a 6-day-late trifle STILL outranks an ordinary scheduled gate-holder', () => {
+    // The other direction, and it is decisionSoundness's own fixture. The ruling
+    // required both to hold with NEITHER existing gate edited — a fix that only
+    // held one way would just move the defect.
+    expect(rank([twoGate, { id: 'trifle', dueInDays: -6 }])[0]).toBe('trifle');
+  });
+
+  test('unlocks are counted, not clipped — three beats two', () => {
+    // The clip discarded a measurement the engine deliberately took. Without this
+    // the ceiling above cannot separate a three-dependency gate from a two.
+    expect(actionConsequence({ gateHolder: true, unlocks: 3 }))
+      .toBeGreaterThan(actionConsequence({ gateHolder: true, unlocks: 2 }));
+  });
+
+  test('the boost ceiling sits in the gap between those two gates', () => {
+    // Stated as the RELATION rather than the constant, so a future rebalance has
+    // to break the intent and not merely the number.
+    const ceiling = latenessBoost({ dueInDays: -999 });
+    expect(ceiling).toBeGreaterThan(actionConsequence(twoGate));    // 4.0
+    expect(ceiling).toBeLessThan(actionConsequence(venueGate));     // 5.0
+  });
+});
