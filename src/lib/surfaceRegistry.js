@@ -556,6 +556,18 @@ export const SURFACES = [
         severity: 'attention',
         title: `${first.label} in ${first.daysLeft} ${first.daysLeft === 1 ? 'day' : 'days'}`,
         why: m.exposureLine || `${first.note}.`,
+        // NO `moneyKey`, deliberately — this was tried on 2026-08-17 and
+        // reverted, measured. actionReason's MONEY branch (priority 2, above
+        // `time`) needs one and emits "payment due in N days", so attaching it
+        // looked like the way to make a money deadline reason as MONEY rather
+        // than as a clock. It buys nothing and can lie:
+        //   · these titles already state the deadline ("Next payment due in 4
+        //     days"), so `addsBeyondTitle` correctly drops a reason that merely
+        //     repeats it — measured null, not "payment due in 4 days";
+        //   · and of the three row kinds only `installment` IS a payment. A
+        //     refund window is a deadline to CANCEL by and a headcount is a
+        //     number, so keying those would tell the host a bill exists.
+        // Pinned by moneyDateReasonKind.test.js so it is not re-attempted.
         route: { tab: 'Travel' },
         key: first.id != null ? String(first.id) : 'money-date',
         dueInDays: first.daysLeft,
